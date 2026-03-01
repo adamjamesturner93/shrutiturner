@@ -1,0 +1,34 @@
+node_modules
+
+# Next.js build output
+.next
+out
+
+# TypeScript incremental metadata
+*.tsbuildinfo
+
+# Local environment files (keep template)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Package manager/cache
+.pnpm-store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Hosting/platform
+.vercel
+
+# Test output
+coverage
+
+# OS/editor noise
+.DS_Store
