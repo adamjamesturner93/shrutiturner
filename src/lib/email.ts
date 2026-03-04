@@ -26,11 +26,16 @@ const SENDER_EMAIL = "shruti@shrutiturner.com"; // Verified sender signature
 /**
  * Helper to generate a simple ICS string for calendar invites.
  */
-function generateICS(eventName: string, startTime: Date, durationMinutes: number, description: string) {
+function generateICS(
+  eventName: string,
+  startTime: Date,
+  durationMinutes: number,
+  description: string
+) {
   const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
-  
+
   const formatDate = (date: Date) => date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-  
+
   return `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Shruti Turner Coaching//EN
@@ -85,11 +90,11 @@ export async function sendBookingConfirmation(
         classTime: formattedTime,
       })
     );
-    
+
     const icsContent = generateICS(
-      className, 
-      classDateObj, 
-      durationMinutes, 
+      className,
+      classDateObj,
+      durationMinutes,
       `Join link: https://shrutiturner.com/dashboard/class-join`
     );
 
@@ -106,7 +111,9 @@ export async function sendBookingConfirmation(
     //   }]
     // });
 
-    console.log(`[Mock Email Service] Sending Booking Confirmation to ${email} with ICS attachment`);
+    console.log(
+      `[Mock Email Service] Sending Booking Confirmation to ${email} with ICS attachment`
+    );
     return { success: true };
   } catch (error) {
     console.error("Failed to send booking confirmation", error);
@@ -185,10 +192,12 @@ export async function sendInstructorNotification(
         classDate: formatDate(classDate, ADMIN_PREFS),
         classTime: formatTimeString(classTime, ADMIN_PREFS),
         attendeeName,
-        attendeeCount
+        attendeeCount,
       })
     );
-    console.log(`[Mock Email Service] Sending Instructor Notification (${type}) to ${instructorEmail}`);
+    console.log(
+      `[Mock Email Service] Sending Instructor Notification (${type}) to ${instructorEmail}`
+    );
     return { success: true };
   } catch (error) {
     console.error("Failed to send instructor notification", error);
@@ -213,13 +222,13 @@ export async function sendClassCancellation(
         className,
         classDate: formatDate(classDate, userPrefs),
         classTime: formatTimeString(classTime, userPrefs),
-        isInstructorInitiated
+        isInstructorInitiated,
       })
     );
-    
+
     // NOTE: To cancel a calendar event, you typically send an ICS with METHOD:CANCEL
     // The implementation would look similar to sendBookingConfirmation but with modified ICS headers.
-    
+
     console.log(`[Mock Email Service] Sending Class Cancellation to ${email}`);
     return { success: true };
   } catch (error) {
@@ -239,7 +248,7 @@ export async function sendNewsletter(
       NewsletterEmail({
         subject,
         markdownContent,
-        previewText
+        previewText,
       })
     );
     console.log(`[Mock Email Service] Sending Newsletter to ${email}`);
@@ -253,18 +262,18 @@ export async function sendNewsletter(
 /**
  * Trigger Points for Emails:
  * ... (previous documentation)
- * 
+ *
  * 5. Purchase Confirmation:
  *    - Trigger: Stripe webhook 'payment_intent.succeeded' or 'invoice.payment_succeeded'.
- * 
+ *
  * 6. Instructor Notification:
  *    - Trigger: Database trigger on 'bookings' table (insert/delete).
  *      - If count goes 0 -> 1: Send 'first-signup'
  *      - If count goes 1 -> 0: Send 'last-cancel'
- * 
+ *
  * 7. Class Cancellation:
  *    - Trigger: Admin dashboard 'Cancel Class' action OR user 'Cancel Booking' action.
- * 
+ *
  * 8. Newsletter:
  *    - Trigger: Contentful webhook 'Publish' -> Supabase Function -> Fetch subscribers -> Send batch.
  */

@@ -1,12 +1,5 @@
 import { useState } from "react";
-import {
-  X,
-  Mic,
-  Video,
-  Volume2,
-  Check,
-  Monitor,
-} from "lucide-react";
+import { X, Mic, Video, Volume2, Check, Monitor } from "lucide-react";
 import { Button } from "../ui/button";
 
 interface DeviceSelectorProps {
@@ -45,25 +38,19 @@ export function DeviceSelector({ onClose }: DeviceSelectorProps) {
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative bg-[#252540] rounded-xl border border-white/10 w-full max-w-sm shadow-2xl max-h-[85vh] flex flex-col">
+      <div className="relative flex max-h-[85vh] w-full max-w-sm flex-col rounded-xl border border-white/10 bg-[#252540] shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-white/10 flex-shrink-0">
+        <div className="flex flex-shrink-0 items-center justify-between border-b border-white/10 p-4">
           <h2 className="text-sm text-white">Device Settings</h2>
-          <button
-            onClick={onClose}
-            className="text-white/50 hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
+          <button onClick={onClose} className="text-white/50 transition-colors hover:text-white">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="p-4 space-y-5 overflow-y-auto flex-1 min-h-0">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
           {/* Camera */}
           <DeviceSection
             icon={Video}
@@ -74,9 +61,9 @@ export function DeviceSelector({ onClose }: DeviceSelectorProps) {
           />
 
           {/* Camera preview */}
-          <div className="rounded-lg overflow-hidden bg-[#1a1a2e] h-28 flex items-center justify-center">
-            <div className="text-center space-y-2">
-              <div className="w-16 h-16 rounded-full bg-[#4B5B32] mx-auto flex items-center justify-center text-white text-lg">
+          <div className="flex h-28 items-center justify-center overflow-hidden rounded-lg bg-[#1a1a2e]">
+            <div className="space-y-2 text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#4B5B32] text-lg text-white">
                 YO
               </div>
               <p className="text-xs text-white/40">Camera preview</p>
@@ -99,7 +86,7 @@ export function DeviceSelector({ onClose }: DeviceSelectorProps) {
                 setTestingMic(true);
                 setTimeout(() => setTestingMic(false), 2000);
               }}
-              className="text-xs bg-white/5 hover:bg-white/10 text-white/60 px-3 py-1.5 rounded-md transition-colors"
+              className="rounded-md bg-white/5 px-3 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/10"
             >
               {testingMic ? "Listening..." : "Test microphone"}
             </button>
@@ -108,7 +95,7 @@ export function DeviceSelector({ onClose }: DeviceSelectorProps) {
                 {[1, 2, 3, 4, 5].map((i) => (
                   <div
                     key={i}
-                    className="w-1 bg-[#4B5B32] rounded-full animate-pulse"
+                    className="w-1 animate-pulse rounded-full bg-[#4B5B32]"
                     style={{
                       height: `${8 + Math.random() * 12}px`,
                       animationDelay: `${i * 100}ms`,
@@ -134,17 +121,17 @@ export function DeviceSelector({ onClose }: DeviceSelectorProps) {
               setTestingSpeaker(true);
               setTimeout(() => setTestingSpeaker(false), 2000);
             }}
-            className="text-xs bg-white/5 hover:bg-white/10 text-white/60 px-3 py-1.5 rounded-md transition-colors"
+            className="rounded-md bg-white/5 px-3 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/10"
           >
             {testingSpeaker ? "Playing test sound..." : "Test speaker"}
           </button>
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-white/10 flex-shrink-0">
+        <div className="flex-shrink-0 border-t border-white/10 p-4">
           <Button
             onClick={onClose}
-            className="w-full bg-[#4B5B32] hover:bg-[#4B5B32]/90 text-white"
+            className="w-full bg-[#4B5B32] text-white hover:bg-[#4B5B32]/90"
           >
             Done
           </Button>
@@ -169,27 +156,23 @@ function DeviceSection({
 }) {
   return (
     <div>
-      <div className="flex items-center gap-2 mb-2">
-        <Icon className="w-4 h-4 text-white/50" />
-        <span className="text-xs text-white/50 uppercase tracking-wider">
-          {label}
-        </span>
+      <div className="mb-2 flex items-center gap-2">
+        <Icon className="h-4 w-4 text-white/50" />
+        <span className="text-xs tracking-wider text-white/50 uppercase">{label}</span>
       </div>
       <div className="space-y-1">
         {options.map((opt) => (
           <button
             key={opt.id}
             onClick={() => onSelect(opt.id)}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
+            className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition-colors ${
               selected === opt.id
                 ? "bg-[#4B5B32]/20 text-[#B5C49B]"
                 : "text-white/70 hover:bg-white/5"
             }`}
           >
             <span className="truncate">{opt.label}</span>
-            {selected === opt.id && (
-              <Check className="w-4 h-4 flex-shrink-0" />
-            )}
+            {selected === opt.id && <Check className="h-4 w-4 flex-shrink-0" />}
           </button>
         ))}
       </div>

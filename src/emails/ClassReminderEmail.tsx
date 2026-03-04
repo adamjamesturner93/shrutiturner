@@ -49,7 +49,7 @@ export const ClassReminderEmail = ({
         }}
       >
         <Body className="bg-background font-sans">
-          <Container className="mx-auto p-4 max-w-xl">
+          <Container className="mx-auto max-w-xl p-4">
             <Section className="mt-8 mb-8 text-center">
               <Img
                 src="https://shrutiturner.com/logo.png"
@@ -59,29 +59,30 @@ export const ClassReminderEmail = ({
               />
             </Section>
 
-            <Section className="bg-white p-8 rounded-lg border border-[#E5E5E5]">
-              <Heading className="text-xl font-normal text-text mb-4 text-center">
+            <Section className="rounded-lg border border-[#E5E5E5] bg-white p-8">
+              <Heading className="text-text mb-4 text-center text-xl font-normal">
                 Your class is starting soon
               </Heading>
 
-              <Text className="text-text text-base leading-relaxed mb-6">
-                Hi {firstName}, this is a gentle reminder that <strong>{className}</strong> begins at {classTime}.
+              <Text className="text-text mb-6 text-base leading-relaxed">
+                Hi {firstName}, this is a gentle reminder that <strong>{className}</strong> begins
+                at {classTime}.
               </Text>
 
-              <Section className="text-center mb-6">
+              <Section className="mb-6 text-center">
                 <Button
-                  className="bg-primary text-[#FAFAF8] px-6 py-3 rounded text-base font-medium no-underline"
+                  className="bg-primary rounded px-6 py-3 text-base font-medium text-[#FAFAF8] no-underline"
                   href={joinLink}
                 >
                   Join Class
                 </Button>
               </Section>
-              
-              <Text className="text-text text-sm mb-4 text-center">
+
+              <Text className="text-text mb-4 text-center text-sm">
                 The studio opens 10 minutes before class.
               </Text>
 
-              <Hr className="border-[#E5E5E5] my-6" />
+              <Hr className="my-6 border-[#E5E5E5]" />
 
               <Text className="text-text text-sm">
                 <strong>Equipment check:</strong>
@@ -90,14 +91,19 @@ export const ClassReminderEmail = ({
               </Text>
             </Section>
 
-            <Section className="mt-8 text-center text-text/50 text-xs">
+            <Section className="text-text/50 mt-8 text-center text-xs">
               <Text>
                 Shruti Turner Coaching
                 <br />
                 PhD Biomechanics · PGDip Rehab · 650hr Yoga
               </Text>
               <Text>
-                <Link href="https://shrutiturner.com/unsubscribe" className="text-text/50 underline">Unsubscribe</Link>
+                <Link
+                  href="https://shrutiturner.com/unsubscribe"
+                  className="text-text/50 underline"
+                >
+                  Unsubscribe
+                </Link>
               </Text>
             </Section>
           </Container>

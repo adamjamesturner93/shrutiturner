@@ -56,7 +56,7 @@ export const InstructorNotificationEmail = ({
         }}
       >
         <Body className="bg-background font-sans">
-          <Container className="mx-auto p-4 max-w-xl">
+          <Container className="mx-auto max-w-xl p-4">
             <Section className="mt-8 mb-8 text-center">
               <Img
                 src="https://shrutiturner.com/logo.png"
@@ -66,34 +66,37 @@ export const InstructorNotificationEmail = ({
               />
             </Section>
 
-            <Section className="bg-white p-8 rounded-lg border border-[#E5E5E5]">
-              <Heading className="text-xl font-normal text-text mb-4 text-center">
+            <Section className="rounded-lg border border-[#E5E5E5] bg-white p-8">
+              <Heading className="text-text mb-4 text-center text-xl font-normal">
                 {isFirstSignup ? "New Student Signed Up!" : "Class Empty Alert"}
               </Heading>
 
-              <Text className="text-text text-base leading-relaxed mb-6">
+              <Text className="text-text mb-6 text-base leading-relaxed">
                 {isFirstSignup
                   ? `${attendeeName} just booked into ${className}.`
                   : `The last person (${attendeeName}) just cancelled their booking for ${className}.`}
               </Text>
 
-              <Section className="bg-[#B5C49B]/10 p-6 rounded-lg mb-6">
-                <Text className="text-text font-bold text-lg mb-2">{className}</Text>
-                <Text className="text-text text-sm mb-1">{classDate} at {classTime}</Text>
+              <Section className="mb-6 rounded-lg bg-[#B5C49B]/10 p-6">
+                <Text className="text-text mb-2 text-lg font-bold">{className}</Text>
+                <Text className="text-text mb-1 text-sm">
+                  {classDate} at {classTime}
+                </Text>
                 <Text className="text-text text-sm font-medium">
                   Current Attendees: {attendeeCount}
                 </Text>
               </Section>
 
               {!isFirstSignup && (
-                <Text className="text-text/70 text-sm mb-6">
-                  Since there are 0 attendees left, you might want to check the cancellation policy or notify waitlisted students.
+                <Text className="text-text/70 mb-6 text-sm">
+                  Since there are 0 attendees left, you might want to check the cancellation policy
+                  or notify waitlisted students.
                 </Text>
               )}
 
-              <Section className="text-center mb-6">
+              <Section className="mb-6 text-center">
                 <Button
-                  className="bg-primary text-[#FAFAF8] px-6 py-3 rounded text-base font-medium no-underline"
+                  className="bg-primary rounded px-6 py-3 text-base font-medium text-[#FAFAF8] no-underline"
                   href="https://shrutiturner.com/admin/dashboard"
                 >
                   View Class Roster

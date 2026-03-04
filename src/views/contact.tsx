@@ -62,18 +62,18 @@ export function ContactPage() {
           description="Your enquiry has been submitted."
           noIndex
         />
-        <section className="py-20 md:py-28 min-h-[70vh] flex items-center">
-          <div className="container mx-auto px-4 max-w-lg text-center space-y-6">
-            <div className="w-16 h-16 bg-[#4B5B32]/10 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-8 h-8 text-[#4B5B32]" />
+        <section className="flex min-h-[70vh] items-center py-20 md:py-28">
+          <div className="container mx-auto max-w-lg space-y-6 px-4 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#4B5B32]/10">
+              <CheckCircle2 className="h-8 w-8 text-[#4B5B32]" />
             </div>
             <h1 className="text-3xl">Thank you for your enquiry.</h1>
             <p className="text-muted-foreground leading-relaxed">
-              I'll get back to you within 2 working days. If your enquiry is
-              about 1:1 training, I may ask a few follow-up questions about your
-              conditions and goals before suggesting next steps.
+              I'll get back to you within 2 working days. If your enquiry is about 1:1 training, I
+              may ask a few follow-up questions about your conditions and goals before suggesting
+              next steps.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+            <div className="flex flex-col justify-center gap-4 pt-4 sm:flex-row">
               <Link href="/classes">
                 <Button variant="outline">
                   Explore Classes
@@ -100,19 +100,19 @@ export function ContactPage() {
       />
 
       {/* Hero */}
-      <section className="bg-[#2E1F33] text-[#FAFAF8] py-16 md:py-20">
-        <div className="container mx-auto px-4 max-w-4xl text-center">
-          <h1 className="text-4xl md:text-5xl mb-4">Get in Touch</h1>
-          <p className="text-xl text-[#B5C49B] leading-relaxed">
-            Whether you have a specific question or want to explore how I can
-            help, I'd love to hear from you. No pressure, no hard sell.
+      <section className="bg-[#2E1F33] py-16 text-[#FAFAF8] md:py-20">
+        <div className="container mx-auto max-w-4xl px-4 text-center">
+          <h1 className="mb-4 text-4xl md:text-5xl">Get in Touch</h1>
+          <p className="text-xl leading-relaxed text-[#B5C49B]">
+            Whether you have a specific question or want to explore how I can help, I'd love to hear
+            from you. No pressure, no hard sell.
           </p>
         </div>
       </section>
 
       <section className="py-16 md:py-20">
-        <div className="container mx-auto px-4 max-w-5xl">
-          <div className="grid md:grid-cols-5 gap-12">
+        <div className="container mx-auto max-w-5xl px-4">
+          <div className="grid gap-12 md:grid-cols-5">
             {/* Form */}
             <div className="md:col-span-3">
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -122,9 +122,7 @@ export function ContactPage() {
                     <Input
                       id="firstName"
                       value={formData.firstName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, firstName: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                       required
                     />
                   </div>
@@ -133,9 +131,7 @@ export function ContactPage() {
                     <Input
                       id="lastName"
                       value={formData.lastName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, lastName: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                       required
                     />
                   </div>
@@ -147,9 +143,7 @@ export function ContactPage() {
                     id="email"
                     type="email"
                     value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     required
                   />
                 </div>
@@ -158,9 +152,7 @@ export function ContactPage() {
                   <Label htmlFor="interest">What are you interested in? *</Label>
                   <Select
                     value={formData.interest}
-                    onValueChange={(v) =>
-                      setFormData({ ...formData, interest: v })
-                    }
+                    onValueChange={(v) => setFormData({ ...formData, interest: v })}
                   >
                     <SelectTrigger id="interest">
                       <SelectValue placeholder="Select an option" />
@@ -176,20 +168,16 @@ export function ContactPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="conditions">
-                    Any conditions or context you'd like to share?
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Optional. This helps me understand your situation before we
-                    chat. E.g. "I have RA" or "recovering from knee surgery".
+                  <Label htmlFor="conditions">Any conditions or context you'd like to share?</Label>
+                  <p className="text-muted-foreground text-xs">
+                    Optional. This helps me understand your situation before we chat. E.g. "I have
+                    RA" or "recovering from knee surgery".
                   </p>
                   <Input
                     id="conditions"
                     placeholder="e.g. Psoriatic arthritis, chronic fatigue"
                     value={formData.conditions}
-                    onChange={(e) =>
-                      setFormData({ ...formData, conditions: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, conditions: e.target.value })}
                   />
                 </div>
 
@@ -197,9 +185,7 @@ export function ContactPage() {
                   <Label htmlFor="howFound">How did you find me?</Label>
                   <Select
                     value={formData.howFound}
-                    onValueChange={(v) =>
-                      setFormData({ ...formData, howFound: v })
-                    }
+                    onValueChange={(v) => setFormData({ ...formData, howFound: v })}
                   >
                     <SelectTrigger id="howFound">
                       <SelectValue placeholder="Select..." />
@@ -221,98 +207,81 @@ export function ContactPage() {
                     rows={5}
                     placeholder="Tell me a bit about what you're looking for..."
                     value={formData.message}
-                    onChange={(e) =>
-                      setFormData({ ...formData, message: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                     required
                   />
                 </div>
 
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="w-full"
-                  disabled={!formData.interest}
-                >
+                <Button type="submit" size="lg" className="w-full" disabled={!formData.interest}>
                   Send Enquiry
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
 
-                <p className="text-xs text-muted-foreground text-center">
-                  Your information is kept private and never shared. I typically
-                  reply within 2 working days.
+                <p className="text-muted-foreground text-center text-xs">
+                  Your information is kept private and never shared. I typically reply within 2
+                  working days.
                 </p>
               </form>
             </div>
 
             {/* Sidebar */}
-            <div className="md:col-span-2 space-y-8">
-              <div className="bg-secondary/30 rounded-lg p-6 space-y-4">
+            <div className="space-y-8 md:col-span-2">
+              <div className="bg-secondary/30 space-y-4 rounded-lg p-6">
                 <div className="flex items-center gap-2">
-                  <MessageCircle className="w-5 h-5 text-primary" />
+                  <MessageCircle className="text-primary h-5 w-5" />
                   <h3 className="text-lg">What to expect</h3>
                 </div>
-                <ul className="space-y-3 text-sm text-muted-foreground">
+                <ul className="text-muted-foreground space-y-3 text-sm">
                   <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                    <CheckCircle2 className="text-primary mt-0.5 h-4 w-4 flex-shrink-0" />
                     <span>I'll reply within 2 working days</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                    <CheckCircle2 className="text-primary mt-0.5 h-4 w-4 flex-shrink-0" />
                     <span>
-                      For 1:1 enquiries, I may ask follow-up questions about your
-                      conditions before recommending a plan
+                      For 1:1 enquiries, I may ask follow-up questions about your conditions before
+                      recommending a plan
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                    <CheckCircle2 className="text-primary mt-0.5 h-4 w-4 flex-shrink-0" />
                     <span>No obligation, no sales pitch</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                    <CheckCircle2 className="text-primary mt-0.5 h-4 w-4 flex-shrink-0" />
                     <span>
-                      If I'm not the right fit, I'll try to point you in the
-                      right direction
+                      If I'm not the right fit, I'll try to point you in the right direction
                     </span>
                   </li>
                 </ul>
               </div>
 
-              <div className="bg-secondary/30 rounded-lg p-6 space-y-3">
+              <div className="bg-secondary/30 space-y-3 rounded-lg p-6">
                 <div className="flex items-center gap-2">
-                  <Mail className="w-5 h-5 text-primary" />
+                  <Mail className="text-primary h-5 w-5" />
                   <h3 className="text-lg">Prefer email?</h3>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   You can also email me directly at{" "}
-                  <a
-                    href="mailto:hello@shrutiturner.com"
-                    className="text-primary hover:underline"
-                  >
+                  <a href="mailto:hello@shrutiturner.com" className="text-primary hover:underline">
                     hello@shrutiturner.com
                   </a>
                 </p>
               </div>
 
               <div className="border-t pt-6">
-                <h3 className="text-lg mb-3">Not sure what you need?</h3>
-                <p className="text-sm text-muted-foreground mb-4">
+                <h3 className="mb-3 text-lg">Not sure what you need?</h3>
+                <p className="text-muted-foreground mb-4 text-sm">
                   These pages might help you decide:
                 </p>
                 <div className="space-y-2">
-                  <Link href="/classes"
-                    className="block text-sm text-primary hover:underline"
-                  >
+                  <Link href="/classes" className="text-primary block text-sm hover:underline">
                     Explore class types &rarr;
                   </Link>
-                  <Link href="/pricing"
-                    className="block text-sm text-primary hover:underline"
-                  >
+                  <Link href="/pricing" className="text-primary block text-sm hover:underline">
                     View full pricing &rarr;
                   </Link>
-                  <Link href="/about"
-                    className="block text-sm text-primary hover:underline"
-                  >
+                  <Link href="/about" className="text-primary block text-sm hover:underline">
                     About my approach &rarr;
                   </Link>
                 </div>

@@ -5,9 +5,15 @@ import { SEO } from "../components/seo";
 import { Button } from "../components/ui/button";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import Link from "next/link";
-import { ArrowRight, Check, Calendar } from "lucide-react";
+import { Check, Calendar } from "lucide-react";
+import type { ClassDefinitionContent, TestimonialContent } from "@/lib/content";
 
-export function ClassesYogaPage() {
+interface ClassesYogaPageProps {
+  classDefinitions?: ClassDefinitionContent[];
+  testimonials?: TestimonialContent[];
+}
+
+export function ClassesYogaPage({ classDefinitions = [], testimonials = [] }: ClassesYogaPageProps) {
   return (
     <Layout>
       <SEO
@@ -16,17 +22,16 @@ export function ClassesYogaPage() {
         keywords="online yoga classes UK, adaptive yoga online, yoga for chronic illness, yoga for hypermobility, rehabilitation yoga online, therapeutic yoga classes"
         canonicalUrl="https://shrutiturner.com/classes/yoga"
       />
-      
+
       {/* Hero */}
-      <section className="bg-[#2E1F33] text-[#FAFAF8] py-20 md:py-28">
-        <div className="container mx-auto px-4 max-w-4xl text-center">
-          <h1 className="text-4xl md:text-6xl mb-6 leading-tight">
-            Online Yoga Classes
-          </h1>
-          <p className="text-xl md:text-2xl text-[#B5C49B] leading-relaxed mb-8">
-            Rehabilitation-informed yoga for bodies that need intelligent, adaptive practice—not just modifications.
+      <section className="bg-[#2E1F33] py-20 text-[#FAFAF8] md:py-28">
+        <div className="container mx-auto max-w-4xl px-4 text-center">
+          <h1 className="mb-6 text-4xl leading-tight md:text-6xl">Online Yoga Classes</h1>
+          <p className="mb-8 text-xl leading-relaxed text-[#B5C49B] md:text-2xl">
+            Rehabilitation-informed yoga for bodies that need intelligent, adaptive practice—not
+            just modifications.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <Link href="/schedule">
               <Button size="lg" className="bg-[#B5C49B] text-[#2E1F33] hover:bg-[#a5b48b]">
                 View Schedule
@@ -37,7 +42,7 @@ export function ClassesYogaPage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="bg-transparent border-[#B5C49B] text-[#B5C49B] hover:bg-[#B5C49B]/10"
+                className="border-[#B5C49B] bg-transparent text-[#B5C49B] hover:bg-[#B5C49B]/10"
               >
                 Get Started
               </Button>
@@ -48,61 +53,60 @@ export function ClassesYogaPage() {
 
       {/* What Makes This Different */}
       <section className="py-20 md:py-24">
-        <div className="container mx-auto px-4 max-w-5xl">
+        <div className="container mx-auto max-w-5xl px-4">
           {/* Image Section */}
-          <div className="mb-16 rounded-lg overflow-hidden">
+          <div className="mb-16 overflow-hidden rounded-lg">
             <ImageWithFallback
               src="https://images.unsplash.com/photo-1630225758612-8c511aad6c00?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtYXR1cmUlMjB3b21hbiUyMHlvZ2ElMjBtYXQlMjBhZGFwdGl2ZXxlbnwxfHx8fDE3NzE1Mjk4Njh8MA&ixlib=rb-4.1.0&q=80&w=1080"
               alt="Woman practicing adaptive yoga"
-              className="w-full h-[400px] object-cover"
+              className="h-[400px] w-full object-cover"
             />
           </div>
 
-          <h2 className="text-3xl md:text-5xl mb-12 text-center">
+          <h2 className="mb-12 text-center text-3xl md:text-5xl">
             Not Mainstream Yoga With Modifications
           </h2>
 
-          <div className="space-y-12 max-w-3xl mx-auto">
+          <div className="mx-auto max-w-3xl space-y-12">
             <div className="space-y-4">
               <h3 className="text-2xl">A Different Premise Entirely</h3>
               <p className="text-muted-foreground leading-relaxed">
-                Most yoga modifications are just "easier versions" of poses
-                designed for different bodies. Adaptive yoga starts with a
-                different premise: what does <em>this</em> body need, and how do
-                we work with its reality?
+                Most yoga modifications are just "easier versions" of poses designed for different
+                bodies. Adaptive yoga starts with a different premise: what does <em>this</em> body
+                need, and how do we work with its reality?
               </p>
               <p className="text-muted-foreground leading-relaxed">
-                If you have chronic pain, arthritis, hypermobility, or fatigue, standard yoga can do more harm than good—even with modifications. These classes are fundamentally different.
+                If you have chronic pain, arthritis, hypermobility, or fatigue, standard yoga can do
+                more harm than good—even with modifications. These classes are fundamentally
+                different.
               </p>
             </div>
 
             <div className="space-y-4">
               <h3 className="text-2xl">Safety First, Always</h3>
               <p className="text-muted-foreground leading-relaxed">
-                No pushing into end-range flexibility. No "breathe through the
-                pain." No assumptions that mobility equals health. Every practice
-                prioritizes joint stability and tissue safety—especially crucial
-                for hypermobile, arthritic, or chronically inflamed bodies.
+                No pushing into end-range flexibility. No "breathe through the pain." No assumptions
+                that mobility equals health. Every practice prioritizes joint stability and tissue
+                safety—especially crucial for hypermobile, arthritic, or chronically inflamed
+                bodies.
               </p>
             </div>
 
             <div className="space-y-4">
               <h3 className="text-2xl">Nervous System Regulation</h3>
               <p className="text-muted-foreground leading-relaxed">
-                For people with chronic conditions, nervous system dysregulation
-                is common. Practices are designed to help your nervous system
-                find regulation, which has real impacts on pain perception,
-                fatigue, and symptom management.
+                For people with chronic conditions, nervous system dysregulation is common.
+                Practices are designed to help your nervous system find regulation, which has real
+                impacts on pain perception, fatigue, and symptom management.
               </p>
             </div>
 
             <div className="space-y-4">
               <h3 className="text-2xl">Function Over Aesthetics</h3>
               <p className="text-muted-foreground leading-relaxed">
-                The goal isn't achieving a particular shape or getting "more
-                flexible." It's improving your capacity for movement that matters
-                in your daily life—getting up from the floor, reaching overhead,
-                maintaining stability.
+                The goal isn't achieving a particular shape or getting "more flexible." It's
+                improving your capacity for movement that matters in your daily life—getting up from
+                the floor, reaching overhead, maintaining stability.
               </p>
             </div>
           </div>
@@ -110,46 +114,40 @@ export function ClassesYogaPage() {
       </section>
 
       {/* Who It's For */}
-      <section className="py-20 md:py-24 bg-secondary/20">
-        <div className="container mx-auto px-4 max-w-5xl">
-          <h2 className="text-3xl md:text-5xl mb-12 text-center">
-            Who This Is For
-          </h2>
+      <section className="bg-secondary/20 py-20 md:py-24">
+        <div className="container mx-auto max-w-5xl px-4">
+          <h2 className="mb-12 text-center text-3xl md:text-5xl">Who This Is For</h2>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <div className="bg-background border rounded-lg p-8 space-y-4">
+          <div className="mx-auto grid max-w-4xl gap-8 md:grid-cols-2">
+            <div className="bg-background space-y-4 rounded-lg border p-8">
               <h3 className="text-xl">✓ This is for you if:</h3>
-              <ul className="space-y-3 text-muted-foreground">
+              <ul className="text-muted-foreground space-y-3">
                 <li className="flex items-start gap-2">
-                  <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                  <span>
-                    You have chronic pain, arthritis, or autoimmune conditions
-                  </span>
+                  <Check className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
+                  <span>You have chronic pain, arthritis, or autoimmune conditions</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                  <Check className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
                   <span>You're hypermobile and need stability, not more flexibility</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                  <span>
-                    Mainstream yoga classes have left you feeling dismissed or injured
-                  </span>
+                  <Check className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
+                  <span>Mainstream yoga classes have left you feeling dismissed or injured</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                  <Check className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
                   <span>You want nervous system regulation, not just stretching</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                  <Check className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
                   <span>You value evidence-based approaches over spiritual platitudes</span>
                 </li>
               </ul>
             </div>
 
-            <div className="bg-background border rounded-lg p-8 space-y-4">
+            <div className="bg-background space-y-4 rounded-lg border p-8">
               <h3 className="text-xl">✗ This is NOT for you if:</h3>
-              <ul className="space-y-3 text-muted-foreground">
+              <ul className="text-muted-foreground space-y-3">
                 <li>• You want intense, athletic-style yoga flows</li>
                 <li>• You're looking for spiritual or religious practices</li>
                 <li>• You want to achieve advanced poses for social media</li>
@@ -161,57 +159,38 @@ export function ClassesYogaPage() {
         </div>
       </section>
 
-      {/* Class Types / Outcomes */}
+      {/* Class Definitions */}
       <section className="py-20 md:py-24">
-        <div className="container mx-auto px-4 max-w-5xl">
-          <h2 className="text-3xl md:text-5xl mb-12 text-center">
-            Class Types & What to Expect
-          </h2>
+        <div className="container mx-auto max-w-5xl px-4">
+          <h2 className="mb-12 text-center text-3xl md:text-5xl">Class Templates</h2>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-background border rounded-lg p-6 space-y-4">
-              <h3 className="text-xl">Adaptive Yoga Flow</h3>
-              <p className="text-sm text-muted-foreground">60 minutes</p>
-              <p className="text-muted-foreground leading-relaxed">
-                Gentle, stability-focused movement prioritizing joint safety and control. Suitable for all levels.
-              </p>
-              <ul className="text-sm space-y-2 text-muted-foreground">
-                <li>• Joint-safe movement patterns</li>
-                <li>• Real-time adaptations for flares</li>
-                <li>• Nervous system regulation focus</li>
-              </ul>
+          {classDefinitions.length > 0 ? (
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+              {classDefinitions.map((cls) => (
+                <div key={cls.id} className="bg-background space-y-4 rounded-lg border p-6">
+                  <h3 className="text-xl">{cls.name}</h3>
+                  <p className="text-muted-foreground text-sm">
+                    {cls.duration} • {cls.level}
+                  </p>
+                  <p className="text-muted-foreground leading-relaxed">{cls.shortDescription}</p>
+                  <Link href={`/schedule/${cls.slug}`}>
+                    <Button variant="outline" size="sm">
+                      View Details
+                    </Button>
+                  </Link>
+                </div>
+              ))}
             </div>
-
-            <div className="bg-background border rounded-lg p-6 space-y-4">
-              <h3 className="text-xl">Restorative Yoga</h3>
-              <p className="text-sm text-muted-foreground">60 minutes</p>
-              <p className="text-muted-foreground leading-relaxed">
-                Deeply restful practice for nervous system recovery. Perfect for high-fatigue days or post-flare recovery.
-              </p>
-              <ul className="text-sm space-y-2 text-muted-foreground">
-                <li>• Passive, supported poses</li>
-                <li>• Vagal tone regulation</li>
-                <li>• Breath work integration</li>
-              </ul>
-            </div>
-
-            <div className="bg-background border rounded-lg p-6 space-y-4">
-              <h3 className="text-xl">Yoga for Hypermobility</h3>
-              <p className="text-sm text-muted-foreground">60 minutes</p>
-              <p className="text-muted-foreground leading-relaxed">
-                Strength-focused yoga for hypermobile joints. Control and stability prioritized over flexibility.
-              </p>
-              <ul className="text-sm space-y-2 text-muted-foreground">
-                <li>• Joint stabilization exercises</li>
-                <li>• Proprioception training</li>
-                <li>• EDS/HSD-appropriate progressions</li>
-              </ul>
-            </div>
-          </div>
+          ) : (
+            <p className="text-muted-foreground text-center">
+              No yoga class templates are currently published in Contentful.
+            </p>
+          )}
 
           <div className="mt-12 text-center">
             <p className="text-muted-foreground mb-6">
-              All classes include real-time modifications for your current capacity. Can't make it live? Replays available for 7 days.
+              All classes include real-time modifications for your current capacity. Can't make it
+              live? Replays available for 7 days.
             </p>
             <Link href="/schedule">
               <Button size="lg">
@@ -224,120 +203,115 @@ export function ClassesYogaPage() {
       </section>
 
       {/* Benefits */}
-      <section className="py-20 md:py-24 bg-secondary/20">
-        <div className="container mx-auto px-4 max-w-5xl">
-          <h2 className="text-3xl md:text-5xl mb-12 text-center">
-            Outcomes You Can Expect
-          </h2>
+      <section className="bg-secondary/20 py-20 md:py-24">
+        <div className="container mx-auto max-w-5xl px-4">
+          <h2 className="mb-12 text-center text-3xl md:text-5xl">Outcomes You Can Expect</h2>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid gap-8 md:grid-cols-3">
             <div className="space-y-4">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                <Check className="w-6 h-6 text-primary" />
+              <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-lg">
+                <Check className="text-primary h-6 w-6" />
               </div>
               <h3 className="text-xl">Reduced Pain</h3>
               <p className="text-muted-foreground leading-relaxed">
-                Through nervous system regulation and safe movement patterns that
-                reduce joint stress and inflammation.
+                Through nervous system regulation and safe movement patterns that reduce joint
+                stress and inflammation.
               </p>
             </div>
 
             <div className="space-y-4">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                <Check className="w-6 h-6 text-primary" />
+              <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-lg">
+                <Check className="text-primary h-6 w-6" />
               </div>
               <h3 className="text-xl">Improved Stability</h3>
               <p className="text-muted-foreground leading-relaxed">
-                Especially important for hypermobile bodies that need strength
-                and control more than flexibility.
+                Especially important for hypermobile bodies that need strength and control more than
+                flexibility.
               </p>
             </div>
 
             <div className="space-y-4">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                <Check className="w-6 h-6 text-primary" />
+              <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-lg">
+                <Check className="text-primary h-6 w-6" />
               </div>
               <h3 className="text-xl">Better Function</h3>
               <p className="text-muted-foreground leading-relaxed">
-                Movement capacity that translates to easier daily activities and
-                improved quality of life.
+                Movement capacity that translates to easier daily activities and improved quality of
+                life.
               </p>
             </div>
 
             <div className="space-y-4">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                <Check className="w-6 h-6 text-primary" />
+              <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-lg">
+                <Check className="text-primary h-6 w-6" />
               </div>
               <h3 className="text-xl">Nervous System Regulation</h3>
               <p className="text-muted-foreground leading-relaxed">
-                Tools to help manage the stress response that amplifies chronic
-                pain and fatigue.
+                Tools to help manage the stress response that amplifies chronic pain and fatigue.
               </p>
             </div>
 
             <div className="space-y-4">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                <Check className="w-6 h-6 text-primary" />
+              <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-lg">
+                <Check className="text-primary h-6 w-6" />
               </div>
               <h3 className="text-xl">Body Confidence</h3>
               <p className="text-muted-foreground leading-relaxed">
-                Learning to trust your body again after chronic illness has
-                eroded that trust.
+                Learning to trust your body again after chronic illness has eroded that trust.
               </p>
             </div>
 
             <div className="space-y-4">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                <Check className="w-6 h-6 text-primary" />
+              <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-lg">
+                <Check className="text-primary h-6 w-6" />
               </div>
               <h3 className="text-xl">Practical Skills</h3>
               <p className="text-muted-foreground leading-relaxed">
-                Techniques you can use independently to manage symptoms and
-                improve well-being.
+                Techniques you can use independently to manage symptoms and improve well-being.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Testimonials Placeholder */}
+      {/* Testimonials */}
       <section className="py-20 md:py-24">
-        <div className="container mx-auto px-4 max-w-5xl">
-          <h2 className="text-3xl md:text-4xl text-center mb-12">
-            What Students Say
-          </h2>
+        <div className="container mx-auto max-w-5xl px-4">
+          <h2 className="mb-12 text-center text-3xl md:text-4xl">What Students Say</h2>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <div className="bg-secondary/20 border rounded-lg p-6 space-y-4">
-              <p className="text-muted-foreground italic leading-relaxed">
-                "Finally, a yoga teacher who understands that my body isn't just 'tight'—it's complex. The adaptations are intelligent, not patronizing."
-              </p>
-              <p className="text-sm">— Sarah, Hypermobility EDS</p>
+          {testimonials.length > 0 ? (
+            <div className="mx-auto grid max-w-4xl gap-8 md:grid-cols-2">
+              {testimonials.map((item) => (
+                <div key={item.id} className="bg-secondary/20 space-y-4 rounded-lg border p-6">
+                  <p className="text-muted-foreground leading-relaxed italic">"{item.quote}"</p>
+                  <p className="text-sm">
+                    — {item.authorName}
+                    {item.authorCondition ? `, ${item.authorCondition}` : ""}
+                  </p>
+                </div>
+              ))}
             </div>
-
-            <div className="bg-secondary/20 border rounded-lg p-6 space-y-4">
-              <p className="text-muted-foreground italic leading-relaxed">
-                "For the first time, yoga doesn't leave me feeling worse. Shruti actually understands what it's like to train with chronic illness."
-              </p>
-              <p className="text-sm">— Maya, Rheumatoid Arthritis</p>
-            </div>
-          </div>
+          ) : (
+            <p className="text-muted-foreground text-center">
+              No yoga testimonials are currently published in Contentful.
+            </p>
+          )}
         </div>
       </section>
 
       {/* CTA */}
-      <section className="bg-[#4B5B32] text-[#FAFAF8] py-20 md:py-24">
-        <div className="container mx-auto px-4 max-w-3xl text-center space-y-8">
-          <h2 className="text-3xl md:text-4xl leading-tight">
+      <section className="bg-[#4B5B32] py-20 text-[#FAFAF8] md:py-24">
+        <div className="container mx-auto max-w-3xl space-y-8 px-4 text-center">
+          <h2 className="text-3xl leading-tight md:text-4xl">
             Ready to Experience Yoga That Works With Your Body?
           </h2>
-          <p className="text-lg opacity-90 leading-relaxed">
+          <p className="text-lg leading-relaxed opacity-90">
             Join live classes or catch the replays. All levels welcome, all bodies respected.
           </p>
-          <p className="text-sm opacity-70 mb-4">
+          <p className="mb-4 text-sm opacity-70">
             Drop-in from £12 · Bundles from £9/class · Unlimited from £79/month
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <Link href="/schedule">
               <Button size="lg" className="bg-[#FAFAF8] text-[#4B5B32] hover:bg-[#FAFAF8]/90">
                 View Schedule
@@ -348,7 +322,7 @@ export function ClassesYogaPage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="bg-transparent border-[#FAFAF8] text-[#FAFAF8] hover:bg-[#FAFAF8]/10"
+                className="border-[#FAFAF8] bg-transparent text-[#FAFAF8] hover:bg-[#FAFAF8]/10"
               >
                 View Pricing
               </Button>

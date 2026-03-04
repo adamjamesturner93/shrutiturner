@@ -1,8 +1,21 @@
 import type { Metadata } from "next";
-import { HealthDeclarationPage } from "@/views/health-declaration";
+import { notFound } from "next/navigation";
+import { getLegalDocumentBySlug } from "@/lib/content";
+import { LegalDocumentPage } from "@/views/legal-document";
 
-export const metadata: Metadata = { title: "Health Declaration" };
+export async function generateMetadata(): Promise<Metadata> {
+  const doc = await getLegalDocumentBySlug("health-declaration");
+  if (!doc) return { title: "Health Declaration" };
 
-export default function Page() {
-  return <HealthDeclarationPage />;
+  return {
+    title: doc.seoTitle || doc.title,
+    description: doc.seoDescription,
+  };
+}
+
+export default async function Page() {
+  const doc = await getLegalDocumentBySlug("health-declaration");
+  if (!doc) notFound();
+
+  return <LegalDocumentPage document={doc} />;
 }

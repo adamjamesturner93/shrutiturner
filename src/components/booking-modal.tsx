@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { X, Check, CreditCard, CalendarPlus, ArrowRight, AlertCircle, Download } from "lucide-react";
+import {
+  X,
+  Check,
+  CreditCard,
+  CalendarPlus,
+  ArrowRight,
+  AlertCircle,
+  Download,
+} from "lucide-react";
 import { Button } from "./ui/button";
 import { useAuth, type CreditItem } from "../context/auth-context";
 import { useI18n } from "../lib/use-i18n";
@@ -12,8 +20,13 @@ import { classDetails } from "../data/schedule-data";
  */
 function getNextClassDatetime(day: string, time: string): Date {
   const dayMap: Record<string, number> = {
-    Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
-    Thursday: 4, Friday: 5, Saturday: 6,
+    Sunday: 0,
+    Monday: 1,
+    Tuesday: 2,
+    Wednesday: 3,
+    Thursday: 4,
+    Friday: 5,
+    Saturday: 6,
   };
   const targetDay = dayMap[day] ?? 0;
   const [hours, minutes] = time.split(":").map(Number);
@@ -103,21 +116,21 @@ export function BookingConfirmation({
   const duration = cls?.duration || "60 min";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-background border rounded-lg shadow-xl max-w-sm w-full p-8 text-center space-y-6 animate-in fade-in zoom-in duration-200">
-        <div className="w-16 h-16 bg-[#4B5B32]/10 rounded-full flex items-center justify-center mx-auto">
-          <Check className="w-8 h-8 text-[#4B5B32]" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+      <div className="bg-background animate-in fade-in zoom-in w-full max-w-sm space-y-6 rounded-lg border p-8 text-center shadow-xl duration-200">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#4B5B32]/10">
+          <Check className="h-8 w-8 text-[#4B5B32]" />
         </div>
         <div>
-          <h3 className="text-2xl mb-2">You're booked.</h3>
+          <h3 className="mb-2 text-2xl">You're booked.</h3>
           <p className="text-muted-foreground">
             {className} — {day} at {fmtTimeStr(time)}
           </p>
         </div>
-        <div className="bg-secondary/30 rounded-lg p-3 text-sm text-muted-foreground">
+        <div className="bg-secondary/30 text-muted-foreground rounded-lg p-3 text-sm">
           {creditLabel}
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           A confirmation email with calendar invite has been sent to your inbox.
         </p>
         <div className="flex flex-col gap-3">
@@ -148,7 +161,14 @@ interface PurchaseModalProps {
 }
 
 export function PurchaseModal({ classSlug, className, onSuccess, onClose }: PurchaseModalProps) {
-  const { membership, purchaseDropIn, purchaseCredits, upgradeMembership, bookClass, referralBalance } = useAuth();
+  const {
+    membership,
+    purchaseDropIn,
+    purchaseCredits,
+    upgradeMembership,
+    bookClass,
+    referralBalance,
+  } = useAuth();
   const [purchasing, setPurchasing] = useState(false);
 
   const hasMembership = !!membership;
@@ -160,7 +180,7 @@ export function PurchaseModal({ classSlug, className, onSuccess, onClose }: Purc
       const discounted = Math.max(0, basePrice - discount);
       return (
         <span>
-          <span className="line-through text-muted-foreground mr-1">£{basePrice}</span>
+          <span className="text-muted-foreground mr-1 line-through">£{basePrice}</span>
           <span className="text-[#4B5B32]">£{discounted}</span>
         </span>
       );
@@ -168,7 +188,9 @@ export function PurchaseModal({ classSlug, className, onSuccess, onClose }: Purc
     return <span>£{basePrice}</span>;
   };
 
-  const handlePurchase = (option: "dropin" | "3pack" | "10pack" | "steady" | "committed" | "unlimited") => {
+  const handlePurchase = (
+    option: "dropin" | "3pack" | "10pack" | "steady" | "committed" | "unlimited"
+  ) => {
     setPurchasing(true);
     setTimeout(() => {
       switch (option) {
@@ -202,54 +224,54 @@ export function PurchaseModal({ classSlug, className, onSuccess, onClose }: Purc
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-background border rounded-lg shadow-xl max-w-md w-full p-6 md:p-8 space-y-6 animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+      <div className="bg-background animate-in fade-in zoom-in max-h-[90vh] w-full max-w-md space-y-6 overflow-y-auto rounded-lg border p-6 shadow-xl duration-200 md:p-8">
         <div className="flex items-start justify-between">
           <div>
-            <h3 className="text-xl mb-1">
+            <h3 className="mb-1 text-xl">
               {hasMembership
                 ? "You've used all your classes this week"
                 : "Choose how you'd like to attend"}
             </h3>
-            <p className="text-sm text-muted-foreground">{className}</p>
+            <p className="text-muted-foreground text-sm">{className}</p>
           </div>
           <button
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground"
             aria-label="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         {purchasing ? (
-          <div className="py-12 text-center space-y-4">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="space-y-4 py-12 text-center">
+            <div className="border-primary mx-auto h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
             <p className="text-muted-foreground">Processing...</p>
           </div>
         ) : hasMembership ? (
           /* ── Member who's used weekly allowance ── */
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Your {membership!.label} includes {membership!.classesPerWeek === 99 ? "unlimited" : membership!.classesPerWeek} classes
-              per week and you've used them all. You can add an extra class
-              with a credit pack.
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Your {membership!.label} includes{" "}
+              {membership!.classesPerWeek === 99 ? "unlimited" : membership!.classesPerWeek} classes
+              per week and you've used them all. You can add an extra class with a credit pack.
             </p>
 
             {discount > 0 && (
-              <div className="bg-[#4B5B32]/5 border border-[#4B5B32]/20 rounded-lg px-4 py-3 text-sm text-[#4B5B32]">
+              <div className="rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 px-4 py-3 text-sm text-[#4B5B32]">
                 £{discount} referral balance will be applied to your purchase.
               </div>
             )}
 
             {/* Credit pack — primary option for members */}
-            <div className="border-2 border-primary rounded-lg p-4 space-y-3 relative">
-              <div className="absolute -top-3 left-4 bg-primary text-primary-foreground px-2 py-0.5 rounded text-xs">
+            <div className="border-primary relative space-y-3 rounded-lg border-2 p-4">
+              <div className="bg-primary text-primary-foreground absolute -top-3 left-4 rounded px-2 py-0.5 text-xs">
                 Extra Class
               </div>
               <div>
                 <h4 className="text-lg">Credit Pack</h4>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   Credits carry over — use them any week you need extra.
                 </p>
               </div>
@@ -262,22 +284,18 @@ export function PurchaseModal({ classSlug, className, onSuccess, onClose }: Purc
                 >
                   3 classes · {priceLabel(30)}
                 </Button>
-                <Button
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => handlePurchase("10pack")}
-                >
+                <Button size="sm" className="flex-1" onClick={() => handlePurchase("10pack")}>
                   10 classes · {priceLabel(90)}
                 </Button>
               </div>
             </div>
 
             {/* Single drop-in */}
-            <div className="border rounded-lg p-4">
+            <div className="rounded-lg border p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-lg">Single Extra Class</h4>
-                  <p className="text-sm text-muted-foreground">Just this once.</p>
+                  <p className="text-muted-foreground text-sm">Just this once.</p>
                 </div>
                 <Button variant="outline" onClick={() => handlePurchase("dropin")}>
                   {priceLabel(12)}
@@ -287,8 +305,8 @@ export function PurchaseModal({ classSlug, className, onSuccess, onClose }: Purc
 
             {/* Upgrade suggestion (only if not already unlimited) */}
             {membership!.plan !== "unlimited" && (
-              <div className="bg-secondary/20 border rounded-lg p-4 space-y-2">
-                <p className="text-sm text-muted-foreground">
+              <div className="bg-secondary/20 space-y-2 rounded-lg border p-4">
+                <p className="text-muted-foreground text-sm">
                   Running out of classes regularly? Consider upgrading your plan.
                 </p>
                 <Button
@@ -309,19 +327,19 @@ export function PurchaseModal({ classSlug, className, onSuccess, onClose }: Purc
           /* ── Non-member ── */
           <div className="space-y-4">
             {discount > 0 && (
-              <div className="bg-[#4B5B32]/5 border border-[#4B5B32]/20 rounded-lg px-4 py-3 text-sm text-[#4B5B32]">
+              <div className="rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 px-4 py-3 text-sm text-[#4B5B32]">
                 £{discount} referral balance will be applied to your purchase.
               </div>
             )}
 
             {/* Monthly membership — recommended for non-members */}
-            <div className="border-2 border-primary rounded-lg p-4 space-y-3 relative">
-              <div className="absolute -top-3 left-4 bg-primary text-primary-foreground px-2 py-0.5 rounded text-xs">
+            <div className="border-primary relative space-y-3 rounded-lg border-2 p-4">
+              <div className="bg-primary text-primary-foreground absolute -top-3 left-4 rounded px-2 py-0.5 text-xs">
                 Recommended
               </div>
               <div>
                 <h4 className="text-lg">Monthly Membership</h4>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   Best value for regular training. Cancel anytime.
                 </p>
               </div>
@@ -334,11 +352,7 @@ export function PurchaseModal({ classSlug, className, onSuccess, onClose }: Purc
                 >
                   2/week · {priceLabel(49)}
                 </Button>
-                <Button
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => handlePurchase("committed")}
-                >
+                <Button size="sm" className="flex-1" onClick={() => handlePurchase("committed")}>
                   3/week · {priceLabel(65)}
                 </Button>
                 <Button
@@ -353,12 +367,10 @@ export function PurchaseModal({ classSlug, className, onSuccess, onClose }: Purc
             </div>
 
             {/* Credit pack */}
-            <div className="border rounded-lg p-4 space-y-3">
+            <div className="space-y-3 rounded-lg border p-4">
               <div>
                 <h4 className="text-lg">Credit Pack</h4>
-                <p className="text-sm text-muted-foreground">
-                  Flexible credits, use on any class.
-                </p>
+                <p className="text-muted-foreground text-sm">Flexible credits, use on any class.</p>
               </div>
               <div className="flex gap-2">
                 <Button
@@ -381,11 +393,13 @@ export function PurchaseModal({ classSlug, className, onSuccess, onClose }: Purc
             </div>
 
             {/* Single drop-in */}
-            <div className="border rounded-lg p-4">
+            <div className="rounded-lg border p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-lg">Single Drop-In</h4>
-                  <p className="text-sm text-muted-foreground">Try a single class, no commitment.</p>
+                  <p className="text-muted-foreground text-sm">
+                    Try a single class, no commitment.
+                  </p>
                 </div>
                 <Button variant="outline" onClick={() => handlePurchase("dropin")}>
                   {priceLabel(12)}
@@ -412,7 +426,15 @@ interface BookClassButtonProps {
   attendeeCount?: number;
 }
 
-export function BookClassButton({ classSlug, className: classNameProp, day: dayProp, time: timeProp, variant = "default", size: sizeProp, attendeeCount = 5 }: BookClassButtonProps) {
+export function BookClassButton({
+  classSlug,
+  className: classNameProp,
+  day: dayProp,
+  time: timeProp,
+  variant = "default",
+  size: sizeProp,
+  attendeeCount = 5,
+}: BookClassButtonProps) {
   const { isAuthenticated, canBook, bookClass, isClassBooked } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -431,7 +453,8 @@ export function BookClassButton({ classSlug, className: classNameProp, day: dayP
   const nextClass = getNextClassDatetime(day, time);
   const now = new Date();
   const minutesUntilStart = (nextClass.getTime() - now.getTime()) / (1000 * 60);
-  const isCancelledDueToLowEnrollment = minutesUntilStart <= 90 && minutesUntilStart > 0 && attendeeCount === 0;
+  const isCancelledDueToLowEnrollment =
+    minutesUntilStart <= 90 && minutesUntilStart > 0 && attendeeCount === 0;
 
   const effectiveSize = sizeProp || (variant === "lg" ? "lg" : "default");
 
@@ -457,7 +480,12 @@ export function BookClassButton({ classSlug, className: classNameProp, day: dayP
 
   if (booked) {
     return (
-      <Button variant="outline" disabled size={effectiveSize} className={variant === "lg" ? "text-lg px-8" : ""}>
+      <Button
+        variant="outline"
+        disabled
+        size={effectiveSize}
+        className={variant === "lg" ? "px-8 text-lg" : ""}
+      >
         <Check className="mr-2 h-4 w-4" />
         Booked
       </Button>
@@ -466,12 +494,16 @@ export function BookClassButton({ classSlug, className: classNameProp, day: dayP
 
   if (isCancelledDueToLowEnrollment) {
     return (
-      <div className="relative group inline-block">
-        <Button disabled variant="outline" className={`opacity-50 cursor-not-allowed ${variant === "lg" ? "text-lg px-8" : ""}`}>
+      <div className="group relative inline-block">
+        <Button
+          disabled
+          variant="outline"
+          className={`cursor-not-allowed opacity-50 ${variant === "lg" ? "px-8 text-lg" : ""}`}
+        >
           <AlertCircle className="mr-2 h-4 w-4" />
           Class Cancelled
         </Button>
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2 bg-popover text-popover-foreground text-xs rounded shadow-md hidden group-hover:block z-50 text-center border">
+        <div className="bg-popover text-popover-foreground absolute bottom-full left-1/2 z-50 mb-2 hidden w-64 -translate-x-1/2 rounded border p-2 text-center text-xs shadow-md group-hover:block">
           This class has been cancelled due to low enrollment (no bookings 90 mins before start).
         </div>
       </div>
@@ -483,7 +515,7 @@ export function BookClassButton({ classSlug, className: classNameProp, day: dayP
       <Button
         onClick={handleBook}
         size={effectiveSize}
-        className={variant === "lg" ? "text-lg px-8" : ""}
+        className={variant === "lg" ? "px-8 text-lg" : ""}
       >
         {effectiveSize === "sm" ? "Book" : "Book This Class"}
         <ArrowRight className="ml-2 h-4 w-4" />

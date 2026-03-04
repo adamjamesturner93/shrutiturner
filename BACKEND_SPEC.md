@@ -16,29 +16,29 @@ All Contentful content types below are specified with their field name, field ty
 
 This is the canonical description of a class type (e.g. "Adaptive Yoga Flow"). It does NOT represent a specific scheduled session -- that's in the database. One Class Definition may have many scheduled sessions over time.
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `name` | Short Text | Yes | e.g. "Adaptive Yoga Flow" |
-| `slug` | Short Text | Yes | URL-safe, unique. e.g. `adaptive-yoga-flow`. Used in `/schedule/:slug` routes. |
-| `type` | Short Text (enum) | Yes | One of: `Yoga`, `Strength`, `HIIT`. Powers filtering and badge colors. |
-| `level` | Short Text | Yes | e.g. "All levels", "Beginner", "Intermediate", "Specialised", "Adaptive" |
-| `defaultDay` | Short Text | No | e.g. "Monday". The typical recurring day for this class. |
-| `defaultTime` | Short Text | No | e.g. "09:00". The typical recurring time (24hr format, GMT/BST). |
-| `duration` | Short Text | Yes | e.g. "60 min", "45 min" |
-| `maxCapacity` | Integer | Yes | Default cap for sessions of this class. e.g. 12. Can be overridden per-session in the DB. |
-| `shortDescription` | Short Text | Yes | One-liner for schedule cards and meta descriptions. Max 200 chars. |
-| `longDescription` | Rich Text | Yes | Full editorial description rendered on `/schedule/:slug`. Supports paragraphs, bold, italic, lists. |
-| `whatToExpect` | List (Short Text) | Yes | Bullet points rendered under "What to Expect" on the class detail page. |
-| `whoItsFor` | List (Short Text) | Yes | Bullet points rendered under "Who It's For". |
-| `benefits` | List (Short Text) | Yes | Rendered as a grid of benefit cards. |
-| `equipment` | List (Short Text) | Yes | Equipment list. Always append: "Don't have everything? Don't worry -- Shruti provides alternatives and substitutions at the start of each class." |
-| `instructor` | Reference (Instructor Bio) | Yes | Link to the instructor who teaches this class. |
-| `heroImage` | Asset (Image) | No | Optional hero image for the class detail page. If not set, use a type-based default. |
-| `thumbnailImage` | Asset (Image) | No | Card image for listings. |
-| `seoTitle` | Short Text | Yes | Custom `<title>` tag for the class detail page. |
-| `seoDescription` | Long Text | Yes | Custom meta description. Max 160 chars. |
-| `seoKeywords` | Short Text | No | Comma-separated keywords for meta tag. |
-| `relatedClasses` | References (Class Definition) | No | Manually curated related classes. If empty, auto-populate from same `type`. |
+| Field              | Type                          | Required | Notes                                                                                                                                             |
+| ------------------ | ----------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`             | Short Text                    | Yes      | e.g. "Adaptive Yoga Flow"                                                                                                                         |
+| `slug`             | Short Text                    | Yes      | URL-safe, unique. e.g. `adaptive-yoga-flow`. Used in `/schedule/:slug` routes.                                                                    |
+| `type`             | Short Text (enum)             | Yes      | One of: `Yoga`, `Strength`, `HIIT`. Powers filtering and badge colors.                                                                            |
+| `level`            | Short Text                    | Yes      | e.g. "All levels", "Beginner", "Intermediate", "Specialised", "Adaptive"                                                                          |
+| `defaultDay`       | Short Text                    | No       | e.g. "Monday". The typical recurring day for this class.                                                                                          |
+| `defaultTime`      | Short Text                    | No       | e.g. "09:00". The typical recurring time (24hr format, GMT/BST).                                                                                  |
+| `duration`         | Short Text                    | Yes      | e.g. "60 min", "45 min"                                                                                                                           |
+| `maxCapacity`      | Integer                       | Yes      | Default cap for sessions of this class. e.g. 12. Can be overridden per-session in the DB.                                                         |
+| `shortDescription` | Short Text                    | Yes      | One-liner for schedule cards and meta descriptions. Max 200 chars.                                                                                |
+| `longDescription`  | Rich Text                     | Yes      | Full editorial description rendered on `/schedule/:slug`. Supports paragraphs, bold, italic, lists.                                               |
+| `whatToExpect`     | List (Short Text)             | Yes      | Bullet points rendered under "What to Expect" on the class detail page.                                                                           |
+| `whoItsFor`        | List (Short Text)             | Yes      | Bullet points rendered under "Who It's For".                                                                                                      |
+| `benefits`         | List (Short Text)             | Yes      | Rendered as a grid of benefit cards.                                                                                                              |
+| `equipment`        | List (Short Text)             | Yes      | Equipment list. Always append: "Don't have everything? Don't worry -- Shruti provides alternatives and substitutions at the start of each class." |
+| `instructor`       | Reference (Instructor Bio)    | Yes      | Link to the instructor who teaches this class.                                                                                                    |
+| `heroImage`        | Asset (Image)                 | No       | Optional hero image for the class detail page. If not set, use a type-based default.                                                              |
+| `thumbnailImage`   | Asset (Image)                 | No       | Card image for listings.                                                                                                                          |
+| `seoTitle`         | Short Text                    | Yes      | Custom `<title>` tag for the class detail page.                                                                                                   |
+| `seoDescription`   | Long Text                     | Yes      | Custom meta description. Max 160 chars.                                                                                                           |
+| `seoKeywords`      | Short Text                    | No       | Comma-separated keywords for meta tag.                                                                                                            |
+| `relatedClasses`   | References (Class Definition) | No       | Manually curated related classes. If empty, auto-populate from same `type`.                                                                       |
 
 **Editor Guidance:** Changing `slug` will break existing URLs. Use Contentful's "slug" validation. The `defaultDay` and `defaultTime` are editorial hints displayed on the public class detail page -- the actual session times come from the database schedule.
 
@@ -46,38 +46,38 @@ This is the canonical description of a class type (e.g. "Adaptive Yoga Flow"). I
 
 ### 1.2 Retreat
 
-Full editorial content for each retreat offering. Retreat *bookings* and *availability* are in the database; this model holds everything a prospective attendee sees on `/retreats/:slug` and `/retreats`.
+Full editorial content for each retreat offering. Retreat _bookings_ and _availability_ are in the database; this model holds everything a prospective attendee sees on `/retreats/:slug` and `/retreats`.
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `title` | Short Text | Yes | e.g. "Sankalpa" |
-| `subtitle` | Short Text | Yes | e.g. "A Yoga Retreat for Bodies That Require Nuance" |
-| `slug` | Short Text | Yes | URL-safe unique identifier. |
-| `retreatType` | Short Text | Yes | Groups retreat instances by type (e.g. "Sankalpa", "Strength & Stillness"). Allows multiple dates/editions of the same retreat concept. |
-| `shortDescription` | Long Text | Yes | Summary for cards on `/retreats`. Max 300 chars. |
-| `fullDescription` | Rich Text | Yes | Full editorial copy for the retreat detail page. Supports headings, paragraphs, bold, italic, lists, embedded images. |
-| `heroImage` | Asset (Image) | Yes | Full-width hero image on detail page. Recommended: 2100x900px landscape. |
-| `cardImage` | Asset (Image) | Yes | Card image on `/retreats` listing. Recommended: 800x600px. |
-| `galleryImages` | Assets (Image, multi) | No | Optional gallery for the retreat detail page. |
-| `location` | Reference (Retreat Venue) | Yes | Link to the venue content type (see 1.3). |
-| `suitableFor` | List (Short Text) | Yes | Bullet list rendered under "This Retreat Is For:". |
-| `dailySchedule` | JSON Object | Yes | Structured schedule. Schema: `[{ day: string, activities: string[] }]`. Rendered as a timeline on detail page. |
-| `included` | List (Short Text) | Yes | "What's Included" bullet list. |
-| `notIncluded` | List (Short Text) | Yes | "Not Included" bullet list. |
-| `importantInfo` | List (Short Text) | No | Rendered in the sidebar info box (e.g. "Travel insurance required", "Full payment due at booking"). |
-| `faq` | JSON Object | No | Retreat-specific FAQ. Schema: `[{ question: string, answer: string }]`. If empty, fall back to global retreat FAQ (see 1.10). |
-| `cancellationPolicyOverride` | Rich Text | No | If this retreat has a different cancellation policy than the global default. If empty, display the global policy. |
-| `earlyBirdPrice` | Decimal | Yes | Price in GBP during early bird period. |
-| `normalPrice` | Decimal | Yes | Price in GBP after early bird deadline. |
-| `earlyBirdDeadline` | Date | Yes | Date after which `normalPrice` applies. |
-| `currency` | Short Text | Yes | Default: "GBP". |
-| `singleRoomSupplement` | Decimal | No | Additional cost for single room, if available. e.g. 200. |
-| `discountCoupon` | Short Text | No | Stripe discount coupon ID for this retreat. |
-| `promoCode` | Short Text | No | Stripe promo code ID. |
-| `seoTitle` | Short Text | Yes | |
-| `seoDescription` | Long Text | Yes | |
-| `seoKeywords` | Short Text | No | |
-| `status` | Short Text (enum) | Yes | One of: `draft`, `published`, `sold_out`, `archived`. Only `published` and `sold_out` appear on the site. |
+| Field                        | Type                      | Required | Notes                                                                                                                                   |
+| ---------------------------- | ------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `title`                      | Short Text                | Yes      | e.g. "Sankalpa"                                                                                                                         |
+| `subtitle`                   | Short Text                | Yes      | e.g. "A Yoga Retreat for Bodies That Require Nuance"                                                                                    |
+| `slug`                       | Short Text                | Yes      | URL-safe unique identifier.                                                                                                             |
+| `retreatType`                | Short Text                | Yes      | Groups retreat instances by type (e.g. "Sankalpa", "Strength & Stillness"). Allows multiple dates/editions of the same retreat concept. |
+| `shortDescription`           | Long Text                 | Yes      | Summary for cards on `/retreats`. Max 300 chars.                                                                                        |
+| `fullDescription`            | Rich Text                 | Yes      | Full editorial copy for the retreat detail page. Supports headings, paragraphs, bold, italic, lists, embedded images.                   |
+| `heroImage`                  | Asset (Image)             | Yes      | Full-width hero image on detail page. Recommended: 2100x900px landscape.                                                                |
+| `cardImage`                  | Asset (Image)             | Yes      | Card image on `/retreats` listing. Recommended: 800x600px.                                                                              |
+| `galleryImages`              | Assets (Image, multi)     | No       | Optional gallery for the retreat detail page.                                                                                           |
+| `location`                   | Reference (Retreat Venue) | Yes      | Link to the venue content type (see 1.3).                                                                                               |
+| `suitableFor`                | List (Short Text)         | Yes      | Bullet list rendered under "This Retreat Is For:".                                                                                      |
+| `dailySchedule`              | JSON Object               | Yes      | Structured schedule. Schema: `[{ day: string, activities: string[] }]`. Rendered as a timeline on detail page.                          |
+| `included`                   | List (Short Text)         | Yes      | "What's Included" bullet list.                                                                                                          |
+| `notIncluded`                | List (Short Text)         | Yes      | "Not Included" bullet list.                                                                                                             |
+| `importantInfo`              | List (Short Text)         | No       | Rendered in the sidebar info box (e.g. "Travel insurance required", "Full payment due at booking").                                     |
+| `faq`                        | JSON Object               | No       | Retreat-specific FAQ. Schema: `[{ question: string, answer: string }]`. If empty, fall back to global retreat FAQ (see 1.10).           |
+| `cancellationPolicyOverride` | Rich Text                 | No       | If this retreat has a different cancellation policy than the global default. If empty, display the global policy.                       |
+| `earlyBirdPrice`             | Decimal                   | Yes      | Price in GBP during early bird period.                                                                                                  |
+| `normalPrice`                | Decimal                   | Yes      | Price in GBP after early bird deadline.                                                                                                 |
+| `earlyBirdDeadline`          | Date                      | Yes      | Date after which `normalPrice` applies.                                                                                                 |
+| `currency`                   | Short Text                | Yes      | Default: "GBP".                                                                                                                         |
+| `singleRoomSupplement`       | Decimal                   | No       | Additional cost for single room, if available. e.g. 200.                                                                                |
+| `discountCoupon`             | Short Text                | No       | Stripe discount coupon ID for this retreat.                                                                                             |
+| `promoCode`                  | Short Text                | No       | Stripe promo code ID.                                                                                                                   |
+| `seoTitle`                   | Short Text                | Yes      |                                                                                                                                         |
+| `seoDescription`             | Long Text                 | Yes      |                                                                                                                                         |
+| `seoKeywords`                | Short Text                | No       |                                                                                                                                         |
+| `status`                     | Short Text (enum)         | Yes      | One of: `draft`, `published`, `sold_out`, `archived`. Only `published` and `sold_out` appear on the site.                               |
 
 ---
 
@@ -85,22 +85,22 @@ Full editorial content for each retreat offering. Retreat *bookings* and *availa
 
 Reusable content type for retreat locations. A venue can be used across multiple retreats (e.g. the same Portuguese villa for different years).
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `name` | Short Text | Yes | e.g. "Casa da Luz" |
-| `displayLocation` | Short Text | Yes | Human-readable location for cards/headers. e.g. "Portuguese Countryside" or "Scottish Highlands". |
-| `country` | Short Text | Yes | e.g. "Portugal" |
-| `region` | Short Text | No | e.g. "Alentejo" |
-| `description` | Rich Text | Yes | Full venue description rendered under "Accommodation" on the retreat detail page. Include room types, facilities, accessibility notes. |
-| `accommodationType` | Short Text | Yes | e.g. "Traditional Portuguese villa with shared twin rooms, ensuite bathrooms, pool, and gardens." |
-| `facilities` | List (Short Text) | No | e.g. ["Pool", "Gardens", "Gym equipment", "Communal kitchen", "WiFi"]. |
-| `accessibilityNotes` | Rich Text | No | Details about wheelchair access, step-free areas, ground floor rooms, etc. Critical for this audience. |
-| `nearestAirport` | Short Text | No | e.g. "Lisbon (LIS) -- 1.5 hours by car". |
-| `transfersIncluded` | Boolean | Yes | Whether airport transfers are included in the retreat price. |
-| `transferDetails` | Short Text | No | e.g. "Airport pickup from Lisbon (afternoon arrivals only)". |
-| `images` | Assets (Image, multi) | Yes | Venue photos. |
-| `mapEmbedUrl` | Short Text | No | Google Maps embed URL for the location. |
-| `timezone` | Short Text | Yes | IANA timezone. e.g. "Europe/Lisbon". Needed for schedule rendering. |
+| Field                | Type                  | Required | Notes                                                                                                                                  |
+| -------------------- | --------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`               | Short Text            | Yes      | e.g. "Casa da Luz"                                                                                                                     |
+| `displayLocation`    | Short Text            | Yes      | Human-readable location for cards/headers. e.g. "Portuguese Countryside" or "Scottish Highlands".                                      |
+| `country`            | Short Text            | Yes      | e.g. "Portugal"                                                                                                                        |
+| `region`             | Short Text            | No       | e.g. "Alentejo"                                                                                                                        |
+| `description`        | Rich Text             | Yes      | Full venue description rendered under "Accommodation" on the retreat detail page. Include room types, facilities, accessibility notes. |
+| `accommodationType`  | Short Text            | Yes      | e.g. "Traditional Portuguese villa with shared twin rooms, ensuite bathrooms, pool, and gardens."                                      |
+| `facilities`         | List (Short Text)     | No       | e.g. ["Pool", "Gardens", "Gym equipment", "Communal kitchen", "WiFi"].                                                                 |
+| `accessibilityNotes` | Rich Text             | No       | Details about wheelchair access, step-free areas, ground floor rooms, etc. Critical for this audience.                                 |
+| `nearestAirport`     | Short Text            | No       | e.g. "Lisbon (LIS) -- 1.5 hours by car".                                                                                               |
+| `transfersIncluded`  | Boolean               | Yes      | Whether airport transfers are included in the retreat price.                                                                           |
+| `transferDetails`    | Short Text            | No       | e.g. "Airport pickup from Lisbon (afternoon arrivals only)".                                                                           |
+| `images`             | Assets (Image, multi) | Yes      | Venue photos.                                                                                                                          |
+| `mapEmbedUrl`        | Short Text            | No       | Google Maps embed URL for the location.                                                                                                |
+| `timezone`           | Short Text            | Yes      | IANA timezone. e.g. "Europe/Lisbon". Needed for schedule rendering.                                                                    |
 
 **Editor Guidance:** For online/virtual retreats, create a venue entry with `name`: "Online", `displayLocation`: "Online (Live via Video)", and `description` explaining the virtual setup (camera policy, tech requirements, etc.).
 
@@ -108,17 +108,17 @@ Reusable content type for retreat locations. A venue can be used across multiple
 
 ### 1.4 Instructor Bio
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `name` | Short Text | Yes | e.g. "Shruti Turner" |
-| `slug` | Short Text | Yes | |
-| `role` | Short Text | Yes | e.g. "Strength & Yoga Coach" |
-| `shortBio` | Long Text | Yes | 2-3 sentence bio for class cards and instructor sections. |
-| `fullBio` | Rich Text | Yes | Full bio for the about page. |
-| `qualifications` | List (Short Text) | Yes | e.g. ["PhD Biomechanics", "PGDip Rehabilitation", "650hr Yoga Teacher Training", "Level 4 Personal Trainer"] |
-| `conditions` | Short Text | No | e.g. "Living with psoriatic arthritis". Rendered on instructor cards for social proof. |
-| `headshot` | Asset (Image) | Yes | Square crop recommended. |
-| `email` | Short Text | Yes | For instructor notification emails. Not displayed publicly. |
+| Field            | Type              | Required | Notes                                                                                                        |
+| ---------------- | ----------------- | -------- | ------------------------------------------------------------------------------------------------------------ |
+| `name`           | Short Text        | Yes      | e.g. "Shruti Turner"                                                                                         |
+| `slug`           | Short Text        | Yes      |                                                                                                              |
+| `role`           | Short Text        | Yes      | e.g. "Strength & Yoga Coach"                                                                                 |
+| `shortBio`       | Long Text         | Yes      | 2-3 sentence bio for class cards and instructor sections.                                                    |
+| `fullBio`        | Rich Text         | Yes      | Full bio for the about page.                                                                                 |
+| `qualifications` | List (Short Text) | Yes      | e.g. ["PhD Biomechanics", "PGDip Rehabilitation", "650hr Yoga Teacher Training", "Level 4 Personal Trainer"] |
+| `conditions`     | Short Text        | No       | e.g. "Living with psoriatic arthritis". Rendered on instructor cards for social proof.                       |
+| `headshot`       | Asset (Image)     | Yes      | Square crop recommended.                                                                                     |
+| `email`          | Short Text        | Yes      | For instructor notification emails. Not displayed publicly.                                                  |
 
 ---
 
@@ -128,46 +128,46 @@ These are singleton entries in Contentful that power specific page sections. Eac
 
 #### 1.5a Homepage
 
-| Field | Type | Notes |
-|---|---|---|
-| `heroHeadline` | Short Text | e.g. "Strength & Yoga for Bodies That Refuse to Be Simple" |
-| `heroSubheadline` | Long Text | |
-| `heroImage` | Asset (Image) | |
-| `heroCTA1Text` | Short Text | e.g. "View Classes" |
-| `heroCTA1Link` | Short Text | e.g. "/classes" |
-| `heroCTA2Text` | Short Text | e.g. "About Shruti" |
-| `heroCTA2Link` | Short Text | e.g. "/about" |
-| `valuePropositions` | JSON | Array of `{ icon: string, title: string, description: string }` |
-| `antiValueProps` | JSON | "This Is / This Isn't" comparison. Schema: `{ isItems: string[], isntItems: string[] }` |
-| `socialProofHeadline` | Short Text | |
-| `featuredTestimonials` | References (Testimonial) | |
+| Field                  | Type                     | Notes                                                                                   |
+| ---------------------- | ------------------------ | --------------------------------------------------------------------------------------- |
+| `heroHeadline`         | Short Text               | e.g. "Strength & Yoga for Bodies That Refuse to Be Simple"                              |
+| `heroSubheadline`      | Long Text                |                                                                                         |
+| `heroImage`            | Asset (Image)            |                                                                                         |
+| `heroCTA1Text`         | Short Text               | e.g. "View Classes"                                                                     |
+| `heroCTA1Link`         | Short Text               | e.g. "/classes"                                                                         |
+| `heroCTA2Text`         | Short Text               | e.g. "About Shruti"                                                                     |
+| `heroCTA2Link`         | Short Text               | e.g. "/about"                                                                           |
+| `valuePropositions`    | JSON                     | Array of `{ icon: string, title: string, description: string }`                         |
+| `antiValueProps`       | JSON                     | "This Is / This Isn't" comparison. Schema: `{ isItems: string[], isntItems: string[] }` |
+| `socialProofHeadline`  | Short Text               |                                                                                         |
+| `featuredTestimonials` | References (Testimonial) |                                                                                         |
 
 #### 1.5b Classes Hub (`/classes`)
 
-| Field | Type | Notes |
-|---|---|---|
-| `heroHeadline` | Short Text | e.g. "Build Resilient Bodies Without Burnout" |
-| `heroDescription` | Long Text | |
-| `problemStatement` | Rich Text | "You Don't Need Another Generic Workout" section content |
-| `philosophyHeadline` | Short Text | e.g. "This Isn't Just Another Online Class" |
-| `philosophyDescription` | Long Text | |
-| `philosophyCards` | JSON | `[{ title, description }]` for the 3 philosophy cards (Rehab-Informed, Evidence-Based, Lived Experience) |
-| `howItWorksSteps` | JSON | `[{ title, description }]` |
-| `testimonials` | References (Testimonial) | |
+| Field                   | Type                     | Notes                                                                                                    |
+| ----------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `heroHeadline`          | Short Text               | e.g. "Build Resilient Bodies Without Burnout"                                                            |
+| `heroDescription`       | Long Text                |                                                                                                          |
+| `problemStatement`      | Rich Text                | "You Don't Need Another Generic Workout" section content                                                 |
+| `philosophyHeadline`    | Short Text               | e.g. "This Isn't Just Another Online Class"                                                              |
+| `philosophyDescription` | Long Text                |                                                                                                          |
+| `philosophyCards`       | JSON                     | `[{ title, description }]` for the 3 philosophy cards (Rehab-Informed, Evidence-Based, Lived Experience) |
+| `howItWorksSteps`       | JSON                     | `[{ title, description }]`                                                                               |
+| `testimonials`          | References (Testimonial) |                                                                                                          |
 
 #### 1.5c Yoga Classes Page (`/classes/yoga`)
 
-| Field | Type | Notes |
-|---|---|---|
-| `heroHeadline` | Short Text | |
-| `heroDescription` | Long Text | |
-| `heroImage` | Asset (Image) | |
-| `approachHeadline` | Short Text | e.g. "Not Mainstream Yoga With Modifications" |
-| `approachDescription` | Rich Text | |
-| `approachPrinciples` | JSON | `[{ title, description }]` |
-| `yogaClasses` | References (Class Definition) | Filtered to type=Yoga. Manual ordering. |
-| `testimonials` | References (Testimonial) | |
-| `faq` | JSON | `[{ question, answer }]` |
+| Field                 | Type                          | Notes                                         |
+| --------------------- | ----------------------------- | --------------------------------------------- |
+| `heroHeadline`        | Short Text                    |                                               |
+| `heroDescription`     | Long Text                     |                                               |
+| `heroImage`           | Asset (Image)                 |                                               |
+| `approachHeadline`    | Short Text                    | e.g. "Not Mainstream Yoga With Modifications" |
+| `approachDescription` | Rich Text                     |                                               |
+| `approachPrinciples`  | JSON                          | `[{ title, description }]`                    |
+| `yogaClasses`         | References (Class Definition) | Filtered to type=Yoga. Manual ordering.       |
+| `testimonials`        | References (Testimonial)      |                                               |
+| `faq`                 | JSON                          | `[{ question, answer }]`                      |
 
 #### 1.5d Strength Classes Page (`/classes/strength`)
 
@@ -175,52 +175,52 @@ Same structure as 1.5c but for Strength type classes, with strength-specific edi
 
 #### 1.5e Small Group Programs Page (`/classes/small-groups`)
 
-| Field | Type | Notes |
-|---|---|---|
-| `heroHeadline` | Short Text | |
-| `heroDescription` | Long Text | |
-| `differentiators` | JSON | `[{ title, description }]` -- what makes small groups different from drop-in |
-| `currentPrograms` | References (Small Group Program) | |
-| `testimonials` | References (Testimonial) | |
-| `faq` | JSON | `[{ question, answer }]` |
+| Field             | Type                             | Notes                                                                        |
+| ----------------- | -------------------------------- | ---------------------------------------------------------------------------- |
+| `heroHeadline`    | Short Text                       |                                                                              |
+| `heroDescription` | Long Text                        |                                                                              |
+| `differentiators` | JSON                             | `[{ title, description }]` -- what makes small groups different from drop-in |
+| `currentPrograms` | References (Small Group Program) |                                                                              |
+| `testimonials`    | References (Testimonial)         |                                                                              |
+| `faq`             | JSON                             | `[{ question, answer }]`                                                     |
 
 #### 1.5f Pricing Page (`/pricing`)
 
-| Field | Type | Notes |
-|---|---|---|
-| `heroHeadline` | Short Text | e.g. "Transparent Pricing" |
-| `heroDescription` | Long Text | |
-| `ptPricing` | JSON | `{ headline, description, tiers: [{ name, price, frequency, features, ctaText, ctaLink }] }` |
-| `classPricing` | JSON | `{ headline, description, tiers: [{ name, price, frequency, features, highlighted, ctaText }] }` |
-| `retreatPricingNote` | Rich Text | Freeform text about retreat pricing (varies per retreat). |
-| `faq` | JSON | `[{ question, answer }]` |
-| `moneyBackNote` | Rich Text | Optional. Any guarantees or reassurance. |
+| Field                | Type       | Notes                                                                                            |
+| -------------------- | ---------- | ------------------------------------------------------------------------------------------------ |
+| `heroHeadline`       | Short Text | e.g. "Transparent Pricing"                                                                       |
+| `heroDescription`    | Long Text  |                                                                                                  |
+| `ptPricing`          | JSON       | `{ headline, description, tiers: [{ name, price, frequency, features, ctaText, ctaLink }] }`     |
+| `classPricing`       | JSON       | `{ headline, description, tiers: [{ name, price, frequency, features, highlighted, ctaText }] }` |
+| `retreatPricingNote` | Rich Text  | Freeform text about retreat pricing (varies per retreat).                                        |
+| `faq`                | JSON       | `[{ question, answer }]`                                                                         |
+| `moneyBackNote`      | Rich Text  | Optional. Any guarantees or reassurance.                                                         |
 
 #### 1.5g About Page (`/about`)
 
-| Field | Type | Notes |
-|---|---|---|
-| `heroHeadline` | Short Text | |
-| `heroDescription` | Long Text | |
-| `heroImage` | Asset (Image) | |
-| `storyContent` | Rich Text | "My Story" section -- full editorial narrative. |
-| `qualificationsHighlights` | JSON | `[{ icon, title, description }]` |
-| `instructor` | Reference (Instructor Bio) | |
-| `pressAndMedia` | JSON | Optional. `[{ publication, title, url, date }]` |
+| Field                      | Type                       | Notes                                           |
+| -------------------------- | -------------------------- | ----------------------------------------------- |
+| `heroHeadline`             | Short Text                 |                                                 |
+| `heroDescription`          | Long Text                  |                                                 |
+| `heroImage`                | Asset (Image)              |                                                 |
+| `storyContent`             | Rich Text                  | "My Story" section -- full editorial narrative. |
+| `qualificationsHighlights` | JSON                       | `[{ icon, title, description }]`                |
+| `instructor`               | Reference (Instructor Bio) |                                                 |
+| `pressAndMedia`            | JSON                       | Optional. `[{ publication, title, url, date }]` |
 
 #### 1.5h 1:1 Coaching / PT Page (`/pt`)
 
-| Field | Type | Notes |
-|---|---|---|
-| `heroHeadline` | Short Text | |
-| `heroDescription` | Long Text | |
-| `heroImage` | Asset (Image) | |
-| `whatYouGet` | JSON | `[{ title, description }]` |
-| `processSteps` | JSON | `[{ step, title, description }]` |
-| `pricing` | JSON | `{ tiers: [{ name, price, frequency, features }] }` |
-| `testimonials` | References (Testimonial) | |
-| `faq` | JSON | `[{ question, answer }]` |
-| `enquiryFormDescription` | Long Text | Text above the enquiry form. |
+| Field                    | Type                     | Notes                                               |
+| ------------------------ | ------------------------ | --------------------------------------------------- |
+| `heroHeadline`           | Short Text               |                                                     |
+| `heroDescription`        | Long Text                |                                                     |
+| `heroImage`              | Asset (Image)            |                                                     |
+| `whatYouGet`             | JSON                     | `[{ title, description }]`                          |
+| `processSteps`           | JSON                     | `[{ step, title, description }]`                    |
+| `pricing`                | JSON                     | `{ tiers: [{ name, price, frequency, features }] }` |
+| `testimonials`           | References (Testimonial) |                                                     |
+| `faq`                    | JSON                     | `[{ question, answer }]`                            |
+| `enquiryFormDescription` | Long Text                | Text above the enquiry form.                        |
 
 ---
 
@@ -228,14 +228,14 @@ Same structure as 1.5c but for Strength type classes, with strength-specific edi
 
 Standalone content type referenced across multiple pages.
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `quote` | Long Text | Yes | The testimonial text. |
-| `authorName` | Short Text | Yes | First name only or pseudonym. e.g. "Sarah" |
-| `authorCondition` | Short Text | No | e.g. "Hypermobility EDS". Displayed for social proof. |
-| `service` | Short Text (enum) | Yes | One of: `yoga`, `strength`, `pt`, `retreat`, `small-group`, `general`. Powers page-level filtering. |
-| `rating` | Integer | No | 1-5 stars, if applicable. |
-| `featured` | Boolean | Yes | Featured testimonials appear on homepage. |
+| Field             | Type              | Required | Notes                                                                                               |
+| ----------------- | ----------------- | -------- | --------------------------------------------------------------------------------------------------- |
+| `quote`           | Long Text         | Yes      | The testimonial text.                                                                               |
+| `authorName`      | Short Text        | Yes      | First name only or pseudonym. e.g. "Sarah"                                                          |
+| `authorCondition` | Short Text        | No       | e.g. "Hypermobility EDS". Displayed for social proof.                                               |
+| `service`         | Short Text (enum) | Yes      | One of: `yoga`, `strength`, `pt`, `retreat`, `small-group`, `general`. Powers page-level filtering. |
+| `rating`          | Integer           | No       | 1-5 stars, if applicable.                                                                           |
+| `featured`        | Boolean           | Yes      | Featured testimonials appear on homepage.                                                           |
 
 ---
 
@@ -243,25 +243,25 @@ Standalone content type referenced across multiple pages.
 
 Time-bounded cohort programs (e.g. "Press-Up Progression -- 4 weeks").
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `title` | Short Text | Yes | e.g. "Press-Up Progression" |
-| `slug` | Short Text | Yes | |
-| `duration` | Short Text | Yes | e.g. "4 weeks" |
-| `description` | Rich Text | Yes | |
-| `outcomes` | List (Short Text) | Yes | What participants will achieve. |
-| `price` | Decimal | Yes | |
-| `currency` | Short Text | Yes | Default: "GBP" |
-| `level` | Short Text | Yes | e.g. "All levels" |
-| `maxParticipants` | Integer | Yes | e.g. 6 |
-| `sessionSchedule` | JSON | `[{ week: number, day: string, time: string, focus: string }]` |
-| `equipment` | List (Short Text) | No | |
-| `prerequisites` | Long Text | No | e.g. "Recommended: Strength Foundations or equivalent experience" |
-| `instructor` | Reference (Instructor Bio) | Yes | |
-| `image` | Asset (Image) | No | |
-| `seoTitle` | Short Text | Yes | |
-| `seoDescription` | Long Text | Yes | |
-| `status` | Short Text (enum) | Yes | `upcoming`, `enrolling`, `in_progress`, `completed` |
+| Field             | Type                       | Required                                                       | Notes                                                             |
+| ----------------- | -------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `title`           | Short Text                 | Yes                                                            | e.g. "Press-Up Progression"                                       |
+| `slug`            | Short Text                 | Yes                                                            |                                                                   |
+| `duration`        | Short Text                 | Yes                                                            | e.g. "4 weeks"                                                    |
+| `description`     | Rich Text                  | Yes                                                            |                                                                   |
+| `outcomes`        | List (Short Text)          | Yes                                                            | What participants will achieve.                                   |
+| `price`           | Decimal                    | Yes                                                            |                                                                   |
+| `currency`        | Short Text                 | Yes                                                            | Default: "GBP"                                                    |
+| `level`           | Short Text                 | Yes                                                            | e.g. "All levels"                                                 |
+| `maxParticipants` | Integer                    | Yes                                                            | e.g. 6                                                            |
+| `sessionSchedule` | JSON                       | `[{ week: number, day: string, time: string, focus: string }]` |
+| `equipment`       | List (Short Text)          | No                                                             |                                                                   |
+| `prerequisites`   | Long Text                  | No                                                             | e.g. "Recommended: Strength Foundations or equivalent experience" |
+| `instructor`      | Reference (Instructor Bio) | Yes                                                            |                                                                   |
+| `image`           | Asset (Image)              | No                                                             |                                                                   |
+| `seoTitle`        | Short Text                 | Yes                                                            |                                                                   |
+| `seoDescription`  | Long Text                  | Yes                                                            |                                                                   |
+| `status`          | Short Text (enum)          | Yes                                                            | `upcoming`, `enrolling`, `in_progress`, `completed`               |
 
 **Note:** Start dates, enrollment counts, and payment are managed in the database. Contentful only holds the "what is this program" editorial content.
 
@@ -269,34 +269,34 @@ Time-bounded cohort programs (e.g. "Press-Up Progression -- 4 weeks").
 
 ### 1.8 Blog Post / Newsletter
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `title` | Short Text | Yes | |
-| `slug` | Short Text | Yes | |
-| `excerpt` | Long Text | Yes | Card-level summary for `/blog` listing. Max 200 chars. |
-| `content` | Rich Text | Yes | Full article. Supports headings, images, code blocks, blockquotes. |
-| `author` | Reference (Instructor Bio) | Yes | |
-| `publishDate` | Date | Yes | |
-| `tags` | List (Short Text) | Yes | e.g. ["Strength Training", "Chronic Illness", "Research"] |
-| `readTime` | Short Text | No | e.g. "7 min read". If empty, calculate from word count (~200wpm). |
-| `featuredImage` | Asset (Image) | No | |
-| `isNewsletter` | Boolean | Yes | If `true`, publishing this entry triggers the newsletter send pipeline (via webhook). |
-| `newsletterSubject` | Short Text | No | Email subject line. Required if `isNewsletter` is true. |
-| `newsletterPreviewText` | Short Text | No | Email preview text. |
-| `seoTitle` | Short Text | No | Falls back to `title` if empty. |
-| `seoDescription` | Long Text | No | Falls back to `excerpt` if empty. |
+| Field                   | Type                       | Required | Notes                                                                                 |
+| ----------------------- | -------------------------- | -------- | ------------------------------------------------------------------------------------- |
+| `title`                 | Short Text                 | Yes      |                                                                                       |
+| `slug`                  | Short Text                 | Yes      |                                                                                       |
+| `excerpt`               | Long Text                  | Yes      | Card-level summary for `/blog` listing. Max 200 chars.                                |
+| `content`               | Rich Text                  | Yes      | Full article. Supports headings, images, code blocks, blockquotes.                    |
+| `author`                | Reference (Instructor Bio) | Yes      |                                                                                       |
+| `publishDate`           | Date                       | Yes      |                                                                                       |
+| `tags`                  | List (Short Text)          | Yes      | e.g. ["Strength Training", "Chronic Illness", "Research"]                             |
+| `readTime`              | Short Text                 | No       | e.g. "7 min read". If empty, calculate from word count (~200wpm).                     |
+| `featuredImage`         | Asset (Image)              | No       |                                                                                       |
+| `isNewsletter`          | Boolean                    | Yes      | If `true`, publishing this entry triggers the newsletter send pipeline (via webhook). |
+| `newsletterSubject`     | Short Text                 | No       | Email subject line. Required if `isNewsletter` is true.                               |
+| `newsletterPreviewText` | Short Text                 | No       | Email preview text.                                                                   |
+| `seoTitle`              | Short Text                 | No       | Falls back to `title` if empty.                                                       |
+| `seoDescription`        | Long Text                  | No       | Falls back to `excerpt` if empty.                                                     |
 
 ---
 
 ### 1.9 Legal Pages (Terms, Privacy, Cookies, Health Declaration)
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `title` | Short Text | Yes | |
-| `slug` | Short Text | Yes | e.g. `terms`, `privacy`, `cookies`, `health-declaration` |
-| `content` | Rich Text | Yes | Full legal text. |
-| `lastUpdated` | Date | Yes | Displayed at top of page. |
-| `version` | Short Text | No | e.g. "v2.1". For internal tracking. |
+| Field         | Type       | Required | Notes                                                    |
+| ------------- | ---------- | -------- | -------------------------------------------------------- |
+| `title`       | Short Text | Yes      |                                                          |
+| `slug`        | Short Text | Yes      | e.g. `terms`, `privacy`, `cookies`, `health-declaration` |
+| `content`     | Rich Text  | Yes      | Full legal text.                                         |
+| `lastUpdated` | Date       | Yes      | Displayed at top of page.                                |
+| `version`     | Short Text | No       | e.g. "v2.1". For internal tracking.                      |
 
 ---
 
@@ -304,20 +304,20 @@ Time-bounded cohort programs (e.g. "Press-Up Progression -- 4 weeks").
 
 Site-wide content fragments used across multiple pages.
 
-| Field | Type | Notes |
-|---|---|---|
-| `siteName` | Short Text | "Shruti Turner" |
-| `siteTagline` | Short Text | "Strength & Yoga for Complex Bodies" |
-| `defaultSeoDescription` | Long Text | Fallback meta description. |
-| `headerNavItems` | JSON | `[{ label, href, children?: [{ label, href }] }]` |
-| `footerContent` | Rich Text | Footer blurb text. |
-| `footerNavGroups` | JSON | `[{ title, links: [{ label, href }] }]` |
-| `socialLinks` | JSON | `{ instagram?, youtube?, email }` |
-| `announcementBar` | JSON | `{ enabled: boolean, text: string, link?: string, bgColor?: string }`. Top-of-page banner for promotions. |
-| `globalRetreatFAQ` | JSON | `[{ question, answer }]`. Fallback FAQ for retreats that don't specify their own. |
-| `cancellationPolicyClass` | Rich Text | Standard class cancellation policy text (12hr rule, credit refund, etc.). Referenced by booking flow and policy pages. |
-| `cancellationPolicyRetreat` | Rich Text | Standard retreat cancellation policy (60/30 day tiers). |
-| `equipmentDisclaimer` | Short Text | "Don't have everything? ..." -- appended to all equipment lists. |
+| Field                       | Type       | Notes                                                                                                                  |
+| --------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `siteName`                  | Short Text | "Shruti Turner"                                                                                                        |
+| `siteTagline`               | Short Text | "Strength & Yoga for Complex Bodies"                                                                                   |
+| `defaultSeoDescription`     | Long Text  | Fallback meta description.                                                                                             |
+| `headerNavItems`            | JSON       | `[{ label, href, children?: [{ label, href }] }]`                                                                      |
+| `footerContent`             | Rich Text  | Footer blurb text.                                                                                                     |
+| `footerNavGroups`           | JSON       | `[{ title, links: [{ label, href }] }]`                                                                                |
+| `socialLinks`               | JSON       | `{ instagram?, youtube?, email }`                                                                                      |
+| `announcementBar`           | JSON       | `{ enabled: boolean, text: string, link?: string, bgColor?: string }`. Top-of-page banner for promotions.              |
+| `globalRetreatFAQ`          | JSON       | `[{ question, answer }]`. Fallback FAQ for retreats that don't specify their own.                                      |
+| `cancellationPolicyClass`   | Rich Text  | Standard class cancellation policy text (12hr rule, credit refund, etc.). Referenced by booking flow and policy pages. |
+| `cancellationPolicyRetreat` | Rich Text  | Standard retreat cancellation policy (60/30 day tiers).                                                                |
+| `equipmentDisclaimer`       | Short Text | "Don't have everything? ..." -- appended to all equipment lists.                                                       |
 
 ---
 
@@ -327,16 +327,16 @@ This section describes the **target** Prisma schema after migration. It is recon
 
 ### 2.1 Architectural Decisions
 
-| Decision | Choice | Rationale |
-|---|---|---|
-| ORM | Prisma | Existing production system |
-| Auth | NextAuth.js (Account/Session/VerificationToken models) | Existing, proven in production. No migration to custom JWT. |
-| Video platform | Daily.co | Existing infrastructure. All references to "Zoom" in the frontend are replaced with Daily.co `roomId`. |
-| Credit system | Individual credit records with expiry + transaction log (existing `Credit` / `CreditTransaction` models) | Superior to a simple counter. Supports expiry, bundle tracking, refunds. |
-| Access control | Feature-based `Permission` / `UserPermission` tables + convenience `role` field on User | More flexible than a simple role enum. Supports granular admin splits (teaching ops vs. business financials). |
-| ID strategy | `cuid()` (existing) | All existing IDs are cuid format. No migration to UUID. |
-| User name | Split into `firstName` / `lastName` | Required for email personalisation, admin display. Migrated from existing `name` field. |
-| Deprecated tables | `OnDemandClass`, `FavouritedClasses`, `OnDemandWatchLog`, `InPersonVenue`, `InPersonMember`, `InPersonClass` are archived | Data retained but no longer written to by the application. Prefixed with `_archived_` in schema comments. |
+| Decision          | Choice                                                                                                                    | Rationale                                                                                                     |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| ORM               | Prisma                                                                                                                    | Existing production system                                                                                    |
+| Auth              | NextAuth.js (Account/Session/VerificationToken models)                                                                    | Existing, proven in production. No migration to custom JWT.                                                   |
+| Video platform    | Daily.co                                                                                                                  | Existing infrastructure. All references to "Zoom" in the frontend are replaced with Daily.co `roomId`.        |
+| Credit system     | Individual credit records with expiry + transaction log (existing `Credit` / `CreditTransaction` models)                  | Superior to a simple counter. Supports expiry, bundle tracking, refunds.                                      |
+| Access control    | Feature-based `Permission` / `UserPermission` tables + convenience `role` field on User                                   | More flexible than a simple role enum. Supports granular admin splits (teaching ops vs. business financials). |
+| ID strategy       | `cuid()` (existing)                                                                                                       | All existing IDs are cuid format. No migration to UUID.                                                       |
+| User name         | Split into `firstName` / `lastName`                                                                                       | Required for email personalisation, admin display. Migrated from existing `name` field.                       |
+| Deprecated tables | `OnDemandClass`, `FavouritedClasses`, `OnDemandWatchLog`, `InPersonVenue`, `InPersonMember`, `InPersonClass` are archived | Data retained but no longer written to by the application. Prefixed with `_archived_` in schema comments.     |
 
 ### 2.2 User
 
@@ -409,6 +409,7 @@ model User {
 ```
 
 **Validation Rules (API layer):**
+
 - `dob`: If provided, `NOW - dob >= 18 years`. Reject registration if under 18. Error message: "You must be 18 or over to register. Shruti's insurance covers adults only."
 - `email`: Standard email validation + uniqueness.
 - `firstName` / `lastName`: Required at registration. Min 1 char.
@@ -485,6 +486,7 @@ enum PermissionType {
 ```
 
 **New permission features to seed:**
+
 ```
 admin_teaching     -- Access to schedule, classes, members, health profiles
 admin_business     -- Access to financials, revenue reports, transaction history
@@ -619,11 +621,13 @@ enum CreditTransactionType {
 
 **Credit Deduction Logic (Booking Flow):**
 When a user books a class with pack credits:
+
 1. Find the user's oldest non-expired credit with `remainingAmount > 0` (FIFO -- first in, first out).
 2. Decrement `remainingAmount` by 1.
 3. Create a `CreditTransaction` with `type: USED`, `bookingId` pointing to the new booking.
 
 **Credit Refund Logic (Cancellation, early cancel):**
+
 1. Find the `CreditTransaction` for the booking being cancelled.
 2. Increment the original `Credit.remainingAmount` by 1 (if not expired).
 3. Create a `CreditTransaction` with `type: REFUNDED`.
@@ -694,6 +698,7 @@ enum ClassIntent {
 ```
 
 **API Layer Behavior During Migration:**
+
 ```
 function getClassContent(session: LiveOnlineClass) {
   if (session.classDefinitionId) {
@@ -1200,43 +1205,44 @@ model InPersonClass {
 
 Authentication is handled by NextAuth.js. The API layer wraps NextAuth's session management.
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/auth/[...nextauth]` | NextAuth catch-all route. Handles login, callback, signout. |
-| `POST` | `/api/auth/register` | Custom: Create user, validate 18+ from `dob`, split name into `firstName`/`lastName`, auto-create `UserWallet` row, optionally subscribe to newsletter. Triggers: Welcome Email. |
-| `POST` | `/api/auth/send-code` | Send auth code to email. Sets `authCode` and `authCodeExpiry` (e.g. NOW + 10 minutes) on User. |
-| `POST` | `/api/auth/verify-code` | Verify email auth code. Checks `authCode` matches and `authCodeExpiry > NOW`. |
-| `GET` | `/api/user/me` | Returns: user profile + wallet (membership tier/status, available credits computed from Credit table, referral balance) + upcoming bookings count. Formats dates/times according to user's `timezone` and `dateFormat`. |
-| `PATCH` | `/api/user/me` | Update firstName, lastName, email, timezone, dateFormat, dob (with 18+ re-validation), gender, ethnicity. |
+| Method  | Path                      | Description                                                                                                                                                                                                             |
+| ------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST`  | `/api/auth/[...nextauth]` | NextAuth catch-all route. Handles login, callback, signout.                                                                                                                                                             |
+| `POST`  | `/api/auth/register`      | Custom: Create user, validate 18+ from `dob`, split name into `firstName`/`lastName`, auto-create `UserWallet` row, optionally subscribe to newsletter. Triggers: Welcome Email.                                        |
+| `POST`  | `/api/auth/send-code`     | Send auth code to email. Sets `authCode` and `authCodeExpiry` (e.g. NOW + 10 minutes) on User.                                                                                                                          |
+| `POST`  | `/api/auth/verify-code`   | Verify email auth code. Checks `authCode` matches and `authCodeExpiry > NOW`.                                                                                                                                           |
+| `GET`   | `/api/user/me`            | Returns: user profile + wallet (membership tier/status, available credits computed from Credit table, referral balance) + upcoming bookings count. Formats dates/times according to user's `timezone` and `dateFormat`. |
+| `PATCH` | `/api/user/me`            | Update firstName, lastName, email, timezone, dateFormat, dob (with 18+ re-validation), gender, ethnicity.                                                                                                               |
 
 ### 3.2 Content (Contentful Proxy / Cache)
 
 These endpoints fetch from Contentful, apply caching (Redis, 5-min TTL for most, 60s for schedule-adjacent), and combine with DB data where needed.
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/content/global` | Returns global site content (nav, footer, announcement bar). Cached aggressively (5 min). |
-| `GET` | `/api/content/page/:slug` | Returns page singleton content by slug (home, about, pricing, classes, classes-yoga, classes-strength, classes-small-groups, pt). |
-| `GET` | `/api/content/classes` | Returns all Class Definitions from Contentful. For the classes hub and schedule pages. |
-| `GET` | `/api/content/classes/:slug` | Returns single Class Definition with full fields. For `/schedule/:slug`. |
-| `GET` | `/api/content/retreats` | Returns published Retreat entries from Contentful, combined with availability from `RetreatDate` DB table. |
-| `GET` | `/api/content/retreats/:slug` | Single retreat with full content + venue details (resolved reference) + date availability from DB. |
-| `GET` | `/api/content/programs` | Returns Small Group Program entries with enrollment counts from DB. |
-| `GET` | `/api/content/programs/:slug` | Single program detail + enrollment availability. |
-| `GET` | `/api/content/blog` | Paginated blog posts. `?page=1&limit=10&tag=Strength+Training`. |
-| `GET` | `/api/content/blog/:slug` | Single blog post with full content. |
-| `GET` | `/api/content/testimonials` | `?service=yoga&featured=true`. For page-level testimonial sections. |
-| `GET` | `/api/content/legal/:slug` | Returns legal page content. |
+| Method | Path                          | Description                                                                                                                       |
+| ------ | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/content/global`         | Returns global site content (nav, footer, announcement bar). Cached aggressively (5 min).                                         |
+| `GET`  | `/api/content/page/:slug`     | Returns page singleton content by slug (home, about, pricing, classes, classes-yoga, classes-strength, classes-small-groups, pt). |
+| `GET`  | `/api/content/classes`        | Returns all Class Definitions from Contentful. For the classes hub and schedule pages.                                            |
+| `GET`  | `/api/content/classes/:slug`  | Returns single Class Definition with full fields. For `/schedule/:slug`.                                                          |
+| `GET`  | `/api/content/retreats`       | Returns published Retreat entries from Contentful, combined with availability from `RetreatDate` DB table.                        |
+| `GET`  | `/api/content/retreats/:slug` | Single retreat with full content + venue details (resolved reference) + date availability from DB.                                |
+| `GET`  | `/api/content/programs`       | Returns Small Group Program entries with enrollment counts from DB.                                                               |
+| `GET`  | `/api/content/programs/:slug` | Single program detail + enrollment availability.                                                                                  |
+| `GET`  | `/api/content/blog`           | Paginated blog posts. `?page=1&limit=10&tag=Strength+Training`.                                                                   |
+| `GET`  | `/api/content/blog/:slug`     | Single blog post with full content.                                                                                               |
+| `GET`  | `/api/content/testimonials`   | `?service=yoga&featured=true`. For page-level testimonial sections.                                                               |
+| `GET`  | `/api/content/legal/:slug`    | Returns legal page content.                                                                                                       |
 
 **Contentful Cache Invalidation:** A Contentful webhook fires on entry publish/unpublish, hitting `POST /api/webhooks/contentful` which invalidates the relevant cache keys.
 
 ### 3.3 Schedule & Browse
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/schedule` | `?start=2026-02-24&end=2026-03-02&type=yoga`. Returns sessions in date range, merged with Contentful class metadata (or legacy inline fields for pre-migration sessions). |
+| Method | Path            | Description                                                                                                                                                               |
+| ------ | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/schedule` | `?start=2026-02-24&end=2026-03-02&type=yoga`. Returns sessions in date range, merged with Contentful class metadata (or legacy inline fields for pre-migration sessions). |
 
 **Response shape per session:**
+
 ```json
 {
   "sessionId": "cuid",
@@ -1279,6 +1285,7 @@ These endpoints fetch from Contentful, apply caching (Redis, 5-min TTL for most,
 **`class.source`**: Either `"contentful"` (new sessions) or `"legacy"` (pre-migration sessions with inline data). Frontend renders identically; this is for debugging.
 
 **`disabledReason` enum values:**
+
 - `null` -- bookable
 - `"full"` -- no seats remaining
 - `"cancelled"` -- session cancelled
@@ -1294,6 +1301,7 @@ These endpoints fetch from Contentful, apply caching (Redis, 5-min TTL for most,
 Request: `{ sessionId: string }`
 
 Logic:
+
 1. **Age Validation:** User must have `dob` set and be 18+. If not, 403 with `{ reason: "age_verification_required", message: "You must be 18 or over to book. Please update your date of birth in your profile." }`.
 2. **Session Validation:**
    - Is session status `scheduled`? If not, 409 Conflict.
@@ -1316,6 +1324,7 @@ Logic:
 **`DELETE /api/bookings/:bookingId`**
 
 Logic:
+
 1. Verify booking belongs to authenticated user.
 2. Verify booking `status` is `confirmed` (or `cancelledAt` is null for legacy rows).
 3. **Cancellation Policy Check:**
@@ -1332,6 +1341,7 @@ Logic:
 **`GET /api/retreats/:slug/availability`**
 
 Returns retreat dates with real-time availability:
+
 ```json
 {
   "retreatSlug": "sankalpa",
@@ -1358,6 +1368,7 @@ Returns retreat dates with real-time availability:
 **`POST /api/retreats/book`**
 
 Request:
+
 ```json
 {
   "retreatDateId": "cuid",
@@ -1376,6 +1387,7 @@ Request:
 ```
 
 Logic:
+
 1. **Age Validation:** Must be 18+.
 2. Validate retreat date exists, `status = 'available'`, has spaces.
 3. Validate all required fields (emergencyName, emergencyPhone, agreedTerms, agreedHealthDec).
@@ -1391,6 +1403,7 @@ Logic:
 **`DELETE /api/retreat-bookings/:bookingId`**
 
 Logic:
+
 1. Calculate refund tier:
    - `> 60 days before start`: Full refund.
    - `30-60 days before start`: 50% refund.
@@ -1407,6 +1420,7 @@ Logic:
 Request: `{ programInstanceId: string }`
 
 Logic:
+
 1. Validate program instance exists, status is `enrolling`, has available spots.
 2. Age validation (18+).
 3. Create Stripe Checkout session.
@@ -1418,15 +1432,16 @@ Logic:
 
 Handles multiple event types:
 
-| Event | Action |
-|---|---|
-| `checkout.session.completed` | Identify user by `metadata.userId` or `stripeCustomerId`. Route by `metadata.itemType`: credit bundle -> issue credits (with expiry from `MembershipPrices.creditExpireDays`); membership -> activate subscription; retreat -> confirm booking; program -> confirm enrollment. Send appropriate confirmation email. |
-| `invoice.payment_succeeded` | Membership renewal. Update `Subscriptions.stripe_current_period_end`. Sync `UserWallet.membershipStatus = 'active'`. |
-| `invoice.payment_failed` | Set `UserWallet.membershipStatus = 'past_due'`. Send payment failed email. Retry logic handled by Stripe. |
-| `customer.subscription.deleted` | Set `UserWallet.membershipStatus = 'cancelled'`, `membershipTier = null`. Update `Subscriptions.status`. Send membership ended email. |
-| `customer.subscription.updated` | Sync `Subscriptions` table. Update `UserWallet` if tier changed. |
+| Event                           | Action                                                                                                                                                                                                                                                                                                              |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checkout.session.completed`    | Identify user by `metadata.userId` or `stripeCustomerId`. Route by `metadata.itemType`: credit bundle -> issue credits (with expiry from `MembershipPrices.creditExpireDays`); membership -> activate subscription; retreat -> confirm booking; program -> confirm enrollment. Send appropriate confirmation email. |
+| `invoice.payment_succeeded`     | Membership renewal. Update `Subscriptions.stripe_current_period_end`. Sync `UserWallet.membershipStatus = 'active'`.                                                                                                                                                                                                |
+| `invoice.payment_failed`        | Set `UserWallet.membershipStatus = 'past_due'`. Send payment failed email. Retry logic handled by Stripe.                                                                                                                                                                                                           |
+| `customer.subscription.deleted` | Set `UserWallet.membershipStatus = 'cancelled'`, `membershipTier = null`. Update `Subscriptions.status`. Send membership ended email.                                                                                                                                                                               |
+| `customer.subscription.updated` | Sync `Subscriptions` table. Update `UserWallet` if tier changed.                                                                                                                                                                                                                                                    |
 
 **Credit Issuance from Bundle Purchase:**
+
 ```
 1. Look up MembershipPrices by stripe_price_id from the checkout session.
 2. credits = MembershipPrices.credits
@@ -1438,31 +1453,32 @@ Handles multiple event types:
 
 ### 3.8 Health Profile
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/user/health-profile` | Returns current user's Health record. |
-| `PUT` | `/api/user/health-profile` | Upsert Health record. Accepts all condition booleans + detail strings + new fields (medications, additionalNotes, gpAwareOfExercise). |
+| Method | Path                       | Description                                                                                                                           |
+| ------ | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/user/health-profile` | Returns current user's Health record.                                                                                                 |
+| `PUT`  | `/api/user/health-profile` | Upsert Health record. Accepts all condition booleans + detail strings + new fields (medications, additionalNotes, gpAwareOfExercise). |
 
 **Admin access:** `GET /api/admin/members/:id/health-profile` returns a read-only view. Requires `admin_teaching` permission.
 
 ### 3.9 Newsletter
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/newsletter/subscribe` | `{ email, firstName?, source }`. Upsert `NewsletterSubscriber`. If user is logged in, link `userId`. |
-| `POST` | `/api/newsletter/unsubscribe` | `{ email }` or `{ token }` (from email link). Sets `status = 'unsubscribed'`, `unsubscribedAt = NOW`. |
-| `GET` | `/api/admin/newsletter/subscribers` | Paginated list with filters (status, source). Requires `admin_newsletter` permission. |
-| `GET` | `/api/admin/newsletter/stats` | Total active, unsubscribed, growth rate. |
+| Method | Path                                | Description                                                                                           |
+| ------ | ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `POST` | `/api/newsletter/subscribe`         | `{ email, firstName?, source }`. Upsert `NewsletterSubscriber`. If user is logged in, link `userId`.  |
+| `POST` | `/api/newsletter/unsubscribe`       | `{ email }` or `{ token }` (from email link). Sets `status = 'unsubscribed'`, `unsubscribedAt = NOW`. |
+| `GET`  | `/api/admin/newsletter/subscribers` | Paginated list with filters (status, source). Requires `admin_newsletter` permission.                 |
+| `GET`  | `/api/admin/newsletter/stats`       | Total active, unsubscribed, growth rate.                                                              |
 
 ### 3.10 Referral System
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/referrals/info` | Returns authenticated user's `UserWallet.referralCode`, referral count, and balance. |
-| `GET` | `/api/referrals/validate/:code` | Public. Validates a referral code exists, returns referrer's firstName. Used on `/r/:code` landing page. |
-| `POST` | `/api/referrals/track` | `{ code, referredEmail }`. Creates pending `Referral`. Called during signup. |
+| Method | Path                            | Description                                                                                              |
+| ------ | ------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/referrals/info`           | Returns authenticated user's `UserWallet.referralCode`, referral count, and balance.                     |
+| `GET`  | `/api/referrals/validate/:code` | Public. Validates a referral code exists, returns referrer's firstName. Used on `/r/:code` landing page. |
+| `POST` | `/api/referrals/track`          | `{ code, referredEmail }`. Creates pending `Referral`. Called during signup.                             |
 
 **Referral Conversion Logic (triggered by first purchase):**
+
 1. Find pending `Referral` where `referredEmail` matches purchasing user's email.
 2. Set `status = 'converted'`, `convertedAt = NOW`, `referredUserId`.
 3. Credit referrer: either add to `UserWallet.referralBalance` (cash discount) or issue a Credit with `reason = REFERRAL_REWARD`.
@@ -1474,64 +1490,64 @@ All admin endpoints require appropriate Permission check via `UserPermission` ta
 
 #### Members (requires `admin_teaching`)
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/admin/members` | Paginated, searchable, filterable. Filters: `membership`, `status`, `tag`, `search`. |
-| `GET` | `/api/admin/members/:id` | Full profile: user info, wallet, booking history (from Schedule), health profile, notes, tags, credit history. |
-| `PATCH` | `/api/admin/members/:id` | Update role, permissions. |
-| `POST` | `/api/admin/members/:id/notes` | Add `AdminNote`. |
-| `POST` | `/api/admin/members/:id/tags` | Add `MemberTag`. |
-| `DELETE` | `/api/admin/members/:id/tags/:tag` | Remove tag. |
-| `POST` | `/api/admin/members/:id/credit` | `{ amount: number, reason: string }`. Issue/deduct credits manually (reason = `ADMIN`). |
+| Method   | Path                               | Description                                                                                                    |
+| -------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/admin/members`               | Paginated, searchable, filterable. Filters: `membership`, `status`, `tag`, `search`.                           |
+| `GET`    | `/api/admin/members/:id`           | Full profile: user info, wallet, booking history (from Schedule), health profile, notes, tags, credit history. |
+| `PATCH`  | `/api/admin/members/:id`           | Update role, permissions.                                                                                      |
+| `POST`   | `/api/admin/members/:id/notes`     | Add `AdminNote`.                                                                                               |
+| `POST`   | `/api/admin/members/:id/tags`      | Add `MemberTag`.                                                                                               |
+| `DELETE` | `/api/admin/members/:id/tags/:tag` | Remove tag.                                                                                                    |
+| `POST`   | `/api/admin/members/:id/credit`    | `{ amount: number, reason: string }`. Issue/deduct credits manually (reason = `ADMIN`).                        |
 
 #### Classes & Schedule (requires `admin_teaching`)
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/admin/sessions` | `?start=...&end=...`. All `LiveOnlineClass` sessions with booking counts. |
-| `GET` | `/api/admin/sessions/:id` | Session detail with full attendee list (from Schedule joins). |
-| `POST` | `/api/admin/sessions` | Create new `LiveOnlineClass`. `{ classDefinitionId, date, endTime, capacity?, roomId? }`. |
-| `POST` | `/api/admin/sessions/bulk` | Create recurring sessions. `{ classDefinitionId, startDate, endDate, dayOfWeek, time, capacity }`. |
-| `PATCH` | `/api/admin/sessions/:id` | Update session (date, capacity, roomId, notes, autoCancelExempt, replayUrl). |
-| `POST` | `/api/admin/sessions/:id/cancel` | Instructor-initiated cancellation. Sets `status = 'cancelled'`, `cancelledAt = NOW`. Refunds ALL confirmed bookings. Sends cancellation email to each with `.ics` METHOD:CANCEL. |
-| `POST` | `/api/admin/sessions/:id/complete` | Sets `status = 'completed'`. |
-| `PATCH` | `/api/admin/sessions/:id/replay` | `{ replayUrl }`. Sets `replayUrl` and `replayExpiresAt = NOW + 7 days`. |
+| Method  | Path                               | Description                                                                                                                                                                      |
+| ------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`   | `/api/admin/sessions`              | `?start=...&end=...`. All `LiveOnlineClass` sessions with booking counts.                                                                                                        |
+| `GET`   | `/api/admin/sessions/:id`          | Session detail with full attendee list (from Schedule joins).                                                                                                                    |
+| `POST`  | `/api/admin/sessions`              | Create new `LiveOnlineClass`. `{ classDefinitionId, date, endTime, capacity?, roomId? }`.                                                                                        |
+| `POST`  | `/api/admin/sessions/bulk`         | Create recurring sessions. `{ classDefinitionId, startDate, endDate, dayOfWeek, time, capacity }`.                                                                               |
+| `PATCH` | `/api/admin/sessions/:id`          | Update session (date, capacity, roomId, notes, autoCancelExempt, replayUrl).                                                                                                     |
+| `POST`  | `/api/admin/sessions/:id/cancel`   | Instructor-initiated cancellation. Sets `status = 'cancelled'`, `cancelledAt = NOW`. Refunds ALL confirmed bookings. Sends cancellation email to each with `.ics` METHOD:CANCEL. |
+| `POST`  | `/api/admin/sessions/:id/complete` | Sets `status = 'completed'`.                                                                                                                                                     |
+| `PATCH` | `/api/admin/sessions/:id/replay`   | `{ replayUrl }`. Sets `replayUrl` and `replayExpiresAt = NOW + 7 days`.                                                                                                          |
 
 #### Retreats (requires `admin_retreats`)
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/admin/retreats` | All `RetreatDate` rows with booking counts. |
-| `GET` | `/api/admin/retreats/:id` | Full retreat date info + all bookings with attendee details (dietary, medical, mobility, emergency contacts). |
-| `POST` | `/api/admin/retreat-dates` | Create new `RetreatDate`. |
-| `PATCH` | `/api/admin/retreat-dates/:id` | Update spaces, status, pricing. |
-| `POST` | `/api/admin/retreat-dates/:id/cancel` | Cancel retreat date. Refund all bookings per policy. Send cancellation emails. |
-| `GET` | `/api/admin/retreat-dates/:id/export` | Export attendee list as CSV: name, email, phone, dietary, medical, mobility, emergency contact, room type. |
+| Method  | Path                                  | Description                                                                                                   |
+| ------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `GET`   | `/api/admin/retreats`                 | All `RetreatDate` rows with booking counts.                                                                   |
+| `GET`   | `/api/admin/retreats/:id`             | Full retreat date info + all bookings with attendee details (dietary, medical, mobility, emergency contacts). |
+| `POST`  | `/api/admin/retreat-dates`            | Create new `RetreatDate`.                                                                                     |
+| `PATCH` | `/api/admin/retreat-dates/:id`        | Update spaces, status, pricing.                                                                               |
+| `POST`  | `/api/admin/retreat-dates/:id/cancel` | Cancel retreat date. Refund all bookings per policy. Send cancellation emails.                                |
+| `GET`   | `/api/admin/retreat-dates/:id/export` | Export attendee list as CSV: name, email, phone, dietary, medical, mobility, emergency contact, room type.    |
 
 #### Programmes (requires `admin_programmes`)
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/admin/programs` | All `ProgramInstance` rows with enrollment counts. |
-| `GET` | `/api/admin/programs/:id` | Program detail + enrolled members list. |
-| `POST` | `/api/admin/programs` | Create `ProgramInstance`. |
-| `PATCH` | `/api/admin/programs/:id` | Update status, roomId. |
+| Method  | Path                      | Description                                        |
+| ------- | ------------------------- | -------------------------------------------------- |
+| `GET`   | `/api/admin/programs`     | All `ProgramInstance` rows with enrollment counts. |
+| `GET`   | `/api/admin/programs/:id` | Program detail + enrolled members list.            |
+| `POST`  | `/api/admin/programs`     | Create `ProgramInstance`.                          |
+| `PATCH` | `/api/admin/programs/:id` | Update status, roomId.                             |
 
 #### Newsletter (requires `admin_newsletter`)
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/admin/newsletter/campaigns` | All `Newsletter` rows (sent campaigns) with stats. |
-| `POST` | `/api/admin/newsletter/send` | `{ contentfulEntryId }`. Fetches blog post, renders through `NewsletterEmail.tsx`, sends to all active `NewsletterSubscriber` rows via Postmark batch API. Creates `Newsletter` row. |
-| `POST` | `/api/admin/newsletter/preview` | `{ contentfulEntryId, testEmail }`. Sends single test. |
+| Method | Path                              | Description                                                                                                                                                                          |
+| ------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`  | `/api/admin/newsletter/campaigns` | All `Newsletter` rows (sent campaigns) with stats.                                                                                                                                   |
+| `POST` | `/api/admin/newsletter/send`      | `{ contentfulEntryId }`. Fetches blog post, renders through `NewsletterEmail.tsx`, sends to all active `NewsletterSubscriber` rows via Postmark batch API. Creates `Newsletter` row. |
+| `POST` | `/api/admin/newsletter/preview`   | `{ contentfulEntryId, testEmail }`. Sends single test.                                                                                                                               |
 
 #### Business (requires `admin_business`)
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/admin/business/summary` | `?period=month&date=2026-02`. Revenue (from Payments), active memberships (from Subscriptions), credit packs sold, retreat revenue, program revenue. |
-| `GET` | `/api/admin/business/transactions` | Paginated from Payments + Invoices tables with filters. |
-| `GET` | `/api/admin/business/revenue-chart` | Time-series from Payments table for charts. |
+| Method | Path                                | Description                                                                                                                                          |
+| ------ | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/admin/business/summary`       | `?period=month&date=2026-02`. Revenue (from Payments), active memberships (from Subscriptions), credit packs sold, retreat revenue, program revenue. |
+| `GET`  | `/api/admin/business/transactions`  | Paginated from Payments + Invoices tables with filters.                                                                                              |
+| `GET`  | `/api/admin/business/revenue-chart` | Time-series from Payments table for charts.                                                                                                          |
 
 ---
 
@@ -1539,26 +1555,26 @@ All admin endpoints require appropriate Permission check via `UserPermission` ta
 
 Complete mapping of every email sent by the system and its trigger.
 
-| Email Template | Trigger | Recipient | Attachments | i18n |
-|---|---|---|---|---|
-| **Welcome** | `POST /api/auth/register` | New user | -- | Format dates per user timezone |
-| **Booking Confirmation** | `POST /api/bookings` (success) | Student | `.ics` (METHOD:REQUEST) | Times formatted per user `timezone` and `dateFormat` |
-| **Booking Cancellation** | `DELETE /api/bookings/:id` | Student | `.ics` (METHOD:CANCEL) | " |
-| **Class Reminder** | Cron: 2 hours before session start | All confirmed attendees | Daily.co join link | " |
-| **Instructor: First Signup** | Booking creates first attendee (0->1) | Instructor (from Contentful bio `email`) | -- | UK timezone |
-| **Instructor: Last Cancel** | Cancellation removes last attendee (1->0) | Instructor | -- | UK timezone |
-| **Class Cancellation (Instructor-Initiated)** | `POST /api/admin/sessions/:id/cancel` | All confirmed attendees | `.ics` (METHOD:CANCEL) | Per-user timezone |
-| **Auto-Cancel Digest** | 90-minute cron job cancels session(s) | Admin email | -- | UK timezone |
-| **Purchase Confirmation** | Stripe webhook `checkout.session.completed` | Purchaser | -- | Per-user timezone |
-| **Membership Renewal Success** | Stripe webhook `invoice.payment_succeeded` | Member | -- | " |
-| **Membership Payment Failed** | Stripe webhook `invoice.payment_failed` | Member | -- | " |
-| **Membership Ended** | Stripe webhook `customer.subscription.deleted` | Ex-member | -- | " |
-| **Retreat Booking Confirmation** | Stripe webhook (retreat checkout) | Attendee | `.ics` (multi-day) | Per-user timezone |
-| **Retreat Cancellation** | `DELETE /api/retreat-bookings/:id` | Attendee | Refund details | " |
-| **Program Enrollment Confirmation** | Stripe webhook (program checkout) | Participant | Program schedule | " |
-| **Referral Reward** | First purchase by referred user | Referrer | -- | " |
-| **Newsletter** | Admin triggers via `POST /api/admin/newsletter/send` | All active subscribers | -- | N/A (general content) |
-| **Auth Code** | `POST /api/auth/send-code` | User | -- | N/A |
+| Email Template                                | Trigger                                              | Recipient                                | Attachments             | i18n                                                 |
+| --------------------------------------------- | ---------------------------------------------------- | ---------------------------------------- | ----------------------- | ---------------------------------------------------- |
+| **Welcome**                                   | `POST /api/auth/register`                            | New user                                 | --                      | Format dates per user timezone                       |
+| **Booking Confirmation**                      | `POST /api/bookings` (success)                       | Student                                  | `.ics` (METHOD:REQUEST) | Times formatted per user `timezone` and `dateFormat` |
+| **Booking Cancellation**                      | `DELETE /api/bookings/:id`                           | Student                                  | `.ics` (METHOD:CANCEL)  | "                                                    |
+| **Class Reminder**                            | Cron: 2 hours before session start                   | All confirmed attendees                  | Daily.co join link      | "                                                    |
+| **Instructor: First Signup**                  | Booking creates first attendee (0->1)                | Instructor (from Contentful bio `email`) | --                      | UK timezone                                          |
+| **Instructor: Last Cancel**                   | Cancellation removes last attendee (1->0)            | Instructor                               | --                      | UK timezone                                          |
+| **Class Cancellation (Instructor-Initiated)** | `POST /api/admin/sessions/:id/cancel`                | All confirmed attendees                  | `.ics` (METHOD:CANCEL)  | Per-user timezone                                    |
+| **Auto-Cancel Digest**                        | 90-minute cron job cancels session(s)                | Admin email                              | --                      | UK timezone                                          |
+| **Purchase Confirmation**                     | Stripe webhook `checkout.session.completed`          | Purchaser                                | --                      | Per-user timezone                                    |
+| **Membership Renewal Success**                | Stripe webhook `invoice.payment_succeeded`           | Member                                   | --                      | "                                                    |
+| **Membership Payment Failed**                 | Stripe webhook `invoice.payment_failed`              | Member                                   | --                      | "                                                    |
+| **Membership Ended**                          | Stripe webhook `customer.subscription.deleted`       | Ex-member                                | --                      | "                                                    |
+| **Retreat Booking Confirmation**              | Stripe webhook (retreat checkout)                    | Attendee                                 | `.ics` (multi-day)      | Per-user timezone                                    |
+| **Retreat Cancellation**                      | `DELETE /api/retreat-bookings/:id`                   | Attendee                                 | Refund details          | "                                                    |
+| **Program Enrollment Confirmation**           | Stripe webhook (program checkout)                    | Participant                              | Program schedule        | "                                                    |
+| **Referral Reward**                           | First purchase by referred user                      | Referrer                                 | --                      | "                                                    |
+| **Newsletter**                                | Admin triggers via `POST /api/admin/newsletter/send` | All active subscribers                   | --                      | N/A (general content)                                |
+| **Auth Code**                                 | `POST /api/auth/send-code`                           | User                                     | --                      | N/A                                                  |
 
 ---
 
@@ -1591,6 +1607,7 @@ END:VCALENDAR
 ### 5.2 Cancellation (METHOD:CANCEL)
 
 Same structure but:
+
 - `METHOD:CANCEL`
 - `STATUS:CANCELLED`
 - Same `UID` as the original booking (this is how calendar clients know which event to remove)
@@ -1619,6 +1636,7 @@ If no one has signed up for a class within 90 minutes of its start time, the ses
 **Environment:** Server-side cron (Vercel Cron, Railway cron, or similar).
 
 **Logic:**
+
 ```sql
 -- Find sessions to auto-cancel
 SELECT loc.id, loc.name, loc.date
@@ -1669,17 +1687,17 @@ Contentful sends webhooks on entry publish, unpublish, and delete.
 
 ### 7.2 Event Handling
 
-| Contentful Event | Action |
-|---|---|
-| Class Definition published | Invalidate cache for `/api/content/classes` and `/api/content/classes/:slug`. |
-| Retreat published | Invalidate cache for `/api/content/retreats` and `/api/content/retreats/:slug`. |
-| Blog Post published (isNewsletter = false) | Invalidate blog cache. |
-| Blog Post published (isNewsletter = true) | Invalidate blog cache + **trigger newsletter send pipeline** (queue job, don't send synchronously in webhook handler). |
-| Testimonial published | Invalidate testimonial cache. |
-| Page Content updated | Invalidate page cache for the specific slug. |
-| Legal page updated | Invalidate legal cache. |
-| Global Content updated | Invalidate global cache (nav, footer, etc.). |
-| Any entry unpublished/deleted | Invalidate relevant caches. |
+| Contentful Event                           | Action                                                                                                                 |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| Class Definition published                 | Invalidate cache for `/api/content/classes` and `/api/content/classes/:slug`.                                          |
+| Retreat published                          | Invalidate cache for `/api/content/retreats` and `/api/content/retreats/:slug`.                                        |
+| Blog Post published (isNewsletter = false) | Invalidate blog cache.                                                                                                 |
+| Blog Post published (isNewsletter = true)  | Invalidate blog cache + **trigger newsletter send pipeline** (queue job, don't send synchronously in webhook handler). |
+| Testimonial published                      | Invalidate testimonial cache.                                                                                          |
+| Page Content updated                       | Invalidate page cache for the specific slug.                                                                           |
+| Legal page updated                         | Invalidate legal cache.                                                                                                |
+| Global Content updated                     | Invalidate global cache (nav, footer, etc.).                                                                           |
+| Any entry unpublished/deleted              | Invalidate relevant caches.                                                                                            |
 
 ### 7.3 Newsletter Send Pipeline
 
@@ -1698,13 +1716,13 @@ Triggered when a Blog Post with `isNewsletter = true` is published:
 
 Class replays are available for 7 days after the class is completed.
 
-| Rule | Detail |
-|---|---|
-| **Who can access** | Only users who had a confirmed booking for that session (including late cancellations). Check `Schedule` table. |
-| **How long** | 7 days from class completion (`replayExpiresAt` on `LiveOnlineClass`). |
-| **Where** | Authenticated page at `/dashboard/classes/:id/join` shows the replay embed if available. |
-| **Storage** | Replay videos hosted via Daily.co recordings or external hosting. `replayUrl` stores the URL. |
-| **Expiry** | A daily cron job sets `replayUrl = NULL, replayExpiresAt = NULL` for expired replays. Or, the frontend checks `replayExpiresAt` and hides the player if past. |
+| Rule               | Detail                                                                                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Who can access** | Only users who had a confirmed booking for that session (including late cancellations). Check `Schedule` table.                                               |
+| **How long**       | 7 days from class completion (`replayExpiresAt` on `LiveOnlineClass`).                                                                                        |
+| **Where**          | Authenticated page at `/dashboard/classes/:id/join` shows the replay embed if available.                                                                      |
+| **Storage**        | Replay videos hosted via Daily.co recordings or external hosting. `replayUrl` stores the URL.                                                                 |
+| **Expiry**         | A daily cron job sets `replayUrl = NULL, replayExpiresAt = NULL` for expired replays. Or, the frontend checks `replayExpiresAt` and hides the player if past. |
 
 ---
 
@@ -1955,6 +1973,7 @@ END;
 ```
 
 **After verification:**
+
 ```sql
 -- 3h. Rename old Retreat table (don't drop -- keep as backup)
 ALTER TABLE "Retreat" RENAME TO "_archived_Retreat";

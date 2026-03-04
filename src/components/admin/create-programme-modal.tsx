@@ -45,11 +45,7 @@ function calculateEndDate(startDate: string, durationWeeks: number): string {
   return start.toISOString().split("T")[0];
 }
 
-export function CreateProgrammeModal({
-  open,
-  onOpenChange,
-  onCreate,
-}: CreateProgrammeModalProps) {
+export function CreateProgrammeModal({ open, onOpenChange, onCreate }: CreateProgrammeModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [durationWeeks, setDurationWeeks] = useState<number>(6);
@@ -115,19 +111,16 @@ export function CreateProgrammeModal({
   };
 
   const updateSession = (index: number, field: "title" | "description", value: string) => {
-    setSessions((prev) =>
-      prev.map((s, i) => (i === index ? { ...s, [field]: value } : s))
-    );
+    setSessions((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Create Programme</DialogTitle>
           <DialogDescription>
-            Set up a new small group programme with sessions, capacity, and
-            pricing.
+            Set up a new small group programme with sessions, capacity, and pricing.
           </DialogDescription>
         </DialogHeader>
 
@@ -159,7 +152,7 @@ export function CreateProgrammeModal({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="prog-duration" className="flex items-center gap-2">
-                <Clock className="w-4 h-4" />
+                <Clock className="h-4 w-4" />
                 Duration (weeks)
               </Label>
               <Input
@@ -204,12 +197,12 @@ export function CreateProgrammeModal({
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-input-background px-3 py-1 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full rounded-md border px-3 py-1 text-sm transition-colors outline-none focus-visible:ring-[3px]"
               />
             </div>
             <div className="space-y-2">
               <Label>End date</Label>
-              <div className="flex h-9 items-center rounded-md border bg-secondary/30 px-3 text-sm text-muted-foreground">
+              <div className="bg-secondary/30 text-muted-foreground flex h-9 items-center rounded-md border px-3 text-sm">
                 {endDate
                   ? new Date(endDate).toLocaleDateString("en-GB", {
                       day: "numeric",
@@ -218,7 +211,9 @@ export function CreateProgrammeModal({
                     })
                   : "Set start date & duration"}
               </div>
-              <p className="text-xs text-muted-foreground">Auto-calculated from start date + duration</p>
+              <p className="text-muted-foreground text-xs">
+                Auto-calculated from start date + duration
+              </p>
             </div>
           </div>
 
@@ -226,7 +221,7 @@ export function CreateProgrammeModal({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="prog-capacity" className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
+                <Users className="h-4 w-4" />
                 Max participants
               </Label>
               <Input
@@ -240,7 +235,7 @@ export function CreateProgrammeModal({
             </div>
             <div className="space-y-2">
               <Label htmlFor="prog-price" className="flex items-center gap-2">
-                <PoundSterling className="w-4 h-4" />
+                <PoundSterling className="h-4 w-4" />
                 Price (£)
               </Label>
               <Input
@@ -255,24 +250,22 @@ export function CreateProgrammeModal({
           </div>
 
           {/* Session planner */}
-          <div className="space-y-3 pt-2 border-t">
+          <div className="space-y-3 border-t pt-2">
             <div className="flex items-center justify-between">
               <Label>Session plan ({sessions.length} sessions)</Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 {durationWeeks} weeks × {sessionsPerWeek}/week
               </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Give each session a title and optional description. Participants see these on their programme page.
+            <p className="text-muted-foreground text-xs">
+              Give each session a title and optional description. Participants see these on their
+              programme page.
             </p>
 
-            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+            <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
               {sessions.map((session, i) => (
-                <div
-                  key={i}
-                  className="flex gap-2 items-start p-2 rounded-md bg-secondary/30"
-                >
-                  <span className="text-xs text-muted-foreground pt-2 w-6 flex-shrink-0 text-center">
+                <div key={i} className="bg-secondary/30 flex items-start gap-2 rounded-md p-2">
+                  <span className="text-muted-foreground w-6 flex-shrink-0 pt-2 text-center text-xs">
                     {i + 1}
                   </span>
                   <div className="flex-1 space-y-1">

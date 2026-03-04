@@ -19,7 +19,8 @@ export const HEALTH_CATEGORIES: HealthCategory[] = [
   {
     id: "pain_injury",
     title: "Pain & Injury Sites",
-    description: "Current or recurring pain, or sites of previous injury that may affect your movement.",
+    description:
+      "Current or recurring pain, or sites of previous injury that may affect your movement.",
     icon: "body",
     items: [
       { key: "ankle_pain_injury", label: "Ankle" },
@@ -70,7 +71,8 @@ export const HEALTH_CATEGORIES: HealthCategory[] = [
   {
     id: "mental",
     title: "Mental Health",
-    description: "Conditions that may affect your energy, focus, or how you experience group settings.",
+    description:
+      "Conditions that may affect your energy, focus, or how you experience group settings.",
     icon: "brain",
     items: [
       { key: "ptsd", label: "PTSD" },
@@ -139,7 +141,8 @@ export const MOCK_HEALTH_PROFILE: HealthProfile = {
     anxiety: true,
   },
   details: {
-    autoimmune: "Rheumatoid arthritis — diagnosed 2019. Currently on methotrexate. Flares affect hands and shoulders most.",
+    autoimmune:
+      "Rheumatoid arthritis — diagnosed 2019. Currently on methotrexate. Flares affect hands and shoulders most.",
   },
   additionalNotes:
     "Morning stiffness usually lasts 30-45 mins. Better after warm-up. Prefer not to bear weight on wrists for extended periods.",
@@ -156,7 +159,8 @@ export const MEMBER_HEALTH_PROFILES: Record<string, HealthProfile> = {
       anxiety: true,
     },
     details: {
-      autoimmune: "Rheumatoid arthritis — diagnosed 2019. Currently on methotrexate. Flares affect hands and shoulders most.",
+      autoimmune:
+        "Rheumatoid arthritis — diagnosed 2019. Currently on methotrexate. Flares affect hands and shoulders most.",
     },
     additionalNotes:
       "Morning stiffness usually lasts 30-45 mins. Better after warm-up. Prefer not to bear weight on wrists for extended periods.",
@@ -170,9 +174,11 @@ export const MEMBER_HEALTH_PROFILES: Record<string, HealthProfile> = {
       adhd: true,
     },
     details: {
-      physical_other: "hEDS (hypermobile Ehlers-Danlos syndrome) — diagnosed 2020. Joint instability throughout, worst in shoulders and hips.",
+      physical_other:
+        "hEDS (hypermobile Ehlers-Danlos syndrome) — diagnosed 2020. Joint instability throughout, worst in shoulders and hips.",
     },
-    additionalNotes: "Proprioception is poor — benefits from mirror/visual feedback. Needs slower tempo for complex movements.",
+    additionalNotes:
+      "Proprioception is poor — benefits from mirror/visual feedback. Needs slower tempo for complex movements.",
     lastUpdated: "2026-02-01",
   },
   usr_003: {
@@ -186,7 +192,8 @@ export const MEMBER_HEALTH_PROFILES: Record<string, HealthProfile> = {
     details: {
       autoimmune: "Psoriatic arthritis — mainly affects knees and lower back. On biologics.",
     },
-    additionalNotes: "Energy very variable. Some days can do full session, others need to scale right back. Appreciates check-ins.",
+    additionalNotes:
+      "Energy very variable. Some days can do full session, others need to scale right back. Appreciates check-ins.",
     lastUpdated: "2026-02-10",
   },
   usr_004: {
@@ -196,7 +203,8 @@ export const MEMBER_HEALTH_PROFILES: Record<string, HealthProfile> = {
       ptsd: true,
     },
     details: {},
-    additionalNotes: "Prefers not to close eyes during relaxation. Needs advance notice of any physical adjustments.",
+    additionalNotes:
+      "Prefers not to close eyes during relaxation. Needs advance notice of any physical adjustments.",
     lastUpdated: "2025-12-20",
   },
   usr_005: {
@@ -206,7 +214,8 @@ export const MEMBER_HEALTH_PROFILES: Record<string, HealthProfile> = {
       low_blood_pressure: true,
     },
     details: {},
-    additionalNotes: "Currently 28 weeks. Avoiding supine positions. Has been training with Shruti for 8 months pre-pregnancy.",
+    additionalNotes:
+      "Currently 28 weeks. Avoiding supine positions. Has been training with Shruti for 8 months pre-pregnancy.",
     lastUpdated: "2026-02-15",
   },
 };
@@ -283,9 +292,7 @@ export interface AggregatedCategory {
   conditions: AggregatedCondition[];
 }
 
-export function aggregateHealthForClass(
-  attendees: { memberId: string; memberName: string }[]
-): {
+export function aggregateHealthForClass(attendees: { memberId: string; memberName: string }[]): {
   categories: AggregatedCategory[];
   membersWithProfiles: number;
   totalMembers: number;
@@ -344,9 +351,7 @@ export function aggregateHealthForClass(
 
     // Collect key considerations from additional notes
     if (profile.additionalNotes) {
-      keyConsiderations.push(
-        `${att.memberName}: ${profile.additionalNotes}`
-      );
+      keyConsiderations.push(`${att.memberName}: ${profile.additionalNotes}`);
     }
   }
 

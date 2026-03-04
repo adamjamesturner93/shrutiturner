@@ -24,8 +24,7 @@ export function Layout({ children }: LayoutProps) {
 
     const handleScroll = () => {
       const scrollPercent =
-        window.scrollY /
-        (document.documentElement.scrollHeight - window.innerHeight);
+        window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
       if (scrollPercent > 0.4) {
         setShowPopup(true);
         sessionStorage.setItem("newsletter_shown", "true");
@@ -50,21 +49,20 @@ export function Layout({ children }: LayoutProps) {
   }, [pathname]);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-screen flex-col">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:bg-primary focus:text-primary-foreground focus:px-4 focus:py-2 focus:rounded-md"
+        className="focus:bg-primary focus:text-primary-foreground sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:rounded-md focus:px-4 focus:py-2"
       >
         Skip to main content
       </a>
       <ScrollToTop />
       <Header />
-      <main id="main-content" className="flex-1">{children}</main>
+      <main id="main-content" className="flex-1">
+        {children}
+      </main>
       <Footer />
-      <NewsletterPopup
-        isOpen={showPopup}
-        onClose={() => setShowPopup(false)}
-      />
+      <NewsletterPopup isOpen={showPopup} onClose={() => setShowPopup(false)} />
     </div>
   );
 }

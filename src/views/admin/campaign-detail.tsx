@@ -18,15 +18,7 @@ import {
   BookOpen,
   TrendingUp,
 } from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { newsletterCampaigns } from "../../data/admin-data";
 
 export function AdminCampaignDetail() {
@@ -39,11 +31,11 @@ export function AdminCampaignDetail() {
   if (!campaign) {
     return (
       <AdminLayout title="Campaign Not Found - Admin">
-        <div className="text-center py-20">
+        <div className="py-20 text-center">
           <p className="text-muted-foreground">Campaign not found.</p>
           <Link href="/admin/newsletter">
             <Button variant="outline" className="mt-4">
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back to Newsletter
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Newsletter
             </Button>
           </Link>
         </div>
@@ -59,30 +51,30 @@ export function AdminCampaignDetail() {
         {/* Back nav */}
         <button
           onClick={() => navigate("/admin/newsletter")}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-sm transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Newsletter
         </button>
 
         {/* Header */}
         <div>
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl text-[#2E1F33]">{campaign.subject}</h1>
           </div>
-          <div className="flex items-center gap-3 mt-2 flex-wrap">
+          <div className="mt-2 flex flex-wrap items-center gap-3">
             <Badge variant="outline" className="capitalize">
               {campaign.type === "newsletter" ? (
-                <Mail className="w-3 h-3 mr-1" />
+                <Mail className="mr-1 h-3 w-3" />
               ) : (
-                <BookOpen className="w-3 h-3 mr-1" />
+                <BookOpen className="mr-1 h-3 w-3" />
               )}
               {campaign.type.replace("-", " ")}
             </Badge>
             <Badge variant={isScheduled ? "secondary" : "default"}>
               {isScheduled ? "Scheduled" : "Sent"}
             </Badge>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-muted-foreground text-sm">
               {isScheduled ? "Scheduled for" : "Sent on"}{" "}
               {new Date(campaign.sentDate).toLocaleDateString("en-GB", {
                 weekday: "long",
@@ -97,18 +89,17 @@ export function AdminCampaignDetail() {
         {isScheduled ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <Send className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+              <Send className="text-muted-foreground mx-auto mb-3 h-8 w-8" />
               <p className="text-lg text-[#2E1F33]">Campaign scheduled</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                This campaign will be sent to {campaign.totalRecipients}{" "}
-                recipients on{" "}
+              <p className="text-muted-foreground mt-1 text-sm">
+                This campaign will be sent to {campaign.totalRecipients} recipients on{" "}
                 {new Date(campaign.sentDate).toLocaleDateString("en-GB", {
                   day: "numeric",
                   month: "long",
                 })}
                 .
               </p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-muted-foreground mt-1 text-sm">
                 Analytics will be available after sending.
               </p>
             </CardContent>
@@ -116,49 +107,39 @@ export function AdminCampaignDetail() {
         ) : (
           <>
             {/* Delivery stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               <Card>
                 <CardContent className="pt-6 text-center">
-                  <Send className="w-5 h-5 text-[#4B5B32] mx-auto" />
-                  <p className="text-2xl text-[#2E1F33] mt-2">
-                    {campaign.delivered}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
+                  <Send className="mx-auto h-5 w-5 text-[#4B5B32]" />
+                  <p className="mt-2 text-2xl text-[#2E1F33]">{campaign.delivered}</p>
+                  <p className="text-muted-foreground text-xs">
                     Delivered (of {campaign.totalRecipients})
                   </p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6 text-center">
-                  <Eye className="w-5 h-5 text-[#4B5B32] mx-auto" />
-                  <p className="text-2xl text-[#2E1F33] mt-2">
-                    {campaign.uniqueOpens}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
+                  <Eye className="mx-auto h-5 w-5 text-[#4B5B32]" />
+                  <p className="mt-2 text-2xl text-[#2E1F33]">{campaign.uniqueOpens}</p>
+                  <p className="text-muted-foreground text-xs">
                     Unique opens ({campaign.openRate}%)
                   </p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6 text-center">
-                  <MousePointerClick className="w-5 h-5 text-[#4B5B32] mx-auto" />
-                  <p className="text-2xl text-[#2E1F33] mt-2">
-                    {campaign.uniqueClicks}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
+                  <MousePointerClick className="mx-auto h-5 w-5 text-[#4B5B32]" />
+                  <p className="mt-2 text-2xl text-[#2E1F33]">{campaign.uniqueClicks}</p>
+                  <p className="text-muted-foreground text-xs">
                     Unique clicks ({campaign.clickRate}%)
                   </p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6 text-center">
-                  <TrendingUp className="w-5 h-5 text-[#4B5B32] mx-auto" />
-                  <p className="text-2xl text-[#2E1F33] mt-2">
-                    {campaign.clickToOpenRate}%
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Click-to-open rate
-                  </p>
+                  <TrendingUp className="mx-auto h-5 w-5 text-[#4B5B32]" />
+                  <p className="mt-2 text-2xl text-[#2E1F33]">{campaign.clickToOpenRate}%</p>
+                  <p className="text-muted-foreground text-xs">Click-to-open rate</p>
                 </CardContent>
               </Card>
             </div>
@@ -191,26 +172,20 @@ export function AdminCampaignDetail() {
                     },
                   ].map((step) => (
                     <div key={step.label}>
-                      <div className="flex justify-between text-sm mb-1">
+                      <div className="mb-1 flex justify-between text-sm">
                         <span>{step.label}</span>
                         <span className="text-muted-foreground">
-                          {step.value} (
-                          {((step.value / step.total) * 100).toFixed(1)}%)
+                          {step.value} ({((step.value / step.total) * 100).toFixed(1)}%)
                         </span>
                       </div>
-                      <div className="h-6 bg-secondary rounded-md overflow-hidden">
+                      <div className="bg-secondary h-6 overflow-hidden rounded-md">
                         <div
-                          className={`h-full ${step.color} rounded-md transition-all flex items-center px-2`}
+                          className={`h-full ${step.color} flex items-center rounded-md px-2 transition-all`}
                           style={{
-                            width: `${Math.max(
-                              (step.value / campaign.totalRecipients) * 100,
-                              2
-                            )}%`,
+                            width: `${Math.max((step.value / campaign.totalRecipients) * 100, 2)}%`,
                           }}
                         >
-                          <span className="text-xs text-white">
-                            {step.value}
-                          </span>
+                          <span className="text-xs text-white">{step.value}</span>
                         </div>
                       </div>
                     </div>
@@ -220,7 +195,7 @@ export function AdminCampaignDetail() {
             </Card>
 
             {/* Top links + issues side by side */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               {/* Top links */}
               <Card>
                 <CardHeader>
@@ -232,29 +207,25 @@ export function AdminCampaignDetail() {
                       {campaign.topLinks.map((link, i) => (
                         <div
                           key={i}
-                          className="flex items-center justify-between p-3 rounded-lg bg-secondary/50"
+                          className="bg-secondary/50 flex items-center justify-between rounded-lg p-3"
                         >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-8 h-8 rounded-full bg-[#4B5B32] text-[#FAFAF8] flex items-center justify-center text-xs flex-shrink-0">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#4B5B32] text-xs text-[#FAFAF8]">
                               #{i + 1}
                             </div>
                             <div className="min-w-0">
                               <p className="text-sm">{link.label}</p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {link.url}
-                              </p>
+                              <p className="text-muted-foreground truncate text-xs">{link.url}</p>
                             </div>
                           </div>
-                          <Badge variant="outline" className="flex-shrink-0 ml-2">
+                          <Badge variant="outline" className="ml-2 flex-shrink-0">
                             {link.clicks} clicks
                           </Badge>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No link click data available.
-                    </p>
+                    <p className="text-muted-foreground text-sm">No link click data available.</p>
                   )}
                 </CardContent>
               </Card>
@@ -266,39 +237,33 @@ export function AdminCampaignDetail() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                    <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
                       <div className="flex items-center gap-3">
                         <AlertTriangle
-                          className={`w-4 h-4 ${
-                            campaign.bounced > 0
-                              ? "text-amber-500"
-                              : "text-[#4B5B32]"
+                          className={`h-4 w-4 ${
+                            campaign.bounced > 0 ? "text-amber-500" : "text-[#4B5B32]"
                           }`}
                         />
                         <span className="text-sm">Bounces</span>
                       </div>
                       <span className="text-sm">{campaign.bounced}</span>
                     </div>
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                    <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
                       <div className="flex items-center gap-3">
                         <AlertTriangle
-                          className={`w-4 h-4 ${
-                            campaign.unsubscribed > 0
-                              ? "text-amber-500"
-                              : "text-[#4B5B32]"
+                          className={`h-4 w-4 ${
+                            campaign.unsubscribed > 0 ? "text-amber-500" : "text-[#4B5B32]"
                           }`}
                         />
                         <span className="text-sm">Unsubscribes</span>
                       </div>
                       <span className="text-sm">{campaign.unsubscribed}</span>
                     </div>
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                    <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
                       <div className="flex items-center gap-3">
                         <AlertTriangle
-                          className={`w-4 h-4 ${
-                            campaign.spamComplaints > 0
-                              ? "text-destructive"
-                              : "text-[#4B5B32]"
+                          className={`h-4 w-4 ${
+                            campaign.spamComplaints > 0 ? "text-destructive" : "text-[#4B5B32]"
                           }`}
                         />
                         <span className="text-sm">Spam complaints</span>
@@ -309,9 +274,9 @@ export function AdminCampaignDetail() {
                   {campaign.bounced === 0 &&
                     campaign.unsubscribed <= 1 &&
                     campaign.spamComplaints === 0 && (
-                      <p className="text-xs text-[#4B5B32] mt-4">
-                        Delivery health looks good. Low bounce and unsubscribe
-                        rates indicate a healthy, engaged list.
+                      <p className="mt-4 text-xs text-[#4B5B32]">
+                        Delivery health looks good. Low bounce and unsubscribe rates indicate a
+                        healthy, engaged list.
                       </p>
                     )}
                 </CardContent>
@@ -324,34 +289,24 @@ export function AdminCampaignDetail() {
                 <CardTitle className="text-lg">Detailed Metrics</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-3 rounded-lg bg-secondary/50">
-                    <p className="text-lg text-[#2E1F33]">
-                      {campaign.totalRecipients}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Total recipients
-                    </p>
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                  <div className="bg-secondary/50 rounded-lg p-3 text-center">
+                    <p className="text-lg text-[#2E1F33]">{campaign.totalRecipients}</p>
+                    <p className="text-muted-foreground text-xs">Total recipients</p>
                   </div>
-                  <div className="text-center p-3 rounded-lg bg-secondary/50">
+                  <div className="bg-secondary/50 rounded-lg p-3 text-center">
                     <p className="text-lg text-[#2E1F33]">{campaign.opened}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Total opens (inc. re-opens)
-                    </p>
+                    <p className="text-muted-foreground text-xs">Total opens (inc. re-opens)</p>
                   </div>
-                  <div className="text-center p-3 rounded-lg bg-secondary/50">
+                  <div className="bg-secondary/50 rounded-lg p-3 text-center">
                     <p className="text-lg text-[#2E1F33]">{campaign.clicked}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Total clicks (inc. re-clicks)
-                    </p>
+                    <p className="text-muted-foreground text-xs">Total clicks (inc. re-clicks)</p>
                   </div>
-                  <div className="text-center p-3 rounded-lg bg-secondary/50">
+                  <div className="bg-secondary/50 rounded-lg p-3 text-center">
                     <p className="text-lg text-[#2E1F33]">
                       {(campaign.opened / Math.max(campaign.uniqueOpens, 1)).toFixed(1)}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      Opens per reader
-                    </p>
+                    <p className="text-muted-foreground text-xs">Opens per reader</p>
                   </div>
                 </div>
               </CardContent>

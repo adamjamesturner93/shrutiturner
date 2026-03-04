@@ -14,22 +14,21 @@ export function NotFoundPage() {
         description="The page you're looking for doesn't exist. Find your way back to Shruti Turner's strength and yoga coaching."
       />
 
-      <div className="container mx-auto px-4 py-16 max-w-2xl min-h-[60vh] flex flex-col items-center justify-center text-center">
-        <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center mx-auto mb-6">
-          <Search className="w-8 h-8 text-muted-foreground" />
+      <div className="container mx-auto flex min-h-[60vh] max-w-2xl flex-col items-center justify-center px-4 py-16 text-center">
+        <div className="bg-secondary mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full">
+          <Search className="text-muted-foreground h-8 w-8" />
         </div>
 
-        <h1 className="text-5xl md:text-6xl mb-4">404</h1>
-        <p className="text-xl text-muted-foreground mb-2">Page Not Found</p>
-        <p className="text-muted-foreground max-w-md mb-8">
-          The page you're looking for doesn't exist or has been moved.
-          Let's get you back on track.
+        <h1 className="mb-4 text-5xl md:text-6xl">404</h1>
+        <p className="text-muted-foreground mb-2 text-xl">Page Not Found</p>
+        <p className="text-muted-foreground mb-8 max-w-md">
+          The page you're looking for doesn't exist or has been moved. Let's get you back on track.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row">
           <Button asChild>
             <Link href="/">
-              <ArrowLeft className="w-4 h-4 mr-2" />
+              <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Homepage
             </Link>
           </Button>

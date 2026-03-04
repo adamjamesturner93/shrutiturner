@@ -30,11 +30,11 @@ export function AdminProgrammeDetail() {
   if (!programme) {
     return (
       <AdminLayout title="Programme Not Found - Admin">
-        <div className="text-center py-20">
+        <div className="py-20 text-center">
           <p className="text-muted-foreground">Programme not found.</p>
           <Link href="/admin/programmes">
             <Button variant="outline" className="mt-4">
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back to Programmes
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Programmes
             </Button>
           </Link>
         </div>
@@ -42,14 +42,11 @@ export function AdminProgrammeDetail() {
     );
   }
 
-  const progressPercent = Math.round(
-    (programme.sessionsCompleted / programme.sessionsTotal) * 100
-  );
+  const progressPercent = Math.round((programme.sessionsCompleted / programme.sessionsTotal) * 100);
   const avgAttendance =
     programme.sessions
       .filter((s) => s.status === "completed")
-      .reduce((sum, s) => sum + s.attendanceCount, 0) /
-    Math.max(programme.sessionsCompleted, 1);
+      .reduce((sum, s) => sum + s.attendanceCount, 0) / Math.max(programme.sessionsCompleted, 1);
   const revenue = programme.currentParticipants * programme.price;
 
   return (
@@ -58,75 +55,73 @@ export function AdminProgrammeDetail() {
         {/* Back nav */}
         <button
           onClick={() => navigate("/admin/programmes")}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-sm transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Programmes
         </button>
 
         {/* Header */}
         <div>
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl text-[#2E1F33]">{programme.name}</h1>
             <Badge
               variant={
                 programme.status === "active"
                   ? "default"
                   : programme.status === "upcoming"
-                  ? "secondary"
-                  : "outline"
+                    ? "secondary"
+                    : "outline"
               }
             >
               {programme.status.charAt(0).toUpperCase() + programme.status.slice(1)}
             </Badge>
           </div>
           <p className="text-muted-foreground mt-2">{programme.description}</p>
-          <div className="flex flex-wrap gap-4 mt-3 text-sm text-muted-foreground">
+          <div className="text-muted-foreground mt-3 flex flex-wrap gap-4 text-sm">
             <span className="flex items-center gap-1">
-              <Calendar className="w-4 h-4" />
+              <Calendar className="h-4 w-4" />
               {programme.startDate} to {programme.endDate}
             </span>
             <span className="flex items-center gap-1">
-              <Clock className="w-4 h-4" />
+              <Clock className="h-4 w-4" />
               {programme.schedule}
             </span>
           </div>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="pt-6 text-center">
-              <Users className="w-5 h-5 text-[#4B5B32] mx-auto" />
-              <p className="text-2xl text-[#2E1F33] mt-2">
+              <Users className="mx-auto h-5 w-5 text-[#4B5B32]" />
+              <p className="mt-2 text-2xl text-[#2E1F33]">
                 {programme.currentParticipants}/{programme.maxParticipants}
               </p>
-              <p className="text-xs text-muted-foreground">Participants</p>
+              <p className="text-muted-foreground text-xs">Participants</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <Clock className="w-5 h-5 text-[#4B5B32] mx-auto" />
-              <p className="text-2xl text-[#2E1F33] mt-2">{progressPercent}%</p>
-              <p className="text-xs text-muted-foreground">
+              <Clock className="mx-auto h-5 w-5 text-[#4B5B32]" />
+              <p className="mt-2 text-2xl text-[#2E1F33]">{progressPercent}%</p>
+              <p className="text-muted-foreground text-xs">
                 {programme.sessionsCompleted}/{programme.sessionsTotal} sessions
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <TrendingUp className="w-5 h-5 text-[#4B5B32] mx-auto" />
-              <p className="text-2xl text-[#2E1F33] mt-2">
-                {avgAttendance.toFixed(1)}
-              </p>
-              <p className="text-xs text-muted-foreground">Avg attendance</p>
+              <TrendingUp className="mx-auto h-5 w-5 text-[#4B5B32]" />
+              <p className="mt-2 text-2xl text-[#2E1F33]">{avgAttendance.toFixed(1)}</p>
+              <p className="text-muted-foreground text-xs">Avg attendance</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <PoundSterling className="w-5 h-5 text-[#4B5B32] mx-auto" />
-              <p className="text-2xl text-[#2E1F33] mt-2">£{revenue}</p>
-              <p className="text-xs text-muted-foreground">Revenue</p>
+              <PoundSterling className="mx-auto h-5 w-5 text-[#4B5B32]" />
+              <p className="mt-2 text-2xl text-[#2E1F33]">£{revenue}</p>
+              <p className="text-muted-foreground text-xs">Revenue</p>
             </CardContent>
           </Card>
         </div>
@@ -134,13 +129,13 @@ export function AdminProgrammeDetail() {
         {/* Progress bar */}
         {programme.status === "active" && (
           <div>
-            <div className="flex justify-between text-sm mb-2">
+            <div className="mb-2 flex justify-between text-sm">
               <span>Programme progress</span>
               <span className="text-muted-foreground">{progressPercent}%</span>
             </div>
-            <div className="h-3 bg-secondary rounded-full overflow-hidden">
+            <div className="bg-secondary h-3 overflow-hidden rounded-full">
               <div
-                className="h-full bg-[#4B5B32] rounded-full transition-all"
+                className="h-full rounded-full bg-[#4B5B32] transition-all"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -150,7 +145,7 @@ export function AdminProgrammeDetail() {
         {/* Aggregated health prep for the programme group */}
         <ClassHealthSummary attendees={programme.participants} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Participants */}
           <Card>
             <CardHeader>
@@ -161,27 +156,22 @@ export function AdminProgrammeDetail() {
             <CardContent>
               <div className="space-y-3">
                 {programme.participants.map((p) => (
-                  <div
-                    key={p.memberId}
-                    className="p-3 rounded-lg bg-secondary/50"
-                  >
+                  <div key={p.memberId} className="bg-secondary/50 rounded-lg p-3">
                     <div className="flex items-center justify-between">
-                      <Link href={
-                          p.memberId.startsWith("prog_ext")
-                            ? "#"
-                            : `/admin/members/${p.memberId}`
+                      <Link
+                        href={
+                          p.memberId.startsWith("prog_ext") ? "#" : `/admin/members/${p.memberId}`
                         }
-                        className="text-sm hover:text-[#4B5B32] transition-colors"
+                        className="text-sm transition-colors hover:text-[#4B5B32]"
                       >
                         {p.memberName}
                       </Link>
                       <Badge variant="outline" className="text-xs">
-                        {p.sessionsAttended}/{programme.sessionsCompleted || programme.sessionsTotal} attended
+                        {p.sessionsAttended}/
+                        {programme.sessionsCompleted || programme.sessionsTotal} attended
                       </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {p.progress}
-                    </p>
+                    <p className="text-muted-foreground mt-1 text-xs">{p.progress}</p>
                     <div className="mt-1">
                       <HealthBadges memberId={p.memberId} max={4} />
                     </div>
@@ -194,37 +184,34 @@ export function AdminProgrammeDetail() {
           {/* Sessions */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">
-                Sessions ({programme.sessionsTotal})
-              </CardTitle>
+              <CardTitle className="text-lg">Sessions ({programme.sessionsTotal})</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
+              <div className="max-h-96 space-y-2 overflow-y-auto">
                 {programme.sessions.map((session) => (
                   <div
                     key={session.number}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50"
+                    className="bg-secondary/50 flex items-center gap-3 rounded-lg p-3"
                   >
                     <div className="flex-shrink-0">
                       {session.status === "completed" ? (
-                        <CheckCircle className="w-5 h-5 text-[#4B5B32]" />
+                        <CheckCircle className="h-5 w-5 text-[#4B5B32]" />
                       ) : session.status === "cancelled" ? (
-                        <XCircle className="w-5 h-5 text-destructive" />
+                        <XCircle className="text-destructive h-5 w-5" />
                       ) : (
-                        <Circle className="w-5 h-5 text-muted-foreground" />
+                        <Circle className="text-muted-foreground h-5 w-5" />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm">
                         Session {session.number}: {session.topic}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-muted-foreground text-xs">
                         {new Date(session.date).toLocaleDateString("en-GB", {
                           day: "numeric",
                           month: "short",
                         })}
-                        {session.status === "completed" &&
-                          ` · ${session.attendanceCount} attended`}
+                        {session.status === "completed" && ` · ${session.attendanceCount} attended`}
                       </p>
                     </div>
                   </div>

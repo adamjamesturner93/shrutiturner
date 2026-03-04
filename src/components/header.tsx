@@ -102,14 +102,14 @@ export function Header() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between max-w-7xl">
+    <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
+      <div className="container mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
         <Link href="/" className="flex items-center space-x-2">
           <span className="text-xl tracking-tight">Shruti Turner</span>
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden lg:flex items-center space-x-6">
+        <nav className="hidden items-center space-x-6 lg:flex">
           {/* Services Dropdown */}
           <div
             ref={servicesDropdownRef}
@@ -119,68 +119,67 @@ export function Header() {
           >
             <button
               onClick={() => setServicesDropdownOpen(!servicesDropdownOpen)}
-              className={`flex items-center gap-1 transition-colors hover:text-primary ${
-                isActive("/classes") || isActive("/schedule") || isActive("/pt") || isActive("/retreats")
+              className={`hover:text-primary flex items-center gap-1 transition-colors ${
+                isActive("/classes") ||
+                isActive("/schedule") ||
+                isActive("/pt") ||
+                isActive("/retreats")
                   ? "text-primary"
                   : "text-foreground"
               }`}
             >
               Services
               <ChevronDown
-                className={`w-4 h-4 transition-transform ${
+                className={`h-4 w-4 transition-transform ${
                   servicesDropdownOpen ? "rotate-180" : ""
                 }`}
               />
             </button>
 
             {servicesDropdownOpen && (
-              <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 w-80">
-                <div className="bg-background border rounded-lg shadow-lg p-2 space-y-1">
+              <div className="absolute top-full left-1/2 w-80 -translate-x-1/2 pt-2">
+                <div className="bg-background space-y-1 rounded-lg border p-2 shadow-lg">
                   {/* All Classes link */}
-                  <Link href="/classes"
-                    className="block px-3 py-2 rounded-md text-sm hover:bg-secondary transition-colors"
+                  <Link
+                    href="/classes"
+                    className="hover:bg-secondary block rounded-md px-3 py-2 text-sm transition-colors"
                   >
                     <span className="text-foreground">All Classes</span>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-muted-foreground mt-0.5 text-xs">
                       Overview of all class types
                     </p>
                   </Link>
 
-                  <div className="h-px bg-border mx-2" />
+                  <div className="bg-border mx-2 h-px" />
 
                   {servicesLinks.map((link) => (
                     <Link
                       key={link.path}
                       href={link.path}
-                      className="flex items-start gap-3 px-3 py-2.5 rounded-md hover:bg-secondary transition-colors group"
+                      className="hover:bg-secondary group flex items-start gap-3 rounded-md px-3 py-2.5 transition-colors"
                     >
-                      <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-primary/20 transition-colors">
-                        <link.icon className="w-4 h-4 text-primary" />
+                      <div className="bg-primary/10 group-hover:bg-primary/20 mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md transition-colors">
+                        <link.icon className="text-primary h-4 w-4" />
                       </div>
                       <div>
-                        <span className="text-sm text-foreground">
-                          {link.label}
-                        </span>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {link.description}
-                        </p>
+                        <span className="text-foreground text-sm">{link.label}</span>
+                        <p className="text-muted-foreground mt-0.5 text-xs">{link.description}</p>
                       </div>
                     </Link>
                   ))}
 
-                  <div className="h-px bg-border mx-2" />
+                  <div className="bg-border mx-2 h-px" />
 
-                  <Link href="/schedule"
-                    className="flex items-start gap-3 px-3 py-2.5 rounded-md hover:bg-secondary transition-colors group"
+                  <Link
+                    href="/schedule"
+                    className="hover:bg-secondary group flex items-start gap-3 rounded-md px-3 py-2.5 transition-colors"
                   >
-                    <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-primary/20 transition-colors">
-                      <CalendarDays className="w-4 h-4 text-primary" />
+                    <div className="bg-primary/10 group-hover:bg-primary/20 mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md transition-colors">
+                      <CalendarDays className="text-primary h-4 w-4" />
                     </div>
                     <div>
-                      <span className="text-sm text-foreground">
-                        Schedule
-                      </span>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                      <span className="text-foreground text-sm">Schedule</span>
+                      <p className="text-muted-foreground mt-0.5 text-xs">
                         View the weekly timetable
                       </p>
                     </div>
@@ -194,7 +193,7 @@ export function Header() {
             <Link
               key={link.path}
               href={link.path}
-              className={`transition-colors hover:text-primary ${
+              className={`hover:text-primary transition-colors ${
                 isActive(link.path) ? "text-primary" : "text-foreground"
               }`}
             >
@@ -203,7 +202,7 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="hidden lg:flex items-center space-x-3">
+        <div className="hidden items-center space-x-3 lg:flex">
           {isAuthenticated ? (
             <Link href="/dashboard">
               <Button>
@@ -218,7 +217,7 @@ export function Header() {
               </Link>
               <Link href="/contact">
                 <Button>
-                  <MessageCircle className="w-4 h-4 mr-1.5" />
+                  <MessageCircle className="mr-1.5 h-4 w-4" />
                   Get in Touch
                 </Button>
               </Link>
@@ -238,45 +237,41 @@ export function Header() {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t bg-background">
-          <nav className="container mx-auto px-4 py-4 flex flex-col space-y-1">
+        <div className="bg-background border-t lg:hidden">
+          <nav className="container mx-auto flex flex-col space-y-1 px-4 py-4">
             {/* Services section */}
             <div className="space-y-1">
-              <Link href="/classes"
+              <Link
+                href="/classes"
                 onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md transition-colors hover:bg-secondary ${
-                  pathname === "/classes"
-                    ? "text-primary bg-secondary"
-                    : "text-foreground"
+                className={`hover:bg-secondary block rounded-md px-3 py-2 transition-colors ${
+                  pathname === "/classes" ? "text-primary bg-secondary" : "text-foreground"
                 }`}
               >
                 Services
               </Link>
-              <div className="pl-4 space-y-1">
+              <div className="space-y-1 pl-4">
                 {servicesLinks.map((link) => (
                   <Link
                     key={link.path}
                     href={link.path}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors hover:bg-secondary ${
-                      isActive(link.path)
-                        ? "text-primary bg-secondary"
-                        : "text-muted-foreground"
+                    className={`hover:bg-secondary flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
+                      isActive(link.path) ? "text-primary bg-secondary" : "text-muted-foreground"
                     }`}
                   >
-                    <link.icon className="w-4 h-4" />
+                    <link.icon className="h-4 w-4" />
                     {link.label}
                   </Link>
                 ))}
-                <Link href="/schedule"
+                <Link
+                  href="/schedule"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors hover:bg-secondary ${
-                    isActive("/schedule")
-                      ? "text-primary bg-secondary"
-                      : "text-muted-foreground"
+                  className={`hover:bg-secondary flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
+                    isActive("/schedule") ? "text-primary bg-secondary" : "text-muted-foreground"
                   }`}
                 >
-                  <CalendarDays className="w-4 h-4" />
+                  <CalendarDays className="h-4 w-4" />
                   Schedule
                 </Link>
               </div>
@@ -287,17 +282,15 @@ export function Header() {
                 key={link.path}
                 href={link.path}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md transition-colors hover:bg-secondary ${
-                  isActive(link.path)
-                    ? "text-primary bg-secondary"
-                    : "text-foreground"
+                className={`hover:bg-secondary block rounded-md px-3 py-2 transition-colors ${
+                  isActive(link.path) ? "text-primary bg-secondary" : "text-foreground"
                 }`}
               >
                 {link.label}
               </Link>
             ))}
 
-            <div className="pt-4 border-t flex flex-col space-y-2">
+            <div className="flex flex-col space-y-2 border-t pt-4">
               {isAuthenticated ? (
                 <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
                   <Button className="w-full">My Studio</Button>
@@ -311,7 +304,7 @@ export function Header() {
                   </Link>
                   <Link href="/contact" onClick={() => setMobileMenuOpen(false)}>
                     <Button className="w-full">
-                      <MessageCircle className="w-4 h-4 mr-1.5" />
+                      <MessageCircle className="mr-1.5 h-4 w-4" />
                       Get in Touch
                     </Button>
                   </Link>

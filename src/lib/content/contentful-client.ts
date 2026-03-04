@@ -31,13 +31,25 @@ function getCacheTags(contentType?: string): string[] {
   if (contentType === "retreatTemplate" || contentType === "retreatVenue") {
     return [...base, "content:retreats"];
   }
-  if (contentType === "pageContent") return [...base, "content:pages"];
+  if (contentType === "legalDocument") return [...base, "content:legal"];
+  if (contentType === "newsletterSignupContent") return [...base, "content:newsletter-signup"];
+  if (contentType === "leadMagnet") return [...base, "content:newsletter-signup", "content:emails"];
+  if (contentType === "faqItem" || contentType === "trustBadge" || contentType === "contactBlock") {
+    return [...base, "content:global-blocks"];
+  }
+  if (contentType === "announcementBanner") return [...base, "content:announcements"];
+  if (contentType === "transactionalEmailTemplate" || contentType === "newsletterTemplate") {
+    return [...base, "content:emails"];
+  }
   if (contentType === "globalContent") return [...base, "content:global"];
 
   return base;
 }
 
-async function cdaFetch<T>(path: string, query: Record<string, string | number | boolean | undefined> = {}) {
+async function cdaFetch<T>(
+  path: string,
+  query: Record<string, string | number | boolean | undefined> = {}
+) {
   const cfg = getContentfulConfig();
   if (!cfg) {
     return null;

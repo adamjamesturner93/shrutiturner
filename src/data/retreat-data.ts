@@ -192,11 +192,7 @@ Small group (max 10 people), led by Shruti Turner with guest physiotherapist.`,
       },
       {
         day: "Day 4 - Departure",
-        activities: [
-          "Morning yoga practice",
-          "Breakfast and closing circle",
-          "Depart by midday",
-        ],
+        activities: ["Morning yoga practice", "Breakfast and closing circle", "Depart by midday"],
       },
     ],
     accommodation:
@@ -206,7 +202,7 @@ Small group (max 10 people), led by Shruti Turner with guest physiotherapist.`,
       "Those managing autoimmune arthritis or chronic pain",
       "Anyone looking for evidence-based approaches to building capacity",
       "People who want small group coaching and community",
-      "Those ready to challenge the \"just rest\" narrative",
+      'Those ready to challenge the "just rest" narrative',
     ],
   },
   {
@@ -311,7 +307,5 @@ export function getRetreatById(id: string): Retreat | undefined {
 
 export function getUpcomingRetreats(): Retreat[] {
   const now = new Date();
-  return retreats.filter((retreat) =>
-    retreat.dates.some((date) => new Date(date.startDate) > now)
-  );
+  return retreats.filter((retreat) => retreat.dates.some((date) => new Date(date.startDate) > now));
 }

@@ -28,11 +28,7 @@ export interface ScheduleClassData {
   notes: string;
 }
 
-export function ScheduleClassModal({
-  open,
-  onOpenChange,
-  onSchedule,
-}: ScheduleClassModalProps) {
+export function ScheduleClassModal({ open, onOpenChange, onSchedule }: ScheduleClassModalProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -88,7 +84,7 @@ export function ScheduleClassModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
             {step === 1 ? "Schedule a Class" : `Schedule: ${template?.name}`}
@@ -103,32 +99,30 @@ export function ScheduleClassModal({
         {step === 1 ? (
           /* Step 1: Select template */
           <div className="space-y-2 py-2">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3 p-2 rounded-md bg-secondary/50">
-              <Info className="w-3.5 h-3.5 flex-shrink-0" />
+            <div className="text-muted-foreground bg-secondary/50 mb-3 flex items-center gap-2 rounded-md p-2 text-xs">
+              <Info className="h-3.5 w-3.5 flex-shrink-0" />
               <span>
-                Class descriptions, equipment lists, and SEO content are managed
-                in Contentful. Here you schedule when a class runs.
+                Class descriptions, equipment lists, and SEO content are managed in Contentful. Here
+                you schedule when a class runs.
               </span>
             </div>
             {classDetails.map((cls) => (
               <button
                 key={cls.id}
                 onClick={() => handleSelectTemplate(cls.id)}
-                className="w-full text-left p-3 rounded-lg border border-border hover:border-[#4B5B32]/30 hover:bg-secondary/30 transition-colors"
+                className="border-border hover:bg-secondary/30 w-full rounded-lg border p-3 text-left transition-colors hover:border-[#4B5B32]/30"
               >
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm">{cls.name}</span>
-                      <Badge className={`${getTypeColor(cls.type)} text-xs`}>
-                        {cls.type}
-                      </Badge>
+                      <Badge className={`${getTypeColor(cls.type)} text-xs`}>{cls.type}</Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-muted-foreground mt-1 text-xs">
                       {cls.duration} · {cls.level} · Max {cls.maxSpaces}
                     </p>
                   </div>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-muted-foreground text-xs">
                     Default: {cls.day} {cls.time}
                   </span>
                 </div>
@@ -140,14 +134,12 @@ export function ScheduleClassModal({
           <div className="space-y-4 py-2">
             {/* Template summary */}
             {template && (
-              <div className="p-3 rounded-lg bg-secondary/50 border">
+              <div className="bg-secondary/50 rounded-lg border p-3">
                 <div className="flex items-center gap-2">
-                  <Badge className={getTypeColor(template.type)}>
-                    {template.type}
-                  </Badge>
+                  <Badge className={getTypeColor(template.type)}>{template.type}</Badge>
                   <span className="text-sm">{template.name}</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-muted-foreground mt-1 text-xs">
                   {template.duration} · {template.level}
                 </p>
               </div>
@@ -156,7 +148,7 @@ export function ScheduleClassModal({
             {/* Date */}
             <div className="space-y-2">
               <Label htmlFor="class-date" className="flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
+                <Calendar className="h-4 w-4" />
                 Date
               </Label>
               <Input
@@ -171,7 +163,7 @@ export function ScheduleClassModal({
             {/* Time */}
             <div className="space-y-2">
               <Label htmlFor="class-time" className="flex items-center gap-2">
-                <Clock className="w-4 h-4" />
+                <Clock className="h-4 w-4" />
                 Time
               </Label>
               <Input
@@ -184,11 +176,8 @@ export function ScheduleClassModal({
 
             {/* Capacity */}
             <div className="space-y-2">
-              <Label
-                htmlFor="class-capacity"
-                className="flex items-center gap-2"
-              >
-                <Users className="w-4 h-4" />
+              <Label htmlFor="class-capacity" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
                 Max spaces
               </Label>
               <Input
@@ -200,7 +189,7 @@ export function ScheduleClassModal({
                 onChange={(e) => setMaxSpaces(parseInt(e.target.value) || 0)}
               />
               {template && maxSpaces !== template.maxSpaces && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Default for this class is {template.maxSpaces}
                 </p>
               )}

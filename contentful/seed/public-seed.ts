@@ -15,30 +15,14 @@ export const GLOBAL_SEED = {
   ],
 };
 
-export const PAGE_SEED = {
-  contentType: "pageContent",
-  entries: [
-    { slug: "home", title: "Home", seoTitle: "Strength & Yoga for Complex Bodies" },
-    { slug: "classes", title: "Classes", seoTitle: "Classes" },
-    { slug: "classes-yoga", title: "Yoga Classes", seoTitle: "Yoga Classes" },
-    { slug: "classes-strength", title: "Strength Classes", seoTitle: "Strength Classes" },
-    { slug: "classes-small-groups", title: "Small Group Programmes", seoTitle: "Small Group Programmes" },
-    { slug: "pt", title: "Personal Training", seoTitle: "Personal Training" },
-    { slug: "pricing", title: "Pricing", seoTitle: "Pricing" },
-    { slug: "about", title: "About", seoTitle: "About" },
-    { slug: "contact", title: "Contact", seoTitle: "Contact" },
-    { slug: "schedule", title: "Schedule", seoTitle: "Schedule" },
-    { slug: "retreats", title: "Retreats", seoTitle: "Retreats" },
-    { slug: "blog", title: "Blog", seoTitle: "Blog" },
-  ],
-};
-
 export const CLASS_TEMPLATE_SEED = {
   contentType: "classDefinition",
   entries: classDetails.map((c) => ({
     name: c.name,
     slug: c.slug,
     type: c.type,
+    classCategory:
+      c.type === "Yoga" ? "yoga" : c.type === "HIIT" ? "small-group" : "strength",
     level: c.level,
     defaultDay: c.day,
     defaultTime: c.time,
@@ -56,16 +40,71 @@ export const CLASS_TEMPLATE_SEED = {
   })),
 };
 
-const venueEntries = new Map<string, { slug: string; name: string; displayLocation: string; description: string; accommodationType: string }>();
+export const TESTIMONIAL_SEED = {
+  contentType: "testimonial",
+  entries: [
+    {
+      slug: "testimonial-sarah-yoga",
+      quote:
+        "Finally, a yoga teacher who understands that my body isn't just tight, it's complex.",
+      authorName: "Sarah",
+      authorCondition: "Hypermobility EDS",
+      service: "yoga",
+      featured: true,
+    },
+    {
+      slug: "testimonial-james-strength",
+      quote:
+        "I've built more strength in 12 weeks than in years of trying generic programmes.",
+      authorName: "James",
+      authorCondition: "Rheumatoid Arthritis",
+      service: "strength",
+      featured: true,
+    },
+    {
+      slug: "testimonial-elena-small-group",
+      quote:
+        "The small group programme gave me accountability and a community that actually gets it.",
+      authorName: "Elena",
+      authorCondition: "Chronic Fatigue",
+      service: "small-group",
+      featured: true,
+    },
+  ],
+};
+
+const venueEntries = new Map<
+  string,
+  {
+    slug: string;
+    name: string;
+    displayLocation: string;
+    description: string;
+    address: string;
+    accommodationOptions: string[];
+    travelInformation: string;
+    accommodationType: string;
+    facilities: string[];
+    accessibilityNotes: string;
+  }
+>();
 for (const retreat of retreats) {
-  const slug = retreat.slug === "virtual-immersion" ? "online" : retreat.location.toLowerCase().replace(/\s+/g, "-");
+  const slug =
+    retreat.slug === "virtual-immersion"
+      ? "online"
+      : retreat.location.toLowerCase().replace(/\s+/g, "-");
   if (!venueEntries.has(slug)) {
     venueEntries.set(slug, {
       slug,
       name: retreat.location,
       displayLocation: retreat.location,
       description: retreat.accommodation,
+      address: retreat.location,
+      accommodationOptions: [retreat.accommodation],
+      travelInformation: "Travel details provided after booking confirmation.",
       accommodationType: retreat.accommodation,
+      facilities: [],
+      accessibilityNotes: "Contact us to discuss accessibility requirements for this venue.",
     });
   }
 }
@@ -88,7 +127,8 @@ export const RETREAT_TEMPLATE_SEED = {
     notIncluded: r.notIncluded,
     seoTitle: `${r.title} - ${r.subtitle}`,
     seoDescription: r.shortDescription,
-    venueSlug: r.slug === "virtual-immersion" ? "online" : r.location.toLowerCase().replace(/\s+/g, "-"),
+    venueSlug:
+      r.slug === "virtual-immersion" ? "online" : r.location.toLowerCase().replace(/\s+/g, "-"),
   })),
 };
 
@@ -109,11 +149,288 @@ export const BLOG_SEED = {
   })),
 };
 
+export const LEGAL_DOCUMENT_SEED = {
+  contentType: "legalDocument",
+  entries: [
+    {
+      slug: "terms",
+      title: "Terms & Conditions",
+      version: "1.0",
+      effectiveDate: "2026-03-01",
+      body: "Replace with approved Terms & Conditions copy.",
+      seoTitle: "Terms & Conditions - Shruti Turner",
+      seoDescription: "Terms and conditions for services provided by Shruti Turner.",
+    },
+    {
+      slug: "privacy",
+      title: "Privacy Policy",
+      version: "1.0",
+      effectiveDate: "2026-03-01",
+      body: "Replace with approved Privacy Policy copy.",
+      seoTitle: "Privacy Policy - Shruti Turner",
+      seoDescription: "How Shruti Turner collects, uses, and protects personal data.",
+    },
+    {
+      slug: "cookies",
+      title: "Cookie Policy",
+      version: "1.0",
+      effectiveDate: "2026-03-01",
+      body: "Replace with approved Cookie Policy copy.",
+      seoTitle: "Cookie Policy - Shruti Turner",
+      seoDescription: "How cookies and tracking technologies are used on this site.",
+    },
+    {
+      slug: "health-declaration",
+      title: "Health Declaration & Informed Consent",
+      version: "1.0",
+      effectiveDate: "2026-03-01",
+      body: "Replace with approved Health Declaration copy.",
+      seoTitle: "Health Declaration - Shruti Turner",
+      seoDescription: "Health declaration and informed consent for participation.",
+    },
+  ],
+};
+
+export const FAQ_SEED = {
+  contentType: "faqItem",
+  entries: [
+    {
+      slug: "faq-pricing-class-credits",
+      question: "Can I use class credits on any class?",
+      answer:
+        "Yes. Drop-in, 3-class, and 10-class bundles can be used on any yoga, strength, or HIIT class in the schedule. Monthly membership classes work the same way.",
+      category: "pricing",
+      targetPage: "pricing",
+      sortOrder: 10,
+    },
+    {
+      slug: "faq-pricing-bundles-vs-memberships",
+      question: "What's the difference between bundles and memberships?",
+      answer:
+        "Bundles give you a set number of credits to use flexibly within a time window. Memberships give you a weekly class allowance that renews monthly. If you attend regularly, memberships are better value.",
+      category: "pricing",
+      sortOrder: 20,
+      targetPage: "pricing",
+    },
+    {
+      slug: "faq-pricing-refunds",
+      question: "Do you offer refunds?",
+      answer:
+        "For 1:1 training: no refunds after sessions begin, but we can pause for illness or flare. For class bundles: unused credits can be transferred. For memberships: cancel anytime with 30 days' notice. For retreats: see individual retreat cancellation policies.",
+      category: "pricing",
+      sortOrder: 30,
+      targetPage: "pricing",
+    },
+    {
+      slug: "faq-pricing-affordability",
+      question: "What if I can't afford these prices?",
+      answer:
+        "Limited sliding scale spots are available for people on disability benefits or experiencing financial hardship. Please contact us directly to discuss options.",
+      category: "pricing",
+      sortOrder: 40,
+      targetPage: "pricing",
+    },
+    {
+      slug: "faq-pricing-insurance",
+      question: "Is this covered by insurance?",
+      answer:
+        "Some private health insurance policies may cover 1:1 personal training or exercise therapy. Check with your provider. We can provide invoices and documentation to support your claim.",
+      category: "pricing",
+      sortOrder: 50,
+      targetPage: "pricing",
+    },
+    {
+      slug: "faq-pricing-1-1-pricing",
+      question: "How does the 1:1 pricing work?",
+      answer:
+        "Every 1:1 engagement is tailored. Your conditions, goals, and support needs determine the programming. Submit an enquiry and we will provide a clear quote with no obligation.",
+      category: "pricing",
+      sortOrder: 60,
+      targetPage: "pricing",
+    },
+    {
+      slug: "faq-retreats-experience",
+      question: "Do I need yoga or strength training experience?",
+      answer:
+        "No. Retreats are designed for all levels. Everything is adapted to your current capacity and condition, with individualized guidance.",
+      category: "retreats",
+      sortOrder: 10,
+      targetPage: "retreats",
+    },
+    {
+      slug: "faq-retreats-flare",
+      question: "What if I'm having a flare during the retreat?",
+      answer:
+        "All sessions are optional and adaptable. If you need to rest, that is fully supported. Retreats are designed for fluctuating symptoms.",
+      category: "retreats",
+      sortOrder: 20,
+      targetPage: "retreats",
+    },
+    {
+      slug: "faq-retreats-dietary",
+      question: "Can you accommodate dietary requirements?",
+      answer:
+        "Yes. Dietary requirements and allergies are accommodated. You can provide details during booking.",
+      category: "retreats",
+      sortOrder: 30,
+      targetPage: "retreats",
+    },
+    {
+      slug: "faq-retreats-cancellation",
+      question: "What's the cancellation policy?",
+      answer:
+        "Full refund if cancelled more than 60 days before retreat. 50% refund 30-60 days before. No refund within 30 days unless we can fill your space.",
+      category: "retreats",
+      sortOrder: 40,
+      targetPage: "retreats",
+    },
+    {
+      slug: "faq-retreats-accessibility",
+      question: "What if I have specific mobility needs?",
+      answer:
+        "Please contact us before booking to discuss your requirements so we can confirm venue and activity accessibility.",
+      category: "retreats",
+      sortOrder: 50,
+      targetPage: "retreats",
+    },
+  ],
+};
+
+export const TRUST_BADGE_SEED = {
+  contentType: "trustBadge",
+  entries: [
+    {
+      slug: "trust-phd-biomechanics",
+      title: "PhD Biomechanics",
+      description: "Evidence-informed coaching from an academic and practitioner background.",
+      iconKey: "graduation-cap",
+    },
+    {
+      slug: "trust-lived-experience",
+      title: "Lived Experience",
+      description: "Coaching shaped by lived experience with psoriatic arthritis.",
+      iconKey: "heart",
+    },
+  ],
+};
+
+export const CONTACT_BLOCK_SEED = {
+  contentType: "contactBlock",
+  entries: [
+    {
+      slug: "primary-contact",
+      title: "Get in touch",
+      body: "Questions about classes, retreats, or coaching? Email anytime.",
+      email: "hello@shrutiturner.com",
+      ctaLabel: "Contact Shruti",
+      ctaHref: "/contact",
+    },
+  ],
+};
+
+export const ANNOUNCEMENT_BANNER_SEED = {
+  contentType: "announcementBanner",
+  entries: [
+    {
+      slug: "default",
+      message: "New small-group programmes now open for booking.",
+      ctaLabel: "View schedule",
+      ctaHref: "/schedule",
+      active: false,
+    },
+  ],
+};
+
+export const LEAD_MAGNET_SEED = {
+  contentType: "leadMagnet",
+  entries: [
+    {
+      slug: "5-yoga-poses-strength",
+      title: "5 Yoga Poses That Actually Build Strength",
+      hookText: 'Get "5 Yoga Poses That Actually Build Strength" - free:',
+      emailSubject: "Your free guide: 5 Yoga Poses That Actually Build Strength",
+      emailPreviewText: "Here is your welcome gift and how to get started.",
+      emailBody:
+        "Hi {{firstName}},\n\nThanks for joining. Here is your guide: 5 Yoga Poses That Actually Build Strength.\n\n{{leadMagnetLink}}\n\nShruti",
+      deliveryType: "link",
+      assetUrl: "https://shrutiturner.com/resources/5-yoga-poses-strength",
+      active: true,
+    },
+  ],
+};
+
+export const NEWSLETTER_SIGNUP_CONTENT_SEED = {
+  contentType: "newsletterSignupContent",
+  entries: [
+    {
+      slug: "default",
+      activeLeadMagnetSlug: "5-yoga-poses-strength",
+      formPlaceholder: "your.email@example.com",
+      buttonLabel: "Subscribe",
+      successMessage: "You're subscribed! Check your inbox.",
+      consentText: "No spam. Unsubscribe anytime.",
+      popupTitle: "Get Evidence-Based Insights",
+      popupDescription:
+        "Join the mailing list for research-backed articles on strength, movement, and chronic illness management. No spam, unsubscribe anytime.",
+    },
+  ],
+};
+
+export const TRANSACTIONAL_EMAIL_TEMPLATE_SEED = {
+  contentType: "transactionalEmailTemplate",
+  entries: [
+    {
+      slug: "booking-confirmed",
+      templateKey: "bookingConfirmed",
+      subject: "Your booking is confirmed",
+      previewText: "Your class booking details are inside.",
+      htmlBody:
+        "<p>Hi {{firstName}},</p><p>Your booking for {{className}} is confirmed for {{date}} at {{time}}.</p>",
+      textBody:
+        "Hi {{firstName}}, your booking for {{className}} is confirmed for {{date}} at {{time}}.",
+      status: "draft",
+    },
+    {
+      slug: "class-cancelled",
+      templateKey: "classCancelled",
+      subject: "Class cancelled - important update",
+      previewText: "An update about your scheduled class.",
+      htmlBody:
+        "<p>Hi {{firstName}},</p><p>We are sorry, {{className}} on {{date}} has been cancelled.</p>",
+      textBody: "Hi {{firstName}}, {{className}} on {{date}} has been cancelled.",
+      status: "draft",
+    },
+  ],
+};
+
+export const NEWSLETTER_TEMPLATE_SEED = {
+  contentType: "newsletterTemplate",
+  entries: [
+    {
+      slug: "monthly-update-default",
+      title: "Monthly Update",
+      subject: "This month: classes, resources, and upcoming retreats",
+      previewText: "Your monthly update from Shruti Turner.",
+      body: "Replace with newsletter body content.",
+      status: "draft",
+    },
+  ],
+};
+
 export const SEED_GROUPS = [
   GLOBAL_SEED,
-  PAGE_SEED,
   CLASS_TEMPLATE_SEED,
   RETREAT_VENUE_SEED,
   RETREAT_TEMPLATE_SEED,
   BLOG_SEED,
+  TESTIMONIAL_SEED,
+  LEGAL_DOCUMENT_SEED,
+  FAQ_SEED,
+  TRUST_BADGE_SEED,
+  CONTACT_BLOCK_SEED,
+  ANNOUNCEMENT_BANNER_SEED,
+  LEAD_MAGNET_SEED,
+  NEWSLETTER_SIGNUP_CONTENT_SEED,
+  TRANSACTIONAL_EMAIL_TEMPLATE_SEED,
+  NEWSLETTER_TEMPLATE_SEED,
 ];

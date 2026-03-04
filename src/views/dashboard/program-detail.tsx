@@ -5,15 +5,7 @@ import { useParams } from "next/navigation";
 import { DashboardLayout } from "../../components/dashboard-layout";
 import { Button } from "../../components/ui/button";
 import { useState } from "react";
-import {
-  ArrowLeft,
-  Video,
-  Calendar,
-  Check,
-  CheckCircle,
-  Users,
-  Play,
-} from "lucide-react";
+import { ArrowLeft, Video, Calendar, Check, CheckCircle, Users, Play } from "lucide-react";
 import { PreJoinLobby } from "../../components/video/pre-join-lobby";
 import { VideoRoom } from "../../components/video/video-room";
 import { SEO } from "../../components/seo";
@@ -36,12 +28,49 @@ export function DashboardProgramDetail() {
     totalSessions: 12,
     cohortSize: 5,
     sessions: [
-      { week: 1, session: 1, title: "Assessment & Baseline", completed: true, recordingAvailable: true },
-      { week: 1, session: 2, title: "Rotator Cuff Foundations", completed: true, recordingAvailable: true },
-      { week: 2, session: 1, title: "Scapular Stability", completed: true, recordingAvailable: true },
-      { week: 2, session: 2, title: "Overhead Mobility Prep", completed: false, upcoming: true, recordingAvailable: false },
-      { week: 3, session: 1, title: "Loaded Overhead Work", completed: false, recordingAvailable: false },
-      { week: 3, session: 2, title: "Integration & Practice", completed: false, recordingAvailable: false },
+      {
+        week: 1,
+        session: 1,
+        title: "Assessment & Baseline",
+        completed: true,
+        recordingAvailable: true,
+      },
+      {
+        week: 1,
+        session: 2,
+        title: "Rotator Cuff Foundations",
+        completed: true,
+        recordingAvailable: true,
+      },
+      {
+        week: 2,
+        session: 1,
+        title: "Scapular Stability",
+        completed: true,
+        recordingAvailable: true,
+      },
+      {
+        week: 2,
+        session: 2,
+        title: "Overhead Mobility Prep",
+        completed: false,
+        upcoming: true,
+        recordingAvailable: false,
+      },
+      {
+        week: 3,
+        session: 1,
+        title: "Loaded Overhead Work",
+        completed: false,
+        recordingAvailable: false,
+      },
+      {
+        week: 3,
+        session: 2,
+        title: "Integration & Practice",
+        completed: false,
+        recordingAvailable: false,
+      },
     ],
   };
 
@@ -51,33 +80,34 @@ export function DashboardProgramDetail() {
   if (stage === "recording" && activeRecording) {
     const session = program.sessions.find((s) => s.title === activeRecording);
     return (
-      <div className="fixed inset-0 z-[100] bg-[#1a1a2e] flex flex-col">
+      <div className="fixed inset-0 z-[100] flex flex-col bg-[#1a1a2e]">
         <SEO title={`Recording: ${activeRecording} - Shruti Turner`} noIndex />
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
+        <div className="flex items-center justify-between border-b border-white/10 p-4">
           <div className="text-white">
             <p className="text-sm text-white/50">Programme Recording</p>
-            <p className="text-base">{program.title}: {activeRecording}</p>
+            <p className="text-base">
+              {program.title}: {activeRecording}
+            </p>
           </div>
           <Button
             variant="ghost"
             size="sm"
             className="text-white/70 hover:text-white"
-            onClick={() => { setStage("detail"); setActiveRecording(null); }}
+            onClick={() => {
+              setStage("detail");
+              setActiveRecording(null);
+            }}
           >
             Close
           </Button>
         </div>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <div className="w-20 h-20 rounded-full bg-[#4B5B32]/30 mx-auto flex items-center justify-center">
-              <Play className="w-10 h-10 text-[#B5C49B] ml-1" />
+        <div className="flex flex-1 items-center justify-center">
+          <div className="space-y-4 text-center">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#4B5B32]/30">
+              <Play className="ml-1 h-10 w-10 text-[#B5C49B]" />
             </div>
-            <p className="text-white/70 text-sm">
-              Session recording playback
-            </p>
-            <p className="text-white/40 text-xs">
-              [In production: Daily.co recording embed]
-            </p>
+            <p className="text-sm text-white/70">Session recording playback</p>
+            <p className="text-xs text-white/40">[In production: Daily.co recording embed]</p>
           </div>
         </div>
       </div>
@@ -88,10 +118,7 @@ export function DashboardProgramDetail() {
   if (stage === "pre-join") {
     return (
       <>
-        <SEO
-          title={`Joining ${upcomingSession?.title || program.title} - Shruti Turner`}
-          noIndex
-        />
+        <SEO title={`Joining ${upcomingSession?.title || program.title} - Shruti Turner`} noIndex />
         <PreJoinLobby
           className={`${program.title}: ${upcomingSession?.title || "Session"}`}
           classTime="11:00"
@@ -118,10 +145,7 @@ export function DashboardProgramDetail() {
   if (stage === "live") {
     return (
       <>
-        <SEO
-          title={`${upcomingSession?.title || program.title} - Live - Shruti Turner`}
-          noIndex
-        />
+        <SEO title={`${upcomingSession?.title || program.title} - Live - Shruti Turner`} noIndex />
         <VideoRoom
           mode="small-group"
           isInstructor={false}
@@ -138,22 +162,22 @@ export function DashboardProgramDetail() {
   // Post-session
   if (stage === "post-session") {
     return (
-      <div className="fixed inset-0 z-[100] bg-[#1a1a2e] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#1a1a2e] p-4">
         <SEO title={`Session Complete - Shruti Turner`} noIndex />
-        <div className="bg-[#252540] border border-white/10 rounded-xl max-w-sm w-full p-8 text-center space-y-6">
-          <div className="w-16 h-16 rounded-full bg-[#4B5B32]/20 mx-auto flex items-center justify-center">
-            <CheckCircle className="w-8 h-8 text-[#B5C49B]" />
+        <div className="w-full max-w-sm space-y-6 rounded-xl border border-white/10 bg-[#252540] p-8 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#4B5B32]/20">
+            <CheckCircle className="h-8 w-8 text-[#B5C49B]" />
           </div>
           <div>
             <h2 className="text-xl text-white">Session complete</h2>
-            <p className="text-sm text-white/50 mt-2 leading-relaxed">
+            <p className="mt-2 text-sm leading-relaxed text-white/50">
               Well done. Your progress has been updated.
             </p>
           </div>
           <div className="space-y-3">
             <Button
               onClick={() => setStage("detail")}
-              className="w-full bg-[#4B5B32] hover:bg-[#4B5B32]/90 text-white"
+              className="w-full bg-[#4B5B32] text-white hover:bg-[#4B5B32]/90"
             >
               Back to Programme
             </Button>
@@ -168,24 +192,24 @@ export function DashboardProgramDetail() {
       <nav className="mb-6">
         <Link
           href="/dashboard/programs"
-          className="inline-flex items-center text-sm text-muted-foreground hover:text-primary"
+          className="text-muted-foreground hover:text-primary inline-flex items-center text-sm"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Programs
         </Link>
       </nav>
 
-      <div className="grid lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="space-y-8 lg:col-span-2">
           <div>
-            <h1 className="text-3xl mb-2">{program.title}</h1>
-            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+            <h1 className="mb-2 text-3xl">{program.title}</h1>
+            <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
               <span className="flex items-center gap-1">
-                <Calendar className="w-4 h-4" />
+                <Calendar className="h-4 w-4" />
                 {program.duration}
               </span>
               <span className="flex items-center gap-1">
-                <Users className="w-4 h-4" />
+                <Users className="h-4 w-4" />
                 {program.cohortSize} in cohort
               </span>
             </div>
@@ -193,15 +217,15 @@ export function DashboardProgramDetail() {
 
           {/* Progress */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="mb-2 flex items-center justify-between">
               <h2 className="text-xl">Progress</h2>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-muted-foreground text-sm">
                 {program.progress} / {program.totalSessions} sessions
               </span>
             </div>
-            <div className="w-full bg-secondary rounded-full h-3">
+            <div className="bg-secondary h-3 w-full rounded-full">
               <div
-                className="bg-[#4B5B32] h-3 rounded-full transition-all"
+                className="h-3 rounded-full bg-[#4B5B32] transition-all"
                 style={{ width: `${(program.progress / program.totalSessions) * 100}%` }}
               />
             </div>
@@ -209,36 +233,36 @@ export function DashboardProgramDetail() {
 
           {/* Sessions */}
           <div>
-            <h2 className="text-xl mb-4">Sessions</h2>
+            <h2 className="mb-4 text-xl">Sessions</h2>
             <div className="space-y-3">
               {program.sessions.map((session, i) => (
                 <div
                   key={i}
-                  className={`border rounded-lg p-4 flex items-center justify-between ${
+                  className={`flex items-center justify-between rounded-lg border p-4 ${
                     session.completed
-                      ? "bg-[#4B5B32]/5 border-[#4B5B32]/20"
+                      ? "border-[#4B5B32]/20 bg-[#4B5B32]/5"
                       : session.upcoming
-                      ? "border-primary"
-                      : ""
+                        ? "border-primary"
+                        : ""
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      className={`flex h-8 w-8 items-center justify-center rounded-full ${
                         session.completed
                           ? "bg-[#4B5B32] text-[#FAFAF8]"
                           : "bg-secondary text-muted-foreground"
                       }`}
                     >
                       {session.completed ? (
-                        <Check className="w-4 h-4" />
+                        <Check className="h-4 w-4" />
                       ) : (
                         <span className="text-xs">W{session.week}</span>
                       )}
                     </div>
                     <div>
                       <p className="text-sm">{session.title}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-muted-foreground text-xs">
                         Week {session.week}, Session {session.session}
                       </p>
                     </div>
@@ -273,12 +297,12 @@ export function DashboardProgramDetail() {
 
         {/* Sidebar */}
         <div>
-          <div className="bg-background border rounded-lg p-6 space-y-4 sticky top-6">
+          <div className="bg-background sticky top-6 space-y-4 rounded-lg border p-6">
             <h3 className="text-lg">Your Cohort</h3>
             <div className="space-y-3">
               {["You", "Emma T.", "Marcus L.", "Priya K.", "Alex R."].map((name, i) => (
                 <div key={i} className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-xs">
+                  <div className="bg-secondary flex h-8 w-8 items-center justify-center rounded-full text-xs">
                     {name[0]}
                   </div>
                   <span className="text-sm">{name}</span>

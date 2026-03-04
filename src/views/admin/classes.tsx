@@ -27,7 +27,10 @@ const STATUS_ICON: Record<string, typeof Play> = {
   cancelled: XCircle,
 };
 
-const STATUS_BADGE: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+const STATUS_BADGE: Record<
+  string,
+  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
+> = {
   scheduled: { label: "Scheduled", variant: "secondary" },
   live: { label: "Live", variant: "default" },
   completed: { label: "Completed", variant: "outline" },
@@ -68,7 +71,7 @@ export function AdminClasses() {
             onClick={() => setShowScheduleModal(true)}
             className="bg-[#4B5B32] hover:bg-[#4B5B32]/90"
           >
-            <Calendar className="w-4 h-4 mr-2" />
+            <Calendar className="mr-2 h-4 w-4" />
             Schedule Class
           </Button>
         </div>
@@ -82,14 +85,14 @@ export function AdminClasses() {
         />
 
         {/* Quick stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <Calendar className="w-5 h-5 text-[#4B5B32]" />
+                <Calendar className="h-5 w-5 text-[#4B5B32]" />
                 <div>
                   <p className="text-2xl text-[#2E1F33]">{scheduled.length}</p>
-                  <p className="text-xs text-muted-foreground">Upcoming classes</p>
+                  <p className="text-muted-foreground text-xs">Upcoming classes</p>
                 </div>
               </div>
             </CardContent>
@@ -97,12 +100,12 @@ export function AdminClasses() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <Users className="w-5 h-5 text-[#4B5B32]" />
+                <Users className="h-5 w-5 text-[#4B5B32]" />
                 <div>
                   <p className="text-2xl text-[#2E1F33]">
                     {scheduled.reduce((s, c) => s + c.bookedCount, 0)}
                   </p>
-                  <p className="text-xs text-muted-foreground">Total bookings (upcoming)</p>
+                  <p className="text-muted-foreground text-xs">Total bookings (upcoming)</p>
                 </div>
               </div>
             </CardContent>
@@ -110,10 +113,10 @@ export function AdminClasses() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-[#4B5B32]" />
+                <CheckCircle className="h-5 w-5 text-[#4B5B32]" />
                 <div>
                   <p className="text-2xl text-[#2E1F33]">{attendanceRate}%</p>
-                  <p className="text-xs text-muted-foreground">Attendance rate (completed)</p>
+                  <p className="text-muted-foreground text-xs">Attendance rate (completed)</p>
                 </div>
               </div>
             </CardContent>
@@ -125,7 +128,7 @@ export function AdminClasses() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 rounded-md border border-border bg-background text-sm"
+            className="border-border bg-background rounded-md border px-3 py-2 text-sm"
           >
             <option value="all">All statuses</option>
             <option value="scheduled">Scheduled</option>
@@ -136,7 +139,7 @@ export function AdminClasses() {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-3 py-2 rounded-md border border-border bg-background text-sm"
+            className="border-border bg-background rounded-md border px-3 py-2 text-sm"
           >
             <option value="all">All types</option>
             <option value="yoga">Yoga</option>
@@ -153,7 +156,7 @@ export function AdminClasses() {
           {filtered.length === 0 && (
             <Card>
               <CardContent className="py-12 text-center">
-                <Calendar className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                <Calendar className="text-muted-foreground mx-auto mb-3 h-8 w-8" />
                 <p className="text-muted-foreground">No classes match your filters.</p>
               </CardContent>
             </Card>
@@ -168,55 +171,51 @@ function ClassRow({ classInstance }: { classInstance: AdminClassInstance }) {
   const statusBadge = STATUS_BADGE[classInstance.status];
   const StatusIcon = STATUS_ICON[classInstance.status];
   const typeColor = getTypeColor(classInstance.classType);
-  const fillPercent = Math.round(
-    (classInstance.bookedCount / classInstance.maxSpaces) * 100
-  );
+  const fillPercent = Math.round((classInstance.bookedCount / classInstance.maxSpaces) * 100);
 
   return (
     <Link href={`/admin/classes/${classInstance.id}`}>
-      <Card className="hover:border-[#4B5B32]/30 transition-colors cursor-pointer">
+      <Card className="cursor-pointer transition-colors hover:border-[#4B5B32]/30">
         <CardContent className="py-4">
           <div className="flex items-center gap-4">
             {/* Status icon */}
             <div
-              className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                classInstance.status === "live"
-                  ? "bg-[#4B5B32] text-[#FAFAF8]"
-                  : "bg-secondary"
+              className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${
+                classInstance.status === "live" ? "bg-[#4B5B32] text-[#FAFAF8]" : "bg-secondary"
               }`}
             >
-              <StatusIcon className="w-5 h-5" />
+              <StatusIcon className="h-5 w-5" />
             </div>
 
             {/* Info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm">{classInstance.className}</p>
                 <Badge className={typeColor}>{classInstance.classType}</Badge>
                 <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-muted-foreground mt-1 text-xs">
                 {classInstance.day} {classInstance.date} · {classInstance.time} ·{" "}
                 {classInstance.duration}
               </p>
             </div>
 
             {/* Capacity bar */}
-            <div className="hidden md:block w-32">
-              <div className="flex justify-between text-xs mb-1">
+            <div className="hidden w-32 md:block">
+              <div className="mb-1 flex justify-between text-xs">
                 <span>
                   {classInstance.bookedCount}/{classInstance.maxSpaces}
                 </span>
                 <span className="text-muted-foreground">{fillPercent}%</span>
               </div>
-              <div className="h-2 bg-secondary rounded-full overflow-hidden">
+              <div className="bg-secondary h-2 overflow-hidden rounded-full">
                 <div
                   className={`h-full rounded-full ${
                     fillPercent >= 90
                       ? "bg-destructive"
                       : fillPercent >= 70
-                      ? "bg-amber-500"
-                      : "bg-[#4B5B32]"
+                        ? "bg-amber-500"
+                        : "bg-[#4B5B32]"
                   }`}
                   style={{ width: `${fillPercent}%` }}
                 />
@@ -226,11 +225,11 @@ function ClassRow({ classInstance }: { classInstance: AdminClassInstance }) {
             {/* Action hint */}
             {classInstance.status === "scheduled" && (
               <Button variant="outline" size="sm" className="hidden sm:flex">
-                <Play className="w-3 h-3 mr-1" /> Start
+                <Play className="mr-1 h-3 w-3" /> Start
               </Button>
             )}
 
-            <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <ChevronRight className="text-muted-foreground h-4 w-4 flex-shrink-0" />
           </div>
         </CardContent>
       </Card>

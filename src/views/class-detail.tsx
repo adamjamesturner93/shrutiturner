@@ -28,7 +28,10 @@ interface ClassDetailPageProps {
   allClasses?: ClassDefinitionContent[];
 }
 
-export function ClassDetailPage({ classDetail: classDetailProp, allClasses }: ClassDetailPageProps) {
+export function ClassDetailPage({
+  classDetail: classDetailProp,
+  allClasses,
+}: ClassDetailPageProps) {
   const { id: slug } = useParams<{ id: string }>();
   const classDetail = classDetailProp ?? classDetails.find((c) => c.slug === slug);
   const { fmtTimeStr } = useI18n();
@@ -37,11 +40,11 @@ export function ClassDetailPage({ classDetail: classDetailProp, allClasses }: Cl
     return (
       <Layout>
         <section className="py-20 md:py-28">
-          <div className="container mx-auto px-4 max-w-3xl text-center space-y-6">
+          <div className="container mx-auto max-w-3xl space-y-6 px-4 text-center">
             <h1 className="text-4xl">Class Not Found</h1>
             <p className="text-muted-foreground text-lg">
-              Sorry, we couldn't find that class. It may have been renamed or
-              removed from the schedule.
+              Sorry, we couldn't find that class. It may have been renamed or removed from the
+              schedule.
             </p>
             <Link href="/schedule">
               <Button size="lg">
@@ -57,11 +60,11 @@ export function ClassDetailPage({ classDetail: classDetailProp, allClasses }: Cl
 
   const typeIcon =
     classDetail.type === "Yoga" ? (
-      <Heart className="w-5 h-5" />
+      <Heart className="h-5 w-5" />
     ) : classDetail.type === "HIIT" ? (
-      <Zap className="w-5 h-5" />
+      <Zap className="h-5 w-5" />
     ) : (
-      <Dumbbell className="w-5 h-5" />
+      <Dumbbell className="h-5 w-5" />
     );
 
   // Get related classes (same type, excluding current)
@@ -71,21 +74,19 @@ export function ClassDetailPage({ classDetail: classDetailProp, allClasses }: Cl
   return (
     <Layout>
       {/* Hero */}
-      <section className="bg-[#2E1F33] text-[#FAFAF8] py-16 md:py-24">
-        <div className="container mx-auto px-4 max-w-4xl">
+      <section className="bg-[#2E1F33] py-16 text-[#FAFAF8] md:py-24">
+        <div className="container mx-auto max-w-4xl px-4">
           {/* Breadcrumb */}
           <nav className="mb-8">
             <ol className="flex items-center gap-2 text-sm text-[#FAFAF8]/60">
               <li>
-                <Link href="/" className="hover:text-[#B5C49B] transition-colors">
+                <Link href="/" className="transition-colors hover:text-[#B5C49B]">
                   Home
                 </Link>
               </li>
               <li>/</li>
               <li>
-                <Link href="/schedule"
-                  className="hover:text-[#B5C49B] transition-colors"
-                >
+                <Link href="/schedule" className="transition-colors hover:text-[#B5C49B]">
                   Schedule
                 </Link>
               </li>
@@ -94,49 +95,43 @@ export function ClassDetailPage({ classDetail: classDetailProp, allClasses }: Cl
             </ol>
           </nav>
 
-          <div className="flex flex-wrap items-center gap-3 mb-6">
-            <Badge
-              variant="outline"
-              className={`${getTypeColor(classDetail.type)} border`}
-            >
+          <div className="mb-6 flex flex-wrap items-center gap-3">
+            <Badge variant="outline" className={`${getTypeColor(classDetail.type)} border`}>
               {typeIcon}
               <span className="ml-1">{classDetail.type}</span>
             </Badge>
-            <Badge
-              variant="outline"
-              className="border-[#FAFAF8]/30 text-[#FAFAF8]/80"
-            >
+            <Badge variant="outline" className="border-[#FAFAF8]/30 text-[#FAFAF8]/80">
               {classDetail.level}
             </Badge>
           </div>
 
-          <h1 className="text-4xl md:text-5xl lg:text-6xl mb-6 leading-tight">
+          <h1 className="mb-6 text-4xl leading-tight md:text-5xl lg:text-6xl">
             {classDetail.name}
           </h1>
 
-          <p className="text-xl md:text-2xl text-[#FAFAF8]/90 leading-relaxed mb-8 max-w-3xl">
+          <p className="mb-8 max-w-3xl text-xl leading-relaxed text-[#FAFAF8]/90 md:text-2xl">
             {classDetail.shortDescription}
           </p>
 
           {/* Quick Stats */}
-          <div className="flex flex-wrap gap-6 mb-10">
+          <div className="mb-10 flex flex-wrap gap-6">
             <div className="flex items-center gap-2 text-[#B5C49B]">
-              <Calendar className="w-5 h-5" />
+              <Calendar className="h-5 w-5" />
               <span>{classDetail.day}s</span>
             </div>
             <div className="flex items-center gap-2 text-[#B5C49B]">
-              <Clock className="w-5 h-5" />
+              <Clock className="h-5 w-5" />
               <span>
                 {fmtTimeStr(classDetail.time)} · {classDetail.duration}
               </span>
             </div>
             <div className="flex items-center gap-2 text-[#B5C49B]">
-              <Users className="w-5 h-5" />
+              <Users className="h-5 w-5" />
               <span>Max {classDetail.maxSpaces} people</span>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row">
             <BookClassButton
               classSlug={classDetail.slug}
               className={classDetail.name}
@@ -148,7 +143,7 @@ export function ClassDetailPage({ classDetail: classDetailProp, allClasses }: Cl
               <Button
                 size="lg"
                 variant="outline"
-                className="bg-transparent border-[#B5C49B] text-[#B5C49B] hover:bg-[#B5C49B]/10"
+                className="border-[#B5C49B] bg-transparent text-[#B5C49B] hover:bg-[#B5C49B]/10"
               >
                 View Full Schedule
               </Button>
@@ -159,9 +154,9 @@ export function ClassDetailPage({ classDetail: classDetailProp, allClasses }: Cl
 
       {/* Long Description */}
       <section className="py-16 md:py-20">
-        <div className="container mx-auto px-4 max-w-3xl">
-          <h2 className="text-3xl md:text-4xl mb-8">About This Class</h2>
-          <div className="space-y-4 text-muted-foreground leading-relaxed">
+        <div className="container mx-auto max-w-3xl px-4">
+          <h2 className="mb-8 text-3xl md:text-4xl">About This Class</h2>
+          <div className="text-muted-foreground space-y-4 leading-relaxed">
             {classDetail.longDescription.split("\n\n").map((paragraph, i) => (
               <p key={i}>{paragraph}</p>
             ))}
@@ -170,21 +165,21 @@ export function ClassDetailPage({ classDetail: classDetailProp, allClasses }: Cl
       </section>
 
       {/* What to Expect + Who It's For */}
-      <section className="py-16 md:py-20 bg-secondary/20">
-        <div className="container mx-auto px-4 max-w-5xl">
-          <div className="grid md:grid-cols-2 gap-12">
+      <section className="bg-secondary/20 py-16 md:py-20">
+        <div className="container mx-auto max-w-5xl px-4">
+          <div className="grid gap-12 md:grid-cols-2">
             {/* What to Expect */}
             <div>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <Target className="w-5 h-5 text-primary" />
+              <div className="mb-6 flex items-center gap-3">
+                <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-lg">
+                  <Target className="text-primary h-5 w-5" />
                 </div>
                 <h2 className="text-2xl md:text-3xl">What to Expect</h2>
               </div>
               <ul className="space-y-4">
                 {classDetail.whatToExpect.map((item, i) => (
                   <li key={i} className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-[#4B5B32] flex-shrink-0 mt-0.5" />
+                    <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
                     <span className="text-muted-foreground">{item}</span>
                   </li>
                 ))}
@@ -193,16 +188,16 @@ export function ClassDetailPage({ classDetail: classDetailProp, allClasses }: Cl
 
             {/* Who It's For */}
             <div>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <Users className="w-5 h-5 text-primary" />
+              <div className="mb-6 flex items-center gap-3">
+                <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-lg">
+                  <Users className="text-primary h-5 w-5" />
                 </div>
                 <h2 className="text-2xl md:text-3xl">Who It's For</h2>
               </div>
               <ul className="space-y-4">
                 {classDetail.whoItsFor.map((item, i) => (
                   <li key={i} className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-[#4B5B32] flex-shrink-0 mt-0.5" />
+                    <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
                     <span className="text-muted-foreground">{item}</span>
                   </li>
                 ))}
@@ -214,15 +209,12 @@ export function ClassDetailPage({ classDetail: classDetailProp, allClasses }: Cl
 
       {/* Benefits */}
       <section className="py-16 md:py-20">
-        <div className="container mx-auto px-4 max-w-5xl">
-          <h2 className="text-3xl md:text-4xl text-center mb-12">Benefits</h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        <div className="container mx-auto max-w-5xl px-4">
+          <h2 className="mb-12 text-center text-3xl md:text-4xl">Benefits</h2>
+          <div className="mx-auto grid max-w-4xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {classDetail.benefits.map((benefit, i) => (
-              <div
-                key={i}
-                className="bg-background border rounded-lg p-6 flex items-start gap-3"
-              >
-                <CheckCircle className="w-5 h-5 text-[#4B5B32] flex-shrink-0 mt-0.5" />
+              <div key={i} className="bg-background flex items-start gap-3 rounded-lg border p-6">
+                <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
                 <span className="text-muted-foreground">{benefit}</span>
               </div>
             ))}
@@ -231,15 +223,15 @@ export function ClassDetailPage({ classDetail: classDetailProp, allClasses }: Cl
       </section>
 
       {/* Equipment */}
-      <section className="py-16 md:py-20 bg-secondary/20">
-        <div className="container mx-auto px-4 max-w-3xl">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Info className="w-5 h-5 text-primary" />
+      <section className="bg-secondary/20 py-16 md:py-20">
+        <div className="container mx-auto max-w-3xl px-4">
+          <div className="mb-8 flex items-center gap-3">
+            <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-lg">
+              <Info className="text-primary h-5 w-5" />
             </div>
             <h2 className="text-2xl md:text-3xl">Equipment Needed</h2>
           </div>
-          <div className="bg-background border rounded-lg p-6 md:p-8">
+          <div className="bg-background rounded-lg border p-6 md:p-8">
             <ul className="space-y-3">
               {classDetail.equipment.map((item, i) => (
                 <li key={i} className="flex items-start gap-3">
@@ -248,10 +240,9 @@ export function ClassDetailPage({ classDetail: classDetailProp, allClasses }: Cl
                 </li>
               ))}
             </ul>
-            <p className="text-sm text-muted-foreground mt-6 pt-4 border-t">
-              Don't have everything? Don't worry — Shruti provides alternatives
-              and substitutions at the start of each class. Household items work
-              perfectly well.
+            <p className="text-muted-foreground mt-6 border-t pt-4 text-sm">
+              Don't have everything? Don't worry — Shruti provides alternatives and substitutions at
+              the start of each class. Household items work perfectly well.
             </p>
           </div>
         </div>
@@ -259,26 +250,27 @@ export function ClassDetailPage({ classDetail: classDetailProp, allClasses }: Cl
 
       {/* Instructor */}
       <section className="py-16 md:py-20">
-        <div className="container mx-auto px-4 max-w-3xl">
-          <h2 className="text-2xl md:text-3xl mb-6">Your Instructor</h2>
-          <div className="bg-background border rounded-lg p-6 md:p-8">
-            <div className="flex flex-col sm:flex-row gap-6 items-start">
-              <div className="w-20 h-20 rounded-full bg-[#4B5B32]/10 flex items-center justify-center flex-shrink-0">
+        <div className="container mx-auto max-w-3xl px-4">
+          <h2 className="mb-6 text-2xl md:text-3xl">Your Instructor</h2>
+          <div className="bg-background rounded-lg border p-6 md:p-8">
+            <div className="flex flex-col items-start gap-6 sm:flex-row">
+              <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-full bg-[#4B5B32]/10">
                 <span className="text-2xl text-[#4B5B32]">ST</span>
               </div>
               <div className="space-y-3">
                 <h3 className="text-xl">{classDetail.instructor}</h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  Strength and yoga coach specialising in rehabilitation-informed
-                  training for chronic illness and complex bodies. Living with
-                  psoriatic arthritis. PhD Biomechanics, PGDip Rehabilitation,
-                  650hr Yoga Teacher Training, Level 4 Personal Trainer.
+                  Strength and yoga coach specialising in rehabilitation-informed training for
+                  chronic illness and complex bodies. Living with psoriatic arthritis. PhD
+                  Biomechanics, PGDip Rehabilitation, 650hr Yoga Teacher Training, Level 4 Personal
+                  Trainer.
                 </p>
-                <Link href="/pt"
-                  className="text-primary hover:underline inline-flex items-center gap-1 text-sm"
+                <Link
+                  href="/pt"
+                  className="text-primary inline-flex items-center gap-1 text-sm hover:underline"
                 >
                   Work with Shruti 1:1
-                  <ArrowRight className="w-3 h-3" />
+                  <ArrowRight className="h-3 w-3" />
                 </Link>
               </div>
             </div>
@@ -288,42 +280,35 @@ export function ClassDetailPage({ classDetail: classDetailProp, allClasses }: Cl
 
       {/* Related Classes */}
       {relatedClasses.length > 0 && (
-        <section className="py-16 md:py-20 bg-secondary/20">
-          <div className="container mx-auto px-4 max-w-5xl">
-            <h2 className="text-3xl md:text-4xl text-center mb-12">
+        <section className="bg-secondary/20 py-16 md:py-20">
+          <div className="container mx-auto max-w-5xl px-4">
+            <h2 className="mb-12 text-center text-3xl md:text-4xl">
               More {classDetail.type} Classes
             </h2>
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid gap-6 md:grid-cols-3">
               {relatedClasses.map((relClass) => (
                 <Link
                   key={relClass.slug}
                   href={`/schedule/${relClass.slug}`}
-                  className="bg-background border rounded-lg p-6 space-y-3 hover:shadow-md transition-shadow group"
+                  className="bg-background group space-y-3 rounded-lg border p-6 transition-shadow hover:shadow-md"
                 >
                   <div className="flex items-center justify-between">
-                    <Badge
-                      variant="outline"
-                      className={getTypeColor(relClass.type)}
-                    >
+                    <Badge variant="outline" className={getTypeColor(relClass.type)}>
                       {relClass.type}
                     </Badge>
-                    <span className="text-sm text-muted-foreground">
-                      {relClass.level}
-                    </span>
+                    <span className="text-muted-foreground text-sm">{relClass.level}</span>
                   </div>
-                  <h3 className="text-lg group-hover:text-primary transition-colors">
+                  <h3 className="group-hover:text-primary text-lg transition-colors">
                     {relClass.name}
                   </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {relClass.shortDescription}
-                  </p>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground pt-2">
+                  <p className="text-muted-foreground text-sm">{relClass.shortDescription}</p>
+                  <div className="text-muted-foreground flex items-center gap-4 pt-2 text-sm">
                     <span className="flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5" />
+                      <Calendar className="h-3.5 w-3.5" />
                       {relClass.day}
                     </span>
                     <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
+                      <Clock className="h-3.5 w-3.5" />
                       {fmtTimeStr(relClass.time)}
                     </span>
                   </div>
@@ -335,21 +320,15 @@ export function ClassDetailPage({ classDetail: classDetailProp, allClasses }: Cl
       )}
 
       {/* CTA */}
-      <section className="bg-[#4B5B32] text-[#FAFAF8] py-16 md:py-20">
-        <div className="container mx-auto px-4 max-w-3xl text-center space-y-8">
-          <h2 className="text-3xl md:text-4xl">
-            Ready to Try {classDetail.name}?
-          </h2>
-          <p className="text-lg opacity-90 leading-relaxed">
-            Join live or catch the replay. Drop-in, class packs, and monthly
-            memberships available.
+      <section className="bg-[#4B5B32] py-16 text-[#FAFAF8] md:py-20">
+        <div className="container mx-auto max-w-3xl space-y-8 px-4 text-center">
+          <h2 className="text-3xl md:text-4xl">Ready to Try {classDetail.name}?</h2>
+          <p className="text-lg leading-relaxed opacity-90">
+            Join live or catch the replay. Drop-in, class packs, and monthly memberships available.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <Link href="/pricing">
-              <Button
-                size="lg"
-                className="bg-[#FAFAF8] text-[#4B5B32] hover:bg-[#FAFAF8]/90"
-              >
+              <Button size="lg" className="bg-[#FAFAF8] text-[#4B5B32] hover:bg-[#FAFAF8]/90">
                 View Pricing & Book
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -358,7 +337,7 @@ export function ClassDetailPage({ classDetail: classDetailProp, allClasses }: Cl
               <Button
                 size="lg"
                 variant="outline"
-                className="bg-transparent border-[#FAFAF8] text-[#FAFAF8] hover:bg-[#FAFAF8]/10"
+                className="border-[#FAFAF8] bg-transparent text-[#FAFAF8] hover:bg-[#FAFAF8]/10"
               >
                 Full Schedule
               </Button>

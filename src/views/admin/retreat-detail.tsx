@@ -30,11 +30,11 @@ export function AdminRetreatDetail() {
   if (!retreat) {
     return (
       <AdminLayout title="Retreat Not Found - Admin">
-        <div className="text-center py-20">
+        <div className="py-20 text-center">
           <p className="text-muted-foreground">Retreat not found.</p>
           <Link href="/admin/retreats">
             <Button variant="outline" className="mt-4">
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back to Retreats
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Retreats
             </Button>
           </Link>
         </div>
@@ -42,15 +42,9 @@ export function AdminRetreatDetail() {
     );
   }
 
-  const confirmedBookings = retreat.bookings.filter(
-    (b) => b.status === "confirmed"
-  );
-  const earlyBirdCount = confirmedBookings.filter(
-    (b) => b.priceType === "early-bird"
-  ).length;
-  const normalCount = confirmedBookings.filter(
-    (b) => b.priceType === "normal"
-  ).length;
+  const confirmedBookings = retreat.bookings.filter((b) => b.status === "confirmed");
+  const earlyBirdCount = confirmedBookings.filter((b) => b.priceType === "early-bird").length;
+  const normalCount = confirmedBookings.filter((b) => b.priceType === "normal").length;
   const specialRequirements = confirmedBookings.filter(
     (b) => b.dietaryRequirements || b.accessibilityNeeds
   );
@@ -61,35 +55,35 @@ export function AdminRetreatDetail() {
         {/* Back nav */}
         <button
           onClick={() => navigate("/admin/retreats")}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-sm transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Retreats
         </button>
 
         {/* Header */}
         <div>
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl text-[#2E1F33]">{retreat.title}</h1>
             <Badge
               variant={
                 retreat.status === "open"
                   ? "default"
                   : retreat.status === "sold-out"
-                  ? "destructive"
-                  : "outline"
+                    ? "destructive"
+                    : "outline"
               }
             >
               {retreat.status.charAt(0).toUpperCase() + retreat.status.slice(1)}
             </Badge>
           </div>
-          <div className="flex flex-wrap gap-4 mt-2 text-sm text-muted-foreground">
+          <div className="text-muted-foreground mt-2 flex flex-wrap gap-4 text-sm">
             <span className="flex items-center gap-1">
-              <MapPin className="w-4 h-4" />
+              <MapPin className="h-4 w-4" />
               {retreat.location}
             </span>
             <span className="flex items-center gap-1">
-              <Calendar className="w-4 h-4" />
+              <Calendar className="h-4 w-4" />
               {new Date(retreat.startDate).toLocaleDateString("en-GB", {
                 day: "numeric",
                 month: "long",
@@ -106,59 +100,52 @@ export function AdminRetreatDetail() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="pt-6 text-center">
-              <Users className="w-5 h-5 text-[#4B5B32] mx-auto" />
-              <p className="text-2xl text-[#2E1F33] mt-2">
+              <Users className="mx-auto h-5 w-5 text-[#4B5B32]" />
+              <p className="mt-2 text-2xl text-[#2E1F33]">
                 {retreat.bookedSpaces}/{retreat.totalSpaces}
               </p>
-              <p className="text-xs text-muted-foreground">Booked / Capacity</p>
+              <p className="text-muted-foreground text-xs">Booked / Capacity</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <PoundSterling className="w-5 h-5 text-[#4B5B32] mx-auto" />
-              <p className="text-2xl text-[#2E1F33] mt-2">
-                £{retreat.revenue.toLocaleString()}
-              </p>
-              <p className="text-xs text-muted-foreground">Revenue</p>
+              <PoundSterling className="mx-auto h-5 w-5 text-[#4B5B32]" />
+              <p className="mt-2 text-2xl text-[#2E1F33]">£{retreat.revenue.toLocaleString()}</p>
+              <p className="text-muted-foreground text-xs">Revenue</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <PoundSterling className="w-5 h-5 text-[#4B5B32] mx-auto" />
-              <p className="text-2xl text-[#2E1F33] mt-2">{earlyBirdCount}</p>
-              <p className="text-xs text-muted-foreground">
+              <PoundSterling className="mx-auto h-5 w-5 text-[#4B5B32]" />
+              <p className="mt-2 text-2xl text-[#2E1F33]">{earlyBirdCount}</p>
+              <p className="text-muted-foreground text-xs">
                 Early bird (£{retreat.earlyBirdPrice})
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <PoundSterling className="w-5 h-5 text-muted-foreground mx-auto" />
-              <p className="text-2xl text-[#2E1F33] mt-2">{normalCount}</p>
-              <p className="text-xs text-muted-foreground">
-                Normal (£{retreat.normalPrice})
-              </p>
+              <PoundSterling className="text-muted-foreground mx-auto h-5 w-5" />
+              <p className="mt-2 text-2xl text-[#2E1F33]">{normalCount}</p>
+              <p className="text-muted-foreground text-xs">Normal (£{retreat.normalPrice})</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Capacity bar */}
         <div>
-          <div className="flex justify-between text-sm mb-2">
-            <span>
-              {retreat.totalSpaces - retreat.bookedSpaces} spaces remaining
-            </span>
+          <div className="mb-2 flex justify-between text-sm">
+            <span>{retreat.totalSpaces - retreat.bookedSpaces} spaces remaining</span>
             <span className="text-muted-foreground">
-              {Math.round((retreat.bookedSpaces / retreat.totalSpaces) * 100)}%
-              filled
+              {Math.round((retreat.bookedSpaces / retreat.totalSpaces) * 100)}% filled
             </span>
           </div>
-          <div className="h-3 bg-secondary rounded-full overflow-hidden">
+          <div className="bg-secondary h-3 overflow-hidden rounded-full">
             <div
-              className="h-full bg-[#4B5B32] rounded-full transition-all"
+              className="h-full rounded-full bg-[#4B5B32] transition-all"
               style={{
                 width: `${(retreat.bookedSpaces / retreat.totalSpaces) * 100}%`,
               }}
@@ -172,45 +159,35 @@ export function AdminRetreatDetail() {
         {/* Bookings table */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">
-              Bookings ({confirmedBookings.length})
-            </CardTitle>
+            <CardTitle className="text-lg">Bookings ({confirmedBookings.length})</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-3 pr-4 text-muted-foreground">
-                      Name
-                    </th>
-                    <th className="text-left py-3 pr-4 text-muted-foreground hidden md:table-cell">
+                    <th className="text-muted-foreground py-3 pr-4 text-left">Name</th>
+                    <th className="text-muted-foreground hidden py-3 pr-4 text-left md:table-cell">
                       Email
                     </th>
-                    <th className="text-left py-3 pr-4 text-muted-foreground">
-                      Price
-                    </th>
-                    <th className="text-left py-3 pr-4 text-muted-foreground hidden sm:table-cell">
+                    <th className="text-muted-foreground py-3 pr-4 text-left">Price</th>
+                    <th className="text-muted-foreground hidden py-3 pr-4 text-left sm:table-cell">
                       Booked
                     </th>
-                    <th className="text-left py-3 text-muted-foreground">
-                      Status
-                    </th>
+                    <th className="text-muted-foreground py-3 text-left">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {retreat.bookings.map((booking) => (
-                    <tr
-                      key={booking.memberId}
-                      className="border-b border-border/50"
-                    >
+                    <tr key={booking.memberId} className="border-border/50 border-b">
                       <td className="py-3 pr-4">
-                        <Link href={
+                        <Link
+                          href={
                             booking.memberId.startsWith("prog_ext")
                               ? "#"
                               : `/admin/members/${booking.memberId}`
                           }
-                          className="hover:text-[#4B5B32] transition-colors"
+                          className="transition-colors hover:text-[#4B5B32]"
                         >
                           {booking.memberName}
                         </Link>
@@ -218,39 +195,32 @@ export function AdminRetreatDetail() {
                           <HealthBadges memberId={booking.memberId} max={3} />
                         </div>
                       </td>
-                      <td className="py-3 pr-4 text-muted-foreground hidden md:table-cell">
+                      <td className="text-muted-foreground hidden py-3 pr-4 md:table-cell">
                         {booking.email}
                       </td>
                       <td className="py-3 pr-4">
                         £{booking.pricePaid}
-                        <Badge
-                          variant="outline"
-                          className="ml-2 text-xs"
-                        >
-                          {booking.priceType === "early-bird"
-                            ? "Early bird"
-                            : "Normal"}
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          {booking.priceType === "early-bird" ? "Early bird" : "Normal"}
                         </Badge>
                       </td>
-                      <td className="py-3 pr-4 text-muted-foreground hidden sm:table-cell">
-                        {new Date(booking.bookingDate).toLocaleDateString(
-                          "en-GB",
-                          { day: "numeric", month: "short" }
-                        )}
+                      <td className="text-muted-foreground hidden py-3 pr-4 sm:table-cell">
+                        {new Date(booking.bookingDate).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                        })}
                       </td>
                       <td className="py-3">
                         <Badge
                           variant={
                             booking.status === "confirmed"
                               ? "default"
-                              : booking.status === "cancelled" ||
-                                booking.status === "refunded"
-                              ? "destructive"
-                              : "secondary"
+                              : booking.status === "cancelled" || booking.status === "refunded"
+                                ? "destructive"
+                                : "secondary"
                           }
                         >
-                          {booking.status.charAt(0).toUpperCase() +
-                            booking.status.slice(1)}
+                          {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                         </Badge>
                       </td>
                     </tr>
@@ -265,8 +235,8 @@ export function AdminRetreatDetail() {
         {specialRequirements.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-amber-600" />
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <AlertCircle className="h-5 w-5 text-amber-600" />
                 Special Requirements ({specialRequirements.length})
               </CardTitle>
             </CardHeader>
@@ -275,18 +245,18 @@ export function AdminRetreatDetail() {
                 {specialRequirements.map((booking) => (
                   <div
                     key={booking.memberId}
-                    className="p-3 rounded-lg bg-amber-50 border border-amber-100"
+                    className="rounded-lg border border-amber-100 bg-amber-50 p-3"
                   >
                     <p className="text-sm">{booking.memberName}</p>
                     {booking.dietaryRequirements && (
-                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                        <UtensilsCrossed className="w-3.5 h-3.5" />
+                      <div className="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
+                        <UtensilsCrossed className="h-3.5 w-3.5" />
                         <span>{booking.dietaryRequirements}</span>
                       </div>
                     )}
                     {booking.accessibilityNeeds && (
-                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                        <Accessibility className="w-3.5 h-3.5" />
+                      <div className="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
+                        <Accessibility className="h-3.5 w-3.5" />
                         <span>{booking.accessibilityNeeds}</span>
                       </div>
                     )}

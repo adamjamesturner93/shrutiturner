@@ -1,7 +1,6 @@
 "use client";
 
 import { Layout } from "../components/layout";
-import { blogPosts } from "../data/blog-data";
 import type { BlogPostContent } from "@/lib/content";
 import { useI18n } from "../lib/use-i18n";
 import Link from "next/link";
@@ -22,7 +21,7 @@ interface BlogPageProps {
 }
 
 export function BlogPage({ posts }: BlogPageProps) {
-  const blogData = posts ?? blogPosts;
+  const blogData = posts ?? [];
   const [selectedTag, setSelectedTag] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
 
@@ -65,23 +64,20 @@ export function BlogPage({ posts }: BlogPageProps) {
   return (
     <Layout>
       {/* Hero */}
-      <section className="bg-[#2E1F33] text-[#FAFAF8] py-20 md:py-28">
-        <div className="container mx-auto px-4 max-w-4xl text-center">
-          <h1 className="text-4xl md:text-6xl mb-6 leading-tight">
-            Blog & Resources
-          </h1>
-          <p className="text-xl md:text-2xl text-[#B5C49B] leading-relaxed">
-            Evidence-based articles on strength training, yoga, and managing
-            chronic conditions.
+      <section className="bg-[#2E1F33] py-20 text-[#FAFAF8] md:py-28">
+        <div className="container mx-auto max-w-4xl px-4 text-center">
+          <h1 className="mb-6 text-4xl leading-tight md:text-6xl">Blog & Resources</h1>
+          <p className="text-xl leading-relaxed text-[#B5C49B] md:text-2xl">
+            Evidence-based articles on strength training, yoga, and managing chronic conditions.
           </p>
         </div>
       </section>
 
       {/* Filters and Content */}
       <section className="py-16 md:py-20">
-        <div className="container mx-auto px-4 max-w-6xl">
+        <div className="container mx-auto max-w-6xl px-4">
           {/* Filter and Sort Controls */}
-          <div className="mb-12 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+          <div className="mb-12 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
             <div className="flex flex-wrap gap-2">
               <Button
                 variant={selectedTag === "all" ? "default" : "outline"}
@@ -103,7 +99,7 @@ export function BlogPage({ posts }: BlogPageProps) {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Sort by:</span>
+              <span className="text-muted-foreground text-sm">Sort by:</span>
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="w-[150px]">
                   <SelectValue />
@@ -118,13 +114,13 @@ export function BlogPage({ posts }: BlogPageProps) {
           </div>
 
           {/* Blog Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {filteredAndSortedPosts.map((post) => (
               <article
                 key={post.id}
-                className="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow bg-card"
+                className="bg-card overflow-hidden rounded-lg border transition-shadow hover:shadow-lg"
               >
-                <div className="p-6 space-y-4">
+                <div className="space-y-4 p-6">
                   <div className="flex flex-wrap gap-2">
                     {post.tags.map((tag) => (
                       <Badge key={tag} variant="secondary">
@@ -134,18 +130,17 @@ export function BlogPage({ posts }: BlogPageProps) {
                   </div>
 
                   <h3 className="text-xl leading-tight">
-                    <Link href={`/blog/${post.id}`}
+                    <Link
+                      href={`/blog/${post.id}`}
                       className="hover:text-primary transition-colors"
                     >
                       {post.title}
                     </Link>
                   </h3>
 
-                  <p className="text-muted-foreground text-sm leading-relaxed">
-                    {post.excerpt}
-                  </p>
+                  <p className="text-muted-foreground text-sm leading-relaxed">{post.excerpt}</p>
 
-                  <div className="flex items-center justify-between text-sm text-muted-foreground pt-2 border-t">
+                  <div className="text-muted-foreground flex items-center justify-between border-t pt-2 text-sm">
                     <span>{formatDate(post.date)}</span>
                     <span>{post.readTime}</span>
                   </div>
@@ -161,26 +156,21 @@ export function BlogPage({ posts }: BlogPageProps) {
           </div>
 
           {filteredAndSortedPosts.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">
-                No articles found with the selected filter.
-              </p>
+            <div className="py-12 text-center">
+              <p className="text-muted-foreground">No articles found with the selected filter.</p>
             </div>
           )}
         </div>
       </section>
 
       {/* CTA */}
-      <section className="py-16 md:py-20 bg-secondary/20">
-        <div className="container mx-auto px-4 max-w-3xl text-center space-y-6">
-          <h2 className="text-3xl md:text-4xl">
-            Get New Articles in Your Inbox
-          </h2>
-          <p className="text-lg text-muted-foreground leading-relaxed">
-            Subscribe to blog updates for new research-backed articles on
-            strength, movement, and chronic illness management. You can also
-            join the newsletter separately for training tips and the free lead
-            magnet.
+      <section className="bg-secondary/20 py-16 md:py-20">
+        <div className="container mx-auto max-w-3xl space-y-6 px-4 text-center">
+          <h2 className="text-3xl md:text-4xl">Get New Articles in Your Inbox</h2>
+          <p className="text-muted-foreground text-lg leading-relaxed">
+            Subscribe to blog updates for new research-backed articles on strength, movement, and
+            chronic illness management. You can also join the newsletter separately for training
+            tips and the free lead magnet.
           </p>
           <NewsletterInline defaultList="blog" showListOptions />
         </div>

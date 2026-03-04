@@ -159,7 +159,10 @@ interface AuthContextValue extends AuthState {
    * the first watch of a unique class consumes a weekly class credit.
    * Repeat watches of the same class are free.
    */
-  watchRecording: (classSlug: string, className: string) => {
+  watchRecording: (
+    classSlug: string,
+    className: string
+  ) => {
     success: boolean;
     message: string;
     consumedCredit: boolean;
@@ -173,7 +176,13 @@ interface AuthContextValue extends AuthState {
   /** Quick-book favourite classes — returns list of classDetail slugs the user frequently books */
   favouriteClasses: string[];
   /** Adaptive suggestion placeholder — returns a suggestion object */
-  getAdaptiveSuggestion: () => { classSlug: string; className: string; day: string; time: string; reason: string } | null;
+  getAdaptiveSuggestion: () => {
+    classSlug: string;
+    className: string;
+    day: string;
+    time: string;
+    reason: string;
+  } | null;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -275,7 +284,13 @@ const MOCK_BOOKINGS: Booking[] = [
     day: "Monday",
     time: "09:00",
     duration: "60 min",
-    creditUsed: { id: "cred_m1", type: "membership", label: "Committed membership", sourceId: "membership", sourceLabel: "Committed membership" },
+    creditUsed: {
+      id: "cred_m1",
+      type: "membership",
+      label: "Committed membership",
+      sourceId: "membership",
+      sourceLabel: "Committed membership",
+    },
     bookedAt: "2026-02-18T10:30:00Z",
   },
   {
@@ -286,20 +301,92 @@ const MOCK_BOOKINGS: Booking[] = [
     day: "Monday",
     time: "18:30",
     duration: "45 min",
-    creditUsed: { id: "cred_m2", type: "membership", label: "Committed membership", sourceId: "membership", sourceLabel: "Committed membership" },
+    creditUsed: {
+      id: "cred_m2",
+      type: "membership",
+      label: "Committed membership",
+      sourceId: "membership",
+      sourceLabel: "Committed membership",
+    },
     bookedAt: "2026-02-19T14:00:00Z",
   },
 ];
 
 const MOCK_ATTENDANCE: AttendanceRecord[] = [
-  { id: "att_001", classSlug: "adaptive-yoga-flow", className: "Adaptive Yoga Flow", classType: "Yoga", date: "2026-02-24", time: "09:00", postClass: { feeling: "great", notes: "Felt really mobile today" } },
-  { id: "att_002", classSlug: "strength-foundations", className: "Strength Foundations", classType: "Strength", date: "2026-02-24", time: "18:30", preClass: { energyLevel: 3, flareToday: false }, postClass: { feeling: "good" } },
-  { id: "att_003", classSlug: "restorative-yoga", className: "Restorative Yoga", classType: "Yoga", date: "2026-02-19", time: "09:00", postClass: { feeling: "great" } },
-  { id: "att_004", classSlug: "adaptive-yoga-flow", className: "Adaptive Yoga Flow", classType: "Yoga", date: "2026-02-17", time: "09:00", preClass: { energyLevel: 2, flareToday: true, notes: "Wrists sore" }, postClass: { feeling: "okay" } },
-  { id: "att_005", classSlug: "hiit-complex-bodies", className: "HIIT for Complex Bodies", classType: "HIIT", date: "2026-02-19", time: "19:00", preClass: { energyLevel: 4, flareToday: false }, postClass: { feeling: "great" } },
-  { id: "att_006", classSlug: "strength-foundations", className: "Strength Foundations", classType: "Strength", date: "2026-02-17", time: "18:30" },
-  { id: "att_007", classSlug: "chair-based-strength", className: "Chair-Based Strength", classType: "Strength", date: "2026-02-12", time: "10:00", postClass: { feeling: "good" } },
-  { id: "att_008", classSlug: "adaptive-yoga-flow", className: "Adaptive Yoga Flow", classType: "Yoga", date: "2026-02-10", time: "09:00", postClass: { feeling: "good" } },
+  {
+    id: "att_001",
+    classSlug: "adaptive-yoga-flow",
+    className: "Adaptive Yoga Flow",
+    classType: "Yoga",
+    date: "2026-02-24",
+    time: "09:00",
+    postClass: { feeling: "great", notes: "Felt really mobile today" },
+  },
+  {
+    id: "att_002",
+    classSlug: "strength-foundations",
+    className: "Strength Foundations",
+    classType: "Strength",
+    date: "2026-02-24",
+    time: "18:30",
+    preClass: { energyLevel: 3, flareToday: false },
+    postClass: { feeling: "good" },
+  },
+  {
+    id: "att_003",
+    classSlug: "restorative-yoga",
+    className: "Restorative Yoga",
+    classType: "Yoga",
+    date: "2026-02-19",
+    time: "09:00",
+    postClass: { feeling: "great" },
+  },
+  {
+    id: "att_004",
+    classSlug: "adaptive-yoga-flow",
+    className: "Adaptive Yoga Flow",
+    classType: "Yoga",
+    date: "2026-02-17",
+    time: "09:00",
+    preClass: { energyLevel: 2, flareToday: true, notes: "Wrists sore" },
+    postClass: { feeling: "okay" },
+  },
+  {
+    id: "att_005",
+    classSlug: "hiit-complex-bodies",
+    className: "HIIT for Complex Bodies",
+    classType: "HIIT",
+    date: "2026-02-19",
+    time: "19:00",
+    preClass: { energyLevel: 4, flareToday: false },
+    postClass: { feeling: "great" },
+  },
+  {
+    id: "att_006",
+    classSlug: "strength-foundations",
+    className: "Strength Foundations",
+    classType: "Strength",
+    date: "2026-02-17",
+    time: "18:30",
+  },
+  {
+    id: "att_007",
+    classSlug: "chair-based-strength",
+    className: "Chair-Based Strength",
+    classType: "Strength",
+    date: "2026-02-12",
+    time: "10:00",
+    postClass: { feeling: "good" },
+  },
+  {
+    id: "att_008",
+    classSlug: "adaptive-yoga-flow",
+    className: "Adaptive Yoga Flow",
+    classType: "Yoga",
+    date: "2026-02-10",
+    time: "09:00",
+    postClass: { feeling: "good" },
+  },
 ];
 
 /* ──────────── Provider ──────────── */
@@ -364,18 +451,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const recentTypes = [...attendanceHistory.slice(-3), ...bookings].map((r) => r.classType);
     const hasRecentStrength = recentTypes.includes("Strength") || recentTypes.includes("HIIT");
     if (hasRecentStrength) {
-      const yogaClass = classDetails.find((c) => c.type === "Yoga" && c.slug === "restorative-yoga");
+      const yogaClass = classDetails.find(
+        (c) => c.type === "Yoga" && c.slug === "restorative-yoga"
+      );
       if (yogaClass) {
         return {
           classSlug: yogaClass.slug,
           className: yogaClass.name,
           day: yogaClass.day,
           time: yogaClass.time,
-          reason: "Based on your recent strength sessions, a recovery class might feel good this week.",
+          reason:
+            "Based on your recent strength sessions, a recovery class might feel good this week.",
         };
       }
     }
-    const strengthClass = classDetails.find((c) => c.type === "Strength" && c.slug === "strength-foundations");
+    const strengthClass = classDetails.find(
+      (c) => c.type === "Strength" && c.slug === "strength-foundations"
+    );
     if (strengthClass) {
       return {
         classSlug: strengthClass.slug,
@@ -388,17 +480,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null;
   }, [attendanceHistory, bookings]);
 
-  const submitPreClassCheckIn = useCallback((bookingId: string, data: AttendanceRecord["preClass"]) => {
-    console.log("Pre-class check-in:", bookingId, data);
-    // In production: POST to API. For now, store locally for the session.
-  }, []);
+  const submitPreClassCheckIn = useCallback(
+    (bookingId: string, data: AttendanceRecord["preClass"]) => {
+      console.log("Pre-class check-in:", bookingId, data);
+      // In production: POST to API. For now, store locally for the session.
+    },
+    []
+  );
 
-  const submitPostClassFeedback = useCallback((attendanceId: string, data: AttendanceRecord["postClass"]) => {
-    console.log("Post-class feedback:", attendanceId, data);
-    setAttendanceHistory((prev) =>
-      prev.map((a) => (a.id === attendanceId ? { ...a, postClass: data } : a))
-    );
-  }, []);
+  const submitPostClassFeedback = useCallback(
+    (attendanceId: string, data: AttendanceRecord["postClass"]) => {
+      console.log("Post-class feedback:", attendanceId, data);
+      setAttendanceHistory((prev) =>
+        prev.map((a) => (a.id === attendanceId ? { ...a, postClass: data } : a))
+      );
+    },
+    []
+  );
 
   /** Group purchased credits by sourceId for clean display */
   const creditSummary = useMemo<CreditSummary[]>(() => {
@@ -698,7 +796,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (remaining <= 0) {
         return {
           allowed: false,
-          reason: "You've used all your weekly classes. Purchase additional credits or wait until next week.",
+          reason:
+            "You've used all your weekly classes. Purchase additional credits or wait until next week.",
           consumesCredit: false,
         };
       }
@@ -715,7 +814,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const watchRecording = useCallback(
     (classSlug: string, className: string) => {
       const canWatch = canWatchRecording(classSlug);
-      if (!canWatch.allowed) return { success: false, message: "Not allowed", consumedCredit: false };
+      if (!canWatch.allowed)
+        return { success: false, message: "Not allowed", consumedCredit: false };
       const newWatch: RecordingWatch = {
         classSlug,
         className,
@@ -728,7 +828,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           prev ? { ...prev, classesUsedThisWeek: prev.classesUsedThisWeek + 1 } : prev
         );
       }
-      return { success: true, message: "Recording watched", consumedCredit: canWatch.consumesCredit };
+      return {
+        success: true,
+        message: "Recording watched",
+        consumedCredit: canWatch.consumesCredit,
+      };
     },
     [canWatchRecording]
   );

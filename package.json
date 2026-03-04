@@ -11,8 +11,10 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
+    "code:fix": "pnpm run format && pnpm run lint:fix && pnpm run format",
     "contentful:migrate": "node --experimental-strip-types --experimental-specifier-resolution=node contentful/scripts/apply-migrations.ts",
-    "contentful:seed:drafts": "node --experimental-strip-types --experimental-specifier-resolution=node contentful/scripts/seed-drafts.ts"
+    "contentful:seed:drafts": "node --experimental-strip-types --experimental-specifier-resolution=node contentful/scripts/seed-drafts.ts",
+    "contentful:dedupe:testimonials": "node --experimental-strip-types --experimental-specifier-resolution=node contentful/scripts/dedupe-testimonials.ts"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -77,14 +79,19 @@
     "vaul": "1.1.2"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.4",
     "@tailwindcss/postcss": "4.1.12",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
+    "contentful-management": "^11.73.0",
     "eslint": "^9.39.0",
     "eslint-config-next": "^15.5.12",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-tailwindcss": "beta",
     "prettier": "^3.6.2",
+    "prettier-plugin-tailwindcss": "^0.6.12",
     "tailwindcss": "4.1.12",
     "typescript": "^5.7.2"
   }

@@ -24,11 +24,7 @@ export function SEO({
     document.title = title;
 
     // Helper function to update or create meta tags
-    const updateMetaTag = (
-      selector: string,
-      content: string,
-      attributeName: string = "name"
-    ) => {
+    const updateMetaTag = (selector: string, content: string, attributeName: string = "name") => {
       let element = document.querySelector(selector);
       if (!element) {
         element = document.createElement("meta");
@@ -50,7 +46,7 @@ export function SEO({
     updateMetaTag('meta[property="og:description"]', description, "property");
     updateMetaTag('meta[property="og:type"]', ogType, "property");
     updateMetaTag('meta[property="og:image"]', ogImage, "property");
-    
+
     if (canonicalUrl) {
       updateMetaTag('meta[property="og:url"]', canonicalUrl, "property");
     }

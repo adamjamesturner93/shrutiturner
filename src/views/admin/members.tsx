@@ -7,10 +7,23 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import Link from "next/link";
 import { useState, useMemo } from "react";
-import { Search, Filter, ChevronRight, Users, UserCheck, UserX, Pause, Shield, AlertTriangle } from "lucide-react";
+import {
+  Search,
+  Filter,
+  ChevronRight,
+  Users,
+  UserCheck,
+  UserX,
+  Pause,
+  Shield,
+  AlertTriangle,
+} from "lucide-react";
 import { adminMembers, type AdminMember } from "../../data/admin-data";
 
-const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+const STATUS_CONFIG: Record<
+  string,
+  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
+> = {
   active: { label: "Active", variant: "default" },
   paused: { label: "Paused", variant: "secondary" },
   cancelled: { label: "Cancelled", variant: "destructive" },
@@ -38,7 +51,9 @@ export function AdminMembers() {
   const [riskFilter, setRiskFilter] = useState<string>("all");
 
   const atRiskCounts = useMemo(() => {
-    let high = 0, medium = 0, creditsExpiring = 0;
+    let high = 0,
+      medium = 0,
+      creditsExpiring = 0;
     adminMembers.forEach((m) => {
       const risk = getAtRiskStatus(m);
       if (risk === "high") high++;
@@ -76,7 +91,9 @@ export function AdminMembers() {
 
   const statusCounts = useMemo(() => {
     const counts = { active: 0, paused: 0, cancelled: 0, expired: 0 };
-    adminMembers.forEach((m) => { counts[m.status]++; });
+    adminMembers.forEach((m) => {
+      counts[m.status]++;
+    });
     return counts;
   }, []);
 
@@ -93,28 +110,28 @@ export function AdminMembers() {
 
         {/* Stat pills */}
         <div className="flex flex-wrap gap-3">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#4B5B32]/10 text-sm">
-            <UserCheck className="w-4 h-4 text-[#4B5B32]" />
+          <div className="flex items-center gap-2 rounded-full bg-[#4B5B32]/10 px-4 py-2 text-sm">
+            <UserCheck className="h-4 w-4 text-[#4B5B32]" />
             <span>{statusCounts.active} active</span>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-secondary text-sm">
-            <Pause className="w-4 h-4 text-muted-foreground" />
+          <div className="bg-secondary flex items-center gap-2 rounded-full px-4 py-2 text-sm">
+            <Pause className="text-muted-foreground h-4 w-4" />
             <span>{statusCounts.paused} paused</span>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-secondary text-sm">
-            <UserX className="w-4 h-4 text-muted-foreground" />
+          <div className="bg-secondary flex items-center gap-2 rounded-full px-4 py-2 text-sm">
+            <UserX className="text-muted-foreground h-4 w-4" />
             <span>{statusCounts.expired + statusCounts.cancelled} lapsed</span>
           </div>
           {atRiskCounts.total > 0 && (
             <button
               onClick={() => setRiskFilter(riskFilter === "any-risk" ? "all" : "any-risk")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-colors ${
+              className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors ${
                 riskFilter !== "all"
-                  ? "bg-amber-100 text-amber-800 border border-amber-300"
+                  ? "border border-amber-300 bg-amber-100 text-amber-800"
                   : "bg-amber-50 text-amber-700 hover:bg-amber-100"
               }`}
             >
-              <AlertTriangle className="w-4 h-4" />
+              <AlertTriangle className="h-4 w-4" />
               <span>{atRiskCounts.total} at risk</span>
             </button>
           )}
@@ -123,9 +140,9 @@ export function AdminMembers() {
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex flex-col gap-4 md:flex-row">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                 <Input
                   placeholder="Search name, email, or tag..."
                   value={search}
@@ -137,7 +154,7 @@ export function AdminMembers() {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 rounded-md border border-border bg-background text-sm"
+                  className="border-border bg-background rounded-md border px-3 py-2 text-sm"
                 >
                   <option value="all">All statuses</option>
                   <option value="active">Active</option>
@@ -148,7 +165,7 @@ export function AdminMembers() {
                 <select
                   value={planFilter}
                   onChange={(e) => setPlanFilter(e.target.value)}
-                  className="px-3 py-2 rounded-md border border-border bg-background text-sm"
+                  className="border-border bg-background rounded-md border px-3 py-2 text-sm"
                 >
                   <option value="all">All plans</option>
                   <option value="instructor">Instructor</option>
@@ -160,7 +177,7 @@ export function AdminMembers() {
                 <select
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value)}
-                  className="px-3 py-2 rounded-md border border-border bg-background text-sm"
+                  className="border-border bg-background rounded-md border px-3 py-2 text-sm"
                 >
                   <option value="all">All roles</option>
                   <option value="instructor">Instructors</option>
@@ -169,7 +186,7 @@ export function AdminMembers() {
                 <select
                   value={riskFilter}
                   onChange={(e) => setRiskFilter(e.target.value)}
-                  className="px-3 py-2 rounded-md border border-border bg-background text-sm"
+                  className="border-border bg-background rounded-md border px-3 py-2 text-sm"
                 >
                   <option value="all">All risks</option>
                   <option value="any-risk">Any risk</option>
@@ -190,7 +207,7 @@ export function AdminMembers() {
           {filtered.length === 0 && (
             <Card>
               <CardContent className="py-12 text-center">
-                <Users className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                <Users className="text-muted-foreground mx-auto mb-3 h-8 w-8" />
                 <p className="text-muted-foreground">No members match your filters.</p>
               </CardContent>
             </Card>
@@ -207,59 +224,65 @@ function MemberRow({ member }: { member: AdminMember }) {
 
   return (
     <Link href={`/admin/members/${member.id}`}>
-      <Card className={`hover:border-[#4B5B32]/30 transition-colors cursor-pointer ${riskStatus === "high" ? "border-amber-300/50" : ""}`}>
+      <Card
+        className={`cursor-pointer transition-colors hover:border-[#4B5B32]/30 ${riskStatus === "high" ? "border-amber-300/50" : ""}`}
+      >
         <CardContent className="py-4">
           <div className="flex items-center gap-4">
             {/* Avatar */}
-            <div className="w-10 h-10 rounded-full bg-[#4B5B32] text-[#FAFAF8] flex items-center justify-center text-sm flex-shrink-0">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#4B5B32] text-sm text-[#FAFAF8]">
               {member.avatarInitials}
             </div>
 
             {/* Info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm">
                   {member.firstName} {member.lastName}
                 </p>
-                <Badge variant={statusConfig.variant}>
-                  {statusConfig.label}
-                </Badge>
+                <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
                 {riskStatus && (
-                  <Badge className={
-                    riskStatus === "high"
-                      ? "bg-red-50 text-red-700 border-red-200 text-xs"
+                  <Badge
+                    className={
+                      riskStatus === "high"
+                        ? "border-red-200 bg-red-50 text-xs text-red-700"
+                        : riskStatus === "medium"
+                          ? "border-amber-200 bg-amber-50 text-xs text-amber-700"
+                          : "border-orange-200 bg-orange-50 text-xs text-orange-700"
+                    }
+                  >
+                    <AlertTriangle className="mr-0.5 h-3 w-3" />
+                    {riskStatus === "high"
+                      ? "High risk"
                       : riskStatus === "medium"
-                        ? "bg-amber-50 text-amber-700 border-amber-200 text-xs"
-                        : "bg-orange-50 text-orange-700 border-orange-200 text-xs"
-                  }>
-                    <AlertTriangle className="w-3 h-3 mr-0.5" />
-                    {riskStatus === "high" ? "High risk" : riskStatus === "medium" ? "At risk" : "Credits expiring"}
+                        ? "At risk"
+                        : "Credits expiring"}
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="text-muted-foreground truncate text-xs">
                 {member.email} · {member.membershipLabel}
               </p>
             </div>
 
             {/* Role badges */}
-            <div className="hidden sm:flex items-center gap-1 flex-shrink-0">
+            <div className="hidden flex-shrink-0 items-center gap-1 sm:flex">
               {member.isInstructor && (
-                <Badge className="bg-[#2E1F33]/10 text-[#2E1F33] border-[#2E1F33]/30 text-xs">
-                  <Shield className="w-3 h-3 mr-0.5" />
+                <Badge className="border-[#2E1F33]/30 bg-[#2E1F33]/10 text-xs text-[#2E1F33]">
+                  <Shield className="mr-0.5 h-3 w-3" />
                   Instructor
                 </Badge>
               )}
               {member.isCoachingClient && (
-                <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
-                  <UserCheck className="w-3 h-3 mr-0.5" />
+                <Badge className="border-amber-200 bg-amber-50 text-xs text-amber-700">
+                  <UserCheck className="mr-0.5 h-3 w-3" />
                   Coaching
                 </Badge>
               )}
             </div>
 
             {/* Stats */}
-            <div className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
+            <div className="text-muted-foreground hidden items-center gap-6 text-sm md:flex">
               <div className="text-center">
                 <p className="text-[#2E1F33]">{member.totalBookings}</p>
                 <p className="text-xs">bookings</p>
@@ -275,20 +298,18 @@ function MemberRow({ member }: { member: AdminMember }) {
             </div>
 
             {/* Tags (desktop) */}
-            <div className="hidden lg:flex items-center gap-1 flex-shrink-0">
+            <div className="hidden flex-shrink-0 items-center gap-1 lg:flex">
               {member.tags.slice(0, 2).map((tag) => (
                 <Badge key={tag} variant="outline" className="text-xs">
                   {tag}
                 </Badge>
               ))}
               {member.tags.length > 2 && (
-                <span className="text-xs text-muted-foreground">
-                  +{member.tags.length - 2}
-                </span>
+                <span className="text-muted-foreground text-xs">+{member.tags.length - 2}</span>
               )}
             </div>
 
-            <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <ChevronRight className="text-muted-foreground h-4 w-4 flex-shrink-0" />
           </div>
         </CardContent>
       </Card>

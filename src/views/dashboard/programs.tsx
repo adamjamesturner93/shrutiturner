@@ -38,7 +38,7 @@ export function ProgramsPage() {
   const { fmtDate } = useI18n();
   return (
     <DashboardLayout title="Programs - Private Studio">
-      <h1 className="text-3xl mb-2">Small Group Programs</h1>
+      <h1 className="mb-2 text-3xl">Small Group Programs</h1>
       <p className="text-muted-foreground mb-8">
         4-6 week focused cohorts with specific skill outcomes. Max 6 people per group.
       </p>
@@ -47,36 +47,36 @@ export function ProgramsPage() {
         {PROGRAMS.map((program) => (
           <div
             key={program.id}
-            className={`bg-background border rounded-lg p-6 ${
+            className={`bg-background rounded-lg border p-6 ${
               program.enrolled ? "border-[#4B5B32] bg-[#4B5B32]/5" : ""
             }`}
           >
-            <div className="flex flex-col md:flex-row md:items-start gap-4 justify-between">
+            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
               <div className="flex-1 space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="text-xl">{program.title}</h3>
                   {program.enrolled && (
-                    <Badge className="bg-[#4B5B32] text-[#FAFAF8] gap-1">
-                      <Check className="w-3 h-3" />
+                    <Badge className="gap-1 bg-[#4B5B32] text-[#FAFAF8]">
+                      <Check className="h-3 w-3" />
                       Enrolled
                     </Badge>
                   )}
                   {program.spotsRemaining <= 2 && !program.enrolled && (
-                    <Badge variant="outline" className="text-orange-600 border-orange-200 gap-1">
-                      <Sparkles className="w-3 h-3" />
+                    <Badge variant="outline" className="gap-1 border-orange-200 text-orange-600">
+                      <Sparkles className="h-3 w-3" />
                       {program.spotsRemaining} spots left
                     </Badge>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground">{program.description}</p>
-                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">{program.description}</p>
+                <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
                   <span className="flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5" />
+                    <Calendar className="h-3.5 w-3.5" />
                     {program.duration} · Starts{" "}
                     {fmtDate(program.startDate, { day: "numeric", month: "long", year: "numeric" })}
                   </span>
                   <span className="flex items-center gap-1">
-                    <Users className="w-3.5 h-3.5" />
+                    <Users className="h-3.5 w-3.5" />
                     {program.spots - program.spotsRemaining}/{program.spots} filled
                   </span>
                   <span>{program.price}</span>
@@ -91,9 +91,7 @@ export function ProgramsPage() {
                     </Button>
                   </Link>
                 ) : (
-                  <Button variant="outline">
-                    Register · {program.price}
-                  </Button>
+                  <Button variant="outline">Register · {program.price}</Button>
                 )}
               </div>
             </div>
@@ -101,11 +99,9 @@ export function ProgramsPage() {
         ))}
       </div>
 
-      <div className="mt-8 bg-secondary/20 border rounded-lg p-6 text-center">
-        <p className="text-muted-foreground mb-2">
-          New programs announced monthly.
-        </p>
-        <p className="text-sm text-muted-foreground italic">
+      <div className="bg-secondary/20 mt-8 rounded-lg border p-6 text-center">
+        <p className="text-muted-foreground mb-2">New programs announced monthly.</p>
+        <p className="text-muted-foreground text-sm italic">
           [Placeholder — program data will come from Supabase]
         </p>
       </div>

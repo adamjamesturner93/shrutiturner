@@ -59,9 +59,27 @@ export function AdminMemberDetail() {
   const [creditHistory, setCreditHistory] = useState<
     { date: string; action: "add" | "remove"; amount: number; reason: string; by: string }[]
   >([
-    { date: "2026-02-20", action: "add", amount: 10, reason: "10-class bundle purchase", by: "System" },
-    { date: "2026-02-10", action: "remove", amount: 1, reason: "Class booking: Adaptive Yoga Flow", by: "System" },
-    { date: "2026-01-28", action: "add", amount: 3, reason: "3-class bundle purchase", by: "System" },
+    {
+      date: "2026-02-20",
+      action: "add",
+      amount: 10,
+      reason: "10-class bundle purchase",
+      by: "System",
+    },
+    {
+      date: "2026-02-10",
+      action: "remove",
+      amount: 1,
+      reason: "Class booking: Adaptive Yoga Flow",
+      by: "System",
+    },
+    {
+      date: "2026-01-28",
+      action: "add",
+      amount: 3,
+      reason: "3-class bundle purchase",
+      by: "System",
+    },
   ]);
   const [showMessageForm, setShowMessageForm] = useState(false);
   const [messageSubject, setMessageSubject] = useState("");
@@ -71,11 +89,11 @@ export function AdminMemberDetail() {
   if (!member) {
     return (
       <AdminLayout title="Member Not Found - Admin">
-        <div className="text-center py-20">
+        <div className="py-20 text-center">
           <p className="text-muted-foreground">Member not found.</p>
           <Link href="/admin/members">
             <Button variant="outline" className="mt-4">
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back to Members
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Members
             </Button>
           </Link>
         </div>
@@ -164,19 +182,19 @@ export function AdminMemberDetail() {
         {/* Back nav */}
         <button
           onClick={() => navigate("/admin/members")}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-sm transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Members
         </button>
 
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-start gap-6">
-          <div className="w-16 h-16 rounded-full bg-[#4B5B32] text-[#FAFAF8] flex items-center justify-center text-xl flex-shrink-0">
+        <div className="flex flex-col gap-6 md:flex-row md:items-start">
+          <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-[#4B5B32] text-xl text-[#FAFAF8]">
             {member.avatarInitials}
           </div>
           <div className="flex-1">
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl text-[#2E1F33]">
                 {member.firstName} {member.lastName}
               </h1>
@@ -184,32 +202,36 @@ export function AdminMemberDetail() {
                 {member.status.charAt(0).toUpperCase() + member.status.slice(1)}
               </Badge>
             </div>
-            <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
+            <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-4 text-sm">
               <span className="flex items-center gap-1">
-                <Mail className="w-3.5 h-3.5" />
+                <Mail className="h-3.5 w-3.5" />
                 {member.email}
               </span>
               <span className="flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5" />
-                Joined {new Date(member.joinedDate).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}
+                <Calendar className="h-3.5 w-3.5" />
+                Joined{" "}
+                {new Date(member.joinedDate).toLocaleDateString("en-GB", {
+                  month: "short",
+                  year: "numeric",
+                })}
               </span>
             </div>
-            <div className="flex flex-wrap gap-2 mt-3">
+            <div className="mt-3 flex flex-wrap gap-2">
               {isInstructor && (
-                <Badge className="bg-[#2E1F33]/10 text-[#2E1F33] border-[#2E1F33]/30">
-                  <Shield className="w-3 h-3 mr-1" />
+                <Badge className="border-[#2E1F33]/30 bg-[#2E1F33]/10 text-[#2E1F33]">
+                  <Shield className="mr-1 h-3 w-3" />
                   Instructor
                 </Badge>
               )}
               {isCoachingClient && (
-                <Badge className="bg-amber-50 text-amber-700 border-amber-200">
-                  <UserCheck className="w-3 h-3 mr-1" />
+                <Badge className="border-amber-200 bg-amber-50 text-amber-700">
+                  <UserCheck className="mr-1 h-3 w-3" />
                   Coaching Client
                 </Badge>
               )}
               {member.tags.map((tag) => (
                 <Badge key={tag} variant="outline" className="text-xs">
-                  <Tag className="w-3 h-3 mr-1" />
+                  <Tag className="mr-1 h-3 w-3" />
                   {tag}
                 </Badge>
               ))}
@@ -221,7 +243,7 @@ export function AdminMemberDetail() {
                 variant="outline"
                 onClick={() => setShowMessageForm(!showMessageForm)}
               >
-                <Mail className="w-4 h-4 mr-1" />
+                <Mail className="mr-1 h-4 w-4" />
                 Send Message
               </Button>
             </div>
@@ -232,13 +254,13 @@ export function AdminMemberDetail() {
         {showMessageForm && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Send className="w-5 h-5 text-[#4B5B32]" />
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Send className="h-5 w-5 text-[#4B5B32]" />
                 Send Email to {member.firstName}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 This will send an email to {member.email} via Postmark.
               </p>
               <div className="space-y-2">
@@ -259,14 +281,15 @@ export function AdminMemberDetail() {
                   value={messageBody}
                   onChange={(e) => setMessageBody(e.target.value)}
                 />
-                <p className="text-xs text-muted-foreground">
-                  The email will use your standard coaching template with the Shruti Turner branding.
+                <p className="text-muted-foreground text-xs">
+                  The email will use your standard coaching template with the Shruti Turner
+                  branding.
                 </p>
               </div>
               <div className="flex items-center gap-3">
                 <Button
                   disabled={!messageSubject.trim() || !messageBody.trim() || messageSending}
-                  className="bg-[#4B5B32] hover:bg-[#4B5B32]/90 text-white"
+                  className="bg-[#4B5B32] text-white hover:bg-[#4B5B32]/90"
                   onClick={() => {
                     setMessageSending(true);
                     console.log("Sending email to:", member.email, {
@@ -284,12 +307,12 @@ export function AdminMemberDetail() {
                 >
                   {messageSending ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                       Sending...
                     </>
                   ) : (
                     <>
-                      <Send className="w-4 h-4 mr-1" />
+                      <Send className="mr-1 h-4 w-4" />
                       Send Email
                     </>
                   )}
@@ -311,53 +334,53 @@ export function AdminMemberDetail() {
         )}
 
         {/* Stats grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="pt-6 text-center">
-              <CreditCard className="w-5 h-5 text-[#4B5B32] mx-auto" />
-              <p className="text-2xl text-[#2E1F33] mt-2">{member.membershipLabel}</p>
-              <p className="text-xs text-muted-foreground">Membership</p>
+              <CreditCard className="mx-auto h-5 w-5 text-[#4B5B32]" />
+              <p className="mt-2 text-2xl text-[#2E1F33]">{member.membershipLabel}</p>
+              <p className="text-muted-foreground text-xs">Membership</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <Bookmark className="w-5 h-5 text-[#4B5B32] mx-auto" />
-              <p className="text-2xl text-[#2E1F33] mt-2">{member.totalBookings}</p>
-              <p className="text-xs text-muted-foreground">Total bookings</p>
+              <Bookmark className="mx-auto h-5 w-5 text-[#4B5B32]" />
+              <p className="mt-2 text-2xl text-[#2E1F33]">{member.totalBookings}</p>
+              <p className="text-muted-foreground text-xs">Total bookings</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <CreditCard className="w-5 h-5 text-[#4B5B32] mx-auto" />
-              <p className="text-2xl text-[#2E1F33] mt-2">{creditBalance}</p>
-              <p className="text-xs text-muted-foreground">Credits remaining</p>
+              <CreditCard className="mx-auto h-5 w-5 text-[#4B5B32]" />
+              <p className="mt-2 text-2xl text-[#2E1F33]">{creditBalance}</p>
+              <p className="text-muted-foreground text-xs">Credits remaining</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <Gift className="w-5 h-5 text-[#4B5B32] mx-auto" />
-              <p className="text-2xl text-[#2E1F33] mt-2">{member.referralsCount}</p>
-              <p className="text-xs text-muted-foreground">
+              <Gift className="mx-auto h-5 w-5 text-[#4B5B32]" />
+              <p className="mt-2 text-2xl text-[#2E1F33]">{member.referralsCount}</p>
+              <p className="text-muted-foreground text-xs">
                 Referrals (£{member.referralBalance} balance)
               </p>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Roles */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-[#2E1F33]" />
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Shield className="h-5 w-5 text-[#2E1F33]" />
                   Roles
                 </CardTitle>
-                <span className="text-xs text-muted-foreground">Changes save automatically</span>
+                <span className="text-muted-foreground text-xs">Changes save automatically</span>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-start gap-4 p-4 rounded-lg border border-border/60 bg-secondary/30">
+              <div className="border-border/60 bg-secondary/30 flex items-start gap-4 rounded-lg border p-4">
                 <Switch
                   id="role-instructor"
                   checked={isInstructor}
@@ -368,17 +391,17 @@ export function AdminMemberDetail() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm">Instructor</span>
                     {isInstructor && (
-                      <Badge className="bg-[#2E1F33]/10 text-[#2E1F33] border-[#2E1F33]/30 text-[10px] px-1.5 py-0">
+                      <Badge className="border-[#2E1F33]/30 bg-[#2E1F33]/10 px-1.5 py-0 text-[10px] text-[#2E1F33]">
                         Active
                       </Badge>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-muted-foreground mt-1 text-xs">
                     Grants admin access, unlimited class membership, and ability to lead classes.
                   </p>
                 </label>
               </div>
-              <div className="flex items-start gap-4 p-4 rounded-lg border border-border/60 bg-secondary/30">
+              <div className="border-border/60 bg-secondary/30 flex items-start gap-4 rounded-lg border p-4">
                 <Switch
                   id="role-coaching"
                   checked={isCoachingClient}
@@ -389,13 +412,14 @@ export function AdminMemberDetail() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm">Coaching Client</span>
                     {isCoachingClient && (
-                      <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] px-1.5 py-0">
+                      <Badge className="border-amber-200 bg-amber-50 px-1.5 py-0 text-[10px] text-amber-700">
                         Active
                       </Badge>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Marks this member as a 1:1 coaching client. Access and platform details to be configured separately.
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    Marks this member as a 1:1 coaching client. Access and platform details to be
+                    configured separately.
                   </p>
                 </label>
               </div>
@@ -405,8 +429,8 @@ export function AdminMemberDetail() {
           {/* Health Profile */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <HeartPulse className="w-5 h-5 text-amber-600" />
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <HeartPulse className="h-5 w-5 text-amber-600" />
                 Health Profile
               </CardTitle>
             </CardHeader>
@@ -418,43 +442,52 @@ export function AdminMemberDetail() {
           {/* Manage Credits */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-[#4B5B32]" />
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <CreditCard className="h-5 w-5 text-[#4B5B32]" />
                 Manage Credits
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
               {/* Current balance callout */}
-              <div className="flex items-center justify-between p-3 rounded-lg bg-[#4B5B32]/5 border border-[#4B5B32]/20">
-                <span className="text-sm text-muted-foreground">Current balance</span>
-                <span className="text-xl text-[#2E1F33]">{creditBalance} credit{creditBalance !== 1 ? "s" : ""}</span>
+              <div className="flex items-center justify-between rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 p-3">
+                <span className="text-muted-foreground text-sm">Current balance</span>
+                <span className="text-xl text-[#2E1F33]">
+                  {creditBalance} credit{creditBalance !== 1 ? "s" : ""}
+                </span>
               </div>
 
               {/* Add/Remove form */}
               <div className="space-y-3">
                 <div className="flex gap-2">
                   <div className="w-32">
-                    <Label htmlFor="credit-action" className="sr-only">Action</Label>
-                    <Select value={creditAction} onValueChange={(v) => setCreditAction(v as "add" | "remove")}>
+                    <Label htmlFor="credit-action" className="sr-only">
+                      Action
+                    </Label>
+                    <Select
+                      value={creditAction}
+                      onValueChange={(v) => setCreditAction(v as "add" | "remove")}
+                    >
                       <SelectTrigger id="credit-action">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="add">
                           <span className="flex items-center gap-1.5">
-                            <Plus className="w-3.5 h-3.5 text-[#4B5B32]" /> Add
+                            <Plus className="h-3.5 w-3.5 text-[#4B5B32]" /> Add
                           </span>
                         </SelectItem>
                         <SelectItem value="remove">
                           <span className="flex items-center gap-1.5">
-                            <Minus className="w-3.5 h-3.5 text-red-500" /> Remove
+                            <Minus className="h-3.5 w-3.5 text-red-500" /> Remove
                           </span>
                         </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="w-24">
-                    <Label htmlFor="credit-amount" className="sr-only">Amount</Label>
+                    <Label htmlFor="credit-amount" className="sr-only">
+                      Amount
+                    </Label>
                     <Input
                       id="credit-amount"
                       type="number"
@@ -466,7 +499,9 @@ export function AdminMemberDetail() {
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="credit-reason" className="sr-only">Reason</Label>
+                  <Label htmlFor="credit-reason" className="sr-only">
+                    Reason
+                  </Label>
                   <Input
                     id="credit-reason"
                     placeholder="Reason (e.g. Goodwill credit, Bundle purchase)"
@@ -479,43 +514,54 @@ export function AdminMemberDetail() {
                   size="sm"
                   className={
                     creditAction === "add"
-                      ? "bg-[#4B5B32] hover:bg-[#4B5B32]/90 text-white"
-                      : "bg-red-600 hover:bg-red-700 text-white"
+                      ? "bg-[#4B5B32] text-white hover:bg-[#4B5B32]/90"
+                      : "bg-red-600 text-white hover:bg-red-700"
                   }
                 >
                   {creditAction === "add" ? (
-                    <><Plus className="w-4 h-4" /> Add Credits</>
+                    <>
+                      <Plus className="h-4 w-4" /> Add Credits
+                    </>
                   ) : (
-                    <><Minus className="w-4 h-4" /> Remove Credits</>
+                    <>
+                      <Minus className="h-4 w-4" /> Remove Credits
+                    </>
                   )}
                 </Button>
               </div>
 
               {/* Recent history */}
               {creditHistory.length > 0 && (
-                <div className="border-t border-border/50 pt-4">
-                  <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5" /> Recent credit history
+                <div className="border-border/50 border-t pt-4">
+                  <p className="text-muted-foreground mb-3 flex items-center gap-1.5 text-xs">
+                    <Clock className="h-3.5 w-3.5" /> Recent credit history
                   </p>
                   <div className="space-y-2">
                     {creditHistory.slice(0, 5).map((entry, i) => (
-                      <div key={i} className="flex items-start justify-between text-sm py-1.5 border-b border-border/30 last:border-0">
-                        <div className="flex-1 min-w-0">
+                      <div
+                        key={i}
+                        className="border-border/30 flex items-start justify-between border-b py-1.5 text-sm last:border-0"
+                      >
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <span
-                              className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded ${
+                              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs ${
                                 entry.action === "add"
                                   ? "bg-[#4B5B32]/10 text-[#4B5B32]"
                                   : "bg-red-50 text-red-600"
                               }`}
                             >
-                              {entry.action === "add" ? "+" : "−"}{entry.amount}
+                              {entry.action === "add" ? "+" : "−"}
+                              {entry.amount}
                             </span>
                             <span className="text-muted-foreground truncate">{entry.reason}</span>
                           </div>
                         </div>
-                        <div className="text-xs text-muted-foreground ml-3 whitespace-nowrap">
-                          {new Date(entry.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                        <div className="text-muted-foreground ml-3 text-xs whitespace-nowrap">
+                          {new Date(entry.date).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                          })}
                           <span className="ml-1.5 opacity-60">· {entry.by}</span>
                         </div>
                       </div>
@@ -543,11 +589,11 @@ export function AdminMemberDetail() {
               >
                 {editingNotes ? (
                   <>
-                    <Save className="w-4 h-4 mr-1" /> Save
+                    <Save className="mr-1 h-4 w-4" /> Save
                   </>
                 ) : (
                   <>
-                    <Edit3 className="w-4 h-4 mr-1" /> Edit
+                    <Edit3 className="mr-1 h-4 w-4" /> Edit
                   </>
                 )}
               </Button>
@@ -561,7 +607,7 @@ export function AdminMemberDetail() {
                   placeholder="Add notes about this member..."
                 />
               ) : (
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                <p className="text-muted-foreground text-sm whitespace-pre-wrap">
                   {notes || "No notes yet."}
                 </p>
               )}
@@ -575,18 +621,18 @@ export function AdminMemberDetail() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
                   <div className="flex items-center gap-3">
-                    <Bell className="w-4 h-4 text-[#4B5B32]" />
+                    <Bell className="h-4 w-4 text-[#4B5B32]" />
                     <span className="text-sm">Newsletter</span>
                   </div>
                   <Badge variant={member.newsletterSubscribed ? "default" : "outline"}>
                     {member.newsletterSubscribed ? "Subscribed" : "Not subscribed"}
                   </Badge>
                 </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
                   <div className="flex items-center gap-3">
-                    <BookOpen className="w-4 h-4 text-[#4B5B32]" />
+                    <BookOpen className="h-4 w-4 text-[#4B5B32]" />
                     <span className="text-sm">Blog notifications</span>
                   </div>
                   <Badge variant={member.blogSubscribed ? "default" : "outline"}>
@@ -605,8 +651,8 @@ export function AdminMemberDetail() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="flex items-center justify-between py-2 border-b border-border/50">
-                <span className="text-sm text-muted-foreground">Last class attended</span>
+              <div className="border-border/50 flex items-center justify-between border-b py-2">
+                <span className="text-muted-foreground text-sm">Last class attended</span>
                 <span className="text-sm">
                   {new Date(member.lastClassDate).toLocaleDateString("en-GB", {
                     day: "numeric",
@@ -615,8 +661,8 @@ export function AdminMemberDetail() {
                   })}
                 </span>
               </div>
-              <div className="flex items-center justify-between py-2 border-b border-border/50">
-                <span className="text-sm text-muted-foreground">Member since</span>
+              <div className="border-border/50 flex items-center justify-between border-b py-2">
+                <span className="text-muted-foreground text-sm">Member since</span>
                 <span className="text-sm">
                   {new Date(member.joinedDate).toLocaleDateString("en-GB", {
                     day: "numeric",
@@ -625,12 +671,12 @@ export function AdminMemberDetail() {
                   })}
                 </span>
               </div>
-              <div className="flex items-center justify-between py-2 border-b border-border/50">
-                <span className="text-sm text-muted-foreground">Referral code</span>
-                <span className="text-sm font-mono">{member.referralCode}</span>
+              <div className="border-border/50 flex items-center justify-between border-b py-2">
+                <span className="text-muted-foreground text-sm">Referral code</span>
+                <span className="font-mono text-sm">{member.referralCode}</span>
               </div>
               <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-muted-foreground">Referral earnings (lifetime)</span>
+                <span className="text-muted-foreground text-sm">Referral earnings (lifetime)</span>
                 <span className="text-sm">£{member.referralsCount * 10}</span>
               </div>
             </div>

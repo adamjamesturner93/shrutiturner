@@ -17,7 +17,7 @@ import { useI18n } from "../lib/use-i18n";
 export function RetreatCheckoutPage() {
   const { id } = useParams<{ id: string }>();
   const retreat = getRetreatBySlug(id || "");
-  
+
   // Get selected date from URL params or state
   const [selectedDateId, setSelectedDateId] = useState<string>("");
   const [formData, setFormData] = useState({
@@ -52,7 +52,7 @@ export function RetreatCheckoutPage() {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-20 text-center">
-          <h1 className="text-3xl mb-4">Retreat Not Found</h1>
+          <h1 className="mb-4 text-3xl">Retreat Not Found</h1>
           <Link href="/retreats">
             <Button>View All Retreats</Button>
           </Link>
@@ -69,20 +69,20 @@ export function RetreatCheckoutPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     // In production, this would:
     // 1. Validate all form data
     // 2. Create booking in database
     // 3. Initialize Stripe checkout session
     // 4. Redirect to Stripe payment page
-    
+
     console.log("Booking submitted:", {
       retreat,
       selectedDate,
       formData,
       totalPrice,
     });
-    
+
     setTimeout(() => {
       alert(
         "Booking submitted successfully! In production, you would now be redirected to Stripe for secure payment processing."
@@ -96,7 +96,7 @@ export function RetreatCheckoutPage() {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-20 text-center">
-          <h1 className="text-3xl mb-4">Please Select a Date</h1>
+          <h1 className="mb-4 text-3xl">Please Select a Date</h1>
           <p className="text-muted-foreground mb-6">
             You need to select a retreat date before proceeding to checkout.
           </p>
@@ -119,37 +119,36 @@ export function RetreatCheckoutPage() {
       />
 
       {/* Checkout Header */}
-      <section className="bg-[#2E1F33] text-[#FAFAF8] py-8">
-        <div className="container mx-auto px-4 max-w-5xl">
-          <Link href={`/retreats/${retreat.slug}`}
-            className="inline-flex items-center gap-2 text-[#B5C49B] hover:underline mb-4"
+      <section className="bg-[#2E1F33] py-8 text-[#FAFAF8]">
+        <div className="container mx-auto max-w-5xl px-4">
+          <Link
+            href={`/retreats/${retreat.slug}`}
+            className="mb-4 inline-flex items-center gap-2 text-[#B5C49B] hover:underline"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="h-4 w-4" />
             Back to retreat details
           </Link>
           <h1 className="text-3xl md:text-4xl">Complete Your Booking</h1>
-          <p className="text-[#B5C49B] mt-2">{retreat.title}</p>
+          <p className="mt-2 text-[#B5C49B]">{retreat.title}</p>
         </div>
       </section>
 
-      <div className="container mx-auto px-4 py-12 max-w-6xl">
-        <div className="grid lg:grid-cols-3 gap-8">
+      <div className="container mx-auto max-w-6xl px-4 py-12">
+        <div className="grid gap-8 lg:grid-cols-3">
           {/* Main Form - 2 columns */}
           <div className="lg:col-span-2">
             <form onSubmit={handleSubmit} className="space-y-8">
               {/* Personal Information */}
-              <div className="bg-background border rounded-lg p-6 space-y-6">
+              <div className="bg-background space-y-6 rounded-lg border p-6">
                 <h2 className="text-2xl">Personal Information</h2>
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="firstName">First Name *</Label>
                     <Input
                       id="firstName"
                       required
                       value={formData.firstName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, firstName: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
@@ -158,14 +157,12 @@ export function RetreatCheckoutPage() {
                       id="lastName"
                       required
                       value={formData.lastName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, lastName: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                     />
                   </div>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email Address *</Label>
                     <Input
@@ -173,9 +170,7 @@ export function RetreatCheckoutPage() {
                       type="email"
                       required
                       value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
@@ -185,18 +180,16 @@ export function RetreatCheckoutPage() {
                       type="tel"
                       required
                       value={formData.phone}
-                      onChange={(e) =>
-                        setFormData({ ...formData, phone: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     />
                   </div>
                 </div>
               </div>
 
               {/* Emergency Contact */}
-              <div className="bg-background border rounded-lg p-6 space-y-6">
+              <div className="bg-background space-y-6 rounded-lg border p-6">
                 <h2 className="text-2xl">Emergency Contact</h2>
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="emergencyContact">Contact Name *</Label>
                     <Input
@@ -230,13 +223,11 @@ export function RetreatCheckoutPage() {
               </div>
 
               {/* Health & Requirements */}
-              <div className="bg-background border rounded-lg p-6 space-y-6">
+              <div className="bg-background space-y-6 rounded-lg border p-6">
                 <h2 className="text-2xl">Health & Requirements</h2>
 
                 <div className="space-y-2">
-                  <Label htmlFor="dietaryRequirements">
-                    Dietary Requirements
-                  </Label>
+                  <Label htmlFor="dietaryRequirements">Dietary Requirements</Label>
                   <Textarea
                     id="dietaryRequirements"
                     rows={3}
@@ -252,9 +243,7 @@ export function RetreatCheckoutPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="medicalConditions">
-                    Medical Conditions *
-                  </Label>
+                  <Label htmlFor="medicalConditions">Medical Conditions *</Label>
                   <Textarea
                     id="medicalConditions"
                     rows={4}
@@ -271,9 +260,7 @@ export function RetreatCheckoutPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="mobilityNeeds">
-                    Mobility or Accessibility Needs
-                  </Label>
+                  <Label htmlFor="mobilityNeeds">Mobility or Accessibility Needs</Label>
                   <Textarea
                     id="mobilityNeeds"
                     rows={3}
@@ -290,9 +277,9 @@ export function RetreatCheckoutPage() {
               </div>
 
               {/* Room Preference */}
-              <div className="bg-background border rounded-lg p-6 space-y-4">
+              <div className="bg-background space-y-4 rounded-lg border p-6">
                 <h2 className="text-2xl">Accommodation</h2>
-                <div className="flex items-start space-x-3 border rounded-lg p-4">
+                <div className="flex items-start space-x-3 rounded-lg border p-4">
                   <Checkbox
                     id="singleRoom"
                     checked={formData.singleRoom}
@@ -304,22 +291,18 @@ export function RetreatCheckoutPage() {
                     }
                   />
                   <div className="flex-1">
-                    <label
-                      htmlFor="singleRoom"
-                      className="font-medium cursor-pointer block"
-                    >
+                    <label htmlFor="singleRoom" className="block cursor-pointer font-medium">
                       Single room supplement (+£200)
                     </label>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Standard accommodation is twin share. Select this option
-                      for a private room.
+                    <p className="text-muted-foreground mt-1 text-sm">
+                      Standard accommodation is twin share. Select this option for a private room.
                     </p>
                   </div>
                 </div>
               </div>
 
               {/* Terms & Conditions */}
-              <div className="bg-background border rounded-lg p-6 space-y-4">
+              <div className="bg-background space-y-4 rounded-lg border p-6">
                 <h2 className="text-2xl">Terms & Conditions</h2>
 
                 <div className="space-y-4">
@@ -334,22 +317,13 @@ export function RetreatCheckoutPage() {
                         })
                       }
                     />
-                    <label
-                      htmlFor="agreedToTerms"
-                      className="text-sm cursor-pointer"
-                    >
+                    <label htmlFor="agreedToTerms" className="cursor-pointer text-sm">
                       I agree to the{" "}
-                      <Link href="/terms"
-                        className="text-primary underline"
-                        target="_blank"
-                      >
+                      <Link href="/terms" className="text-primary underline" target="_blank">
                         Terms & Conditions
                       </Link>{" "}
                       and{" "}
-                      <Link href="/privacy"
-                        className="text-primary underline"
-                        target="_blank"
-                      >
+                      <Link href="/privacy" className="text-primary underline" target="_blank">
                         Privacy Policy
                       </Link>{" "}
                       *
@@ -367,12 +341,10 @@ export function RetreatCheckoutPage() {
                         })
                       }
                     />
-                    <label
-                      htmlFor="agreedToHealth"
-                      className="text-sm cursor-pointer"
-                    >
+                    <label htmlFor="agreedToHealth" className="cursor-pointer text-sm">
                       I have read and agree to the{" "}
-                      <Link href="/health-declaration"
+                      <Link
+                        href="/health-declaration"
                         className="text-primary underline"
                         target="_blank"
                       >
@@ -390,11 +362,7 @@ export function RetreatCheckoutPage() {
                   type="submit"
                   size="lg"
                   className="w-full"
-                  disabled={
-                    !formData.agreedToTerms ||
-                    !formData.agreedToHealth ||
-                    isSubmitting
-                  }
+                  disabled={!formData.agreedToTerms || !formData.agreedToHealth || isSubmitting}
                 >
                   <CreditCard className="mr-2 h-5 w-5" />
                   {isSubmitting ? "Processing..." : "Proceed to Payment"}
@@ -407,22 +375,18 @@ export function RetreatCheckoutPage() {
           <div className="lg:col-span-1">
             <div className="sticky top-24 space-y-6">
               {/* Order Summary */}
-              <div className="bg-background border rounded-lg p-6 space-y-4">
+              <div className="bg-background space-y-4 rounded-lg border p-6">
                 <h2 className="text-xl font-medium">Order Summary</h2>
 
-                <div className="space-y-3 pb-4 border-b">
+                <div className="space-y-3 border-b pb-4">
                   <div>
                     <p className="font-medium">{retreat.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {retreat.location}
-                    </p>
+                    <p className="text-muted-foreground text-sm">{retreat.location}</p>
                   </div>
 
                   <div className="text-sm">
                     <p className="text-muted-foreground">Dates:</p>
-                    <p>
-                      {fmtDateRange(selectedDate.startDate, selectedDate.endDate)}
-                    </p>
+                    <p>{fmtDateRange(selectedDate.startDate, selectedDate.endDate)}</p>
                   </div>
                 </div>
 
@@ -433,33 +397,29 @@ export function RetreatCheckoutPage() {
                   </div>
                   {formData.singleRoom && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        Single room supplement
-                      </span>
+                      <span className="text-muted-foreground">Single room supplement</span>
                       <span>£200</span>
                     </div>
                   )}
                 </div>
 
-                <div className="pt-4 border-t">
-                  <div className="flex justify-between items-baseline">
+                <div className="border-t pt-4">
+                  <div className="flex items-baseline justify-between">
                     <span className="text-lg font-medium">Total Due</span>
                     <span className="text-2xl font-medium">£{totalPrice}</span>
                   </div>
                   {isEarlyBird && (
-                    <p className="text-sm text-[#4B5B32] mt-2">
-                      🎉 Early bird pricing applied
-                    </p>
+                    <p className="mt-2 text-sm text-[#4B5B32]">🎉 Early bird pricing applied</p>
                   )}
                 </div>
               </div>
 
               {/* Important Info */}
-              <div className="bg-[#4B5B32]/10 border border-[#4B5B32]/20 rounded-lg p-4">
+              <div className="rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/10 p-4">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-[#4B5B32] flex-shrink-0 mt-0.5" />
-                  <div className="text-sm space-y-2">
-                    <p className="font-medium text-foreground">Important</p>
+                  <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
+                  <div className="space-y-2 text-sm">
+                    <p className="text-foreground font-medium">Important</p>
                     <ul className="text-muted-foreground space-y-1">
                       <li>• Payment in full required today</li>
                       <li>• Travel insurance mandatory</li>
@@ -475,24 +435,20 @@ export function RetreatCheckoutPage() {
                   type="submit"
                   size="lg"
                   className="w-full"
-                  disabled={
-                    !formData.agreedToTerms ||
-                    !formData.agreedToHealth ||
-                    isSubmitting
-                  }
+                  disabled={!formData.agreedToTerms || !formData.agreedToHealth || isSubmitting}
                   onClick={handleSubmit}
                 >
                   <CreditCard className="mr-2 h-5 w-5" />
                   {isSubmitting ? "Processing..." : "Proceed to Payment"}
                 </Button>
-                <p className="text-xs text-center text-muted-foreground mt-3">
+                <p className="text-muted-foreground mt-3 text-center text-xs">
                   Secure payment powered by Stripe
                 </p>
               </div>
 
               {/* Trust Signals */}
-              <div className="text-center pt-4 border-t">
-                <p className="text-xs text-muted-foreground">
+              <div className="border-t pt-4 text-center">
+                <p className="text-muted-foreground text-xs">
                   🔒 Your payment information is secure and encrypted
                 </p>
               </div>

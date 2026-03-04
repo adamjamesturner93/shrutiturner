@@ -1,22 +1,12 @@
-import { blogPosts } from "@/data/blog-data";
-import {
-  classDetails,
-  getScheduleByDay,
-  type ClassDetail,
-} from "@/data/schedule-data";
-import {
-  retreats,
-  type Retreat,
-} from "@/data/retreat-data";
+import { classDetails, getScheduleByDay, type ClassDetail } from "@/data/schedule-data";
+import { retreats } from "@/data/retreat-data";
 import type {
-  BlogPostContent,
+  LegalDocumentContent,
   ClassDefinitionContent,
   GlobalContent,
+  NewsletterSignupContent,
   PageContent,
-  RetreatCombinedContent,
   RetreatInstanceContent,
-  RetreatTemplateContent,
-  RetreatVenueContent,
 } from "./types";
 
 export const LOCAL_GLOBAL_CONTENT: GlobalContent = {
@@ -39,8 +29,7 @@ export const LOCAL_PAGE_CONTENT: Record<string, PageContent> = {
     slug: "classes",
     seo: {
       title: "Classes",
-      description:
-        "Live online yoga and strength classes designed for complex bodies.",
+      description: "Live online yoga and strength classes designed for complex bodies.",
     },
   },
   "classes-yoga": { slug: "classes-yoga", seo: { title: "Yoga Classes" } },
@@ -58,40 +47,58 @@ export const LOCAL_PAGE_CONTENT: Record<string, PageContent> = {
   blog: { slug: "blog", seo: { title: "Blog" } },
 };
 
-export const LOCAL_BLOG_POSTS: BlogPostContent[] = blogPosts;
+export const LOCAL_CLASS_DEFINITIONS: ClassDefinitionContent[] = classDetails as ClassDetail[];
 
-export const LOCAL_CLASS_DEFINITIONS: ClassDefinitionContent[] =
-  classDetails as ClassDetail[];
+export const LOCAL_LEGAL_DOCUMENTS: LegalDocumentContent[] = [
+  {
+    id: "local-terms",
+    slug: "terms",
+    title: "Terms & Conditions",
+    version: "1.0",
+    body: "Placeholder legal content. Replace by publishing a `legalDocument` entry in Contentful.",
+  },
+  {
+    id: "local-privacy",
+    slug: "privacy",
+    title: "Privacy Policy",
+    version: "1.0",
+    body: "Placeholder legal content. Replace by publishing a `legalDocument` entry in Contentful.",
+  },
+  {
+    id: "local-cookies",
+    slug: "cookies",
+    title: "Cookie Policy",
+    version: "1.0",
+    body: "Placeholder legal content. Replace by publishing a `legalDocument` entry in Contentful.",
+  },
+  {
+    id: "local-health-declaration",
+    slug: "health-declaration",
+    title: "Health Declaration",
+    version: "1.0",
+    body: "Placeholder legal content. Replace by publishing a `legalDocument` entry in Contentful.",
+  },
+];
 
-export const LOCAL_RETREAT_TEMPLATES: RetreatTemplateContent[] = retreats.map((r) => ({
-  id: r.id,
-  slug: r.slug,
-  title: r.title,
-  subtitle: r.subtitle,
-  shortDescription: r.shortDescription,
-  fullDescription: r.fullDescription,
-  suitableFor: r.suitableFor,
-  included: r.included,
-  notIncluded: r.notIncluded,
-  seoTitle: `${r.title} - ${r.subtitle}`,
-  seoDescription: r.shortDescription,
-  venueSlug: r.slug === "virtual-immersion" ? "online" : r.location.toLowerCase().replace(/\s+/g, "-"),
-}));
-
-const venueMap = new Map<string, RetreatVenueContent>();
-for (const retreat of retreats) {
-  const slug = retreat.slug === "virtual-immersion" ? "online" : retreat.location.toLowerCase().replace(/\s+/g, "-");
-  if (!venueMap.has(slug)) {
-    venueMap.set(slug, {
-      slug,
-      name: retreat.location,
-      displayLocation: retreat.location,
-      description: retreat.accommodation,
-      accommodationType: retreat.accommodation,
-    });
-  }
-}
-export const LOCAL_RETREAT_VENUES = Array.from(venueMap.values());
+export const LOCAL_NEWSLETTER_SIGNUP_CONTENT: NewsletterSignupContent = {
+  slug: "default",
+  hookText: 'Get "5 Yoga Poses That Actually Build Strength" - free:',
+  formPlaceholder: "your.email@example.com",
+  buttonLabel: "Subscribe",
+  successMessage: "You're subscribed! Check your inbox.",
+  consentText: "No spam. Unsubscribe anytime.",
+  popupTitle: "Get Evidence-Based Insights",
+  popupDescription:
+    "Join the mailing list for research-backed articles on strength, movement, and chronic illness management. No spam, unsubscribe anytime.",
+  leadMagnetSlug: "5-yoga-poses-strength",
+  leadMagnetTitle: "5 Yoga Poses That Actually Build Strength",
+  emailSubject: "Your free guide: 5 Yoga Poses That Actually Build Strength",
+  emailPreviewText: "Here is your welcome gift and how to get started.",
+  emailBody:
+    "Hi {{firstName}},\n\nThanks for joining. Here is your guide: 5 Yoga Poses That Actually Build Strength.\n\n{{leadMagnetLink}}\n\nShruti",
+  deliveryType: "link",
+  assetUrl: "https://shrutiturner.com/resources/5-yoga-poses-strength",
+};
 
 export const LOCAL_RETREAT_INSTANCES: RetreatInstanceContent[] = retreats.flatMap((retreat) =>
   retreat.dates.map((d) => ({
@@ -107,8 +114,6 @@ export const LOCAL_RETREAT_INSTANCES: RetreatInstanceContent[] = retreats.flatMa
     currency: retreat.currency,
   }))
 );
-
-export const LOCAL_RETREATS_COMBINED: RetreatCombinedContent[] = retreats as Retreat[];
 
 type ScheduleDay = ReturnType<typeof getScheduleByDay>[number];
 

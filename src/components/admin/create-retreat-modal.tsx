@@ -56,11 +56,7 @@ const CONTENTFUL_RETREAT_TEMPLATES = [
   },
 ];
 
-export function CreateRetreatModal({
-  open,
-  onOpenChange,
-  onCreate,
-}: CreateRetreatModalProps) {
+export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetreatModalProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -70,9 +66,7 @@ export function CreateRetreatModal({
   const [normalPrice, setNormalPrice] = useState<number>(0);
   const [internalNotes, setInternalNotes] = useState("");
 
-  const template = CONTENTFUL_RETREAT_TEMPLATES.find(
-    (t) => t.entryId === selectedTemplate
-  );
+  const template = CONTENTFUL_RETREAT_TEMPLATES.find((t) => t.entryId === selectedTemplate);
 
   const handleCreate = () => {
     if (!template || !startDate || !endDate || !normalPrice) return;
@@ -104,30 +98,30 @@ export function CreateRetreatModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Schedule Retreat Instance</DialogTitle>
           <DialogDescription>
-            Select a retreat template from Contentful, then set dates, capacity,
-            and pricing for this instance.
+            Select a retreat template from Contentful, then set dates, capacity, and pricing for
+            this instance.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           {/* Contentful info */}
-          <div className="flex items-start gap-2 text-xs text-muted-foreground p-3 rounded-md bg-secondary/50">
-            <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+          <div className="text-muted-foreground bg-secondary/50 flex items-start gap-2 rounded-md p-3 text-xs">
+            <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
             <span>
-              Retreat descriptions, photos, accommodation details, schedule, and
-              location info are managed in Contentful. Here you set the
-              operational details for a specific instance (dates, spaces, pricing).
+              Retreat descriptions, photos, accommodation details, schedule, and location info are
+              managed in Contentful. Here you set the operational details for a specific instance
+              (dates, spaces, pricing).
             </span>
           </div>
 
           {/* Template selection */}
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
-              <Link2 className="w-4 h-4" />
+              <Link2 className="h-4 w-4" />
               Contentful retreat template
             </Label>
             <div className="space-y-2">
@@ -135,7 +129,7 @@ export function CreateRetreatModal({
                 <button
                   key={t.entryId}
                   onClick={() => setSelectedTemplate(t.entryId)}
-                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                  className={`w-full rounded-lg border p-3 text-left transition-colors ${
                     selectedTemplate === t.entryId
                       ? "border-[#4B5B32] bg-[#4B5B32]/5"
                       : "border-border hover:bg-secondary/30"
@@ -144,11 +138,11 @@ export function CreateRetreatModal({
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="text-sm">{t.title}</p>
-                      <p className="text-xs text-muted-foreground">{t.subtitle}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{t.location}</p>
+                      <p className="text-muted-foreground text-xs">{t.subtitle}</p>
+                      <p className="text-muted-foreground mt-1 text-xs">{t.location}</p>
                     </div>
                     {selectedTemplate === t.entryId && (
-                      <CheckCircle className="w-4 h-4 text-[#4B5B32] flex-shrink-0" />
+                      <CheckCircle className="h-4 w-4 flex-shrink-0 text-[#4B5B32]" />
                     )}
                   </div>
                 </button>
@@ -167,7 +161,7 @@ export function CreateRetreatModal({
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-input bg-input-background px-3 py-1 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                    className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full rounded-md border px-3 py-1 text-sm transition-colors outline-none focus-visible:ring-[3px]"
                   />
                 </div>
                 <div className="space-y-2">
@@ -177,7 +171,7 @@ export function CreateRetreatModal({
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-input bg-input-background px-3 py-1 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                    className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full rounded-md border px-3 py-1 text-sm transition-colors outline-none focus-visible:ring-[3px]"
                   />
                 </div>
               </div>
@@ -191,44 +185,36 @@ export function CreateRetreatModal({
                   min={2}
                   max={30}
                   value={totalSpaces}
-                  onChange={(e) =>
-                    setTotalSpaces(parseInt(e.target.value) || 0)
-                  }
+                  onChange={(e) => setTotalSpaces(parseInt(e.target.value) || 0)}
                 />
               </div>
 
               {/* Pricing */}
               <div className="space-y-3">
-                <p className="text-sm flex items-center gap-2">
-                  <PoundSterling className="w-4 h-4" />
+                <p className="flex items-center gap-2 text-sm">
+                  <PoundSterling className="h-4 w-4" />
                   Pricing
                 </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="retreat-early-price">
-                      Early bird price (£)
-                    </Label>
+                    <Label htmlFor="retreat-early-price">Early bird price (£)</Label>
                     <Input
                       id="retreat-early-price"
                       type="number"
                       min={0}
                       step={50}
                       value={earlyBirdPrice}
-                      onChange={(e) =>
-                        setEarlyBirdPrice(parseInt(e.target.value) || 0)
-                      }
+                      onChange={(e) => setEarlyBirdPrice(parseInt(e.target.value) || 0)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="retreat-early-deadline">
-                      Early bird deadline
-                    </Label>
+                    <Label htmlFor="retreat-early-deadline">Early bird deadline</Label>
                     <input
                       id="retreat-early-deadline"
                       type="date"
                       value={earlyBirdDeadline}
                       onChange={(e) => setEarlyBirdDeadline(e.target.value)}
-                      className="flex h-9 w-full rounded-md border border-input bg-input-background px-3 py-1 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                      className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full rounded-md border px-3 py-1 text-sm transition-colors outline-none focus-visible:ring-[3px]"
                     />
                   </div>
                 </div>
@@ -240,9 +226,7 @@ export function CreateRetreatModal({
                     min={0}
                     step={50}
                     value={normalPrice}
-                    onChange={(e) =>
-                      setNormalPrice(parseInt(e.target.value) || 0)
-                    }
+                    onChange={(e) => setNormalPrice(parseInt(e.target.value) || 0)}
                   />
                 </div>
               </div>

@@ -1,33 +1,31 @@
 "use client";
 
-import Link from "next/link";
-import { useParams } from "next/navigation";
 import { Layout } from "../components/layout";
-import { blogPosts } from "../data/blog-data";
 import { useI18n } from "../lib/use-i18n";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
+import { SEO } from "../components/seo";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { BlogReactions } from "@/components/blog-reactions";
+import { BlogComments } from "@/components/blog-comments";
 import type { BlogPostContent } from "@/lib/content";
 
 interface BlogPostPageProps {
-  post?: BlogPostContent | null;
-  posts?: BlogPostContent[];
+  post: BlogPostContent | null;
+  posts: BlogPostContent[];
 }
 
-export function BlogPostPage({ post: postProp, posts }: BlogPostPageProps) {
-  const { id } = useParams<{ id: string }>();
-  const postList = posts ?? blogPosts;
-  const post = postProp ?? postList.find((p) => p.id === id);
+export function BlogPostPage({ post, posts }: BlogPostPageProps) {
   const { fmtDate } = useI18n();
 
   if (!post) {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-20 text-center">
-          <h1 className="text-4xl mb-4">Post Not Found</h1>
+          <h1 className="mb-4 text-4xl">Post Not Found</h1>
           <p className="text-muted-foreground mb-8">
-            The blog post you're looking for doesn't exist.
+            The blog post you&apos;re looking for doesn&apos;t exist.
           </p>
           <Link href="/blog">
             <Button>
@@ -40,26 +38,31 @@ export function BlogPostPage({ post: postProp, posts }: BlogPostPageProps) {
     );
   }
 
-  const formatDate = (dateString: string) => {
-    return fmtDate(dateString);
-  };
-
-  // Get related posts (same tags, excluding current post)
-  const relatedPosts = postList
+  const relatedPosts = posts
     .filter((p) => p.id !== post.id && p.tags.some((tag) => post.tags.includes(tag)))
     .slice(0, 3);
 
   return (
     <Layout>
-      {/* Article Header */}
+      <SEO
+        title={`${post.title} - Shruti Turner`}
+        description={post.excerpt}
+        keywords={post.tags.join(", ")}
+        ogType="article"
+        canonicalUrl={`https://shrutiturner.com/blog/${post.id}`}
+      />
+
       <article className="py-16 md:py-20">
-        <div className="container mx-auto px-4 max-w-4xl">
-          <Link href="/blog" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-8">
+        <div className="container mx-auto max-w-4xl px-4">
+          <Link
+            href="/blog"
+            className="text-muted-foreground hover:text-primary mb-8 inline-flex items-center text-sm"
+          >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Blog
           </Link>
 
-          <div className="space-y-6 mb-12">
+          <div className="mb-12 space-y-6">
             <div className="flex flex-wrap gap-2">
               {post.tags.map((tag) => (
                 <Badge key={tag} variant="secondary">
@@ -68,45 +71,40 @@ export function BlogPostPage({ post: postProp, posts }: BlogPostPageProps) {
               ))}
             </div>
 
-            <h1 className="text-4xl md:text-5xl leading-tight">{post.title}</h1>
+            <h1 className="text-4xl leading-tight md:text-5xl">{post.title}</h1>
 
-            <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
+            <div className="text-muted-foreground flex flex-wrap items-center gap-4">
               <span>By {post.author}</span>
               <span>•</span>
-              <span>{formatDate(post.date)}</span>
+              <span>{fmtDate(post.date)}</span>
               <span>•</span>
               <span>{post.readTime}</span>
             </div>
           </div>
 
-          {/* Article Content */}
           <div className="prose prose-lg max-w-none">
-            <div
-              className="space-y-6 leading-relaxed"
-              style={{
-                whiteSpace: "pre-line",
-              }}
-            >
+            <div className="space-y-6 leading-relaxed" style={{ whiteSpace: "pre-line" }}>
               {post.content.split("\n## ").map((section, index) => {
                 if (index === 0) {
-                  // First section with h1
                   const lines = section.split("\n").filter((line) => line.trim());
                   return (
                     <div key={index} className="space-y-4">
                       {lines.slice(1).map((line, lineIndex) => {
                         if (line.startsWith("### ")) {
                           return (
-                            <h3 key={lineIndex} className="text-2xl mt-8 mb-4">
+                            <h3 key={lineIndex} className="mt-8 mb-4 text-2xl">
                               {line.replace("### ", "")}
                             </h3>
                           );
-                        } else if (line.match(/^\d+\.\s/)) {
+                        }
+                        if (line.match(/^\d+\.\s/)) {
                           return (
                             <p key={lineIndex} className="ml-4">
                               {line}
                             </p>
                           );
-                        } else if (line.startsWith("- ")) {
+                        }
+                        if (line.startsWith("- ")) {
                           return (
                             <p key={lineIndex} className="ml-4">
                               {line}
@@ -119,25 +117,29 @@ export function BlogPostPage({ post: postProp, posts }: BlogPostPageProps) {
                   );
                 }
 
-                // Subsequent sections with h2
-                const [heading, ...content] = section.split("\n").filter((line) => line.trim());
+                const [heading, ...content] = section
+                  .split("\n")
+                  .filter((line) => line.trim());
+
                 return (
                   <div key={index} className="space-y-4">
-                    <h2 className="text-3xl mt-12 mb-6">{heading}</h2>
+                    <h2 className="mt-12 mb-6 text-3xl">{heading}</h2>
                     {content.map((line, lineIndex) => {
                       if (line.startsWith("### ")) {
                         return (
-                          <h3 key={lineIndex} className="text-2xl mt-8 mb-4">
+                          <h3 key={lineIndex} className="mt-8 mb-4 text-2xl">
                             {line.replace("### ", "")}
                           </h3>
                         );
-                      } else if (line.match(/^\d+\.\s/)) {
+                      }
+                      if (line.match(/^\d+\.\s/)) {
                         return (
                           <p key={lineIndex} className="ml-4">
                             {line}
                           </p>
                         );
-                      } else if (line.startsWith("- ")) {
+                      }
+                      if (line.startsWith("- ")) {
                         return (
                           <p key={lineIndex} className="ml-4">
                             {line}
@@ -154,22 +156,23 @@ export function BlogPostPage({ post: postProp, posts }: BlogPostPageProps) {
         </div>
       </article>
 
-      {/* CTA Sidebar/Bottom */}
+      <section className="py-12 md:py-16">
+        <div className="container mx-auto max-w-4xl px-4">
+          <BlogReactions postId={post.id} />
+          <BlogComments postId={post.id} />
+        </div>
+      </section>
+
       <section className="bg-secondary/20 py-12 md:py-16">
-        <div className="container mx-auto px-4 max-w-4xl">
-          <div className="bg-[#4B5B32] text-[#FAFAF8] rounded-lg p-8 md:p-12 text-center space-y-6">
-            <h3 className="text-2xl md:text-3xl">
-              Ready to Build Strength That Works for Your Body?
-            </h3>
-            <p className="text-lg opacity-90 leading-relaxed">
-              Whether you're interested in group classes, 1:1 coaching, or just
-              have a question — I'd love to hear from you.
+        <div className="container mx-auto max-w-4xl px-4">
+          <div className="space-y-6 rounded-lg bg-[#4B5B32] p-8 text-center text-[#FAFAF8] md:p-12">
+            <h3 className="text-2xl md:text-3xl">Ready to Build Strength That Works for Your Body?</h3>
+            <p className="text-lg leading-relaxed opacity-90">
+              Whether you&apos;re interested in group classes, 1:1 coaching, or just have a question
+              I&apos;d love to hear from you.
             </p>
             <Link href="/contact">
-              <Button
-                size="lg"
-                className="bg-[#B5C49B] text-[#2E1F33] hover:bg-[#a5b48b]"
-              >
+              <Button size="lg" className="bg-[#B5C49B] text-[#2E1F33] hover:bg-[#a5b48b]">
                 Get in Touch
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
@@ -178,18 +181,17 @@ export function BlogPostPage({ post: postProp, posts }: BlogPostPageProps) {
         </div>
       </section>
 
-      {/* Related Posts */}
       {relatedPosts.length > 0 && (
         <section className="py-16 md:py-20">
-          <div className="container mx-auto px-4 max-w-6xl">
-            <h3 className="text-3xl mb-8">Related Articles</h3>
-            <div className="grid md:grid-cols-3 gap-8">
+          <div className="container mx-auto max-w-6xl px-4">
+            <h3 className="mb-8 text-3xl">Related Articles</h3>
+            <div className="grid gap-8 md:grid-cols-3">
               {relatedPosts.map((relatedPost) => (
                 <article
                   key={relatedPost.id}
-                  className="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow bg-card"
+                  className="bg-card overflow-hidden rounded-lg border transition-shadow hover:shadow-lg"
                 >
-                  <div className="p-6 space-y-4">
+                  <div className="space-y-4 p-6">
                     <div className="flex flex-wrap gap-2">
                       {relatedPost.tags.slice(0, 2).map((tag) => (
                         <Badge key={tag} variant="secondary" className="text-xs">
@@ -199,14 +201,15 @@ export function BlogPostPage({ post: postProp, posts }: BlogPostPageProps) {
                     </div>
 
                     <h4 className="leading-tight">
-                      <Link href={`/blog/${relatedPost.id}`}
+                      <Link
+                        href={`/blog/${relatedPost.id}`}
                         className="hover:text-primary transition-colors"
                       >
                         {relatedPost.title}
                       </Link>
                     </h4>
 
-                    <p className="text-muted-foreground text-sm leading-relaxed line-clamp-3">
+                    <p className="text-muted-foreground line-clamp-3 text-sm leading-relaxed">
                       {relatedPost.excerpt}
                     </p>
 
@@ -223,7 +226,6 @@ export function BlogPostPage({ post: postProp, posts }: BlogPostPageProps) {
         </section>
       )}
 
-      {/* Article Structured Data */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -237,7 +239,13 @@ export function BlogPostPage({ post: postProp, posts }: BlogPostPageProps) {
               name: post.author,
               url: "https://shrutiturner.com/about",
               jobTitle: "Strength & Yoga Coach",
-              knowsAbout: ["Biomechanics", "Rehabilitation", "Chronic Illness", "Yoga", "Strength Training"],
+              knowsAbout: [
+                "Biomechanics",
+                "Rehabilitation",
+                "Chronic Illness",
+                "Yoga",
+                "Strength Training",
+              ],
             },
             datePublished: post.date,
             publisher: {

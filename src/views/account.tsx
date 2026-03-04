@@ -166,27 +166,24 @@ export function AccountPage() {
     hour12: dateFormat === "MM/DD/YYYY",
   });
 
-  const currentDatePreview = formatDateForDisplay(
-    new Date().toISOString(),
-    dateFormat
-  );
+  const currentDatePreview = formatDateForDisplay(new Date().toISOString(), dateFormat);
 
   return (
     <DashboardLayout title="Account - Shruti Turner">
-      <h1 className="text-3xl mb-2">Account Settings</h1>
+      <h1 className="mb-2 text-3xl">Account Settings</h1>
       <p className="text-muted-foreground mb-8">
         Manage your profile, preferences, and notifications.
       </p>
 
       <div className="max-w-2xl space-y-8">
         {/* ── Profile ── */}
-        <div className="bg-background border rounded-lg p-6 space-y-5">
-          <div className="flex items-center gap-3 mb-2">
-            <User className="w-5 h-5 text-primary" />
+        <div className="bg-background space-y-5 rounded-lg border p-6">
+          <div className="mb-2 flex items-center gap-3">
+            <User className="text-primary h-5 w-5" />
             <h2 className="text-xl">Profile</h2>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="firstName">First Name</Label>
               <Input
@@ -197,11 +194,7 @@ export function AccountPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="lastName">Last Name</Label>
-              <Input
-                id="lastName"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-              />
+              <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} />
             </div>
           </div>
 
@@ -227,24 +220,23 @@ export function AccountPage() {
               className={dobError ? "border-red-500" : ""}
             />
             {dobError && (
-              <p className="text-sm text-red-600 flex items-start gap-1.5">
-                <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <p className="flex items-start gap-1.5 text-sm text-red-600">
+                <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
                 {dobError}
               </p>
             )}
             {!dobError && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Required for insurance purposes. You must be 18 or over.
               </p>
             )}
           </div>
 
           {/* Gender & Ethnicity (optional) */}
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="gender">
-                Gender{" "}
-                <span className="text-muted-foreground text-xs">(optional)</span>
+                Gender <span className="text-muted-foreground text-xs">(optional)</span>
               </Label>
               <Select value={gender} onValueChange={setGender}>
                 <SelectTrigger id="gender">
@@ -261,8 +253,7 @@ export function AccountPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="ethnicity">
-                Ethnicity{" "}
-                <span className="text-muted-foreground text-xs">(optional)</span>
+                Ethnicity <span className="text-muted-foreground text-xs">(optional)</span>
               </Label>
               <Select value={ethnicity} onValueChange={setEthnicity}>
                 <SelectTrigger id="ethnicity">
@@ -279,9 +270,9 @@ export function AccountPage() {
             </div>
           </div>
 
-          <p className="text-xs text-muted-foreground">
-            Gender and ethnicity are optional. This information helps ensure
-            inclusive service delivery and is never shared publicly.
+          <p className="text-muted-foreground text-xs">
+            Gender and ethnicity are optional. This information helps ensure inclusive service
+            delivery and is never shared publicly.
           </p>
 
           <div className="flex items-center gap-3">
@@ -289,8 +280,8 @@ export function AccountPage() {
               Save Profile
             </Button>
             {profileSaved && (
-              <span className="text-sm text-[#4B5B32] flex items-center gap-1">
-                <Check className="w-4 h-4" />
+              <span className="flex items-center gap-1 text-sm text-[#4B5B32]">
+                <Check className="h-4 w-4" />
                 Saved
               </span>
             )}
@@ -298,15 +289,15 @@ export function AccountPage() {
         </div>
 
         {/* ── Regional Preferences ── */}
-        <div className="bg-background border rounded-lg p-6 space-y-5">
-          <div className="flex items-center gap-3 mb-2">
-            <Globe className="w-5 h-5 text-primary" />
+        <div className="bg-background space-y-5 rounded-lg border p-6">
+          <div className="mb-2 flex items-center gap-3">
+            <Globe className="text-primary h-5 w-5" />
             <h2 className="text-xl">Regional Preferences</h2>
           </div>
 
-          <p className="text-sm text-muted-foreground">
-            These settings control how dates and times appear in your schedule,
-            booking confirmations, and reminder emails.
+          <p className="text-muted-foreground text-sm">
+            These settings control how dates and times appear in your schedule, booking
+            confirmations, and reminder emails.
           </p>
 
           {/* Timezone */}
@@ -344,12 +335,12 @@ export function AccountPage() {
           </div>
 
           {/* Live Preview */}
-          <div className="bg-secondary/30 border rounded-lg p-4 space-y-2">
+          <div className="bg-secondary/30 space-y-2 rounded-lg border p-4">
             <div className="flex items-center gap-2 text-sm">
-              <Calendar className="w-4 h-4 text-primary" />
+              <Calendar className="text-primary h-4 w-4" />
               <span className="text-muted-foreground">Preview:</span>
             </div>
-            <div className="text-sm space-y-1">
+            <div className="space-y-1 text-sm">
               <p>
                 <span className="text-muted-foreground">Today's date: </span>
                 <span>{currentDatePreview}</span>
@@ -359,13 +350,8 @@ export function AccountPage() {
                 <span>{currentTimePreview}</span>
               </p>
               <p>
-                <span className="text-muted-foreground">
-                  Example class time:{" "}
-                </span>
-                <span>
-                  Monday{" "}
-                  {dateFormat === "MM/DD/YYYY" ? "9:00 AM" : "09:00"}
-                </span>
+                <span className="text-muted-foreground">Example class time: </span>
+                <span>Monday {dateFormat === "MM/DD/YYYY" ? "9:00 AM" : "09:00"}</span>
               </p>
             </div>
           </div>
@@ -373,8 +359,8 @@ export function AccountPage() {
           <div className="flex items-center gap-3">
             <Button onClick={handlePrefsSave}>Save Preferences</Button>
             {prefsSaved && (
-              <span className="text-sm text-[#4B5B32] flex items-center gap-1">
-                <Check className="w-4 h-4" />
+              <span className="flex items-center gap-1 text-sm text-[#4B5B32]">
+                <Check className="h-4 w-4" />
                 Saved
               </span>
             )}
@@ -382,14 +368,13 @@ export function AccountPage() {
         </div>
 
         {/* ── Health Profile link ── */}
-        <div className="bg-background border rounded-lg p-6 space-y-4">
-          <div className="flex items-center gap-3 mb-2">
-            <HeartPulse className="w-5 h-5 text-primary" />
+        <div className="bg-background space-y-4 rounded-lg border p-6">
+          <div className="mb-2 flex items-center gap-3">
+            <HeartPulse className="text-primary h-5 w-5" />
             <h2 className="text-xl">Health Profile</h2>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Keep your health conditions up to date so Shruti can adapt sessions
-            for your body.
+          <p className="text-muted-foreground text-sm">
+            Keep your health conditions up to date so Shruti can adapt sessions for your body.
           </p>
           <Link href="/dashboard/health">
             <Button variant="outline">View & Edit Health Profile</Button>
@@ -397,68 +382,44 @@ export function AccountPage() {
         </div>
 
         {/* ── Notifications ── */}
-        <div className="bg-background border rounded-lg p-6 space-y-4">
-          <div className="flex items-center gap-3 mb-2">
-            <Bell className="w-5 h-5 text-primary" />
+        <div className="bg-background space-y-4 rounded-lg border p-6">
+          <div className="mb-2 flex items-center gap-3">
+            <Bell className="text-primary h-5 w-5" />
             <h2 className="text-xl">Notifications</h2>
           </div>
           <div className="space-y-3">
             <label className="flex items-center justify-between py-2">
               <span className="text-sm">Class reminders (2 hours before)</span>
-              <input
-                type="checkbox"
-                defaultChecked
-                className="accent-[#4B5B32]"
-              />
+              <input type="checkbox" defaultChecked className="accent-[#4B5B32]" />
             </label>
             <label className="flex items-center justify-between py-2">
               <span className="text-sm">New class schedule updates</span>
-              <input
-                type="checkbox"
-                defaultChecked
-                className="accent-[#4B5B32]"
-              />
+              <input type="checkbox" defaultChecked className="accent-[#4B5B32]" />
             </label>
             <label className="flex items-center justify-between py-2">
               <span className="text-sm">Program announcements</span>
-              <input
-                type="checkbox"
-                defaultChecked
-                className="accent-[#4B5B32]"
-              />
+              <input type="checkbox" defaultChecked className="accent-[#4B5B32]" />
             </label>
           </div>
 
-          <div className="pt-3 border-t">
-            <p className="text-sm text-muted-foreground mb-3">
-              Email subscriptions
-            </p>
+          <div className="border-t pt-3">
+            <p className="text-muted-foreground mb-3 text-sm">Email subscriptions</p>
             <div className="space-y-3">
               <label className="flex items-center justify-between py-2">
                 <div>
                   <span className="text-sm">Newsletter</span>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-muted-foreground text-xs">
                     Monthly insights and training tips
                   </p>
                 </div>
-                <input
-                  type="checkbox"
-                  defaultChecked
-                  className="accent-[#4B5B32]"
-                />
+                <input type="checkbox" defaultChecked className="accent-[#4B5B32]" />
               </label>
               <label className="flex items-center justify-between py-2">
                 <div>
                   <span className="text-sm">Blog updates</span>
-                  <p className="text-xs text-muted-foreground">
-                    New article notifications
-                  </p>
+                  <p className="text-muted-foreground text-xs">New article notifications</p>
                 </div>
-                <input
-                  type="checkbox"
-                  defaultChecked
-                  className="accent-[#4B5B32]"
-                />
+                <input type="checkbox" defaultChecked className="accent-[#4B5B32]" />
               </label>
             </div>
           </div>
@@ -467,31 +428,29 @@ export function AccountPage() {
         </div>
 
         {/* ── Privacy & Legal ── */}
-        <div className="bg-background border rounded-lg p-6 space-y-4">
-          <div className="flex items-center gap-3 mb-2">
-            <Shield className="w-5 h-5 text-primary" />
+        <div className="bg-background space-y-4 rounded-lg border p-6">
+          <div className="mb-2 flex items-center gap-3">
+            <Shield className="text-primary h-5 w-5" />
             <h2 className="text-xl">Privacy & Legal</h2>
           </div>
           <div className="space-y-2 text-sm">
-            <Link href="/terms" className="block text-primary hover:underline">
+            <Link href="/terms" className="text-primary block hover:underline">
               Terms & Conditions
             </Link>
-            <Link href="/privacy" className="block text-primary hover:underline">
+            <Link href="/privacy" className="text-primary block hover:underline">
               Privacy Policy
             </Link>
-            <Link href="/health-declaration"
-              className="block text-primary hover:underline"
-            >
+            <Link href="/health-declaration" className="text-primary block hover:underline">
               Health Declaration
             </Link>
           </div>
-          <div className="pt-4 border-t">
+          <div className="border-t pt-4">
             <Button variant="outline">Request Data Export</Button>
           </div>
         </div>
 
         {/* ── Sign out ── */}
-        <div className="bg-background border rounded-lg p-6">
+        <div className="bg-background rounded-lg border p-6">
           <Button
             variant="outline"
             onClick={() => {

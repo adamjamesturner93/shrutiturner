@@ -15,9 +15,7 @@ export function UnsubscribePage() {
   const preselectedList = searchParams.get("list") as UnsubList | null;
 
   const [email, setEmail] = useState("");
-  const [unsubList, setUnsubList] = useState<UnsubList>(
-    preselectedList || "all"
-  );
+  const [unsubList, setUnsubList] = useState<UnsubList>(preselectedList || "all");
   const [status, setStatus] = useState<"idle" | "processing" | "done">("idle");
 
   const handleUnsubscribe = (e: React.FormEvent) => {
@@ -34,8 +32,8 @@ export function UnsubscribePage() {
     unsubList === "newsletter"
       ? "newsletter"
       : unsubList === "blog"
-      ? "blog updates"
-      : "all mailing lists";
+        ? "blog updates"
+        : "all mailing lists";
 
   return (
     <Layout>
@@ -45,34 +43,29 @@ export function UnsubscribePage() {
         canonicalUrl="https://shrutiturner.com/unsubscribe"
       />
 
-      <div className="container mx-auto px-4 py-16 max-w-2xl min-h-[60vh] flex flex-col items-center justify-center">
+      <div className="container mx-auto flex min-h-[60vh] max-w-2xl flex-col items-center justify-center px-4 py-16">
         {status === "done" ? (
-          <div className="text-center space-y-6">
-            <div className="w-16 h-16 rounded-full bg-[#4B5B32]/10 flex items-center justify-center mx-auto">
-              <Check className="w-8 h-8 text-[#4B5B32]" />
+          <div className="space-y-6 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#4B5B32]/10">
+              <Check className="h-8 w-8 text-[#4B5B32]" />
             </div>
             <h1 className="text-3xl md:text-4xl">You've Been Unsubscribed</h1>
-            <p className="text-muted-foreground text-lg max-w-md mx-auto">
-              Your email has been removed from {listLabel}. You won't receive
-              further emails from{" "}
+            <p className="text-muted-foreground mx-auto max-w-md text-lg">
+              Your email has been removed from {listLabel}. You won't receive further emails from{" "}
               {unsubList === "all" ? "us" : `the ${listLabel}`}.
             </p>
             {unsubList !== "all" && (
-              <div className="bg-secondary/20 border rounded-lg p-4 max-w-sm mx-auto text-sm text-muted-foreground">
+              <div className="bg-secondary/20 text-muted-foreground mx-auto max-w-sm rounded-lg border p-4 text-sm">
                 <p>
                   Note: you are still subscribed to{" "}
-                  {unsubList === "newsletter" ? "blog updates" : "the newsletter"}
-                  . You can{" "}
-                  <Link href={`/unsubscribe?list=${
-                      unsubList === "newsletter" ? "blog" : "newsletter"
-                    }`}
+                  {unsubList === "newsletter" ? "blog updates" : "the newsletter"}. You can{" "}
+                  <Link
+                    href={`/unsubscribe?list=${unsubList === "newsletter" ? "blog" : "newsletter"}`}
                     className="text-primary underline"
                     onClick={() => {
                       setStatus("idle");
                       setEmail("");
-                      setUnsubList(
-                        unsubList === "newsletter" ? "blog" : "newsletter"
-                      );
+                      setUnsubList(unsubList === "newsletter" ? "blog" : "newsletter");
                     }}
                   >
                     unsubscribe from that too
@@ -91,109 +84,94 @@ export function UnsubscribePage() {
             <div className="pt-4">
               <Button asChild variant="outline">
                 <Link href="/">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to Homepage
                 </Link>
               </Button>
             </div>
           </div>
         ) : (
-          <div className="text-center space-y-6 w-full">
-            <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center mx-auto">
-              <Mail className="w-8 h-8 text-muted-foreground" />
+          <div className="w-full space-y-6 text-center">
+            <div className="bg-secondary mx-auto flex h-16 w-16 items-center justify-center rounded-full">
+              <Mail className="text-muted-foreground h-8 w-8" />
             </div>
             <h1 className="text-3xl md:text-4xl">Unsubscribe</h1>
-            <p className="text-muted-foreground text-lg max-w-md mx-auto">
-              We're sorry to see you go. Choose which emails you'd like to stop
-              receiving.
+            <p className="text-muted-foreground mx-auto max-w-md text-lg">
+              We're sorry to see you go. Choose which emails you'd like to stop receiving.
             </p>
 
-            <form
-              onSubmit={handleUnsubscribe}
-              className="max-w-md mx-auto space-y-6 pt-4"
-            >
+            <form onSubmit={handleUnsubscribe} className="mx-auto max-w-md space-y-6 pt-4">
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email address"
                 required
-                className="w-full px-4 py-3 border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#4B5B32]/40"
+                className="bg-background text-foreground placeholder:text-muted-foreground w-full rounded-lg border px-4 py-3 focus:ring-2 focus:ring-[#4B5B32]/40 focus:outline-none"
               />
 
               {/* List selection */}
               <div className="space-y-3 text-left">
-                <p className="text-sm text-muted-foreground">
-                  Unsubscribe from:
-                </p>
-                <label className="flex items-start gap-3 cursor-pointer border rounded-lg p-4 has-[:checked]:border-primary has-[:checked]:bg-primary/5 transition-colors">
+                <p className="text-muted-foreground text-sm">Unsubscribe from:</p>
+                <label className="has-[:checked]:border-primary has-[:checked]:bg-primary/5 flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors">
                   <input
                     type="radio"
                     name="unsub-list"
                     value="newsletter"
                     checked={unsubList === "newsletter"}
                     onChange={() => setUnsubList("newsletter")}
-                    className="accent-[#4B5B32] mt-1"
+                    className="mt-1 accent-[#4B5B32]"
                   />
                   <div>
                     <span className="text-sm">Newsletter only</span>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Monthly insights, training tips, and lead magnet emails.
-                      You'll still get blog post notifications.
+                    <p className="text-muted-foreground mt-0.5 text-xs">
+                      Monthly insights, training tips, and lead magnet emails. You'll still get blog
+                      post notifications.
                     </p>
                   </div>
                 </label>
-                <label className="flex items-start gap-3 cursor-pointer border rounded-lg p-4 has-[:checked]:border-primary has-[:checked]:bg-primary/5 transition-colors">
+                <label className="has-[:checked]:border-primary has-[:checked]:bg-primary/5 flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors">
                   <input
                     type="radio"
                     name="unsub-list"
                     value="blog"
                     checked={unsubList === "blog"}
                     onChange={() => setUnsubList("blog")}
-                    className="accent-[#4B5B32] mt-1"
+                    className="mt-1 accent-[#4B5B32]"
                   />
                   <div>
                     <span className="text-sm">Blog updates only</span>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      New article notifications. You'll still get the monthly
-                      newsletter.
+                    <p className="text-muted-foreground mt-0.5 text-xs">
+                      New article notifications. You'll still get the monthly newsletter.
                     </p>
                   </div>
                 </label>
-                <label className="flex items-start gap-3 cursor-pointer border rounded-lg p-4 has-[:checked]:border-primary has-[:checked]:bg-primary/5 transition-colors">
+                <label className="has-[:checked]:border-primary has-[:checked]:bg-primary/5 flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors">
                   <input
                     type="radio"
                     name="unsub-list"
                     value="all"
                     checked={unsubList === "all"}
                     onChange={() => setUnsubList("all")}
-                    className="accent-[#4B5B32] mt-1"
+                    className="mt-1 accent-[#4B5B32]"
                   />
                   <div>
                     <span className="text-sm">All emails</span>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Unsubscribe from everything. You won't receive any further
-                      emails.
+                    <p className="text-muted-foreground mt-0.5 text-xs">
+                      Unsubscribe from everything. You won't receive any further emails.
                     </p>
                   </div>
                 </label>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={status === "processing"}
-              >
+              <Button type="submit" className="w-full" disabled={status === "processing"}>
                 {status === "processing" ? "Processing..." : "Unsubscribe"}
               </Button>
             </form>
 
-            <p className="text-sm text-muted-foreground pt-4">
+            <p className="text-muted-foreground pt-4 text-sm">
               If you're having trouble, contact us at{" "}
-              <a
-                href="mailto:hello@shrutiturner.com"
-                className="text-primary underline"
-              >
+              <a href="mailto:hello@shrutiturner.com" className="text-primary underline">
                 hello@shrutiturner.com
               </a>
             </p>

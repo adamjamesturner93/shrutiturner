@@ -1,5 +1,5 @@
-/* Import elegant serif font for headings */
-@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&display=swap');
+/* Import elegant serif font for headings — includes italic for pullquotes & editorial emphasis */
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400;1,700&display=swap');
 
-/* Import clean sans-serif for body text */
+/* Import clean sans-serif for body text — 400 regular, 500 medium, 600 semibold */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');

@@ -7,13 +7,7 @@ import { SEO } from "../components/seo";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Mail, Gift, Shield } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/auth-context";
@@ -33,9 +27,7 @@ export function LoginPage() {
   const intent = searchParams.get("intent");
   const refCode = searchParams.get("ref");
 
-  const [loginMethod, setLoginMethod] = useState<
-    "passwordless" | "google" | null
-  >(null);
+  const [loginMethod, setLoginMethod] = useState<"passwordless" | "google" | null>(null);
   const [email, setEmail] = useState("");
   const [codeSent, setCodeSent] = useState(false);
   const [code, setCode] = useState("");
@@ -92,34 +84,28 @@ export function LoginPage() {
         noIndex
       />
 
-      <section className="py-20 md:py-28 min-h-screen flex items-center">
-        <div className="container mx-auto px-4 max-w-md">
+      <section className="flex min-h-screen items-center py-20 md:py-28">
+        <div className="container mx-auto max-w-md px-4">
           {/* Referral banner */}
           {refCode && (
-            <div className="bg-[#4B5B32]/10 border border-[#4B5B32]/20 rounded-lg p-4 mb-6 flex items-start gap-3">
-              <Gift className="w-5 h-5 text-[#4B5B32] flex-shrink-0 mt-0.5" />
+            <div className="mb-6 flex items-start gap-3 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/10 p-4">
+              <Gift className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
               <div>
-                <p className="text-sm">
-                  £10 credit will be applied to your account after sign-up.
-                </p>
+                <p className="text-sm">£10 credit will be applied to your account after sign-up.</p>
               </div>
             </div>
           )}
 
           {/* Intent banner */}
           {intent === "book" && !refCode && (
-            <div className="bg-secondary/50 border rounded-lg p-4 mb-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                Sign in to complete your booking.
-              </p>
+            <div className="bg-secondary/50 mb-6 rounded-lg border p-4 text-center">
+              <p className="text-muted-foreground text-sm">Sign in to complete your booking.</p>
             </div>
           )}
 
           <Card>
             <CardHeader className="space-y-1">
-              <CardTitle className="text-3xl text-center">
-                Welcome Back
-              </CardTitle>
+              <CardTitle className="text-center text-3xl">Welcome Back</CardTitle>
               <CardDescription className="text-center">
                 Sign in to access your training programs and resources
               </CardDescription>
@@ -142,9 +128,7 @@ export function LoginPage() {
                       <span className="w-full border-t" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background px-2 text-muted-foreground">
-                        Or
-                      </span>
+                      <span className="bg-background text-muted-foreground px-2">Or</span>
                     </div>
                   </div>
 
@@ -175,7 +159,7 @@ export function LoginPage() {
                     Continue with Google
                   </Button>
 
-                  <div className="mt-6 text-center text-sm text-muted-foreground">
+                  <div className="text-muted-foreground mt-6 text-center text-sm">
                     <p>
                       New here?{" "}
                       <Link
@@ -188,10 +172,7 @@ export function LoginPage() {
                   </div>
                 </div>
               ) : loginMethod === "passwordless" ? (
-                <form
-                  onSubmit={handlePasswordlessLogin}
-                  className="space-y-4"
-                >
+                <form onSubmit={handlePasswordlessLogin} className="space-y-4">
                   <Button
                     type="button"
                     variant="ghost"
@@ -224,7 +205,7 @@ export function LoginPage() {
                         Send Verification Code
                       </Button>
 
-                      <p className="text-sm text-muted-foreground text-center">
+                      <p className="text-muted-foreground text-center text-sm">
                         We'll send a 6-digit code to your email
                       </p>
                     </>
@@ -241,9 +222,7 @@ export function LoginPage() {
                           maxLength={6}
                           required
                         />
-                        <p className="text-sm text-muted-foreground">
-                          Code sent to {email}
-                        </p>
+                        <p className="text-muted-foreground text-sm">Code sent to {email}</p>
                       </div>
 
                       <Button type="submit" className="w-full" size="lg">
@@ -266,8 +245,8 @@ export function LoginPage() {
           </Card>
 
           {/* Demo login shortcuts (development only) */}
-          <div className="mt-6 p-4 rounded-lg border border-dashed border-border bg-secondary/30">
-            <p className="text-xs text-muted-foreground text-center mb-3">
+          <div className="border-border bg-secondary/30 mt-6 rounded-lg border border-dashed p-4">
+            <p className="text-muted-foreground mb-3 text-center text-xs">
               Demo shortcuts (development only)
             </p>
             <div className="flex flex-col gap-2">
@@ -281,16 +260,11 @@ export function LoginPage() {
                   navigate("/dashboard", { replace: true });
                 }}
               >
-                <Mail className="w-4 h-4 mr-2" />
+                <Mail className="mr-2 h-4 w-4" />
                 Sign in as Sarah (Member)
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={handleInstructorDemo}
-              >
-                <Shield className="w-4 h-4 mr-2" />
+              <Button variant="outline" size="sm" className="w-full" onClick={handleInstructorDemo}>
+                <Shield className="mr-2 h-4 w-4" />
                 Sign in as Shruti (Instructor)
               </Button>
             </div>

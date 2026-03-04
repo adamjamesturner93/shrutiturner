@@ -88,10 +88,7 @@ export function formatDateShort(
  *
  * e.g. "24 Feb 2026" / "Feb 24, 2026"
  */
-export function formatDateMedium(
-  date: Date | string,
-  prefs: I18nPreferences
-): string {
+export function formatDateMedium(date: Date | string, prefs: I18nPreferences): string {
   const d = typeof date === "string" ? new Date(date) : date;
   const locale = getLocale(prefs.dateFormat);
   return d.toLocaleDateString(locale, {
@@ -107,10 +104,7 @@ export function formatDateMedium(
  *
  * e.g. "09:00" (24hr) or "9:00 AM" (12hr)
  */
-export function formatTime(
-  date: Date | string,
-  prefs: I18nPreferences
-): string {
+export function formatTime(date: Date | string, prefs: I18nPreferences): string {
   const d = typeof date === "string" ? new Date(date) : date;
   const locale = getLocale(prefs.dateFormat);
   return d.toLocaleTimeString(locale, {
@@ -128,10 +122,7 @@ export function formatTime(
  * (e.g. "09:00", "18:30") rather than full Date objects.
  * The time is assumed to be in Europe/London already.
  */
-export function formatTimeString(
-  timeStr: string,
-  prefs: I18nPreferences
-): string {
+export function formatTimeString(timeStr: string, prefs: I18nPreferences): string {
   if (useHour12(prefs.dateFormat)) {
     const [h, m] = timeStr.split(":").map(Number);
     const period = h >= 12 ? "PM" : "AM";
@@ -146,10 +137,7 @@ export function formatTimeString(
  *
  * e.g. "Monday 24 February 2026, 09:00" or "Monday, February 24, 2026, 9:00 AM"
  */
-export function formatDateTime(
-  date: Date | string,
-  prefs: I18nPreferences
-): string {
+export function formatDateTime(date: Date | string, prefs: I18nPreferences): string {
   const d = typeof date === "string" ? new Date(date) : date;
   const locale = getLocale(prefs.dateFormat);
   return d.toLocaleString(locale, {
@@ -176,10 +164,7 @@ export function formatDateRange(
   const e = typeof end === "string" ? new Date(end) : end;
 
   // If same month/year, compact format
-  if (
-    s.getMonth() === e.getMonth() &&
-    s.getFullYear() === e.getFullYear()
-  ) {
+  if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()) {
     const locale = getLocale(prefs.dateFormat);
     const month = s.toLocaleDateString(locale, {
       month: "long",
@@ -243,15 +228,8 @@ export function getOffsetFromLondon(prefs: I18nPreferences): string | null {
       month: "2-digit",
       day: "2-digit",
     }).formatToParts(now);
-    const get = (type: string) =>
-      parseInt(parts.find((p) => p.type === type)?.value || "0", 10);
-    const tzDate = new Date(
-      get("year"),
-      get("month") - 1,
-      get("day"),
-      get("hour"),
-      get("minute")
-    );
+    const get = (type: string) => parseInt(parts.find((p) => p.type === type)?.value || "0", 10);
+    const tzDate = new Date(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"));
     const utcDate = new Date(
       now.getUTCFullYear(),
       now.getUTCMonth(),
@@ -304,16 +282,9 @@ function getUtcOffsetMinutes(tz: string): number {
     day: "2-digit",
   }).formatToParts(now);
 
-  const get = (type: string) =>
-    parseInt(parts.find((p) => p.type === type)?.value || "0", 10);
+  const get = (type: string) => parseInt(parts.find((p) => p.type === type)?.value || "0", 10);
 
-  const tzDate = new Date(
-    get("year"),
-    get("month") - 1,
-    get("day"),
-    get("hour"),
-    get("minute")
-  );
+  const tzDate = new Date(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"));
   const utcDate = new Date(
     now.getUTCFullYear(),
     now.getUTCMonth(),

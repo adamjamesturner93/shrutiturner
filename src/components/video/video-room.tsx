@@ -50,15 +50,87 @@ interface VideoRoomProps {
 // ── Mock participants ──
 
 const MOCK_PARTICIPANTS: VideoParticipant[] = [
-  { id: "instructor", name: "Shruti Turner", initials: "ST", isMuted: false, isCameraOn: true, isInstructor: true, color: "#4B5B32" },
-  { id: "p1", name: "Sarah Chen", initials: "SC", isMuted: true, isCameraOn: true, isInstructor: false, color: "#6B7280" },
-  { id: "p2", name: "James Whitfield", initials: "JW", isMuted: true, isCameraOn: true, isInstructor: false, color: "#7C3AED" },
-  { id: "p3", name: "Emily Richards", initials: "ER", isMuted: true, isCameraOn: false, isInstructor: false, color: "#2563EB" },
-  { id: "p4", name: "Marcus Lee", initials: "ML", isMuted: true, isCameraOn: true, isInstructor: false, color: "#DC2626" },
-  { id: "p5", name: "Rachel Thompson", initials: "RT", isMuted: true, isCameraOn: true, isInstructor: false, color: "#059669" },
-  { id: "p6", name: "Priya Patel", initials: "PP", isMuted: true, isCameraOn: false, isInstructor: false, color: "#D97706" },
-  { id: "p7", name: "Tom Bennett", initials: "TB", isMuted: true, isCameraOn: true, isInstructor: false, color: "#4338CA" },
-  { id: "p8", name: "Claire Wilson", initials: "CW", isMuted: true, isCameraOn: true, isInstructor: false, color: "#BE185D" },
+  {
+    id: "instructor",
+    name: "Shruti Turner",
+    initials: "ST",
+    isMuted: false,
+    isCameraOn: true,
+    isInstructor: true,
+    color: "#4B5B32",
+  },
+  {
+    id: "p1",
+    name: "Sarah Chen",
+    initials: "SC",
+    isMuted: true,
+    isCameraOn: true,
+    isInstructor: false,
+    color: "#6B7280",
+  },
+  {
+    id: "p2",
+    name: "James Whitfield",
+    initials: "JW",
+    isMuted: true,
+    isCameraOn: true,
+    isInstructor: false,
+    color: "#7C3AED",
+  },
+  {
+    id: "p3",
+    name: "Emily Richards",
+    initials: "ER",
+    isMuted: true,
+    isCameraOn: false,
+    isInstructor: false,
+    color: "#2563EB",
+  },
+  {
+    id: "p4",
+    name: "Marcus Lee",
+    initials: "ML",
+    isMuted: true,
+    isCameraOn: true,
+    isInstructor: false,
+    color: "#DC2626",
+  },
+  {
+    id: "p5",
+    name: "Rachel Thompson",
+    initials: "RT",
+    isMuted: true,
+    isCameraOn: true,
+    isInstructor: false,
+    color: "#059669",
+  },
+  {
+    id: "p6",
+    name: "Priya Patel",
+    initials: "PP",
+    isMuted: true,
+    isCameraOn: false,
+    isInstructor: false,
+    color: "#D97706",
+  },
+  {
+    id: "p7",
+    name: "Tom Bennett",
+    initials: "TB",
+    isMuted: true,
+    isCameraOn: true,
+    isInstructor: false,
+    color: "#4338CA",
+  },
+  {
+    id: "p8",
+    name: "Claire Wilson",
+    initials: "CW",
+    isMuted: true,
+    isCameraOn: true,
+    isInstructor: false,
+    color: "#BE185D",
+  },
 ];
 
 const PARTICIPANTS_PER_PAGE = 6;
@@ -109,26 +181,22 @@ export function VideoRoom({
 
   // Instructor: mute specific participant
   const muteParticipant = (id: string) => {
-    setParticipants((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, isMuted: true } : p))
-    );
+    setParticipants((prev) => prev.map((p) => (p.id === id ? { ...p, isMuted: true } : p)));
   };
 
   // Instructor: mute all
   const muteAll = () => {
-    setParticipants((prev) =>
-      prev.map((p) => (p.isInstructor ? p : { ...p, isMuted: true }))
-    );
+    setParticipants((prev) => prev.map((p) => (p.isInstructor ? p : { ...p, isMuted: true })));
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#1a1a2e] flex flex-col text-white">
+    <div className="fixed inset-0 z-[100] flex flex-col bg-[#1a1a2e] text-white">
       {/* ── Top bar ── */}
-      <header className="flex items-center justify-between px-4 py-2.5 bg-[#1a1a2e]/90 border-b border-white/5 flex-shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+      <header className="flex flex-shrink-0 items-center justify-between border-b border-white/5 bg-[#1a1a2e]/90 px-4 py-2.5">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
           <div className="min-w-0">
-            <h1 className="text-sm truncate">{classTitle}</h1>
+            <h1 className="truncate text-sm">{classTitle}</h1>
             <p className="text-xs text-white/50">
               {classTime} · {classDuration}
             </p>
@@ -137,8 +205,8 @@ export function VideoRoom({
 
         <div className="flex items-center gap-3">
           {/* Participant count */}
-          <div className="flex items-center gap-1.5 text-xs text-white/60 bg-white/5 px-2.5 py-1.5 rounded-full">
-            <Users className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-1.5 rounded-full bg-white/5 px-2.5 py-1.5 text-xs text-white/60">
+            <Users className="h-3.5 w-3.5" />
             <span>
               {joinedCount}/{registeredCount}
             </span>
@@ -147,7 +215,7 @@ export function VideoRoom({
           {/* Community mode toggle */}
           <button
             onClick={() => setCommunityMode(!communityMode)}
-            className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full transition-colors ${
+            className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs transition-colors ${
               communityMode
                 ? "bg-[#4B5B32] text-white"
                 : "bg-white/5 text-white/60 hover:bg-white/10"
@@ -158,24 +226,18 @@ export function VideoRoom({
                 : "Focus mode: see instructor only"
             }
           >
-            {communityMode ? (
-              <Eye className="w-3.5 h-3.5" />
-            ) : (
-              <EyeOff className="w-3.5 h-3.5" />
-            )}
-            <span className="hidden sm:inline">
-              {communityMode ? "Community" : "Focus"}
-            </span>
+            {communityMode ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            <span className="hidden sm:inline">{communityMode ? "Community" : "Focus"}</span>
           </button>
 
           {/* Instructor: Mute all */}
           {isInstructor && (
             <button
               onClick={muteAll}
-              className="flex items-center gap-1.5 text-xs bg-white/5 text-white/60 hover:bg-white/10 px-2.5 py-1.5 rounded-full transition-colors"
+              className="flex items-center gap-1.5 rounded-full bg-white/5 px-2.5 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/10"
               title="Mute all participants"
             >
-              <VolumeX className="w-3.5 h-3.5" />
+              <VolumeX className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Mute all</span>
             </button>
           )}
@@ -183,18 +245,18 @@ export function VideoRoom({
           {/* Leave */}
           <button
             onClick={onLeave}
-            className="flex items-center gap-1.5 text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 px-3 py-1.5 rounded-full transition-colors"
+            className="flex items-center gap-1.5 rounded-full bg-red-500/20 px-3 py-1.5 text-xs text-red-400 transition-colors hover:bg-red-500/30"
           >
-            <Phone className="w-3.5 h-3.5 rotate-135" />
+            <Phone className="h-3.5 w-3.5 rotate-135" />
             <span className="hidden sm:inline">Leave</span>
           </button>
         </div>
       </header>
 
       {/* ── Main content area ── */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex flex-1 overflow-hidden">
         {/* Video area */}
-        <div className="flex-1 flex flex-col p-3 gap-3 overflow-hidden">
+        <div className="flex flex-1 flex-col gap-3 overflow-hidden p-3">
           {isInstructor ? (
             /* ── INSTRUCTOR VIEW: See everyone ── */
             <InstructorGrid
@@ -239,7 +301,7 @@ export function VideoRoom({
       </div>
 
       {/* ── Bottom control bar ── */}
-      <footer className="flex items-center justify-center gap-2 sm:gap-3 px-4 py-3 bg-[#1a1a2e]/90 border-t border-white/5 flex-shrink-0">
+      <footer className="flex flex-shrink-0 items-center justify-center gap-2 border-t border-white/5 bg-[#1a1a2e]/90 px-4 py-3 sm:gap-3">
         {/* Mic */}
         <ControlButton
           active={!isMuted}
@@ -259,7 +321,7 @@ export function VideoRoom({
         />
 
         {/* Divider */}
-        <div className="w-px h-8 bg-white/10 mx-1 hidden sm:block" />
+        <div className="mx-1 hidden h-8 w-px bg-white/10 sm:block" />
 
         {/* Self view */}
         <ControlButton
@@ -297,9 +359,7 @@ export function VideoRoom({
       </footer>
 
       {/* Device selector modal */}
-      {showDeviceSelector && (
-        <DeviceSelector onClose={() => setShowDeviceSelector(false)} />
-      )}
+      {showDeviceSelector && <DeviceSelector onClose={() => setShowDeviceSelector(false)} />}
     </div>
   );
 }
@@ -322,17 +382,17 @@ function ControlButton({
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center gap-1 p-2 sm:px-3 sm:py-2 rounded-lg transition-colors ${
+      className={`flex flex-col items-center gap-1 rounded-lg p-2 transition-colors sm:px-3 sm:py-2 ${
         danger
           ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
           : active
-          ? "bg-white/10 text-white hover:bg-white/15"
-          : "bg-white/5 text-white/50 hover:bg-white/10"
+            ? "bg-white/10 text-white hover:bg-white/15"
+            : "bg-white/5 text-white/50 hover:bg-white/10"
       }`}
       title={label}
     >
-      <Icon className="w-5 h-5" />
-      <span className="text-[10px] hidden sm:block">{label}</span>
+      <Icon className="h-5 w-5" />
+      <span className="hidden text-[10px] sm:block">{label}</span>
     </button>
   );
 }
@@ -361,7 +421,7 @@ function VideoTile({
 
   return (
     <div
-      className={`relative rounded-lg overflow-hidden flex-1 ${sizeClasses[size]} ${
+      className={`relative flex-1 overflow-hidden rounded-lg ${sizeClasses[size]} ${
         size === "pip" ? "flex-none" : ""
       }`}
     >
@@ -376,7 +436,7 @@ function VideoTile({
           {/* Simulated video feed — subtle animated gradient */}
           <div className="absolute inset-0 flex items-center justify-center">
             <div
-              className="w-24 h-24 rounded-full flex items-center justify-center text-2xl text-white/80"
+              className="flex h-24 w-24 items-center justify-center rounded-full text-2xl text-white/80"
               style={{ backgroundColor: participant.color + "60" }}
             >
               {participant.initials}
@@ -384,13 +444,13 @@ function VideoTile({
           </div>
           {/* Subtle "video active" indicator */}
           <div className="absolute top-2 left-2">
-            <div className="w-2 h-2 rounded-full bg-green-500" />
+            <div className="h-2 w-2 rounded-full bg-green-500" />
           </div>
         </div>
       ) : (
-        <div className="absolute inset-0 bg-[#252540] flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center bg-[#252540]">
           <div
-            className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center text-xl text-white"
+            className="flex h-16 w-16 items-center justify-center rounded-full text-xl text-white sm:h-20 sm:w-20"
             style={{ backgroundColor: participant.color }}
           >
             {participant.initials}
@@ -399,20 +459,16 @@ function VideoTile({
       )}
 
       {/* Name + status overlay */}
-      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            {participant.isMuted && (
-              <MicOff className="w-3 h-3 text-red-400" />
-            )}
-            <span className="text-xs text-white/90 truncate">
+            {participant.isMuted && <MicOff className="h-3 w-3 text-red-400" />}
+            <span className="truncate text-xs text-white/90">
               {isLocal ? `${participant.name} (You)` : participant.name}
             </span>
           </div>
           {participant.isInstructor && (
-            <Badge className="bg-[#4B5B32]/80 text-white text-[9px] px-1.5 py-0">
-              Instructor
-            </Badge>
+            <Badge className="bg-[#4B5B32]/80 px-1.5 py-0 text-[9px] text-white">Instructor</Badge>
           )}
         </div>
       </div>
@@ -424,10 +480,10 @@ function VideoTile({
             e.stopPropagation();
             onMute?.();
           }}
-          className="absolute top-2 right-2 bg-black/40 hover:bg-red-500/50 text-white p-1.5 rounded-full transition-colors"
+          className="absolute top-2 right-2 rounded-full bg-black/40 p-1.5 text-white transition-colors hover:bg-red-500/50"
           title={`Mute ${participant.name}`}
         >
-          <VolumeX className="w-3 h-3" />
+          <VolumeX className="h-3 w-3" />
         </button>
       )}
     </div>
@@ -454,9 +510,9 @@ function InstructorGrid({
   showSelfView: boolean;
 }) {
   return (
-    <div className="flex-1 flex flex-col gap-3 overflow-hidden">
+    <div className="flex flex-1 flex-col gap-3 overflow-hidden">
       {/* Participant grid */}
-      <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-2 auto-rows-fr">
+      <div className="grid flex-1 auto-rows-fr grid-cols-2 gap-2 md:grid-cols-3">
         {participants.map((p) => (
           <VideoTile
             key={p.id}
@@ -471,7 +527,7 @@ function InstructorGrid({
           (_, i) => (
             <div
               key={`empty-${i}`}
-              className="rounded-lg bg-[#252540]/50 border border-white/5 flex items-center justify-center min-h-[160px]"
+              className="flex min-h-[160px] items-center justify-center rounded-lg border border-white/5 bg-[#252540]/50"
             >
               <span className="text-xs text-white/20">Empty</span>
             </div>
@@ -485,9 +541,9 @@ function InstructorGrid({
           <button
             onClick={() => onPageChange(Math.max(0, gridPage - 1))}
             disabled={gridPage === 0}
-            className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-30 transition-colors"
+            className="rounded-full bg-white/5 p-1.5 transition-colors hover:bg-white/10 disabled:opacity-30"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="h-4 w-4" />
           </button>
           <span className="text-xs text-white/50">
             {gridPage + 1} / {totalPages}
@@ -495,21 +551,17 @@ function InstructorGrid({
           <button
             onClick={() => onPageChange(Math.min(totalPages - 1, gridPage + 1))}
             disabled={gridPage === totalPages - 1}
-            className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-30 transition-colors"
+            className="rounded-full bg-white/5 p-1.5 transition-colors hover:bg-white/10 disabled:opacity-30"
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="h-4 w-4" />
           </button>
         </div>
       )}
 
       {/* Self view PIP */}
       {showSelfView && (
-        <div className="absolute bottom-20 right-4 z-10">
-          <VideoTile
-            participant={instructor}
-            size="pip"
-            isLocal
-          />
+        <div className="absolute right-4 bottom-20 z-10">
+          <VideoTile participant={instructor} size="pip" isLocal />
         </div>
       )}
     </div>
@@ -544,21 +596,21 @@ function CommunityGrid({
   };
 
   return (
-    <div className="flex-1 flex flex-col gap-3 overflow-hidden">
+    <div className="flex flex-1 flex-col gap-3 overflow-hidden">
       {/* Instructor spotlight (larger) */}
       <div className="flex-[2]">
         <VideoTile participant={instructor} size="lg" />
       </div>
 
       {/* Participant strip */}
-      <div className="flex-1 flex gap-2 overflow-x-auto pb-1">
+      <div className="flex flex-1 gap-2 overflow-x-auto pb-1">
         {showSelfView && (
-          <div className="flex-shrink-0 w-36 sm:w-44">
+          <div className="w-36 flex-shrink-0 sm:w-44">
             <VideoTile participant={selfParticipant} size="sm" isLocal />
           </div>
         )}
         {participants.map((p) => (
-          <div key={p.id} className="flex-shrink-0 w-36 sm:w-44">
+          <div key={p.id} className="w-36 flex-shrink-0 sm:w-44">
             <VideoTile participant={p} size="sm" />
           </div>
         ))}
@@ -593,19 +645,19 @@ function FocusView({
   };
 
   return (
-    <div className="flex-1 relative">
+    <div className="relative flex-1">
       {/* Instructor fills the space */}
       <VideoTile participant={instructor} size="lg" />
 
       {/* Audio indicator — you can hear others */}
-      <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/40 text-white/60 px-2.5 py-1.5 rounded-full text-xs">
-        <Users className="w-3 h-3" />
+      <div className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-1.5 text-xs text-white/60">
+        <Users className="h-3 w-3" />
         <span>{participantCount} others listening</span>
       </div>
 
       {/* Self view PIP */}
       {showSelfView && (
-        <div className="absolute bottom-4 right-4">
+        <div className="absolute right-4 bottom-4">
           <VideoTile participant={selfParticipant} size="pip" isLocal />
         </div>
       )}

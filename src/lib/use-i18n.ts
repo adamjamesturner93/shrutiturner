@@ -35,9 +35,7 @@ export function useI18n() {
       auth?.isAuthenticated && auth.user
         ? {
             timezone: auth.user.timezone || DEFAULT_PREFS.timezone,
-            dateFormat:
-              (auth.user.dateFormat as DateFormatPreference) ||
-              DEFAULT_PREFS.dateFormat,
+            dateFormat: (auth.user.dateFormat as DateFormatPreference) || DEFAULT_PREFS.dateFormat,
           }
         : DEFAULT_PREFS,
     [auth?.isAuthenticated, auth?.user]

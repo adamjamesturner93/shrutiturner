@@ -5,29 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import Link from "next/link";
-import {
-  Users,
-  Calendar,
-  ArrowRight,
-  Clock,
-  BookOpen,
-  Activity,
-  AlertCircle,
-} from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import {
-  adminDashboardStats,
-  adminClassInstances,
-  adminProgrammes,
-} from "../../data/admin-data";
+import { Users, Calendar, ArrowRight, Clock, BookOpen, Activity, AlertCircle } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { adminDashboardStats, adminClassInstances, adminProgrammes } from "../../data/admin-data";
 import { getGreeting } from "../../components/greeting";
 import { DashboardSkeleton } from "../../components/dashboard-skeleton";
 import { useState, useEffect } from "react";
@@ -65,23 +45,13 @@ export function AdminDashboard() {
 
   // Active and upcoming programmes
   const activeProgrammes = adminProgrammes.filter((p) => p.status === "active");
-  const upcomingProgrammes = adminProgrammes.filter(
-    (p) => p.status === "upcoming"
-  );
+  const upcomingProgrammes = adminProgrammes.filter((p) => p.status === "upcoming");
 
   // Classes needing attention (nearly full or full)
-  const nearlyFullClasses = upcomingClasses.filter(
-    (c) => c.bookedCount >= c.maxSpaces - 2
-  );
+  const nearlyFullClasses = upcomingClasses.filter((c) => c.bookedCount >= c.maxSpaces - 2);
 
-  const totalBookedToday = todayScheduled.reduce(
-    (sum, c) => sum + c.bookedCount,
-    0
-  );
-  const totalCapacityToday = todayScheduled.reduce(
-    (sum, c) => sum + c.maxSpaces,
-    0
-  );
+  const totalBookedToday = todayScheduled.reduce((sum, c) => sum + c.bookedCount, 0);
+  const totalCapacityToday = todayScheduled.reduce((sum, c) => sum + c.maxSpaces, 0);
 
   if (isLoading) {
     return (
@@ -96,9 +66,7 @@ export function AdminDashboard() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl text-[#2E1F33]">
-            {getGreeting()}, Shruti
-          </h1>
+          <h1 className="text-2xl text-[#2E1F33]">{getGreeting()}, Shruti</h1>
           <p className="text-muted-foreground mt-1">
             {new Date().toLocaleDateString("en-GB", {
               weekday: "long",
@@ -110,25 +78,19 @@ export function AdminDashboard() {
         </div>
 
         {/* Today's snapshot KPIs */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">
-                    Today's Classes
-                  </p>
-                  <p className="text-3xl text-[#2E1F33] mt-1">
-                    {todayScheduled.length}
-                  </p>
+                  <p className="text-muted-foreground text-sm">Today's Classes</p>
+                  <p className="mt-1 text-3xl text-[#2E1F33]">{todayScheduled.length}</p>
                   {todayLive.length > 0 && (
-                    <p className="text-xs text-[#4B5B32] mt-1">
-                      {todayLive.length} live now
-                    </p>
+                    <p className="mt-1 text-xs text-[#4B5B32]">{todayLive.length} live now</p>
                   )}
                 </div>
-                <div className="w-12 h-12 rounded-full bg-[#4B5B32]/10 flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-[#4B5B32]" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#4B5B32]/10">
+                  <Calendar className="h-6 w-6 text-[#4B5B32]" />
                 </div>
               </div>
             </CardContent>
@@ -138,16 +100,14 @@ export function AdminDashboard() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Booked Today</p>
-                  <p className="text-3xl text-[#2E1F33] mt-1">
-                    {totalBookedToday}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-muted-foreground text-sm">Booked Today</p>
+                  <p className="mt-1 text-3xl text-[#2E1F33]">{totalBookedToday}</p>
+                  <p className="text-muted-foreground mt-1 text-xs">
                     of {totalCapacityToday} spaces
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-full bg-[#4B5B32]/10 flex items-center justify-center">
-                  <Users className="w-6 h-6 text-[#4B5B32]" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#4B5B32]/10">
+                  <Users className="h-6 w-6 text-[#4B5B32]" />
                 </div>
               </div>
             </CardContent>
@@ -157,20 +117,16 @@ export function AdminDashboard() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">
-                    Active Programmes
-                  </p>
-                  <p className="text-3xl text-[#2E1F33] mt-1">
-                    {activeProgrammes.length}
-                  </p>
+                  <p className="text-muted-foreground text-sm">Active Programmes</p>
+                  <p className="mt-1 text-3xl text-[#2E1F33]">{activeProgrammes.length}</p>
                   {upcomingProgrammes.length > 0 && (
-                    <p className="text-xs text-[#4B5B32] mt-1">
+                    <p className="mt-1 text-xs text-[#4B5B32]">
                       {upcomingProgrammes.length} starting soon
                     </p>
                   )}
                 </div>
-                <div className="w-12 h-12 rounded-full bg-[#4B5B32]/10 flex items-center justify-center">
-                  <BookOpen className="w-6 h-6 text-[#4B5B32]" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#4B5B32]/10">
+                  <BookOpen className="h-6 w-6 text-[#4B5B32]" />
                 </div>
               </div>
             </CardContent>
@@ -180,18 +136,14 @@ export function AdminDashboard() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">
-                    Avg. Attendance
-                  </p>
-                  <p className="text-3xl text-[#2E1F33] mt-1">
-                    {stats.avgAttendanceRate}%
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-muted-foreground text-sm">Avg. Attendance</p>
+                  <p className="mt-1 text-3xl text-[#2E1F33]">{stats.avgAttendanceRate}%</p>
+                  <p className="text-muted-foreground mt-1 text-xs">
                     across {stats.classesThisWeek} classes/week
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-full bg-[#4B5B32]/10 flex items-center justify-center">
-                  <Activity className="w-6 h-6 text-[#4B5B32]" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#4B5B32]/10">
+                  <Activity className="h-6 w-6 text-[#4B5B32]" />
                 </div>
               </div>
             </CardContent>
@@ -202,8 +154,8 @@ export function AdminDashboard() {
         {nearlyFullClasses.length > 0 && (
           <Card className="border-[#4B5B32]/20 bg-[#4B5B32]/[0.03]">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-[#4B5B32]" />
+              <CardTitle className="flex items-center gap-2 text-base">
+                <AlertCircle className="h-4 w-4 text-[#4B5B32]" />
                 Needs Attention
               </CardTitle>
             </CardHeader>
@@ -213,25 +165,19 @@ export function AdminDashboard() {
                   <Link
                     key={cls.id}
                     href={`/admin/classes/${cls.id}`}
-                    className="flex items-center justify-between p-2.5 rounded-lg hover:bg-[#4B5B32]/5 transition-colors"
+                    className="flex items-center justify-between rounded-lg p-2.5 transition-colors hover:bg-[#4B5B32]/5"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full bg-amber-500" />
+                      <div className="h-2 w-2 rounded-full bg-amber-500" />
                       <span className="text-sm">
                         {cls.className} — {cls.day}{" "}
-                        {new Date(`2000-01-01T${cls.time}`).toLocaleTimeString(
-                          "en-GB",
-                          { hour: "2-digit", minute: "2-digit" }
-                        )}
+                        {new Date(`2000-01-01T${cls.time}`).toLocaleTimeString("en-GB", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </span>
                     </div>
-                    <Badge
-                      variant={
-                        cls.bookedCount >= cls.maxSpaces
-                          ? "destructive"
-                          : "secondary"
-                      }
-                    >
+                    <Badge variant={cls.bookedCount >= cls.maxSpaces ? "destructive" : "secondary"}>
                       {cls.bookedCount >= cls.maxSpaces
                         ? "Full"
                         : `${cls.bookedCount}/${cls.maxSpaces}`}
@@ -244,20 +190,20 @@ export function AdminDashboard() {
         )}
 
         {/* Today's classes + programmes */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Today's class schedule */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg">Today's Schedule</CardTitle>
               <Link href="/admin/classes">
                 <Button variant="ghost" size="sm">
-                  All classes <ArrowRight className="w-4 h-4 ml-1" />
+                  All classes <ArrowRight className="ml-1 h-4 w-4" />
                 </Button>
               </Link>
             </CardHeader>
             <CardContent>
               {todayScheduled.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">
+                <p className="text-muted-foreground py-4 text-center text-sm">
                   No classes scheduled for today.
                 </p>
               ) : (
@@ -266,36 +212,23 @@ export function AdminDashboard() {
                     <Link
                       key={cls.id}
                       href={`/admin/classes/${cls.id}`}
-                      className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
+                      className="bg-secondary/50 hover:bg-secondary flex items-center justify-between rounded-lg p-3 transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="flex flex-col items-center justify-center w-12 h-12 rounded-lg bg-[#4B5B32]/10">
-                          <span className="text-xs text-[#4B5B32]">
-                            {cls.time}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">
-                            {cls.duration}
-                          </span>
+                        <div className="flex h-12 w-12 flex-col items-center justify-center rounded-lg bg-[#4B5B32]/10">
+                          <span className="text-xs text-[#4B5B32]">{cls.time}</span>
+                          <span className="text-muted-foreground text-[10px]">{cls.duration}</span>
                         </div>
                         <div>
                           <p className="text-sm">{cls.className}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-muted-foreground text-xs">
                             {cls.classType} ·{" "}
-                            {
-                              cls.attendees.filter(
-                                (a) => a.status === "booked"
-                              ).length
-                            }{" "}
-                            participants
+                            {cls.attendees.filter((a) => a.status === "booked").length} participants
                           </p>
                         </div>
                       </div>
                       <Badge
-                        variant={
-                          cls.bookedCount >= cls.maxSpaces
-                            ? "destructive"
-                            : "secondary"
-                        }
+                        variant={cls.bookedCount >= cls.maxSpaces ? "destructive" : "secondary"}
                       >
                         {cls.bookedCount}/{cls.maxSpaces}
                       </Badge>
@@ -312,7 +245,7 @@ export function AdminDashboard() {
               <CardTitle className="text-lg">Programmes</CardTitle>
               <Link href="/admin/programmes">
                 <Button variant="ghost" size="sm">
-                  View all <ArrowRight className="w-4 h-4 ml-1" />
+                  View all <ArrowRight className="ml-1 h-4 w-4" />
                 </Button>
               </Link>
             </CardHeader>
@@ -322,35 +255,31 @@ export function AdminDashboard() {
                   const progressPct = Math.round(
                     (prog.sessionsCompleted / prog.sessionsTotal) * 100
                   );
-                  const nextSession = prog.sessions.find(
-                    (s) => s.status === "upcoming"
-                  );
+                  const nextSession = prog.sessions.find((s) => s.status === "upcoming");
                   return (
                     <Link
                       key={prog.id}
                       href={`/admin/programmes/${prog.id}`}
-                      className="block p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
+                      className="bg-secondary/50 hover:bg-secondary block rounded-lg p-3 transition-colors"
                     >
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="mb-2 flex items-center justify-between">
                         <p className="text-sm">{prog.name}</p>
                         <Badge variant="outline">
                           {prog.currentParticipants}/{prog.maxParticipants}
                         </Badge>
                       </div>
-                      <div className="h-1.5 bg-secondary rounded-full overflow-hidden mb-2">
+                      <div className="bg-secondary mb-2 h-1.5 overflow-hidden rounded-full">
                         <div
-                          className="h-full bg-[#4B5B32] rounded-full transition-all"
+                          className="h-full rounded-full bg-[#4B5B32] transition-all"
                           style={{ width: `${progressPct}%` }}
                         />
                       </div>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <div className="text-muted-foreground flex items-center justify-between text-xs">
                         <span>
                           {prog.sessionsCompleted}/{prog.sessionsTotal} sessions
                         </span>
                         {nextSession && (
-                          <span className="text-[#4B5B32]">
-                            Next: {nextSession.topic}
-                          </span>
+                          <span className="text-[#4B5B32]">Next: {nextSession.topic}</span>
                         )}
                       </div>
                     </Link>
@@ -358,29 +287,26 @@ export function AdminDashboard() {
                 })}
 
                 {upcomingProgrammes.length > 0 && (
-                  <div className="pt-2 border-t">
-                    <p className="text-xs text-muted-foreground mb-2">
-                      Starting soon
-                    </p>
+                  <div className="border-t pt-2">
+                    <p className="text-muted-foreground mb-2 text-xs">Starting soon</p>
                     {upcomingProgrammes.map((prog) => (
                       <Link
                         key={prog.id}
                         href={`/admin/programmes/${prog.id}`}
-                        className="flex items-center justify-between p-2.5 rounded-lg hover:bg-secondary/50 transition-colors"
+                        className="hover:bg-secondary/50 flex items-center justify-between rounded-lg p-2.5 transition-colors"
                       >
                         <div>
                           <p className="text-sm">{prog.name}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-muted-foreground text-xs">
                             {prog.duration} · Starts{" "}
-                            {new Date(prog.startDate).toLocaleDateString(
-                              "en-GB",
-                              { day: "numeric", month: "short" }
-                            )}
+                            {new Date(prog.startDate).toLocaleDateString("en-GB", {
+                              day: "numeric",
+                              month: "short",
+                            })}
                           </p>
                         </div>
                         <Badge variant="outline">
-                          {prog.currentParticipants}/{prog.maxParticipants}{" "}
-                          enrolled
+                          {prog.currentParticipants}/{prog.maxParticipants} enrolled
                         </Badge>
                       </Link>
                     ))}
@@ -392,30 +318,20 @@ export function AdminDashboard() {
         </div>
 
         {/* Attendance chart + this week */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">
-                Weekly Attendance vs Capacity
-              </CardTitle>
+              <CardTitle className="text-lg">Weekly Attendance vs Capacity</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={stats.classAttendance}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="rgba(46,31,51,0.1)"
-                    />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(46,31,51,0.1)" />
                     <XAxis dataKey="week" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip />
-                    <Bar
-                      dataKey="capacity"
-                      fill="#B5C49B"
-                      name="Capacity"
-                      radius={[4, 4, 0, 0]}
-                    />
+                    <Bar dataKey="capacity" fill="#B5C49B" name="Capacity" radius={[4, 4, 0, 0]} />
                     <Bar
                       dataKey="attendance"
                       fill="#4B5B32"
@@ -434,7 +350,7 @@ export function AdminDashboard() {
               <CardTitle className="text-lg">This Week</CardTitle>
               <Link href="/admin/classes">
                 <Button variant="ghost" size="sm">
-                  View all <ArrowRight className="w-4 h-4 ml-1" />
+                  View all <ArrowRight className="ml-1 h-4 w-4" />
                 </Button>
               </Link>
             </CardHeader>
@@ -444,26 +360,20 @@ export function AdminDashboard() {
                   <Link
                     key={cls.id}
                     href={`/admin/classes/${cls.id}`}
-                    className="flex items-center justify-between p-2.5 rounded-lg hover:bg-secondary/50 transition-colors"
+                    className="hover:bg-secondary/50 flex items-center justify-between rounded-lg p-2.5 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-[#4B5B32]/10 flex items-center justify-center">
-                        <Calendar className="w-5 h-5 text-[#4B5B32]" />
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#4B5B32]/10">
+                        <Calendar className="h-5 w-5 text-[#4B5B32]" />
                       </div>
                       <div>
                         <p className="text-sm">{cls.className}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-muted-foreground text-xs">
                           {cls.day} {cls.time} · {cls.duration}
                         </p>
                       </div>
                     </div>
-                    <Badge
-                      variant={
-                        cls.bookedCount >= cls.maxSpaces
-                          ? "destructive"
-                          : "secondary"
-                      }
-                    >
+                    <Badge variant={cls.bookedCount >= cls.maxSpaces ? "destructive" : "secondary"}>
                       {cls.bookedCount}/{cls.maxSpaces}
                     </Badge>
                   </Link>
@@ -482,19 +392,19 @@ export function AdminDashboard() {
             <div className="flex flex-wrap gap-3">
               <Link href="/admin/classes">
                 <Button variant="outline" size="sm">
-                  <Clock className="w-4 h-4 mr-2" />
+                  <Clock className="mr-2 h-4 w-4" />
                   Manage Today's Classes
                 </Button>
               </Link>
               <Link href="/admin/members">
                 <Button variant="outline" size="sm">
-                  <Users className="w-4 h-4 mr-2" />
+                  <Users className="mr-2 h-4 w-4" />
                   View Members
                 </Button>
               </Link>
               <Link href="/admin/programmes">
                 <Button variant="outline" size="sm">
-                  <BookOpen className="w-4 h-4 mr-2" />
+                  <BookOpen className="mr-2 h-4 w-4" />
                   Manage Programmes
                 </Button>
               </Link>

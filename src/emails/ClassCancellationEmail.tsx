@@ -51,7 +51,7 @@ export const ClassCancellationEmail = ({
         }}
       >
         <Body className="bg-background font-sans">
-          <Container className="mx-auto p-4 max-w-xl">
+          <Container className="mx-auto max-w-xl p-4">
             <Section className="mt-8 mb-8 text-center">
               <Img
                 src="https://shrutiturner.com/logo.png"
@@ -61,12 +61,12 @@ export const ClassCancellationEmail = ({
               />
             </Section>
 
-            <Section className="bg-white p-8 rounded-lg border border-[#E5E5E5]">
-              <Heading className="text-xl font-normal text-text mb-4 text-center">
+            <Section className="rounded-lg border border-[#E5E5E5] bg-white p-8">
+              <Heading className="text-text mb-4 text-center text-xl font-normal">
                 Class Cancelled
               </Heading>
 
-              <Text className="text-text text-base leading-relaxed mb-6">
+              <Text className="text-text mb-6 text-base leading-relaxed">
                 Hi {firstName},
                 <br />
                 {isInstructorInitiated
@@ -74,30 +74,32 @@ export const ClassCancellationEmail = ({
                   : `Just confirming that your booking for ${className} on ${classDate} has been cancelled.`}
               </Text>
 
-              <Section className="bg-[#B5C49B]/10 p-6 rounded-lg mb-6 opacity-70">
-                <Text className="text-text font-bold text-lg mb-2 line-through decoration-red-500/50 decoration-2">
+              <Section className="mb-6 rounded-lg bg-[#B5C49B]/10 p-6 opacity-70">
+                <Text className="text-text mb-2 text-lg font-bold line-through decoration-red-500/50 decoration-2">
                   {className}
                 </Text>
-                <Text className="text-text text-sm mb-1">{classDate} at {classTime}</Text>
-                <Text className="text-red-600 font-medium text-sm mt-2">CANCELLED</Text>
+                <Text className="text-text mb-1 text-sm">
+                  {classDate} at {classTime}
+                </Text>
+                <Text className="mt-2 text-sm font-medium text-red-600">CANCELLED</Text>
               </Section>
 
-              <Text className="text-text text-sm mb-6">
+              <Text className="text-text mb-6 text-sm">
                 Your credit/membership allowance has been returned to your account automatically.
               </Text>
 
-              <Hr className="border-[#E5E5E5] my-6" />
+              <Hr className="my-6 border-[#E5E5E5]" />
 
-              <Text className="text-text/70 text-sm mb-2">
+              <Text className="text-text/70 mb-2 text-sm">
                 <strong>Calendar Update:</strong>
               </Text>
               <Text className="text-text/70 text-sm">
                 Please remove this event from your personal calendar.
               </Text>
 
-              <Section className="text-center mt-8">
+              <Section className="mt-8 text-center">
                 <Button
-                  className="bg-primary text-[#FAFAF8] px-6 py-3 rounded text-base font-medium no-underline"
+                  className="bg-primary rounded px-6 py-3 text-base font-medium text-[#FAFAF8] no-underline"
                   href="https://shrutiturner.com/dashboard/schedule"
                 >
                   Book Another Class

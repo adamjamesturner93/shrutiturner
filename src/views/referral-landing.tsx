@@ -18,52 +18,52 @@ export function ReferralLandingPage() {
         noIndex
       />
 
-      <section className="py-20 md:py-28 min-h-[70vh] flex items-center">
-        <div className="container mx-auto px-4 max-w-lg text-center space-y-8">
-          <div className="w-20 h-20 bg-[#4B5B32]/10 rounded-full flex items-center justify-center mx-auto">
-            <Gift className="w-10 h-10 text-[#4B5B32]" />
+      <section className="flex min-h-[70vh] items-center py-20 md:py-28">
+        <div className="container mx-auto max-w-lg space-y-8 px-4 text-center">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#4B5B32]/10">
+            <Gift className="h-10 w-10 text-[#4B5B32]" />
           </div>
 
           <div className="space-y-4">
-            <h1 className="text-3xl md:text-4xl leading-tight">
+            <h1 className="text-3xl leading-tight md:text-4xl">
               You've been invited to try a class.
             </h1>
-            <p className="text-xl text-muted-foreground leading-relaxed">
-              Someone thinks you'd benefit from science-backed strength and yoga
-              coaching for complex bodies.
+            <p className="text-muted-foreground text-xl leading-relaxed">
+              Someone thinks you'd benefit from science-backed strength and yoga coaching for
+              complex bodies.
             </p>
           </div>
 
-          <div className="bg-[#4B5B32]/5 border border-[#4B5B32]/20 rounded-lg p-6 space-y-4">
+          <div className="space-y-4 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 p-6">
             <p className="text-2xl text-[#4B5B32]">£10 off your first purchase</p>
             <p className="text-muted-foreground">
-              Applied automatically when you sign up — whether you choose a
-              membership, class pack, or drop-in.
+              Applied automatically when you sign up — whether you choose a membership, class pack,
+              or drop-in.
             </p>
-            <ul className="text-sm text-muted-foreground space-y-2 text-left max-w-xs mx-auto">
+            <ul className="text-muted-foreground mx-auto max-w-xs space-y-2 text-left text-sm">
               <li className="flex items-start gap-2">
-                <Check className="w-4 h-4 text-[#4B5B32] mt-0.5 flex-shrink-0" />
+                <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#4B5B32]" />
                 <span>Use toward any class — yoga, strength, or HIIT</span>
               </li>
               <li className="flex items-start gap-2">
-                <Check className="w-4 h-4 text-[#4B5B32] mt-0.5 flex-shrink-0" />
+                <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#4B5B32]" />
                 <span>No commitment, no subscription required</span>
               </li>
               <li className="flex items-start gap-2">
-                <Check className="w-4 h-4 text-[#4B5B32] mt-0.5 flex-shrink-0" />
+                <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#4B5B32]" />
                 <span>All classes adapted for chronic illness</span>
               </li>
             </ul>
           </div>
 
           <Link href={`/login?ref=${code}`}>
-            <Button size="lg" className="text-lg px-8">
+            <Button size="lg" className="px-8 text-lg">
               Claim Your £10 Off
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </Link>
 
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             By signing up you agree to our{" "}
             <Link href="/terms" className="underline">
               Terms
@@ -72,8 +72,7 @@ export function ReferralLandingPage() {
             <Link href="/privacy" className="underline">
               Privacy Policy
             </Link>
-            . Your referral discount will be applied automatically to your first
-            purchase.
+            . Your referral discount will be applied automatically to your first purchase.
           </p>
         </div>
       </section>

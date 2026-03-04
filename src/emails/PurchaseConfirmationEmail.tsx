@@ -53,7 +53,7 @@ export const PurchaseConfirmationEmail = ({
         }}
       >
         <Body className="bg-background font-sans">
-          <Container className="mx-auto p-4 max-w-xl">
+          <Container className="mx-auto max-w-xl p-4">
             <Section className="mt-8 mb-8 text-center">
               <Img
                 src="https://shrutiturner.com/logo.png"
@@ -63,42 +63,45 @@ export const PurchaseConfirmationEmail = ({
               />
             </Section>
 
-            <Section className="bg-white p-8 rounded-lg border border-[#E5E5E5]">
-              <Heading className="text-xl font-normal text-text mb-4 text-center">
+            <Section className="rounded-lg border border-[#E5E5E5] bg-white p-8">
+              <Heading className="text-text mb-4 text-center text-xl font-normal">
                 Payment Received
               </Heading>
 
-              <Text className="text-text text-base leading-relaxed mb-6">
+              <Text className="text-text mb-6 text-base leading-relaxed">
                 Hi {firstName}, thank you for your purchase. Here is a receipt for your records.
               </Text>
 
-              <Section className="bg-[#B5C49B]/10 p-6 rounded-lg mb-6">
+              <Section className="mb-6 rounded-lg bg-[#B5C49B]/10 p-6">
                 <Row className="mb-2">
                   <Column className="text-text/70 text-sm">Item</Column>
-                  <Column className="text-text font-medium text-right">{purchaseDescription}</Column>
+                  <Column className="text-text text-right font-medium">
+                    {purchaseDescription}
+                  </Column>
                 </Row>
                 <Row className="mb-2">
                   <Column className="text-text/70 text-sm">Date</Column>
-                  <Column className="text-text font-medium text-right">{date}</Column>
+                  <Column className="text-text text-right font-medium">{date}</Column>
                 </Row>
                 <Row className="mb-2">
                   <Column className="text-text/70 text-sm">Invoice ID</Column>
-                  <Column className="text-text font-medium text-right">{invoiceId}</Column>
+                  <Column className="text-text text-right font-medium">{invoiceId}</Column>
                 </Row>
-                <Hr className="border-[#4B5B32]/20 my-3" />
+                <Hr className="my-3 border-[#4B5B32]/20" />
                 <Row>
-                  <Column className="text-text font-bold text-lg">Total</Column>
-                  <Column className="text-text font-bold text-lg text-right">{amount}</Column>
+                  <Column className="text-text text-lg font-bold">Total</Column>
+                  <Column className="text-text text-right text-lg font-bold">{amount}</Column>
                 </Row>
               </Section>
 
-              <Text className="text-text text-sm mb-6">
-                Your credits/membership have been applied to your account instantly. You can now book your next session.
+              <Text className="text-text mb-6 text-sm">
+                Your credits/membership have been applied to your account instantly. You can now
+                book your next session.
               </Text>
 
-              <Section className="text-center mb-6">
+              <Section className="mb-6 text-center">
                 <Button
-                  className="bg-primary text-[#FAFAF8] px-6 py-3 rounded text-base font-medium no-underline"
+                  className="bg-primary rounded px-6 py-3 text-base font-medium text-[#FAFAF8] no-underline"
                   href="https://shrutiturner.com/dashboard/schedule"
                 >
                   Book a Class
@@ -106,7 +109,7 @@ export const PurchaseConfirmationEmail = ({
               </Section>
             </Section>
 
-            <Section className="mt-8 text-center text-text/50 text-xs">
+            <Section className="text-text/50 mt-8 text-center text-xs">
               <Text>
                 Shruti Turner Coaching
                 <br />

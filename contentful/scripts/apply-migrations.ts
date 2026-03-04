@@ -1,86 +1,210 @@
 import { PUBLIC_CONTENT_MODELS } from "../migrations/001-public-content-models.ts";
+import contentfulManagement from "contentful-management";
+import { getContentfulScriptEnv } from "./env.ts";
 
-const SPACE_ID = process.env.CONTENTFUL_SPACE_ID;
-const ENVIRONMENT = process.env.CONTENTFUL_ENVIRONMENT || "master";
-const MANAGEMENT_TOKEN = process.env.CONTENTFUL_MANAGEMENT_TOKEN;
+const { spaceId, environmentId, managementToken } = getContentfulScriptEnv();
+const { createClient } = contentfulManagement;
 
-if (!SPACE_ID || !MANAGEMENT_TOKEN) {
-  throw new Error("Missing CONTENTFUL_SPACE_ID or CONTENTFUL_MANAGEMENT_TOKEN");
+const client = createClient({ accessToken: managementToken });
+const CMA_BASE_URL = `https://api.contentful.com/spaces/${spaceId}/environments/${environmentId}`;
+
+type ContentTypeLike = {
+  name?: string;
+  description?: string;
+  displayField?: string;
+  fields: Array<Record<string, unknown>>;
+  update: () => Promise<ContentTypeLike>;
+  publish: () => Promise<ContentTypeLike>;
+};
+
+type ContentfulEnvironmentLike = {
+  getContentType: (id: string) => Promise<ContentTypeLike>;
+  createContentTypeWithId: (
+    id: string,
+    payload: ReturnType<typeof toPayload>
+  ) => Promise<ContentTypeLike>;
+};
+
+function toPayload(model: (typeof PUBLIC_CONTENT_MODELS)[number]) {
+  return {
+    name: model.name,
+    description: model.description || "",
+    displayField: model.displayField,
+    fields: model.fields as Array<Record<string, unknown>>,
+  };
 }
 
-const baseUrl = `https://api.contentful.com/spaces/${SPACE_ID}/environments/${ENVIRONMENT}`;
+async function upsertAndPublishContentType(
+  environment: ContentfulEnvironmentLike,
+  model: (typeof PUBLIC_CONTENT_MODELS)[number]
+) {
+  let contentType: ContentTypeLike;
 
-async function cma(path: string, init?: RequestInit) {
-  const res = await fetch(`${baseUrl}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${MANAGEMENT_TOKEN}`,
-      "Content-Type": "application/vnd.contentful.management.v1+json",
-      ...(init?.headers || {}),
-    },
+  const getFieldKey = (field: Record<string, unknown>) =>
+    String(field.apiName || field.id || "");
+
+  const toOmittedField = (field: Record<string, unknown>) => ({
+    id: String(field.apiName || field.id),
+    name: String(field.name || field.apiName || field.id),
+    type: String(field.type),
+    required: false,
+    localized: Boolean(field.localized),
+    validations: Array.isArray(field.validations) ? field.validations : [],
+    items: field.items as Record<string, unknown> | undefined,
+    linkType: field.linkType as string | undefined,
+    disabled: true,
+    omitted: true,
   });
 
-  if (!res.ok && res.status !== 404) {
-    const text = await res.text();
-    throw new Error(`CMA request failed (${res.status}): ${text}`);
-  }
+  try {
+    contentType = await environment.getContentType(model.id);
 
-  return res;
-}
-
-async function upsertContentType(model: (typeof PUBLIC_CONTENT_MODELS)[number]) {
-  const getRes = await cma(`/content_types/${model.id}`);
-
-  if (getRes.status === 404) {
-    const createRes = await cma(`/content_types/${model.id}`, {
-      method: "PUT",
-      body: JSON.stringify(model),
-      headers: { "X-Contentful-Version": "0" },
+    const incomingFieldKeys = new Set(model.fields.map((f) => getFieldKey(f as Record<string, unknown>)));
+    const removedFields = (contentType.fields as Array<Record<string, unknown>>).filter((field) => {
+      const key = getFieldKey(field);
+      return key && !incomingFieldKeys.has(key);
     });
 
-    if (!createRes.ok) {
-      throw new Error(`Failed to create content type ${model.id}`);
+    if (removedFields.length > 0) {
+      const alreadyOmitted = removedFields.every((field) => Boolean(field.omitted));
+      if (!alreadyOmitted) {
+        contentType.name = model.name;
+        contentType.description = model.description || "";
+        contentType.displayField = model.displayField;
+        contentType.fields = [...model.fields, ...removedFields.map(toOmittedField)];
+        contentType = await contentType.update();
+        contentType = await contentType.publish();
+        console.log(`Omitted removed fields for content type: ${model.id}`);
+      }
     }
 
-    console.log(`Created content type: ${model.id}`);
-  } else {
-    const current = await getRes.json();
-    const version = current.sys?.version;
-
-    const updateRes = await cma(`/content_types/${model.id}`, {
-      method: "PUT",
-      body: JSON.stringify(model),
-      headers: { "X-Contentful-Version": String(version) },
-    });
-
-    if (!updateRes.ok) {
-      throw new Error(`Failed to update content type ${model.id}`);
-    }
-
+    contentType.name = model.name;
+    contentType.description = model.description || "";
+    contentType.displayField = model.displayField;
+    contentType.fields = model.fields;
+    contentType = await contentType.update();
     console.log(`Updated content type: ${model.id}`);
+  } catch (error: unknown) {
+    const err = error as { name?: string; status?: number } | undefined;
+    if (err?.name !== "NotFound" && err?.status !== 404) {
+      throw error;
+    }
+
+    contentType = await environment.createContentTypeWithId(model.id, toPayload(model));
+    console.log(`Created content type: ${model.id}`);
   }
 
-  const postPublishGet = await cma(`/content_types/${model.id}`);
-  const latest = await postPublishGet.json();
-  const publishRes = await cma(`/content_types/${model.id}/published`, {
-    method: "PUT",
-    headers: { "X-Contentful-Version": String(latest.sys?.version) },
-  });
-
-  if (!publishRes.ok) {
-    throw new Error(`Failed to publish content type ${model.id}`);
-  }
-
+  contentType = await contentType.publish();
   console.log(`Published content type: ${model.id}`);
 }
 
-async function run() {
-  for (const model of PUBLIC_CONTENT_MODELS) {
-    await upsertContentType(model);
+async function configureSlugEditor(contentTypeId: string, trackingFieldId: string) {
+  const getRes = await fetch(`${CMA_BASE_URL}/content_types/${contentTypeId}/editor_interface`, {
+    headers: {
+      Authorization: `Bearer ${managementToken}`,
+      "Content-Type": "application/vnd.contentful.management.v1+json",
+    },
+  });
+
+  if (!getRes.ok) {
+    const body = await getRes.text();
+    throw new Error(
+      `Failed to fetch editor interface for ${contentTypeId}: ${getRes.status} ${body}`
+    );
   }
+
+  const editorInterface = (await getRes.json()) as {
+    sys: { version: number };
+    controls?: Array<{
+      fieldId: string;
+      widgetId: string;
+      widgetNamespace?: string;
+      settings?: Record<string, unknown>;
+    }>;
+    editorLayout?: unknown[];
+    groupControls?: unknown[];
+    sidebar?: unknown[];
+    editors?: unknown[];
+  };
+
+  const controls = Array.isArray(editorInterface.controls) ? [...editorInterface.controls] : [];
+  const idx = controls.findIndex((c) => c.fieldId === "slug");
+  const slugControl = {
+    fieldId: "slug",
+    widgetId: "slugEditor",
+    widgetNamespace: "builtin",
+    settings: {
+      trackingFieldId,
+    },
+  };
+
+  if (idx >= 0) {
+    controls[idx] = {
+      ...controls[idx],
+      ...slugControl,
+      settings: {
+        ...(controls[idx].settings || {}),
+        ...(slugControl.settings || {}),
+      },
+    };
+  } else {
+    controls.push(slugControl);
+  }
+
+  const payload: Record<string, unknown> = {
+    controls,
+  };
+
+  if (editorInterface.editorLayout !== undefined) {
+    payload.editorLayout = editorInterface.editorLayout;
+  }
+  if (editorInterface.groupControls !== undefined && editorInterface.groupControls.length > 0) {
+    payload.groupControls = editorInterface.groupControls;
+  }
+  if (editorInterface.sidebar !== undefined) {
+    payload.sidebar = editorInterface.sidebar;
+  }
+  if (editorInterface.editors !== undefined && editorInterface.editors.length > 0) {
+    payload.editors = editorInterface.editors;
+  }
+
+  const putRes = await fetch(`${CMA_BASE_URL}/content_types/${contentTypeId}/editor_interface`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${managementToken}`,
+      "Content-Type": "application/vnd.contentful.management.v1+json",
+      "X-Contentful-Version": String(editorInterface.sys.version),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!putRes.ok) {
+    const body = await putRes.text();
+    throw new Error(
+      `Failed to update editor interface for ${contentTypeId}: ${putRes.status} ${body}`
+    );
+  }
+
+  console.log(`Configured slug editor for ${contentTypeId} (source: ${trackingFieldId})`);
+}
+
+async function run() {
+  const space = await client.getSpace(spaceId);
+  const environment = (await space.getEnvironment(environmentId)) as unknown as ContentfulEnvironmentLike;
+
+  for (const model of PUBLIC_CONTENT_MODELS) {
+    await upsertAndPublishContentType(environment, model);
+  }
+
+  // Auto-generate slugs in the Contentful UI while still allowing manual edits.
+  await configureSlugEditor("blogPost", "title");
+  await configureSlugEditor("leadMagnet", "title");
+  await configureSlugEditor("newsletterTemplate", "title");
 }
 
 run().catch((err) => {
-  console.error(err);
+  const message = err instanceof Error ? err.message : String(err);
+  const code = (err as { code?: string } | undefined)?.code;
+  console.error(`Migration failed${code ? ` (${code})` : ""}: ${message}`);
   process.exitCode = 1;
 });

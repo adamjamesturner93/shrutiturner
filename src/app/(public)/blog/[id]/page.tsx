@@ -20,11 +20,7 @@ export async function generateMetadata({
   };
 }
 
-export default async function Page({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [post, posts] = await Promise.all([getBlogPostBySlug(id), getBlogPosts()]);
   return <BlogPostPage post={post} posts={posts} />;

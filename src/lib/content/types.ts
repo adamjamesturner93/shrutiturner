@@ -16,8 +16,110 @@ export interface GlobalContent {
   siteName: string;
   siteTagline: string;
   defaultSeoDescription: string;
-  headerNavItems?: Array<{ label: string; href: string; children?: Array<{ label: string; href: string }> }>;
+  headerNavItems?: Array<{
+    label: string;
+    href: string;
+    children?: Array<{ label: string; href: string }>;
+  }>;
   footerNavGroups?: Array<{ title: string; links: Array<{ label: string; href: string }> }>;
+}
+
+export interface LegalDocumentContent {
+  id: string;
+  slug: "terms" | "privacy" | "cookies" | "health-declaration" | (string & {});
+  title: string;
+  version: string;
+  effectiveDate?: string;
+  body: string;
+  seoTitle?: string;
+  seoDescription?: string;
+}
+
+export interface NewsletterSignupContent {
+  slug: string;
+  hookText: string;
+  formPlaceholder: string;
+  buttonLabel: string;
+  successMessage: string;
+  consentText: string;
+  popupTitle?: string;
+  popupDescription?: string;
+  leadMagnetSlug?: string;
+  leadMagnetTitle?: string;
+  emailSubject?: string;
+  emailPreviewText?: string;
+  emailBody?: string;
+  deliveryType?: "link" | "inline";
+  assetUrl?: string;
+}
+
+export interface LeadMagnetContent {
+  id: string;
+  slug: string;
+  title: string;
+  hookText: string;
+  emailSubject: string;
+  emailPreviewText?: string;
+  emailBody: string;
+  deliveryType: "link" | "inline";
+  assetUrl?: string;
+  active?: boolean;
+  startAt?: string;
+  endAt?: string;
+}
+
+export interface FaqItemContent {
+  slug: string;
+  question: string;
+  answer: string;
+  category?: string;
+  targetPage?: string;
+  targetSection?: string;
+  sortOrder?: number;
+}
+
+export interface TrustBadgeContent {
+  slug: string;
+  title: string;
+  description?: string;
+  iconKey?: string;
+}
+
+export interface ContactBlockContent {
+  slug: string;
+  title: string;
+  body?: string;
+  email?: string;
+  phone?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+}
+
+export interface AnnouncementBannerContent {
+  slug: string;
+  message: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+  active?: boolean;
+}
+
+export interface TransactionalEmailTemplateContent {
+  slug: string;
+  templateKey: string;
+  subject: string;
+  previewText?: string;
+  htmlBody: string;
+  textBody?: string;
+  status?: "draft" | "approved";
+}
+
+export interface NewsletterTemplateContent {
+  slug: string;
+  title: string;
+  subject: string;
+  previewText?: string;
+  body: string;
+  status?: "draft" | "approved";
 }
 
 export interface BlogPostContent {
@@ -38,6 +140,7 @@ export interface ClassDefinitionContent {
   slug: string;
   name: string;
   type: "Yoga" | "Strength" | "HIIT";
+  classCategory?: "yoga" | "strength" | "small-group";
   day: string;
   time: string;
   duration: string;
@@ -55,6 +158,15 @@ export interface ClassDefinitionContent {
   seoKeywords: string;
 }
 
+export interface TestimonialContent {
+  id: string;
+  quote: string;
+  authorName: string;
+  authorCondition?: string;
+  service?: "yoga" | "strength" | "pt" | "retreat" | "small-group" | "general";
+  featured?: boolean;
+}
+
 export interface RetreatTemplateContent {
   id: string;
   slug: string;
@@ -67,15 +179,22 @@ export interface RetreatTemplateContent {
   notIncluded: string[];
   seoTitle?: string;
   seoDescription?: string;
+  venueId?: string;
   venueSlug?: string;
 }
 
 export interface RetreatVenueContent {
+  id?: string;
   slug: string;
   name: string;
   displayLocation: string;
   description?: string;
+  address?: string;
+  accommodationOptions?: string[];
+  travelInformation?: string;
   accommodationType?: string;
+  facilities?: string[];
+  accessibilityNotes?: string;
 }
 
 export interface RetreatInstanceContent {
@@ -116,4 +235,7 @@ export interface RetreatCombinedContent {
   schedule: Array<{ day: string; activities: string[] }>;
   accommodation: string;
   suitableFor: string[];
+  venueId?: string;
+  venueSlug?: string;
+  venueName?: string;
 }

@@ -1,4 +1,3 @@
-
 # Strength and Yoga Coaching
 
 This is a native Next.js App Router project for Strength and Yoga Coaching.

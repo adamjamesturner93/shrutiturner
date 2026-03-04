@@ -39,29 +39,23 @@ export function HealthProfileEditor({
   compact = false,
   onSkip,
 }: HealthProfileEditorProps) {
-  const [conditions, setConditions] = useState<Record<string, boolean>>(
-    () => ({ ...profile.conditions })
-  );
-  const [details, setDetails] = useState<Record<string, string>>(
-    () => ({ ...profile.details })
-  );
-  const [additionalNotes, setAdditionalNotes] = useState(
-    profile.additionalNotes
-  );
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    () => {
-      // Auto-expand categories that have selections
-      const expanded = new Set<string>();
-      for (const cat of HEALTH_CATEGORIES) {
-        if (cat.items.some((item) => conditions[item.key])) {
-          expanded.add(cat.id);
-        }
+  const [conditions, setConditions] = useState<Record<string, boolean>>(() => ({
+    ...profile.conditions,
+  }));
+  const [details, setDetails] = useState<Record<string, string>>(() => ({ ...profile.details }));
+  const [additionalNotes, setAdditionalNotes] = useState(profile.additionalNotes);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() => {
+    // Auto-expand categories that have selections
+    const expanded = new Set<string>();
+    for (const cat of HEALTH_CATEGORIES) {
+      if (cat.items.some((item) => conditions[item.key])) {
+        expanded.add(cat.id);
       }
-      // Always expand first category if nothing selected
-      if (expanded.size === 0) expanded.add("pain_injury");
-      return expanded;
     }
-  );
+    // Always expand first category if nothing selected
+    if (expanded.size === 0) expanded.add("pain_injury");
+    return expanded;
+  });
   const [saved, setSaved] = useState(false);
 
   const toggleCategory = (id: string) => {
@@ -108,21 +102,18 @@ export function HealthProfileEditor({
     setTimeout(() => setSaved(false), 3000);
   };
 
-  const selectedCount = Object.keys(conditions).filter(
-    (k) => conditions[k]
-  ).length;
+  const selectedCount = Object.keys(conditions).filter((k) => conditions[k]).length;
 
   return (
     <div className={compact ? "space-y-4" : "space-y-6"}>
       {/* Privacy note */}
-      <div className="flex items-start gap-3 p-3 rounded-lg bg-[#4B5B32]/5 border border-[#4B5B32]/10">
-        <Info className="w-4 h-4 text-[#4B5B32] flex-shrink-0 mt-0.5" />
-        <div className="text-xs text-muted-foreground leading-relaxed">
+      <div className="flex items-start gap-3 rounded-lg border border-[#4B5B32]/10 bg-[#4B5B32]/5 p-3">
+        <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#4B5B32]" />
+        <div className="text-muted-foreground text-xs leading-relaxed">
           <p>
-            This information is only visible to Shruti and is used to adapt
-            sessions for your body. You can update or remove anything at any
-            time. Nothing here is shared, sold, or used for any purpose other
-            than your training.
+            This information is only visible to Shruti and is used to adapt sessions for your body.
+            You can update or remove anything at any time. Nothing here is shared, sold, or used for
+            any purpose other than your training.
           </p>
         </div>
       </div>
@@ -145,9 +136,7 @@ export function HealthProfileEditor({
       {/* Additional notes */}
       {!compact && (
         <div className="space-y-2">
-          <label className="text-sm text-muted-foreground">
-            Anything else Shruti should know?
-          </label>
+          <label className="text-muted-foreground text-sm">Anything else Shruti should know?</label>
           <Textarea
             value={additionalNotes}
             onChange={(e) => {
@@ -163,7 +152,7 @@ export function HealthProfileEditor({
 
       {/* Actions */}
       <div className="flex items-center justify-between pt-2">
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           {selectedCount === 0
             ? "No conditions selected"
             : `${selectedCount} condition${selectedCount !== 1 ? "s" : ""} selected`}
@@ -174,14 +163,10 @@ export function HealthProfileEditor({
               Skip for now
             </Button>
           )}
-          <Button
-            onClick={handleSave}
-            size="sm"
-            className="bg-[#4B5B32] hover:bg-[#4B5B32]/90"
-          >
+          <Button onClick={handleSave} size="sm" className="bg-[#4B5B32] hover:bg-[#4B5B32]/90">
             {saved ? (
               <>
-                <Check className="w-4 h-4 mr-1" />
+                <Check className="mr-1 h-4 w-4" />
                 Saved
               </>
             ) : compact ? (
@@ -218,74 +203,60 @@ function CategorySection({
   compact: boolean;
 }) {
   const Icon = CATEGORY_ICONS[category.icon] || Activity;
-  const activeCount = category.items.filter(
-    (item) => conditions[item.key]
-  ).length;
+  const activeCount = category.items.filter((item) => conditions[item.key]).length;
 
   return (
-    <div className="border rounded-lg overflow-hidden">
+    <div className="overflow-hidden rounded-lg border">
       {/* Category header */}
       <button
         onClick={onToggleExpand}
-        className="w-full flex items-center justify-between p-4 text-left hover:bg-secondary/30 transition-colors"
+        className="hover:bg-secondary/30 flex w-full items-center justify-between p-4 text-left transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-[#4B5B32]/10 flex items-center justify-center flex-shrink-0">
-            <Icon className="w-4 h-4 text-[#4B5B32]" />
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#4B5B32]/10">
+            <Icon className="h-4 w-4 text-[#4B5B32]" />
           </div>
           <div>
             <p className="text-sm">{category.title}</p>
-            {activeCount > 0 && (
-              <p className="text-xs text-[#4B5B32]">
-                {activeCount} selected
-              </p>
-            )}
+            {activeCount > 0 && <p className="text-xs text-[#4B5B32]">{activeCount} selected</p>}
           </div>
         </div>
         {expanded ? (
-          <ChevronUp className="w-4 h-4 text-muted-foreground" />
+          <ChevronUp className="text-muted-foreground h-4 w-4" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          <ChevronDown className="text-muted-foreground h-4 w-4" />
         )}
       </button>
 
       {/* Category items */}
       {expanded && (
-        <div className="border-t px-4 py-3 space-y-1">
-          {!compact && (
-            <p className="text-xs text-muted-foreground mb-3">
-              {category.description}
-            </p>
-          )}
+        <div className="space-y-1 border-t px-4 py-3">
+          {!compact && <p className="text-muted-foreground mb-3 text-xs">{category.description}</p>}
           <div className="grid grid-cols-2 gap-x-1 gap-y-0">
             {category.items.map((item) => (
               <div
                 key={item.key}
-                className={
-                  item.hasDetails && conditions[item.key]
-                    ? "col-span-2"
-                    : ""
-                }
+                className={item.hasDetails && conditions[item.key] ? "col-span-2" : ""}
               >
-                <label className="flex items-center gap-3 py-1.5 px-2 rounded-md hover:bg-secondary/30 transition-colors cursor-pointer">
+                <label className="hover:bg-secondary/30 flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 transition-colors">
                   <input
                     type="checkbox"
                     checked={!!conditions[item.key]}
                     onChange={() => onToggleCondition(item.key)}
-                    className="accent-[#4B5B32] w-4 h-4 rounded flex-shrink-0"
+                    className="h-4 w-4 flex-shrink-0 rounded accent-[#4B5B32]"
                   />
                   <span className="text-sm">{item.label}</span>
                 </label>
 
                 {/* Details input when checked + hasDetails */}
                 {item.hasDetails && conditions[item.key] && (
-                  <div className="ml-9 mb-2">
+                  <div className="mb-2 ml-9">
                     <input
                       type="text"
                       value={details[item.key] || ""}
                       onChange={(e) => onUpdateDetails(item.key, e.target.value)}
                       placeholder={item.detailsPlaceholder}
-                      className="w-full text-sm px-3 py-1.5 border rounded-md bg-input-background outline-none focus:border-[#4B5B32] transition-colors placeholder:text-muted-foreground/50"
+                      className="bg-input-background placeholder:text-muted-foreground/50 w-full rounded-md border px-3 py-1.5 text-sm transition-colors outline-none focus:border-[#4B5B32]"
                     />
                   </div>
                 )}

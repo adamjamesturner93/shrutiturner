@@ -89,9 +89,9 @@ export function DashboardLobby() {
   };
 
   const typeIcon = (type: string) => {
-    if (type === "Yoga") return <Heart className="w-4 h-4 text-[#4B5B32]" />;
-    if (type === "HIIT") return <Zap className="w-4 h-4 text-orange-600" />;
-    return <Dumbbell className="w-4 h-4 text-primary" />;
+    if (type === "Yoga") return <Heart className="h-4 w-4 text-[#4B5B32]" />;
+    if (type === "HIIT") return <Zap className="h-4 w-4 text-orange-600" />;
+    return <Dumbbell className="text-primary h-4 w-4" />;
   };
 
   const adaptiveSuggestion = getAdaptiveSuggestion();
@@ -120,31 +120,30 @@ export function DashboardLobby() {
     <DashboardLayout title="Studio Lobby - Shruti Turner">
       {/* Onboarding overlay */}
       {showOnboarding && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-background border rounded-lg shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto animate-in fade-in zoom-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="bg-background animate-in fade-in zoom-in max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-lg border shadow-xl">
             {onboardingStep === "welcome" ? (
               /* Step 1: Welcome */
-              <div className="p-8 text-center space-y-6">
-                <div className="w-16 h-16 bg-[#4B5B32]/10 rounded-full flex items-center justify-center mx-auto">
-                  <Heart className="w-8 h-8 text-[#4B5B32]" />
+              <div className="space-y-6 p-8 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#4B5B32]/10">
+                  <Heart className="h-8 w-8 text-[#4B5B32]" />
                 </div>
                 <h2 className="text-2xl">Welcome, {user?.firstName}.</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  Your Private Studio is ready. Here you can browse the schedule,
-                  book classes, and manage your membership. Start with what feels
-                  manageable.
+                  Your Private Studio is ready. Here you can browse the schedule, book classes, and
+                  manage your membership. Start with what feels manageable.
                 </p>
-                <div className="space-y-3 text-left text-sm text-muted-foreground bg-secondary/30 rounded-lg p-4">
+                <div className="text-muted-foreground bg-secondary/30 space-y-3 rounded-lg p-4 text-left text-sm">
                   <p className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                    <CheckCircle className="text-primary mt-0.5 h-4 w-4 flex-shrink-0" />
                     <span>Book any yoga, strength, or HIIT class from the schedule</span>
                   </p>
                   <p className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                    <CheckCircle className="text-primary mt-0.5 h-4 w-4 flex-shrink-0" />
                     <span>Credits are used when you book — one per class</span>
                   </p>
                   <p className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                    <CheckCircle className="text-primary mt-0.5 h-4 w-4 flex-shrink-0" />
                     <span>Can't make it live? Replays are available for 7 days</span>
                   </p>
                 </div>
@@ -154,19 +153,19 @@ export function DashboardLobby() {
                 </Button>
                 <button
                   onClick={handleViewSchedule}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-muted-foreground hover:text-foreground text-sm transition-colors"
                 >
                   Skip and go to schedule
                 </button>
               </div>
             ) : (
               /* Step 2: Health profile */
-              <div className="p-6 space-y-4">
-                <div className="text-center space-y-2">
+              <div className="space-y-4 p-6">
+                <div className="space-y-2 text-center">
                   <h2 className="text-xl">Your Health Profile</h2>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    This helps Shruti adapt every session for your body. You can
-                    always update this later from your dashboard.
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    This helps Shruti adapt every session for your body. You can always update this
+                    later from your dashboard.
                   </p>
                 </div>
                 <HealthProfileEditor
@@ -183,18 +182,16 @@ export function DashboardLobby() {
 
       {/* Welcome */}
       <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl mb-2">
+        <h1 className="mb-2 text-3xl md:text-4xl">
           {getGreeting()}, {user?.firstName}.
         </h1>
-        <p className="text-muted-foreground">
-          Here's your training overview for this week.
-        </p>
+        <p className="text-muted-foreground">Here's your training overview for this week.</p>
       </div>
 
       {/* Credit expiry warning */}
       {!isAdmin && daysUntilExpiry !== null && daysUntilExpiry <= 7 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div className="mb-6 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
           <div>
             <p className="text-sm text-amber-800">
               {creditsExpiringSoon} credit{creditsExpiringSoon !== 1 ? "s" : ""}{" "}
@@ -218,64 +215,66 @@ export function DashboardLobby() {
       )}
 
       {/* Quick stats */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? 'lg:grid-cols-2' : 'lg:grid-cols-4'} gap-4 mb-8`}>
-        <div className="bg-background border rounded-lg p-5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground">Upcoming Classes</span>
-            <Calendar className="w-4 h-4 text-muted-foreground" />
+      <div
+        className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? "lg:grid-cols-2" : "lg:grid-cols-4"} mb-8 gap-4`}
+      >
+        <div className="bg-background rounded-lg border p-5">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-muted-foreground text-sm">Upcoming Classes</span>
+            <Calendar className="text-muted-foreground h-4 w-4" />
           </div>
           <p className="text-3xl">{bookings.length}</p>
-          <p className="text-xs text-muted-foreground mt-1">this week</p>
+          <p className="text-muted-foreground mt-1 text-xs">this week</p>
         </div>
 
         {isAdmin ? (
-          <div className="bg-background border rounded-lg p-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Access</span>
-              <CreditCard className="w-4 h-4 text-muted-foreground" />
+          <div className="bg-background rounded-lg border p-5">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-muted-foreground text-sm">Access</span>
+              <CreditCard className="text-muted-foreground h-4 w-4" />
             </div>
             <p className="text-lg">Unlimited (instructor)</p>
-            <p className="text-xs text-muted-foreground mt-1">all classes included</p>
+            <p className="text-muted-foreground mt-1 text-xs">all classes included</p>
           </div>
         ) : (
           <>
             {membership && (
-              <div className="bg-background border rounded-lg p-5">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">Membership Classes</span>
-                  <CreditCard className="w-4 h-4 text-muted-foreground" />
+              <div className="bg-background rounded-lg border p-5">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-muted-foreground text-sm">Membership Classes</span>
+                  <CreditCard className="text-muted-foreground h-4 w-4" />
                 </div>
                 <p className="text-3xl">
                   {membershipClassesRemaining}
-                  <span className="text-base text-muted-foreground">
+                  <span className="text-muted-foreground text-base">
                     {" "}
                     / {membership.classesPerWeek === 99 ? "Unlimited" : membership.classesPerWeek}
                   </span>
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">remaining this week</p>
+                <p className="text-muted-foreground mt-1 text-xs">remaining this week</p>
               </div>
             )}
 
-            <div className="bg-background border rounded-lg p-5">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-muted-foreground">Class Credits</span>
-                <CreditCard className="w-4 h-4 text-muted-foreground" />
+            <div className="bg-background rounded-lg border p-5">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">Class Credits</span>
+                <CreditCard className="text-muted-foreground h-4 w-4" />
               </div>
               <p className="text-3xl">{totalCredits}</p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-muted-foreground mt-1 text-xs">
                 {creditExpiryDate && daysUntilExpiry !== null && daysUntilExpiry > 0
                   ? `expires in ${daysUntilExpiry}d`
                   : "available"}
               </p>
             </div>
 
-            <div className="bg-background border rounded-lg p-5">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-muted-foreground">Referral Balance</span>
-                <Gift className="w-4 h-4 text-muted-foreground" />
+            <div className="bg-background rounded-lg border p-5">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">Referral Balance</span>
+                <Gift className="text-muted-foreground h-4 w-4" />
               </div>
               <p className="text-3xl">£{referralBalance}</p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-muted-foreground mt-1 text-xs">
                 {referralBalance > 0
                   ? membership
                     ? "off next renewal"
@@ -290,24 +289,26 @@ export function DashboardLobby() {
       {/* Quick Book — favourite classes */}
       {!isAdmin && quickBookClasses.length > 0 && (
         <div className="mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Bookmark className="w-5 h-5 text-primary" />
+          <div className="mb-4 flex items-center gap-2">
+            <Bookmark className="text-primary h-5 w-5" />
             <h2 className="text-xl">Quick Book</h2>
-            <span className="text-xs text-muted-foreground">Your most-booked classes</span>
+            <span className="text-muted-foreground text-xs">Your most-booked classes</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {quickBookClasses.map((cls) => (
               <div
                 key={cls.slug}
-                className="bg-background border rounded-lg p-4 flex items-center justify-between gap-3"
+                className="bg-background flex items-center justify-between gap-3 rounded-lg border p-4"
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 bg-secondary rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="bg-secondary flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg">
                     {typeIcon(cls.type)}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm truncate">{cls.name}</p>
-                    <p className="text-xs text-muted-foreground">{cls.day} {fmtTimeStr(cls.time)}</p>
+                    <p className="truncate text-sm">{cls.name}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {cls.day} {fmtTimeStr(cls.time)}
+                    </p>
                   </div>
                 </div>
                 <BookClassButton classSlug={cls.slug} size="sm" />
@@ -319,7 +320,7 @@ export function DashboardLobby() {
 
       {/* Upcoming bookings */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex items-center justify-between">
           <h2 className="text-xl">Upcoming Classes</h2>
           <Link href="/dashboard/schedule">
             <Button variant="ghost" size="sm">
@@ -330,7 +331,7 @@ export function DashboardLobby() {
         </div>
 
         {bookings.length === 0 ? (
-          <div className="bg-background border rounded-lg p-8 text-center">
+          <div className="bg-background rounded-lg border p-8 text-center">
             <p className="text-muted-foreground mb-4">No classes booked yet.</p>
             <Link href="/dashboard/schedule">
               <Button>
@@ -344,24 +345,22 @@ export function DashboardLobby() {
             {bookings.map((booking) => (
               <div
                 key={booking.id}
-                className="bg-background border rounded-lg p-4 flex items-center justify-between gap-4"
+                className="bg-background flex items-center justify-between gap-4 rounded-lg border p-4"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center">
+                  <div className="bg-secondary flex h-10 w-10 items-center justify-center rounded-lg">
                     {typeIcon(booking.classType)}
                   </div>
                   <div>
                     <p className="text-sm">{booking.className}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       {booking.day} at {fmtTimeStr(booking.time)} · {booking.duration}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Link href={`/dashboard/classes/${booking.classSlug}`}>
-                    <Button size="sm">
-                      View Details
-                    </Button>
+                    <Button size="sm">View Details</Button>
                   </Link>
                 </div>
               </div>
@@ -372,15 +371,17 @@ export function DashboardLobby() {
 
       {/* Adaptive suggestion */}
       {adaptiveSuggestion && !isAdmin && (
-        <div className="bg-[#4B5B32]/5 border border-[#4B5B32]/20 rounded-lg p-5 mb-8 flex items-start gap-3">
-          <Lightbulb className="w-5 h-5 text-[#4B5B32] flex-shrink-0 mt-0.5" />
+        <div className="mb-8 flex items-start gap-3 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 p-5">
+          <Lightbulb className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
           <div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               {adaptiveSuggestion.reason}{" "}
-              <Link href={`/dashboard/classes/${adaptiveSuggestion.classSlug}`}
+              <Link
+                href={`/dashboard/classes/${adaptiveSuggestion.classSlug}`}
                 className="text-primary hover:underline"
               >
-                {adaptiveSuggestion.className} ({adaptiveSuggestion.day} {fmtTimeStr(adaptiveSuggestion.time)})
+                {adaptiveSuggestion.className} ({adaptiveSuggestion.day}{" "}
+                {fmtTimeStr(adaptiveSuggestion.time)})
               </Link>
             </p>
           </div>
@@ -388,29 +389,33 @@ export function DashboardLobby() {
       )}
 
       {/* Quick actions */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? 'lg:grid-cols-2' : 'lg:grid-cols-3'} gap-4 mb-8`}>
-        <Link href="/dashboard/schedule"
-          className="bg-background border rounded-lg p-5 hover:shadow-md transition-shadow group"
+      <div
+        className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? "lg:grid-cols-2" : "lg:grid-cols-3"} mb-8 gap-4`}
+      >
+        <Link
+          href="/dashboard/schedule"
+          className="bg-background group rounded-lg border p-5 transition-shadow hover:shadow-md"
         >
-          <div className="flex items-center gap-3 mb-2">
-            <Calendar className="w-5 h-5 text-primary" />
+          <div className="mb-2 flex items-center gap-3">
+            <Calendar className="text-primary h-5 w-5" />
             <h3 className="text-lg">{isAdmin ? "View Schedule" : "Book Next Class"}</h3>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             {isAdmin
               ? "See today's schedule and upcoming classes."
               : "Browse this week's schedule and find your next session."}
           </p>
         </Link>
 
-        <Link href="/dashboard/programs"
-          className="bg-background border rounded-lg p-5 hover:shadow-md transition-shadow group"
+        <Link
+          href="/dashboard/programs"
+          className="bg-background group rounded-lg border p-5 transition-shadow hover:shadow-md"
         >
-          <div className="flex items-center gap-3 mb-2">
-            <Users className="w-5 h-5 text-primary" />
+          <div className="mb-2 flex items-center gap-3">
+            <Users className="text-primary h-5 w-5" />
             <h3 className="text-lg">Small Group Programs</h3>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             {isAdmin
               ? "View your active and upcoming programmes."
               : "Join a focused cohort with specific skill outcomes."}
@@ -418,14 +423,15 @@ export function DashboardLobby() {
         </Link>
 
         {!isAdmin && (
-          <Link href="/dashboard/referrals"
-            className="bg-background border rounded-lg p-5 hover:shadow-md transition-shadow group"
+          <Link
+            href="/dashboard/referrals"
+            className="bg-background group rounded-lg border p-5 transition-shadow hover:shadow-md"
           >
-            <div className="flex items-center gap-3 mb-2">
-              <Gift className="w-5 h-5 text-primary" />
+            <div className="mb-2 flex items-center gap-3">
+              <Gift className="text-primary h-5 w-5" />
               <h3 className="text-lg">Refer a Friend</h3>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Give £10, get £10. Share your referral link.
             </p>
           </Link>
@@ -435,54 +441,54 @@ export function DashboardLobby() {
       {/* Recent attendance history */}
       {!isAdmin && attendanceHistory.length > 0 && (
         <div className="mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <History className="w-5 h-5 text-muted-foreground" />
+          <div className="mb-4 flex items-center gap-2">
+            <History className="text-muted-foreground h-5 w-5" />
             <h2 className="text-xl">Recent Activity</h2>
           </div>
-          <div className="bg-background border rounded-lg divide-y">
+          <div className="bg-background divide-y rounded-lg border">
             {attendanceHistory.slice(0, 5).map((record) => (
-              <div key={record.id} className="p-4 flex items-center justify-between gap-4">
+              <div key={record.id} className="flex items-center justify-between gap-4 p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-secondary rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="bg-secondary flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg">
                     {typeIcon(record.classType)}
                   </div>
                   <div>
                     <p className="text-sm">{record.className}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       {fmtDate(record.date)} · {fmtTimeStr(record.time)}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {record.preClass?.flareToday && (
-                    <span className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded">
+                    <span className="rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
                       Flare day
                     </span>
                   )}
                   {record.postClass && (
-                    <span className={`text-xs px-2 py-0.5 rounded ${
-                      record.postClass.feeling === "great"
-                        ? "bg-[#4B5B32]/10 text-[#4B5B32]"
-                        : record.postClass.feeling === "good"
-                          ? "bg-blue-50 text-blue-700"
-                          : record.postClass.feeling === "okay"
-                            ? "bg-secondary text-muted-foreground"
-                            : "bg-amber-50 text-amber-700"
-                    }`}>
+                    <span
+                      className={`rounded px-2 py-0.5 text-xs ${
+                        record.postClass.feeling === "great"
+                          ? "bg-[#4B5B32]/10 text-[#4B5B32]"
+                          : record.postClass.feeling === "good"
+                            ? "bg-blue-50 text-blue-700"
+                            : record.postClass.feeling === "okay"
+                              ? "bg-secondary text-muted-foreground"
+                              : "bg-amber-50 text-amber-700"
+                      }`}
+                    >
                       {record.postClass.feeling}
                     </span>
                   )}
                   {!record.postClass && (
-                    <span className="text-xs text-muted-foreground">
-                      No feedback
-                    </span>
+                    <span className="text-muted-foreground text-xs">No feedback</span>
                   )}
                 </div>
               </div>
             ))}
           </div>
           {attendanceHistory.length > 5 && (
-            <p className="text-xs text-muted-foreground mt-2 text-center">
+            <p className="text-muted-foreground mt-2 text-center text-xs">
               Showing 5 of {attendanceHistory.length} attended classes
             </p>
           )}

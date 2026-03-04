@@ -8,13 +8,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Checkbox } from "../components/ui/checkbox";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Mail, Gift, Info } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../context/auth-context";
@@ -38,9 +32,7 @@ export function SignupPage() {
     opts?.replace ? router.replace(href) : router.push(href);
   const refCode = searchParams.get("ref");
 
-  const [signupMethod, setSignupMethod] = useState<"email" | "google" | null>(
-    null
-  );
+  const [signupMethod, setSignupMethod] = useState<"email" | "google" | null>(null);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -76,8 +68,7 @@ export function SignupPage() {
       return;
     }
     // Auto-detect timezone from browser for new accounts
-    const detectedTimezone =
-      Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London";
+    const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London";
     console.log("Creating account:", { ...formData, timezone: detectedTimezone });
     if (refCode) console.log("Applying referral code:", refCode);
     login(formData.email);
@@ -100,24 +91,20 @@ export function SignupPage() {
         noIndex={true}
       />
 
-      <section className="py-20 md:py-28 min-h-screen flex items-center">
-        <div className="container mx-auto px-4 max-w-md">
+      <section className="flex min-h-screen items-center py-20 md:py-28">
+        <div className="container mx-auto max-w-md px-4">
           {refCode && (
-            <div className="bg-[#4B5B32]/10 border border-[#4B5B32]/20 rounded-lg p-4 mb-6 flex items-start gap-3">
-              <Gift className="w-5 h-5 text-[#4B5B32] flex-shrink-0 mt-0.5" />
+            <div className="mb-6 flex items-start gap-3 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/10 p-4">
+              <Gift className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
               <div>
-                <p className="text-sm">
-                  £10 credit will be applied to your account after sign-up.
-                </p>
+                <p className="text-sm">£10 credit will be applied to your account after sign-up.</p>
               </div>
             </div>
           )}
 
           <Card>
             <CardHeader className="space-y-1">
-              <CardTitle className="text-3xl text-center">
-                Create Your Account
-              </CardTitle>
+              <CardTitle className="text-center text-3xl">Create Your Account</CardTitle>
               <CardDescription className="text-center">
                 Join our community and start your strength journey
               </CardDescription>
@@ -140,9 +127,7 @@ export function SignupPage() {
                       <span className="w-full border-t" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background px-2 text-muted-foreground">
-                        Or
-                      </span>
+                      <span className="bg-background text-muted-foreground px-2">Or</span>
                     </div>
                   </div>
 
@@ -173,7 +158,7 @@ export function SignupPage() {
                     Sign up with Google
                   </Button>
 
-                  <div className="mt-6 text-center text-sm text-muted-foreground">
+                  <div className="text-muted-foreground mt-6 text-center text-sm">
                     <p>
                       Already have an account?{" "}
                       <Link href="/login" className="text-primary hover:underline">
@@ -200,9 +185,7 @@ export function SignupPage() {
                         id="firstName"
                         type="text"
                         value={formData.firstName}
-                        onChange={(e) =>
-                          setFormData({ ...formData, firstName: e.target.value })
-                        }
+                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                         required
                       />
                     </div>
@@ -212,9 +195,7 @@ export function SignupPage() {
                         id="lastName"
                         type="text"
                         value={formData.lastName}
-                        onChange={(e) =>
-                          setFormData({ ...formData, lastName: e.target.value })
-                        }
+                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                         required
                       />
                     </div>
@@ -227,9 +208,7 @@ export function SignupPage() {
                       type="email"
                       placeholder="your.email@example.com"
                       value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       required
                     />
                   </div>
@@ -246,12 +225,12 @@ export function SignupPage() {
                       className={dobError ? "border-red-500" : ""}
                     />
                     {dobError ? (
-                      <p className="text-sm text-red-600 flex items-start gap-1.5">
-                        <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                      <p className="flex items-start gap-1.5 text-sm text-red-600">
+                        <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
                         {dobError}
                       </p>
                     ) : (
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-muted-foreground text-xs">
                         Required for insurance. You must be 18 or over.
                       </p>
                     )}
@@ -271,7 +250,7 @@ export function SignupPage() {
                     />
                     <label
                       htmlFor="terms"
-                      className="text-sm text-muted-foreground leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      className="text-muted-foreground text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                     >
                       I agree to the{" "}
                       <Link href="/terms" className="text-primary hover:underline">
@@ -293,7 +272,7 @@ export function SignupPage() {
                     Create Account
                   </Button>
 
-                  <p className="text-sm text-muted-foreground text-center">
+                  <p className="text-muted-foreground text-center text-sm">
                     We'll send you a verification email to confirm your account
                   </p>
                 </form>

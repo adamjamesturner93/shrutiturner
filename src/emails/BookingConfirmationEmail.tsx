@@ -51,7 +51,7 @@ export const BookingConfirmationEmail = ({
         }}
       >
         <Body className="bg-background font-sans">
-          <Container className="mx-auto p-4 max-w-xl">
+          <Container className="mx-auto max-w-xl p-4">
             <Section className="mt-8 mb-8 text-center">
               <Img
                 src="https://shrutiturner.com/logo.png"
@@ -61,76 +61,88 @@ export const BookingConfirmationEmail = ({
               />
             </Section>
 
-            <Section className="bg-white p-8 rounded-lg border border-[#E5E5E5]">
-              <Heading className="text-2xl font-normal text-text mb-4 text-center">
+            <Section className="rounded-lg border border-[#E5E5E5] bg-white p-8">
+              <Heading className="text-text mb-4 text-center text-2xl font-normal">
                 Booking Confirmed
               </Heading>
 
-              <Text className="text-text text-base leading-relaxed mb-6">
-                Hi {firstName}, just confirming your spot for <strong>{className}</strong> on {classDate} at {classTime}.
+              <Text className="text-text mb-6 text-base leading-relaxed">
+                Hi {firstName}, just confirming your spot for <strong>{className}</strong> on{" "}
+                {classDate} at {classTime}.
               </Text>
 
-              <Section className="bg-[#B5C49B]/10 p-6 rounded-lg text-center mb-6">
-                <Text className="text-text font-bold mb-2 text-xl">{className}</Text>
+              <Section className="mb-6 rounded-lg bg-[#B5C49B]/10 p-6 text-center">
+                <Text className="text-text mb-2 text-xl font-bold">{className}</Text>
                 <Text className="text-text mb-1">{classDate}</Text>
                 <Text className="text-text mb-4">{classTime}</Text>
 
                 <Button
-                  className="bg-primary text-[#FAFAF8] px-6 py-3 rounded text-base font-medium no-underline mb-4"
+                  className="bg-primary mb-4 rounded px-6 py-3 text-base font-medium text-[#FAFAF8] no-underline"
                   href="https://shrutiturner.com/dashboard/schedule"
                 >
                   View Details & Join
                 </Button>
 
-                <Text className="text-xs text-text/60 uppercase tracking-wider mb-2">Add to Calendar</Text>
+                <Text className="text-text/60 mb-2 text-xs tracking-wider uppercase">
+                  Add to Calendar
+                </Text>
                 <Row>
                   <Column align="center">
                     <Link
                       href={`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(className)}&details=${encodeURIComponent("Join at https://shrutiturner.com/dashboard/schedule")}&location=Online`}
-                      className="text-text/70 underline text-xs mx-2"
+                      className="text-text/70 mx-2 text-xs underline"
                     >
                       Google
                     </Link>
                     <Link
                       href={`https://outlook.live.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(className)}&body=${encodeURIComponent("Join at https://shrutiturner.com/dashboard/schedule")}&location=Online`}
-                      className="text-text/70 underline text-xs mx-2"
+                      className="text-text/70 mx-2 text-xs underline"
                     >
                       Outlook
                     </Link>
-                    <Link
-                      href="#" 
-                      className="text-text/70 underline text-xs mx-2"
-                    >
+                    <Link href="#" className="text-text/70 mx-2 text-xs underline">
                       Apple (ICS)
                     </Link>
                   </Column>
                 </Row>
               </Section>
 
-              <Hr className="border-[#E5E5E5] my-6" />
+              <Hr className="my-6 border-[#E5E5E5]" />
 
-              <Heading className="text-lg font-medium text-text mb-3">Important Reminders</Heading>
-              
-              <ul className="text-text text-sm list-disc pl-5 mb-6 space-y-2">
+              <Heading className="text-text mb-3 text-lg font-medium">Important Reminders</Heading>
+
+              <ul className="text-text mb-6 list-disc space-y-2 pl-5 text-sm">
                 <li>Arrive 5 minutes early to settle in.</li>
                 <li>Wear comfortable clothing that allows movement.</li>
-                <li>If you have specific needs today, please message me before class or arrive early to chat.</li>
+                <li>
+                  If you have specific needs today, please message me before class or arrive early
+                  to chat.
+                </li>
                 <li>Ensure you have a stable internet connection for the video call.</li>
               </ul>
-              
+
               <Text className="text-text text-sm">
-                Need to reschedule? You can do so up to 12 hours before class from your <Link href="https://shrutiturner.com/dashboard" className="text-primary underline">dashboard</Link>.
+                Need to reschedule? You can do so up to 12 hours before class from your{" "}
+                <Link href="https://shrutiturner.com/dashboard" className="text-primary underline">
+                  dashboard
+                </Link>
+                .
               </Text>
             </Section>
 
-            <Section className="mt-8 text-center text-text/50 text-xs">
+            <Section className="text-text/50 mt-8 text-center text-xs">
               <Text>
                 Shruti Turner Coaching
                 <br />
                 PhD Biomechanics · PGDip Rehab · 650hr Yoga
               </Text>
               <Text>
-                <Link href="https://shrutiturner.com/unsubscribe" className="text-text/50 underline">Unsubscribe</Link>
+                <Link
+                  href="https://shrutiturner.com/unsubscribe"
+                  className="text-text/50 underline"
+                >
+                  Unsubscribe
+                </Link>
               </Text>
             </Section>
           </Container>

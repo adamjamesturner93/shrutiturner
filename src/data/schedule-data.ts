@@ -68,8 +68,7 @@ Each session includes breath work for nervous system regulation, gentle mobilisa
       "Community connection with others who understand",
     ],
     instructor: "Shruti Turner",
-    seoTitle:
-      "Adaptive Yoga Flow - Online Yoga for Chronic Illness | Shruti Turner",
+    seoTitle: "Adaptive Yoga Flow - Online Yoga for Chronic Illness | Shruti Turner",
     seoDescription:
       "Live online adaptive yoga class for people with chronic illness, autoimmune conditions, and complex bodies. Rehabilitation-informed, not just modified mainstream yoga. Mondays 9am GMT.",
     seoKeywords:
@@ -85,8 +84,7 @@ Each session includes breath work for nervous system regulation, gentle mobilisa
     duration: "45 min",
     level: "Beginner",
     maxSpaces: 10,
-    shortDescription:
-      "Introduction to strength training principles for complex bodies.",
+    shortDescription: "Introduction to strength training principles for complex bodies.",
     longDescription: `Strength Foundations is a 45-minute beginner-friendly class that introduces evidence-based strength training principles specifically designed for people with chronic illness and complex bodies.
 
 This is not a watered-down version of a regular strength class. It's a ground-up approach to resistance training that accounts for fluctuating energy, joint protection, post-exertional malaise, and the reality of training with chronic conditions.
@@ -138,8 +136,7 @@ You'll learn fundamental movement patterns — hinge, squat, push, pull, carry �
     duration: "45 min",
     level: "Adaptive",
     maxSpaces: 8,
-    shortDescription:
-      "Seated strength work for those with mobility limitations or high fatigue.",
+    shortDescription: "Seated strength work for those with mobility limitations or high fatigue.",
     longDescription: `Chair-Based Strength is a 45-minute seated and supported resistance training class designed for people experiencing high fatigue, mobility limitations, or flare periods.
 
 This class proves that effective strength training doesn't require standing for 45 minutes. Using a chair as your base, you'll work through upper body, core, and lower body exercises that build genuine strength and muscular endurance.
@@ -174,8 +171,7 @@ This is particularly valuable for people managing post-exertional malaise, those
       "Maintain training consistency without overexertion",
     ],
     instructor: "Shruti Turner",
-    seoTitle:
-      "Chair-Based Strength - Seated Strength Training Online | Shruti Turner",
+    seoTitle: "Chair-Based Strength - Seated Strength Training Online | Shruti Turner",
     seoDescription:
       "Online seated strength training class for people with mobility limitations, high fatigue, or during flare periods. Effective strength work from a chair. Tuesdays 10am GMT.",
     seoKeywords:
@@ -191,8 +187,7 @@ This is particularly valuable for people managing post-exertional malaise, those
     duration: "60 min",
     level: "All levels",
     maxSpaces: 12,
-    shortDescription:
-      "Deeply restful practice for nervous system regulation and recovery.",
+    shortDescription: "Deeply restful practice for nervous system regulation and recovery.",
     longDescription: `Restorative Yoga is a 60-minute deeply restful practice designed to down-regulate the nervous system, reduce pain perception, and support recovery.
 
 This is not active yoga — you won't be building heat or working on strength. Instead, you'll be held in supported positions for 5-10 minutes each, allowing your body to release tension and your nervous system to shift from sympathetic (fight/flight) to parasympathetic (rest/digest) dominance.
@@ -228,8 +223,7 @@ For people with chronic illness and autoimmune conditions, this nervous system r
       "Supported recovery between active training",
     ],
     instructor: "Shruti Turner",
-    seoTitle:
-      "Restorative Yoga - Online Nervous System Regulation | Shruti Turner",
+    seoTitle: "Restorative Yoga - Online Nervous System Regulation | Shruti Turner",
     seoDescription:
       "Online restorative yoga class for nervous system regulation and recovery. Deeply restful practice for chronic illness, pain management, and stress reduction. Wednesdays 9am GMT.",
     seoKeywords:
@@ -245,8 +239,7 @@ For people with chronic illness and autoimmune conditions, this nervous system r
     duration: "45 min",
     level: "Intermediate",
     maxSpaces: 10,
-    shortDescription:
-      "Modified high-intensity intervals adapted for chronic conditions.",
+    shortDescription: "Modified high-intensity intervals adapted for chronic conditions.",
     longDescription: `HIIT for Complex Bodies is a 45-minute modified high-intensity interval training class that adapts the cardiovascular and metabolic benefits of HIIT for people managing chronic conditions.
 
 Standard HIIT classes are often built around maximum-effort work intervals that can trigger post-exertional malaise, symptom flares, and burnout for people with chronic illness. This class uses extended rest periods, sub-maximal effort levels, and intelligent exercise selection to deliver the benefits of interval training without the crash.
@@ -282,8 +275,7 @@ Work-to-rest ratios are typically 1:2 or 1:3 (compared to the standard 1:1 or 2:
       "Mood and cognitive benefits of interval training",
     ],
     instructor: "Shruti Turner",
-    seoTitle:
-      "HIIT for Complex Bodies - Modified Interval Training | Shruti Turner",
+    seoTitle: "HIIT for Complex Bodies - Modified Interval Training | Shruti Turner",
     seoDescription:
       "Online modified HIIT class for people with chronic illness. Intelligent interval training with extended rest periods, low-impact options, and sub-maximal effort. Wednesdays 7pm GMT.",
     seoKeywords:
@@ -299,8 +291,7 @@ Work-to-rest ratios are typically 1:2 or 1:3 (compared to the standard 1:1 or 2:
     duration: "45 min",
     level: "All levels",
     maxSpaces: 10,
-    shortDescription:
-      "Low-impact strength work combined with joint mobility.",
+    shortDescription: "Low-impact strength work combined with joint mobility.",
     longDescription: `Toning & Mobility is a 45-minute class that combines low-impact muscular endurance work with joint mobility exercises. This class bridges the gap between yoga and strength training, making it ideal for people who want both in a single session.
 
 The first half focuses on controlled, low-impact strength exercises — think slow tempo work, isometric holds, and time under tension. The second half addresses joint mobility through active stretching, controlled articular rotations, and movement patterns that improve range of motion.
@@ -335,8 +326,7 @@ This class is particularly beneficial for people with arthritis, as the combinat
       "Balanced strength across muscle groups",
     ],
     instructor: "Shruti Turner",
-    seoTitle:
-      "Toning & Mobility - Joint Health & Strength Online | Shruti Turner",
+    seoTitle: "Toning & Mobility - Joint Health & Strength Online | Shruti Turner",
     seoDescription:
       "Online toning and mobility class combining low-impact strength with joint mobility work. Ideal for arthritis, stiffness, and functional movement. Thursdays 10am GMT.",
     seoKeywords:
@@ -352,8 +342,7 @@ This class is particularly beneficial for people with arthritis, as the combinat
     duration: "60 min",
     level: "Specialised",
     maxSpaces: 8,
-    shortDescription:
-      "Strength-focused yoga for hypermobile joints and EDS.",
+    shortDescription: "Strength-focused yoga for hypermobile joints and EDS.",
     longDescription: `Yoga for Hypermobility is a specialised 60-minute class designed specifically for people with joint hypermobility, Ehlers-Danlos syndromes (EDS), and hypermobility spectrum disorders (HSD).
 
 Traditional yoga can be actively harmful for hypermobile bodies — stretching already unstable joints, rewarding extreme range of motion, and ignoring the proprioceptive deficits common in hypermobility. This class takes a fundamentally different approach.
@@ -389,8 +378,7 @@ Instead of stretching, we focus on end-range control. Instead of going deeper, w
       "Confidence in movement without fear of injury",
     ],
     instructor: "Shruti Turner",
-    seoTitle:
-      "Yoga for Hypermobility - EDS-Safe Yoga Online | Shruti Turner",
+    seoTitle: "Yoga for Hypermobility - EDS-Safe Yoga Online | Shruti Turner",
     seoDescription:
       "Specialised online yoga class for hypermobility and Ehlers-Danlos syndrome. Strength-focused, stability-first approach. No stretching unstable joints. Fridays 9am GMT.",
     seoKeywords:
@@ -406,8 +394,7 @@ Instead of stretching, we focus on end-range control. Instead of going deeper, w
     duration: "45 min",
     level: "Intermediate",
     maxSpaces: 10,
-    shortDescription:
-      "Progressive strength training for those building capacity.",
+    shortDescription: "Progressive strength training for those building capacity.",
     longDescription: `Strength Progression is a 45-minute intermediate-level class for people who have foundational strength and want to progress intelligently.
 
 This class follows a periodised program, meaning the exercises and intensity progress over 4-6 week blocks. You'll work through compound movements (squats, deadlifts, rows, presses) with appropriate loading, with clear guidance on how to scale up or down based on your daily capacity.
@@ -442,8 +429,7 @@ If you've attended Strength Foundations and feel ready for more challenge, this 
       "Structured progression with clear milestones",
     ],
     instructor: "Shruti Turner",
-    seoTitle:
-      "Strength Progression - Intermediate Online Strength Training | Shruti Turner",
+    seoTitle: "Strength Progression - Intermediate Online Strength Training | Shruti Turner",
     seoDescription:
       "Online intermediate strength training class with periodised programming for people with chronic illness. Progressive overload adapted for complex bodies. Fridays 12pm GMT.",
     seoKeywords:
@@ -459,8 +445,7 @@ If you've attended Strength Foundations and feel ready for more challenge, this 
     duration: "60 min",
     level: "All levels",
     maxSpaces: 15,
-    shortDescription:
-      "Popular weekend class combining movement and restoration.",
+    shortDescription: "Popular weekend class combining movement and restoration.",
     longDescription: `Weekend Yoga Flow is a 60-minute all-levels class that combines the best elements of the weekday yoga offerings into a balanced Saturday practice.
 
 This is the most popular class on the schedule, and the larger cap (15 spaces) reflects demand. The class blends gentle flow sequences with stability work, breath practice, and a generous restorative finish.
@@ -495,8 +480,7 @@ It's designed to be the class you can always attend, regardless of where you are
       "Flexible intensity to match your weekly capacity",
     ],
     instructor: "Shruti Turner",
-    seoTitle:
-      "Weekend Yoga Flow - Saturday Online Yoga Class | Shruti Turner",
+    seoTitle: "Weekend Yoga Flow - Saturday Online Yoga Class | Shruti Turner",
     seoDescription:
       "Popular Saturday online yoga class for all levels. Adaptive flow combining movement, stability, and restoration for people with chronic illness and complex bodies. Saturdays 10am GMT.",
     seoKeywords:
@@ -506,15 +490,7 @@ It's designed to be the class you can always attend, regardless of where you are
 
 // Group classes by day for the schedule page
 export function getScheduleByDay() {
-  const dayOrder = [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-  ];
+  const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
   const grouped: Record<string, ClassDetail[]> = {};
 
@@ -538,9 +514,7 @@ export function getClassBySlug(slug: string): ClassDetail | undefined {
 }
 
 export function getClassesByType(type: string): ClassDetail[] {
-  return classDetails.filter(
-    (cls) => cls.type.toLowerCase() === type.toLowerCase()
-  );
+  return classDetails.filter((cls) => cls.type.toLowerCase() === type.toLowerCase());
 }
 
 export function getTypeColor(type: string) {

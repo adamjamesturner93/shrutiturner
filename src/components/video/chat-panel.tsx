@@ -79,42 +79,33 @@ export function ChatPanel({ participantName, onClose }: ChatPanelProps) {
   };
 
   return (
-    <div className="w-72 lg:w-80 flex flex-col bg-[#252540] border-l border-white/5 flex-shrink-0">
+    <div className="flex w-72 flex-shrink-0 flex-col border-l border-white/5 bg-[#252540] lg:w-80">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+      <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
         <span className="text-sm text-white/80">Live Chat</span>
-        <button
-          onClick={onClose}
-          className="text-white/40 hover:text-white transition-colors"
-        >
-          <X className="w-4 h-4" />
+        <button onClick={onClose} className="text-white/40 transition-colors hover:text-white">
+          <X className="h-4 w-4" />
         </button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
+      <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
         {messages.map((msg) => (
           <div key={msg.id}>
             <div className="flex items-baseline gap-2">
-              <span
-                className={`text-xs ${
-                  msg.isLocal ? "text-[#B5C49B]" : "text-white/70"
-                }`}
-              >
+              <span className={`text-xs ${msg.isLocal ? "text-[#B5C49B]" : "text-white/70"}`}>
                 {msg.sender}
               </span>
               <span className="text-[10px] text-white/30">{msg.time}</span>
             </div>
-            <p className="text-sm text-white/90 mt-0.5 leading-relaxed">
-              {msg.text}
-            </p>
+            <p className="mt-0.5 text-sm leading-relaxed text-white/90">{msg.text}</p>
           </div>
         ))}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
-      <div className="p-3 border-t border-white/5">
+      <div className="border-t border-white/5 p-3">
         <div className="flex gap-2">
           <input
             type="text"
@@ -122,14 +113,14 @@ export function ChatPanel({ participantName, onClose }: ChatPanelProps) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a message..."
-            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-[#4B5B32] transition-colors"
+            className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white transition-colors outline-none placeholder:text-white/30 focus:border-[#4B5B32]"
           />
           <button
             onClick={handleSend}
             disabled={!input.trim()}
-            className="p-2 rounded-lg bg-[#4B5B32] hover:bg-[#4B5B32]/80 text-white disabled:opacity-30 transition-colors"
+            className="rounded-lg bg-[#4B5B32] p-2 text-white transition-colors hover:bg-[#4B5B32]/80 disabled:opacity-30"
           >
-            <Send className="w-4 h-4" />
+            <Send className="h-4 w-4" />
           </button>
         </div>
       </div>

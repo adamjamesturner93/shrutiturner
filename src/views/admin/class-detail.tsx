@@ -39,11 +39,11 @@ export function AdminClassDetail() {
   if (!cls) {
     return (
       <AdminLayout title="Class Not Found - Admin">
-        <div className="text-center py-20">
+        <div className="py-20 text-center">
           <p className="text-muted-foreground">Class not found.</p>
           <Link href="/admin/classes">
             <Button variant="outline" className="mt-4">
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back to Classes
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Classes
             </Button>
           </Link>
         </div>
@@ -82,9 +82,7 @@ export function AdminClassDetail() {
 
   const classTemplate = getClassBySlug(cls.classSlug);
   const roomMode: RoomMode =
-    cls.classType === "HIIT" || cls.maxSpaces <= 8
-      ? "small-group"
-      : "live-class";
+    cls.classType === "HIIT" || cls.maxSpaces <= 8 ? "small-group" : "live-class";
 
   if (showPreJoin && !showVideoRoom) {
     return (
@@ -133,28 +131,24 @@ export function AdminClassDetail() {
       <div className="space-y-6">
         <button
           onClick={() => navigate("/admin/classes")}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-sm transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back to Classes
         </button>
 
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl text-[#2E1F33]">{cls.className}</h1>
               <Badge className={typeColor}>{cls.classType}</Badge>
               <Badge
                 variant={
-                  status === "live"
-                    ? "default"
-                    : status === "completed"
-                    ? "outline"
-                    : "secondary"
+                  status === "live" ? "default" : status === "completed" ? "outline" : "secondary"
                 }
               >
                 {status === "live" && (
-                  <span className="w-2 h-2 rounded-full bg-[#FAFAF8] mr-2 animate-pulse" />
+                  <span className="mr-2 h-2 w-2 animate-pulse rounded-full bg-[#FAFAF8]" />
                 )}
                 {status.charAt(0).toUpperCase() + status.slice(1)}
               </Badge>
@@ -167,13 +161,13 @@ export function AdminClassDetail() {
           <div className="flex gap-3">
             {status === "scheduled" && (
               <Button onClick={handleStartClass} className="bg-[#4B5B32] hover:bg-[#4B5B32]/90">
-                <Play className="w-4 h-4 mr-2" />
+                <Play className="mr-2 h-4 w-4" />
                 Start Class
               </Button>
             )}
             {status === "live" && (
               <Button onClick={handleEndClass} variant="destructive">
-                <Square className="w-4 h-4 mr-2" />
+                <Square className="mr-2 h-4 w-4" />
                 End Class
               </Button>
             )}
@@ -184,19 +178,17 @@ export function AdminClassDetail() {
           <Card className="border-[#4B5B32]">
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <Video className="w-5 h-5 text-[#4B5B32]" />
+                <Video className="h-5 w-5 text-[#4B5B32]" />
                 <div className="flex-1">
                   <p className="text-sm">Class is live</p>
-                  <p className="text-xs text-muted-foreground">
-                    In-app video room active
-                  </p>
+                  <p className="text-muted-foreground text-xs">In-app video room active</p>
                 </div>
                 <Button
                   size="sm"
                   className="bg-[#4B5B32] hover:bg-[#4B5B32]/90"
                   onClick={() => setShowPreJoin(true)}
                 >
-                  <Video className="w-3 h-3 mr-1" />
+                  <Video className="mr-1 h-3 w-3" />
                   Rejoin Room
                 </Button>
               </div>
@@ -204,108 +196,101 @@ export function AdminClassDetail() {
           </Card>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Card>
             <CardContent className="pt-6 text-center">
               <p className="text-2xl text-[#2E1F33]">
                 {cls.bookedCount}/{cls.maxSpaces}
               </p>
-              <p className="text-xs text-muted-foreground">Booked / Capacity</p>
+              <p className="text-muted-foreground text-xs">Booked / Capacity</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <p className="text-2xl text-[#2E1F33]">
-                {cls.maxSpaces - cls.bookedCount}
-              </p>
-              <p className="text-xs text-muted-foreground">Spaces remaining</p>
+              <p className="text-2xl text-[#2E1F33]">{cls.maxSpaces - cls.bookedCount}</p>
+              <p className="text-muted-foreground text-xs">Spaces remaining</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
               <p className="text-2xl text-[#4B5B32]">{attendedCount}</p>
-              <p className="text-xs text-muted-foreground">Attended</p>
+              <p className="text-muted-foreground text-xs">Attended</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <p className="text-2xl text-destructive">{noShowCount}</p>
-              <p className="text-xs text-muted-foreground">No-show</p>
+              <p className="text-destructive text-2xl">{noShowCount}</p>
+              <p className="text-muted-foreground text-xs">No-show</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Aggregated health prep — at-a-glance before the attendee list */}
-        <ClassHealthSummary
-          attendees={attendees.filter((a) => a.status !== "cancelled")}
-        />
+        <ClassHealthSummary attendees={attendees.filter((a) => a.status !== "cancelled")} />
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">
-              Attendees ({attendees.length})
-            </CardTitle>
+            <CardTitle className="text-lg">Attendees ({attendees.length})</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {attendees.map((attendee) => (
-                <div
-                  key={attendee.memberId}
-                  className="p-3 rounded-lg bg-secondary/50"
-                >
+                <div key={attendee.memberId} className="bg-secondary/50 rounded-lg p-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs ${
+                        className={`flex h-8 w-8 items-center justify-center rounded-full text-xs ${
                           attendee.status === "attended"
                             ? "bg-[#4B5B32] text-[#FAFAF8]"
                             : attendee.status === "no-show"
-                            ? "bg-destructive text-white"
-                            : attendee.status === "cancelled"
-                            ? "bg-muted text-muted-foreground"
-                            : "bg-[#4B5B32]/20 text-[#4B5B32]"
+                              ? "bg-destructive text-white"
+                              : attendee.status === "cancelled"
+                                ? "bg-muted text-muted-foreground"
+                                : "bg-[#4B5B32]/20 text-[#4B5B32]"
                         }`}
                       >
                         {attendee.status === "attended" ? (
-                          <UserCheck className="w-4 h-4" />
+                          <UserCheck className="h-4 w-4" />
                         ) : attendee.status === "no-show" ? (
-                          <UserX className="w-4 h-4" />
+                          <UserX className="h-4 w-4" />
                         ) : attendee.status === "cancelled" ? (
-                          <XCircle className="w-4 h-4" />
+                          <XCircle className="h-4 w-4" />
                         ) : (
-                          <Clock className="w-4 h-4" />
+                          <Clock className="h-4 w-4" />
                         )}
                       </div>
                       <div>
-                        <Link href={`/admin/members/${attendee.memberId}`}
-                          className="text-sm hover:text-[#4B5B32] transition-colors"
+                        <Link
+                          href={`/admin/members/${attendee.memberId}`}
+                          className="text-sm transition-colors hover:text-[#4B5B32]"
                         >
                           {attendee.memberName}
                         </Link>
-                        <p className="text-xs text-muted-foreground capitalize">
+                        <p className="text-muted-foreground text-xs capitalize">
                           {attendee.status.replace("-", " ")}
                         </p>
                       </div>
                     </div>
-                    {attendee.status !== "cancelled" && (status === "live" || status === "completed") && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleAttendance(attendee.memberId)}
-                      >
-                        {attendee.status === "attended" ? (
-                          <>
-                            <XCircle className="w-3 h-3 mr-1" /> Mark no-show
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="w-3 h-3 mr-1" /> Mark attended
-                          </>
-                        )}
-                      </Button>
-                    )}
+                    {attendee.status !== "cancelled" &&
+                      (status === "live" || status === "completed") && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleAttendance(attendee.memberId)}
+                        >
+                          {attendee.status === "attended" ? (
+                            <>
+                              <XCircle className="mr-1 h-3 w-3" /> Mark no-show
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="mr-1 h-3 w-3" /> Mark attended
+                            </>
+                          )}
+                        </Button>
+                      )}
                   </div>
-                  <div className="ml-11 mt-1">
+                  <div className="mt-1 ml-11">
                     <HealthBadges memberId={attendee.memberId} max={5} />
                   </div>
                 </div>

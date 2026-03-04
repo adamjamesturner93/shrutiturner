@@ -172,9 +172,7 @@ export function DashboardRetreatDetail() {
   // In production, look up the booked retreat by id from user's bookings
   // For now, use the mock data (retreat id "1" is the booked one)
   const bookedRetreat = id ? getRetreatById(id) : null;
-  const bookedDate = bookedRetreat?.dates.find(
-    (d) => d.id === BOOKED_RETREAT.dateId
-  );
+  const bookedDate = bookedRetreat?.dates.find((d) => d.id === BOOKED_RETREAT.dateId);
 
   const [activeTab, setActiveTab] = useState<
     "overview" | "prep" | "travel" | "schedule" | "community"
@@ -184,12 +182,10 @@ export function DashboardRetreatDetail() {
   if (!bookedRetreat || !bookedDate) {
     return (
       <DashboardLayout title="Retreat Not Found">
-        <div className="text-center py-16">
-          <Mountain className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h1 className="text-2xl mb-2">Retreat not found</h1>
-          <p className="text-muted-foreground mb-6">
-            We couldn't find details for this retreat.
-          </p>
+        <div className="py-16 text-center">
+          <Mountain className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
+          <h1 className="mb-2 text-2xl">Retreat not found</h1>
+          <p className="text-muted-foreground mb-6">We couldn't find details for this retreat.</p>
           <Link href="/dashboard/retreats">
             <Button variant="outline">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -225,58 +221,50 @@ export function DashboardRetreatDetail() {
 
   return (
     <DashboardLayout title="Retreats - Private Studio">
-      <Link href="/dashboard/retreats"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+      <Link
+        href="/dashboard/retreats"
+        className="text-muted-foreground hover:text-foreground mb-6 inline-flex items-center gap-1.5 text-sm transition-colors"
       >
-        <ArrowLeft className="w-3.5 h-3.5" />
+        <ArrowLeft className="h-3.5 w-3.5" />
         Back to Retreats
       </Link>
 
-      <h1 className="text-3xl mb-2">{bookedRetreat.title}</h1>
+      <h1 className="mb-2 text-3xl">{bookedRetreat.title}</h1>
       <p className="text-muted-foreground mb-8">
-        Access preparation materials, travel information, and session details
-        for your upcoming retreat.
+        Access preparation materials, travel information, and session details for your upcoming
+        retreat.
       </p>
 
       {/* ──── Booked retreat header ──── */}
-      <div className="bg-background border-2 border-[#4B5B32] rounded-lg p-6 md:p-8 mb-8">
-        <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
+      <div className="bg-background mb-8 rounded-lg border-2 border-[#4B5B32] p-6 md:p-8">
+        <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <Badge className="bg-[#4B5B32] text-[#FAFAF8]">
-                <Check className="w-3 h-3 mr-1" />
+                <Check className="mr-1 h-3 w-3" />
                 Booked
               </Badge>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-muted-foreground text-xs">
                 Ref: {BOOKED_RETREAT.bookingRef}
               </span>
             </div>
             <h2 className="text-2xl">{bookedRetreat.title}</h2>
-            <p className="text-muted-foreground">
-              {bookedRetreat.subtitle}
-            </p>
-            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+            <p className="text-muted-foreground">{bookedRetreat.subtitle}</p>
+            <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
               <span className="flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-[#4B5B32]" />
+                <MapPin className="h-4 w-4 text-[#4B5B32]" />
                 {bookedRetreat.location}
               </span>
               <span className="flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-[#4B5B32]" />
-                {formatDateShort(bookedDate.startDate)} –{" "}
-                {formatDateShort(bookedDate.endDate)}
+                <Calendar className="h-4 w-4 text-[#4B5B32]" />
+                {formatDateShort(bookedDate.startDate)} – {formatDateShort(bookedDate.endDate)}
               </span>
             </div>
           </div>
-          <div className="text-right space-y-1">
-            <p className="text-sm text-muted-foreground">
-              {BOOKED_RETREAT.paymentStatus}
-            </p>
-            <p className="text-lg">
-              £{BOOKED_RETREAT.amountPaid.toLocaleString()}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {BOOKED_RETREAT.roomType}
-            </p>
+          <div className="space-y-1 text-right">
+            <p className="text-muted-foreground text-sm">{BOOKED_RETREAT.paymentStatus}</p>
+            <p className="text-lg">£{BOOKED_RETREAT.amountPaid.toLocaleString()}</p>
+            <p className="text-muted-foreground text-xs">{BOOKED_RETREAT.roomType}</p>
           </div>
         </div>
 
@@ -300,36 +288,31 @@ export function DashboardRetreatDetail() {
       {/* OVERVIEW */}
       {activeTab === "overview" && (
         <div className="space-y-6">
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid gap-6 md:grid-cols-2">
             {/* Key details */}
-            <div className="bg-background border rounded-lg p-6 space-y-4">
+            <div className="bg-background space-y-4 rounded-lg border p-6">
               <h3 className="text-lg">Booking Details</h3>
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between py-2 border-b">
+                <div className="flex justify-between border-b py-2">
                   <span className="text-muted-foreground">Dates</span>
                   <span>
-                    {formatDate(bookedDate.startDate)} –{" "}
-                    {formatDate(bookedDate.endDate)}
+                    {formatDate(bookedDate.startDate)} – {formatDate(bookedDate.endDate)}
                   </span>
                 </div>
-                <div className="flex justify-between py-2 border-b">
+                <div className="flex justify-between border-b py-2">
                   <span className="text-muted-foreground">Location</span>
                   <span>{bookedRetreat.location}</span>
                 </div>
-                <div className="flex justify-between py-2 border-b">
+                <div className="flex justify-between border-b py-2">
                   <span className="text-muted-foreground">Room type</span>
                   <span>{BOOKED_RETREAT.roomType}</span>
                 </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">
-                    Dietary notes
-                  </span>
+                <div className="flex justify-between border-b py-2">
+                  <span className="text-muted-foreground">Dietary notes</span>
                   <span>{BOOKED_RETREAT.dietaryNotes}</span>
                 </div>
                 <div className="flex justify-between py-2">
-                  <span className="text-muted-foreground">
-                    Emergency contact
-                  </span>
+                  <span className="text-muted-foreground">Emergency contact</span>
                   <span>{BOOKED_RETREAT.emergencyContact}</span>
                 </div>
               </div>
@@ -337,24 +320,18 @@ export function DashboardRetreatDetail() {
 
             {/* Countdown & actions */}
             <div className="space-y-4">
-              <div className="bg-[#4B5B32]/5 border border-[#4B5B32]/20 rounded-lg p-6 text-center space-y-3">
-                <Mountain className="w-8 h-8 text-[#4B5B32] mx-auto" />
+              <div className="space-y-3 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 p-6 text-center">
+                <Mountain className="mx-auto h-8 w-8 text-[#4B5B32]" />
                 <p className="text-3xl text-[#4B5B32]">
                   {Math.max(
                     0,
-                    Math.ceil(
-                      (new Date(bookedDate.startDate).getTime() -
-                        Date.now()) /
-                        86400000
-                    )
+                    Math.ceil((new Date(bookedDate.startDate).getTime() - Date.now()) / 86400000)
                   )}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  days until your retreat
-                </p>
+                <p className="text-muted-foreground text-sm">days until your retreat</p>
               </div>
 
-              <div className="bg-background border rounded-lg p-6 space-y-3">
+              <div className="bg-background space-y-3 rounded-lg border p-6">
                 <h3 className="text-lg">Quick Actions</h3>
                 <div className="space-y-2">
                   <Button
@@ -399,12 +376,12 @@ export function DashboardRetreatDetail() {
           </div>
 
           {/* What's included */}
-          <div className="bg-background border rounded-lg p-6">
-            <h3 className="text-lg mb-4">What's Included</h3>
-            <div className="grid md:grid-cols-2 gap-3">
+          <div className="bg-background rounded-lg border p-6">
+            <h3 className="mb-4 text-lg">What's Included</h3>
+            <div className="grid gap-3 md:grid-cols-2">
               {bookedRetreat.included.map((item, i) => (
                 <div key={i} className="flex items-start gap-2 text-sm">
-                  <CheckCircle className="w-4 h-4 text-[#4B5B32] flex-shrink-0 mt-0.5" />
+                  <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#4B5B32]" />
                   <span className="text-muted-foreground">{item}</span>
                 </div>
               ))}
@@ -416,110 +393,105 @@ export function DashboardRetreatDetail() {
       {/* PREP MATERIALS */}
       {activeTab === "prep" && (
         <div className="space-y-6">
-          <div className="flex items-center gap-2 mb-2">
-            <FileText className="w-5 h-5 text-primary" />
+          <div className="mb-2 flex items-center gap-2">
+            <FileText className="text-primary h-5 w-5" />
             <h2 className="text-xl">Preparation Materials</h2>
           </div>
           <p className="text-muted-foreground mb-4">
-            Please complete the essential items before your retreat. Optional
-            materials are there to help you prepare — do what feels
-            manageable.
+            Please complete the essential items before your retreat. Optional materials are there to
+            help you prepare — do what feels manageable.
           </p>
 
           {/* Essential */}
           <div>
-            <h3 className="text-sm text-muted-foreground uppercase tracking-wider mb-3">
+            <h3 className="text-muted-foreground mb-3 text-sm tracking-wider uppercase">
               Essential
             </h3>
             <div className="space-y-3">
-              {PREP_MATERIALS.filter((m) => m.category === "essential").map(
-                (material) => (
-                  <div
-                    key={material.id}
-                    className="bg-background border rounded-lg p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between"
-                  >
-                    <div className="flex items-start gap-4 flex-1">
-                      <div className="w-10 h-10 bg-[#4B5B32]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                        {material.type === "Form" ? (
-                          <ExternalLink className="w-5 h-5 text-[#4B5B32]" />
-                        ) : (
-                          <Download className="w-5 h-5 text-[#4B5B32]" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm">{material.title}</p>
-                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                          {material.description}
-                        </p>
-                        {material.size && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {material.type} · {material.size}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm" className="flex-shrink-0">
+              {PREP_MATERIALS.filter((m) => m.category === "essential").map((material) => (
+                <div
+                  key={material.id}
+                  className="bg-background flex flex-col justify-between gap-4 rounded-lg border p-5 sm:flex-row sm:items-center"
+                >
+                  <div className="flex flex-1 items-start gap-4">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[#4B5B32]/10">
                       {material.type === "Form" ? (
-                        <>
-                          <ExternalLink className="mr-2 h-3.5 w-3.5" />
-                          Open Form
-                        </>
+                        <ExternalLink className="h-5 w-5 text-[#4B5B32]" />
                       ) : (
-                        <>
-                          <Download className="mr-2 h-3.5 w-3.5" />
-                          Download
-                        </>
+                        <Download className="h-5 w-5 text-[#4B5B32]" />
                       )}
-                    </Button>
+                    </div>
+                    <div>
+                      <p className="text-sm">{material.title}</p>
+                      <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                        {material.description}
+                      </p>
+                      {material.size && (
+                        <p className="text-muted-foreground mt-1 text-xs">
+                          {material.type} · {material.size}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                )
-              )}
+                  <Button variant="outline" size="sm" className="flex-shrink-0">
+                    {material.type === "Form" ? (
+                      <>
+                        <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                        Open Form
+                      </>
+                    ) : (
+                      <>
+                        <Download className="mr-2 h-3.5 w-3.5" />
+                        Download
+                      </>
+                    )}
+                  </Button>
+                </div>
+              ))}
             </div>
           </div>
 
           {/* Optional */}
           <div>
-            <h3 className="text-sm text-muted-foreground uppercase tracking-wider mb-3">
+            <h3 className="text-muted-foreground mb-3 text-sm tracking-wider uppercase">
               Optional
             </h3>
             <div className="space-y-3">
-              {PREP_MATERIALS.filter((m) => m.category === "optional").map(
-                (material) => (
-                  <div
-                    key={material.id}
-                    className="bg-background border rounded-lg p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between"
-                  >
-                    <div className="flex items-start gap-4 flex-1">
-                      <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Download className="w-5 h-5 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <p className="text-sm">{material.title}</p>
-                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                          {material.description}
-                        </p>
-                        {material.size && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {material.type} · {material.size}
-                          </p>
-                        )}
-                      </div>
+              {PREP_MATERIALS.filter((m) => m.category === "optional").map((material) => (
+                <div
+                  key={material.id}
+                  className="bg-background flex flex-col justify-between gap-4 rounded-lg border p-5 sm:flex-row sm:items-center"
+                >
+                  <div className="flex flex-1 items-start gap-4">
+                    <div className="bg-secondary flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg">
+                      <Download className="text-muted-foreground h-5 w-5" />
                     </div>
-                    <Button variant="ghost" size="sm" className="flex-shrink-0">
-                      <Download className="mr-2 h-3.5 w-3.5" />
-                      Download
-                    </Button>
+                    <div>
+                      <p className="text-sm">{material.title}</p>
+                      <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                        {material.description}
+                      </p>
+                      {material.size && (
+                        <p className="text-muted-foreground mt-1 text-xs">
+                          {material.type} · {material.size}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                )
-              )}
+                  <Button variant="ghost" size="sm" className="flex-shrink-0">
+                    <Download className="mr-2 h-3.5 w-3.5" />
+                    Download
+                  </Button>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="bg-secondary/20 border rounded-lg p-4 text-sm text-muted-foreground italic">
+          <div className="bg-secondary/20 text-muted-foreground rounded-lg border p-4 text-sm italic">
             If you have questions about any of these materials, email{" "}
             <a
               href="mailto:retreats@shrutiturner.com"
-              className="text-primary underline not-italic"
+              className="text-primary not-italic underline"
             >
               retreats@shrutiturner.com
             </a>
@@ -530,23 +502,21 @@ export function DashboardRetreatDetail() {
       {/* TRAVEL INFO */}
       {activeTab === "travel" && (
         <div className="space-y-8">
-          <div className="flex items-center gap-2 mb-2">
-            <Plane className="w-5 h-5 text-primary" />
+          <div className="mb-2 flex items-center gap-2">
+            <Plane className="text-primary h-5 w-5" />
             <h2 className="text-xl">Travel Information</h2>
           </div>
 
           {/* Venue */}
-          <div className="bg-background border rounded-lg p-6 space-y-4">
+          <div className="bg-background space-y-4 rounded-lg border p-6">
             <div className="flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-[#4B5B32]" />
+              <MapPin className="h-5 w-5 text-[#4B5B32]" />
               <h3 className="text-lg">The Venue</h3>
             </div>
             <div className="space-y-2">
               <p className="text-sm">{TRAVEL_INFO.venue.name}</p>
-              <p className="text-sm text-muted-foreground">
-                {TRAVEL_INFO.venue.address}
-              </p>
-              <p className="text-sm text-muted-foreground leading-relaxed mt-3">
+              <p className="text-muted-foreground text-sm">{TRAVEL_INFO.venue.address}</p>
+              <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
                 {TRAVEL_INFO.venue.description}
               </p>
             </div>
@@ -557,77 +527,65 @@ export function DashboardRetreatDetail() {
           </div>
 
           {/* Getting there */}
-          <div className="bg-background border rounded-lg p-6 space-y-4">
+          <div className="bg-background space-y-4 rounded-lg border p-6">
             <div className="flex items-center gap-2">
-              <Plane className="w-5 h-5 text-[#4B5B32]" />
+              <Plane className="h-5 w-5 text-[#4B5B32]" />
               <h3 className="text-lg">Getting There</h3>
             </div>
             <div className="space-y-4">
               {TRAVEL_INFO.gettingThere.map((item, i) => (
-                <div key={i} className="border-b last:border-0 pb-4 last:pb-0">
-                  <p className="text-sm mb-1">{item.method}</p>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {item.details}
-                  </p>
+                <div key={i} className="border-b pb-4 last:border-0 last:pb-0">
+                  <p className="mb-1 text-sm">{item.method}</p>
+                  <p className="text-muted-foreground text-sm leading-relaxed">{item.details}</p>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Weather */}
-          <div className="bg-background border rounded-lg p-6 space-y-3">
+          <div className="bg-background space-y-3 rounded-lg border p-6">
             <div className="flex items-center gap-2">
-              <Thermometer className="w-5 h-5 text-[#4B5B32]" />
-              <h3 className="text-lg">
-                Weather in {TRAVEL_INFO.weather.month}
-              </h3>
+              <Thermometer className="h-5 w-5 text-[#4B5B32]" />
+              <h3 className="text-lg">Weather in {TRAVEL_INFO.weather.month}</h3>
             </div>
-            <div className="space-y-2 text-sm text-muted-foreground">
+            <div className="text-muted-foreground space-y-2 text-sm">
               <p>
-                <span className="text-foreground">Temperature:</span>{" "}
-                {TRAVEL_INFO.weather.avgTemp}
+                <span className="text-foreground">Temperature:</span> {TRAVEL_INFO.weather.avgTemp}
               </p>
               <p>{TRAVEL_INFO.weather.conditions}</p>
             </div>
           </div>
 
           {/* Meals */}
-          <div className="bg-background border rounded-lg p-6 space-y-4">
+          <div className="bg-background space-y-4 rounded-lg border p-6">
             <div className="flex items-center gap-2">
-              <Utensils className="w-5 h-5 text-[#4B5B32]" />
+              <Utensils className="h-5 w-5 text-[#4B5B32]" />
               <h3 className="text-lg">Meals</h3>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-muted-foreground text-sm leading-relaxed">
               {TRAVEL_INFO.meals.overview}
             </p>
             <div className="space-y-2">
               {TRAVEL_INFO.meals.schedule.map((meal, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-2 text-sm text-muted-foreground"
-                >
-                  <Check className="w-3.5 h-3.5 text-[#4B5B32] flex-shrink-0" />
+                <div key={i} className="text-muted-foreground flex items-center gap-2 text-sm">
+                  <Check className="h-3.5 w-3.5 flex-shrink-0 text-[#4B5B32]" />
                   <span>{meal}</span>
                 </div>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground italic">
-              {TRAVEL_INFO.meals.notes}
-            </p>
+            <p className="text-muted-foreground text-xs italic">{TRAVEL_INFO.meals.notes}</p>
           </div>
 
           {/* Practical notes */}
-          <div className="bg-background border rounded-lg p-6 space-y-4">
+          <div className="bg-background space-y-4 rounded-lg border p-6">
             <div className="flex items-center gap-2">
-              <Luggage className="w-5 h-5 text-[#4B5B32]" />
+              <Luggage className="h-5 w-5 text-[#4B5B32]" />
               <h3 className="text-lg">Practical Notes</h3>
             </div>
             <div className="space-y-3">
               {TRAVEL_INFO.practicalNotes.map((note, i) => (
                 <div key={i} className="flex items-start gap-3 text-sm">
-                  <span className="text-[#4B5B32] flex-shrink-0 mt-0.5">
-                    —
-                  </span>
+                  <span className="mt-0.5 flex-shrink-0 text-[#4B5B32]">—</span>
                   <span className="text-muted-foreground">{note}</span>
                 </div>
               ))}
@@ -639,53 +597,41 @@ export function DashboardRetreatDetail() {
       {/* DAILY SCHEDULE */}
       {activeTab === "schedule" && (
         <div className="space-y-6">
-          <div className="flex items-center gap-2 mb-2">
-            <Clock className="w-5 h-5 text-primary" />
+          <div className="mb-2 flex items-center gap-2">
+            <Clock className="text-primary h-5 w-5" />
             <h2 className="text-xl">Daily Schedule</h2>
           </div>
           <p className="text-muted-foreground mb-4">
-            All sessions are optional. If you need to rest, that's completely
-            fine. The schedule is a guide, not a requirement.
+            All sessions are optional. If you need to rest, that's completely fine. The schedule is
+            a guide, not a requirement.
           </p>
 
           <div className="space-y-4">
             {bookedRetreat.schedule.map((day, i) => (
-              <div
-                key={i}
-                className="bg-background border rounded-lg overflow-hidden"
-              >
+              <div key={i} className="bg-background overflow-hidden rounded-lg border">
                 <button
-                  onClick={() =>
-                    setExpandedDay(
-                      expandedDay === day.day ? null : day.day
-                    )
-                  }
-                  className="w-full px-6 py-4 flex items-center justify-between hover:bg-secondary/20 transition-colors"
+                  onClick={() => setExpandedDay(expandedDay === day.day ? null : day.day)}
+                  className="hover:bg-secondary/20 flex w-full items-center justify-between px-6 py-4 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-[#4B5B32]/10 rounded-full flex items-center justify-center text-sm text-[#4B5B32]">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#4B5B32]/10 text-sm text-[#4B5B32]">
                       {i + 1}
                     </div>
                     <span>{day.day}</span>
                   </div>
                   {expandedDay === day.day ? (
-                    <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                    <ChevronUp className="text-muted-foreground h-4 w-4" />
                   ) : (
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    <ChevronDown className="text-muted-foreground h-4 w-4" />
                   )}
                 </button>
                 {expandedDay === day.day && (
-                  <div className="px-6 pb-5 pt-1 border-t">
-                    <div className="space-y-3 ml-11">
+                  <div className="border-t px-6 pt-1 pb-5">
+                    <div className="ml-11 space-y-3">
                       {day.activities.map((activity, j) => (
-                        <div
-                          key={j}
-                          className="flex items-start gap-3 text-sm"
-                        >
-                          <Check className="w-3.5 h-3.5 text-[#4B5B32] flex-shrink-0 mt-0.5" />
-                          <span className="text-muted-foreground">
-                            {activity}
-                          </span>
+                        <div key={j} className="flex items-start gap-3 text-sm">
+                          <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-[#4B5B32]" />
+                          <span className="text-muted-foreground">{activity}</span>
                         </div>
                       ))}
                     </div>
@@ -695,13 +641,12 @@ export function DashboardRetreatDetail() {
             ))}
           </div>
 
-          <div className="bg-[#4B5B32]/5 border border-[#4B5B32]/20 rounded-lg p-5 text-sm text-muted-foreground">
+          <div className="text-muted-foreground rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 p-5 text-sm">
             <p className="flex items-start gap-2">
-              <Heart className="w-4 h-4 text-[#4B5B32] flex-shrink-0 mt-0.5" />
+              <Heart className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#4B5B32]" />
               <span>
-                All sessions are adapted in real time. If you're having a
-                difficult day, we'll modify everything to suit you. There is
-                no pressure to participate in anything.
+                All sessions are adapted in real time. If you're having a difficult day, we'll
+                modify everything to suit you. There is no pressure to participate in anything.
               </span>
             </p>
           </div>
@@ -711,17 +656,17 @@ export function DashboardRetreatDetail() {
       {/* COMMUNITY */}
       {activeTab === "community" && (
         <div className="space-y-6">
-          <div className="flex items-center gap-2 mb-2">
-            <Users className="w-5 h-5 text-primary" />
+          <div className="mb-2 flex items-center gap-2">
+            <Users className="text-primary h-5 w-5" />
             <h2 className="text-xl">Your Retreat Group</h2>
           </div>
           <p className="text-muted-foreground mb-4">
-            Meet the people you'll be sharing this experience with. Names are
-            shared with consent only.
+            Meet the people you'll be sharing this experience with. Names are shared with consent
+            only.
           </p>
 
           {/* Group list */}
-          <div className="bg-background border rounded-lg p-6">
+          <div className="bg-background rounded-lg border p-6">
             <div className="space-y-4">
               {[
                 {
@@ -746,14 +691,9 @@ export function DashboardRetreatDetail() {
                   note: "First retreat",
                 },
               ].map((person, i) => (
-                <div
-                  key={i}
-                  className={`flex items-center gap-4 py-3 ${
-                    i < 3 ? "border-b" : ""
-                  }`}
-                >
+                <div key={i} className={`flex items-center gap-4 py-3 ${i < 3 ? "border-b" : ""}`}>
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center text-sm ${
+                    className={`flex h-10 w-10 items-center justify-center rounded-full text-sm ${
                       person.isSelf
                         ? "bg-[#B5C49B] text-[#2E1F33]"
                         : "bg-secondary text-muted-foreground"
@@ -763,36 +703,31 @@ export function DashboardRetreatDetail() {
                   </div>
                   <div className="flex-1">
                     <p className="text-sm">{person.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {person.location}
-                    </p>
+                    <p className="text-muted-foreground text-xs">{person.location}</p>
                   </div>
                   <Badge variant="outline" className="text-xs">
                     {person.note}
                   </Badge>
                 </div>
               ))}
-              <div className="flex items-center gap-4 py-3 text-muted-foreground">
-                <div className="w-10 h-10 rounded-full bg-secondary/50 flex items-center justify-center text-xs">
+              <div className="text-muted-foreground flex items-center gap-4 py-3">
+                <div className="bg-secondary/50 flex h-10 w-10 items-center justify-center rounded-full text-xs">
                   +4
                 </div>
-                <p className="text-sm">
-                  4 more guests (names shared closer to the retreat)
-                </p>
+                <p className="text-sm">4 more guests (names shared closer to the retreat)</p>
               </div>
             </div>
           </div>
 
           {/* Group discussion placeholder */}
-          <div className="bg-secondary/20 border rounded-lg p-6 text-center space-y-3">
-            <Users className="w-8 h-8 text-muted-foreground mx-auto" />
+          <div className="bg-secondary/20 space-y-3 rounded-lg border p-6 text-center">
+            <Users className="text-muted-foreground mx-auto h-8 w-8" />
             <h3 className="text-lg">Group Discussion</h3>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              A private group chat will open 2 weeks before the retreat so
-              you can introduce yourselves and ask questions. You'll receive
-              an email when it's ready.
+            <p className="text-muted-foreground mx-auto max-w-md text-sm">
+              A private group chat will open 2 weeks before the retreat so you can introduce
+              yourselves and ask questions. You'll receive an email when it's ready.
             </p>
-            <p className="text-xs text-muted-foreground italic">
+            <p className="text-muted-foreground text-xs italic">
               [Community features require Supabase — placeholder for now]
             </p>
           </div>
@@ -800,31 +735,22 @@ export function DashboardRetreatDetail() {
       )}
 
       {/* ──── Explore more retreats ──── */}
-      <div className="mt-12 pt-8 border-t">
-        <h2 className="text-xl mb-4">Explore Other Retreats</h2>
-        <div className="grid md:grid-cols-2 gap-4">
+      <div className="mt-12 border-t pt-8">
+        <h2 className="mb-4 text-xl">Explore Other Retreats</h2>
+        <div className="grid gap-4 md:grid-cols-2">
           {upcomingRetreats
             .filter((r) => r.id !== BOOKED_RETREAT.retreatId)
             .map((retreat) => (
-              <div
-                key={retreat.id}
-                className="bg-background border rounded-lg p-5 space-y-3"
-              >
+              <div key={retreat.id} className="bg-background space-y-3 rounded-lg border p-5">
                 <h3 className="text-lg">{retreat.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {retreat.subtitle}
-                </p>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <MapPin className="w-3.5 h-3.5" />
+                <p className="text-muted-foreground text-sm">{retreat.subtitle}</p>
+                <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                  <MapPin className="h-3.5 w-3.5" />
                   {retreat.location}
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-lg">
-                    £{retreat.earlyBirdPrice}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    early bird
-                  </span>
+                  <span className="text-lg">£{retreat.earlyBirdPrice}</span>
+                  <span className="text-muted-foreground text-xs">early bird</span>
                 </div>
                 <Link href={`/retreats/${retreat.slug}`}>
                   <Button variant="outline" size="sm" className="w-full">
