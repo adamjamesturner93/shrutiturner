@@ -21,7 +21,7 @@ function parseQuery(searchParams: URLSearchParams): ParsedQuery {
   const to = searchParams.get("to") || undefined;
   const typeParam = searchParams.get("type");
   const slugParam = searchParams.get("slug");
-  const groupByDay = searchParams.get("groupByDay") || undefined;
+  const groupByDayParam = searchParams.get("groupByDay") || undefined;
 
   if (from && Number.isNaN(new Date(from).getTime())) {
     return { success: false };
@@ -41,9 +41,11 @@ function parseQuery(searchParams: URLSearchParams): ParsedQuery {
     return { success: false };
   }
 
-  if (groupByDay && groupByDay !== "true" && groupByDay !== "false") {
+  if (groupByDayParam && groupByDayParam !== "true" && groupByDayParam !== "false") {
     return { success: false };
   }
+
+  const groupByDay = groupByDayParam as "true" | "false" | undefined;
 
   return {
     success: true,

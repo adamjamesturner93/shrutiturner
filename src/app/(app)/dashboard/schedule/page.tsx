@@ -2,8 +2,6 @@ import { DashboardSchedule } from "@/views/dashboard/schedule";
 import { auth } from "@/lib/auth";
 import { getScheduleGroupedByDay } from "@/lib/classes/session-service";
 
-export const dynamic = "force-dynamic";
-
 function getScheduleWindow(weekOffset: number) {
   const now = new Date();
   const start = new Date(now);

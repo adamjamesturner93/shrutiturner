@@ -1,5 +1,32 @@
 import type { ClassBookingStatus, ClassSessionStatus, ClassWaitlistStatus } from "@prisma/client";
 
+export type ScheduleClassItemDto = {
+  id: string;
+  sessionId: string;
+  slug: string;
+  name: string;
+  type: string;
+  day: string;
+  dateLabel: string;
+  time: string;
+  duration: string;
+  level: string;
+  instructorName: string | null;
+  instructorBio: string | null;
+  instructorAvatarUrl: string | null;
+  maxSpaces: number;
+  shortDescription: string;
+  spotsRemaining: number;
+  status: ClassSessionStatus;
+  isBookedByCurrentUser: boolean;
+  waitlistPosition: number | null;
+};
+
+export type ScheduleDayDto = {
+  day: string;
+  classes: ScheduleClassItemDto[];
+};
+
 export type ClassSessionListItemDto = {
   id: string;
   classDefinitionSlug: string;

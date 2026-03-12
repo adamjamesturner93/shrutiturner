@@ -1,22 +1,15 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { FlatCompat } from "@eslint/eslintrc";
+import { defineConfig, globalIgnores } from "eslint/config";
+import prettier from "eslint-config-prettier/flat";
+import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
+import nextTypescript from "eslint-config-next/typescript";
+import tailwindcss from "eslint-plugin-tailwindcss";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const compat = new FlatCompat({ baseDirectory: __dirname });
-
-export default [
-  {
-    ignores: [".next/**", "node_modules/**", "coverage/**", "out/**", "dist/**"],
-  },
-  ...compat.extends(
-    "next/core-web-vitals",
-    "next/typescript",
-    "plugin:jsx-a11y/recommended",
-    "plugin:tailwindcss/recommended",
-    "prettier"
-  ),
+export default defineConfig([
+  globalIgnores([".next/**", "node_modules/**", "coverage/**", "out/**", "dist/**"]),
+  ...nextCoreWebVitals,
+  ...nextTypescript,
+  ...tailwindcss.configs["flat/recommended"],
+  prettier,
   {
     settings: {
       tailwindcss: {
@@ -33,4 +26,4 @@ export default [
       "tailwindcss/no-contradicting-classname": "warn",
     },
   },
-];
+]);

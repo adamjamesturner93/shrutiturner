@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 
   const tags = topicToTags(topic);
   for (const tag of tags) {
-    revalidateTag(tag);
+    revalidateTag(tag, "max");
   }
 
   let campaign:

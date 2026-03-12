@@ -12,6 +12,8 @@ import type {
   BulkCreateSessionsInput,
   ClassSessionDetailDto,
   ClassSessionListItemDto,
+  ScheduleClassItemDto,
+  ScheduleDayDto,
 } from "@/lib/classes/types";
 
 const CONDITION_LABELS = new Map(
@@ -463,7 +465,7 @@ export async function getScheduleGroupedByDay(params?: {
   currentUserId?: string;
   from?: Date;
   to?: Date;
-}) {
+}): Promise<ScheduleDayDto[]> {
   const from = params?.from || new Date();
   const to = params?.to || new Date(Date.now() + 56 * 86400000);
   const sessions = await listClassSessions({
@@ -490,7 +492,7 @@ export async function getScheduleGroupedByDay(params?: {
     timeZone: "Europe/London",
   });
 
-  const grouped = new Map<string, { day: string; classes: Array<Record<string, unknown>> }>();
+  const grouped = new Map<string, ScheduleDayDto>();
   const classDefinitions = await getClassDefinitions();
   const classBySlug = new Map(classDefinitions.map((cls) => [cls.slug, cls]));
 
@@ -503,7 +505,7 @@ export async function getScheduleGroupedByDay(params?: {
       grouped.set(groupKey, { day: `${weekday} ${dateLabel}`, classes: [] });
     }
 
-    grouped.get(groupKey)!.classes.push({
+    const item: ScheduleClassItemDto = {
       id: session.id,
       sessionId: session.id,
       slug: session.classDefinitionSlug,
@@ -523,7 +525,9 @@ export async function getScheduleGroupedByDay(params?: {
       status: session.status,
       isBookedByCurrentUser: session.isBookedByCurrentUser,
       waitlistPosition: session.waitlistPosition,
-    });
+    };
+
+    grouped.get(groupKey)!.classes.push(item);
   }
 
   const output = Array.from(grouped.values());

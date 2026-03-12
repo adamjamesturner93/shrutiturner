@@ -8,8 +8,6 @@ export async function generateMetadata(): Promise<Metadata> {
   return buildPageMetadata("schedule", "Schedule");
 }
 
-export const dynamic = "force-dynamic";
-
 export default async function Page() {
   const session = await auth();
   const from = new Date();

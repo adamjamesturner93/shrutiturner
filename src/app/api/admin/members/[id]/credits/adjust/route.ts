@@ -4,7 +4,7 @@ import { adminAdjustCredits } from "@/lib/admin/members-service";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const session = await requireAdminUser();
+    const adminUser = await requireAdminUser();
     const { id } = await context.params;
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 
@@ -20,7 +20,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     const member = await adminAdjustCredits({
       userId: id,
-      adminUserId: session.user.id,
+      adminUserId: adminUser.id,
       delta,
       reason,
     });
