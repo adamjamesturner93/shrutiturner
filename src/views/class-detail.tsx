@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Layout } from "../components/layout";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -18,9 +18,10 @@ import {
   Target,
   Info,
 } from "lucide-react";
-import { classDetails, getClassesByType, getTypeColor } from "../data/schedule-data";
+import { getTypeColor } from "@/lib/classes/type-color";
 import { BookClassButton } from "../components/booking-modal";
 import { useI18n } from "../lib/use-i18n";
+import { useEffect, useState } from "react";
 import type { ClassDefinitionContent } from "@/lib/content";
 
 interface ClassDetailPageProps {
@@ -32,9 +33,48 @@ export function ClassDetailPage({
   classDetail: classDetailProp,
   allClasses,
 }: ClassDetailPageProps) {
-  const { id: slug } = useParams<{ id: string }>();
-  const classDetail = classDetailProp ?? classDetails.find((c) => c.slug === slug);
+  const searchParams = useSearchParams();
+  const selectedSessionId = searchParams.get("session");
+  const classDetail = classDetailProp ?? null;
+  const [nextSessionId, setNextSessionId] = useState<string | null>(null);
+  const [sessionInstructor, setSessionInstructor] = useState<{
+    name: string | null;
+    bio: string | null;
+  } | null>(null);
   const { fmtTimeStr } = useI18n();
+
+  useEffect(() => {
+    if (!classDetail) return;
+    let active = true;
+    void (async () => {
+      try {
+        const response = await fetch(`/api/classes/sessions?slug=${encodeURIComponent(classDetail.slug)}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const payload = (await response.json()) as Array<{
+          id: string;
+          instructorName?: string | null;
+          instructorBio?: string | null;
+        }>;
+        const resolvedSession =
+          (selectedSessionId ? payload.find((item) => item.id === selectedSessionId) : undefined) ||
+          payload[0];
+        if (active) {
+          setNextSessionId(resolvedSession?.id || null);
+          setSessionInstructor({
+            name: resolvedSession?.instructorName || null,
+            bio: resolvedSession?.instructorBio || null,
+          });
+        }
+      } catch {
+        // keep button disabled when no session could be resolved
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [classDetail]);
 
   if (!classDetail) {
     return (
@@ -68,8 +108,19 @@ export function ClassDetailPage({
     );
 
   // Get related classes (same type, excluding current)
-  const relatedPool = allClasses ?? getClassesByType(classDetail.type);
+  const relatedPool = allClasses ?? [];
   const relatedClasses = relatedPool.filter((c) => c.slug !== classDetail.slug).slice(0, 3);
+
+  const instructorName = sessionInstructor?.name || classDetail.instructor;
+  const instructorBio =
+    sessionInstructor?.bio ||
+    "Strength and yoga coach specialising in rehabilitation-informed training for chronic illness and complex bodies. Living with psoriatic arthritis. PhD Biomechanics, PGDip Rehabilitation, 650hr Yoga Teacher Training, Level 4 Personal Trainer.";
+  const instructorInitials = instructorName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("");
 
   return (
     <Layout>
@@ -133,6 +184,7 @@ export function ClassDetailPage({
 
           <div className="flex flex-col gap-4 sm:flex-row">
             <BookClassButton
+              sessionId={nextSessionId || undefined}
               classSlug={classDetail.slug}
               className={classDetail.name}
               day={classDetail.day}
@@ -255,16 +307,11 @@ export function ClassDetailPage({
           <div className="bg-background rounded-lg border p-6 md:p-8">
             <div className="flex flex-col items-start gap-6 sm:flex-row">
               <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-full bg-[#4B5B32]/10">
-                <span className="text-2xl text-[#4B5B32]">ST</span>
+                <span className="text-2xl text-[#4B5B32]">{instructorInitials || "ST"}</span>
               </div>
               <div className="space-y-3">
-                <h3 className="text-xl">{classDetail.instructor}</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  Strength and yoga coach specialising in rehabilitation-informed training for
-                  chronic illness and complex bodies. Living with psoriatic arthritis. PhD
-                  Biomechanics, PGDip Rehabilitation, 650hr Yoga Teacher Training, Level 4 Personal
-                  Trainer.
-                </p>
+                <h3 className="text-xl">{instructorName}</h3>
+                <p className="text-muted-foreground leading-relaxed">{instructorBio}</p>
                 <Link
                   href="/pt"
                   className="text-primary inline-flex items-center gap-1 text-sm hover:underline"
@@ -368,11 +415,11 @@ export function ClassDetailPage({
             },
             offers: {
               "@type": "Offer",
-              price: "12",
+              price: "9",
               priceCurrency: "GBP",
               availability: "https://schema.org/InStock",
               url: "https://shrutiturner.com/pricing",
-              description: "Drop-in price. Bundles and memberships available from £9/class.",
+              description: "Drop-in from £9. 3-pack £24. Membership from £29/month.",
             },
           }),
         }}

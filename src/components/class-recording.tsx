@@ -148,8 +148,8 @@ export function useRecordingAccess() {
   const hasAccess = isAuthenticated && (membership !== null || enrolledProgramIds.length > 0);
 
   const isMember = membership !== null;
-  const isUnlimited = membership?.plan === "unlimited" || membership?.plan === "instructor";
-  const isCapped = membership?.plan === "steady" || membership?.plan === "committed";
+  const isUnlimited = membership?.plan === "movewell" || membership?.plan === "instructor";
+  const isCapped = membership?.plan ? membership.plan !== "movewell" && membership.plan !== "instructor" : false;
   const isProgramOnly = !isMember && enrolledProgramIds.length > 0;
 
   return { hasAccess, isMember, isUnlimited, isCapped, isProgramOnly, enrolledProgramIds };
@@ -177,7 +177,7 @@ export function RecordingCard({ recording, isProgrammeRecording = false }: Recor
 
   const alreadyWatched = hasWatchedRecording(recording.classSlug);
   const watchCheck = canWatchRecording(recording.classSlug);
-  const isUnlimited = membership?.plan === "unlimited" || membership?.plan === "instructor";
+  const isUnlimited = membership?.plan === "movewell" || membership?.plan === "instructor";
 
   const daysRemaining = Math.max(
     0,

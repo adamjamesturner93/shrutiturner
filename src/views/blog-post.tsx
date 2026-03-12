@@ -10,6 +10,8 @@ import Link from "next/link";
 import { BlogReactions } from "@/components/blog-reactions";
 import { BlogComments } from "@/components/blog-comments";
 import type { BlogPostContent } from "@/lib/content";
+import { BlogShare } from "../components/blog-share";
+import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 
 interface BlogPostPageProps {
   post: BlogPostContent | null;
@@ -65,9 +67,11 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
           <div className="mb-12 space-y-6">
             <div className="flex flex-wrap gap-2">
               {post.tags.map((tag) => (
-                <Badge key={tag} variant="secondary">
-                  {tag}
-                </Badge>
+                <Link key={tag} href={`/blog?tag=${encodeURIComponent(tag)}`}>
+                  <Badge variant="secondary" className="hover:bg-secondary/80 cursor-pointer">
+                    {tag}
+                  </Badge>
+                </Link>
               ))}
             </div>
 
@@ -80,6 +84,20 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
               <span>•</span>
               <span>{post.readTime}</span>
             </div>
+
+            <BlogShare
+              title={post.title}
+              excerpt={post.excerpt}
+              url={`https://shrutiturner.com/blog/${post.id}`}
+            />
+          </div>
+
+          <div className="mb-12 overflow-hidden rounded-lg">
+            <ImageWithFallback
+              src={post.coverImage}
+              alt={post.coverAlt}
+              className="h-64 w-full object-cover md:h-96"
+            />
           </div>
 
           <div className="prose prose-lg max-w-none">
@@ -117,10 +135,7 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
                   );
                 }
 
-                const [heading, ...content] = section
-                  .split("\n")
-                  .filter((line) => line.trim());
-
+                const [heading, ...content] = section.split("\n").filter((line) => line.trim());
                 return (
                   <div key={index} className="space-y-4">
                     <h2 className="mt-12 mb-6 text-3xl">{heading}</h2>
@@ -157,7 +172,18 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
       </article>
 
       <section className="py-12 md:py-16">
-        <div className="container mx-auto max-w-4xl px-4">
+        <div className="container mx-auto max-w-4xl space-y-10 px-4">
+          <div className="flex flex-col items-start justify-between gap-4 border-y py-6 sm:flex-row sm:items-center">
+            <p className="text-muted-foreground">
+              Found this useful? Share it with someone who might benefit.
+            </p>
+            <BlogShare
+              title={post.title}
+              excerpt={post.excerpt}
+              url={`https://shrutiturner.com/blog/${post.id}`}
+            />
+          </div>
+
           <BlogReactions postId={post.id} />
           <BlogComments postId={post.id} />
         </div>
@@ -189,8 +215,15 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
               {relatedPosts.map((relatedPost) => (
                 <article
                   key={relatedPost.id}
-                  className="bg-card overflow-hidden rounded-lg border transition-shadow hover:shadow-lg"
+                  className="bg-card group overflow-hidden rounded-lg border transition-shadow hover:shadow-lg"
                 >
+                  <Link href={`/blog/${relatedPost.id}`} className="block overflow-hidden">
+                    <ImageWithFallback
+                      src={relatedPost.coverImage}
+                      alt={relatedPost.coverAlt}
+                      className="h-40 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  </Link>
                   <div className="space-y-4 p-6">
                     <div className="flex flex-wrap gap-2">
                       {relatedPost.tags.slice(0, 2).map((tag) => (
@@ -234,6 +267,7 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
             "@type": "Article",
             headline: post.title,
             description: post.excerpt,
+            image: post.coverImage,
             author: {
               "@type": "Person",
               name: post.author,

@@ -1,12 +1,11 @@
 import { render } from "@react-email/render";
-import { ServerClient } from "postmark";
-import { WelcomeEmail } from "../emails/WelcomeEmail";
-import { BookingConfirmationEmail } from "../emails/BookingConfirmationEmail";
-import { ClassReminderEmail } from "../emails/ClassReminderEmail";
-import { PurchaseConfirmationEmail } from "../emails/PurchaseConfirmationEmail";
-import { InstructorNotificationEmail } from "../emails/InstructorNotificationEmail";
-import { ClassCancellationEmail } from "../emails/ClassCancellationEmail";
-import { NewsletterEmail } from "../emails/NewsletterEmail";
+import WelcomeEmail from "../emails/welcome";
+import ClassBookingEmail from "../emails/class-booking";
+import ClassReminderEmail from "../emails/class-reminder";
+import PurchaseConfirmationEmail from "../emails/purchase-confirmation";
+import InstructorNotificationEmail from "../emails/instructor-notification";
+import ClassCancellationEmail from "../emails/class-cancellation";
+import NewsletterEmail from "../emails/newsletter";
 import {
   type I18nPreferences,
   ADMIN_PREFS,
@@ -19,9 +18,7 @@ import {
 // NOTE: This client must be initialized in a server-side environment (e.g. Supabase Edge Function)
 // Do not expose your API key in the frontend bundle.
 const POSTMARK_API_KEY = process.env.POSTMARK_API_KEY || "POSTMARK_API_TEST";
-const client = new ServerClient(POSTMARK_API_KEY);
-
-const SENDER_EMAIL = "shruti@shrutiturner.com"; // Verified sender signature
+void POSTMARK_API_KEY;
 
 /**
  * Helper to generate a simple ICS string for calendar invites.
@@ -56,7 +53,7 @@ END:VCALENDAR`.trim();
 
 export async function sendWelcomeEmail(email: string, firstName: string) {
   try {
-    const html = await render(WelcomeEmail({ firstName }));
+    await render(WelcomeEmail({ firstName }));
     console.log(`[Mock Email Service] Sending Welcome Email to ${email}`);
     return { success: true };
   } catch (error) {
@@ -82,16 +79,19 @@ export async function sendBookingConfirmation(
     const formattedDate = formatDate(classDateObj, userPrefs);
     const formattedTime = formatTime(classDateObj, userPrefs);
 
-    const html = await render(
-      BookingConfirmationEmail({
+    await render(
+      ClassBookingEmail({
         firstName,
         className,
         classDate: formattedDate,
         classTime: formattedTime,
+        classDuration: `${durationMinutes} minutes`,
+        classLocation: "Online (Daily.co)",
+        manageBookingUrl: "https://shrutiturner.com/dashboard/schedule",
       })
     );
 
-    const icsContent = generateICS(
+    generateICS(
       className,
       classDateObj,
       durationMinutes,
@@ -131,12 +131,12 @@ export async function sendClassReminder(
   userPrefs: I18nPreferences = DEFAULT_PREFS
 ) {
   try {
-    const html = await render(
+    await render(
       ClassReminderEmail({
         firstName,
         className,
         classTime: formatTimeString(classTime, userPrefs),
-        joinLink,
+        joinLink: joinLink || "https://shrutiturner.com/dashboard/schedule",
       })
     );
     console.log(`[Mock Email Service] Sending Class Reminder to ${email}`);
@@ -157,13 +157,14 @@ export async function sendPurchaseConfirmation(
   userPrefs: I18nPreferences = DEFAULT_PREFS
 ) {
   try {
-    const html = await render(
+    await render(
       PurchaseConfirmationEmail({
         firstName,
         purchaseDescription,
         amount,
         invoiceId,
         date: formatDate(new Date(), userPrefs),
+        scheduleUrl: "https://shrutiturner.com/dashboard/schedule",
       })
     );
     console.log(`[Mock Email Service] Sending Purchase Confirmation to ${email}`);
@@ -185,7 +186,7 @@ export async function sendInstructorNotification(
 ) {
   try {
     // Instructor emails always use UK formatting
-    const html = await render(
+    await render(
       InstructorNotificationEmail({
         type,
         className,
@@ -193,6 +194,7 @@ export async function sendInstructorNotification(
         classTime: formatTimeString(classTime, ADMIN_PREFS),
         attendeeName,
         attendeeCount,
+        rosterUrl: "https://shrutiturner.com/admin/dashboard",
       })
     );
     console.log(
@@ -216,13 +218,16 @@ export async function sendClassCancellation(
   userPrefs: I18nPreferences = DEFAULT_PREFS
 ) {
   try {
-    const html = await render(
+    await render(
       ClassCancellationEmail({
         firstName,
         className,
         classDate: formatDate(classDate, userPrefs),
         classTime: formatTimeString(classTime, userPrefs),
-        isInstructorInitiated,
+        cancellationReason: isInstructorInitiated
+          ? "This class has been cancelled by your instructor."
+          : "This class booking was cancelled.",
+        alternativeClassUrl: "https://shrutiturner.com/schedule",
       })
     );
 
@@ -240,15 +245,20 @@ export async function sendClassCancellation(
 export async function sendNewsletter(
   email: string,
   subject: string,
-  markdownContent: string, // Content from Contentful
-  previewText?: string
+  markdownContent: string // Content from Contentful
 ) {
   try {
-    const html = await render(
+    const bodyContent = markdownContent
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => `<p>${line}</p>`)
+      .join("");
+    await render(
       NewsletterEmail({
+        firstName: "there",
         subject,
-        markdownContent,
-        previewText,
+        bodyContent,
       })
     );
     console.log(`[Mock Email Service] Sending Newsletter to ${email}`);

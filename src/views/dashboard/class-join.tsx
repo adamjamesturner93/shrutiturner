@@ -1,17 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../../context/auth-context";
 import { Button } from "../../components/ui/button";
 import { useState, useEffect } from "react";
 import { ArrowLeft, Calendar, Clock, AlertCircle, Zap, Heart } from "lucide-react";
-import { getClassBySlug } from "../../data/schedule-data";
 import { DashboardLayout } from "../../components/dashboard-layout";
 import { PreJoinLobby } from "../../components/video/pre-join-lobby";
 import { VideoRoom, type RoomMode } from "../../components/video/video-room";
 import { SEO } from "../../components/seo";
 import { useI18n } from "../../lib/use-i18n";
+import type { ClassSessionDetailDto, ClassSessionListItemDto } from "@/lib/api/types";
+import type { ClassDefinitionContent } from "@/lib/content";
 
 type Stage = "too-early" | "access-denied" | "pre-join" | "live" | "post-class";
 
@@ -46,26 +47,76 @@ function getNextClassDatetime(day: string, time: string): Date {
   return result;
 }
 
-export function DashboardClassJoin() {
+export function DashboardClassJoin({ classDetail }: { classDetail: ClassDefinitionContent | null }) {
   const { id } = useParams<{ id: string }>();
-  const { isClassBooked, submitPreClassCheckIn, submitPostClassFeedback } = useAuth();
+  const searchParams = useSearchParams();
+  const { submitPreClassCheckIn, submitPostClassFeedback } = useAuth();
   const router = useRouter();
   const navigate = (href: string, opts?: { replace?: boolean }) =>
     opts?.replace ? router.replace(href) : router.push(href);
-  const cls = id ? getClassBySlug(id) : undefined;
+  const cls = classDetail && classDetail.slug === id ? classDetail : undefined;
+  const [activeSession, setActiveSession] = useState<ClassSessionDetailDto | null>(null);
+  const [loadingSession, setLoadingSession] = useState(true);
   const { fmtTimeStr } = useI18n();
+  const sessionId = searchParams.get("sessionId");
+
+  useEffect(() => {
+    let active = true;
+    if (!cls) return;
+    void (async () => {
+      try {
+        setLoadingSession(true);
+        if (sessionId) {
+          const response = await fetch(`/api/classes/sessions/${sessionId}`, { cache: "no-store" });
+          if (response.ok) {
+            const payload = (await response.json()) as ClassSessionDetailDto;
+            if (active) setActiveSession(payload);
+            return;
+          }
+        }
+        const response = await fetch(`/api/classes/sessions?slug=${encodeURIComponent(cls.slug)}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const payload = (await response.json()) as ClassSessionListItemDto[];
+        if (active && payload[0]) {
+          setActiveSession({
+            ...payload[0],
+            notes: "",
+            cancelReason: null,
+            bookings: [],
+            waitlist: [],
+          });
+        }
+      } catch {
+        // fallback to existing behavior
+      } finally {
+        if (active) setLoadingSession(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [cls, sessionId]);
 
   // Compute whether we're too early (>10 min before class)
-  const classDatetime = cls ? getNextClassDatetime(cls.day, cls.time) : null;
+  const classDatetime = activeSession
+    ? new Date(activeSession.startsAtUtc)
+    : cls
+      ? getNextClassDatetime(cls.day, cls.time)
+      : null;
   const now = new Date();
   const minutesUntilClass = classDatetime
     ? (classDatetime.getTime() - now.getTime()) / (1000 * 60)
     : 0;
   const isTooEarly = minutesUntilClass > 10;
 
-  const initialStage: Stage = !cls
+  const initialStage: Stage = loadingSession
     ? "access-denied"
-    : !isClassBooked(cls.slug)
+    : !cls
+    ? "access-denied"
+    : !activeSession?.isBookedByCurrentUser
       ? "access-denied"
       : isTooEarly
         ? "too-early"
@@ -79,6 +130,34 @@ export function DashboardClassJoin() {
   const [preClassFlare, setPreClassFlare] = useState(false);
   const [postClassFeeling, setPostClassFeeling] = useState<string | null>(null);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (!cls) {
+      setStage("access-denied");
+      return;
+    }
+    if (loadingSession) return;
+    const bookedNow = Boolean(activeSession?.isBookedByCurrentUser);
+    if (!bookedNow) {
+      setStage("access-denied");
+      return;
+    }
+    if (isTooEarly) {
+      setStage("too-early");
+      return;
+    }
+    if (stage === "access-denied" || stage === "too-early") {
+      setStage("pre-join");
+    }
+  }, [activeSession, cls, loadingSession, isTooEarly, stage]);
+
+  if (loadingSession) {
+    return (
+      <DashboardLayout title="Joining Class">
+        <div className="text-muted-foreground py-20 text-center">Loading class session...</div>
+      </DashboardLayout>
+    );
+  }
 
   // Countdown timer for the too-early state
   useEffect(() => {

@@ -1,30 +1,113 @@
 "use client";
 
 import { DashboardLayout } from "../../components/dashboard-layout";
-import { useAuth } from "../../context/auth-context";
 import { BookClassButton } from "../../components/booking-modal";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import Link from "next/link";
 import { useState } from "react";
-import { Clock, Users, Calendar, Heart, Dumbbell, Zap, Check, Filter, Play } from "lucide-react";
-import { getScheduleByDay, getTypeColor, type ClassDetail } from "../../data/schedule-data";
+import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  Clock,
+  Users,
+  Calendar,
+  Heart,
+  Dumbbell,
+  Zap,
+  Check,
+  Filter,
+  Play,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import { getTypeColor } from "@/lib/classes/type-color";
 import { useI18n } from "../../lib/use-i18n";
 import { RecordingsLibrary, useRecordingAccess } from "../../components/class-recording";
 
 const TYPE_FILTERS = ["All", "Yoga", "Strength", "HIIT"];
 const LEVEL_FILTERS = ["All Levels", "Beginner", "Intermediate", "Adaptive", "Specialised"];
+type ScheduleClassItem = {
+  id?: string;
+  slug: string;
+  name: string;
+  type: string;
+  day: string;
+  time: string;
+  duration: string;
+  level: string;
+  maxSpaces: number;
+  shortDescription: string;
+  sessionId?: string;
+  dateLabel?: string;
+  spotsRemaining?: number;
+  bookedCount?: number;
+  status?: "scheduled" | "live" | "completed" | "cancelled";
+  isBookedByCurrentUser?: boolean;
+  waitlistPosition?: number | null;
+};
+type ScheduleDay = {
+  day: string;
+  classes: ScheduleClassItem[];
+};
 
-export function DashboardSchedule() {
-  const { isClassBooked } = useAuth();
-  const scheduleData = getScheduleByDay();
+type DashboardScheduleProps = {
+  initialSchedule?: ScheduleDay[];
+  initialWeekOffset?: number;
+};
+
+function getScheduleWindow(weekOffset: number) {
+  const now = new Date();
+  const start = new Date(now);
+  const day = start.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+
+  if (weekOffset === 0) {
+    start.setHours(0, 0, 0, 0);
+  } else {
+    start.setDate(start.getDate() + diffToMonday + weekOffset * 7);
+    start.setHours(0, 0, 0, 0);
+  }
+
+  const end = new Date(start);
+  if (weekOffset === 0) {
+    const nextMonday = new Date(start);
+    nextMonday.setDate(nextMonday.getDate() + (day === 0 ? 1 : 8 - day));
+    nextMonday.setHours(0, 0, 0, 0);
+    end.setTime(nextMonday.getTime());
+  } else {
+    end.setDate(end.getDate() + 7);
+  }
+
+  return { start, end };
+}
+
+function formatWeekRange(start: Date, endExclusive: Date) {
+  const endInclusive = new Date(endExclusive);
+  endInclusive.setDate(endInclusive.getDate() - 1);
+
+  const startLabel = start.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const endLabel = endInclusive.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+
+  return `${startLabel} - ${endLabel}`;
+}
+
+export function DashboardSchedule({ initialSchedule = [], initialWeekOffset = 0 }: DashboardScheduleProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [scheduleData, setScheduleData] = useState<ScheduleDay[]>(initialSchedule);
   const [typeFilter, setTypeFilter] = useState("All");
   const [levelFilter, setLevelFilter] = useState("All Levels");
   const [activeTab, setActiveTab] = useState<"schedule" | "recordings">("schedule");
+  const [weekOffset, setWeekOffset] = useState(
+    Number.isFinite(initialWeekOffset) && initialWeekOffset >= 0 ? initialWeekOffset : 0
+  );
   const { fmtTimeStr, tzAbbr, londonOffset } = useI18n();
-  const { hasAccess: hasRecordingAccess } = useRecordingAccess();
+  useRecordingAccess();
+  const { start, end } = getScheduleWindow(weekOffset);
+  const weekRangeLabel = formatWeekRange(start, end);
 
-  const filterClasses = (classes: ClassDetail[]) => {
+  const filterClasses = (classes: ScheduleClassItem[]) => {
     return classes.filter((cls) => {
       if (typeFilter !== "All" && cls.type !== typeFilter) return false;
       if (levelFilter !== "All Levels" && cls.level !== levelFilter) return false;
@@ -37,6 +120,39 @@ export function DashboardSchedule() {
     if (type === "HIIT") return <Zap className="h-4 w-4" />;
     return <Dumbbell className="h-4 w-4" />;
   };
+
+  useEffect(() => {
+    const initialMatches = weekOffset === initialWeekOffset;
+    if (initialMatches && initialSchedule.length > 0) return;
+    const { start: fetchStart, end: fetchEnd } = getScheduleWindow(weekOffset);
+    let active = true;
+    void (async () => {
+      try {
+        const response = await fetch(
+          `/api/classes/sessions?groupByDay=true&from=${encodeURIComponent(fetchStart.toISOString())}&to=${encodeURIComponent(fetchEnd.toISOString())}`,
+          { cache: "no-store" }
+        );
+        if (!response.ok) return;
+        const payload = (await response.json()) as ScheduleDay[];
+        if (active && payload.length > 0) setScheduleData(payload);
+        if (active && payload.length === 0) setScheduleData([]);
+      } catch {
+        // keep fallback data
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [initialSchedule, initialWeekOffset, weekOffset]);
+
+  useEffect(() => {
+    const target = weekOffset > 0 ? `/dashboard/schedule?wk=${weekOffset}` : "/dashboard/schedule";
+    const current = searchParams.get("wk");
+    if ((weekOffset === 0 && !current) || (weekOffset > 0 && current === String(weekOffset))) {
+      return;
+    }
+    router.replace(target);
+  }, [router, searchParams, weekOffset]);
 
   return (
     <DashboardLayout title="Schedule - Private Studio">
@@ -96,6 +212,26 @@ export function DashboardSchedule() {
         <>
           {/* Filters */}
           <div className="mb-8 space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-muted-foreground text-sm">
+                {weekOffset === 0 ? `This week: ${weekRangeLabel}` : weekRangeLabel}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={weekOffset === 0}
+                  onClick={() => setWeekOffset((prev) => Math.max(0, prev - 1))}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setWeekOffset((prev) => prev + 1)}>
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
             <div className="text-muted-foreground flex items-center gap-2 text-sm">
               <Filter className="h-4 w-4" />
               <span>Filter by:</span>
@@ -136,11 +272,11 @@ export function DashboardSchedule() {
                 <div key={daySchedule.day}>
                   <h2 className="mb-4 border-b pb-2 text-2xl">{daySchedule.day}</h2>
                   <div className="space-y-4">
-                    {filtered.map((cls) => {
-                      const booked = isClassBooked(cls.slug);
+                    {filtered.map((cls, idx) => {
+                      const booked = Boolean(cls.isBookedByCurrentUser);
                       return (
                         <div
-                          key={cls.slug}
+                          key={cls.sessionId || `${cls.slug}-${cls.day}-${cls.time}-${idx}`}
                           className={`bg-background rounded-lg border p-5 transition-shadow hover:shadow-md ${
                             booked ? "border-[#4B5B32] bg-[#4B5B32]/5" : ""
                           }`}
@@ -168,7 +304,11 @@ export function DashboardSchedule() {
                             {/* Class info */}
                             <div className="flex-1">
                               <Link
-                                href={`/dashboard/classes/${cls.slug}`}
+                                href={
+                                  cls.sessionId
+                                    ? `/dashboard/classes/${cls.slug}?sessionId=${encodeURIComponent(cls.sessionId)}&wk=${weekOffset}`
+                                    : `/dashboard/classes/${cls.slug}?wk=${weekOffset}`
+                                }
                                 className="hover:text-primary transition-colors"
                               >
                                 <h3 className="mb-1 text-lg">{cls.name}</h3>
@@ -197,15 +337,24 @@ export function DashboardSchedule() {
                             {/* Actions */}
                             <div className="flex gap-2 md:min-w-[180px] md:justify-end">
                               {booked ? (
-                                <Link href={`/dashboard/classes/${cls.slug}`}>
+                                <Link
+                                  href={
+                                    cls.sessionId
+                                      ? `/dashboard/classes/${cls.slug}?sessionId=${encodeURIComponent(cls.sessionId)}&wk=${weekOffset}`
+                                      : `/dashboard/classes/${cls.slug}?wk=${weekOffset}`
+                                  }
+                                >
                                   <Button>View Details</Button>
                                 </Link>
                               ) : (
                                 <BookClassButton
+                                  sessionId={cls.sessionId}
+                                  isBooked={Boolean(cls.isBookedByCurrentUser)}
                                   classSlug={cls.slug}
                                   className={cls.name}
                                   day={cls.day}
                                   time={cls.time}
+                                  attendeeCount={cls.bookedCount ?? 0}
                                 />
                               )}
                             </div>

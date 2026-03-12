@@ -3,13 +3,11 @@
 import { AdminLayout } from "../../components/admin-layout";
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
-import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Search,
-  Filter,
   ChevronRight,
   Users,
   UserCheck,
@@ -18,7 +16,11 @@ import {
   Shield,
   AlertTriangle,
 } from "lucide-react";
-import { adminMembers, type AdminMember } from "../../data/admin-data";
+import type { AdminMemberListItemDto } from "@/lib/api/types";
+
+type AdminMember = AdminMemberListItemDto & {
+  status: "active" | "paused" | "cancelled" | "expired" | "past_due";
+};
 
 const STATUS_CONFIG: Record<
   string,
@@ -28,6 +30,7 @@ const STATUS_CONFIG: Record<
   paused: { label: "Paused", variant: "secondary" },
   cancelled: { label: "Cancelled", variant: "destructive" },
   expired: { label: "Expired", variant: "outline" },
+  past_due: { label: "Past due", variant: "destructive" },
 };
 
 /** Compute at-risk status for a member */
@@ -44,11 +47,36 @@ function getAtRiskStatus(m: AdminMember): "high" | "medium" | "credits-expiring"
 }
 
 export function AdminMembers() {
+  const [adminMembers, setAdminMembers] = useState<AdminMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [planFilter, setPlanFilter] = useState<string>("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [riskFilter, setRiskFilter] = useState<string>("all");
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch("/api/admin/members", { cache: "no-store" });
+        if (!res.ok) throw new Error("Failed to load members.");
+        const data = (await res.json()) as AdminMember[];
+        if (active) setAdminMembers(data);
+      } catch (e) {
+        if (active) setError(e instanceof Error ? e.message : "Failed to load members.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const atRiskCounts = useMemo(() => {
     let high = 0,
@@ -61,7 +89,7 @@ export function AdminMembers() {
       else if (risk === "credits-expiring") creditsExpiring++;
     });
     return { high, medium, creditsExpiring, total: high + medium + creditsExpiring };
-  }, []);
+  }, [adminMembers]);
 
   const filtered = useMemo(() => {
     return adminMembers.filter((m) => {
@@ -70,7 +98,9 @@ export function AdminMembers() {
         `${m.firstName} ${m.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
         m.email.toLowerCase().includes(search.toLowerCase()) ||
         m.tags.some((t) => t.toLowerCase().includes(search.toLowerCase()));
-      const matchesStatus = statusFilter === "all" || m.status === statusFilter;
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "lapsed" ? m.status === "expired" || m.status === "cancelled" : m.status === statusFilter);
       const matchesPlan =
         planFilter === "all" ||
         (planFilter === "none" && !m.membershipPlan) ||
@@ -87,15 +117,15 @@ export function AdminMembers() {
       })();
       return matchesSearch && matchesStatus && matchesPlan && matchesRole && matchesRisk;
     });
-  }, [search, statusFilter, planFilter, roleFilter, riskFilter]);
+  }, [adminMembers, search, statusFilter, planFilter, roleFilter, riskFilter]);
 
   const statusCounts = useMemo(() => {
-    const counts = { active: 0, paused: 0, cancelled: 0, expired: 0 };
+    const counts = { active: 0, paused: 0, cancelled: 0, expired: 0, past_due: 0 };
     adminMembers.forEach((m) => {
-      counts[m.status]++;
+      counts[m.status as keyof typeof counts]++;
     });
     return counts;
-  }, []);
+  }, [adminMembers]);
 
   return (
     <AdminLayout title="Members - Admin">
@@ -106,22 +136,52 @@ export function AdminMembers() {
           <p className="text-muted-foreground mt-1">
             {adminMembers.length} total members · {statusCounts.active} active
           </p>
+          {loading ? <p className="text-muted-foreground mt-2 text-sm">Loading members...</p> : null}
+          {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
         </div>
 
         {/* Stat pills */}
         <div className="flex flex-wrap gap-3">
-          <div className="flex items-center gap-2 rounded-full bg-[#4B5B32]/10 px-4 py-2 text-sm">
-            <UserCheck className="h-4 w-4 text-[#4B5B32]" />
+          <button
+            type="button"
+            onClick={() => setStatusFilter(statusFilter === "active" ? "all" : "active")}
+            className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B5B32]/50 ${
+              statusFilter === "active"
+                ? "border-[#4B5B32] bg-[#4B5B32] text-[#FAFAF8]"
+                : "border-transparent bg-[#4B5B32]/10 hover:border-[#4B5B32]/40 hover:bg-[#4B5B32]/5"
+            }`}
+          >
+            <UserCheck className={`h-4 w-4 ${statusFilter === "active" ? "text-[#FAFAF8]" : "text-[#4B5B32]"}`} />
             <span>{statusCounts.active} active</span>
-          </div>
-          <div className="bg-secondary flex items-center gap-2 rounded-full px-4 py-2 text-sm">
-            <Pause className="text-muted-foreground h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter(statusFilter === "paused" ? "all" : "paused")}
+            className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B5B32]/50 ${
+              statusFilter === "paused"
+                ? "border-[#4B5B32] bg-[#4B5B32] text-[#FAFAF8]"
+                : "border-transparent bg-secondary text-foreground hover:border-[#4B5B32]/40 hover:bg-[#4B5B32]/5"
+            }`}
+          >
+            <Pause
+              className={`h-4 w-4 ${statusFilter === "paused" ? "text-[#FAFAF8]" : "text-muted-foreground"}`}
+            />
             <span>{statusCounts.paused} paused</span>
-          </div>
-          <div className="bg-secondary flex items-center gap-2 rounded-full px-4 py-2 text-sm">
-            <UserX className="text-muted-foreground h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter(statusFilter === "lapsed" ? "all" : "lapsed")}
+            className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B5B32]/50 ${
+              statusFilter === "lapsed"
+                ? "border-[#4B5B32] bg-[#4B5B32] text-[#FAFAF8]"
+                : "border-transparent bg-secondary text-foreground hover:border-[#4B5B32]/40 hover:bg-[#4B5B32]/5"
+            }`}
+          >
+            <UserX
+              className={`h-4 w-4 ${statusFilter === "lapsed" ? "text-[#FAFAF8]" : "text-muted-foreground"}`}
+            />
             <span>{statusCounts.expired + statusCounts.cancelled} lapsed</span>
-          </div>
+          </button>
           {atRiskCounts.total > 0 && (
             <button
               onClick={() => setRiskFilter(riskFilter === "any-risk" ? "all" : "any-risk")}
@@ -159,6 +219,8 @@ export function AdminMembers() {
                   <option value="all">All statuses</option>
                   <option value="active">Active</option>
                   <option value="paused">Paused</option>
+                  <option value="lapsed">Lapsed (expired + cancelled)</option>
+                  <option value="past_due">Past due</option>
                   <option value="expired">Expired</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
@@ -169,9 +231,7 @@ export function AdminMembers() {
                 >
                   <option value="all">All plans</option>
                   <option value="instructor">Instructor</option>
-                  <option value="unlimited">Unlimited</option>
-                  <option value="committed">Committed</option>
-                  <option value="steady">Steady</option>
+                  <option value="movewell">Move Well</option>
                   <option value="none">No plan</option>
                 </select>
                 <select
@@ -204,11 +264,13 @@ export function AdminMembers() {
           {filtered.map((member) => (
             <MemberRow key={member.id} member={member} />
           ))}
-          {filtered.length === 0 && (
+          {!loading && filtered.length === 0 && (
             <Card>
               <CardContent className="py-12 text-center">
                 <Users className="text-muted-foreground mx-auto mb-3 h-8 w-8" />
-                <p className="text-muted-foreground">No members match your filters.</p>
+                <p className="text-muted-foreground">
+                  {error ? "Unable to load members." : "No members match your filters."}
+                </p>
               </CardContent>
             </Card>
           )}

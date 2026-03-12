@@ -1,6 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useAuth } from "../context/auth-context";
 import { ScrollToTop } from "./scroll-to-top";
 import {
@@ -14,9 +16,9 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronRight,
   HeartPulse,
   Shield,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { SEO } from "./seo";
@@ -40,6 +42,9 @@ const NAV_ITEMS = [
 
 export function DashboardLayout({ children, title, description }: DashboardLayoutProps) {
   const {
+    authStatus,
+    isProfileLoading,
+    isSigningOut,
     user,
     logout,
     membership,
@@ -48,13 +53,83 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
     referralBalance,
     isAdmin,
     isAuthenticated,
+    acceptTermsAndHealth,
   } = useAuth();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const onboardingInProgress = searchParams.get("onboarding") === "true";
+  const [showLegalGuard, setShowLegalGuard] = useState(false);
+  const [legalTermsChecked, setLegalTermsChecked] = useState(false);
+  const [legalHealthChecked, setLegalHealthChecked] = useState(false);
+  const isDashboardBootstrapping =
+    authStatus === "loading" ||
+    isSigningOut ||
+    (isAuthenticated && !isAdmin && (isProfileLoading || !user));
 
-  // Auth guard: redirect unauthenticated users to login
+  const needsProfileSetup =
+    Boolean(user) &&
+    (!user?.firstName?.trim() ||
+      !user?.lastName?.trim() ||
+      !user?.dob);
+  const needsLegalAgreement = Boolean(user) && (!user?.hasAgreedToTerms || !user?.hasAgreedToHealth);
+
+  useEffect(() => {
+    if (
+      !isDashboardBootstrapping &&
+      isAuthenticated &&
+      needsProfileSetup &&
+      !isAdmin &&
+      !onboardingInProgress
+    ) {
+      router.replace("/dashboard?onboarding=true");
+    }
+  }, [isDashboardBootstrapping, isAuthenticated, needsProfileSetup, isAdmin, onboardingInProgress, router]);
+
+  useEffect(() => {
+    if (
+      isAuthenticated &&
+      needsLegalAgreement &&
+      !needsProfileSetup &&
+      !isAdmin &&
+      !onboardingInProgress
+    ) {
+      setShowLegalGuard(true);
+      setLegalTermsChecked(Boolean(user?.hasAgreedToTerms));
+      setLegalHealthChecked(Boolean(user?.hasAgreedToHealth));
+      return;
+    }
+
+    setShowLegalGuard(false);
+    setLegalTermsChecked(false);
+    setLegalHealthChecked(false);
+  }, [
+    isAuthenticated,
+    needsLegalAgreement,
+    needsProfileSetup,
+    isAdmin,
+    onboardingInProgress,
+    user,
+  ]);
+
+  // Auth + profile guard: hold dashboard UI until session and member profile are hydrated.
+  if (isDashboardBootstrapping) {
+    return (
+      <div className="bg-secondary/20 flex min-h-screen items-center justify-center p-4">
+        <div className="bg-background w-full max-w-md rounded-2xl border p-8 text-center shadow-xl">
+          <div className="bg-primary/10 mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full">
+            <LayoutDashboard className="text-primary h-7 w-7 animate-pulse" />
+          </div>
+          <h2 className="text-lg">Preparing your studio</h2>
+          <p className="text-muted-foreground mt-2 text-sm">
+            {isSigningOut ? "Signing out..." : "Loading your dashboard details..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     const returnUrl = encodeURIComponent(
       `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`
@@ -76,11 +151,6 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
             <Link href={`/login?redirect=${returnUrl}`}>
               <Button className="w-full">Sign In</Button>
             </Link>
-            <Link href="/signup">
-              <Button variant="outline" className="w-full">
-                Create Account
-              </Button>
-            </Link>
           </div>
         </div>
       </div>
@@ -94,9 +164,8 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
     return pathname.startsWith(path);
   };
 
-  const handleLogout = () => {
-    logout();
-    router.push("/");
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (
@@ -301,6 +370,88 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
       <main className="min-h-screen flex-1 pt-14 lg:ml-64 lg:pt-0">
         <div className="max-w-6xl p-6 md:p-8 lg:p-10">{children}</div>
       </main>
+
+      {/* Route-level legal agreement guard */}
+      {showLegalGuard && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="bg-background w-full max-w-lg rounded-lg border shadow-xl">
+            <div className="space-y-6 p-8">
+              <div className="space-y-3 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#56344A]/10">
+                  <Shield className="h-8 w-8 text-[#56344A]" />
+                </div>
+                <h2 className="text-xl">Legal Agreements Required</h2>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  To continue using the studio, please review and accept the following terms.
+                </p>
+              </div>
+              <div className="space-y-3">
+                <label
+                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${
+                    legalTermsChecked
+                      ? "border-[#4B5B32] bg-[#4B5B32]/5"
+                      : "border-border hover:bg-secondary/30"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={legalTermsChecked}
+                    onChange={(e) => setLegalTermsChecked(e.target.checked)}
+                    className="mt-0.5 accent-[#4B5B32]"
+                  />
+                  <span className="text-sm leading-relaxed">
+                    I agree to the{" "}
+                    <Link href="/terms" className="text-primary underline" target="_blank">
+                      Terms & Conditions
+                    </Link>{" "}
+                    and{" "}
+                    <Link href="/privacy" className="text-primary underline" target="_blank">
+                      Privacy Policy
+                    </Link>
+                  </span>
+                </label>
+                <label
+                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${
+                    legalHealthChecked
+                      ? "border-[#4B5B32] bg-[#4B5B32]/5"
+                      : "border-border hover:bg-secondary/30"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={legalHealthChecked}
+                    onChange={(e) => setLegalHealthChecked(e.target.checked)}
+                    className="mt-0.5 accent-[#4B5B32]"
+                  />
+                  <span className="text-sm leading-relaxed">
+                    I confirm I have read and agree to the{" "}
+                    <Link href="/health-declaration" className="text-primary underline" target="_blank">
+                      Health Declaration
+                    </Link>
+                    , and I understand that I participate in all classes and programmes at my own
+                    risk
+                  </span>
+                </label>
+              </div>
+              <Button
+                size="lg"
+                className="w-full"
+                disabled={!legalTermsChecked || !legalHealthChecked}
+                onClick={async () => {
+                  await acceptTermsAndHealth(true, true);
+                  setShowLegalGuard(false);
+                }}
+              >
+                Accept & Continue
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+              <p className="text-muted-foreground text-center text-xs">
+                Both agreements are required to use the studio.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

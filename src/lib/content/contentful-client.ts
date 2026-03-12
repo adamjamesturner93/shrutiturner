@@ -28,6 +28,7 @@ function getCacheTags(contentType?: string): string[] {
 
   if (contentType === "blogPost") return [...base, "content:blog"];
   if (contentType === "classDefinition") return [...base, "content:classes", "content:schedule"];
+  if (contentType === "instructorProfile") return [...base, "content:classes", "content:schedule"];
   if (contentType === "retreatTemplate" || contentType === "retreatVenue") {
     return [...base, "content:retreats"];
   }

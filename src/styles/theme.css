@@ -8,6 +8,10 @@
   --brand-white: #FAFAF8;
   --brand-accent: #4B5B32;
   --brand-accent-light: #B5C49B;
+  --brand-bronze: #BB7345;
+  --brand-bronze-light: #D4956A;
+  --brand-bronze-text: #9B6535;
+  --brand-warm: #F7F4EF;
 
   /* ── Core semantic colours ── */
   --background: #FAFAF8;
@@ -151,6 +155,14 @@
   --color-input-background: var(--input-background);
   --color-switch-background: var(--switch-background);
   --color-ring: var(--ring);
+
+  /* Bronze accent */
+  --color-bronze: var(--brand-bronze);
+  --color-bronze-light: var(--brand-bronze-light);
+  --color-bronze-text: var(--brand-bronze-text);
+
+  /* Warm off-white */
+  --color-warm: var(--brand-warm);
 
   /* Status colours */
   --color-success: var(--success);
@@ -418,7 +430,7 @@
 
   /* Blockquotes — editorial pullquote style */
   .prose blockquote {
-    border-left: 3px solid var(--brand-accent-light);
+    border-left: 3px solid var(--primary);
     padding: 1em 1.5em;
     margin-left: 0;
     margin-right: 0;

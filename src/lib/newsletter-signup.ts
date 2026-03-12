@@ -1,13 +1,12 @@
 "use client";
 
-export type NewsletterList = "newsletter" | "blog";
-
 export interface NewsletterSignupPayload {
   email: string;
   firstName?: string;
-  lists: NewsletterList[];
+  marketingOptIn: boolean;
   consent: boolean;
-  source: "popup" | "inline" | "footer" | "homepage";
+  source: "popup" | "inline" | "footer" | "homepage" | "subscribe";
+  turnstileToken: string;
 }
 
 export async function submitNewsletterSignup(payload: NewsletterSignupPayload): Promise<{

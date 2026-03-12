@@ -12,37 +12,79 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Badge } from "../ui/badge";
 import { Calendar, Clock, Users, Info } from "lucide-react";
-import { classDetails, getTypeColor } from "../../data/schedule-data";
+import { getTypeColor } from "@/lib/classes/type-color";
 
 interface ScheduleClassModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  templates: ClassTemplateOption[];
+  instructors?: InstructorOption[];
+  instructorProfiles?: InstructorProfileOption[];
   onSchedule?: (data: ScheduleClassData) => void;
 }
 
 export interface ScheduleClassData {
-  classTemplateId: string;
+  classTemplateSlug: string;
   date: string;
   time: string;
   maxSpaces: number;
   notes: string;
+  instructorUserId?: string;
+  instructorProfileEntryId?: string;
+  repeatWeeks?: number;
+  weekdays?: number[];
 }
 
-export function ScheduleClassModal({ open, onOpenChange, onSchedule }: ScheduleClassModalProps) {
+export type ClassTemplateOption = {
+  slug: string;
+  name: string;
+  type: string;
+  defaultDay?: string;
+  defaultTime: string;
+  duration: string;
+  level: string;
+  maxSpaces: number;
+};
+
+export type InstructorOption = {
+  id: string;
+  name: string;
+  instructorProfileEntryId?: string | null;
+};
+
+export type InstructorProfileOption = {
+  id: string;
+  name: string;
+  headline?: string;
+  bio?: string;
+};
+
+export function ScheduleClassModal({
+  open,
+  onOpenChange,
+  onSchedule,
+  templates,
+  instructors = [],
+  instructorProfiles = [],
+}: ScheduleClassModalProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [maxSpaces, setMaxSpaces] = useState<number>(0);
   const [notes, setNotes] = useState("");
+  const [repeatWeeks, setRepeatWeeks] = useState(1);
+  const [instructorUserId, setInstructorUserId] = useState("");
+  const [instructorProfileEntryId, setInstructorProfileEntryId] = useState("");
   const [step, setStep] = useState<1 | 2>(1);
 
-  const template = classDetails.find((c) => c.id === selectedTemplate);
+  const template = templates.find((c) => c.slug === selectedTemplate);
+  const selectedProfile = instructorProfiles.find((p) => p.id === instructorProfileEntryId);
 
-  const handleSelectTemplate = (id: string) => {
-    const tmpl = classDetails.find((c) => c.id === id);
-    setSelectedTemplate(id);
+  const handleSelectTemplate = (slug: string) => {
+    const tmpl = templates.find((c) => c.slug === slug);
+    setSelectedTemplate(slug);
     if (tmpl) {
-      setTime(tmpl.time);
+      setTime(tmpl.defaultTime);
       setMaxSpaces(tmpl.maxSpaces);
     }
     setStep(2);
@@ -51,11 +93,15 @@ export function ScheduleClassModal({ open, onOpenChange, onSchedule }: ScheduleC
   const handleSchedule = () => {
     if (!selectedTemplate || !date || !time) return;
     onSchedule?.({
-      classTemplateId: selectedTemplate,
+      classTemplateSlug: selectedTemplate,
       date,
       time,
       maxSpaces,
       notes,
+      instructorUserId: instructorUserId || undefined,
+      instructorProfileEntryId: instructorProfileEntryId || undefined,
+      repeatWeeks,
+      weekdays: [new Date(`${date}T00:00:00`).getDay()],
     });
     // Reset
     setSelectedTemplate("");
@@ -63,6 +109,9 @@ export function ScheduleClassModal({ open, onOpenChange, onSchedule }: ScheduleC
     setTime("");
     setMaxSpaces(0);
     setNotes("");
+    setRepeatWeeks(1);
+    setInstructorUserId("");
+    setInstructorProfileEntryId("");
     setStep(1);
     onOpenChange(false);
   };
@@ -79,6 +128,9 @@ export function ScheduleClassModal({ open, onOpenChange, onSchedule }: ScheduleC
     setTime("");
     setMaxSpaces(0);
     setNotes("");
+    setRepeatWeeks(1);
+    setInstructorUserId("");
+    setInstructorProfileEntryId("");
     onOpenChange(false);
   };
 
@@ -106,10 +158,10 @@ export function ScheduleClassModal({ open, onOpenChange, onSchedule }: ScheduleC
                 you schedule when a class runs.
               </span>
             </div>
-            {classDetails.map((cls) => (
+            {templates.map((cls) => (
               <button
-                key={cls.id}
-                onClick={() => handleSelectTemplate(cls.id)}
+                key={cls.slug}
+                onClick={() => handleSelectTemplate(cls.slug)}
                 className="border-border hover:bg-secondary/30 w-full rounded-lg border p-3 text-left transition-colors hover:border-[#4B5B32]/30"
               >
                 <div className="flex items-center justify-between">
@@ -123,7 +175,7 @@ export function ScheduleClassModal({ open, onOpenChange, onSchedule }: ScheduleC
                     </p>
                   </div>
                   <span className="text-muted-foreground text-xs">
-                    Default: {cls.day} {cls.time}
+                    Default: {cls.defaultDay || "Day"} {cls.defaultTime}
                   </span>
                 </div>
               </button>
@@ -204,6 +256,65 @@ export function ScheduleClassModal({ open, onOpenChange, onSchedule }: ScheduleC
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="class-instructor">Instructor</Label>
+              <select
+                id="class-instructor"
+                value={instructorUserId}
+                onChange={(e) => {
+                  const nextId = e.target.value;
+                  setInstructorUserId(nextId);
+                  const found = instructors.find((i) => i.id === nextId);
+                  if (found?.instructorProfileEntryId) {
+                    setInstructorProfileEntryId(found.instructorProfileEntryId);
+                  }
+                }}
+                className="border-border bg-background w-full rounded-md border px-3 py-2 text-sm"
+              >
+                <option value="">Default (current instructor)</option>
+                {instructors.map((instructor) => (
+                  <option key={instructor.id} value={instructor.id}>
+                    {instructor.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="class-instructor-profile">Instructor profile override</Label>
+              <select
+                id="class-instructor-profile"
+                value={instructorProfileEntryId}
+                onChange={(e) => setInstructorProfileEntryId(e.target.value)}
+                className="border-border bg-background w-full rounded-md border px-3 py-2 text-sm"
+              >
+                <option value="">Use instructor/class default</option>
+                {instructorProfiles.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.name}
+                  </option>
+                ))}
+              </select>
+              {selectedProfile ? (
+                <p className="text-muted-foreground text-xs">
+                  {selectedProfile.headline || selectedProfile.bio || "Profile selected for this session."}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="repeat-weeks">Repeat for weeks</Label>
+              <Input
+                id="repeat-weeks"
+                type="number"
+                min={1}
+                max={52}
+                value={repeatWeeks}
+                onChange={(e) => setRepeatWeeks(Math.max(1, Math.min(52, parseInt(e.target.value) || 1)))}
+              />
+              <p className="text-muted-foreground text-xs">Creates one session per week from the selected start date.</p>
             </div>
           </div>
         )}

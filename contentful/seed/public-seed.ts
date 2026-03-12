@@ -2,6 +2,34 @@ import { blogPosts } from "../../src/data/blog-data.ts";
 import { classDetails } from "../../src/data/schedule-data.ts";
 import { retreats } from "../../src/data/retreat-data.ts";
 
+function compactImageUrl(raw: string): string {
+  try {
+    const url = new URL(raw);
+    // Keep only size/format params and remove tracking/search metadata params.
+    const keepParams = ["w", "q", "fm", "fit", "crop", "cs", "auto"];
+    const next = new URL(`${url.origin}${url.pathname}`);
+    for (const key of keepParams) {
+      const value = url.searchParams.get(key);
+      if (value) {
+        next.searchParams.set(key, value);
+      }
+    }
+
+    const compact = next.toString();
+    if (compact.length <= 255) {
+      return compact;
+    }
+
+    // Last resort: no query params at all.
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    if (raw.length <= 255) {
+      return raw;
+    }
+    return raw.slice(0, 255);
+  }
+}
+
 export const GLOBAL_SEED = {
   contentType: "globalContent",
   entries: [
@@ -34,10 +62,38 @@ export const CLASS_TEMPLATE_SEED = {
     whoItsFor: c.whoItsFor,
     equipment: c.equipment,
     benefits: c.benefits,
+    defaultInstructorProfileSlug: "shruti-turner",
     seoTitle: c.seoTitle,
     seoDescription: c.seoDescription,
     seoKeywords: c.seoKeywords,
   })),
+};
+
+export const INSTRUCTOR_PROFILE_SEED = {
+  contentType: "instructorProfile",
+  entries: [
+    {
+      name: "Shruti Turner",
+      slug: "shruti-turner",
+      headline: "Strength & Yoga Coach for Complex Bodies",
+      bio: "Shruti combines strength coaching, adaptive yoga, and evidence-based rehab principles to support people living with chronic illness, pain, and fluctuating energy. Her approach centers on long-term capacity, nervous system safety, and practical strategies that fit real life.",
+      credentials: ["PhD Biomechanics", "Strength Coach", "Yoga Teacher"],
+      specialties: [
+        "Chronic illness",
+        "Autoimmune conditions",
+        "Hypermobility",
+        "Pain-informed training",
+      ],
+      avatarImageUrl: "https://images.ctfassets.net/vkravdtcwp5q/shruti-placeholder.jpg",
+      avatarAlt: "Shruti Turner",
+      featuredQuote:
+        "Strength and yoga should meet your body where it is today, while building what is possible tomorrow.",
+      active: true,
+      seoTitle: "Shruti Turner - Instructor Profile",
+      seoDescription:
+        "Learn about Shruti Turner's adaptive strength and yoga teaching approach for chronic illness and complex bodies.",
+    },
+  ],
 };
 
 export const TESTIMONIAL_SEED = {
@@ -137,6 +193,8 @@ export const BLOG_SEED = {
   entries: blogPosts.map((p) => ({
     title: p.title,
     slug: p.id,
+    coverImage: compactImageUrl(p.coverImage),
+    coverAlt: p.coverAlt,
     excerpt: p.excerpt,
     content: p.content,
     authorName: p.author,
@@ -348,6 +406,10 @@ export const LEAD_MAGNET_SEED = {
       slug: "5-yoga-poses-strength",
       title: "5 Yoga Poses That Actually Build Strength",
       hookText: 'Get "5 Yoga Poses That Actually Build Strength" - free:',
+      landingHeadline: "5 Yoga Poses That Actually Build Strength",
+      landingDescription:
+        "A short, practical guide for building strength safely, plus research-backed newsletter updates.",
+      ctaLabel: "Get Free Guide",
       emailSubject: "Your free guide: 5 Yoga Poses That Actually Build Strength",
       emailPreviewText: "Here is your welcome gift and how to get started.",
       emailBody:
@@ -419,6 +481,7 @@ export const NEWSLETTER_TEMPLATE_SEED = {
 
 export const SEED_GROUPS = [
   GLOBAL_SEED,
+  INSTRUCTOR_PROFILE_SEED,
   CLASS_TEMPLATE_SEED,
   RETREAT_VENUE_SEED,
   RETREAT_TEMPLATE_SEED,

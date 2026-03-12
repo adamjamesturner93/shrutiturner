@@ -1,11 +1,11 @@
 "use client";
 
 import { AdminLayout } from "../../components/admin-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Calendar,
   Clock,
@@ -14,11 +14,16 @@ import {
   CheckCircle,
   XCircle,
   ChevronRight,
-  Filter,
 } from "lucide-react";
-import { adminClassInstances, type AdminClassInstance } from "../../data/admin-data";
-import { getTypeColor } from "../../data/schedule-data";
-import { ScheduleClassModal } from "../../components/admin/schedule-class-modal";
+import {
+  ScheduleClassModal,
+  type ScheduleClassData,
+  type ClassTemplateOption,
+  type InstructorOption,
+  type InstructorProfileOption,
+} from "../../components/admin/schedule-class-modal";
+import type { AdminClassSessionDto } from "@/lib/classes/types";
+import { getTypeColor } from "@/lib/classes/type-color";
 
 const STATUS_ICON: Record<string, typeof Play> = {
   scheduled: Clock,
@@ -38,23 +43,143 @@ const STATUS_BADGE: Record<
 };
 
 export function AdminClasses() {
+  const [sessions, setSessions] = useState<AdminClassSessionDto[]>([]);
+  const [templates, setTemplates] = useState<ClassTemplateOption[]>([]);
+  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [instructors, setInstructors] = useState<InstructorOption[]>([]);
+  const [instructorProfiles, setInstructorProfiles] = useState<InstructorProfileOption[]>([]);
 
-  const filtered = adminClassInstances.filter((c) => {
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      setLoading(true);
+      try {
+        const [sessionResponse, templateResponse] = await Promise.all([
+          fetch("/api/admin/classes/sessions", { cache: "no-store" }),
+          fetch("/api/content/classes", { cache: "no-store" }),
+        ]);
+        const [instructorResponse, profileResponse] = await Promise.all([
+          fetch("/api/admin/members?role=instructor", { cache: "no-store" }),
+          fetch("/api/admin/instructors/profiles", { cache: "no-store" }),
+        ]);
+        if (sessionResponse.ok) {
+          const payload = (await sessionResponse.json()) as AdminClassSessionDto[];
+          if (active) setSessions(payload);
+        }
+        if (templateResponse.ok) {
+          const payload = (await templateResponse.json()) as {
+            items: Array<{
+              slug: string;
+              name: string;
+              type: string;
+              day?: string;
+              time: string;
+              duration: string;
+              level: string;
+              maxSpaces: number;
+            }>;
+          };
+          if (active) {
+            setTemplates(
+              payload.items.map((item) => ({
+                slug: item.slug,
+                name: item.name,
+                type: item.type,
+                defaultDay: item.day,
+                defaultTime: item.time,
+                duration: item.duration,
+                level: item.level,
+                maxSpaces: item.maxSpaces,
+              }))
+            );
+          }
+        }
+        if (instructorResponse.ok) {
+          const payload = (await instructorResponse.json()) as Array<{
+            id: string;
+            firstName: string;
+            lastName: string;
+            instructorProfileEntryId?: string | null;
+          }>;
+          if (active) {
+            setInstructors(
+              payload.map((row) => ({
+                id: row.id,
+                name: `${row.firstName} ${row.lastName}`.trim() || row.id,
+                instructorProfileEntryId: row.instructorProfileEntryId || null,
+              }))
+            );
+          }
+        }
+        if (profileResponse.ok) {
+          const payload = (await profileResponse.json()) as Array<{
+            id: string;
+            name: string;
+            headline?: string;
+            bio?: string;
+          }>;
+          if (active) {
+            setInstructorProfiles(
+              payload.map((row) => ({
+                id: row.id,
+                name: row.name,
+                headline: row.headline || "",
+                bio: row.bio || "",
+              }))
+            );
+          }
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const filtered = sessions.filter((c) => {
     const matchesStatus = statusFilter === "all" || c.status === statusFilter;
-    const matchesType = typeFilter === "all" || c.classType.toLowerCase() === typeFilter;
+    const matchesType = typeFilter === "all" || c.type.toLowerCase() === typeFilter;
     return matchesStatus && matchesType;
   });
 
-  const scheduled = adminClassInstances.filter((c) => c.status === "scheduled");
-  const completed = adminClassInstances.filter((c) => c.status === "completed");
+  const scheduled = sessions.filter((c) => c.status === "scheduled");
+  const completed = sessions.filter((c) => c.status === "completed");
 
   // Total attendance rate from completed
   const totalBooked = completed.reduce((s, c) => s + c.bookedCount, 0);
-  const totalAttended = completed.reduce((s, c) => s + c.attendedCount, 0);
+  const totalAttended = completed.reduce((s, c) => s + c.bookedCount, 0);
   const attendanceRate = totalBooked > 0 ? Math.round((totalAttended / totalBooked) * 100) : 0;
+
+  const handleSchedule = async (data: ScheduleClassData & { repeatWeeks?: number; weekdays?: number[] }) => {
+    const template = templates.find((cls) => cls.slug === data.classTemplateSlug);
+    if (!template) return;
+    const payload = {
+      classDefinitionSlug: data.classTemplateSlug,
+      startDate: data.date,
+      timeLocal: data.time,
+      durationMinutes: parseInt(template.duration, 10) || 60,
+      capacity: data.maxSpaces,
+      repeatWeeks: data.repeatWeeks || 1,
+      weekdays: data.weekdays || [new Date(`${data.date}T00:00:00`).getDay()],
+      instructorUserId: data.instructorUserId,
+      instructorProfileEntryId: data.instructorProfileEntryId,
+      notes: data.notes,
+    };
+    const response = await fetch("/api/admin/classes/sessions/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (response.ok) {
+      const refreshed = await fetch("/api/admin/classes/sessions", { cache: "no-store" });
+      if (refreshed.ok) setSessions((await refreshed.json()) as AdminClassSessionDto[]);
+    }
+  };
 
   return (
     <AdminLayout title="Classes - Admin">
@@ -66,6 +191,7 @@ export function AdminClasses() {
             <p className="text-muted-foreground mt-1">
               {scheduled.length} upcoming · {completed.length} completed this period
             </p>
+            {loading ? <p className="text-muted-foreground mt-1 text-sm">Loading...</p> : null}
           </div>
           <Button
             onClick={() => setShowScheduleModal(true)}
@@ -79,9 +205,10 @@ export function AdminClasses() {
         <ScheduleClassModal
           open={showScheduleModal}
           onOpenChange={setShowScheduleModal}
-          onSchedule={(data) => {
-            console.log("Scheduled class:", data);
-          }}
+          templates={templates}
+          instructors={instructors}
+          instructorProfiles={instructorProfiles}
+          onSchedule={handleSchedule}
         />
 
         {/* Quick stats */}
@@ -167,11 +294,15 @@ export function AdminClasses() {
   );
 }
 
-function ClassRow({ classInstance }: { classInstance: AdminClassInstance }) {
-  const statusBadge = STATUS_BADGE[classInstance.status];
+function ClassRow({ classInstance }: { classInstance: AdminClassSessionDto }) {
+  const statusBadge = STATUS_BADGE[classInstance.status] || STATUS_BADGE.scheduled;
   const StatusIcon = STATUS_ICON[classInstance.status];
-  const typeColor = getTypeColor(classInstance.classType);
-  const fillPercent = Math.round((classInstance.bookedCount / classInstance.maxSpaces) * 100);
+  const typeColor = getTypeColor(classInstance.type as "Yoga" | "Strength" | "HIIT");
+  const fillPercent = classInstance.capacity > 0 ? Math.round((classInstance.bookedCount / classInstance.capacity) * 100) : 0;
+  const startsAt = new Date(classInstance.startsAtUtc);
+  const day = startsAt.toLocaleDateString("en-GB", { weekday: "long" });
+  const date = startsAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  const time = startsAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
   return (
     <Link href={`/admin/classes/${classInstance.id}`}>
@@ -190,13 +321,12 @@ function ClassRow({ classInstance }: { classInstance: AdminClassInstance }) {
             {/* Info */}
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm">{classInstance.className}</p>
-                <Badge className={typeColor}>{classInstance.classType}</Badge>
+                <p className="text-sm">{classInstance.title}</p>
+                <Badge className={typeColor}>{classInstance.type}</Badge>
                 <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
               </div>
               <p className="text-muted-foreground mt-1 text-xs">
-                {classInstance.day} {classInstance.date} · {classInstance.time} ·{" "}
-                {classInstance.duration}
+                {day} {date} · {time} · {classInstance.durationMinutes} min
               </p>
             </div>
 
@@ -204,7 +334,7 @@ function ClassRow({ classInstance }: { classInstance: AdminClassInstance }) {
             <div className="hidden w-32 md:block">
               <div className="mb-1 flex justify-between text-xs">
                 <span>
-                  {classInstance.bookedCount}/{classInstance.maxSpaces}
+                  {classInstance.bookedCount}/{classInstance.capacity}
                 </span>
                 <span className="text-muted-foreground">{fillPercent}%</span>
               </div>

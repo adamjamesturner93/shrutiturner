@@ -58,6 +58,9 @@ export interface LeadMagnetContent {
   slug: string;
   title: string;
   hookText: string;
+  landingHeadline?: string;
+  landingDescription?: string;
+  ctaLabel?: string;
   emailSubject: string;
   emailPreviewText?: string;
   emailBody: string;
@@ -131,6 +134,8 @@ export interface BlogPostContent {
   date: string;
   tags: string[];
   readTime: string;
+  coverImage: string;
+  coverAlt: string;
   seoTitle?: string;
   seoDescription?: string;
 }
@@ -153,9 +158,26 @@ export interface ClassDefinitionContent {
   equipment: string[];
   benefits: string[];
   instructor: string;
+  defaultInstructorProfileEntryId?: string;
   seoTitle: string;
   seoDescription: string;
   seoKeywords: string;
+}
+
+export interface InstructorProfileContent {
+  id: string;
+  slug: string;
+  name: string;
+  headline?: string;
+  bio: string;
+  credentials: string[];
+  specialties: string[];
+  avatarImageUrl?: string;
+  avatarAlt?: string;
+  featuredQuote?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  active: boolean;
 }
 
 export interface TestimonialContent {

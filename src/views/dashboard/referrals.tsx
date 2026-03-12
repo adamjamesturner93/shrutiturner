@@ -4,24 +4,50 @@ import { DashboardLayout } from "../../components/dashboard-layout";
 import { useAuth } from "../../context/auth-context";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Gift, Copy, Check, Users, CreditCard, ArrowRight, Wallet } from "lucide-react";
 import Link from "next/link";
+import type { ReferralSummaryDto } from "@/lib/api/types";
 
 export function DashboardReferrals() {
-  const {
-    referralCode,
-    referralCount,
-    referralEarned,
-    referralBalance,
-    referralAppliesTo,
-    membership,
-  } = useAuth();
+  const { referralAppliesTo, membership } = useAuth();
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [summary, setSummary] = useState<ReferralSummaryDto | null>(null);
 
-  const referralLink = `https://shrutiturner.com/r/${referralCode}`;
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch("/api/me/referrals", { cache: "no-store" });
+        if (!res.ok) {
+          throw new Error("Failed to load referral data.");
+        }
+        const data = (await res.json()) as ReferralSummaryDto;
+        if (active) setSummary(data);
+      } catch (e) {
+        if (active) setError(e instanceof Error ? e.message : "Failed to load referral data.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const referralCode = summary?.referralCode || "";
+  const referralLink = summary?.referralLink || "";
+  const referralCount = summary?.referralCount || 0;
+  const referralEarned = Math.floor((summary?.referralEarnedPence || 0) / 100);
+  const referralBalance = Math.floor((summary?.referralBalancePence || 0) / 100);
 
   const handleCopy = () => {
+    if (!referralLink) return;
     try {
       // Fallback: use a temporary textarea + execCommand
       const textarea = document.createElement("textarea");
@@ -43,8 +69,7 @@ export function DashboardReferrals() {
     <DashboardLayout title="Referrals - Private Studio">
       <h1 className="mb-2 text-3xl">Refer a Friend</h1>
       <p className="text-muted-foreground mb-8">
-        Share the love. When a friend joins and makes their first purchase, you both receive £10
-        toward your next payment.
+        Share your link. Your friend gets one free class gift, and you receive £10 after their first paid purchase.
       </p>
 
       {/* How it works */}
@@ -55,9 +80,9 @@ export function DashboardReferrals() {
               <Gift className="h-6 w-6 text-[#4B5B32]" />
             </div>
             <h3 className="text-lg">You Give</h3>
-            <p className="text-2xl text-[#4B5B32]">£10 off</p>
+            <p className="text-2xl text-[#4B5B32]">1 free class</p>
             <p className="text-muted-foreground text-sm">
-              Your friend receives £10 off their first purchase
+              Your friend receives one promo class credit
             </p>
           </div>
           <div className="space-y-2">
@@ -66,7 +91,7 @@ export function DashboardReferrals() {
             </div>
             <h3 className="text-lg">They Join</h3>
             <p className="text-muted-foreground mt-4 text-sm">
-              Your friend signs up and makes their first purchase — a membership or class pack
+              Your friend claims your referral and later makes their first paid purchase
             </p>
           </div>
           <div className="space-y-2">
@@ -102,9 +127,12 @@ export function DashboardReferrals() {
           </Button>
         </div>
         <p className="text-muted-foreground mt-3 text-xs">
-          Share this link with friends. When they sign up and purchase through it, you'll both
-          receive £10 off.
+          Share this link with friends. They get a free class gift right away, and you get £10
+          when they complete their first paid purchase.
         </p>
+        {referralCode ? (
+          <p className="text-muted-foreground mt-2 text-xs">Code: {referralCode}</p>
+        ) : null}
       </div>
 
       {/* Stats */}
@@ -144,41 +172,37 @@ export function DashboardReferrals() {
       {/* Referral history */}
       <div className="bg-background rounded-lg border p-6">
         <h2 className="mb-4 text-xl">Referral History</h2>
-        <div className="space-y-3 text-sm">
-          <div className="flex items-center justify-between border-b py-2">
-            <div>
-              <p>Emma T.</p>
-              <p className="text-muted-foreground text-xs">Joined 14 Feb 2026</p>
-            </div>
-            <div className="text-right">
-              <span className="text-[#4B5B32]">+£10</span>
-              <p className="text-muted-foreground text-xs">Available</p>
-            </div>
+        {loading ? <p className="text-muted-foreground text-sm">Loading referral history...</p> : null}
+        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {!loading && !error ? (
+          <div className="space-y-3 text-sm">
+            {summary?.history?.length ? (
+              summary.history.map((item, index) => (
+                <div
+                  key={item.id}
+                  className={`flex items-center justify-between py-2 ${
+                    index < summary.history.length - 1 ? "border-b" : ""
+                  }`}
+                >
+                  <div>
+                    <p>{item.friend}</p>
+                    <p className="text-muted-foreground text-xs">
+                      Joined {new Date(item.joinedAt).toLocaleDateString("en-GB")}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className={item.amountPence > 0 ? "text-[#4B5B32]" : "text-muted-foreground"}>
+                      {item.amountPence >= 0 ? "+" : "-"}£{Math.abs(item.amountPence) / 100}
+                    </span>
+                    <p className="text-muted-foreground text-xs">{item.status.replaceAll("_", " ")}</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-muted-foreground text-sm">No referrals yet.</p>
+            )}
           </div>
-          <div className="flex items-center justify-between border-b py-2">
-            <div>
-              <p>Marcus L.</p>
-              <p className="text-muted-foreground text-xs">Joined 3 Jan 2026</p>
-            </div>
-            <div className="text-right">
-              <span className="text-muted-foreground">+£10</span>
-              <p className="text-muted-foreground text-xs">Applied to Jan renewal</p>
-            </div>
-          </div>
-          <div className="flex items-center justify-between py-2">
-            <div>
-              <p>Priya K.</p>
-              <p className="text-muted-foreground text-xs">Joined 12 Dec 2025</p>
-            </div>
-            <div className="text-right">
-              <span className="text-muted-foreground">+£10</span>
-              <p className="text-muted-foreground text-xs">Applied to Dec renewal</p>
-            </div>
-          </div>
-        </div>
-        <p className="text-muted-foreground mt-4 text-xs italic">
-          [Placeholder data — Supabase integration required]
-        </p>
+        ) : null}
       </div>
     </DashboardLayout>
   );

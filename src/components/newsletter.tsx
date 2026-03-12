@@ -5,12 +5,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { useNewsletterSignupCopy } from "@/lib/use-newsletter-signup-copy";
 import { submitNewsletterSignup } from "@/lib/newsletter-signup";
-
-/* ──────────── Types ──────────── */
-
-export type SubscriptionType = "newsletter" | "blog" | "both";
-
-/* ──────────── Popup (scroll / timer triggered) ──────────── */
+import { TurnstileWidget } from "@/components/turnstile-widget";
 
 interface NewsletterPopupProps {
   isOpen: boolean;
@@ -20,9 +15,8 @@ interface NewsletterPopupProps {
 export function NewsletterPopup({ isOpen, onClose }: NewsletterPopupProps) {
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
-  const [subscribeNewsletter, setSubscribeNewsletter] = useState(false);
-  const [subscribeBlog, setSubscribeBlog] = useState(false);
   const [consent, setConsent] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -30,17 +24,15 @@ export function NewsletterPopup({ isOpen, onClose }: NewsletterPopupProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const lists: string[] = [];
-    if (subscribeNewsletter) lists.push("newsletter");
-    if (subscribeBlog) lists.push("blog");
     setError(null);
     setIsSubmitting(true);
     const result = await submitNewsletterSignup({
       email,
       firstName,
-      lists: lists as Array<"newsletter" | "blog">,
+      marketingOptIn: consent,
       consent,
       source: "popup",
+      turnstileToken,
     });
     setIsSubmitting(false);
     if (!result.ok) {
@@ -55,8 +47,7 @@ export function NewsletterPopup({ isOpen, onClose }: NewsletterPopupProps) {
       setEmail("");
       setFirstName("");
       setConsent(false);
-      setSubscribeNewsletter(false);
-      setSubscribeBlog(false);
+      setTurnstileToken("");
     }, 2000);
   };
 
@@ -105,49 +96,17 @@ export function NewsletterPopup({ isOpen, onClose }: NewsletterPopupProps) {
                 />
               </div>
 
-              {/* Subscription preferences */}
-              <div className="bg-secondary/20 space-y-3 rounded-lg p-4">
-                <p className="text-muted-foreground text-sm">I&apos;d like to receive:</p>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={subscribeNewsletter}
-                    onChange={(e) => setSubscribeNewsletter(e.target.checked)}
-                    className="h-4 w-4 accent-[#4B5B32]"
-                  />
-                  <div>
-                    <span className="text-sm">Newsletter</span>
-                    <p className="text-muted-foreground text-xs">
-                      Monthly insights, training tips, and the lead magnet
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={subscribeBlog}
-                    onChange={(e) => setSubscribeBlog(e.target.checked)}
-                    className="h-4 w-4 accent-[#4B5B32]"
-                  />
-                  <div>
-                    <span className="text-sm">Blog updates</span>
-                    <p className="text-muted-foreground text-xs">
-                      New article notifications (1-2 per month)
-                    </p>
-                  </div>
-                </div>
-              </div>
-
               <Button
                 type="submit"
                 size="lg"
                 className="w-full"
-                disabled={isSubmitting || (!subscribeNewsletter && !subscribeBlog)}
+                disabled={isSubmitting || !turnstileToken || !consent}
               >
                 {isSubmitting ? "Subscribing..." : signupCopy.buttonLabel}
               </Button>
+              <TurnstileWidget onTokenChange={setTurnstileToken} />
 
-              <label className="flex cursor-pointer items-start gap-2 text-xs">
+              <label className="bg-secondary/20 flex cursor-pointer items-start gap-3 rounded-lg p-4 text-sm">
                 <input
                   type="checkbox"
                   checked={consent}
@@ -156,7 +115,7 @@ export function NewsletterPopup({ isOpen, onClose }: NewsletterPopupProps) {
                   required
                 />
                 <span className="text-muted-foreground">
-                  I consent to receiving marketing emails and understand I can unsubscribe anytime.
+                  I want newsletter and update emails. I can unsubscribe anytime.
                 </span>
               </label>
               <p className="text-muted-foreground text-center text-xs">{signupCopy.consentText}</p>
@@ -177,28 +136,11 @@ export function NewsletterPopup({ isOpen, onClose }: NewsletterPopupProps) {
   );
 }
 
-/* ──────────── Inline (used on blog page) ──────────── */
-
-interface NewsletterInlineProps {
-  /** Which list to subscribe to. Defaults to "both". */
-  defaultList?: SubscriptionType;
-  /** Show checkboxes for choosing lists */
-  showListOptions?: boolean;
-}
-
-export function NewsletterInline({
-  defaultList = "both",
-  showListOptions = false,
-}: NewsletterInlineProps) {
+export function NewsletterInline() {
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
-  const [subscribeNewsletter, setSubscribeNewsletter] = useState(
-    defaultList === "newsletter" || defaultList === "both"
-  );
-  const [subscribeBlog, setSubscribeBlog] = useState(
-    defaultList === "blog" || defaultList === "both"
-  );
   const [consent, setConsent] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -206,17 +148,15 @@ export function NewsletterInline({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const lists: string[] = [];
-    if (subscribeNewsletter) lists.push("newsletter");
-    if (subscribeBlog) lists.push("blog");
     setError(null);
     setIsSubmitting(true);
     const result = await submitNewsletterSignup({
       email,
       firstName,
-      lists: lists as Array<"newsletter" | "blog">,
+      marketingOptIn: consent,
       consent,
       source: "inline",
+      turnstileToken,
     });
     setIsSubmitting(false);
     if (!result.ok) {
@@ -230,6 +170,7 @@ export function NewsletterInline({
       setEmail("");
       setFirstName("");
       setConsent(false);
+      setTurnstileToken("");
     }, 3000);
   };
 
@@ -263,44 +204,12 @@ export function NewsletterInline({
         />
       </div>
 
-      {showListOptions && (
-        <div className="flex flex-wrap justify-center gap-4">
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={subscribeNewsletter}
-              onChange={(e) => setSubscribeNewsletter(e.target.checked)}
-              className="h-4 w-4 accent-[#4B5B32]"
-            />
-            Newsletter
-          </label>
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={subscribeBlog}
-              onChange={(e) => setSubscribeBlog(e.target.checked)}
-              className="h-4 w-4 accent-[#4B5B32]"
-            />
-            Blog updates
-          </label>
-        </div>
-      )}
-
-      <Button
-        type="submit"
-        size="lg"
-        className="w-full"
-        disabled={isSubmitting || (!subscribeNewsletter && !subscribeBlog)}
-      >
-        {isSubmitting
-          ? "Subscribing..."
-          : defaultList === "blog"
-          ? "Subscribe to Blog Updates"
-          : defaultList === "newsletter"
-            ? "Subscribe to Newsletter"
-            : "Subscribe"}
+      <Button type="submit" size="lg" className="w-full" disabled={isSubmitting || !turnstileToken || !consent}>
+        {isSubmitting ? "Subscribing..." : signupCopy.buttonLabel}
       </Button>
-      <label className="flex cursor-pointer items-start gap-2 text-sm">
+      <TurnstileWidget onTokenChange={setTurnstileToken} />
+
+      <label className="bg-secondary/20 flex cursor-pointer items-start gap-3 rounded-lg p-3 text-sm">
         <input
           type="checkbox"
           checked={consent}
@@ -309,12 +218,10 @@ export function NewsletterInline({
           required
         />
         <span className="text-muted-foreground">
-          I consent to receiving marketing emails and can unsubscribe anytime.
+          I want newsletter and update emails. I can unsubscribe anytime.
         </span>
       </label>
-      <p className="text-muted-foreground text-center text-sm">
-        {signupCopy.consentText}
-      </p>
+      <p className="text-muted-foreground text-center text-sm">{signupCopy.consentText}</p>
       {error ? <p className="text-center text-xs text-red-600">{error}</p> : null}
     </form>
   );

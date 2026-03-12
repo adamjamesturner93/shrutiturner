@@ -14,7 +14,7 @@ export function ReferralLandingPage() {
     <Layout>
       <SEO
         title="You've Been Invited - Shruti Turner"
-        description="You've been invited to try a class with Shruti Turner. Get £10 off your first purchase."
+        description="You've been invited to try a class with Shruti Turner. Claim your free class gift."
         noIndex
       />
 
@@ -35,30 +35,29 @@ export function ReferralLandingPage() {
           </div>
 
           <div className="space-y-4 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 p-6">
-            <p className="text-2xl text-[#4B5B32]">£10 off your first purchase</p>
+            <p className="text-2xl text-[#4B5B32]">Free class gift</p>
             <p className="text-muted-foreground">
-              Applied automatically when you sign up — whether you choose a membership, class pack,
-              or drop-in.
+              Sign in through this link and we'll add one free class credit to your account.
             </p>
             <ul className="text-muted-foreground mx-auto max-w-xs space-y-2 text-left text-sm">
               <li className="flex items-start gap-2">
                 <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#4B5B32]" />
-                <span>Use toward any class — yoga, strength, or HIIT</span>
+                <span>Use on any live class - yoga, strength, or cardio</span>
               </li>
               <li className="flex items-start gap-2">
                 <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#4B5B32]" />
-                <span>No commitment, no subscription required</span>
+                <span>No commitment required</span>
               </li>
               <li className="flex items-start gap-2">
                 <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#4B5B32]" />
-                <span>All classes adapted for chronic illness</span>
+                <span>If you later make your first purchase, your referrer earns £10</span>
               </li>
             </ul>
           </div>
 
           <Link href={`/login?ref=${code}`}>
             <Button size="lg" className="px-8 text-lg">
-              Claim Your £10 Off
+              Claim Your Free Class
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </Link>
@@ -72,7 +71,7 @@ export function ReferralLandingPage() {
             <Link href="/privacy" className="underline">
               Privacy Policy
             </Link>
-            . Your referral discount will be applied automatically to your first purchase.
+            . Your free class gift is applied once after sign-in.
           </p>
         </div>
       </section>

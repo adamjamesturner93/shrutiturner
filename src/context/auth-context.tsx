@@ -1,5 +1,15 @@
-import { createContext, useContext, useState, ReactNode, useCallback, useMemo } from "react";
-import { classDetails, type ClassDetail } from "../data/schedule-data";
+import {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useCallback,
+  useMemo,
+  useEffect,
+  useRef,
+} from "react";
+import { signOut as nextAuthSignOut, useSession } from "next-auth/react";
+import type { MembershipStateDto } from "@/lib/api/types";
 
 /* ──────────── Types ──────────── */
 
@@ -68,7 +78,7 @@ export interface AttendanceRecord {
 }
 
 export interface Membership {
-  plan: "steady" | "committed" | "unlimited" | "instructor" | null;
+  plan: "movewell" | "instructor" | null;
   label: string;
   renewalDate: string;
   classesPerWeek: number;
@@ -90,9 +100,18 @@ export interface UserProfile {
   ethnicity: string | null;
   timezone: string;
   dateFormat: string;
+  hasAgreedToTerms: boolean;
+  hasAgreedToHealth: boolean;
+  termsAgreedAt: string | null;
+  healthAgreedAt: string | null;
+  heardAboutSource: string | null;
+  heardAboutDetail: string | null;
 }
 
 export interface AuthState {
+  authStatus: "loading" | "authenticated" | "unauthenticated";
+  isProfileLoading: boolean;
+  isSigningOut: boolean;
   isAuthenticated: boolean;
   user: UserProfile | null;
   membership: Membership | null;
@@ -118,15 +137,18 @@ export interface AuthState {
 
 interface AuthContextValue extends AuthState {
   login: (email: string) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   bookClass: (classSlug: string) => { success: boolean; message: string; creditUsed?: CreditItem };
   cancelBooking: (bookingId: string) => void;
   canBook: () => { allowed: boolean; reason?: string };
   purchaseCredits: (count: number) => void;
   purchaseDropIn: () => void;
-  upgradeMembership: (plan: "steady" | "committed" | "unlimited") => void;
+  upgradeMembership: (plan: "movewell") => void;
   cancelMembership: () => void;
   completeOnboarding: () => void;
+  acceptTermsAndHealth: (terms: boolean, health: boolean) => Promise<void>;
+  saveOnboardingSource: (source: string, detail?: string) => Promise<void>;
+  refreshAccountProfile: () => Promise<void>;
   isClassBooked: (classSlug: string) => boolean;
   getBookingForClass: (classSlug: string) => Booking | undefined;
   /** Total purchased class credits available */
@@ -155,7 +177,7 @@ interface AuthContextValue extends AuthState {
     consumesCredit: boolean;
   };
   /**
-   * Mark a recording as watched. For capped memberships (steady/committed),
+   * Mark a recording as watched. For capped memberships,
    * the first watch of a unique class consumes a weekly class credit.
    * Repeat watches of the same class are free.
    */
@@ -169,6 +191,8 @@ interface AuthContextValue extends AuthState {
   };
   /** Check if a recording has already been watched (repeat is free) */
   hasWatchedRecording: (classSlug: string) => boolean;
+  /** Reload membership/credits/referral snapshot from backend. */
+  refreshMembershipState: () => Promise<void>;
   /** Submit pre-class check-in for a booking */
   submitPreClassCheckIn: (bookingId: string, data: AttendanceRecord["preClass"]) => void;
   /** Submit post-class feedback for an attendance record */
@@ -187,36 +211,45 @@ interface AuthContextValue extends AuthState {
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
+type AccountAndReferralResponse = {
+  profile?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    dob?: string | null;
+    gender?: string | null;
+    ethnicity?: string | null;
+    timezone?: string;
+    dateFormat?: string;
+    isOnboarded?: boolean;
+    hasAgreedToTerms?: boolean;
+    hasAgreedToHealth?: boolean;
+    termsAgreedAt?: string | null;
+    healthAgreedAt?: string | null;
+    heardAboutSource?: string | null;
+    heardAboutDetail?: string | null;
+  };
+  referral?: {
+    referralCode?: string;
+    referralCount?: number;
+    referralEarnedPence?: number;
+    referralBalancePence?: number;
+  };
+};
+
 /* ──────────── Pricing config ──────────── */
 
 export const PLAN_PRICES: Record<string, number> = {
-  steady: 49,
-  committed: 65,
-  unlimited: 79,
+  movewell: 29,
+  annual: 290,
 };
 
 export const BUNDLE_PRICES: Record<number, number> = {
-  1: 12,
-  3: 30,
-  10: 90,
+  1: 9,
+  3: 24,
+  10: 70,
 };
 
-/* ──────────── Mock data ──────────── */
-
-const MOCK_USER: UserProfile = {
-  id: "usr_001",
-  firstName: "Sarah",
-  lastName: "Chen",
-  email: "sarah.chen@example.com",
-  avatarInitials: "SC",
-  joinedDate: "2025-11-15",
-  isOnboarded: true,
-  dob: "1985-05-15",
-  gender: "Female",
-  ethnicity: "Asian",
-  timezone: "Europe/London",
-  dateFormat: "DD/MM/YYYY",
-};
+/* ──────────── Defaults ──────────── */
 
 /** Instructor / admin mock user */
 const MOCK_ADMIN_USER: UserProfile = {
@@ -232,21 +265,15 @@ const MOCK_ADMIN_USER: UserProfile = {
   ethnicity: "White",
   timezone: "Europe/London",
   dateFormat: "DD/MM/YYYY",
+  hasAgreedToTerms: true,
+  hasAgreedToHealth: true,
+  termsAgreedAt: null,
+  healthAgreedAt: null,
+  heardAboutSource: null,
+  heardAboutDetail: null,
 };
 
-/** Email addresses with instructor access (in production: role from Supabase) */
-const ADMIN_EMAILS = ["shruti@shrutiturner.com"];
-
-const MOCK_MEMBERSHIP: Membership = {
-  plan: "committed",
-  label: "Committed (3/week)",
-  renewalDate: "2026-03-22",
-  classesPerWeek: 3,
-  classesUsedThisWeek: 1,
-  price: 65,
-};
-
-/** Instructor mock membership — unlimited, no price */
+/** Instructor mock membership */
 const MOCK_INSTRUCTOR_MEMBERSHIP: Membership = {
   plan: "instructor",
   label: "Unlimited (instructor)",
@@ -256,159 +283,87 @@ const MOCK_INSTRUCTOR_MEMBERSHIP: Membership = {
   price: 0,
 };
 
-const MOCK_CREDITS: CreditItem[] = [
-  {
-    id: "cred_p1",
-    type: "purchased",
-    label: "Class credit",
-    sourceId: "purchase_10pack_jan",
-    sourceLabel: "10-class bundle (Jan 2026)",
-    expiresAt: "2026-03-12",
-  },
-  {
-    id: "cred_p2",
-    type: "purchased",
-    label: "Class credit",
-    sourceId: "purchase_10pack_jan",
-    sourceLabel: "10-class bundle (Jan 2026)",
-    expiresAt: "2026-03-12",
-  },
-];
+function buildAvatarInitials(firstName: string, lastName: string, fallback?: string) {
+  const fromNames = `${firstName[0] || ""}${lastName[0] || ""}`.toUpperCase();
+  if (fromNames) return fromNames;
+  return (fallback || "?").slice(0, 2).toUpperCase();
+}
 
-const MOCK_BOOKINGS: Booking[] = [
-  {
-    id: "bk_001",
-    classSlug: "adaptive-yoga-flow",
-    className: "Adaptive Yoga Flow",
-    classType: "Yoga",
-    day: "Monday",
-    time: "09:00",
-    duration: "60 min",
-    creditUsed: {
-      id: "cred_m1",
-      type: "membership",
-      label: "Committed membership",
-      sourceId: "membership",
-      sourceLabel: "Committed membership",
-    },
-    bookedAt: "2026-02-18T10:30:00Z",
-  },
-  {
-    id: "bk_002",
-    classSlug: "strength-foundations",
-    className: "Strength Foundations",
-    classType: "Strength",
-    day: "Monday",
-    time: "18:30",
-    duration: "45 min",
-    creditUsed: {
-      id: "cred_m2",
-      type: "membership",
-      label: "Committed membership",
-      sourceId: "membership",
-      sourceLabel: "Committed membership",
-    },
-    bookedAt: "2026-02-19T14:00:00Z",
-  },
-];
-
-const MOCK_ATTENDANCE: AttendanceRecord[] = [
-  {
-    id: "att_001",
-    classSlug: "adaptive-yoga-flow",
-    className: "Adaptive Yoga Flow",
-    classType: "Yoga",
-    date: "2026-02-24",
-    time: "09:00",
-    postClass: { feeling: "great", notes: "Felt really mobile today" },
-  },
-  {
-    id: "att_002",
-    classSlug: "strength-foundations",
-    className: "Strength Foundations",
-    classType: "Strength",
-    date: "2026-02-24",
-    time: "18:30",
-    preClass: { energyLevel: 3, flareToday: false },
-    postClass: { feeling: "good" },
-  },
-  {
-    id: "att_003",
-    classSlug: "restorative-yoga",
-    className: "Restorative Yoga",
-    classType: "Yoga",
-    date: "2026-02-19",
-    time: "09:00",
-    postClass: { feeling: "great" },
-  },
-  {
-    id: "att_004",
-    classSlug: "adaptive-yoga-flow",
-    className: "Adaptive Yoga Flow",
-    classType: "Yoga",
-    date: "2026-02-17",
-    time: "09:00",
-    preClass: { energyLevel: 2, flareToday: true, notes: "Wrists sore" },
-    postClass: { feeling: "okay" },
-  },
-  {
-    id: "att_005",
-    classSlug: "hiit-complex-bodies",
-    className: "HIIT for Complex Bodies",
-    classType: "HIIT",
-    date: "2026-02-19",
-    time: "19:00",
-    preClass: { energyLevel: 4, flareToday: false },
-    postClass: { feeling: "great" },
-  },
-  {
-    id: "att_006",
-    classSlug: "strength-foundations",
-    className: "Strength Foundations",
-    classType: "Strength",
-    date: "2026-02-17",
-    time: "18:30",
-  },
-  {
-    id: "att_007",
-    classSlug: "chair-based-strength",
-    className: "Chair-Based Strength",
-    classType: "Strength",
-    date: "2026-02-12",
-    time: "10:00",
-    postClass: { feeling: "good" },
-  },
-  {
-    id: "att_008",
-    classSlug: "adaptive-yoga-flow",
-    className: "Adaptive Yoga Flow",
-    classType: "Yoga",
-    date: "2026-02-10",
-    time: "09:00",
-    postClass: { feeling: "good" },
-  },
-];
+function splitName(name: string | null | undefined) {
+  const trimmed = (name || "").trim();
+  if (!trimmed) return { firstName: "", lastName: "" };
+  const [firstName, ...rest] = trimmed.split(/\s+/);
+  return { firstName, lastName: rest.join(" ") };
+}
 
 /* ──────────── Provider ──────────── */
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { data: session, status: authStatus } = useSession();
+  const isAuthenticated = authStatus === "authenticated" && Boolean(session?.user);
+  const isAdmin = session?.user?.role === "admin";
+  const sessionUserId = session?.user?.id || "";
+  const sessionUserEmail = session?.user?.email || "";
+  const sessionUserName = session?.user?.name || "";
+  const hydratedUserIdRef = useRef<string>("");
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [membership, setMembership] = useState<Membership | null>(null);
   const [credits, setCredits] = useState<CreditItem[]>([]);
+  const [creditBalance, setCreditBalance] = useState(0);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [recordingWatches, setRecordingWatches] = useState<RecordingWatch[]>([]);
-  const [referralCode] = useState("SARAH10");
-  const [referralCount] = useState(3);
-  const [referralEarned] = useState(30);
+  const [referralCode, setReferralCode] = useState("SARAH10");
+  const [referralCount, setReferralCount] = useState(0);
+  const [referralEarned, setReferralEarned] = useState(0);
   // £10 unspent — e.g. earned £30 total, £20 applied to past renewals
   const [referralBalance, setReferralBalance] = useState(0);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [isCoachingClient, setIsCoachingClient] = useState(false);
   const [enrolledProgramIds, setEnrolledProgramIds] = useState<string[]>([]);
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
 
-  const totalCredits = credits.length;
+  const applyMembershipState = useCallback((state: MembershipStateDto) => {
+    if (state.membership) {
+      setMembership({
+        plan: state.membership.plan,
+        label: state.membership.label,
+        renewalDate: state.membership.renewalDate || "",
+        classesPerWeek: state.membership.classesPerWeek,
+        classesUsedThisWeek: state.membership.classesUsedThisWeek,
+        price: Math.floor(state.membership.pricePence / 100),
+      });
+    } else {
+      setMembership(null);
+    }
+
+    const nextCredits: CreditItem[] = state.credits.summary.flatMap((group) =>
+      Array.from({ length: Math.max(0, group.remaining) }).map((_, i) => ({
+        id: `${group.sourceId}_${i}`,
+        type: "purchased" as const,
+        label: "Class credit",
+        sourceId: group.sourceId,
+        sourceLabel: group.sourceLabel,
+        expiresAt: group.expiresAt || undefined,
+      }))
+    );
+    setCredits(nextCredits);
+    setCreditBalance(state.credits.balance || 0);
+    setReferralBalance(Math.floor((state.referral.balancePence || 0) / 100));
+  }, []);
+
+  const loadMembershipState = useCallback(async () => {
+    try {
+      const response = await fetch("/api/me/membership", { cache: "no-store" });
+      if (!response.ok) return;
+      const data = (await response.json()) as MembershipStateDto;
+      applyMembershipState(data);
+    } catch {
+      // Leave fallback local state in place.
+    }
+  }, [applyMembershipState]);
+
+  const totalCredits = creditBalance;
   const membershipClassesRemaining = membership
     ? membership.classesPerWeek - membership.classesUsedThisWeek
     : 0;
@@ -446,39 +401,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * Rules to be defined with PO. Currently suggests a recovery class
    * if the user has attended strength recently, or a strength class otherwise.
    */
-  const getAdaptiveSuggestion = useCallback(() => {
-    // Placeholder logic — replace with PO-defined rules
-    const recentTypes = [...attendanceHistory.slice(-3), ...bookings].map((r) => r.classType);
-    const hasRecentStrength = recentTypes.includes("Strength") || recentTypes.includes("HIIT");
-    if (hasRecentStrength) {
-      const yogaClass = classDetails.find(
-        (c) => c.type === "Yoga" && c.slug === "restorative-yoga"
-      );
-      if (yogaClass) {
-        return {
-          classSlug: yogaClass.slug,
-          className: yogaClass.name,
-          day: yogaClass.day,
-          time: yogaClass.time,
-          reason:
-            "Based on your recent strength sessions, a recovery class might feel good this week.",
-        };
-      }
-    }
-    const strengthClass = classDetails.find(
-      (c) => c.type === "Strength" && c.slug === "strength-foundations"
-    );
-    if (strengthClass) {
-      return {
-        classSlug: strengthClass.slug,
-        className: strengthClass.name,
-        day: strengthClass.day,
-        time: strengthClass.time,
-        reason: "Building consistency with strength training helps build long-term capacity.",
-      };
-    }
-    return null;
-  }, [attendanceHistory, bookings]);
+  const getAdaptiveSuggestion = useCallback(() => null, []);
 
   const submitPreClassCheckIn = useCallback(
     (bookingId: string, data: AttendanceRecord["preClass"]) => {
@@ -532,54 +455,174 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return "£10 off your next class pack or membership purchase";
   }, [referralBalance, membership]);
 
-  const login = useCallback((email: string) => {
-    const isAdminLogin = ADMIN_EMAILS.includes(email.toLowerCase().trim());
-    // Auto-detect timezone from browser
-    const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London";
-    setIsAuthenticated(true);
-    setIsAdmin(isAdminLogin);
-
-    if (isAdminLogin) {
-      setUser(MOCK_ADMIN_USER);
-      setMembership(MOCK_INSTRUCTOR_MEMBERSHIP);
-      setCredits([]);
-      setBookings([]);
-      setReferralBalance(0);
-      setEnrolledProgramIds([]);
-      setRecordingWatches([]);
-      setAttendanceHistory([]);
-    } else {
-      // Member login — use detected timezone as initial default
-      // (In production, the server would return the user's saved timezone;
-      // auto-detection only applies to brand-new accounts.)
-      setUser({
-        ...MOCK_USER,
-        timezone: MOCK_USER.timezone || detectedTimezone,
-      });
-      setMembership(MOCK_MEMBERSHIP);
-      setCredits([...MOCK_CREDITS]);
-      setBookings([...MOCK_BOOKINGS]);
-      setReferralBalance(10);
-      // Mock: user is enrolled in one programme
-      setEnrolledProgramIds(["shoulder-resilience"]);
-      setRecordingWatches([]);
-      setAttendanceHistory([...MOCK_ATTENDANCE]);
-    }
-  }, []);
-
-  const logout = useCallback(() => {
-    setIsAuthenticated(false);
-    setIsAdmin(false);
+  const resetLocalState = useCallback(() => {
+    setIsProfileLoading(false);
     setIsCoachingClient(false);
     setUser(null);
     setMembership(null);
     setCredits([]);
+    setCreditBalance(0);
     setBookings([]);
+    setReferralCode("SARAH10");
+    setReferralCount(0);
+    setReferralEarned(0);
     setReferralBalance(0);
     setEnrolledProgramIds([]);
     setRecordingWatches([]);
     setAttendanceHistory([]);
   }, []);
+
+  const refreshAccountProfile = useCallback(async () => {
+    try {
+      const res = await fetch("/api/me", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = (await res.json()) as AccountAndReferralResponse;
+
+      setUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              firstName: data.profile?.firstName || prev.firstName,
+              lastName: data.profile?.lastName || prev.lastName,
+              dob: data.profile?.dob || null,
+              gender: data.profile?.gender || null,
+              ethnicity: data.profile?.ethnicity || null,
+              timezone: data.profile?.timezone || prev.timezone,
+              dateFormat: data.profile?.dateFormat || prev.dateFormat,
+              isOnboarded: data.profile?.isOnboarded ?? prev.isOnboarded,
+              hasAgreedToTerms: data.profile?.hasAgreedToTerms ?? prev.hasAgreedToTerms,
+              hasAgreedToHealth: data.profile?.hasAgreedToHealth ?? prev.hasAgreedToHealth,
+              termsAgreedAt: data.profile?.termsAgreedAt ?? prev.termsAgreedAt,
+              healthAgreedAt: data.profile?.healthAgreedAt ?? prev.healthAgreedAt,
+              heardAboutSource: data.profile?.heardAboutSource ?? prev.heardAboutSource,
+              heardAboutDetail: data.profile?.heardAboutDetail ?? prev.heardAboutDetail,
+            }
+          : prev
+      );
+      setReferralCode(data.referral?.referralCode || "");
+      setReferralCount(data.referral?.referralCount || 0);
+      setReferralEarned(Math.floor((data.referral?.referralEarnedPence || 0) / 100));
+      setReferralBalance(Math.floor((data.referral?.referralBalancePence || 0) / 100));
+    } catch {
+      // Keep existing state when refresh fails.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (authStatus === "loading") return;
+    if (!isAuthenticated || !sessionUserId) {
+      hydratedUserIdRef.current = "";
+      resetLocalState();
+      return;
+    }
+
+    const email = sessionUserEmail.toLowerCase();
+    const fullName = sessionUserName;
+    const { firstName, lastName } = splitName(fullName);
+    const initials = buildAvatarInitials(firstName, lastName, sessionUserEmail || undefined);
+    const userSwitched = hydratedUserIdRef.current !== sessionUserId;
+
+    if (isAdmin) {
+      setIsProfileLoading(false);
+      hydratedUserIdRef.current = sessionUserId;
+      setUser({
+        ...MOCK_ADMIN_USER,
+        id: sessionUserId,
+        email,
+        firstName: firstName || MOCK_ADMIN_USER.firstName,
+        lastName: lastName || MOCK_ADMIN_USER.lastName,
+        avatarInitials: initials,
+      });
+      setMembership(MOCK_INSTRUCTOR_MEMBERSHIP);
+      setCredits([]);
+      setCreditBalance(0);
+      setBookings([]);
+      setReferralCode("INSTRUCTOR");
+      setReferralCount(0);
+      setReferralEarned(0);
+      setReferralBalance(0);
+      setEnrolledProgramIds([]);
+      setRecordingWatches([]);
+      setAttendanceHistory([]);
+      void loadMembershipState();
+      return;
+    }
+
+    if (userSwitched) {
+      setIsProfileLoading(true);
+      setUser({
+        id: sessionUserId,
+        firstName: firstName || "Member",
+        lastName: lastName || "",
+        email,
+        avatarInitials: initials,
+        joinedDate: "",
+        isOnboarded: false,
+        dob: null,
+        gender: null,
+        ethnicity: null,
+        timezone: "Europe/London",
+        dateFormat: "DD/MM/YYYY",
+        hasAgreedToTerms: false,
+        hasAgreedToHealth: false,
+        termsAgreedAt: null,
+        healthAgreedAt: null,
+        heardAboutSource: null,
+        heardAboutDetail: null,
+      });
+      setMembership(null);
+      setCredits([]);
+      setCreditBalance(0);
+      setBookings([]);
+      setReferralCode("");
+      setReferralCount(0);
+      setReferralEarned(0);
+      setReferralBalance(0);
+      setEnrolledProgramIds([]);
+      setRecordingWatches([]);
+      setAttendanceHistory([]);
+    } else {
+      // Keep existing UI stable on non-user-switch refreshes.
+      setIsProfileLoading(false);
+    }
+
+    if (userSwitched) {
+      void Promise.allSettled([refreshAccountProfile(), loadMembershipState()]).finally(() => {
+        hydratedUserIdRef.current = sessionUserId;
+        setIsProfileLoading(false);
+      });
+    } else {
+      void refreshAccountProfile();
+      void loadMembershipState();
+    }
+  }, [
+    authStatus,
+    isAdmin,
+    isAuthenticated,
+    loadMembershipState,
+    refreshAccountProfile,
+    resetLocalState,
+    sessionUserEmail,
+    sessionUserId,
+    sessionUserName,
+  ]);
+
+  const login = useCallback((_email: string) => {
+    // Legacy no-op kept for compatibility while remaining views migrate to Auth.js APIs.
+  }, []);
+
+  const logout = useCallback(async () => {
+    setIsSigningOut(true);
+    try {
+      await nextAuthSignOut({ redirect: false });
+      resetLocalState();
+      if (typeof window !== "undefined") {
+        window.location.replace("/");
+      }
+    } finally {
+      setIsSigningOut(false);
+    }
+  }, [resetLocalState]);
 
   /**
    * Credit priority for booking:
@@ -597,51 +640,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const bookClass = useCallback(
     (classSlug: string): { success: boolean; message: string; creditUsed?: CreditItem } => {
-      const cls = classDetails.find((c) => c.slug === classSlug);
-      if (!cls) return { success: false, message: "Class not found." };
-      if (bookings.some((b) => b.classSlug === classSlug))
+      if (bookings.some((b) => b.classSlug === classSlug)) {
         return { success: false, message: "Already booked." };
-
-      // Credit priority: membership → purchased
-      let creditUsed: CreditItem | undefined;
-
-      if (membership && membershipClassesRemaining > 0) {
-        creditUsed = {
-          id: `cred_m_${Date.now()}`,
-          type: "membership",
-          label: membership.label,
-          sourceId: "membership",
-          sourceLabel: membership.label,
-        };
-        setMembership((prev) =>
-          prev ? { ...prev, classesUsedThisWeek: prev.classesUsedThisWeek + 1 } : prev
-        );
-      } else {
-        const purchasedIdx = credits.findIndex((c) => c.type === "purchased");
-        if (purchasedIdx >= 0) {
-          creditUsed = credits[purchasedIdx];
-          setCredits((prev) => prev.filter((_, i) => i !== purchasedIdx));
-        }
       }
-
-      if (!creditUsed) return { success: false, message: "No credits available." };
-
-      const newBooking: Booking = {
-        id: `bk_${Date.now()}`,
-        classSlug: cls.slug,
-        className: cls.name,
-        classType: cls.type,
-        day: cls.day,
-        time: cls.time,
-        duration: cls.duration,
-        creditUsed,
-        bookedAt: new Date().toISOString(),
-      };
-
-      setBookings((prev) => [...prev, newBooking]);
-      return { success: true, message: "You're booked.", creditUsed };
+      return { success: false, message: "Session booking requires a specific class session." };
     },
-    [credits, bookings, membership, membershipClassesRemaining]
+    [bookings]
   );
 
   const cancelBooking = useCallback((bookingId: string) => {
@@ -670,100 +674,120 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return deducted;
   }, []);
 
-  const purchaseCredits = useCallback((count: number) => {
-    const bundleLabel = count === 1 ? "Drop-in" : `${count}-class bundle`;
-    const sourceId = `purchase_${count}pack_${Date.now()}`;
-
-    // Expiry window: 3-pack = 4 weeks, 10-pack = 10 weeks, drop-in = 4 weeks
-    const expiryWeeks = count >= 10 ? 10 : 4;
-    const expiresAt = new Date(Date.now() + expiryWeeks * 7 * 86400000).toISOString().split("T")[0];
-
-    const newCredits: CreditItem[] = Array.from({ length: count }, (_, i) => ({
-      id: `cred_p_${Date.now()}_${i}`,
-      type: "purchased" as const,
-      label: "Class credit",
-      sourceId,
-      sourceLabel: bundleLabel,
-      expiresAt,
-    }));
-
-    // Apply referral balance as discount (in a real app this would adjust the Stripe charge)
-    setReferralBalance((prev) => {
-      if (prev > 0) {
-        const price = BUNDLE_PRICES[count] || count * 12;
-        const discount = Math.min(prev, price);
-        // In production: create Stripe checkout with discount
-        console.log(`Applied £${discount} referral discount to ${bundleLabel} purchase`);
-        return prev - discount;
+  const purchaseCredits = useCallback(
+    async (count: number) => {
+      try {
+        const response = await fetch("/api/me/credits/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bundleSize: count }),
+        });
+        if (!response.ok) return;
+        const data = (await response.json()) as { checkoutUrl?: string };
+        if (data.checkoutUrl && typeof window !== "undefined") {
+          window.location.href = data.checkoutUrl;
+          return;
+        }
+        await loadMembershipState();
+      } catch {
+        // keep UI stable
       }
-      return prev;
-    });
-
-    // When purchasing new credits, extend the expiry window for ALL existing credits
-    // (countdown renews to the new purchase's expiry window)
-    setCredits((prev) => {
-      const renewed = prev.map((c) => ({
-        ...c,
-        expiresAt: c.type === "purchased" ? expiresAt : c.expiresAt,
-      }));
-      return [...renewed, ...newCredits];
-    });
-  }, []);
+    },
+    [loadMembershipState]
+  );
 
   const purchaseDropIn = useCallback(() => {
-    const sourceId = `purchase_dropin_${Date.now()}`;
-    setReferralBalance((prev) => {
-      if (prev > 0) {
-        const discount = Math.min(prev, 12);
-        console.log(`Applied £${discount} referral discount to drop-in purchase`);
-        return prev - discount;
-      }
-      return prev;
-    });
-    setCredits((prev) => [
-      ...prev,
-      {
-        id: `cred_d_${Date.now()}`,
-        type: "purchased",
-        label: "Drop-in credit",
-        sourceId,
-        sourceLabel: "Drop-in",
-      },
-    ]);
-  }, []);
+    void purchaseCredits(1);
+  }, [purchaseCredits]);
 
-  const upgradeMembership = useCallback((plan: "steady" | "committed" | "unlimited") => {
-    const config = {
-      steady: { label: "Steady (2/week)", classesPerWeek: 2, price: 49 },
-      committed: { label: "Committed (3/week)", classesPerWeek: 3, price: 65 },
-      unlimited: { label: "Unlimited", classesPerWeek: 99, price: 79 },
-    };
-    const planConfig = config[plan];
-    // Apply referral balance as discount on first month
-    setReferralBalance((prev) => {
-      if (prev > 0) {
-        const discount = Math.min(prev, planConfig.price);
-        console.log(`Applied £${discount} referral discount to ${planConfig.label} membership`);
-        return prev - discount;
+  const upgradeMembership = useCallback(
+    async (plan: "movewell") => {
+      try {
+        const response = await fetch("/api/me/membership/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ plan }),
+        });
+        if (!response.ok) return;
+        const data = (await response.json()) as { checkoutUrl?: string };
+        if (data.checkoutUrl && typeof window !== "undefined") {
+          window.location.href = data.checkoutUrl;
+          return;
+        }
+        await loadMembershipState();
+      } catch {
+        // keep UI stable
       }
-      return prev;
-    });
-    setMembership({
-      plan,
-      label: planConfig.label,
-      renewalDate: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
-      classesPerWeek: planConfig.classesPerWeek,
-      classesUsedThisWeek: 0,
-      price: planConfig.price,
-    });
-  }, []);
+    },
+    [loadMembershipState]
+  );
 
-  const cancelMembership = useCallback(() => {
-    setMembership(null);
-  }, []);
+  const cancelMembership = useCallback(async () => {
+    try {
+      const response = await fetch("/api/me/membership/cancel", { method: "POST" });
+      if (!response.ok) return;
+      await loadMembershipState();
+    } catch {
+      // keep UI stable
+    }
+  }, [loadMembershipState]);
 
   const completeOnboarding = useCallback(() => {
     setUser((prev) => (prev ? { ...prev, isOnboarded: true } : prev));
+    void fetch("/api/me", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isOnboarded: true }),
+    }).catch(() => null);
+  }, []);
+
+  const acceptTermsAndHealth = useCallback(async (terms: boolean, health: boolean) => {
+    const response = await fetch("/api/me", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        hasAgreedToTerms: terms || undefined,
+        hasAgreedToHealth: health || undefined,
+      }),
+    });
+    if (!response.ok) return;
+
+    const payload = (await response.json().catch(() => null)) as
+      | { profile?: { hasAgreedToTerms?: boolean; hasAgreedToHealth?: boolean; termsAgreedAt?: string | null; healthAgreedAt?: string | null } }
+      | null;
+    setUser((prev) =>
+      prev
+        ? {
+            ...prev,
+            hasAgreedToTerms: payload?.profile?.hasAgreedToTerms ?? prev.hasAgreedToTerms,
+            hasAgreedToHealth: payload?.profile?.hasAgreedToHealth ?? prev.hasAgreedToHealth,
+            termsAgreedAt: payload?.profile?.termsAgreedAt ?? prev.termsAgreedAt,
+            healthAgreedAt: payload?.profile?.healthAgreedAt ?? prev.healthAgreedAt,
+          }
+        : prev
+    );
+  }, []);
+
+  const saveOnboardingSource = useCallback(async (source: string, detail = "") => {
+    const response = await fetch("/api/me", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        heardAboutSource: source,
+        heardAboutDetail: detail || null,
+      }),
+    });
+    if (!response.ok) return;
+
+    setUser((prev) =>
+      prev
+        ? {
+            ...prev,
+            heardAboutSource: source,
+            heardAboutDetail: detail || null,
+          }
+        : prev
+    );
   }, []);
 
   const isClassBooked = useCallback(
@@ -785,7 +809,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // No membership — allow if they have purchased credits or are a programme participant
       if (!membership) return { allowed: true, consumesCredit: false };
       // Unlimited / instructor — always free
-      if (membership.plan === "unlimited" || membership.plan === "instructor") {
+      if (membership.plan === "movewell" || membership.plan === "instructor") {
         return { allowed: true, consumesCredit: false };
       }
       // Already watched this class this week — rewatch is free
@@ -807,7 +831,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   /**
-   * Mark a recording as watched. For capped memberships (steady/committed),
+   * Mark a recording as watched. For capped memberships,
    * the first watch of a unique class consumes a weekly class credit.
    * Repeat watches of the same class are free.
    */
@@ -846,6 +870,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
+        authStatus,
+        isProfileLoading,
+        isSigningOut,
         isAuthenticated,
         user,
         membership,
@@ -874,6 +901,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         upgradeMembership,
         cancelMembership,
         completeOnboarding,
+        acceptTermsAndHealth,
+        saveOnboardingSource,
+        refreshAccountProfile,
         isClassBooked,
         getBookingForClass,
         isAdmin,
@@ -882,6 +912,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         canWatchRecording,
         watchRecording,
         hasWatchedRecording,
+        refreshMembershipState: loadMembershipState,
         favouriteClasses,
         getAdaptiveSuggestion,
         submitPreClassCheckIn,

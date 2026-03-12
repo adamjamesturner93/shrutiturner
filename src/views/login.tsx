@@ -1,27 +1,23 @@
 "use client";
 
 import Link from "next/link";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Layout } from "../components/layout";
 import { SEO } from "../components/seo";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { Mail, Gift, Shield } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
-import { useAuth } from "../context/auth-context";
-
-/** Email addresses with instructor access (mirrors auth-context list) */
-const ADMIN_EMAILS = ["shruti@shrutiturner.com"];
+import { Mail, Gift, Check, ArrowLeft } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { TurnstileWidget } from "@/components/turnstile-widget";
+import { sanitizeRedirectPath } from "@/lib/navigation/safe-redirect";
+import { IconHorizontal, IconVertical } from "@/components/icon";
 
 export function LoginPage() {
-  const { isAuthenticated, isAdmin, login } = useAuth();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const justLoggedIn = useRef(false);
-  const navigate = (href: string, opts?: { replace?: boolean }) =>
-    opts?.replace ? router.replace(href) : router.push(href);
 
   const redirectTo = searchParams.get("redirect");
   const intent = searchParams.get("intent");
@@ -31,48 +27,107 @@ export function LoginPage() {
   const [email, setEmail] = useState("");
   const [codeSent, setCodeSent] = useState(false);
   const [code, setCode] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const referralClaimedRef = useRef(false);
 
-  // If user navigates to /login while already authenticated, redirect them.
-  // The ref prevents this from firing right after the login handlers navigate.
+  const waitForSession = async () => {
+    for (let i = 0; i < 12; i += 1) {
+      const response = await fetch("/api/auth/session", { cache: "no-store" });
+      const data = (await response.json().catch(() => null)) as
+        | { user?: { email?: string | null } | null }
+        | null;
+      if (data?.user?.email) return true;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+    return false;
+  };
+
+  const buildPostLoginUrl = () => {
+    const params = new URLSearchParams();
+    const safeRedirect = sanitizeRedirectPath(redirectTo);
+    if (safeRedirect) {
+      params.set("redirect", safeRedirect);
+    }
+    if (refCode) {
+      params.set("ref", refCode);
+    }
+    const query = params.toString();
+    return query ? `/auth/post-login?${query}` : "/auth/post-login";
+  };
+
   useEffect(() => {
-    if (isAuthenticated && !justLoggedIn.current) {
-      navigate(redirectTo || (isAdmin ? "/admin" : "/dashboard"), { replace: true });
-    }
-  }, [isAuthenticated, isAdmin, redirectTo, router]);
+    const claimAndRedirect = async () => {
+      if (status !== "authenticated") return;
+      if (refCode && !referralClaimedRef.current) {
+        referralClaimedRef.current = true;
+        await fetch("/api/referrals/claim", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: refCode }),
+        }).catch(() => null);
+      }
+      const destination =
+        sanitizeRedirectPath(redirectTo) || (session?.user?.role === "admin" ? "/admin" : "/dashboard");
+      router.replace(destination);
+    };
 
-  const getPostLoginRedirect = (loginEmail: string) => {
-    if (redirectTo) return redirectTo;
-    if (ADMIN_EMAILS.includes(loginEmail.toLowerCase().trim())) return "/admin";
-    return "/dashboard?onboarding=true";
-  };
+    void claimAndRedirect();
+  }, [redirectTo, refCode, router, session?.user?.role, status]);
 
-  const handlePasswordlessLogin = (e: React.FormEvent) => {
+  const handlePasswordlessLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!codeSent) {
-      console.log("Sending code to:", email);
-      setCodeSent(true);
-    } else {
-      console.log("Verifying code:", code);
-      justLoggedIn.current = true;
-      login(email);
-      if (refCode) console.log("Applying referral code:", refCode);
-      navigate(getPostLoginRedirect(email), { replace: true });
+    setError("");
+    setIsSubmitting(true);
+
+    try {
+      if (!codeSent) {
+        if (!turnstileToken) {
+          throw new Error("Please complete the verification challenge.");
+        }
+        const response = await fetch("/api/auth/send-code", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, turnstileToken }),
+        });
+
+        const data = (await response.json().catch(() => ({}))) as { message?: string };
+        if (!response.ok) {
+          throw new Error(data.message || "Failed to send verification code.");
+        }
+
+        setCodeSent(true);
+        return;
+      }
+
+      const result = await signIn("credentials", {
+        email,
+        authCode: code,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        throw new Error("Invalid or expired code. Please request a new code.");
+      }
+
+      const hasSession = await waitForSession();
+      if (!hasSession) {
+        throw new Error("Sign-in succeeded but session was not established. Please try again.");
+      }
+
+      router.replace(buildPostLoginUrl());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to complete sign-in.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleGoogleLogin = () => {
-    console.log("Initiating Google login");
-    justLoggedIn.current = true;
-    login("google@example.com");
-    if (refCode) console.log("Applying referral code:", refCode);
-    navigate(getPostLoginRedirect("google@example.com"), { replace: true });
-  };
-
-  /** Demo shortcut — log in directly as the instructor */
-  const handleInstructorDemo = () => {
-    justLoggedIn.current = true;
-    login("shruti@shrutiturner.com");
-    navigate("/admin", { replace: true });
+  const handleGoogleLogin = async () => {
+    setError("");
+    const callbackUrl = buildPostLoginUrl();
+    await signIn("google", { callbackUrl });
   };
 
   return (
@@ -84,42 +139,75 @@ export function LoginPage() {
         noIndex
       />
 
-      <section className="flex min-h-screen items-center py-20 md:py-28">
-        <div className="container mx-auto max-w-md px-4">
-          {/* Referral banner */}
-          {refCode && (
-            <div className="mb-6 flex items-start gap-3 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/10 p-4">
-              <Gift className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
-              <div>
-                <p className="text-sm">£10 credit will be applied to your account after sign-up.</p>
+      <section className="flex-1">
+        <div className="flex min-h-[calc(100dvh-4rem)]">
+          <div className="relative hidden bg-[#F7F4EF] p-12 lg:flex lg:w-[45%] lg:flex-col lg:items-center lg:justify-center">
+            <div className="absolute right-8 bottom-0 left-8 h-px bg-gradient-to-r from-transparent via-[#BB7345]/30 to-transparent" />
+            <div className="max-w-sm space-y-8 text-center">
+              <div className="flex justify-center [&>svg]:h-auto [&>svg]:w-56">
+                <IconVertical />
+              </div>
+              <div className="space-y-3">
+                <h2 className="text-2xl leading-snug text-[#2E1F33]">Your Private Studio</h2>
+                <p className="leading-relaxed text-[#2E1F33]/70">
+                  Science-backed coaching for chronic illness, autoimmune conditions, and complex
+                  bodies.
+                </p>
+              </div>
+              <div className="space-y-3 pt-4">
+                {[
+                  "Personalised class recommendations",
+                  "Health profile & progress tracking",
+                  "Direct messaging with Shruti",
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-3 text-left">
+                    <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#4B5B32]/10">
+                      <Check className="h-3 w-3 text-[#4B5B32]" />
+                    </div>
+                    <span className="text-sm text-[#2E1F33]/70">{item}</span>
+                  </div>
+                ))}
               </div>
             </div>
-          )}
+          </div>
 
-          {/* Intent banner */}
-          {intent === "book" && !refCode && (
-            <div className="bg-secondary/50 mb-6 rounded-lg border p-4 text-center">
-              <p className="text-muted-foreground text-sm">Sign in to complete your booking.</p>
-            </div>
-          )}
+          <div className="bg-background flex-1 px-6 py-10 md:px-10 md:py-12 lg:flex lg:items-center lg:justify-center">
+            <div className="mx-auto w-full max-w-[400px]">
+              {refCode && (
+                <div className="mb-6 flex items-start gap-3 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/10 p-4">
+                  <Gift className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
+                  <div>
+                    <p className="text-sm">Your free class gift will be added after sign-in.</p>
+                  </div>
+                </div>
+              )}
 
-          <Card>
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-center text-3xl">Welcome Back</CardTitle>
-              <CardDescription className="text-center">
-                Sign in to access your training programs and resources
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              {intent === "book" && !refCode && (
+                <div className="bg-secondary/50 mb-6 rounded-lg border p-4 text-center">
+                  <p className="text-muted-foreground text-sm">Sign in to complete your booking.</p>
+                </div>
+              )}
+
+              <div className="mb-6 lg:hidden [&>svg]:h-10 [&>svg]:w-auto">
+                <IconHorizontal />
+              </div>
+
+              <div className="mb-8">
+                <h2 className="text-3xl tracking-tight">Welcome</h2>
+                <p className="text-muted-foreground mt-2">
+                  Sign in or create your account to get started.
+                </p>
+              </div>
+              <div className="mb-8 h-px w-12 rounded-full bg-[#BB7345]/60" />
               {!loginMethod ? (
                 <div className="space-y-4">
                   <Button
                     onClick={() => setLoginMethod("passwordless")}
                     variant="outline"
                     size="lg"
-                    className="w-full"
+                    className="h-12 w-full justify-start px-4"
                   >
-                    <Mail className="mr-2 h-5 w-5" />
+                    <Mail className="text-muted-foreground mr-3 h-5 w-5" />
                     Continue with Email
                   </Button>
 
@@ -136,23 +224,23 @@ export function LoginPage() {
                     onClick={handleGoogleLogin}
                     variant="outline"
                     size="lg"
-                    className="w-full"
+                    className="h-12 w-full justify-start px-4"
                   >
-                    <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
+                    <svg className="mr-3 h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
                       <path
-                        fill="currentColor"
+                        fill="#4285F4"
                         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                       />
                       <path
-                        fill="currentColor"
+                        fill="#34A853"
                         d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
                       />
                       <path
-                        fill="currentColor"
+                        fill="#FBBC05"
                         d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
                       />
                       <path
-                        fill="currentColor"
+                        fill="#EA4335"
                         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                       />
                     </svg>
@@ -160,32 +248,26 @@ export function LoginPage() {
                   </Button>
 
                   <div className="text-muted-foreground mt-6 text-center text-sm">
-                    <p>
-                      New here?{" "}
-                      <Link
-                        href={`/signup${refCode ? `?ref=${refCode}` : ""}`}
-                        className="text-primary hover:underline"
-                      >
-                        Create an account
-                      </Link>
-                    </p>
+                    No account yet? Just sign in - we&apos;ll set you up.
                   </div>
                 </div>
               ) : loginMethod === "passwordless" ? (
                 <form onSubmit={handlePasswordlessLogin} className="space-y-4">
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
                     onClick={() => {
                       setLoginMethod(null);
                       setCodeSent(false);
                       setEmail("");
                       setCode("");
+                      setTurnstileToken("");
+                      setError("");
                     }}
-                    className="mb-4"
+                    className="text-muted-foreground hover:text-foreground mb-4 flex items-center gap-1.5 text-sm transition-colors"
                   >
-                    &larr; Back to options
-                  </Button>
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to options
+                  </button>
 
                   {!codeSent ? (
                     <>
@@ -201,9 +283,15 @@ export function LoginPage() {
                         />
                       </div>
 
-                      <Button type="submit" className="w-full" size="lg">
-                        Send Verification Code
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        size="lg"
+                        disabled={isSubmitting || !turnstileToken}
+                      >
+                        {isSubmitting ? "Sending..." : "Send Verification Code"}
                       </Button>
+                      <TurnstileWidget onTokenChange={setTurnstileToken} />
 
                       <p className="text-muted-foreground text-center text-sm">
                         We'll send a 6-digit code to your email
@@ -218,55 +306,35 @@ export function LoginPage() {
                           type="text"
                           placeholder="000000"
                           value={code}
-                          onChange={(e) => setCode(e.target.value)}
+                          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                           maxLength={6}
                           required
                         />
                         <p className="text-muted-foreground text-sm">Code sent to {email}</p>
                       </div>
 
-                      <Button type="submit" className="w-full" size="lg">
-                        Verify & Sign In
+                      <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
+                        {isSubmitting ? "Verifying..." : "Verify & Sign In"}
                       </Button>
 
                       <Button
                         type="button"
                         variant="ghost"
-                        onClick={() => setCodeSent(false)}
+                        onClick={() => {
+                          setCodeSent(false);
+                          setCode("");
+                          setTurnstileToken("");
+                        }}
                         className="w-full"
                       >
                         Resend code
                       </Button>
                     </>
                   )}
+
+                  {error ? <p className="text-center text-sm text-red-600">{error}</p> : null}
                 </form>
               ) : null}
-            </CardContent>
-          </Card>
-
-          {/* Demo login shortcuts (development only) */}
-          <div className="border-border bg-secondary/30 mt-6 rounded-lg border border-dashed p-4">
-            <p className="text-muted-foreground mb-3 text-center text-xs">
-              Demo shortcuts (development only)
-            </p>
-            <div className="flex flex-col gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => {
-                  justLoggedIn.current = true;
-                  login("sarah.chen@example.com");
-                  navigate("/dashboard", { replace: true });
-                }}
-              >
-                <Mail className="mr-2 h-4 w-4" />
-                Sign in as Sarah (Member)
-              </Button>
-              <Button variant="outline" size="sm" className="w-full" onClick={handleInstructorDemo}>
-                <Shield className="mr-2 h-4 w-4" />
-                Sign in as Shruti (Instructor)
-              </Button>
             </div>
           </div>
         </div>

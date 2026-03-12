@@ -1,4 +1,4 @@
-import { getScheduleByDay } from "@/data/schedule-data";
+import { blogPosts as LOCAL_BLOG_POSTS } from "@/data/blog-data";
 import {
   LOCAL_CLASS_DEFINITIONS,
   LOCAL_GLOBAL_CONTENT,
@@ -15,6 +15,7 @@ import type {
   ClassDefinitionContent,
   ContactBlockContent,
   GlobalContent,
+  InstructorProfileContent,
   LeadMagnetContent,
   LegalDocumentContent,
   NewsletterSignupContent,
@@ -187,17 +188,25 @@ export async function getNewsletterSignupContent(): Promise<NewsletterSignupCont
         formPlaceholder: String(
           entry.fields.formPlaceholder || LOCAL_NEWSLETTER_SIGNUP_CONTENT.formPlaceholder
         ),
-        buttonLabel: String(entry.fields.buttonLabel || LOCAL_NEWSLETTER_SIGNUP_CONTENT.buttonLabel),
+        buttonLabel: String(
+          leadMagnetFields?.ctaLabel ||
+            entry.fields.buttonLabel ||
+            LOCAL_NEWSLETTER_SIGNUP_CONTENT.buttonLabel
+        ),
         successMessage: String(
           entry.fields.successMessage || LOCAL_NEWSLETTER_SIGNUP_CONTENT.successMessage
         ),
         consentText: String(entry.fields.consentText || LOCAL_NEWSLETTER_SIGNUP_CONTENT.consentText),
-        popupTitle: entry.fields.popupTitle
-          ? String(entry.fields.popupTitle)
-          : LOCAL_NEWSLETTER_SIGNUP_CONTENT.popupTitle,
-        popupDescription: entry.fields.popupDescription
-          ? String(entry.fields.popupDescription)
-          : LOCAL_NEWSLETTER_SIGNUP_CONTENT.popupDescription,
+        popupTitle: leadMagnetFields?.landingHeadline
+          ? String(leadMagnetFields.landingHeadline)
+          : entry.fields.popupTitle
+            ? String(entry.fields.popupTitle)
+            : LOCAL_NEWSLETTER_SIGNUP_CONTENT.popupTitle,
+        popupDescription: leadMagnetFields?.landingDescription
+          ? String(leadMagnetFields.landingDescription)
+          : entry.fields.popupDescription
+            ? String(entry.fields.popupDescription)
+            : LOCAL_NEWSLETTER_SIGNUP_CONTENT.popupDescription,
         leadMagnetSlug: leadMagnetFields?.slug
           ? String(leadMagnetFields.slug)
           : LOCAL_NEWSLETTER_SIGNUP_CONTENT.leadMagnetSlug,
@@ -236,6 +245,13 @@ export async function getLeadMagnetBySlug(slug: string): Promise<LeadMagnetConte
         slug: String(entry.fields.slug || slug),
         title: String(entry.fields.title || ""),
         hookText: String(entry.fields.hookText || ""),
+        landingHeadline: entry.fields.landingHeadline
+          ? String(entry.fields.landingHeadline)
+          : undefined,
+        landingDescription: entry.fields.landingDescription
+          ? String(entry.fields.landingDescription)
+          : undefined,
+        ctaLabel: entry.fields.ctaLabel ? String(entry.fields.ctaLabel) : undefined,
         emailSubject: String(entry.fields.emailSubject || ""),
         emailPreviewText: entry.fields.emailPreviewText
           ? String(entry.fields.emailPreviewText)
@@ -256,6 +272,9 @@ export async function getLeadMagnetBySlug(slug: string): Promise<LeadMagnetConte
       slug,
       title: LOCAL_NEWSLETTER_SIGNUP_CONTENT.leadMagnetTitle || slug,
       hookText: LOCAL_NEWSLETTER_SIGNUP_CONTENT.hookText,
+      landingHeadline: LOCAL_NEWSLETTER_SIGNUP_CONTENT.popupTitle,
+      landingDescription: LOCAL_NEWSLETTER_SIGNUP_CONTENT.popupDescription,
+      ctaLabel: LOCAL_NEWSLETTER_SIGNUP_CONTENT.buttonLabel,
       emailSubject: LOCAL_NEWSLETTER_SIGNUP_CONTENT.emailSubject || "",
       emailPreviewText: LOCAL_NEWSLETTER_SIGNUP_CONTENT.emailPreviewText,
       emailBody: LOCAL_NEWSLETTER_SIGNUP_CONTENT.emailBody || "",
@@ -419,10 +438,18 @@ export async function getBlogPosts(): Promise<BlogPostContent[]> {
         date: String(item.fields.publishDate || ""),
         tags: parseStringArray(item.fields.tags),
         readTime: String(item.fields.readTime || ""),
+        coverImage: item.fields.coverImage
+          ? String(item.fields.coverImage)
+          : "https://images.unsplash.com/photo-1615388599690-02c0d4a3dfa7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+        coverAlt: item.fields.coverAlt ? String(item.fields.coverAlt) : "Blog cover image",
         seoTitle: item.fields.seoTitle ? String(item.fields.seoTitle) : undefined,
         seoDescription: item.fields.seoDescription ? String(item.fields.seoDescription) : undefined,
       }));
     }
+  }
+
+  if (allowsLocalFallback()) {
+    return LOCAL_BLOG_POSTS;
   }
 
   return [];
@@ -457,6 +484,7 @@ export async function getClassDefinitions(): Promise<ClassDefinitionContent[]> {
         equipment: parseStringArray(item.fields.equipment),
         benefits: parseStringArray(item.fields.benefits),
         instructor: String(item.fields.instructorName || "Shruti Turner"),
+        defaultInstructorProfileEntryId: getLinkedEntryId(item.fields.defaultInstructorProfile),
         seoTitle: String(item.fields.seoTitle || item.fields.name || "Class"),
         seoDescription: String(item.fields.seoDescription || item.fields.shortDescription || ""),
         seoKeywords: String(item.fields.seoKeywords || ""),
@@ -465,6 +493,49 @@ export async function getClassDefinitions(): Promise<ClassDefinitionContent[]> {
   }
 
   return LOCAL_CLASS_DEFINITIONS;
+}
+
+export async function getInstructorProfiles(): Promise<InstructorProfileContent[]> {
+  if (prefersContentfulSource()) {
+    const res = await getEntries<Record<string, unknown>>("instructorProfile", { limit: 300 });
+    if (res?.items?.length) {
+      return res.items.map((item) => ({
+        id: String(item.sys.id),
+        slug: String(item.fields.slug || item.sys.id),
+        name: String(item.fields.name || "Instructor"),
+        headline: item.fields.headline ? String(item.fields.headline) : undefined,
+        bio: String(item.fields.bio || ""),
+        credentials: parseStringArray(item.fields.credentials),
+        specialties: parseStringArray(item.fields.specialties),
+        avatarImageUrl: item.fields.avatarImageUrl ? String(item.fields.avatarImageUrl) : undefined,
+        avatarAlt: item.fields.avatarAlt ? String(item.fields.avatarAlt) : undefined,
+        featuredQuote: item.fields.featuredQuote ? String(item.fields.featuredQuote) : undefined,
+        seoTitle: item.fields.seoTitle ? String(item.fields.seoTitle) : undefined,
+        seoDescription: item.fields.seoDescription ? String(item.fields.seoDescription) : undefined,
+        active: item.fields.active === undefined ? true : Boolean(item.fields.active),
+      }));
+    }
+  }
+
+  return [
+    {
+      id: "local-shruti",
+      slug: "shruti-turner",
+      name: "Shruti Turner",
+      headline: "Strength and Yoga Coach",
+      bio: "Evidence-based coaching for complex bodies.",
+      credentials: [],
+      specialties: [],
+      active: true,
+    },
+  ];
+}
+
+export async function getInstructorProfilesByIds(ids: string[]): Promise<InstructorProfileContent[]> {
+  if (ids.length === 0) return [];
+  const all = await getInstructorProfiles();
+  const wanted = new Set(ids);
+  return all.filter((p) => wanted.has(p.id));
 }
 
 export async function getClassDefinitionsByCategory(
@@ -491,7 +562,7 @@ export async function getScheduleByDayContent(): Promise<ScheduleDay[]> {
     return getLocalScheduleByDay();
   }
 
-  return getScheduleByDay();
+  return [];
 }
 
 export async function getRetreatTemplates(): Promise<RetreatTemplateContent[]> {

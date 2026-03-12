@@ -4,7 +4,8 @@ import { Layout } from "../components/layout";
 import type { BlogPostContent } from "@/lib/content";
 import { useI18n } from "../lib/use-i18n";
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { NewsletterInline } from "../components/newsletter";
@@ -15,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 
 interface BlogPageProps {
   posts?: BlogPostContent[];
@@ -24,6 +26,9 @@ export function BlogPage({ posts }: BlogPageProps) {
   const blogData = posts ?? [];
   const [selectedTag, setSelectedTag] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
 
   // Get all unique tags
   const allTags = useMemo(() => {
@@ -33,6 +38,30 @@ export function BlogPage({ posts }: BlogPageProps) {
     });
     return Array.from(tags).sort();
   }, [blogData]);
+
+  useEffect(() => {
+    const tagParam = searchParams.get("tag");
+    if (!tagParam) {
+      setSelectedTag("all");
+      return;
+    }
+
+    const matched = allTags.find((tag) => tag.toLowerCase() === tagParam.toLowerCase());
+    setSelectedTag(matched || "all");
+  }, [searchParams, allTags]);
+
+  const handleSetTag = (tag: string) => {
+    setSelectedTag(tag);
+
+    const params = new URLSearchParams(searchParams.toString());
+    if (tag === "all") {
+      params.delete("tag");
+    } else {
+      params.set("tag", tag);
+    }
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
 
   // Filter and sort posts
   const filteredAndSortedPosts = useMemo(() => {
@@ -82,7 +111,7 @@ export function BlogPage({ posts }: BlogPageProps) {
               <Button
                 variant={selectedTag === "all" ? "default" : "outline"}
                 size="sm"
-                onClick={() => setSelectedTag("all")}
+                onClick={() => handleSetTag("all")}
               >
                 All Articles
               </Button>
@@ -91,7 +120,7 @@ export function BlogPage({ posts }: BlogPageProps) {
                   key={tag}
                   variant={selectedTag === tag ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setSelectedTag(tag)}
+                  onClick={() => handleSetTag(tag)}
                 >
                   {tag}
                 </Button>
@@ -120,6 +149,14 @@ export function BlogPage({ posts }: BlogPageProps) {
                 key={post.id}
                 className="bg-card overflow-hidden rounded-lg border transition-shadow hover:shadow-lg"
               >
+                <Link href={`/blog/${post.id}`} className="block overflow-hidden">
+                  <ImageWithFallback
+                    src={post.coverImage}
+                    alt={post.coverAlt}
+                    className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </Link>
+
                 <div className="space-y-4 p-6">
                   <div className="flex flex-wrap gap-2">
                     {post.tags.map((tag) => (
@@ -168,11 +205,10 @@ export function BlogPage({ posts }: BlogPageProps) {
         <div className="container mx-auto max-w-3xl space-y-6 px-4 text-center">
           <h2 className="text-3xl md:text-4xl">Get New Articles in Your Inbox</h2>
           <p className="text-muted-foreground text-lg leading-relaxed">
-            Subscribe to blog updates for new research-backed articles on strength, movement, and
-            chronic illness management. You can also join the newsletter separately for training
-            tips and the free lead magnet.
+            Get new articles, class updates, and practical training insights for chronic illness
+            support.
           </p>
-          <NewsletterInline defaultList="blog" showListOptions />
+          <NewsletterInline />
         </div>
       </section>
     </Layout>

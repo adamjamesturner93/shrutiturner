@@ -1,10 +1,8 @@
-import { useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   X,
   Check,
-  CreditCard,
-  CalendarPlus,
   ArrowRight,
   AlertCircle,
   Download,
@@ -12,7 +10,11 @@ import {
 import { Button } from "./ui/button";
 import { useAuth, type CreditItem } from "../context/auth-context";
 import { useI18n } from "../lib/use-i18n";
-import { classDetails } from "../data/schedule-data";
+import type { PublicPricingDto } from "@/lib/api/types";
+
+type CheckoutResult = {
+  checkoutUrl: string;
+};
 
 /**
  * Compute the next occurrence of a given day + time (HH:MM) from now.
@@ -94,6 +96,7 @@ interface BookingConfirmationProps {
   className: string;
   day: string;
   time: string;
+  duration?: string;
   creditUsed: CreditItem;
   onClose: () => void;
 }
@@ -102,6 +105,7 @@ export function BookingConfirmation({
   className,
   day,
   time,
+  duration = "60 min",
   creditUsed,
   onClose,
 }: BookingConfirmationProps) {
@@ -110,10 +114,6 @@ export function BookingConfirmation({
     creditUsed.type === "membership"
       ? `Membership class (${creditUsed.label})`
       : `Purchased credit — ${creditUsed.sourceLabel}`;
-
-  // Look up duration from class details
-  const cls = classDetails.find((c) => c.name === className);
-  const duration = cls?.duration || "60 min";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
@@ -155,24 +155,50 @@ export function BookingConfirmation({
 
 interface PurchaseModalProps {
   classSlug: string;
+  sessionId?: string;
   className: string;
-  onSuccess: (creditUsed: CreditItem) => void;
+  onSuccess: () => void;
   onClose: () => void;
 }
 
-export function PurchaseModal({ classSlug, className, onSuccess, onClose }: PurchaseModalProps) {
-  const {
-    membership,
-    purchaseDropIn,
-    purchaseCredits,
-    upgradeMembership,
-    bookClass,
-    referralBalance,
-  } = useAuth();
+export function PurchaseModal({
+  classSlug,
+  sessionId,
+  className,
+  onSuccess,
+  onClose,
+}: PurchaseModalProps) {
+  const { membership, referralBalance } = useAuth();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [purchasing, setPurchasing] = useState(false);
+  const [purchaseError, setPurchaseError] = useState("");
+  const [pricing, setPricing] = useState<PublicPricingDto | null>(null);
 
   const hasMembership = !!membership;
   const discount = referralBalance;
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const response = await fetch("/api/public/pricing", { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = (await response.json()) as PublicPricingDto;
+        if (active) setPricing(payload);
+      } catch {
+        // Keep fallback prices in UI.
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const moveWellMonthlyPrice = pricing?.membershipDisplay?.movewellMonthly ?? pricing?.membership.movewell ?? 29;
+  const credits1Price = pricing?.credits[1] ?? 9;
+  const credits3Price = pricing?.credits[3] ?? 24;
+  const credits10Price = pricing?.credits[10] ?? 70;
 
   /** Format a price with optional referral discount struck-through */
   const priceLabel = (basePrice: number) => {
@@ -188,39 +214,70 @@ export function PurchaseModal({ classSlug, className, onSuccess, onClose }: Purc
     return <span>£{basePrice}</span>;
   };
 
-  const handlePurchase = (
-    option: "dropin" | "3pack" | "10pack" | "steady" | "committed" | "unlimited"
+  const buildReturnPath = (checkoutStatus: "success" | "cancelled") => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("checkout", checkoutStatus);
+    if (checkoutStatus === "success") {
+      params.set("autobook", "1");
+      params.set("autobookClass", classSlug);
+      if (sessionId) {
+        params.set("autobookSessionId", sessionId);
+      }
+    } else {
+      params.delete("autobook");
+      params.delete("autobookClass");
+      params.delete("autobookSessionId");
+    }
+
+    const query = params.toString();
+    return query ? `${pathname}?${query}` : pathname;
+  };
+
+  const startCheckout = async (
+    option: "dropin" | "3pack" | "10pack" | "membership"
   ) => {
     setPurchasing(true);
-    setTimeout(() => {
-      switch (option) {
-        case "dropin":
-          purchaseDropIn();
-          break;
-        case "3pack":
-          purchaseCredits(3);
-          break;
-        case "10pack":
-          purchaseCredits(10);
-          break;
-        case "steady":
-          upgradeMembership("steady");
-          break;
-        case "committed":
-          upgradeMembership("committed");
-          break;
-        case "unlimited":
-          upgradeMembership("unlimited");
-          break;
+    setPurchaseError("");
+
+    try {
+      const request =
+        option === "membership"
+          ? {
+              url: "/api/me/membership/checkout",
+              body: {
+                plan: "movewell",
+                billingInterval: "monthly",
+                successPath: buildReturnPath("success"),
+                cancelPath: buildReturnPath("cancelled"),
+              },
+            }
+          : {
+              url: "/api/me/credits/checkout",
+              body: {
+                bundleSize: option === "dropin" ? 1 : option === "3pack" ? 3 : 10,
+                successPath: buildReturnPath("success"),
+                cancelPath: buildReturnPath("cancelled"),
+              },
+            };
+
+      const response = await fetch(request.url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request.body),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(payload?.message || "Could not start checkout.");
       }
-      setTimeout(() => {
-        const result = bookClass(classSlug);
-        if (result.success && result.creditUsed) {
-          onSuccess(result.creditUsed);
-        }
-        setPurchasing(false);
-      }, 100);
-    }, 800);
+
+      const payload = (await response.json()) as CheckoutResult;
+      onSuccess();
+      window.location.href = payload.checkoutUrl;
+    } catch (error) {
+      setPurchaseError(error instanceof Error ? error.message : "Could not start checkout.");
+      setPurchasing(false);
+    }
   };
 
   return (
@@ -280,12 +337,12 @@ export function PurchaseModal({ classSlug, className, onSuccess, onClose }: Purc
                   variant="outline"
                   size="sm"
                   className="flex-1"
-                  onClick={() => handlePurchase("3pack")}
+                  onClick={() => void startCheckout("3pack")}
                 >
-                  3 classes · {priceLabel(30)}
+                  3 classes · {priceLabel(credits3Price)}
                 </Button>
-                <Button size="sm" className="flex-1" onClick={() => handlePurchase("10pack")}>
-                  10 classes · {priceLabel(90)}
+                <Button size="sm" className="flex-1" onClick={() => void startCheckout("10pack")}>
+                  10 classes · {priceLabel(credits10Price)}
                 </Button>
               </div>
             </div>
@@ -297,14 +354,14 @@ export function PurchaseModal({ classSlug, className, onSuccess, onClose }: Purc
                   <h4 className="text-lg">Single Extra Class</h4>
                   <p className="text-muted-foreground text-sm">Just this once.</p>
                 </div>
-                <Button variant="outline" onClick={() => handlePurchase("dropin")}>
-                  {priceLabel(12)}
+                <Button variant="outline" onClick={() => void startCheckout("dropin")}>
+                  {priceLabel(credits1Price)}
                 </Button>
               </div>
             </div>
 
-            {/* Upgrade suggestion (only if not already unlimited) */}
-            {membership!.plan !== "unlimited" && (
+            {/* Upgrade suggestion for capped memberships */}
+            {membership!.plan !== "movewell" && (
               <div className="bg-secondary/20 space-y-2 rounded-lg border p-4">
                 <p className="text-muted-foreground text-sm">
                   Running out of classes regularly? Consider upgrading your plan.
@@ -332,38 +389,21 @@ export function PurchaseModal({ classSlug, className, onSuccess, onClose }: Purc
               </div>
             )}
 
-            {/* Monthly membership — recommended for non-members */}
+            {/* Move Well membership — recommended for non-members */}
             <div className="border-primary relative space-y-3 rounded-lg border-2 p-4">
               <div className="bg-primary text-primary-foreground absolute -top-3 left-4 rounded px-2 py-0.5 text-xs">
                 Recommended
               </div>
               <div>
-                <h4 className="text-lg">Monthly Membership</h4>
+                <h4 className="text-lg">Move Well Membership</h4>
                 <p className="text-muted-foreground text-sm">
-                  Best value for regular training. Cancel anytime.
+                  Unlimited classes, cancel anytime. Includes a 14-day trial with first charge after
+                  trial unless cancelled.
                 </p>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => handlePurchase("steady")}
-                >
-                  2/week · {priceLabel(49)}
-                </Button>
-                <Button size="sm" className="flex-1" onClick={() => handlePurchase("committed")}>
-                  3/week · {priceLabel(65)}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => handlePurchase("unlimited")}
-                >
-                  All · {priceLabel(79)}
-                </Button>
-              </div>
+              <Button size="sm" className="w-full" onClick={() => void startCheckout("membership")}>
+                Join · {priceLabel(moveWellMonthlyPrice)}/month
+              </Button>
             </div>
 
             {/* Credit pack */}
@@ -377,17 +417,17 @@ export function PurchaseModal({ classSlug, className, onSuccess, onClose }: Purc
                   variant="outline"
                   size="sm"
                   className="flex-1"
-                  onClick={() => handlePurchase("3pack")}
+                  onClick={() => void startCheckout("3pack")}
                 >
-                  3 classes · {priceLabel(30)}
+                  3 classes · {priceLabel(credits3Price)}
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   className="flex-1"
-                  onClick={() => handlePurchase("10pack")}
+                  onClick={() => void startCheckout("10pack")}
                 >
-                  10 classes · {priceLabel(90)}
+                  10 classes · {priceLabel(credits10Price)}
                 </Button>
               </div>
             </div>
@@ -401,13 +441,19 @@ export function PurchaseModal({ classSlug, className, onSuccess, onClose }: Purc
                     Try a single class, no commitment.
                   </p>
                 </div>
-                <Button variant="outline" onClick={() => handlePurchase("dropin")}>
-                  {priceLabel(12)}
+                <Button variant="outline" onClick={() => void startCheckout("dropin")}>
+                  {priceLabel(credits1Price)}
                 </Button>
               </div>
             </div>
           </div>
         )}
+
+        {purchaseError ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {purchaseError}
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -416,38 +462,49 @@ export function PurchaseModal({ classSlug, className, onSuccess, onClose }: Purc
 /* ──── Main BookClass button with full flow ──── */
 
 interface BookClassButtonProps {
+  sessionId?: string;
+  isBooked?: boolean;
   classSlug: string;
-  /** These can be omitted — the component will look up from classDetails */
+  /** Optional display metadata for confirmation/schedule labels */
   className?: string;
   day?: string;
   time?: string;
+  duration?: string;
   variant?: "default" | "outline" | "lg";
   size?: "default" | "sm" | "lg" | "icon";
   attendeeCount?: number;
 }
 
 export function BookClassButton({
+  sessionId,
+  isBooked: isBookedProp = false,
   classSlug,
   className: classNameProp,
   day: dayProp,
   time: timeProp,
+  duration: durationProp,
   variant = "default",
   size: sizeProp,
   attendeeCount = 5,
 }: BookClassButtonProps) {
-  const { isAuthenticated, canBook, bookClass, isClassBooked } = useAuth();
+  const { isAuthenticated, refreshMembershipState } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [showPurchase, setShowPurchase] = useState(false);
   const [confirmation, setConfirmation] = useState<{ creditUsed: CreditItem } | null>(null);
+  const [bookingState, setBookingState] = useState<"idle" | "loading" | "waitlisted">("idle");
+  const [bookedOverride, setBookedOverride] = useState(false);
+  const [resolvedSessionId, setResolvedSessionId] = useState<string | null>(sessionId ?? null);
+  const [autoBookingAttempted, setAutoBookingAttempted] = useState(false);
 
-  // Auto-lookup class details if not provided
-  const cls = classDetails.find((c) => c.slug === classSlug);
-  const className = classNameProp || cls?.name || classSlug;
-  const day = dayProp || cls?.day || "Monday";
-  const time = timeProp || cls?.time || "09:00";
+  const className = classNameProp || classSlug;
+  const day = dayProp || "Monday";
+  const time = timeProp || "09:00";
+  const duration = durationProp || "60 min";
 
-  const booked = isClassBooked(classSlug);
+  const effectiveSessionId = sessionId || resolvedSessionId || undefined;
+  const booked = bookedOverride || isBookedProp;
 
   // Check 90-minute rule
   const nextClass = getNextClassDatetime(day, time);
@@ -458,6 +515,84 @@ export function BookClassButton({
 
   const effectiveSize = sizeProp || (variant === "lg" ? "lg" : "default");
 
+  const clearCheckoutIntent = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("checkout");
+    params.delete("autobook");
+    params.delete("autobookClass");
+    params.delete("autobookSessionId");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
+
+  const attemptBooking = useCallback(async ({
+    preferredSessionId,
+    openPurchaseModalOnLimit,
+  }: {
+    preferredSessionId?: string;
+    openPurchaseModalOnLimit: boolean;
+  }) => {
+    setBookingState("loading");
+    let targetSessionId = preferredSessionId || effectiveSessionId;
+    if (!targetSessionId) {
+      const sessionResponse = await fetch(
+        `/api/classes/sessions?slug=${encodeURIComponent(classSlug)}&from=${encodeURIComponent(new Date().toISOString())}`,
+        { cache: "no-store" }
+      );
+      if (sessionResponse.ok) {
+        const sessionPayload = (await sessionResponse.json()) as Array<{ id: string }>;
+        targetSessionId = sessionPayload[0]?.id;
+      }
+    }
+
+    if (!targetSessionId) {
+      setBookingState("idle");
+      return "missing_session" as const;
+    }
+
+    setResolvedSessionId(targetSessionId);
+    const response = await fetch(`/api/classes/sessions/${targetSessionId}/book`, {
+      method: "POST",
+    });
+    const payload = (await response.json().catch(() => ({}))) as {
+      status?: "booked" | "waitlisted";
+      bookingMode?: "membership" | "credit" | "waitlist" | "manual";
+      message?: string;
+    };
+
+    if (!response.ok) {
+      if (payload.message === "BOOKING_LIMIT_REACHED" && openPurchaseModalOnLimit) {
+        setShowPurchase(true);
+      }
+      setBookingState("idle");
+      return payload.message === "BOOKING_LIMIT_REACHED" ? ("limit_reached" as const) : ("failed" as const);
+    }
+
+    if (payload.status === "waitlisted") {
+      setBookingState("waitlisted");
+      await refreshMembershipState();
+      return "waitlisted" as const;
+    }
+
+    const creditUsed: CreditItem = {
+      id: `session_${targetSessionId}`,
+      type: payload.bookingMode === "credit" ? "purchased" : "membership",
+      label:
+        payload.bookingMode === "credit"
+          ? "Class credit"
+          : payload.bookingMode === "manual"
+            ? "Instructor booking"
+            : "Membership class",
+      sourceId: payload.bookingMode === "credit" ? "credit" : "membership",
+      sourceLabel: payload.bookingMode === "credit" ? "Purchased credits" : "Membership",
+    };
+    setConfirmation({ creditUsed });
+    setBookedOverride(true);
+    setBookingState("idle");
+    await refreshMembershipState();
+    return "booked" as const;
+  }, [classSlug, effectiveSessionId, refreshMembershipState]);
+
   const handleBook = () => {
     if (isCancelledDueToLowEnrollment) return;
 
@@ -467,16 +602,77 @@ export function BookClassButton({
       return;
     }
 
-    const { allowed } = canBook();
-    if (allowed) {
-      const result = bookClass(classSlug);
-      if (result.success && result.creditUsed) {
-        setConfirmation({ creditUsed: result.creditUsed });
-      }
-    } else {
-      setShowPurchase(true);
-    }
+    const run = async () => {
+      await attemptBooking({
+        preferredSessionId: effectiveSessionId,
+        openPurchaseModalOnLimit: true,
+      });
+    };
+
+    void run();
   };
+
+  useEffect(() => {
+    const checkoutStatus = searchParams.get("checkout");
+    const shouldAutoBook = searchParams.get("autobook") === "1";
+    const targetClassSlug = searchParams.get("autobookClass");
+    const targetSessionId = searchParams.get("autobookSessionId") || undefined;
+
+    if (
+      !isAuthenticated ||
+      autoBookingAttempted ||
+      checkoutStatus !== "success" ||
+      !shouldAutoBook ||
+      targetClassSlug !== classSlug
+    ) {
+      return;
+    }
+
+    if (targetSessionId && effectiveSessionId && targetSessionId !== effectiveSessionId) {
+      return;
+    }
+
+    setAutoBookingAttempted(true);
+
+    void (async () => {
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        await refreshMembershipState();
+        const result = await attemptBooking({
+          preferredSessionId: targetSessionId,
+          openPurchaseModalOnLimit: false,
+        });
+
+        if (result === "booked" || result === "waitlisted" || result === "failed") {
+          break;
+        }
+
+        if (result !== "limit_reached") {
+          break;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+
+      clearCheckoutIntent();
+    })();
+  }, [
+    attemptBooking,
+    autoBookingAttempted,
+    classSlug,
+    clearCheckoutIntent,
+    effectiveSessionId,
+    isAuthenticated,
+    refreshMembershipState,
+    searchParams,
+  ]);
+
+  if (bookingState === "waitlisted") {
+    return (
+      <Button variant="outline" disabled size={effectiveSize} className={variant === "lg" ? "px-8 text-lg" : ""}>
+        Waitlisted
+      </Button>
+    );
+  }
 
   if (booked) {
     return (
@@ -514,20 +710,25 @@ export function BookClassButton({
     <>
       <Button
         onClick={handleBook}
+        disabled={bookingState === "loading"}
         size={effectiveSize}
         className={variant === "lg" ? "px-8 text-lg" : ""}
       >
-        {effectiveSize === "sm" ? "Book" : "Book This Class"}
+        {bookingState === "loading"
+          ? "Booking..."
+          : effectiveSize === "sm"
+            ? "Book"
+            : "Book This Class"}
         <ArrowRight className="ml-2 h-4 w-4" />
       </Button>
 
       {showPurchase && (
         <PurchaseModal
           classSlug={classSlug}
+          sessionId={effectiveSessionId}
           className={className}
-          onSuccess={(creditUsed) => {
+          onSuccess={() => {
             setShowPurchase(false);
-            setConfirmation({ creditUsed });
           }}
           onClose={() => setShowPurchase(false)}
         />
@@ -538,6 +739,7 @@ export function BookClassButton({
           className={className}
           day={day}
           time={time}
+          duration={duration}
           creditUsed={confirmation.creditUsed}
           onClose={() => setConfirmation(null)}
         />

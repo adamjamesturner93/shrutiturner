@@ -198,6 +198,7 @@ async function run() {
 
   // Auto-generate slugs in the Contentful UI while still allowing manual edits.
   await configureSlugEditor("blogPost", "title");
+  await configureSlugEditor("instructorProfile", "name");
   await configureSlugEditor("leadMagnet", "title");
   await configureSlugEditor("newsletterTemplate", "title");
 }

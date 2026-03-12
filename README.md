@@ -5,10 +5,17 @@ The original design source is available at https://www.figma.com/design/3UJRjmwz
 
 ## Running the code
 
+Node version:
+
+- Use Node `24.x` for this project (`.nvmrc` and `.node-version` are included).
+
 1. Install dependencies with `pnpm install`.
-2. Start development with `pnpm dev`.
-3. Build with `pnpm build`.
-4. Run production server with `pnpm start`.
+2. Start local Postgres with `pnpm run db:up`.
+3. Generate Prisma client with `pnpm run prisma:generate`.
+4. Apply local migrations with `pnpm run prisma:migrate:dev`.
+5. Start development with `pnpm dev`.
+6. Build with `pnpm build`.
+7. Run production server with `pnpm start`.
 
 ## Architecture
 
@@ -18,6 +25,33 @@ The original design source is available at https://www.figma.com/design/3UJRjmwz
 - Shared modules live under `src/components`, `src/lib`, `src/data`, `src/context`.
 - Page view components are organized under `src/views` and imported by route files.
 - React Router has been removed from runtime and dependencies.
+
+## Auth + Database
+
+- Auth uses Auth.js (`next-auth` v5) with Prisma adapter.
+- Sessions use database-backed session tokens with rolling renewal.
+  - Default max session age: 30 days (`AUTH_SESSION_MAX_AGE_DAYS=30`)
+  - Active sessions are renewed every 24h (`updateAge`)
+- Local development DB is Postgres 16 in Docker (`docker-compose.yml`).
+- Local Docker Postgres is exposed on `127.0.0.1:5433` to avoid collisions with any host Postgres on `5432`.
+- Production should use Vercel Postgres (`DATABASE_URL` + optional `DIRECT_URL`).
+- Route protection is enforced in `middleware.ts` for `/dashboard/**`, `/account/**`, `/admin/**`.
+- Admin access is role-based via `User.role = admin` (or `ADMIN_EMAILS` bootstrap).
+
+Useful commands:
+
+1. `pnpm run db:up`
+2. `pnpm run db:logs`
+3. `pnpm run prisma:migrate:dev`
+4. `pnpm run prisma:migrate:deploy`
+5. `pnpm run prisma:seed:admin`
+6. `pnpm run prisma:studio`
+7. `pnpm run db:down`
+
+Prisma note:
+
+- This workspace targets Prisma 7 (`prisma` and `@prisma/client` in `package.json`).
+- Prisma CLI config lives in `prisma.config.ts` and the datasource URL is configured there.
 
 ## Contentful Integration
 
@@ -51,3 +85,62 @@ Required environment variables:
 - `CONTENTFUL_MANAGEMENT_TOKEN`
 - `CONTENTFUL_PREVIEW_TOKEN` (optional)
 - `CONTENTFUL_WEBHOOK_SECRET` (for webhook endpoint)
+
+## Marketing Lead + Email Management
+
+Use this split to keep content editable without risking transactional accuracy:
+
+- `leadMagnet` (Contentful): the main marketing lead offer
+  - Manage: `title`, `hookText`, `landingHeadline`, `landingDescription`, `ctaLabel`
+  - Manage welcome delivery content: `emailSubject`, `emailPreviewText`, `emailBody`, `assetUrl`
+- `newsletterSignupContent` (Contentful): signup form wrapper behavior
+  - Manage: `activeLeadMagnet` (switch campaigns), `formPlaceholder`, `consentText`, `successMessage`
+
+Operational flow:
+
+1. Create/edit a `leadMagnet` entry.
+2. Set `newsletterSignupContent.activeLeadMagnet` to that entry.
+3. Signup UI and welcome email automatically use active lead magnet content.
+
+Recommended Contentful ownership:
+
+- Contentful-managed:
+  - `newsletterTemplate`
+  - `leadMagnet`
+  - `newsletterSignupContent`
+  - Optional marketing copy blocks in transactional emails
+- Code/backend-managed:
+  - Auth/security emails (`auth-code`)
+  - Booking/payment state emails (`class-*`, `retreat-*`, credits reminders)
+
+Postmark environment variables:
+
+- `POSTMARK_API_TOKEN`
+- `POSTMARK_FROM_EMAIL`
+- `POSTMARK_MESSAGE_STREAM` (defaults to `outbound`)
+- `POSTMARK_WEBHOOK_SECRET`
+
+Contentful publish automation:
+
+- Publishing `blogPost` or `newsletterTemplate` triggers campaign creation/sending via:
+  - `POST /api/webhooks/contentful`
+- Campaign analytics are then populated from Postmark webhook events:
+  - `POST /api/webhooks/postmark`
+
+Email analytics + reconciliation:
+
+- Postmark webhook ingestion:
+  - `POST /api/webhooks/postmark`
+- Manual backfill:
+  - `pnpm run sync:postmark`
+
+Stripe metrics reconciliation:
+
+- Daily Stripe projections are stored in `BillingMetricDaily`.
+- Manual backfill:
+  - `pnpm run sync:stripe:metrics`
+
+Turnstile environment variables:
+
+- `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
+- `TURNSTILE_SECRET_KEY`

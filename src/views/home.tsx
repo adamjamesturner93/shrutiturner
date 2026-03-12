@@ -25,11 +25,13 @@ import { blogPosts } from "../data/blog-data";
 import { useState } from "react";
 import { useNewsletterSignupCopy } from "@/lib/use-newsletter-signup-copy";
 import { submitNewsletterSignup } from "@/lib/newsletter-signup";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 
 export function HomePage() {
   const recentPosts = blogPosts.slice(0, 3);
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterConsent, setNewsletterConsent] = useState(false);
+  const [newsletterTurnstileToken, setNewsletterTurnstileToken] = useState("");
   const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
   const [newsletterError, setNewsletterError] = useState<string | null>(null);
   const [newsletterSubmitted, setNewsletterSubmitted] = useState(false);
@@ -42,9 +44,10 @@ export function HomePage() {
     setNewsletterSubmitting(true);
     const result = await submitNewsletterSignup({
       email: newsletterEmail,
-      lists: ["newsletter"],
+      marketingOptIn: newsletterConsent,
       consent: newsletterConsent,
       source: "homepage",
+      turnstileToken: newsletterTurnstileToken,
     });
     setNewsletterSubmitting(false);
     if (!result.ok) {
@@ -57,6 +60,7 @@ export function HomePage() {
       setNewsletterSubmitted(false);
       setNewsletterEmail("");
       setNewsletterConsent(false);
+      setNewsletterTurnstileToken("");
     }, 3000);
   };
 
@@ -146,21 +150,21 @@ export function HomePage() {
       <section className="py-16 md:py-20">
         <div className="container mx-auto max-w-5xl px-4">
           <div className="grid gap-8 md:grid-cols-3">
-            <div className="bg-background space-y-4 rounded-lg border p-6">
+            <div className="bg-background border-primary space-y-4 rounded-lg border border-l-4 p-6">
               <p className="text-muted-foreground leading-relaxed italic">
                 "Finally, a yoga teacher who understands that my body isn't just 'tight' — it's
                 complex. The adaptations are intelligent, not patronising."
               </p>
               <p className="text-sm">— Sarah, Hypermobility EDS</p>
             </div>
-            <div className="bg-background space-y-4 rounded-lg border p-6">
+            <div className="bg-background border-primary space-y-4 rounded-lg border border-l-4 p-6">
               <p className="text-muted-foreground leading-relaxed italic">
                 "I've built more strength in 12 weeks than in years of trying generic programs.
                 Shruti actually gets what it's like to train with chronic illness."
               </p>
               <p className="text-sm">— James, Rheumatoid Arthritis</p>
             </div>
-            <div className="bg-background space-y-4 rounded-lg border p-6">
+            <div className="bg-background border-primary space-y-4 rounded-lg border border-l-4 p-6">
               <p className="text-muted-foreground leading-relaxed italic">
                 "The small group program gave me the accountability I needed and a community that
                 understands. No toxic positivity, just real support."
@@ -188,23 +192,23 @@ export function HomePage() {
           <div className="mx-auto grid max-w-4xl gap-8 md:grid-cols-2">
             <div className="space-y-4">
               <h3 className="text-xl">You might have:</h3>
-              <ul className="text-muted-foreground space-y-3">
-                <li>- Psoriatic or rheumatoid arthritis</li>
-                <li>- Autoimmune conditions</li>
-                <li>- Chronic pain</li>
-                <li>- Hypermobility</li>
-                <li>- Long-term injury recovery</li>
+              <ul className="text-muted-foreground list-disc space-y-3 pl-5">
+                <li>Psoriatic or rheumatoid arthritis</li>
+                <li>Autoimmune conditions</li>
+                <li>Chronic pain</li>
+                <li>Hypermobility</li>
+                <li>Long-term injury recovery</li>
               </ul>
             </div>
 
             <div className="space-y-4">
               <h3 className="text-xl">And you are:</h3>
-              <ul className="text-muted-foreground space-y-3">
-                <li>- Intelligent and research-oriented</li>
-                <li>- Frustrated by generic fitness advice</li>
-                <li>- Tired of being told to "just rest"</li>
-                <li>- Ready to build genuine capacity</li>
-                <li>- Looking for evidence-based approaches</li>
+              <ul className="text-muted-foreground list-disc space-y-3 pl-5">
+                <li>Intelligent and research-oriented</li>
+                <li>Frustrated by generic fitness advice</li>
+                <li>Tired of being told to "just rest"</li>
+                <li>Ready to build genuine capacity</li>
+                <li>Looking for evidence-based approaches</li>
               </ul>
             </div>
           </div>
@@ -246,7 +250,7 @@ export function HomePage() {
                 Rehabilitation-informed yoga that prioritises joint safety, stability, and nervous
                 system regulation.
               </p>
-              <p className="text-primary text-sm">From £9/class with a bundle</p>
+              <p className="text-sm text-[#9B6535]">From £7/class with a bundle</p>
               <Link href="/classes/yoga">
                 <Button
                   variant="outline"
@@ -268,7 +272,7 @@ export function HomePage() {
                 Evidence-based resistance training designed for bodies that need intelligent
                 programming.
               </p>
-              <p className="text-primary text-sm">From £9/class with a bundle</p>
+              <p className="text-sm text-[#9B6535]">From £7/class with a bundle</p>
               <Link href="/classes/strength">
                 <Button
                   variant="outline"
@@ -289,7 +293,7 @@ export function HomePage() {
               <p className="text-muted-foreground text-sm leading-relaxed">
                 Fully personalised programming designed around your specific conditions and goals.
               </p>
-              <p className="text-primary text-sm">From £75/session</p>
+              <p className="text-sm text-[#9B6535]">From £75/session</p>
               <Link href="/pt">
                 <Button
                   variant="outline"
@@ -316,7 +320,7 @@ export function HomePage() {
               <p className="text-muted-foreground text-sm leading-relaxed">
                 Focused cohorts with specific goals. Maximum 6 people for personalised attention.
               </p>
-              <p className="text-primary text-sm">From £120 per program</p>
+              <p className="text-sm text-[#9B6535]">From £120 per program</p>
               <Link href="/classes/small-groups">
                 <Button className="w-full">
                   View Programs
@@ -416,7 +420,7 @@ export function HomePage() {
                 </tr>
                 <tr className="bg-secondary/20 border-t">
                   <td className="text-muted-foreground p-4">Starting from</td>
-                  <td className="text-primary p-4 text-center">£9/class</td>
+                  <td className="text-primary p-4 text-center">£7/class</td>
                   <td className="text-primary border-x p-4 text-center">£120/program</td>
                   <td className="text-primary p-4 text-center">£75/session</td>
                 </tr>
@@ -464,7 +468,7 @@ export function HomePage() {
             {[
               {
                 title: "Group Classes",
-                price: "From £9/class",
+                price: "From £7/class",
                 features: [
                   { label: "Personalisation", value: "Real-time modifications" },
                   { label: "Group size", value: "Up to 20" },
@@ -657,11 +661,14 @@ export function HomePage() {
                     type="submit"
                     size="lg"
                     className="bg-[#B5C49B] text-[#2E1F33] hover:bg-[#a5b48b]"
-                    disabled={newsletterSubmitting || !newsletterConsent}
+                    disabled={
+                      newsletterSubmitting || !newsletterConsent || !newsletterTurnstileToken
+                    }
                   >
                     {newsletterSubmitting ? "Subscribing..." : signupCopy.buttonLabel}
                   </Button>
                 </div>
+                <TurnstileWidget onTokenChange={setNewsletterTurnstileToken} />
                 <label className="flex items-start gap-2 text-sm text-[#FAFAF8]/70">
                   <input
                     type="checkbox"
@@ -671,8 +678,7 @@ export function HomePage() {
                     required
                   />
                   <span>
-                    I consent to receiving marketing emails and understand I can unsubscribe at any
-                    time.
+                    I want newsletter and update emails. I can unsubscribe anytime.
                   </span>
                 </label>
               </form>

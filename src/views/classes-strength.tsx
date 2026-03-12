@@ -41,7 +41,7 @@ export function ClassesStrengthPage({
                 <Calendar className="ml-2 h-5 w-5" />
               </Button>
             </Link>
-            <Link href="/signup">
+            <Link href="/login">
               <Button
                 size="lg"
                 variant="outline"
@@ -115,19 +115,33 @@ export function ClassesStrengthPage({
       {/* Class Definitions */}
       <section className="bg-secondary/20 py-20 md:py-24">
         <div className="container mx-auto max-w-6xl px-4">
-          <h2 className="mb-12 text-center text-3xl md:text-5xl">Class Templates</h2>
+          <h2 className="mb-3 text-center text-3xl md:text-5xl">Class Styles</h2>
+          <p className="text-muted-foreground mx-auto mb-12 max-w-3xl text-center">
+            Current strength formats from the CMS, presented in the same structure used across the
+            public class pages.
+          </p>
 
           {classDefinitions.length > 0 ? (
-            <div className="grid gap-8 md:grid-cols-2">
-              {classDefinitions.map((cls) => (
-                <div key={cls.id} className="bg-background space-y-4 rounded-lg border p-8">
-                  <h3 className="text-2xl">{cls.name}</h3>
-                  <p className="text-muted-foreground text-sm">
-                    {cls.duration} • {cls.level}
-                  </p>
-                  <p className="text-muted-foreground leading-relaxed">{cls.shortDescription}</p>
+            <div className="space-y-5">
+              {classDefinitions.map((cls, index) => (
+                <div
+                  key={cls.id}
+                  className="bg-background grid gap-5 rounded-xl border p-6 md:grid-cols-[1fr_auto]"
+                >
+                  <div className="space-y-3">
+                    <p className="text-primary text-xs uppercase tracking-wide">
+                      Format {index + 1}
+                    </p>
+                    <h3 className="text-2xl">{cls.name}</h3>
+                    <p className="text-muted-foreground leading-relaxed">{cls.shortDescription}</p>
+                    <div className="text-muted-foreground flex flex-wrap gap-2 text-sm">
+                      <span className="rounded-full border px-3 py-1">{cls.duration}</span>
+                      <span className="rounded-full border px-3 py-1">{cls.level}</span>
+                      <span className="rounded-full border px-3 py-1">Progressive scaling included</span>
+                    </div>
+                  </div>
                   <Link href={`/schedule/${cls.slug}`}>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" className="w-full md:w-auto">
                       View Details
                     </Button>
                   </Link>
@@ -188,13 +202,13 @@ export function ClassesStrengthPage({
             </div>
 
             <div className="bg-secondary/20 space-y-4 rounded-lg border p-8">
-              <h3 className="text-xl">✗ This is NOT for you if:</h3>
-              <ul className="text-muted-foreground space-y-3">
-                <li>• You want bodybuilding or aesthetic-focused training</li>
-                <li>• You're looking for quick fixes or dramatic transformations</li>
-                <li>• You want hardcore, aggressive programming</li>
-                <li>• You're not willing to work within your body's limitations</li>
-                <li>• You expect linear, predictable progress</li>
+              <h3 className="text-xl">This is NOT for you if:</h3>
+              <ul className="text-muted-foreground list-disc space-y-3 pl-5">
+                <li>You want bodybuilding or aesthetic-focused training</li>
+                <li>You're looking for quick fixes or dramatic transformations</li>
+                <li>You want hardcore, aggressive programming</li>
+                <li>You're not willing to work within your body's limitations</li>
+                <li>You expect linear, predictable progress</li>
               </ul>
             </div>
           </div>
@@ -283,7 +297,10 @@ export function ClassesStrengthPage({
           {testimonials.length > 0 ? (
             <div className="mx-auto grid max-w-4xl gap-8 md:grid-cols-2">
               {testimonials.map((item) => (
-                <div key={item.id} className="bg-secondary/20 space-y-4 rounded-lg border p-6">
+                <div
+                  key={item.id}
+                  className="bg-secondary/20 border-primary space-y-4 rounded-lg border border-l-4 p-6"
+                >
                   <p className="text-muted-foreground leading-relaxed italic">"{item.quote}"</p>
                   <p className="text-sm">
                     — {item.authorName}
@@ -308,9 +325,7 @@ export function ClassesStrengthPage({
             Join live classes designed for bodies that need intelligent programming, not generic
             workouts.
           </p>
-          <p className="mb-4 text-sm opacity-70">
-            Drop-in from £12 · Bundles from £9/class · Unlimited from £79/month
-          </p>
+          <p className="mb-4 text-sm opacity-70">Single class £9 · 3-pack £24 · Membership from £29/month</p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <Link href="/schedule">
               <Button size="lg" className="bg-[#FAFAF8] text-[#4B5B32] hover:bg-[#FAFAF8]/90">

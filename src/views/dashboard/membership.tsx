@@ -1,160 +1,395 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { DashboardLayout } from "../../components/dashboard-layout";
-import { useAuth, PLAN_PRICES, BUNDLE_PRICES } from "../../context/auth-context";
-import { useI18n } from "../../lib/use-i18n";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
-import { useState } from "react";
-import { CreditCard, Gift, AlertTriangle, Clock } from "lucide-react";
+import {
+  CreditCard,
+  Gift,
+  AlertTriangle,
+  Clock,
+  Infinity,
+  Shield,
+  Check,
+  ArrowRight,
+  Sparkles,
+  Star,
+  Crown,
+} from "lucide-react";
+import type {
+  BillingHistoryItemDto,
+  MembershipStateDto,
+  PublicPricingDto,
+} from "@/lib/api/types";
 
-export function MembershipPage() {
-  const {
-    membership,
-    credits,
-    creditSummary,
-    totalCredits,
-    membershipClassesRemaining,
-    upgradeMembership,
-    cancelMembership,
-    purchaseCredits,
-    referralBalance,
-    spendReferralBalance,
-    creditExpiryDate,
-    creditsExpiringSoon,
-  } = useAuth();
-  const { fmtDate } = useI18n();
+type CheckoutResult = {
+  checkoutUrl: string;
+};
+
+export function MembershipPage({
+  initialState,
+  initialHistory,
+}: {
+  initialState?: MembershipStateDto | null;
+  initialHistory?: BillingHistoryItemDto[];
+}) {
+  const searchParams = useSearchParams();
+  const [state, setState] = useState<MembershipStateDto | null>(initialState || null);
+  const [history, setHistory] = useState<BillingHistoryItemDto[]>(initialHistory || []);
+  const [loading, setLoading] = useState(!initialState);
+  const [working, setWorking] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
+  const [error, setError] = useState("");
+  const [pricing, setPricing] = useState<PublicPricingDto | null>(null);
 
-  // Instructors have unlimited access — no membership management needed
-  if (membership?.plan === "instructor") {
+  const totalCredits = state?.credits.balance || 0;
+  const referralBalance = Math.floor((state?.referral.balancePence || 0) / 100);
+
+  const monthlyPrice = pricing?.membershipDisplay?.movewellMonthly ?? 29;
+  const annualPrice = pricing?.membershipDisplay?.movewellAnnual ?? 290;
+  const trialDays = pricing?.membershipDisplay?.trialDays ?? 14;
+  const credits1Price = pricing?.credits[1] ?? 9;
+  const credits3Price = pricing?.credits[3] ?? 24;
+  const credits10Price = pricing?.credits[10] ?? 70;
+  const creditsExpiryDays = pricing?.creditsExpiryDays ?? 90;
+  const preferredInterval = searchParams.get("interval") === "annual" ? "annual" : "monthly";
+
+  const creditExpiryInfo = useMemo(() => {
+    const summary = state?.credits.summary || [];
+    const dated = summary.filter((item) => Boolean(item.expiresAt));
+    if (dated.length === 0) return { date: null as string | null, count: 0, daysLeft: null as number | null };
+
+    const earliest = dated
+      .map((item) => item.expiresAt as string)
+      .sort((a, b) => (a > b ? 1 : -1))[0];
+    const count = dated
+      .filter((item) => item.expiresAt === earliest)
+      .reduce((sum, item) => sum + item.remaining, 0);
+    const daysLeft = Math.ceil((new Date(earliest).getTime() - Date.now()) / 86400000);
+
+    return { date: earliest, count, daysLeft };
+  }, [state?.credits.summary]);
+
+  const load = async () => {
+    const [membershipRes, historyRes, pricingRes] = await Promise.all([
+      fetch("/api/me/membership", { cache: "no-store" }),
+      fetch("/api/me/billing-history?limit=30", { cache: "no-store" }),
+      fetch("/api/public/pricing", { cache: "no-store" }),
+    ]);
+
+    if (!membershipRes.ok) throw new Error("Failed to load membership.");
+    const membership = (await membershipRes.json()) as MembershipStateDto;
+    const billingHistory = historyRes.ok ? ((await historyRes.json()) as BillingHistoryItemDto[]) : [];
+    const publicPricing = pricingRes.ok ? ((await pricingRes.json()) as PublicPricingDto) : null;
+
+    setState(membership);
+    setHistory(billingHistory);
+    if (publicPricing) setPricing(publicPricing);
+  };
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      setLoading(true);
+      setError("");
+      try {
+        await load();
+      } catch (e) {
+        if (active) setError(e instanceof Error ? e.message : "Failed to load membership.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const startMembershipCheckout = async (billingInterval: "monthly" | "annual") => {
+    setWorking(true);
+    setError("");
+    try {
+      const res = await fetch("/api/me/membership/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: "movewell", billingInterval }),
+      });
+      if (!res.ok) throw new Error("Failed to start membership checkout.");
+      const payload = (await res.json()) as CheckoutResult;
+      window.location.href = payload.checkoutUrl;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to start membership checkout.");
+      setWorking(false);
+    }
+  };
+
+  const startCreditsCheckout = async (bundleSize: 1 | 3 | 10) => {
+    setWorking(true);
+    setError("");
+    try {
+      const res = await fetch("/api/me/credits/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bundleSize }),
+      });
+      if (!res.ok) throw new Error("Failed to start credits checkout.");
+      const payload = (await res.json()) as CheckoutResult;
+      window.location.href = payload.checkoutUrl;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to start credits checkout.");
+      setWorking(false);
+    }
+  };
+
+  const cancelMembership = async () => {
+    setWorking(true);
+    setError("");
+    try {
+      const res = await fetch("/api/me/membership/cancel", { method: "POST" });
+      if (!res.ok) throw new Error("Failed to cancel membership.");
+      await load();
+      setShowCancel(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to cancel membership.");
+      setWorking(false);
+    }
+  };
+
+  const priceWithDiscount = (basePrice: number) => {
+    if (referralBalance <= 0) return `£${basePrice}`;
+    const discounted = Math.max(0, basePrice - referralBalance);
     return (
-      <DashboardLayout title="Membership - Private Studio">
-        <h1 className="mb-2 text-3xl">Membership</h1>
-        <div className="bg-background mt-8 rounded-lg border p-8 text-center">
-          <CreditCard className="mx-auto mb-3 h-8 w-8 text-[#4B5B32]" />
-          <p className="mb-1 text-lg">Unlimited (instructor)</p>
-          <p className="text-muted-foreground text-sm">
-            As an instructor, you have unlimited access to all classes. No membership or credits
-            needed.
-          </p>
-        </div>
+      <span>
+        <span className="text-muted-foreground mr-1 line-through">£{basePrice}</span>£{discounted}
+      </span>
+    );
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout title="Membership & Credits - Private Studio">
+        <p className="text-muted-foreground">Loading membership...</p>
       </DashboardLayout>
     );
   }
 
-  const plans = [
-    {
-      key: "steady" as const,
-      label: "Steady",
-      classes: "2/week",
-      price: PLAN_PRICES.steady,
-      perClass: "~£6",
-    },
-    {
-      key: "committed" as const,
-      label: "Committed",
-      classes: "3/week",
-      price: PLAN_PRICES.committed,
-      perClass: "~£5",
-      popular: true,
-    },
-    {
-      key: "unlimited" as const,
-      label: "Unlimited",
-      classes: "All classes",
-      price: PLAN_PRICES.unlimited,
-      perClass: "Best value",
-    },
-  ];
-
-  /** Format a price with optional referral discount */
-  const priceWithDiscount = (basePrice: number) => {
-    if (referralBalance > 0) {
-      const discounted = Math.max(0, basePrice - referralBalance);
-      return (
-        <span>
-          <span className="text-muted-foreground mr-1 line-through">£{basePrice}</span>£{discounted}
-        </span>
-      );
-    }
-    return `£${basePrice}`;
-  };
+  if (!state) {
+    return (
+      <DashboardLayout title="Membership & Credits - Private Studio">
+        <p className="text-muted-foreground">{error || "Could not load membership."}</p>
+      </DashboardLayout>
+    );
+  }
 
   return (
-    <DashboardLayout title="Membership - Private Studio">
+    <DashboardLayout title="Membership & Credits - Private Studio">
       <h1 className="mb-2 text-3xl">Membership & Credits</h1>
-      <p className="text-muted-foreground mb-8">Manage your plan, view credits, and billing.</p>
+      <p className="text-muted-foreground mb-8">Manage your plan, purchase credits, and view billing.</p>
 
-      {/* Referral balance banner */}
-      {referralBalance > 0 && (
+      {error ? <p className="mb-4 text-sm text-red-600">{error}</p> : null}
+
+      {referralBalance > 0 ? (
         <div className="mb-8 flex items-start gap-3 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 p-4">
           <Gift className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
           <div>
             <p className="text-sm">
               You have <span className="text-[#4B5B32]">£{referralBalance}</span> referral balance.
             </p>
-            <p className="text-muted-foreground mt-1 text-xs">Applies to next purchase</p>
+            <p className="text-muted-foreground mt-1 text-xs">
+              {state.membership ? "Applies to your next renewal" : "Applies to your next purchase"}
+            </p>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Current plan */}
-      <div className="bg-background mb-8 rounded-lg border p-6">
-        <h2 className="mb-4 text-xl">Current Plan</h2>
-        {membership ? (
+      {state.membership && state.membership.plan !== "instructor" ? (
+        <div className="bg-background mb-8 rounded-lg border p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <CreditCard className="text-primary h-5 w-5" />
+            <h2 className="text-xl">Current Plan</h2>
+          </div>
+
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <p className="text-lg">{membership.label}</p>
+                <p className="text-lg">{state.membership.label}</p>
                 <p className="text-muted-foreground text-sm">
-                  Renews {fmtDate(membership.renewalDate)}
-                  {" · "}
-                  {referralBalance > 0 ? (
-                    <span>
-                      <span className="line-through">£{membership.price}</span>{" "}
-                      <span className="text-[#4B5B32]">
-                        £{Math.max(0, membership.price - referralBalance)}
-                      </span>
-                    </span>
-                  ) : (
-                    `£${membership.price}`
-                  )}
+                  Renews {state.membership.renewalDate || "-"} · £
+                  {Math.floor(state.membership.pricePence / 100)}/
+                  {state.membership.billingInterval === "annual" ? "year" : "month"}
                 </p>
               </div>
-              <div className="text-right">
-                <p className="text-muted-foreground text-sm">This week</p>
-                <p className="text-2xl">
-                  {membershipClassesRemaining}
-                  <span className="text-muted-foreground text-sm">
-                    {" "}
-                    / {membership.classesPerWeek === 99 ? "∞" : membership.classesPerWeek}
-                  </span>
-                </p>
+              <Badge variant="outline" className="border-[#4B5B32]/30 bg-[#4B5B32]/5 text-[#4B5B32]">
+                {state.membership.plan === "movewell" ? (
+                  <>
+                    <Infinity className="mr-1 h-3 w-3" />
+                    Unlimited classes
+                  </>
+                ) : (
+                  <>{state.membership.classesRemaining}/{state.membership.classesPerWeek} classes left this week</>
+                )}
+              </Badge>
+            </div>
+
+            <div className="bg-secondary/20 rounded-lg p-4">
+              <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                <div className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-[#4B5B32]" />
+                  All class types included
+                </div>
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-[#4B5B32]" />
+                  No cancellation penalties
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-[#4B5B32]" />
+                  No penalties for no-shows
+                </div>
+                <div className="flex items-center gap-2">
+                  <Star className="h-4 w-4 text-[#4B5B32]" />
+                  Early access to programmes
+                </div>
+                {state.membership.billingInterval === "annual" ? (
+                  <div className="flex items-center gap-2 rounded-md bg-[#4B5B32]/5 px-2 py-1.5 text-[#4B5B32] sm:col-span-2">
+                    <Crown className="h-4 w-4" />
+                    10% off all programmes & workshops
+                  </div>
+                ) : null}
               </div>
             </div>
-            <div className="flex gap-3">
+
+            <Button variant="outline" size="sm" className="text-destructive" onClick={() => setShowCancel(true)}>
+              Cancel Membership
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-background border-primary mb-8 rounded-lg border-2 p-6 md:p-8">
+          <div className="mb-6 flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-[#4B5B32]" />
+            <h2 className="text-xl">Move Well Membership</h2>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <div
+              className={`space-y-4 rounded-lg border p-5 ${
+                preferredInterval === "monthly" ? "border-[#4B5B32]/30 bg-[#4B5B32]/5" : ""
+              }`}
+            >
+              <div>
+                <p className="text-muted-foreground mb-1 text-xs">Monthly</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl text-[#9B6535]">
+                    {referralBalance > 0 ? (
+                      <>
+                        <span className="text-muted-foreground mr-1 text-xl line-through">£{monthlyPrice}</span>
+                        £{Math.max(0, monthlyPrice - referralBalance)}
+                      </>
+                    ) : (
+                      `£${monthlyPrice}`
+                    )}
+                  </span>
+                  <span className="text-muted-foreground text-sm">/ month</span>
+                </div>
+                {referralBalance > 0 ? (
+                  <p className="mt-1 text-xs text-[#4B5B32]">
+                    £{referralBalance} referral discount on first month
+                  </p>
+                ) : null}
+              </div>
+
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-center gap-2">
+                  <Infinity className="h-4 w-4 text-[#4B5B32]" />
+                  Unlimited classes
+                </li>
+                <li className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-[#4B5B32]" />
+                  Penalty-free cancellation
+                </li>
+                <li className="flex items-center gap-2">
+                  <Star className="h-4 w-4 text-[#4B5B32]" />
+                  Early access to programmes
+                </li>
+              </ul>
+
               <Button
                 variant="outline"
-                size="sm"
-                className="text-destructive"
-                onClick={() => setShowCancel(true)}
+                className="w-full"
+                onClick={() => void startMembershipCheckout("monthly")}
+                disabled={working}
               >
-                Cancel Plan
+                Start Monthly
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+
+            <div
+              className={`relative space-y-4 rounded-lg border-2 p-5 ${
+                preferredInterval === "annual"
+                  ? "border-[#4B5B32] bg-[#4B5B32]/5"
+                  : "border-[#4B5B32]/30"
+              }`}
+            >
+              <div className="absolute -top-3 right-4">
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#4B5B32] px-2.5 py-1 text-[10px] text-white">
+                  <Crown className="h-3 w-3" />
+                  Recommended
+                </span>
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs text-[#4B5B32]">Annual</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl text-[#9B6535]">£{annualPrice}</span>
+                  <span className="text-muted-foreground text-sm">/ year</span>
+                </div>
+                <p className="mt-1 text-xs text-[#4B5B32]">
+                  Save £{Math.max(0, monthlyPrice * 12 - annualPrice)} - 2 months free
+                </p>
+              </div>
+
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-center gap-2">
+                  <Infinity className="h-4 w-4 text-[#4B5B32]" />
+                  Unlimited classes
+                </li>
+                <li className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-[#4B5B32]" />
+                  Penalty-free cancellation
+                </li>
+                <li className="flex items-center gap-2">
+                  <Star className="h-4 w-4 text-[#4B5B32]" />
+                  Early access to programmes
+                </li>
+                <li className="-mx-1 flex items-center gap-2 rounded bg-[#4B5B32]/5 px-1 py-1 text-[#4B5B32]">
+                  <Crown className="h-4 w-4" />
+                  10% off programmes & workshops
+                </li>
+              </ul>
+
+              <Button
+                className="w-full bg-[#4B5B32] text-white hover:bg-[#4B5B32]/90"
+                onClick={() => void startMembershipCheckout("annual")}
+                disabled={working}
+              >
+                Start Annual - Save £{Math.max(0, monthlyPrice * 12 - annualPrice)}
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </div>
-        ) : (
-          <div className="py-6 text-center">
-            <p className="text-muted-foreground mb-4">
-              No active membership. Choose a plan below or use credit packs.
-            </p>
-          </div>
-        )}
-      </div>
 
-      {/* Cancel confirmation */}
-      {showCancel && (
+          <p className="text-muted-foreground mt-4 text-center text-xs">
+            Every membership begins with {trialDays} days on us. Card details are collected now,
+            first charge after trial unless cancelled.
+          </p>
+        </div>
+      )}
+
+      {showCancel ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <div className="bg-background w-full max-w-sm space-y-4 rounded-lg border p-6 shadow-xl">
             <h3 className="text-xl">Cancel your membership?</h3>
@@ -162,254 +397,185 @@ export function MembershipPage() {
               Your membership will remain active until the renewal date. After that, you can still
               attend using credit packs.
             </p>
-            {totalCredits > 0 && (
+            {totalCredits > 0 ? (
               <p className="text-muted-foreground text-sm">
-                You have {totalCredits} purchased credit{totalCredits !== 1 ? "s" : ""} that will
-                remain available.
+                You have {totalCredits} credit{totalCredits !== 1 ? "s" : ""} that will remain available.
               </p>
-            )}
-            {referralBalance > 0 && (
-              <p className="text-muted-foreground text-sm">
-                Your £{referralBalance} referral balance will carry over and apply to your next
-                purchase.
-              </p>
-            )}
+            ) : null}
+            {referralBalance > 0 ? (
+              <p className="text-muted-foreground text-sm">Your £{referralBalance} referral balance will carry over.</p>
+            ) : null}
             <div className="flex flex-col gap-2">
               <Button
                 variant="outline"
                 onClick={() => {
-                  cancelMembership();
+                  void cancelMembership();
                   if (totalCredits === 0) {
-                    purchaseCredits(3);
+                    void startCreditsCheckout(3);
                   }
-                  setShowCancel(false);
                 }}
+                disabled={working}
               >
-                {totalCredits === 0 ? (
-                  <>Cancel & Switch to 3-Class Pack ({priceWithDiscount(30)})</>
-                ) : (
-                  "Cancel Membership"
-                )}
+                {totalCredits === 0
+                  ? <>Cancel & Switch to 3-Class Pack ({priceWithDiscount(credits3Price)})</>
+                  : "Cancel Membership"}
               </Button>
-              {totalCredits === 0 && (
-                <Button
-                  variant="outline"
-                  className="text-destructive"
-                  onClick={() => {
-                    cancelMembership();
-                    setShowCancel(false);
-                  }}
-                >
+              {totalCredits === 0 ? (
+                <Button variant="outline" className="text-destructive" onClick={() => void cancelMembership()} disabled={working}>
                   Cancel without replacement
                 </Button>
-              )}
-              <Button variant="ghost" onClick={() => setShowCancel(false)}>
+              ) : null}
+              <Button variant="ghost" onClick={() => setShowCancel(false)} disabled={working}>
                 Keep my membership
               </Button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Available plans */}
-      <div className="mb-8">
-        <h2 className="mb-4 text-xl">{membership ? "Switch Plan" : "Choose a Plan"}</h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          {plans.map((plan) => {
-            const isCurrent = membership?.plan === plan.key;
-            return (
-              <div
-                key={plan.key}
-                className={`relative space-y-4 rounded-lg border p-5 ${
-                  plan.popular ? "border-primary border-2" : ""
-                } ${isCurrent ? "bg-primary/5" : ""}`}
-              >
-                {plan.popular && (
-                  <div className="bg-primary text-primary-foreground absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-0.5 text-xs">
-                    Most Popular
-                  </div>
-                )}
-                <div>
-                  <h3 className="text-lg">{plan.label}</h3>
-                  <p className="text-muted-foreground text-sm">{plan.classes}</p>
-                </div>
-                <div>
-                  <p className="text-2xl">
-                    {referralBalance > 0 && !isCurrent ? (
-                      <span>
-                        <span className="text-muted-foreground mr-1 line-through">
-                          £{plan.price}
-                        </span>
-                        £{Math.max(0, plan.price - referralBalance)}
-                      </span>
-                    ) : (
-                      `£${plan.price}`
-                    )}
-                    <span className="text-muted-foreground text-sm">/month</span>
-                  </p>
-                  <p className="text-muted-foreground text-xs">{plan.perClass} per class</p>
-                  {referralBalance > 0 && !isCurrent && (
-                    <p className="mt-1 text-xs text-[#4B5B32]">
-                      £{referralBalance} referral discount applied
-                    </p>
-                  )}
-                </div>
-                {isCurrent ? (
-                  <Button variant="outline" disabled className="w-full">
-                    Current Plan
-                  </Button>
-                ) : (
-                  <>
-                    <Button
-                      variant={plan.popular ? "default" : "outline"}
-                      className="w-full"
-                      onClick={() => upgradeMembership(plan.key)}
-                    >
-                      {membership ? "Switch" : "Start 14-Day Free Trial"}
-                    </Button>
-                    {!membership && (
-                      <p className="text-muted-foreground text-center text-xs">
-                        No payment taken during trial
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {state.membership ? (
+        totalCredits > 0 ? (
+          <div className="bg-background mb-8 rounded-lg border p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <CreditCard className="text-primary h-5 w-5" />
+              <h2 className="text-xl">Remaining Credits</h2>
+            </div>
 
-      {/* Credit balance — grouped */}
-      <div className="bg-background mb-8 rounded-lg border p-6">
-        <h2 className="mb-4 text-xl">Credit Balance</h2>
+            <p className="text-muted-foreground mb-4 text-sm">
+              You have {totalCredits} credit{totalCredits !== 1 ? "s" : ""} from before your membership.
+              These still expire on their original date.
+            </p>
 
-        {/* Credit expiry warning */}
-        {creditExpiryDate &&
-          (() => {
-            const daysLeft = Math.ceil(
-              (new Date(creditExpiryDate).getTime() - Date.now()) / 86400000
-            );
-            if (daysLeft > 14) return null;
-            return (
+            {creditExpiryInfo.date && creditExpiryInfo.daysLeft !== null && creditExpiryInfo.daysLeft <= 14 ? (
               <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
                 <p className="text-sm text-amber-800">
-                  {creditsExpiringSoon} credit{creditsExpiringSoon !== 1 ? "s" : ""}{" "}
-                  {daysLeft <= 0
+                  {creditExpiryInfo.count} credit{creditExpiryInfo.count !== 1 ? "s" : ""}{" "}
+                  {creditExpiryInfo.daysLeft <= 0
                     ? "expired today"
-                    : daysLeft === 1
+                    : creditExpiryInfo.daysLeft === 1
                       ? "will expire tomorrow"
-                      : `will expire in ${daysLeft} days`}{" "}
-                  ({fmtDate(creditExpiryDate)}). Purchasing more credits will extend the expiry
-                  window for all credits.
+                      : `will expire in ${creditExpiryInfo.daysLeft} days`}
+                  .
                 </p>
               </div>
-            );
-          })()}
+            ) : null}
 
-        {creditSummary.length > 0 ? (
-          <div className="mb-6 space-y-3">
-            {creditSummary.map((group) => (
-              <div
-                key={group.sourceId}
-                className="flex items-center justify-between border-b py-3 text-sm last:border-0"
-              >
-                <div className="flex items-center gap-3">
-                  <CreditCard className="text-muted-foreground h-4 w-4 flex-shrink-0" />
-                  <div>
-                    <span>{group.sourceLabel}</span>
-                    <p className="text-muted-foreground text-xs">
-                      {group.expiresAt ? (
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          Expires {fmtDate(group.expiresAt)}
-                        </span>
-                      ) : (
-                        "Purchased"
-                      )}
-                    </p>
+            <div className="space-y-3">
+              {state.credits.summary.map((group) => (
+                <div key={group.sourceId} className="flex items-center justify-between border-b py-3 text-sm last:border-0">
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="text-muted-foreground h-4 w-4 flex-shrink-0" />
+                    <div>
+                      <span>{group.sourceLabel}</span>
+                      <p className="text-muted-foreground text-xs">
+                        {group.expiresAt ? (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Expires {group.expiresAt}
+                          </span>
+                        ) : (
+                          "No expiry set"
+                        )}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div className="text-right">
                   <Badge variant="outline">
                     {group.remaining} credit{group.remaining !== 1 ? "s" : ""}
                   </Badge>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-muted-foreground mb-6 text-sm">No class credits available.</p>
-        )}
-
-        {/* Contextual purchase options */}
-        {membership ? (
-          <div className="border-t pt-4">
-            <p className="text-muted-foreground mb-3 text-sm">
-              Need extra classes beyond your{" "}
-              {membership.classesPerWeek === 99 ? "unlimited" : `${membership.classesPerWeek}/week`}{" "}
-              allowance? Purchase additional credits.
-            </p>
-            <div className="flex gap-3">
-              <Button variant="outline" size="sm" onClick={() => purchaseCredits(3)}>
-                3-Pack ({priceWithDiscount(30)})
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => purchaseCredits(10)}>
-                10-Pack ({priceWithDiscount(90)})
-              </Button>
+              ))}
             </div>
           </div>
-        ) : (
+        ) : null
+      ) : (
+        <div className="bg-background mb-8 rounded-lg border p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <CreditCard className="text-primary h-5 w-5" />
+            <h2 className="text-xl">Class Credits</h2>
+          </div>
+
+          {creditExpiryInfo.date && creditExpiryInfo.daysLeft !== null && creditExpiryInfo.daysLeft <= 14 ? (
+            <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
+              <p className="text-sm text-amber-800">
+                {creditExpiryInfo.count} credit{creditExpiryInfo.count !== 1 ? "s" : ""}{" "}
+                {creditExpiryInfo.daysLeft <= 0
+                  ? "expired today"
+                  : creditExpiryInfo.daysLeft === 1
+                    ? "will expire tomorrow"
+                    : `will expire in ${creditExpiryInfo.daysLeft} days`}
+                . Credits expire {creditsExpiryDays} days from purchase and don't auto-renew.
+              </p>
+            </div>
+          ) : null}
+
+          {state.credits.summary.length > 0 ? (
+            <div className="mb-6 space-y-3">
+              {state.credits.summary.map((group) => (
+                <div key={group.sourceId} className="flex items-center justify-between border-b py-3 text-sm last:border-0">
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="text-muted-foreground h-4 w-4 flex-shrink-0" />
+                    <div>
+                      <span>{group.sourceLabel}</span>
+                      <p className="text-muted-foreground text-xs">
+                        {group.expiresAt ? (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Expires {group.expiresAt}
+                          </span>
+                        ) : (
+                          "No expiry set"
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant="outline">
+                    {group.remaining} credit{group.remaining !== 1 ? "s" : ""}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground mb-6 text-sm">No class credits available.</p>
+          )}
+
           <div className="border-t pt-4">
             <p className="text-muted-foreground mb-3 text-sm">
-              No membership? Use credit packs to attend any class.
+              Purchase credits to attend any class. Cancel 4+ hours before to get your credit back.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Button variant="outline" size="sm" onClick={() => purchaseCredits(1)}>
-                Drop-In ({priceWithDiscount(12)})
+              <Button variant="outline" size="sm" onClick={() => void startCreditsCheckout(1)} disabled={working}>
+                Single ({priceWithDiscount(credits1Price)})
               </Button>
-              <Button variant="outline" size="sm" onClick={() => purchaseCredits(3)}>
-                3-Pack ({priceWithDiscount(30)})
+              <Button variant="outline" size="sm" onClick={() => void startCreditsCheckout(3)} disabled={working}>
+                3-Pack ({priceWithDiscount(credits3Price)})
               </Button>
-              <Button variant="outline" size="sm" onClick={() => purchaseCredits(10)}>
-                10-Pack ({priceWithDiscount(90)})
+              <Button variant="outline" size="sm" onClick={() => void startCreditsCheckout(10)} disabled={working}>
+                10-Pack ({priceWithDiscount(credits10Price)})
               </Button>
             </div>
+            <p className="text-muted-foreground mt-2 text-xs">
+              All credits expire {creditsExpiryDays} days from purchase. No auto-renewal.
+            </p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Billing history placeholder */}
       <div className="bg-background rounded-lg border p-6">
         <h2 className="mb-4 text-xl">Billing History</h2>
         <div className="space-y-3 text-sm">
-          <div className="flex justify-between border-b py-2">
-            <span className="text-muted-foreground">Committed Membership — Feb 2026</span>
-            <span>£65.00</span>
-          </div>
-          <div className="flex justify-between border-b py-2">
-            <span className="text-muted-foreground">
-              Committed Membership — Jan 2026
-              <span className="ml-1 text-[#4B5B32]">(£10 referral applied)</span>
-            </span>
-            <span>£55.00</span>
-          </div>
-          <div className="flex justify-between border-b py-2">
-            <span className="text-muted-foreground">10-Class Bundle — Jan 2026</span>
-            <span>£90.00</span>
-          </div>
-          <div className="flex justify-between py-2">
-            <span className="text-muted-foreground">
-              Committed Membership — Dec 2025
-              <span className="ml-1 text-[#4B5B32]">(£10 referral applied)</span>
-            </span>
-            <span>£55.00</span>
-          </div>
+          {history.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No billing events yet.</p>
+          ) : (
+            history.map((item) => (
+              <div key={item.id} className="flex items-center justify-between border-b py-2 last:border-0">
+                <span className="text-muted-foreground">{item.description}</span>
+                <span>£{(item.amountPence / 100).toFixed(2)}</span>
+              </div>
+            ))
+          )}
         </div>
-        <p className="text-muted-foreground mt-4 text-xs italic">
-          [Placeholder billing data — Stripe integration required]
-        </p>
       </div>
     </DashboardLayout>
   );

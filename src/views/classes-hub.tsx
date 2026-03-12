@@ -307,11 +307,10 @@ export function ClassesHubPage() {
                 4
               </div>
               <div>
-                <h3 className="mb-2 text-lg">Catch the Replay If You Need To</h3>
+                <h3 className="mb-2 text-lg">Flare-Day Friendly</h3>
                 <p className="text-muted-foreground">
-                  Every class is recorded. If you can't make it live — or if it's a flare day and
-                  you'd rather do it in your own time — replays are available in your Private Studio
-                  for 7 days.
+                  Having a tough day? No problem. Members can cancel or no-show any class freely.
+                  Credit users just cancel 4+ hours ahead to get their credit back.
                 </p>
               </div>
             </div>

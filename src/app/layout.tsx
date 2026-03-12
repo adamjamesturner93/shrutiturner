@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "../styles/index.css";
 import { Providers } from "./providers";
 
@@ -18,6 +19,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+          strategy="afterInteractive"
+        />
         <Providers>{children}</Providers>
       </body>
     </html>

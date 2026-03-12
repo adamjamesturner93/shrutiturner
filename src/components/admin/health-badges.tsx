@@ -7,9 +7,11 @@ import {
   MEMBER_HEALTH_PROFILES,
   aggregateHealthForClass,
 } from "../../data/health-profile-data";
+import type { AdminHealthProfileDto } from "@/lib/api/types";
 
 interface HealthBadgesProps {
-  memberId: string;
+  memberId?: string;
+  labels?: string[];
   /** Show as inline row of badges (default) or stacked list */
   layout?: "inline" | "stacked";
   /** Max badges before "+N more" */
@@ -17,8 +19,8 @@ interface HealthBadgesProps {
 }
 
 /** Compact inline health condition badges for attendee lists */
-export function HealthBadges({ memberId, layout = "inline", max = 4 }: HealthBadgesProps) {
-  const labels = getMemberHealthSummary(memberId);
+export function HealthBadges({ memberId, labels: labelsProp, layout = "inline", max = 4 }: HealthBadgesProps) {
+  const labels = labelsProp ?? (memberId ? getMemberHealthSummary(memberId) : []);
   if (labels.length === 0) return null;
 
   const shown = labels.slice(0, max);
@@ -59,11 +61,20 @@ export function HealthBadges({ memberId, layout = "inline", max = 4 }: HealthBad
 }
 
 /** Full health profile card for member detail — shows per-category breakdowns with detail text */
-export function HealthProfileCard({ memberId }: { memberId: string }) {
-  const profile = MEMBER_HEALTH_PROFILES[memberId];
-  const categories = getMemberHealthByCategory(memberId);
+export function HealthProfileCard({
+  memberId,
+  profile,
+}: {
+  memberId: string;
+  profile?: AdminHealthProfileDto | null;
+}) {
+  const legacyProfile = MEMBER_HEALTH_PROFILES[memberId];
+  const legacyCategories = getMemberHealthByCategory(memberId);
+  const categories = profile?.categories ?? legacyCategories;
+  const additionalNotes = profile?.additionalNotes ?? legacyProfile?.additionalNotes ?? "";
+  const lastUpdated = profile?.lastUpdated ?? legacyProfile?.lastUpdated ?? "";
 
-  if (!profile || categories.length === 0) {
+  if (categories.length === 0) {
     return (
       <div className="bg-secondary/30 text-muted-foreground rounded-lg p-4 text-sm">
         No health conditions on file.
@@ -77,8 +88,8 @@ export function HealthProfileCard({ memberId }: { memberId: string }) {
         <div key={cat.categoryId}>
           <p className="text-muted-foreground mb-1.5 text-xs">{cat.categoryTitle}</p>
           <div className="space-y-1.5">
-            {cat.conditions.map((c) => (
-              <div key={c.label}>
+            {cat.conditions.map((c, index) => (
+              <div key={`${cat.categoryId}-${"key" in c ? c.key : c.label}-${index}`}>
                 <Badge
                   variant="outline"
                   className="border-amber-200 bg-amber-50 text-xs text-amber-800"
@@ -96,17 +107,17 @@ export function HealthProfileCard({ memberId }: { memberId: string }) {
         </div>
       ))}
 
-      {profile.additionalNotes && (
+      {additionalNotes && (
         <div className="rounded-lg border border-amber-100 bg-amber-50/50 p-3">
           <p className="text-muted-foreground mb-1 text-xs">Additional notes</p>
-          <p className="text-sm leading-relaxed">{profile.additionalNotes}</p>
+          <p className="text-sm leading-relaxed">{additionalNotes}</p>
         </div>
       )}
 
-      {profile.lastUpdated && (
+      {lastUpdated && (
         <p className="text-muted-foreground text-xs">
           Last updated:{" "}
-          {new Date(profile.lastUpdated).toLocaleDateString("en-GB", {
+          {new Date(lastUpdated).toLocaleDateString("en-GB", {
             day: "numeric",
             month: "short",
             year: "numeric",
@@ -120,14 +131,22 @@ export function HealthProfileCard({ memberId }: { memberId: string }) {
 /* ── Class-level aggregated health summary ── */
 
 interface ClassHealthSummaryProps {
-  attendees: { memberId: string; memberName: string }[];
+  attendees: Array<{
+    memberId: string;
+    memberName: string;
+    healthConditions?: string[];
+  }>;
 }
 
 /** Aggregated health prep summary for the top of admin class detail */
 export function ClassHealthSummary({ attendees }: ClassHealthSummaryProps) {
   const [expanded, setExpanded] = useState(false);
-  const { categories, membersWithProfiles, totalMembers, keyConsiderations } =
-    aggregateHealthForClass(attendees);
+  const hasExplicitConditions = attendees.some(
+    (attendee) => attendee.healthConditions && attendee.healthConditions.length > 0
+  );
+  const { categories, membersWithProfiles, totalMembers, keyConsiderations } = hasExplicitConditions
+    ? aggregateHealthFromConditions(attendees)
+    : aggregateHealthForClass(attendees as { memberId: string; memberName: string }[]);
 
   if (membersWithProfiles === 0) {
     return null;
@@ -249,4 +268,40 @@ export function ClassHealthSummary({ attendees }: ClassHealthSummaryProps) {
       )}
     </div>
   );
+}
+
+function aggregateHealthFromConditions(
+  attendees: Array<{ memberId: string; memberName: string; healthConditions?: string[] }>
+) {
+  const conditionMap = new Map<string, { count: number; memberNames: string[] }>();
+
+  for (const attendee of attendees) {
+    for (const label of attendee.healthConditions || []) {
+      const existing = conditionMap.get(label);
+      if (existing) {
+        existing.count += 1;
+        existing.memberNames.push(attendee.memberName);
+      } else {
+        conditionMap.set(label, { count: 1, memberNames: [attendee.memberName] });
+      }
+    }
+  }
+
+  const conditions = Array.from(conditionMap.entries())
+    .map(([label, value]) => ({
+      label,
+      count: value.count,
+      memberNames: value.memberNames,
+      details: [] as { memberName: string; detail: string }[],
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  return {
+    categories: conditions.length
+      ? [{ categoryTitle: "Health Conditions", conditions }]
+      : [],
+    membersWithProfiles: attendees.filter((attendee) => (attendee.healthConditions?.length || 0) > 0).length,
+    totalMembers: attendees.length,
+    keyConsiderations: [] as string[],
+  };
 }

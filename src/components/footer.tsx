@@ -5,10 +5,13 @@ import { Input } from "./ui/input";
 import { Instagram, Facebook } from "lucide-react";
 import { useNewsletterSignupCopy } from "@/lib/use-newsletter-signup-copy";
 import { submitNewsletterSignup } from "@/lib/newsletter-signup";
+import { TurnstileWidget } from "@/components/turnstile-widget";
+import { IconHorizontal } from "./icon";
 
 export function Footer() {
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [subscribed, setSubscribed] = useState(false);
@@ -21,9 +24,10 @@ export function Footer() {
     setIsSubmitting(true);
     const result = await submitNewsletterSignup({
       email,
-      lists: ["newsletter"],
+      marketingOptIn: consent,
       consent,
       source: "footer",
+      turnstileToken,
     });
     setIsSubmitting(false);
     if (!result.ok) {
@@ -36,6 +40,7 @@ export function Footer() {
       setSubscribed(false);
       setEmail("");
       setConsent(false);
+      setTurnstileToken("");
     }, 3000);
   };
 
@@ -45,17 +50,24 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-4">
           {/* Brand + Newsletter */}
           <div className="space-y-6 lg:col-span-2">
-            <h3 className="mb-2 text-xl">Shruti Turner</h3>
+            <div
+              className="[&>svg]:h-12 [&>svg]:w-auto [&_path]:fill-[#FAFAF8] [&_line]:stroke-[#FAFAF8]"
+              role="img"
+              aria-label="Shruti Turner"
+            >
+              <IconHorizontal />
+            </div>
             <p className="max-w-md leading-relaxed text-[#FAFAF8]/70">
               Science-backed strength and yoga coaching for people with chronic illness, autoimmune
               conditions, and complex bodies. PhD Biomechanics. Living with psoriatic arthritis.
             </p>
 
             {/* Newsletter in footer */}
-            <div className="pt-2">
-              <p className="mb-3 text-sm text-[#B5C49B]">{signupCopy.hookText}</p>
+            <div className="rounded-lg border border-[#FAFAF8]/15 bg-[#FAFAF8]/5 p-4">
+              <h4 className="text-sm uppercase tracking-wide text-[#B5C49B]">Newsletter</h4>
+              <p className="mt-2 mb-3 text-sm text-[#FAFAF8]/75">{signupCopy.hookText}</p>
               {!subscribed ? (
-                <form onSubmit={handleNewsletterSubmit} className="flex max-w-sm gap-2">
+                <form onSubmit={handleNewsletterSubmit} className="flex max-w-sm flex-col gap-2 sm:flex-row">
                   <Input
                     type="email"
                     value={email}
@@ -67,7 +79,7 @@ export function Footer() {
                   <Button
                     type="submit"
                     className="flex-shrink-0 bg-[#B5C49B] text-[#2E1F33] hover:bg-[#a5b48b]"
-                    disabled={isSubmitting || !consent}
+                    disabled={isSubmitting || !consent || !turnstileToken}
                   >
                     {isSubmitting ? "Subscribing..." : signupCopy.buttonLabel}
                   </Button>
@@ -75,6 +87,7 @@ export function Footer() {
               ) : (
                 <p className="text-sm text-[#B5C49B]">{signupCopy.successMessage}</p>
               )}
+              {!subscribed ? <div className="mt-3"><TurnstileWidget onTokenChange={setTurnstileToken} /></div> : null}
               <label className="mt-2 flex cursor-pointer items-start gap-2 text-xs text-[#FAFAF8]/60">
                 <input
                   type="checkbox"
@@ -84,10 +97,10 @@ export function Footer() {
                   required
                 />
                 <span>
-                  I consent to receiving marketing emails and understand I can unsubscribe anytime.
+                  I want newsletter and update emails. I can unsubscribe anytime.
                 </span>
               </label>
-              <p className="mt-2 text-xs text-[#FAFAF8]/40">{signupCopy.consentText}</p>
+              <p className="mt-1 text-xs text-[#FAFAF8]/40">{signupCopy.consentText}</p>
               {error ? <p className="mt-1 text-xs text-red-300">{error}</p> : null}
             </div>
 

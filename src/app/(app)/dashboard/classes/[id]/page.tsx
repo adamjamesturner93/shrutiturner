@@ -1,5 +1,12 @@
 import { DashboardClassDetail } from "@/views/dashboard/class-detail";
+import { getClassDefinitionBySlug } from "@/lib/content";
 
-export default function Page() {
-  return <DashboardClassDetail />;
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const classDetail = await getClassDefinitionBySlug(id);
+  return <DashboardClassDetail classDetail={classDetail} />;
 }

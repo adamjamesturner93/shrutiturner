@@ -44,7 +44,7 @@ export function ClassesSmallGroupsPage({
                 <Calendar className="ml-2 h-5 w-5" />
               </Button>
             </Link>
-            <Link href="/signup">
+            <Link href="/login">
               <Button
                 size="lg"
                 variant="outline"

@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { DashboardLayout } from "../../components/dashboard-layout";
-import { useAuth } from "../../context/auth-context";
 import { BookClassButton } from "../../components/booking-modal";
+import { useAuth } from "../../context/auth-context";
 import { useI18n } from "../../lib/use-i18n";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -20,14 +20,57 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { getClassBySlug, getTypeColor, classDetails } from "../../data/schedule-data";
+import { getTypeColor } from "@/lib/classes/type-color";
 import { ClassRecordingsSection } from "../../components/class-recording";
+import { useEffect, useState } from "react";
+import type { ClassSessionDetailDto } from "@/lib/api/types";
+import type { ClassDefinitionContent } from "@/lib/content";
 
-export function DashboardClassDetail() {
+export function DashboardClassDetail({ classDetail }: { classDetail: ClassDefinitionContent | null }) {
   const { id: slug } = useParams<{ id: string }>();
-  const { isClassBooked, getBookingForClass, cancelBooking } = useAuth();
-  const cls = classDetails.find((c) => c.slug === slug);
+  const searchParams = useSearchParams();
+  const cls = classDetail && classDetail.slug === slug ? classDetail : null;
+  const [session, setSession] = useState<ClassSessionDetailDto | null>(null);
+  const [loadingSession, setLoadingSession] = useState(true);
   const { fmtTimeStr } = useI18n();
+  const sessionId = searchParams.get("sessionId");
+  const { refreshMembershipState } = useAuth();
+  const weekOffsetParam = searchParams.get("wk");
+  const backToScheduleHref = weekOffsetParam
+    ? `/dashboard/schedule?wk=${encodeURIComponent(weekOffsetParam)}`
+    : "/dashboard/schedule";
+
+  useEffect(() => {
+    let active = true;
+    if (!cls) return;
+    void (async () => {
+      if (active) setLoadingSession(true);
+      try {
+        if (sessionId) {
+          const response = await fetch(`/api/classes/sessions/${sessionId}`, { cache: "no-store" });
+          if (response.ok) {
+            const payload = (await response.json()) as ClassSessionDetailDto;
+            if (active) setSession(payload);
+            return;
+          }
+        }
+
+        const response = await fetch(`/api/classes/sessions?slug=${encodeURIComponent(cls.slug)}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const payload = (await response.json()) as ClassSessionDetailDto[];
+        if (active) setSession(payload[0] || null);
+      } catch {
+        // handled by loading/empty state
+      } finally {
+        if (active) setLoadingSession(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [cls, sessionId]);
 
   if (!cls) {
     return (
@@ -37,7 +80,7 @@ export function DashboardClassDetail() {
           <p className="text-muted-foreground">
             This class may have been removed from the schedule.
           </p>
-          <Link href="/dashboard/schedule">
+          <Link href={backToScheduleHref}>
             <Button>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Schedule
@@ -48,8 +91,7 @@ export function DashboardClassDetail() {
     );
   }
 
-  const booked = isClassBooked(cls.slug);
-  const booking = getBookingForClass(cls.slug);
+  const booked = !loadingSession && Boolean(session?.isBookedByCurrentUser);
 
   const typeIcon =
     cls.type === "Yoga" ? (
@@ -65,7 +107,7 @@ export function DashboardClassDetail() {
       {/* Breadcrumb */}
       <nav className="mb-6">
         <Link
-          href="/dashboard/schedule"
+          href={backToScheduleHref}
           className="text-muted-foreground hover:text-primary inline-flex items-center text-sm"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -90,6 +132,11 @@ export function DashboardClassDetail() {
                   Booked
                 </Badge>
               )}
+              {loadingSession && (
+                <Badge variant="outline" className="text-xs">
+                  Loading booking...
+                </Badge>
+              )}
             </div>
             <h1 className="mb-3 text-3xl md:text-4xl">{cls.name}</h1>
             <p className="text-muted-foreground text-lg leading-relaxed">{cls.shortDescription}</p>
@@ -104,7 +151,13 @@ export function DashboardClassDetail() {
             <div className="text-muted-foreground flex items-center gap-2">
               <Clock className="text-primary h-4 w-4" />
               <span>
-                {fmtTimeStr(cls.time)} · {cls.duration}
+                {session
+                  ? new Date(session.startsAtUtc).toLocaleTimeString("en-GB", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : fmtTimeStr(cls.time)} ·{" "}
+                {session ? `${session.durationMinutes} min` : cls.duration}
               </span>
             </div>
             <div className="text-muted-foreground flex items-center gap-2">
@@ -126,6 +179,18 @@ export function DashboardClassDetail() {
               ))}
             </div>
           </div>
+
+          {session?.instructorName || session?.instructorBio ? (
+            <div>
+              <h2 className="mb-4 text-xl">Your Instructor</h2>
+              <div className="bg-secondary/20 rounded-lg p-5">
+                <p>{session?.instructorName || cls.instructor}</p>
+                {session?.instructorBio ? (
+                  <p className="text-muted-foreground mt-2 text-sm">{session.instructorBio}</p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
 
           {/* What to Expect */}
           <div>
@@ -178,7 +243,19 @@ export function DashboardClassDetail() {
         {/* Sidebar */}
         <div className="lg:col-span-1">
           <div className="bg-background sticky top-6 space-y-6 rounded-lg border p-6">
-            {booked ? (
+            {loadingSession ? (
+              <>
+                <div className="space-y-2 text-center">
+                  <h3 className="text-xl">Checking booking...</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Loading your booking status for this class.
+                  </p>
+                </div>
+                <Button size="lg" disabled className="w-full">
+                  Loading...
+                </Button>
+              </>
+            ) : booked ? (
               <>
                 <div className="space-y-3 text-center">
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#4B5B32]/10">
@@ -186,12 +263,20 @@ export function DashboardClassDetail() {
                   </div>
                   <h3 className="text-xl">You're Booked</h3>
                   <p className="text-muted-foreground text-sm">
-                    {cls.day} at {fmtTimeStr(cls.time)}
+                    {session
+                      ? `${new Date(session.startsAtUtc).toLocaleDateString("en-GB")} at ${new Date(session.startsAtUtc).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
+                      : `${cls.day} at ${fmtTimeStr(cls.time)}`}
                   </p>
                 </div>
 
                 <div className="space-y-3">
-                  <Link href={`/dashboard/classes/${cls.slug}/join`}>
+                  <Link
+                    href={
+                      session?.id
+                        ? `/dashboard/classes/${cls.slug}/join?sessionId=${encodeURIComponent(session.id)}`
+                        : `/dashboard/classes/${cls.slug}/join`
+                    }
+                  >
                     <Button size="lg" className="w-full">
                       <Video className="mr-2 h-4 w-4" />
                       Join Class
@@ -202,19 +287,23 @@ export function DashboardClassDetail() {
                     variant="destructive"
                     size="sm"
                     className="w-full"
-                    onClick={() => {
-                      if (booking) cancelBooking(booking.id);
-                    }}
+                    onClick={() =>
+                      void (async () => {
+                        if (session?.id) {
+                          await fetch(`/api/classes/sessions/${session.id}/booking`, {
+                            method: "DELETE",
+                          });
+                          setSession((prev) => (prev ? { ...prev, isBookedByCurrentUser: false } : prev));
+                          await refreshMembershipState();
+                          return;
+                        }
+                        // session booking is required; no local booking fallback
+                      })()
+                    }
                   >
                     Cancel Booking
                   </Button>
                 </div>
-
-                {booking && (
-                  <div className="bg-secondary/20 text-muted-foreground rounded-lg p-3 text-xs">
-                    Booked using: {booking.creditUsed.label}
-                  </div>
-                )}
               </>
             ) : (
               <>
@@ -225,11 +314,13 @@ export function DashboardClassDetail() {
                   </p>
                 </div>
                 <BookClassButton
+                  sessionId={session?.id}
                   classSlug={cls.slug}
                   className={cls.name}
                   day={cls.day}
                   time={cls.time}
                   variant="lg"
+                  attendeeCount={session?.bookedCount}
                 />
                 <p className="text-muted-foreground text-center text-xs">
                   Drop-in £12 · Bundles from £9/class

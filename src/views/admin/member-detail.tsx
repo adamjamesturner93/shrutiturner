@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Mail,
@@ -38,59 +38,104 @@ import {
   Clock,
   Send,
 } from "lucide-react";
-import { adminMembers } from "../../data/admin-data";
 import { HealthProfileCard } from "../../components/admin/health-badges";
 import { toast } from "sonner";
+import type { AdminMemberDetailDto } from "@/lib/api/types";
 
 export function AdminMemberDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const navigate = (href: string, opts?: { replace?: boolean }) =>
     opts?.replace ? router.replace(href) : router.push(href);
-  const member = adminMembers.find((m) => m.id === id);
+  const [member, setMember] = useState<AdminMemberDetailDto | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [editingNotes, setEditingNotes] = useState(false);
-  const [notes, setNotes] = useState(member?.notes || "");
-  const [isInstructor, setIsInstructor] = useState(member?.isInstructor || false);
-  const [isCoachingClient, setIsCoachingClient] = useState(member?.isCoachingClient || false);
-  const [creditBalance, setCreditBalance] = useState(member?.creditBalance || 0);
+  const [notes, setNotes] = useState("");
+  const [isInstructor, setIsInstructor] = useState(false);
+  const [instructorProfileEntryId, setInstructorProfileEntryId] = useState<string>("");
+  const [instructorProfiles, setInstructorProfiles] = useState<
+    Array<{ id: string; name: string; slug: string; headline?: string }>
+  >([]);
+  const [isCoachingClient, setIsCoachingClient] = useState(false);
+  const [creditBalance, setCreditBalance] = useState(0);
   const [creditAmount, setCreditAmount] = useState("");
   const [creditReason, setCreditReason] = useState("");
   const [creditAction, setCreditAction] = useState<"add" | "remove">("add");
   const [creditHistory, setCreditHistory] = useState<
     { date: string; action: "add" | "remove"; amount: number; reason: string; by: string }[]
-  >([
-    {
-      date: "2026-02-20",
-      action: "add",
-      amount: 10,
-      reason: "10-class bundle purchase",
-      by: "System",
-    },
-    {
-      date: "2026-02-10",
-      action: "remove",
-      amount: 1,
-      reason: "Class booking: Adaptive Yoga Flow",
-      by: "System",
-    },
-    {
-      date: "2026-01-28",
-      action: "add",
-      amount: 3,
-      reason: "3-class bundle purchase",
-      by: "System",
-    },
-  ]);
+  >([]);
   const [showMessageForm, setShowMessageForm] = useState(false);
   const [messageSubject, setMessageSubject] = useState("");
   const [messageBody, setMessageBody] = useState("");
   const [messageSending, setMessageSending] = useState(false);
 
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      setLoading(true);
+      setLoadError("");
+      try {
+        const res = await fetch(`/api/admin/members/${id}`, { cache: "no-store" });
+        if (!res.ok) throw new Error("Failed to load member.");
+        const data = (await res.json()) as AdminMemberDetailDto;
+        if (!active || !data) return;
+        setMember(data);
+        setNotes(data.notes || "");
+        setIsInstructor(Boolean(data.isInstructor));
+        setInstructorProfileEntryId(data.instructorProfileEntryId || "");
+        setIsCoachingClient(Boolean(data.isCoachingClient));
+        setCreditBalance(data.creditBalance || 0);
+        setCreditHistory(
+          (data.creditHistory || []).map((entry) => ({
+            date: entry.date,
+            action: entry.amount >= 0 ? "add" : "remove",
+            amount: Math.abs(entry.amount),
+            reason: entry.reason,
+            by: entry.by,
+          }))
+        );
+      } catch (error) {
+        if (active) setLoadError(error instanceof Error ? error.message : "Failed to load member.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const res = await fetch("/api/admin/instructors/profiles", { cache: "no-store" });
+        if (!res.ok || !active) return;
+        const rows = (await res.json()) as Array<{
+          id: string;
+          name: string;
+          slug: string;
+          headline?: string;
+        }>;
+        setInstructorProfiles(rows);
+      } catch {
+        // no-op
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   if (!member) {
     return (
       <AdminLayout title="Member Not Found - Admin">
         <div className="py-20 text-center">
-          <p className="text-muted-foreground">Member not found.</p>
+          <p className="text-muted-foreground">
+            {loading ? "Loading member..." : loadError || "Member not found."}
+          </p>
           <Link href="/admin/members">
             <Button variant="outline" className="mt-4">
               <ArrowLeft className="mr-2 h-4 w-4" /> Back to Members
@@ -110,13 +155,24 @@ export function AdminMemberDetail() {
 
   const handleRoleToggle = (role: "instructor" | "coaching", newValue: boolean) => {
     if (role === "instructor") {
+      if (newValue && !instructorProfileEntryId) {
+        toast.error("Select an instructor profile before enabling instructor access.");
+        return;
+      }
       setIsInstructor(newValue);
       toast.success(
         newValue
           ? `${member.firstName} is now an Instructor`
           : `Instructor role removed from ${member.firstName}`
       );
-      console.log(`Toggled instructor for ${member.id}:`, newValue);
+      void fetch(`/api/admin/members/${member.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          isInstructor: newValue,
+          instructorProfileEntryId: newValue ? instructorProfileEntryId : null,
+        }),
+      });
     } else {
       setIsCoachingClient(newValue);
       toast.success(
@@ -124,7 +180,11 @@ export function AdminMemberDetail() {
           ? `${member.firstName} is now a Coaching Client`
           : `Coaching Client role removed from ${member.firstName}`
       );
-      console.log(`Toggled coaching client for ${member.id}:`, newValue);
+      void fetch(`/api/admin/members/${member.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isCoachingClient: newValue }),
+      });
     }
   };
 
@@ -143,37 +203,34 @@ export function AdminMemberDetail() {
       return;
     }
 
-    const newBalance = creditAction === "add" ? creditBalance + amount : creditBalance - amount;
-    setCreditBalance(newBalance);
-    setCreditHistory((prev) => [
-      {
-        date: new Date().toISOString().split("T")[0],
-        action: creditAction,
-        amount,
-        reason: creditReason.trim(),
-        by: "Shruti Turner",
-      },
-      ...prev,
-    ]);
-    toast.success(
-      `${creditAction === "add" ? "Added" : "Removed"} ${amount} credit${amount !== 1 ? "s" : ""} — balance is now ${newBalance}`
-    );
-    setCreditAmount("");
-    setCreditReason("");
-  };
-
-  const handleSendMessage = () => {
-    if (!messageSubject.trim() || !messageBody.trim()) {
-      toast.error("Please fill in both the subject and body of the message.");
-      return;
-    }
-    setMessageSending(true);
-    // Simulate sending a message
-    setTimeout(() => {
-      setMessageSending(false);
-      toast.success("Message sent successfully!");
-      setShowMessageForm(false);
-    }, 1500);
+    void (async () => {
+      const delta = creditAction === "add" ? amount : -amount;
+      const res = await fetch(`/api/admin/members/${member.id}/credits/adjust`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ delta, reason: creditReason.trim() }),
+      });
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as { message?: string };
+        toast.error(payload.message || "Failed to adjust credits.");
+        return;
+      }
+      const updated = (await res.json()) as typeof member;
+      if (!updated) return;
+      setCreditBalance(updated.creditBalance || 0);
+      setCreditHistory((updated.creditHistory || []).map((entry) => ({
+        date: entry.date,
+        action: entry.amount >= 0 ? "add" : "remove",
+        amount: Math.abs(entry.amount),
+        reason: entry.reason,
+        by: entry.by,
+      })));
+      toast.success(
+        `${creditAction === "add" ? "Added" : "Removed"} ${amount} credit${amount !== 1 ? "s" : ""}`
+      );
+      setCreditAmount("");
+      setCreditReason("");
+    })();
   };
 
   return (
@@ -401,6 +458,39 @@ export function AdminMemberDetail() {
                   </p>
                 </label>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="instructor-profile">Instructor Profile</Label>
+                <Select
+                  value={instructorProfileEntryId}
+                  onValueChange={(value) => {
+                    setInstructorProfileEntryId(value);
+                    if (isInstructor) {
+                      void fetch(`/api/admin/members/${member.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          isInstructor: true,
+                          instructorProfileEntryId: value,
+                        }),
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger id="instructor-profile">
+                    <SelectValue placeholder="Select instructor profile" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {instructorProfiles.map((profile) => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        {profile.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-muted-foreground text-xs">
+                  Required when assigning instructor role. Used for class bio display.
+                </p>
+              </div>
               <div className="border-border/60 bg-secondary/30 flex items-start gap-4 rounded-lg border p-4">
                 <Switch
                   id="role-coaching"
@@ -435,7 +525,7 @@ export function AdminMemberDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <HealthProfileCard memberId={member.id} />
+              <HealthProfileCard memberId={member.id} profile={member.healthProfile} />
             </CardContent>
           </Card>
 
@@ -579,10 +669,18 @@ export function AdminMemberDetail() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => {
+                onClick={async () => {
                   if (editingNotes) {
-                    // Save
-                    console.log("Saving notes for", member.id, notes);
+                    const response = await fetch(`/api/admin/members/${member.id}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ notes }),
+                    });
+                    if (!response.ok) {
+                      toast.error("Failed to save notes.");
+                      return;
+                    }
+                    toast.success("Notes saved.");
                   }
                   setEditingNotes(!editingNotes);
                 }}

@@ -16,6 +16,7 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 import { CheckCircle2, ArrowRight, Mail, MessageCircle } from "lucide-react";
+import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 
 const INTEREST_OPTIONS = [
   { value: "group-classes", label: "Group classes (yoga, strength, HIIT)" },
@@ -64,25 +65,51 @@ export function ContactPage() {
         />
         <section className="flex min-h-[70vh] items-center py-20 md:py-28">
           <div className="container mx-auto max-w-lg space-y-6 px-4 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#4B5B32]/10">
-              <CheckCircle2 className="h-8 w-8 text-[#4B5B32]" />
-            </div>
-            <h1 className="text-3xl">Thank you for your enquiry.</h1>
-            <p className="text-muted-foreground leading-relaxed">
-              I'll get back to you within 2 working days. If your enquiry is about 1:1 training, I
-              may ask a few follow-up questions about your conditions and goals before suggesting
-              next steps.
-            </p>
-            <div className="flex flex-col justify-center gap-4 pt-4 sm:flex-row">
-              <Link href="/classes">
-                <Button variant="outline">
-                  Explore Classes
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="/blog">
-                <Button variant="outline">Read the Blog</Button>
-              </Link>
+            <div className="space-y-6">
+              <div className="mx-auto h-20 w-20 overflow-hidden rounded-full border-2 border-[#4B5B32]/20">
+                <ImageWithFallback
+                  src="https://images.unsplash.com/photo-1675186914580-94356f7c012c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3YXJtJTIwcHJvZmVzc2lvbmFsJTIwd29tYW4lMjBzbWlsaW5nJTIwcG9ydHJhaXQlMjBuYXR1cmFsJTIwbGlnaHR8ZW58MXx8fHwxNzczMDAzOTU3fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
+                  alt="Shruti Turner"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#4B5B32]/10">
+                <CheckCircle2 className="h-8 w-8 text-[#4B5B32]" />
+              </div>
+              <div className="space-y-3">
+                <h1 className="text-3xl">Thank you, {formData.firstName || "there"}.</h1>
+                <p className="text-muted-foreground leading-relaxed">
+                  I read every enquiry personally and I'll get back to you within 2 working days.
+                  If your enquiry is about 1:1 training, I may ask a few follow-up questions about
+                  your conditions and goals before suggesting next steps.
+                </p>
+              </div>
+              <blockquote className="text-muted-foreground mx-auto max-w-sm border-l-2 border-[#4B5B32]/30 pl-4 text-left text-sm italic">
+                "I know reaching out can feel like a big step, especially when you've had
+                experiences where your body wasn't understood. There's no wrong question here."
+                <span className="mt-1 block text-xs not-italic text-[#4B5B32]">— Shruti</span>
+              </blockquote>
+              <div className="space-y-3 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 p-5 text-center">
+                <p className="text-sm">While you wait, why not try a class?</p>
+                <Link href="/login">
+                  <Button className="bg-[#4B5B32] text-[#FAFAF8] hover:bg-[#4B5B32]/90">
+                    Start Your 14-Day Free Trial
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+                <p className="text-muted-foreground text-xs">No card required. Cancel anytime.</p>
+              </div>
+              <div className="flex flex-col justify-center gap-4 pt-2 sm:flex-row">
+                <Link href="/classes">
+                  <Button variant="outline">
+                    Explore Classes
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/blog">
+                  <Button variant="outline">Read the Blog</Button>
+                </Link>
+              </div>
             </div>
           </div>
         </section>

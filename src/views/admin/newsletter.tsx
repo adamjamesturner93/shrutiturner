@@ -1,281 +1,296 @@
 "use client";
 
-import { AdminLayout } from "../../components/admin-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Badge } from "../../components/ui/badge";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  Mail,
-  Eye,
-  MousePointerClick,
-  Users,
-  TrendingUp,
-  ChevronRight,
-  BookOpen,
-  Bell,
-  AlertTriangle,
-} from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-} from "recharts";
-import {
-  newsletterCampaigns,
-  newsletterAggregateStats,
-  type NewsletterCampaign,
-} from "../../data/admin-data";
+import { AdminLayout } from "../../components/admin-layout";
+import { Card, CardContent } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Bell, BookOpen, Filter, Search, Users } from "lucide-react";
+import type {
+  AdminSubscriberDto,
+  AdminNewsletterCampaignDetailDto,
+} from "@/lib/api/types";
+
+type NewsletterSummary = {
+  totalSubscribers: number;
+  newsletterSubscribers: number;
+  blogSubscribers: number;
+  bothSubscribers: number;
+  neitherSubscribers: number;
+  unsubscribes30d: number;
+  campaigns: Array<Omit<AdminNewsletterCampaignDetailDto, "topLinks" | "eventTimeline">>;
+};
+
+type SubscribersResponse = {
+  items: AdminSubscriberDto[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
+const FILTERS = ["all", "newsletter", "blog", "both", "neither"] as const;
+type FilterType = (typeof FILTERS)[number];
+
+function subscriptionBadge(type: AdminSubscriberDto["subscriptionType"]) {
+  if (type === "both") return <Badge className="bg-[#4B5B32] text-[#FAFAF8]">Both</Badge>;
+  if (type === "newsletter") return <Badge variant="secondary">Newsletter</Badge>;
+  if (type === "blog") return <Badge variant="outline">Blog</Badge>;
+  return <Badge variant="outline">Neither</Badge>;
+}
 
 export function AdminNewsletter() {
-  const stats = newsletterAggregateStats;
-  const sentCampaigns = newsletterCampaigns.filter((c) => c.status === "sent");
-  const scheduledCampaigns = newsletterCampaigns.filter((c) => c.status === "scheduled");
+  const [summary, setSummary] = useState<NewsletterSummary | null>(null);
+  const [subscribers, setSubscribers] = useState<SubscribersResponse | null>(null);
+  const [filter, setFilter] = useState<FilterType>("all");
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
-  // Chart data
-  const campaignPerformance = sentCampaigns
-    .slice()
-    .reverse()
-    .map((c) => ({
-      name: c.sentDate.slice(5),
-      openRate: c.openRate,
-      clickRate: c.clickRate,
-    }));
+  const refreshSubscribers = async (nextFilter: FilterType, nextSearch: string) => {
+    const query = new URLSearchParams();
+    query.set("type", nextFilter);
+    query.set("page", "1");
+    query.set("pageSize", "50");
+    if (nextSearch.trim()) query.set("search", nextSearch.trim());
+    const res = await fetch(`/api/admin/newsletter/subscribers?${query.toString()}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return;
+    const payload = (await res.json()) as SubscribersResponse;
+    setSubscribers(payload);
+  };
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        setLoading(true);
+        const [summaryRes, subscribersRes] = await Promise.all([
+          fetch("/api/admin/newsletter", { cache: "no-store" }),
+          fetch("/api/admin/newsletter/subscribers?type=all&page=1&pageSize=50", {
+            cache: "no-store",
+          }),
+        ]);
+        if (summaryRes.ok && active) {
+          setSummary((await summaryRes.json()) as NewsletterSummary);
+        }
+        if (subscribersRes.ok && active) {
+          setSubscribers((await subscribersRes.json()) as SubscribersResponse);
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const onApplySearch = async () => {
+    setSearch(searchInput);
+    await refreshSubscribers(filter, searchInput);
+  };
+
+  const onFilterChange = async (next: FilterType) => {
+    setFilter(next);
+    await refreshSubscribers(next, search);
+  };
+
+  const updateSubscriber = async (item: AdminSubscriberDto, updates: Partial<Pick<AdminSubscriberDto, "newsletterSubscribed" | "blogSubscribed">>) => {
+    setUpdatingUserId(item.userId);
+    try {
+      const res = await fetch(`/api/admin/newsletter/subscribers/${encodeURIComponent(item.userId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          newsletter:
+            typeof updates.newsletterSubscribed === "boolean"
+              ? updates.newsletterSubscribed
+              : item.newsletterSubscribed,
+          blogUpdates:
+            typeof updates.blogSubscribed === "boolean"
+              ? updates.blogSubscribed
+              : item.blogSubscribed,
+        }),
+      });
+      if (!res.ok) return;
+      await refreshSubscribers(filter, search);
+      const summaryRes = await fetch("/api/admin/newsletter", { cache: "no-store" });
+      if (summaryRes.ok) setSummary((await summaryRes.json()) as NewsletterSummary);
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
+  const campaigns = useMemo(() => summary?.campaigns || [], [summary]);
 
   return (
     <AdminLayout title="Newsletter Analytics - Admin">
       <div className="space-y-6">
-        {/* Header */}
         <div>
           <h1 className="text-2xl text-[#2E1F33]">Newsletter Analytics</h1>
-          <p className="text-muted-foreground mt-1">
-            Postmark campaign performance and subscriber insights
-          </p>
+          <p className="text-muted-foreground mt-1">Campaign performance and subscriber preferences.</p>
         </div>
 
-        {/* Aggregate stats */}
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Users className="h-5 w-5 text-[#4B5B32]" />
-                <div>
-                  <p className="text-2xl text-[#2E1F33]">{stats.totalSubscribers}</p>
-                  <p className="text-muted-foreground text-xs">Total subscribers</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Eye className="h-5 w-5 text-[#4B5B32]" />
-                <div>
-                  <p className="text-2xl text-[#2E1F33]">{stats.avgOpenRate}%</p>
-                  <p className="text-muted-foreground text-xs">Avg. open rate</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <MousePointerClick className="h-5 w-5 text-[#4B5B32]" />
-                <div>
-                  <p className="text-2xl text-[#2E1F33]">{stats.avgClickRate}%</p>
-                  <p className="text-muted-foreground text-xs">Avg. click rate</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <TrendingUp className="h-5 w-5 text-[#4B5B32]" />
-                <div>
-                  <p className="text-2xl text-[#2E1F33]">{stats.avgClickToOpenRate}%</p>
-                  <p className="text-muted-foreground text-xs">Click-to-open rate</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {loading ? <p className="text-muted-foreground text-sm">Loading...</p> : null}
 
-        {/* Subscriber breakdown */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Bell className="h-5 w-5 text-[#4B5B32]" />
-                <div>
-                  <p className="text-xl text-[#2E1F33]">{stats.newsletterSubscribers}</p>
-                  <p className="text-muted-foreground text-xs">Newsletter subscribers</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <BookOpen className="h-5 w-5 text-[#4B5B32]" />
-                <div>
-                  <p className="text-xl text-[#2E1F33]">{stats.blogSubscribers}</p>
-                  <p className="text-muted-foreground text-xs">Blog notification subscribers</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="h-5 w-5 text-amber-500" />
-                <div>
-                  <p className="text-xl text-[#2E1F33]">{stats.unsubscribes30d}</p>
-                  <p className="text-muted-foreground text-xs">Unsubscribes (30 days)</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Charts */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Open/Click rate over time */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Campaign Performance Trend</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={campaignPerformance}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(46,31,51,0.1)" />
-                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} unit="%" />
-                    <Tooltip formatter={(value: number) => [`${value}%`]} />
-                    <Line
-                      type="monotone"
-                      dataKey="openRate"
-                      stroke="#4B5B32"
-                      strokeWidth={2}
-                      dot={{ fill: "#4B5B32", r: 4 }}
-                      name="Open rate"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="clickRate"
-                      stroke="#B5C49B"
-                      strokeWidth={2}
-                      dot={{ fill: "#B5C49B", r: 4 }}
-                      name="Click rate"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Subscriber growth */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Subscriber Growth</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stats.subscriberGrowth}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(46,31,51,0.1)" />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Bar dataKey="count" fill="#4B5B32" radius={[4, 4, 0, 0]} name="Subscribers" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Scheduled campaigns */}
-        {scheduledCampaigns.length > 0 && (
-          <div className="space-y-3">
-            <h2 className="text-lg text-[#2E1F33]">Scheduled</h2>
-            {scheduledCampaigns.map((campaign) => (
-              <CampaignRow key={campaign.id} campaign={campaign} />
-            ))}
+        {summary ? (
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
+            <Card><CardContent className="pt-6"><div className="text-center"><p className="text-2xl text-[#2E1F33]">{summary.totalSubscribers}</p><p className="text-muted-foreground text-xs">Total</p></div></CardContent></Card>
+            <Card><CardContent className="pt-6"><div className="text-center"><Bell className="mx-auto mb-1 h-4 w-4 text-[#4B5B32]" /><p className="text-xl">{summary.newsletterSubscribers}</p><p className="text-muted-foreground text-xs">Newsletter</p></div></CardContent></Card>
+            <Card><CardContent className="pt-6"><div className="text-center"><BookOpen className="mx-auto mb-1 h-4 w-4 text-[#4B5B32]" /><p className="text-xl">{summary.blogSubscribers}</p><p className="text-muted-foreground text-xs">Blog</p></div></CardContent></Card>
+            <Card><CardContent className="pt-6"><div className="text-center"><p className="text-xl">{summary.bothSubscribers}</p><p className="text-muted-foreground text-xs">Both</p></div></CardContent></Card>
+            <Card><CardContent className="pt-6"><div className="text-center"><p className="text-xl">{summary.neitherSubscribers}</p><p className="text-muted-foreground text-xs">Neither</p></div></CardContent></Card>
+            <Card><CardContent className="pt-6"><div className="text-center"><Users className="mx-auto mb-1 h-4 w-4 text-[#4B5B32]" /><p className="text-xl">{summary.unsubscribes30d}</p><p className="text-muted-foreground text-xs">Unsubs 30d</p></div></CardContent></Card>
           </div>
-        )}
+        ) : null}
 
-        {/* Sent campaigns */}
-        <div className="space-y-3">
-          <h2 className="text-lg text-[#2E1F33]">Recent Campaigns</h2>
-          {sentCampaigns.map((campaign) => (
-            <CampaignRow key={campaign.id} campaign={campaign} />
-          ))}
-        </div>
+        <Card>
+          <CardContent className="space-y-4 pt-6">
+            <div className="flex flex-wrap items-center gap-2">
+              <Filter className="h-4 w-4 text-[#4B5B32]" />
+              {FILTERS.map((entry) => (
+                <Button
+                  key={entry}
+                  size="sm"
+                  variant={filter === entry ? "default" : "outline"}
+                  onClick={() => {
+                    void onFilterChange(entry);
+                  }}
+                >
+                  {entry}
+                </Button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search by name or email"
+              />
+              <Button variant="outline" onClick={() => void onApplySearch()}>
+                <Search className="mr-1 h-4 w-4" />
+                Search
+              </Button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="text-muted-foreground border-b">
+                  <tr>
+                    <th className="py-2">Subscriber</th>
+                    <th className="py-2">Type</th>
+                    <th className="py-2">Newsletter</th>
+                    <th className="py-2">Blog</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(subscribers?.items || []).map((item) => (
+                    <tr key={item.userId} className="border-b last:border-0">
+                      <td className="py-2">
+                        <p>{item.firstName || item.lastName ? `${item.firstName || ""} ${item.lastName || ""}`.trim() : item.email}</p>
+                        <p className="text-muted-foreground text-xs">{item.email}</p>
+                      </td>
+                      <td className="py-2">{subscriptionBadge(item.subscriptionType)}</td>
+                      <td className="py-2">
+                        <Button
+                          size="sm"
+                          variant={item.newsletterSubscribed ? "default" : "outline"}
+                          disabled={updatingUserId === item.userId}
+                          onClick={() =>
+                            void updateSubscriber(item, { newsletterSubscribed: !item.newsletterSubscribed })
+                          }
+                        >
+                          {item.newsletterSubscribed ? "On" : "Off"}
+                        </Button>
+                      </td>
+                      <td className="py-2">
+                        <Button
+                          size="sm"
+                          variant={item.blogSubscribed ? "default" : "outline"}
+                          disabled={updatingUserId === item.userId}
+                          onClick={() => void updateSubscriber(item, { blogSubscribed: !item.blogSubscribed })}
+                        >
+                          {item.blogSubscribed ? "On" : "Off"}
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                  {subscribers && subscribers.items.length === 0 ? (
+                    <tr>
+                      <td className="py-6 text-center text-muted-foreground" colSpan={4}>
+                        No subscribers found.
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="space-y-3 pt-6">
+            <h2 className="text-lg text-[#2E1F33]">Recent Campaigns</h2>
+            {campaigns.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No campaign telemetry yet. Send a campaign to populate this list.</p>
+            ) : (
+              campaigns.map((campaign) => (
+                <div key={campaign.id} className="rounded border p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <Link href={`/admin/newsletter/${campaign.id}`} className="block min-w-0 flex-1 transition-colors hover:text-[#4B5B32]">
+                      <p>{campaign.subject}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {new Date(campaign.sentDate).toLocaleDateString("en-GB")} · {campaign.totalRecipients} recipients
+                      </p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {campaign.audienceType ? <Badge variant="outline">{campaign.audienceType}</Badge> : null}
+                        {campaign.triggeredBy ? <Badge variant="secondary">{campaign.triggeredBy}</Badge> : null}
+                        <Badge
+                          variant={
+                            campaign.status === "failed" || campaign.status === "failed_partial"
+                              ? "destructive"
+                              : campaign.status === "sending"
+                                ? "secondary"
+                                : "outline"
+                          }
+                        >
+                          {campaign.status}
+                        </Badge>
+                      </div>
+                    </Link>
+                    <div className="text-right text-xs text-muted-foreground">
+                      <p>Open {campaign.openRate}%</p>
+                      <p>Click {campaign.clickRate}%</p>
+                      {campaign.status === "failed" || campaign.status === "failed_partial" ? (
+                        <Button
+                          size="sm"
+                          className="mt-2"
+                          onClick={async () => {
+                            await fetch(`/api/admin/newsletter/campaigns/${encodeURIComponent(campaign.id)}/retry`, {
+                              method: "POST",
+                            });
+                            const summaryRes = await fetch("/api/admin/newsletter", { cache: "no-store" });
+                            if (summaryRes.ok) {
+                              setSummary((await summaryRes.json()) as NewsletterSummary);
+                            }
+                          }}
+                        >
+                          Retry
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
       </div>
     </AdminLayout>
-  );
-}
-
-function CampaignRow({ campaign }: { campaign: NewsletterCampaign }) {
-  return (
-    <Link href={`/admin/newsletter/${campaign.id}`}>
-      <Card className="cursor-pointer transition-colors hover:border-[#4B5B32]/30">
-        <CardContent className="py-4">
-          <div className="flex items-center gap-4">
-            <div
-              className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${
-                campaign.type === "newsletter" ? "bg-[#4B5B32]/10" : "bg-[#2E1F33]/10"
-              }`}
-            >
-              {campaign.type === "newsletter" ? (
-                <Mail className="h-5 w-5 text-[#4B5B32]" />
-              ) : (
-                <BookOpen className="h-5 w-5 text-[#2E1F33]" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="truncate text-sm">{campaign.subject}</p>
-                <Badge variant="outline" className="text-xs capitalize">
-                  {campaign.type.replace("-", " ")}
-                </Badge>
-                {campaign.status === "scheduled" && <Badge variant="secondary">Scheduled</Badge>}
-              </div>
-              <p className="text-muted-foreground mt-1 text-xs">
-                {campaign.status === "sent"
-                  ? `Sent ${new Date(campaign.sentDate).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                    })} · ${campaign.totalRecipients} recipients`
-                  : `Scheduled for ${new Date(campaign.sentDate).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                    })} · ${campaign.totalRecipients} recipients`}
-              </p>
-            </div>
-            {campaign.status === "sent" && (
-              <div className="text-muted-foreground hidden items-center gap-6 text-sm md:flex">
-                <div className="text-center">
-                  <p className="text-[#2E1F33]">{campaign.openRate}%</p>
-                  <p className="text-xs">opens</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-[#2E1F33]">{campaign.clickRate}%</p>
-                  <p className="text-xs">clicks</p>
-                </div>
-              </div>
-            )}
-            <ChevronRight className="text-muted-foreground h-4 w-4 flex-shrink-0" />
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
   );
 }

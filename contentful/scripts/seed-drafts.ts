@@ -36,6 +36,7 @@ function buildAutoSlug(contentType: string, entry: Record<string, unknown>) {
   if (existingSlug) return existingSlug;
 
   const byType: Record<string, string | undefined> = {
+    instructorProfile: typeof entry.name === "string" ? entry.name : undefined,
     testimonial:
       typeof entry.authorName === "string"
         ? `testimonial-${entry.authorName}-${String(entry.service || "general")}`
@@ -156,7 +157,10 @@ async function run() {
 
   // Seed all groups except groups requiring link resolution first.
   for (const group of SEED_GROUPS.filter(
-    (g) => g.contentType !== "retreatTemplate" && g.contentType !== "newsletterSignupContent"
+    (g) =>
+      g.contentType !== "retreatTemplate" &&
+      g.contentType !== "newsletterSignupContent" &&
+      g.contentType !== "classDefinition"
   )) {
     report[group.contentType] = { created: 0, updated: 0 };
     for (const entry of group.entries) {
@@ -166,6 +170,40 @@ async function run() {
         entry as Record<string, unknown>
       );
       report[group.contentType][result.action as "created" | "updated"] += 1;
+    }
+  }
+
+  const classDefinitionGroup = SEED_GROUPS.find((g) => g.contentType === "classDefinition");
+  if (classDefinitionGroup) {
+    report.classDefinition = { created: 0, updated: 0 };
+
+    for (const rawEntry of classDefinitionGroup.entries) {
+      const entry = rawEntry as Record<string, unknown> & { defaultInstructorProfileSlug?: string };
+      const { defaultInstructorProfileSlug, ...rest } = entry;
+
+      let defaultInstructorProfile: ReturnType<typeof toEntryLink> | undefined;
+      if (
+        typeof defaultInstructorProfileSlug === "string" &&
+        defaultInstructorProfileSlug.length > 0
+      ) {
+        const profileId = await getEntryIdBySlug(
+          environment,
+          "instructorProfile",
+          defaultInstructorProfileSlug
+        );
+        if (!profileId) {
+          throw new Error(
+            `Unable to resolve instructorProfile by slug "${defaultInstructorProfileSlug}" for class definition "${String(entry.slug || "")}".`
+          );
+        }
+        defaultInstructorProfile = toEntryLink(profileId);
+      }
+
+      const result = await upsertDraftEntry(environment, "classDefinition", {
+        ...rest,
+        ...(defaultInstructorProfile ? { defaultInstructorProfile } : {}),
+      });
+      report.classDefinition[result.action as "created" | "updated"] += 1;
     }
   }
 

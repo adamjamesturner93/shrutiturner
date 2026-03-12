@@ -3,11 +3,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../context/auth-context";
 
 export function AdminGuardWrapper({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isAdmin } = useAuth();
+  const { authStatus, isSigningOut, isAuthenticated, isAdmin } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
+    if (authStatus === "loading" || isSigningOut) return;
     if (!isAuthenticated) {
       router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
       return;
@@ -16,7 +17,11 @@ export function AdminGuardWrapper({ children }: { children: React.ReactNode }) {
     if (!isAdmin) {
       router.replace("/dashboard");
     }
-  }, [isAuthenticated, isAdmin, pathname, router]);
+  }, [authStatus, isSigningOut, isAuthenticated, isAdmin, pathname, router]);
+
+  if (authStatus === "loading" || isSigningOut) {
+    return null;
+  }
 
   if (!isAuthenticated || !isAdmin) {
     return null;

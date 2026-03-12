@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { ReactNode, useState } from "react";
 import { AdminGuardWrapper } from "./admin-guard";
 import { useAuth } from "../context/auth-context";
@@ -38,7 +38,6 @@ const NAV_ITEMS = [
 
 export function AdminLayout({ children, title, description }: AdminLayoutProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const { logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -47,9 +46,8 @@ export function AdminLayout({ children, title, description }: AdminLayoutProps) 
     return pathname.startsWith(path);
   };
 
-  const handleLogout = () => {
-    logout();
-    router.push("/");
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (

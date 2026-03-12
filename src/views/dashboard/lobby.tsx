@@ -1,499 +1,643 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DashboardLayout } from "../../components/dashboard-layout";
-import { useAuth } from "../../context/auth-context";
+import { DashboardSkeleton } from "../../components/dashboard-skeleton";
+import { HealthProfileEditor } from "../../components/health-profile-editor";
+import { Card, CardContent } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
+import { Badge } from "../../components/ui/badge";
+import { Input } from "../../components/ui/input";
 import {
   Calendar,
   CreditCard,
-  ArrowRight,
-  Users,
   Gift,
+  ArrowRight,
   CheckCircle,
-  Dumbbell,
-  Heart,
-  Zap,
-  Clock,
+  Shield,
+  HeartPulse,
   AlertTriangle,
-  History,
-  Lightbulb,
-  Bookmark,
+  Users,
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { HealthProfileEditor } from "../../components/health-profile-editor";
-import { EMPTY_HEALTH_PROFILE, type HealthProfile } from "../../data/health-profile-data";
-import { getGreeting } from "../../components/greeting";
-import { useI18n } from "../../lib/use-i18n";
-import { classDetails } from "../../data/schedule-data";
-import { BookClassButton } from "../../components/booking-modal";
-import { DashboardSkeleton } from "../../components/dashboard-skeleton";
+import { useAuth } from "@/context/auth-context";
+import type { DashboardSummaryDto } from "@/lib/api/types";
+import { EMPTY_HEALTH_PROFILE, type HealthProfile } from "@/data/health-profile-data";
+import { getGreeting } from "@/components/greeting";
 
-export function DashboardLobby() {
+type OnboardingStep = "profile" | "legal" | "welcome" | "source" | "health";
+
+export function DashboardLobby({ initialData }: { initialData?: DashboardSummaryDto | null }) {
   const {
     user,
-    membership,
-    bookings,
-    totalCredits,
-    membershipClassesRemaining,
-    referralCode,
-    referralBalance,
-    referralCount,
-    completeOnboarding,
     isAdmin,
-    creditExpiryDate,
-    creditsExpiringSoon,
-    attendanceHistory,
-    favouriteClasses,
-    getAdaptiveSuggestion,
-    isClassBooked,
+    completeOnboarding,
+    acceptTermsAndHealth,
+    saveOnboardingSource,
+    refreshAccountProfile,
   } = useAuth();
-  const { fmtTimeStr, fmtDate } = useI18n();
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const navigate = (href: string, opts?: { replace?: boolean }) =>
-    opts?.replace ? router.replace(href) : router.push(href);
+  const searchParams = useSearchParams();
   const isOnboarding = searchParams.get("onboarding") === "true";
+
+  const [summary, setSummary] = useState<DashboardSummaryDto | null>(initialData || null);
+  const [loading, setLoading] = useState(!initialData);
+  const [error, setError] = useState("");
+
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [onboardingStep, setOnboardingStep] = useState<"welcome" | "health">("welcome");
-  const [isLoading, setIsLoading] = useState(true);
+  const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>("welcome");
+  const [heardAboutSource, setHeardAboutSource] = useState("");
+  const [heardAboutDetail, setHeardAboutDetail] = useState("");
+  const [legalTerms, setLegalTerms] = useState(false);
+  const [legalHealth, setLegalHealth] = useState(false);
+  const [profileFirstName, setProfileFirstName] = useState("");
+  const [profileLastName, setProfileLastName] = useState("");
+  const [profileDob, setProfileDob] = useState("");
+  const [profileError, setProfileError] = useState("");
+  const [profileSubmitting, setProfileSubmitting] = useState(false);
 
-  // Simulate data loading
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 600);
-    return () => clearTimeout(timer);
-  }, []);
+  const needsProfileDetails = Boolean(user) && (!user?.firstName?.trim() || !user?.lastName?.trim() || !user?.dob);
+  const needsLegalAgreement = Boolean(user) && (!user?.hasAgreedToTerms || !user?.hasAgreedToHealth);
 
-  // Show onboarding overlay when URL has ?onboarding=true
   useEffect(() => {
-    if (isOnboarding) {
-      setShowOnboarding(true);
+    if (initialData) return;
+    let active = true;
+    void (async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch("/api/me/dashboard", { cache: "no-store" });
+        if (!res.ok) throw new Error("Failed to load dashboard.");
+        const payload = (await res.json()) as DashboardSummaryDto;
+        if (active) setSummary(payload);
+      } catch (e) {
+        if (active) setError(e instanceof Error ? e.message : "Failed to load dashboard.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [initialData]);
+
+  useEffect(() => {
+    if (!isOnboarding || isAdmin || !user) return;
+
+    setShowOnboarding(true);
+    setProfileFirstName(user.firstName || "");
+    setProfileLastName(user.lastName || "");
+    setProfileDob(user.dob || "");
+    setHeardAboutSource(user.heardAboutSource || "");
+    setHeardAboutDetail(user.heardAboutDetail || "");
+    setLegalTerms(Boolean(user.hasAgreedToTerms));
+    setLegalHealth(Boolean(user.hasAgreedToHealth));
+    setProfileError("");
+
+    if (needsProfileDetails) {
+      setOnboardingStep("profile");
+      return;
     }
-  }, [isOnboarding]);
+    if (needsLegalAgreement) {
+      setOnboardingStep("legal");
+      return;
+    }
+    if (user.heardAboutSource) {
+      setOnboardingStep("health");
+      return;
+    }
+    setOnboardingStep("welcome");
+  }, [isOnboarding, isAdmin, user, needsProfileDetails, needsLegalAgreement]);
 
-  const handleViewSchedule = () => {
+  const finishOnboarding = () => {
     completeOnboarding();
     setShowOnboarding(false);
     setOnboardingStep("welcome");
-    navigate("/dashboard/schedule", { replace: true });
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("onboarding");
+    const query = params.toString();
+    router.replace(query ? `/dashboard?${query}` : "/dashboard");
   };
 
-  const handleHealthSave = (profile: HealthProfile) => {
-    console.log("Health profile saved:", profile);
-    handleViewSchedule();
+  const handleProfileContinue = async () => {
+    setProfileSubmitting(true);
+    setProfileError("");
+
+    try {
+      const response = await fetch("/api/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: profileFirstName.trim(),
+          lastName: profileLastName.trim(),
+          dob: profileDob,
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(payload?.message || "Could not save profile details.");
+      }
+
+      await refreshAccountProfile();
+      setOnboardingStep(needsLegalAgreement ? "legal" : "welcome");
+    } catch (saveError) {
+      setProfileError(
+        saveError instanceof Error ? saveError.message : "Could not save profile details."
+      );
+    } finally {
+      setProfileSubmitting(false);
+    }
   };
 
-  const handleHealthSkip = () => {
-    handleViewSchedule();
+  const handleHealthSave = async (profile: HealthProfile) => {
+    await fetch("/api/me/health-profile", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(profile),
+    }).catch(() => null);
+    finishOnboarding();
   };
 
-  const typeIcon = (type: string) => {
-    if (type === "Yoga") return <Heart className="h-4 w-4 text-[#4B5B32]" />;
-    if (type === "HIIT") return <Zap className="h-4 w-4 text-orange-600" />;
-    return <Dumbbell className="text-primary h-4 w-4" />;
-  };
-
-  const adaptiveSuggestion = getAdaptiveSuggestion();
-
-  if (isLoading) {
+  if (loading) {
     return (
-      <DashboardLayout title="My Studio" description="Loading your dashboard...">
+      <DashboardLayout title="Studio Lobby - Shruti Turner">
         <DashboardSkeleton />
       </DashboardLayout>
     );
   }
 
-  // Credit expiry countdown
-  const daysUntilExpiry = creditExpiryDate
-    ? Math.ceil((new Date(creditExpiryDate).getTime() - Date.now()) / 86400000)
-    : null;
+  if (!summary) {
+    return (
+      <DashboardLayout title="Studio Lobby - Shruti Turner">
+        <div className="py-16 text-center">
+          <p className="text-muted-foreground">{error || "No dashboard data available."}</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
-  // Quick-book favourites — get class details for the slugs
-  const quickBookClasses = favouriteClasses
-    .map((slug) => classDetails.find((c) => c.slug === slug))
-    .filter(Boolean)
-    .filter((c) => !isClassBooked(c!.slug))
-    .slice(0, 3) as typeof classDetails;
+  const totalCredits = summary.credits.balance;
+  const referralBalance = Math.floor(summary.referral.balancePence / 100);
+
+  const entitlementLabel = (value: "membership" | "credit" | "manual") => {
+    if (value === "membership") return "Membership";
+    if (value === "credit") return "Credit";
+    return "Booked";
+  };
 
   return (
     <DashboardLayout title="Studio Lobby - Shruti Turner">
-      {/* Onboarding overlay */}
-      {showOnboarding && (
+      {showOnboarding && !isAdmin ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="bg-background animate-in fade-in zoom-in max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-lg border shadow-xl">
+          <div className="bg-background max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-lg border shadow-xl">
+            {onboardingStep === "profile" ? (
+              <div className="space-y-6 p-8">
+                <div className="space-y-3 text-center">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#56344A]/10">
+                    <Shield className="h-8 w-8 text-[#56344A]" />
+                  </div>
+                  <h2 className="text-xl">Complete Your Profile</h2>
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    Add your details once so the studio experience is set up correctly for you.
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="space-y-2 text-sm">
+                    <span>First name</span>
+                    <Input
+                      value={profileFirstName}
+                      onChange={(e) => setProfileFirstName(e.target.value)}
+                      autoComplete="given-name"
+                    />
+                  </label>
+                  <label className="space-y-2 text-sm">
+                    <span>Last name</span>
+                    <Input
+                      value={profileLastName}
+                      onChange={(e) => setProfileLastName(e.target.value)}
+                      autoComplete="family-name"
+                    />
+                  </label>
+                </div>
+
+                <label className="space-y-2 text-sm">
+                  <span>Date of birth</span>
+                  <Input
+                    type="date"
+                    value={profileDob}
+                    onChange={(e) => setProfileDob(e.target.value)}
+                    max={new Date().toISOString().slice(0, 10)}
+                  />
+                  <p className="text-muted-foreground text-xs">You must be 18+ to use this service.</p>
+                </label>
+
+                {profileError ? (
+                  <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                    <p>{profileError}</p>
+                  </div>
+                ) : null}
+
+                <Button
+                  className="w-full"
+                  disabled={
+                    profileSubmitting ||
+                    !profileFirstName.trim() ||
+                    !profileLastName.trim() ||
+                    !profileDob
+                  }
+                  onClick={() => void handleProfileContinue()}
+                >
+                  Save & Continue
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            ) : null}
+
+            {onboardingStep === "legal" ? (
+              <div className="space-y-6 p-8">
+                <div className="space-y-3 text-center">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#56344A]/10">
+                    <Shield className="h-8 w-8 text-[#56344A]" />
+                  </div>
+                  <h2 className="text-xl">Before We Begin</h2>
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    To use the studio, please review and accept the following. This is a one-time
+                    step.
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  <label className="flex items-start gap-3 rounded-lg border p-4">
+                    <input
+                      type="checkbox"
+                      checked={legalTerms}
+                      onChange={(e) => setLegalTerms(e.target.checked)}
+                      className="mt-0.5 accent-[#4B5B32]"
+                    />
+                    <span className="text-sm leading-relaxed">
+                      I agree to the{" "}
+                      <Link href="/terms" className="text-primary underline" target="_blank">
+                        Terms & Conditions
+                      </Link>{" "}
+                      and{" "}
+                      <Link href="/privacy" className="text-primary underline" target="_blank">
+                        Privacy Policy
+                      </Link>
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-3 rounded-lg border p-4">
+                    <input
+                      type="checkbox"
+                      checked={legalHealth}
+                      onChange={(e) => setLegalHealth(e.target.checked)}
+                      className="mt-0.5 accent-[#4B5B32]"
+                    />
+                    <span className="text-sm leading-relaxed">
+                      I confirm I have read and agree to the{" "}
+                      <Link href="/health-declaration" className="text-primary underline" target="_blank">
+                        Health Declaration
+                      </Link>
+                      , and I understand that I participate at my own risk
+                    </span>
+                  </label>
+                </div>
+                <Button
+                  className="w-full"
+                  disabled={!legalTerms || !legalHealth}
+                  onClick={async () => {
+                    await acceptTermsAndHealth(true, true);
+                    setOnboardingStep("welcome");
+                  }}
+                >
+                  Accept & Continue
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            ) : null}
+
             {onboardingStep === "welcome" ? (
-              /* Step 1: Welcome */
               <div className="space-y-6 p-8 text-center">
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#4B5B32]/10">
-                  <Heart className="h-8 w-8 text-[#4B5B32]" />
+                  <HeartPulse className="h-8 w-8 text-[#4B5B32]" />
                 </div>
-                <h2 className="text-2xl">Welcome, {user?.firstName}.</h2>
+                <h2 className="text-2xl">Welcome, {user?.firstName || "there"}.</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  Your Private Studio is ready. Here you can browse the schedule, book classes, and
-                  manage your membership. Start with what feels manageable.
+                  Your Private Studio is ready. Start with whatever feels manageable.
                 </p>
-                <div className="text-muted-foreground bg-secondary/30 space-y-3 rounded-lg p-4 text-left text-sm">
+                <div className="bg-secondary/30 space-y-3 rounded-lg p-4 text-left text-sm text-muted-foreground">
                   <p className="flex items-start gap-2">
                     <CheckCircle className="text-primary mt-0.5 h-4 w-4 flex-shrink-0" />
-                    <span>Book any yoga, strength, or HIIT class from the schedule</span>
+                    <span>Book any yoga, strength, or cardio class from your schedule</span>
                   </p>
                   <p className="flex items-start gap-2">
                     <CheckCircle className="text-primary mt-0.5 h-4 w-4 flex-shrink-0" />
-                    <span>Credits are used when you book — one per class</span>
+                    <span>Credits are used when you book</span>
                   </p>
                   <p className="flex items-start gap-2">
                     <CheckCircle className="text-primary mt-0.5 h-4 w-4 flex-shrink-0" />
-                    <span>Can't make it live? Replays are available for 7 days</span>
+                    <span>Classes adapt to how you feel on the day</span>
                   </p>
                 </div>
-                <Button size="lg" className="w-full" onClick={() => setOnboardingStep("health")}>
-                  Next: Tell Us About Your Body
+                <Button className="w-full" onClick={() => setOnboardingStep("source")}>
+                  Next: How Did You Hear About Us?
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
                 <button
-                  onClick={handleViewSchedule}
+                  onClick={finishOnboarding}
                   className="text-muted-foreground hover:text-foreground text-sm transition-colors"
                 >
-                  Skip and go to schedule
+                  Skip and continue
                 </button>
               </div>
-            ) : (
-              /* Step 2: Health profile */
+            ) : null}
+
+            {onboardingStep === "source" ? (
+              <div className="space-y-6 p-8">
+                <div className="space-y-2 text-center">
+                  <h2 className="text-xl">Where Did You Hear About Me?</h2>
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    This helps us understand how people find the studio.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {[
+                    { value: "friend", label: "A friend or family member" },
+                    { value: "instagram", label: "Instagram" },
+                    { value: "facebook", label: "Facebook" },
+                    { value: "google", label: "Google search" },
+                    { value: "health_professional", label: "GP or health professional" },
+                    { value: "other", label: "Other" },
+                  ].map((option) => (
+                    <label key={option.value} className="flex items-center gap-3 rounded-lg border p-3">
+                      <input
+                        type="radio"
+                        name="source"
+                        value={option.value}
+                        checked={heardAboutSource === option.value}
+                        onChange={(e) => setHeardAboutSource(e.target.value)}
+                        className="accent-[#4B5B32]"
+                      />
+                      <span className="text-sm">{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+                {heardAboutSource === "other" ? (
+                  <Input
+                    type="text"
+                    placeholder="Please tell us more..."
+                    value={heardAboutDetail}
+                    onChange={(e) => setHeardAboutDetail(e.target.value)}
+                  />
+                ) : null}
+                <Button
+                  className="w-full"
+                  disabled={!heardAboutSource}
+                  onClick={async () => {
+                    await saveOnboardingSource(heardAboutSource, heardAboutDetail);
+                    setOnboardingStep("health");
+                  }}
+                >
+                  Next: Tell Us About Your Body
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+                <div className="text-center">
+                  <button
+                    onClick={finishOnboarding}
+                    className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+                  >
+                    Skip and continue
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {onboardingStep === "health" ? (
               <div className="space-y-4 p-6">
                 <div className="space-y-2 text-center">
                   <h2 className="text-xl">Your Health Profile</h2>
                   <p className="text-muted-foreground text-sm leading-relaxed">
-                    This helps Shruti adapt every session for your body. You can always update this
-                    later from your dashboard.
+                    This helps Shruti adapt every session for your body.
                   </p>
                 </div>
                 <HealthProfileEditor
                   profile={EMPTY_HEALTH_PROFILE}
                   onSave={handleHealthSave}
                   compact
-                  onSkip={handleHealthSkip}
+                  onSkip={finishOnboarding}
                 />
               </div>
-            )}
+            ) : null}
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Welcome */}
-      <div className="mb-8">
-        <h1 className="mb-2 text-3xl md:text-4xl">
-          {getGreeting()}, {user?.firstName}.
-        </h1>
-        <p className="text-muted-foreground">Here's your training overview for this week.</p>
-      </div>
-
-      {/* Credit expiry warning */}
-      {!isAdmin && daysUntilExpiry !== null && daysUntilExpiry <= 7 && (
-        <div className="mb-6 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
-          <div>
-            <p className="text-sm text-amber-800">
-              {creditsExpiringSoon} credit{creditsExpiringSoon !== 1 ? "s" : ""}{" "}
-              {daysUntilExpiry <= 0
-                ? "expired today"
-                : daysUntilExpiry === 1
-                  ? "will expire tomorrow"
-                  : `will expire in ${daysUntilExpiry} days`}
-              .{" "}
-              <Link href="/dashboard/schedule" className="underline">
-                Book a class
-              </Link>{" "}
-              or{" "}
-              <Link href="/dashboard/membership" className="underline">
-                purchase more credits
-              </Link>{" "}
-              to extend your expiry window.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Quick stats */}
-      <div
-        className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? "lg:grid-cols-2" : "lg:grid-cols-4"} mb-8 gap-4`}
-      >
-        <div className="bg-background rounded-lg border p-5">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-muted-foreground text-sm">Upcoming Classes</span>
-            <Calendar className="text-muted-foreground h-4 w-4" />
-          </div>
-          <p className="text-3xl">{bookings.length}</p>
-          <p className="text-muted-foreground mt-1 text-xs">this week</p>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl md:text-4xl">{getGreeting()}, {user?.firstName || "there"}.</h1>
+          <p className="text-muted-foreground mt-2">Here&apos;s your training overview for this week.</p>
         </div>
 
-        {isAdmin ? (
-          <div className="bg-background rounded-lg border p-5">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-muted-foreground text-sm">Access</span>
-              <CreditCard className="text-muted-foreground h-4 w-4" />
-            </div>
-            <p className="text-lg">Unlimited (instructor)</p>
-            <p className="text-muted-foreground mt-1 text-xs">all classes included</p>
-          </div>
-        ) : (
-          <>
-            {membership && (
-              <div className="bg-background rounded-lg border p-5">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-muted-foreground text-sm">Membership Classes</span>
-                  <CreditCard className="text-muted-foreground h-4 w-4" />
-                </div>
-                <p className="text-3xl">
-                  {membershipClassesRemaining}
-                  <span className="text-muted-foreground text-base">
-                    {" "}
-                    / {membership.classesPerWeek === 99 ? "Unlimited" : membership.classesPerWeek}
-                  </span>
-                </p>
-                <p className="text-muted-foreground mt-1 text-xs">remaining this week</p>
-              </div>
-            )}
-
-            <div className="bg-background rounded-lg border p-5">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">Class Credits</span>
-                <CreditCard className="text-muted-foreground h-4 w-4" />
-              </div>
-              <p className="text-3xl">{totalCredits}</p>
+        {referralBalance > 0 ? (
+          <div className="flex items-start gap-3 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 p-4">
+            <Gift className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
+            <div>
+              <p className="text-sm">
+                You have <span className="text-[#4B5B32]">£{referralBalance}</span> referral balance.
+              </p>
               <p className="text-muted-foreground mt-1 text-xs">
-                {creditExpiryDate && daysUntilExpiry !== null && daysUntilExpiry > 0
-                  ? `expires in ${daysUntilExpiry}d`
-                  : "available"}
+                {summary.membership ? "Applies to your next renewal" : "Applies to your next purchase"}
               </p>
             </div>
+          </div>
+        ) : null}
 
-            <div className="bg-background rounded-lg border p-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="gap-0">
+            <CardContent className="pt-6">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">Upcoming Classes</span>
+                <Calendar className="h-4 w-4" />
+              </div>
+              <p className="text-3xl">{summary.upcomingClasses.length}</p>
+              <p className="text-muted-foreground mt-1 text-xs">scheduled</p>
+            </CardContent>
+          </Card>
+
+          <Card className="gap-0">
+            <CardContent className="pt-6">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">Weekly Bookings</span>
+                <CheckCircle className="h-4 w-4" />
+              </div>
+              <p className="text-3xl">{summary.attendance.thisWeekBookedCount}</p>
+              <p className="text-muted-foreground mt-1 text-xs">this week</p>
+            </CardContent>
+          </Card>
+
+          <Card className="gap-0">
+            <CardContent className="pt-6">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">
+                  {summary.membership ? "Membership" : "Class Credits"}
+                </span>
+                <CreditCard className="h-4 w-4" />
+              </div>
+              <p className={summary.membership ? "text-lg text-[#4B5B32]" : "text-3xl"}>
+                {summary.membership ? "Active" : totalCredits}
+              </p>
+              <p className="text-muted-foreground mt-1 text-xs">
+                {summary.membership
+                  ? "all live classes included"
+                  : totalCredits === 1
+                    ? "1 credit available"
+                    : `${totalCredits} credits available`}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="gap-0">
+            <CardContent className="pt-6">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-muted-foreground text-sm">Referral Balance</span>
-                <Gift className="text-muted-foreground h-4 w-4" />
+                <Gift className="h-4 w-4" />
               </div>
               <p className="text-3xl">£{referralBalance}</p>
               <p className="text-muted-foreground mt-1 text-xs">
-                {referralBalance > 0
-                  ? membership
-                    ? "off next renewal"
-                    : "off next purchase"
-                  : `${referralCount} friends joined`}
+                {referralBalance > 0 ? "available now" : "share your link to earn credit"}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <section className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl">Upcoming Classes</h2>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Your booked sessions and quickest route back into the schedule.
               </p>
             </div>
-          </>
-        )}
-      </div>
-
-      {/* Quick Book — favourite classes */}
-      {!isAdmin && quickBookClasses.length > 0 && (
-        <div className="mb-8">
-          <div className="mb-4 flex items-center gap-2">
-            <Bookmark className="text-primary h-5 w-5" />
-            <h2 className="text-xl">Quick Book</h2>
-            <span className="text-muted-foreground text-xs">Your most-booked classes</span>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {quickBookClasses.map((cls) => (
-              <div
-                key={cls.slug}
-                className="bg-background flex items-center justify-between gap-3 rounded-lg border p-4"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="bg-secondary flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg">
-                    {typeIcon(cls.type)}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm">{cls.name}</p>
-                    <p className="text-muted-foreground text-xs">
-                      {cls.day} {fmtTimeStr(cls.time)}
-                    </p>
-                  </div>
-                </div>
-                <BookClassButton classSlug={cls.slug} size="sm" />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Upcoming bookings */}
-      <div className="mb-8">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl">Upcoming Classes</h2>
-          <Link href="/dashboard/schedule">
-            <Button variant="ghost" size="sm">
-              View Full Schedule
-              <ArrowRight className="ml-1 h-3 w-3" />
-            </Button>
-          </Link>
-        </div>
-
-        {bookings.length === 0 ? (
-          <div className="bg-background rounded-lg border p-8 text-center">
-            <p className="text-muted-foreground mb-4">No classes booked yet.</p>
             <Link href="/dashboard/schedule">
-              <Button>
-                Browse Schedule
-                <ArrowRight className="ml-2 h-4 w-4" />
+              <Button variant="ghost" size="sm">
+                View Full Schedule
+                <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
             </Link>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {bookings.map((booking) => (
-              <div
-                key={booking.id}
-                className="bg-background flex items-center justify-between gap-4 rounded-lg border p-4"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="bg-secondary flex h-10 w-10 items-center justify-center rounded-lg">
-                    {typeIcon(booking.classType)}
-                  </div>
-                  <div>
-                    <p className="text-sm">{booking.className}</p>
-                    <p className="text-muted-foreground text-xs">
-                      {booking.day} at {fmtTimeStr(booking.time)} · {booking.duration}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Link href={`/dashboard/classes/${booking.classSlug}`}>
-                    <Button size="sm">View Details</Button>
-                  </Link>
-                </div>
+
+          {summary.upcomingClasses.length === 0 ? (
+            <div className="bg-background space-y-4 rounded-lg border p-8 text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#4B5B32]/10">
+                <Calendar className="h-7 w-7 text-[#4B5B32]" />
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Adaptive suggestion */}
-      {adaptiveSuggestion && !isAdmin && (
-        <div className="mb-8 flex items-start gap-3 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 p-5">
-          <Lightbulb className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
-          <div>
-            <p className="text-muted-foreground text-sm">
-              {adaptiveSuggestion.reason}{" "}
-              <Link
-                href={`/dashboard/classes/${adaptiveSuggestion.classSlug}`}
-                className="text-primary hover:underline"
-              >
-                {adaptiveSuggestion.className} ({adaptiveSuggestion.day}{" "}
-                {fmtTimeStr(adaptiveSuggestion.time)})
-              </Link>
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Quick actions */}
-      <div
-        className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? "lg:grid-cols-2" : "lg:grid-cols-3"} mb-8 gap-4`}
-      >
-        <Link
-          href="/dashboard/schedule"
-          className="bg-background group rounded-lg border p-5 transition-shadow hover:shadow-md"
-        >
-          <div className="mb-2 flex items-center gap-3">
-            <Calendar className="text-primary h-5 w-5" />
-            <h3 className="text-lg">{isAdmin ? "View Schedule" : "Book Next Class"}</h3>
-          </div>
-          <p className="text-muted-foreground text-sm">
-            {isAdmin
-              ? "See today's schedule and upcoming classes."
-              : "Browse this week's schedule and find your next session."}
-          </p>
-        </Link>
-
-        <Link
-          href="/dashboard/programs"
-          className="bg-background group rounded-lg border p-5 transition-shadow hover:shadow-md"
-        >
-          <div className="mb-2 flex items-center gap-3">
-            <Users className="text-primary h-5 w-5" />
-            <h3 className="text-lg">Small Group Programs</h3>
-          </div>
-          <p className="text-muted-foreground text-sm">
-            {isAdmin
-              ? "View your active and upcoming programmes."
-              : "Join a focused cohort with specific skill outcomes."}
-          </p>
-        </Link>
-
-        {!isAdmin && (
-          <Link
-            href="/dashboard/referrals"
-            className="bg-background group rounded-lg border p-5 transition-shadow hover:shadow-md"
-          >
-            <div className="mb-2 flex items-center gap-3">
-              <Gift className="text-primary h-5 w-5" />
-              <h3 className="text-lg">Refer a Friend</h3>
+              <div>
+                <p className="text-lg">Your schedule is clear</p>
+                <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm leading-relaxed">
+                  Browse the schedule and book your next class. Start with whatever feels manageable.
+                </p>
+              </div>
+              <div className="flex flex-col justify-center gap-3 pt-2 sm:flex-row">
+                <Link href="/dashboard/schedule">
+                  <Button>
+                    Browse Schedule
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/dashboard/health">
+                  <Button variant="outline">Complete Health Profile</Button>
+                </Link>
+              </div>
             </div>
-            <p className="text-muted-foreground text-sm">
-              Give £10, get £10. Share your referral link.
-            </p>
-          </Link>
-        )}
-      </div>
-
-      {/* Recent attendance history */}
-      {!isAdmin && attendanceHistory.length > 0 && (
-        <div className="mb-8">
-          <div className="mb-4 flex items-center gap-2">
-            <History className="text-muted-foreground h-5 w-5" />
-            <h2 className="text-xl">Recent Activity</h2>
-          </div>
-          <div className="bg-background divide-y rounded-lg border">
-            {attendanceHistory.slice(0, 5).map((record) => (
-              <div key={record.id} className="flex items-center justify-between gap-4 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="bg-secondary flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg">
-                    {typeIcon(record.classType)}
+          ) : (
+            <div className="space-y-3">
+              {summary.upcomingClasses.map((booking) => (
+                <Link
+                  key={booking.bookingId}
+                  href={`/dashboard/classes/${booking.classSlug}?sessionId=${encodeURIComponent(booking.sessionId)}`}
+                  className="bg-background block rounded-lg border p-4 transition-colors hover:border-[#4B5B32]/30 hover:bg-secondary/20"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <p>{booking.className}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {new Date(booking.startsAtUtc).toLocaleString("en-GB", {
+                          weekday: "short",
+                          day: "2-digit",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {entitlementLabel(booking.entitlementType)}
+                    </Badge>
                   </div>
-                  <div>
-                    <p className="text-sm">{record.className}</p>
-                    <p className="text-muted-foreground text-xs">
-                      {fmtDate(record.date)} · {fmtTimeStr(record.time)}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {record.preClass?.flareToday && (
-                    <span className="rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
-                      Flare day
-                    </span>
-                  )}
-                  {record.postClass && (
-                    <span
-                      className={`rounded px-2 py-0.5 text-xs ${
-                        record.postClass.feeling === "great"
-                          ? "bg-[#4B5B32]/10 text-[#4B5B32]"
-                          : record.postClass.feeling === "good"
-                            ? "bg-blue-50 text-blue-700"
-                            : record.postClass.feeling === "okay"
-                              ? "bg-secondary text-muted-foreground"
-                              : "bg-amber-50 text-amber-700"
-                      }`}
-                    >
-                      {record.postClass.feeling}
-                    </span>
-                  )}
-                  {!record.postClass && (
-                    <span className="text-muted-foreground text-xs">No feedback</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-          {attendanceHistory.length > 5 && (
-            <p className="text-muted-foreground mt-2 text-center text-xs">
-              Showing 5 of {attendanceHistory.length} attended classes
-            </p>
+                </Link>
+              ))}
+            </div>
           )}
-        </div>
-      )}
+        </section>
+
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-xl">Quick Actions</h2>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Jump straight to the parts of the studio you use most.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Link
+              href="/dashboard/schedule"
+              className="bg-background rounded-lg border p-5 transition-shadow hover:shadow-md"
+            >
+              <div className="mb-2 flex items-center gap-3">
+                <Calendar className="text-primary h-5 w-5" />
+                <h3 className="text-lg">Book Next Class</h3>
+              </div>
+              <p className="text-muted-foreground text-sm">
+                Browse this week&apos;s schedule and find your next session.
+              </p>
+            </Link>
+
+            <Link
+              href="/dashboard/programs"
+              className="bg-background rounded-lg border p-5 transition-shadow hover:shadow-md"
+            >
+              <div className="mb-2 flex items-center gap-3">
+                <Users className="text-primary h-5 w-5" />
+                <h3 className="text-lg">Programs</h3>
+              </div>
+              <p className="text-muted-foreground text-sm">
+                Explore your small group programs and longer-term training blocks.
+              </p>
+            </Link>
+
+            <Link
+              href={summary.membership ? "/dashboard/referrals" : "/dashboard/membership"}
+              className="bg-background rounded-lg border p-5 transition-shadow hover:shadow-md"
+            >
+              <div className="mb-2 flex items-center gap-3">
+                {summary.membership ? (
+                  <Gift className="text-primary h-5 w-5" />
+                ) : (
+                  <CreditCard className="text-primary h-5 w-5" />
+                )}
+                <h3 className="text-lg">{summary.membership ? "Refer a Friend" : "View Memberships"}</h3>
+              </div>
+              <p className="text-muted-foreground text-sm">
+                {summary.membership
+                  ? "Give £10, get £10. Share your referral link."
+                  : "Compare monthly, annual, and credit options for the studio."}
+              </p>
+            </Link>
+          </div>
+        </section>
+      </div>
     </DashboardLayout>
   );
 }
