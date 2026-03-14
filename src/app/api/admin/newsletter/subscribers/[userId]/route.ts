@@ -16,8 +16,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ userId
     const payload = await updateAdminSubscriber(userId, {
       newsletter: typeof body.newsletter === "boolean" ? body.newsletter : undefined,
       blogUpdates: typeof body.blogUpdates === "boolean" ? body.blogUpdates : undefined,
-      marketingEmails:
-        typeof body.marketingEmails === "boolean" ? body.marketingEmails : undefined,
+      marketingEmails: typeof body.marketingEmails === "boolean" ? body.marketingEmails : undefined,
     });
     return NextResponse.json(payload);
   } catch (error) {

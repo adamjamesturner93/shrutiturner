@@ -36,12 +36,11 @@ export default function CreditsExpiringEmail({
         {"Don't let your credits slip away"}
       </Text>
 
-      <Text style={bodyTextStyle}>
-        Hi {firstName},
-      </Text>
+      <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
       <Text style={bodyTextStyle}>
-        Just a gentle heads up — you have credits that are expiring soon. It would be a shame to lose them.
+        Just a gentle heads up — you have credits that are expiring soon. It would be a shame to
+        lose them.
       </Text>
 
       {/* Credit Highlight Card */}
@@ -102,7 +101,8 @@ export default function CreditsExpiringEmail({
       <Hr style={dividerStyle} />
 
       <Text style={{ ...mutedTextStyle, fontSize: "14px" }}>
-        Credits expire 14 days after your last session if not used. If {"you'd"} like to understand more about how credits work, just reply to this email and {"I'll"} be happy to help.
+        Credits expire 14 days after your last session if not used. If {"you'd"} like to understand
+        more about how credits work, just reply to this email and {"I'll"} be happy to help.
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>

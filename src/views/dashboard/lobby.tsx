@@ -57,8 +57,10 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
   const [profileError, setProfileError] = useState("");
   const [profileSubmitting, setProfileSubmitting] = useState(false);
 
-  const needsProfileDetails = Boolean(user) && (!user?.firstName?.trim() || !user?.lastName?.trim() || !user?.dob);
-  const needsLegalAgreement = Boolean(user) && (!user?.hasAgreedToTerms || !user?.hasAgreedToHealth);
+  const needsProfileDetails =
+    Boolean(user) && (!user?.firstName?.trim() || !user?.lastName?.trim() || !user?.dob);
+  const needsLegalAgreement =
+    Boolean(user) && (!user?.hasAgreedToTerms || !user?.hasAgreedToHealth);
 
   useEffect(() => {
     if (initialData) return;
@@ -195,8 +197,8 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
             {onboardingStep === "profile" ? (
               <div className="space-y-6 p-8">
                 <div className="space-y-3 text-center">
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#56344A]/10">
-                    <Shield className="h-8 w-8 text-[#56344A]" />
+                  <div className="bg-brand-plum/10 mx-auto flex h-16 w-16 items-center justify-center rounded-full">
+                    <Shield className="text-brand-plum h-8 w-8" />
                   </div>
                   <h2 className="text-xl">Complete Your Profile</h2>
                   <p className="text-muted-foreground text-sm leading-relaxed">
@@ -231,7 +233,9 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                     onChange={(e) => setProfileDob(e.target.value)}
                     max={new Date().toISOString().slice(0, 10)}
                   />
-                  <p className="text-muted-foreground text-xs">You must be 18+ to use this service.</p>
+                  <p className="text-muted-foreground text-xs">
+                    You must be 18+ to use this service.
+                  </p>
                 </label>
 
                 {profileError ? (
@@ -260,8 +264,8 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
             {onboardingStep === "legal" ? (
               <div className="space-y-6 p-8">
                 <div className="space-y-3 text-center">
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#56344A]/10">
-                    <Shield className="h-8 w-8 text-[#56344A]" />
+                  <div className="bg-brand-plum/10 mx-auto flex h-16 w-16 items-center justify-center rounded-full">
+                    <Shield className="text-brand-plum h-8 w-8" />
                   </div>
                   <h2 className="text-xl">Before We Begin</h2>
                   <p className="text-muted-foreground text-sm leading-relaxed">
@@ -275,7 +279,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                       type="checkbox"
                       checked={legalTerms}
                       onChange={(e) => setLegalTerms(e.target.checked)}
-                      className="mt-0.5 accent-[#4B5B32]"
+                      className="accent-brand-accent mt-0.5"
                     />
                     <span className="text-sm leading-relaxed">
                       I agree to the{" "}
@@ -293,11 +297,15 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                       type="checkbox"
                       checked={legalHealth}
                       onChange={(e) => setLegalHealth(e.target.checked)}
-                      className="mt-0.5 accent-[#4B5B32]"
+                      className="accent-brand-accent mt-0.5"
                     />
                     <span className="text-sm leading-relaxed">
                       I confirm I have read and agree to the{" "}
-                      <Link href="/health-declaration" className="text-primary underline" target="_blank">
+                      <Link
+                        href="/health-declaration"
+                        className="text-primary underline"
+                        target="_blank"
+                      >
                         Health Declaration
                       </Link>
                       , and I understand that I participate at my own risk
@@ -320,14 +328,14 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
 
             {onboardingStep === "welcome" ? (
               <div className="space-y-6 p-8 text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#4B5B32]/10">
-                  <HeartPulse className="h-8 w-8 text-[#4B5B32]" />
+                <div className="bg-brand-accent/10 mx-auto flex h-16 w-16 items-center justify-center rounded-full">
+                  <HeartPulse className="text-brand-accent h-8 w-8" />
                 </div>
                 <h2 className="text-2xl">Welcome, {user?.firstName || "there"}.</h2>
                 <p className="text-muted-foreground leading-relaxed">
                   Your Private Studio is ready. Start with whatever feels manageable.
                 </p>
-                <div className="bg-secondary/30 space-y-3 rounded-lg p-4 text-left text-sm text-muted-foreground">
+                <div className="bg-secondary/30 text-muted-foreground space-y-3 rounded-lg p-4 text-left text-sm">
                   <p className="flex items-start gap-2">
                     <CheckCircle className="text-primary mt-0.5 h-4 w-4 flex-shrink-0" />
                     <span>Book any yoga, strength, or cardio class from your schedule</span>
@@ -371,14 +379,17 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                     { value: "health_professional", label: "GP or health professional" },
                     { value: "other", label: "Other" },
                   ].map((option) => (
-                    <label key={option.value} className="flex items-center gap-3 rounded-lg border p-3">
+                    <label
+                      key={option.value}
+                      className="flex items-center gap-3 rounded-lg border p-3"
+                    >
                       <input
                         type="radio"
                         name="source"
                         value={option.value}
                         checked={heardAboutSource === option.value}
                         onChange={(e) => setHeardAboutSource(e.target.value)}
-                        className="accent-[#4B5B32]"
+                        className="accent-brand-accent"
                       />
                       <span className="text-sm">{option.label}</span>
                     </label>
@@ -436,19 +447,26 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
 
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl md:text-4xl">{getGreeting()}, {user?.firstName || "there"}.</h1>
-          <p className="text-muted-foreground mt-2">Here&apos;s your training overview for this week.</p>
+          <h1 className="text-3xl md:text-4xl">
+            {getGreeting()}, {user?.firstName || "there"}.
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Here&apos;s your training overview for this week.
+          </p>
         </div>
 
         {referralBalance > 0 ? (
-          <div className="flex items-start gap-3 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 p-4">
-            <Gift className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
+          <div className="border-brand-accent/20 bg-brand-accent/5 flex items-start gap-3 rounded-lg border p-4">
+            <Gift className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
             <div>
               <p className="text-sm">
-                You have <span className="text-[#4B5B32]">£{referralBalance}</span> referral balance.
+                You have <span className="text-brand-accent">£{referralBalance}</span> referral
+                balance.
               </p>
               <p className="text-muted-foreground mt-1 text-xs">
-                {summary.membership ? "Applies to your next renewal" : "Applies to your next purchase"}
+                {summary.membership
+                  ? "Applies to your next renewal"
+                  : "Applies to your next purchase"}
               </p>
             </div>
           </div>
@@ -485,7 +503,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                 </span>
                 <CreditCard className="h-4 w-4" />
               </div>
-              <p className={summary.membership ? "text-lg text-[#4B5B32]" : "text-3xl"}>
+              <p className={summary.membership ? "text-brand-accent text-lg" : "text-3xl"}>
                 {summary.membership ? "Active" : totalCredits}
               </p>
               <p className="text-muted-foreground mt-1 text-xs">
@@ -530,13 +548,14 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
 
           {summary.upcomingClasses.length === 0 ? (
             <div className="bg-background space-y-4 rounded-lg border p-8 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#4B5B32]/10">
-                <Calendar className="h-7 w-7 text-[#4B5B32]" />
+              <div className="bg-brand-accent/10 mx-auto flex h-14 w-14 items-center justify-center rounded-full">
+                <Calendar className="text-brand-accent h-7 w-7" />
               </div>
               <div>
                 <p className="text-lg">Your schedule is clear</p>
                 <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm leading-relaxed">
-                  Browse the schedule and book your next class. Start with whatever feels manageable.
+                  Browse the schedule and book your next class. Start with whatever feels
+                  manageable.
                 </p>
               </div>
               <div className="flex flex-col justify-center gap-3 pt-2 sm:flex-row">
@@ -557,7 +576,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                 <Link
                   key={booking.bookingId}
                   href={`/dashboard/classes/${booking.classSlug}?sessionId=${encodeURIComponent(booking.sessionId)}`}
-                  className="bg-background block rounded-lg border p-4 transition-colors hover:border-[#4B5B32]/30 hover:bg-secondary/20"
+                  className="bg-background hover:bg-secondary/20 hover:border-brand-accent/30 block rounded-lg border p-4 transition-colors"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="space-y-1">
@@ -627,7 +646,9 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                 ) : (
                   <CreditCard className="text-primary h-5 w-5" />
                 )}
-                <h3 className="text-lg">{summary.membership ? "Refer a Friend" : "View Memberships"}</h3>
+                <h3 className="text-lg">
+                  {summary.membership ? "Refer a Friend" : "View Memberships"}
+                </h3>
               </div>
               <p className="text-muted-foreground text-sm">
                 {summary.membership

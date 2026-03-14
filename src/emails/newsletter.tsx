@@ -1,13 +1,6 @@
 import { Section, Text, Link, Img, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
-import {
-  colors,
-  fonts,
-  headingStyle,
-  bodyTextStyle,
-  mutedTextStyle,
-  dividerStyle,
-} from "./styles";
+import { colors, fonts, headingStyle, bodyTextStyle, mutedTextStyle, dividerStyle } from "./styles";
 
 interface NewsletterEmailProps {
   firstName?: string;
@@ -49,16 +42,11 @@ export default function NewsletterEmail({
         {subject}
       </Text>
 
-      <Text style={bodyTextStyle}>
-        Hello {firstName},
-      </Text>
+      <Text style={bodyTextStyle}>Hello {firstName},</Text>
 
       {/* Body paragraphs - in production these come from Contentful markdown */}
       {bodyContent ? (
-        <Text
-          style={bodyTextStyle}
-          dangerouslySetInnerHTML={{ __html: bodyContent }}
-        />
+        <Text style={bodyTextStyle} dangerouslySetInnerHTML={{ __html: bodyContent }} />
       ) : (
         <>
           {defaultBody.map((paragraph, i) => (
@@ -83,15 +71,17 @@ export default function NewsletterEmail({
           </Text>
 
           <Text style={bodyTextStyle}>
-            For many of us (especially with bodies that can feel unpredictable) those signals get tangled. If you{"\u2019"}ve experienced flares or pain spikes, your system has learned that unpredictability can have consequences.
+            For many of us (especially with bodies that can feel unpredictable) those signals get
+            tangled. If you{"\u2019"}ve experienced flares or pain spikes, your system has learned
+            that unpredictability can have consequences.
           </Text>
 
-          <Text style={bodyTextStyle}>
-            So caution makes sense.
-          </Text>
+          <Text style={bodyTextStyle}>So caution makes sense.</Text>
 
           <Text style={bodyTextStyle}>
-            But physiologically, adaptation requires exposure. Tissue capacity improves when load is introduced gradually and repeatedly. The nervous system becomes less reactive when it experiences controlled challenge followed by recovery.
+            But physiologically, adaptation requires exposure. Tissue capacity improves when load is
+            introduced gradually and repeatedly. The nervous system becomes less reactive when it
+            experiences controlled challenge followed by recovery.
           </Text>
 
           <Text
@@ -113,11 +103,14 @@ export default function NewsletterEmail({
           </Text>
 
           <Text style={bodyTextStyle}>
-            This month, I{"\u2019"}d invite you to experiment with one small edge. Not something dramatic, but something measured.
+            This month, I{"\u2019"}d invite you to experiment with one small edge. Not something
+            dramatic, but something measured.
           </Text>
 
           <Text style={bodyTextStyle}>
-            Maybe try that new class with your trusted studio or increase the weight on your barbell slightly. Try a variation that feels unfamiliar. Or, if you often push yourself too far, perhaps experiment with stopping earlier.
+            Maybe try that new class with your trusted studio or increase the weight on your barbell
+            slightly. Try a variation that feels unfamiliar. Or, if you often push yourself too far,
+            perhaps experiment with stopping earlier.
           </Text>
 
           <Text
@@ -131,11 +124,13 @@ export default function NewsletterEmail({
           </Text>
 
           <Text style={bodyTextStyle}>
-            Capacity isn{"\u2019"}t proven in a single session. It{"\u2019"}s built through repeated, respectful exposure that is guided by your body.
+            Capacity isn{"\u2019"}t proven in a single session. It{"\u2019"}s built through
+            repeated, respectful exposure that is guided by your body.
           </Text>
 
           <Text style={bodyTextStyle}>
-            If you try something this month that stretches you, I{"\u2019"}d love to hear what you learn.
+            If you try something this month that stretches you, I{"\u2019"}d love to hear what you
+            learn.
           </Text>
         </>
       )}

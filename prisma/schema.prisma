@@ -78,6 +78,16 @@ enum ClassWaitlistStatus {
   removed
 }
 
+enum AttendanceSource {
+  daily
+  manual
+}
+
+enum ClassAttendanceEventType {
+  joined
+  left
+}
+
 enum ClassSessionEventType {
   booking_created
   booking_cancelled
@@ -145,6 +155,8 @@ model User {
   classBookings          ClassBooking[]
   classWaitlistEntries   ClassWaitlistEntry[]
   emailEvents            EmailEvent[]
+  attendanceOverrides    ClassBooking[]             @relation("AttendanceMarkedBy")
+  classAttendanceEvents  ClassAttendanceEvent[]
 }
 
 model Account {
@@ -382,6 +394,8 @@ model ClassSession {
   instructorBioSnapshot String?
   dailyRoomName      String?
   dailyRoomUrl       String?
+  communityModeEnabled Boolean         @default(false)
+  communityModeUpdatedAt DateTime?
   cancelledAt        DateTime?
   cancelledByUserId  String?
   cancelReason       String?
@@ -393,6 +407,7 @@ model ClassSession {
   bookings     ClassBooking[]
   waitlist     ClassWaitlistEntry[]
   events       ClassSessionEvent[]
+  attendanceEvents ClassAttendanceEvent[]
 
   @@index([classDefinitionSlug, startsAtUtc])
   @@index([startsAtUtc, status])
@@ -407,6 +422,13 @@ model ClassBooking {
   entitlementType BookingEntitlementType @default(manual)
   creditLedgerEntryId String? @unique
   bookedAt    DateTime           @default(now())
+  firstJoinedAt DateTime?
+  lastJoinedAt DateTime?
+  lastLeftAt DateTime?
+  joinCount    Int               @default(0)
+  attendanceMarkedAt DateTime?
+  attendanceMarkedByUserId String?
+  attendanceSource AttendanceSource?
   cancelledAt DateTime?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
@@ -414,11 +436,34 @@ model ClassBooking {
   session ClassSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   creditLedgerEntry CreditLedgerEntry? @relation("BookingCreditLedger", fields: [creditLedgerEntryId], references: [id], onDelete: SetNull)
+  attendanceMarkedByUser User? @relation("AttendanceMarkedBy", fields: [attendanceMarkedByUserId], references: [id], onDelete: SetNull)
+  attendanceEvents ClassAttendanceEvent[]
 
   @@unique([sessionId, userId])
   @@index([userId, status])
   @@index([sessionId, status])
   @@index([entitlementType])
+  @@index([attendanceMarkedByUserId])
+}
+
+model ClassAttendanceEvent {
+  id                 String                   @id @default(cuid())
+  sessionId          String
+  bookingId          String?
+  userId             String
+  dailyParticipantId String?
+  type               ClassAttendanceEventType
+  occurredAt         DateTime
+  payload            Json?
+  createdAt          DateTime                 @default(now())
+
+  session ClassSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  booking ClassBooking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, occurredAt])
+  @@index([bookingId, occurredAt])
+  @@index([userId, occurredAt])
 }
 
 model ClassWaitlistEntry {

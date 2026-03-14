@@ -74,7 +74,8 @@ export async function getAdminBusinessSummary(): Promise<AdminBusinessSummary> {
     (sum, sub) => sum + sub.pricePence,
     0
   );
-  const churnRatePercent = activeMembers > 0 ? Math.round((cancelledLast30Days / activeMembers) * 100) : 0;
+  const churnRatePercent =
+    activeMembers > 0 ? Math.round((cancelledLast30Days / activeMembers) * 100) : 0;
 
   const freshnessCandidates = [
     latestBillingEvent?.processedAt || latestBillingEvent?.createdAt || null,

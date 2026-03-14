@@ -33,7 +33,7 @@ export function NotFoundPage() {
             </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/classes">Browse Classes</Link>
+            <Link href="/classes">Browse Move Well Classes</Link>
           </Button>
           <Button asChild variant="outline">
             <Link href="/schedule">View Schedule</Link>

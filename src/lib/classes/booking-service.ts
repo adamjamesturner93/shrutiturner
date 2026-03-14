@@ -4,20 +4,34 @@ import {
   ClassSessionStatus,
   ClassWaitlistStatus,
   MembershipStatus,
+  Prisma,
 } from "@prisma/client";
 import { db } from "@/lib/db";
 import { sendBookingConfirmation, sendClassCancellation } from "@/lib/email";
 import { getFirstWaiting, joinWaitlist, removeFromWaitlist } from "@/lib/classes/waitlist-service";
 import type { BookSessionResultDto } from "@/lib/classes/types";
-import { consumeOneCreditForBooking, refundOneCreditForBooking } from "@/lib/credits/credit-service";
+import {
+  consumeOneCreditForBooking,
+  refundOneCreditForBooking,
+} from "@/lib/credits/credit-service";
 
-async function logEvent(sessionId: string, type: "booking_created" | "booking_cancelled" | "waitlist_joined" | "waitlist_promoted" | "session_cancelled", message?: string, payload?: Record<string, unknown>) {
+async function logEvent(
+  sessionId: string,
+  type:
+    | "booking_created"
+    | "booking_cancelled"
+    | "waitlist_joined"
+    | "waitlist_promoted"
+    | "session_cancelled",
+  message?: string,
+  payload?: Record<string, unknown>
+) {
   await db.classSessionEvent.create({
     data: {
       sessionId,
       type,
       message,
-      payload,
+      payload: (payload as Prisma.InputJsonValue | undefined) || undefined,
     },
   });
 }
@@ -34,7 +48,7 @@ function getUtcWeekStart(date: Date) {
 async function getMembershipWeeklyUsage(
   userId: string,
   now: Date,
-  tx: typeof db = db
+  tx: Prisma.TransactionClient | typeof db = db
 ) {
   const weekStart = getUtcWeekStart(now);
   const weekEnd = new Date(weekStart);
@@ -57,7 +71,10 @@ async function getMembershipWeeklyUsage(
   return { weekStart, weekEnd, used: count };
 }
 
-async function getBookableMembership(userId: string, tx: typeof db = db) {
+async function getBookableMembership(
+  userId: string,
+  tx: Prisma.TransactionClient | typeof db = db
+) {
   return tx.membershipSubscription.findFirst({
     where: {
       userId,
@@ -71,7 +88,11 @@ async function getBookableMembership(userId: string, tx: typeof db = db) {
   });
 }
 
-async function decideEntitlement(userId: string, now: Date, tx: typeof db = db) {
+async function decideEntitlement(
+  userId: string,
+  now: Date,
+  tx: Prisma.TransactionClient | typeof db = db
+) {
   const user = await tx.user.findUnique({
     where: { id: userId },
     select: { role: true },
@@ -120,7 +141,10 @@ async function decideEntitlement(userId: string, now: Date, tx: typeof db = db) 
   throw new Error("BOOKING_LIMIT_REACHED");
 }
 
-export async function bookClassSession(sessionId: string, userId: string): Promise<BookSessionResultDto> {
+export async function bookClassSession(
+  sessionId: string,
+  userId: string
+): Promise<BookSessionResultDto> {
   const session = await db.classSession.findUnique({
     where: { id: sessionId },
     include: {
@@ -132,7 +156,10 @@ export async function bookClassSession(sessionId: string, userId: string): Promi
   });
 
   if (!session) throw new Error("SESSION_NOT_FOUND");
-  if (![ClassSessionStatus.scheduled, ClassSessionStatus.live].includes(session.status)) {
+  if (
+    session.status !== ClassSessionStatus.scheduled &&
+    session.status !== ClassSessionStatus.live
+  ) {
     throw new Error("SESSION_NOT_BOOKABLE");
   }
   if (session.startsAtUtc <= new Date()) {
@@ -206,7 +233,10 @@ export async function bookClassSession(sessionId: string, userId: string): Promi
       return booked;
     });
 
-    await logEvent(sessionId, "booking_created", "Booking created", { userId, bookingId: booking.id });
+    await logEvent(sessionId, "booking_created", "Booking created", {
+      userId,
+      bookingId: booking.id,
+    });
 
     const user = await db.user.findUnique({ where: { id: userId } });
     if (user?.email) {
@@ -260,9 +290,11 @@ async function promoteFirstWaitlisted(sessionId: string) {
       return null;
     }
 
-    let entitlement:
-      | { entitlementType: BookingEntitlementType; membershipId: string | null; weeklyUsage: number }
-      | null = null;
+    let entitlement: {
+      entitlementType: BookingEntitlementType;
+      membershipId: string | null;
+      weeklyUsage: number;
+    } | null = null;
     try {
       entitlement = await decideEntitlement(waiting.userId, new Date(), tx);
     } catch {
@@ -350,7 +382,11 @@ export async function cancelOwnBooking(sessionId: string, userId: string) {
   });
 }
 
-export async function removeBookingAsAdmin(sessionId: string, bookingUserId: string, adminUserId: string) {
+export async function removeBookingAsAdmin(
+  sessionId: string,
+  bookingUserId: string,
+  adminUserId: string
+) {
   return cancelBookingForUser(sessionId, bookingUserId, {
     source: "admin",
     cancelledByUserId: adminUserId,
@@ -436,7 +472,11 @@ export async function leaveWaitlist(sessionId: string, userId: string) {
   return { removed: true };
 }
 
-export async function cancelClassSession(sessionId: string, cancelledByUserId: string, reason?: string) {
+export async function cancelClassSession(
+  sessionId: string,
+  cancelledByUserId: string,
+  reason?: string
+) {
   const session = await db.classSession.findUnique({
     where: { id: sessionId },
     include: {

@@ -47,8 +47,11 @@ export type ClassSessionListItemDto = {
   bookedCount: number;
   waitlistCount: number;
   dailyRoomUrl: string | null;
+  communityModeEnabled: boolean;
+  lateJoinCutoffAt: string;
   isBookedByCurrentUser: boolean;
   myBookingStatus: ClassBookingStatus | null;
+  hasPreviouslyJoinedCurrentUser: boolean;
   waitlistPosition: number | null;
 };
 
@@ -60,6 +63,11 @@ export type ClassBookingDto = {
   email: string;
   status: ClassBookingStatus;
   bookedAt: string;
+  firstJoinedAt: string | null;
+  lastJoinedAt: string | null;
+  lastLeftAt: string | null;
+  joinCount: number;
+  attendanceSource: "daily" | "manual" | null;
   healthConditions: string[];
   attendedClassesCount: number;
 };

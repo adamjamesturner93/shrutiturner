@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api/auth-user";
 import { getDashboardSummary } from "@/lib/dashboard/dashboard-service";
 
 export async function GET() {
   try {
+    await connection();
     const user = await requireSessionUser();
     const summary = await getDashboardSummary(user.id);
     return NextResponse.json(summary);

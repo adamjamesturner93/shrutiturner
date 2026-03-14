@@ -148,10 +148,7 @@ async function findCurrentPriceByLookup(stripe: Stripe, lookupKey: string) {
   return prices.data[0] || null;
 }
 
-function recurringMatches(
-  a: Stripe.Price.Recurring | null,
-  b: SeedItem["recurring"] | undefined
-) {
+function recurringMatches(a: Stripe.Price.Recurring | null, b: SeedItem["recurring"] | undefined) {
   if (!a && !b) return true;
   if (!a || !b) return false;
   return a.interval === b.interval;

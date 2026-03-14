@@ -95,8 +95,7 @@ export async function POST(req: Request) {
   const marketingOptIn = body.marketingOptIn === true;
   const consent = body.consent === true;
   const source = normalizeSource(body.source);
-  const turnstileToken =
-    typeof body.turnstileToken === "string" ? body.turnstileToken.trim() : "";
+  const turnstileToken = typeof body.turnstileToken === "string" ? body.turnstileToken.trim() : "";
 
   if (!EMAIL_REGEX.test(email)) {
     return NextResponse.json({ message: "Please enter a valid email address." }, { status: 400 });
@@ -125,7 +124,8 @@ export async function POST(req: Request) {
   }
 
   const postmarkToken = process.env.POSTMARK_API_TOKEN;
-  const fromEmail = process.env.POSTMARK_FROM_EMAIL || "Shruti Turner <shruti@thechronicyogini.com>";
+  const fromEmail =
+    process.env.POSTMARK_FROM_EMAIL || "Shruti Turner <shruti@thechronicyogini.com>";
   if (!postmarkToken) {
     return NextResponse.json(
       { message: "Postmark is not configured. Set POSTMARK_API_TOKEN." },

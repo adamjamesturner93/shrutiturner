@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/api/auth-user";
 import { createPromotionCode, listPromotionCodes } from "@/lib/billing/catalog-service";
 
 export async function GET() {
   try {
+    await connection();
     await requireAdminUser();
     const rows = await listPromotionCodes();
     return NextResponse.json(rows);

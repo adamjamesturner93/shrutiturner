@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { Layout } from "../components/layout";
 import { SEO } from "../components/seo";
 import { Button } from "../components/ui/button";
@@ -9,17 +9,17 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
 import { Checkbox } from "../components/ui/checkbox";
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { ArrowLeft, AlertCircle, CreditCard } from "lucide-react";
 import { getRetreatBySlug } from "../data/retreat-data";
 import { useI18n } from "../lib/use-i18n";
 
 export function RetreatCheckoutPage() {
   const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const retreat = getRetreatBySlug(id || "");
+  const { fmtDateRange } = useI18n();
 
-  // Get selected date from URL params or state
-  const [selectedDateId, setSelectedDateId] = useState<string>("");
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -35,18 +35,11 @@ export function RetreatCheckoutPage() {
     agreedToHealth: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    // Get selected date from URL params
-    const params = new URLSearchParams(window.location.search);
-    const dateId = params.get("date");
-    if (dateId) {
-      setSelectedDateId(dateId);
-    } else if (retreat?.dates.length) {
-      // Default to first date if none selected
-      setSelectedDateId(retreat.dates[0].id);
-    }
-  }, [retreat]);
+  const selectedDateId = useMemo(() => {
+    const dateId = searchParams.get("date");
+    if (dateId) return dateId;
+    return retreat?.dates[0]?.id || "";
+  }, [retreat, searchParams]);
 
   if (!retreat) {
     return (
@@ -108,8 +101,6 @@ export function RetreatCheckoutPage() {
     );
   }
 
-  const { fmtDateRange } = useI18n();
-
   return (
     <Layout>
       <SEO
@@ -119,17 +110,17 @@ export function RetreatCheckoutPage() {
       />
 
       {/* Checkout Header */}
-      <section className="bg-[#2E1F33] py-8 text-[#FAFAF8]">
+      <section className="bg-brand-dark text-brand-white py-8">
         <div className="container mx-auto max-w-5xl px-4">
           <Link
             href={`/retreats/${retreat.slug}`}
-            className="mb-4 inline-flex items-center gap-2 text-[#B5C49B] hover:underline"
+            className="text-brand-accent-light mb-4 inline-flex items-center gap-2 hover:underline"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to retreat details
           </Link>
           <h1 className="text-3xl md:text-4xl">Complete Your Booking</h1>
-          <p className="mt-2 text-[#B5C49B]">{retreat.title}</p>
+          <p className="text-brand-accent-light mt-2">{retreat.title}</p>
         </div>
       </section>
 
@@ -409,15 +400,15 @@ export function RetreatCheckoutPage() {
                     <span className="text-2xl font-medium">£{totalPrice}</span>
                   </div>
                   {isEarlyBird && (
-                    <p className="mt-2 text-sm text-[#4B5B32]">🎉 Early bird pricing applied</p>
+                    <p className="text-brand-accent mt-2 text-sm">🎉 Early bird pricing applied</p>
                   )}
                 </div>
               </div>
 
               {/* Important Info */}
-              <div className="rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/10 p-4">
+              <div className="border-brand-accent/20 bg-brand-accent/10 rounded-lg border p-4">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
+                  <AlertCircle className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
                   <div className="space-y-2 text-sm">
                     <p className="text-foreground font-medium">Important</p>
                     <ul className="text-muted-foreground space-y-1">

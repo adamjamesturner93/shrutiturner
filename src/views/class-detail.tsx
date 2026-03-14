@@ -48,9 +48,12 @@ export function ClassDetailPage({
     let active = true;
     void (async () => {
       try {
-        const response = await fetch(`/api/classes/sessions?slug=${encodeURIComponent(classDetail.slug)}`, {
-          cache: "no-store",
-        });
+        const response = await fetch(
+          `/api/classes/sessions?slug=${encodeURIComponent(classDetail.slug)}`,
+          {
+            cache: "no-store",
+          }
+        );
         if (!response.ok) return;
         const payload = (await response.json()) as Array<{
           id: string;
@@ -125,24 +128,24 @@ export function ClassDetailPage({
   return (
     <Layout>
       {/* Hero */}
-      <section className="bg-[#2E1F33] py-16 text-[#FAFAF8] md:py-24">
+      <section className="bg-brand-dark text-brand-white py-16 md:py-24">
         <div className="container mx-auto max-w-4xl px-4">
           {/* Breadcrumb */}
           <nav className="mb-8">
-            <ol className="flex items-center gap-2 text-sm text-[#FAFAF8]/60">
+            <ol className="text-brand-white/60 flex items-center gap-2 text-sm">
               <li>
-                <Link href="/" className="transition-colors hover:text-[#B5C49B]">
+                <Link href="/" className="hover:text-brand-accent-light transition-colors">
                   Home
                 </Link>
               </li>
               <li>/</li>
               <li>
-                <Link href="/schedule" className="transition-colors hover:text-[#B5C49B]">
+                <Link href="/schedule" className="hover:text-brand-accent-light transition-colors">
                   Schedule
                 </Link>
               </li>
               <li>/</li>
-              <li className="text-[#B5C49B]">{classDetail.name}</li>
+              <li className="text-brand-accent-light">{classDetail.name}</li>
             </ol>
           </nav>
 
@@ -151,7 +154,7 @@ export function ClassDetailPage({
               {typeIcon}
               <span className="ml-1">{classDetail.type}</span>
             </Badge>
-            <Badge variant="outline" className="border-[#FAFAF8]/30 text-[#FAFAF8]/80">
+            <Badge variant="outline" className="border-brand-white/30 text-brand-white/80">
               {classDetail.level}
             </Badge>
           </div>
@@ -160,23 +163,23 @@ export function ClassDetailPage({
             {classDetail.name}
           </h1>
 
-          <p className="mb-8 max-w-3xl text-xl leading-relaxed text-[#FAFAF8]/90 md:text-2xl">
+          <p className="text-brand-white/90 mb-8 max-w-3xl text-xl leading-relaxed md:text-2xl">
             {classDetail.shortDescription}
           </p>
 
           {/* Quick Stats */}
           <div className="mb-10 flex flex-wrap gap-6">
-            <div className="flex items-center gap-2 text-[#B5C49B]">
+            <div className="text-brand-accent-light flex items-center gap-2">
               <Calendar className="h-5 w-5" />
               <span>{classDetail.day}s</span>
             </div>
-            <div className="flex items-center gap-2 text-[#B5C49B]">
+            <div className="text-brand-accent-light flex items-center gap-2">
               <Clock className="h-5 w-5" />
               <span>
                 {fmtTimeStr(classDetail.time)} · {classDetail.duration}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-[#B5C49B]">
+            <div className="text-brand-accent-light flex items-center gap-2">
               <Users className="h-5 w-5" />
               <span>Max {classDetail.maxSpaces} people</span>
             </div>
@@ -195,7 +198,7 @@ export function ClassDetailPage({
               <Button
                 size="lg"
                 variant="outline"
-                className="border-[#B5C49B] bg-transparent text-[#B5C49B] hover:bg-[#B5C49B]/10"
+                className="border-brand-accent-light text-brand-accent-light hover:bg-brand-accent-light/10 bg-transparent"
               >
                 View Full Schedule
               </Button>
@@ -231,7 +234,7 @@ export function ClassDetailPage({
               <ul className="space-y-4">
                 {classDetail.whatToExpect.map((item, i) => (
                   <li key={i} className="flex items-start gap-3">
-                    <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
+                    <CheckCircle className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
                     <span className="text-muted-foreground">{item}</span>
                   </li>
                 ))}
@@ -249,7 +252,7 @@ export function ClassDetailPage({
               <ul className="space-y-4">
                 {classDetail.whoItsFor.map((item, i) => (
                   <li key={i} className="flex items-start gap-3">
-                    <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
+                    <CheckCircle className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
                     <span className="text-muted-foreground">{item}</span>
                   </li>
                 ))}
@@ -266,7 +269,7 @@ export function ClassDetailPage({
           <div className="mx-auto grid max-w-4xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {classDetail.benefits.map((benefit, i) => (
               <div key={i} className="bg-background flex items-start gap-3 rounded-lg border p-6">
-                <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
+                <CheckCircle className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
                 <span className="text-muted-foreground">{benefit}</span>
               </div>
             ))}
@@ -306,17 +309,17 @@ export function ClassDetailPage({
           <h2 className="mb-6 text-2xl md:text-3xl">Your Instructor</h2>
           <div className="bg-background rounded-lg border p-6 md:p-8">
             <div className="flex flex-col items-start gap-6 sm:flex-row">
-              <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-full bg-[#4B5B32]/10">
-                <span className="text-2xl text-[#4B5B32]">{instructorInitials || "ST"}</span>
+              <div className="bg-brand-accent/10 flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-full">
+                <span className="text-brand-accent text-2xl">{instructorInitials || "ST"}</span>
               </div>
               <div className="space-y-3">
                 <h3 className="text-xl">{instructorName}</h3>
                 <p className="text-muted-foreground leading-relaxed">{instructorBio}</p>
                 <Link
-                  href="/pt"
+                  href="/coaching"
                   className="text-primary inline-flex items-center gap-1 text-sm hover:underline"
                 >
-                  Work with Shruti 1:1
+                  Explore coaching with Shruti
                   <ArrowRight className="h-3 w-3" />
                 </Link>
               </div>
@@ -367,15 +370,19 @@ export function ClassDetailPage({
       )}
 
       {/* CTA */}
-      <section className="bg-[#4B5B32] py-16 text-[#FAFAF8] md:py-20">
+      <section className="bg-brand-accent text-brand-white py-16 md:py-20">
         <div className="container mx-auto max-w-3xl space-y-8 px-4 text-center">
           <h2 className="text-3xl md:text-4xl">Ready to Try {classDetail.name}?</h2>
           <p className="text-lg leading-relaxed opacity-90">
-            Join live or catch the replay. Drop-in, class packs, and monthly memberships available.
+            Join live with class credits or choose a membership for regular support and easier
+            weekly practice.
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <Link href="/pricing">
-              <Button size="lg" className="bg-[#FAFAF8] text-[#4B5B32] hover:bg-[#FAFAF8]/90">
+              <Button
+                size="lg"
+                className="bg-brand-white text-brand-accent hover:bg-brand-white/90"
+              >
                 View Pricing & Book
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -384,7 +391,7 @@ export function ClassDetailPage({
               <Button
                 size="lg"
                 variant="outline"
-                className="border-[#FAFAF8] bg-transparent text-[#FAFAF8] hover:bg-[#FAFAF8]/10"
+                className="border-brand-white text-brand-white hover:bg-brand-white/10 bg-transparent"
               >
                 Full Schedule
               </Button>

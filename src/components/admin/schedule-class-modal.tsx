@@ -162,7 +162,7 @@ export function ScheduleClassModal({
               <button
                 key={cls.slug}
                 onClick={() => handleSelectTemplate(cls.slug)}
-                className="border-border hover:bg-secondary/30 w-full rounded-lg border p-3 text-left transition-colors hover:border-[#4B5B32]/30"
+                className="border-border hover:bg-secondary/30 hover:border-brand-accent/30 w-full rounded-lg border p-3 text-left transition-colors"
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -299,7 +299,9 @@ export function ScheduleClassModal({
               </select>
               {selectedProfile ? (
                 <p className="text-muted-foreground text-xs">
-                  {selectedProfile.headline || selectedProfile.bio || "Profile selected for this session."}
+                  {selectedProfile.headline ||
+                    selectedProfile.bio ||
+                    "Profile selected for this session."}
                 </p>
               ) : null}
             </div>
@@ -312,9 +314,13 @@ export function ScheduleClassModal({
                 min={1}
                 max={52}
                 value={repeatWeeks}
-                onChange={(e) => setRepeatWeeks(Math.max(1, Math.min(52, parseInt(e.target.value) || 1)))}
+                onChange={(e) =>
+                  setRepeatWeeks(Math.max(1, Math.min(52, parseInt(e.target.value) || 1)))
+                }
               />
-              <p className="text-muted-foreground text-xs">Creates one session per week from the selected start date.</p>
+              <p className="text-muted-foreground text-xs">
+                Creates one session per week from the selected start date.
+              </p>
             </div>
           </div>
         )}
@@ -329,7 +335,7 @@ export function ScheduleClassModal({
             <Button
               onClick={handleSchedule}
               disabled={!date || !time || !maxSpaces}
-              className="bg-[#4B5B32] hover:bg-[#4B5B32]/90"
+              className="bg-brand-accent hover:bg-brand-accent/90"
             >
               Schedule Class
             </Button>

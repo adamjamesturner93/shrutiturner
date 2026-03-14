@@ -6,15 +6,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import {
-  Calendar,
-  Clock,
-  Users,
-  Play,
-  CheckCircle,
-  XCircle,
-  ChevronRight,
-} from "lucide-react";
+import { Calendar, Clock, Users, Play, CheckCircle, XCircle, ChevronRight } from "lucide-react";
 import {
   ScheduleClassModal,
   type ScheduleClassData,
@@ -155,7 +147,9 @@ export function AdminClasses() {
   const totalAttended = completed.reduce((s, c) => s + c.bookedCount, 0);
   const attendanceRate = totalBooked > 0 ? Math.round((totalAttended / totalBooked) * 100) : 0;
 
-  const handleSchedule = async (data: ScheduleClassData & { repeatWeeks?: number; weekdays?: number[] }) => {
+  const handleSchedule = async (
+    data: ScheduleClassData & { repeatWeeks?: number; weekdays?: number[] }
+  ) => {
     const template = templates.find((cls) => cls.slug === data.classTemplateSlug);
     if (!template) return;
     const payload = {
@@ -187,7 +181,7 @@ export function AdminClasses() {
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl text-[#2E1F33]">Class Management</h1>
+            <h1 className="text-brand-dark text-2xl">Class Management</h1>
             <p className="text-muted-foreground mt-1">
               {scheduled.length} upcoming · {completed.length} completed this period
             </p>
@@ -195,7 +189,7 @@ export function AdminClasses() {
           </div>
           <Button
             onClick={() => setShowScheduleModal(true)}
-            className="bg-[#4B5B32] hover:bg-[#4B5B32]/90"
+            className="bg-brand-accent hover:bg-brand-accent/90"
           >
             <Calendar className="mr-2 h-4 w-4" />
             Schedule Class
@@ -216,9 +210,9 @@ export function AdminClasses() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-[#4B5B32]" />
+                <Calendar className="text-brand-accent h-5 w-5" />
                 <div>
-                  <p className="text-2xl text-[#2E1F33]">{scheduled.length}</p>
+                  <p className="text-brand-dark text-2xl">{scheduled.length}</p>
                   <p className="text-muted-foreground text-xs">Upcoming classes</p>
                 </div>
               </div>
@@ -227,9 +221,9 @@ export function AdminClasses() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <Users className="h-5 w-5 text-[#4B5B32]" />
+                <Users className="text-brand-accent h-5 w-5" />
                 <div>
-                  <p className="text-2xl text-[#2E1F33]">
+                  <p className="text-brand-dark text-2xl">
                     {scheduled.reduce((s, c) => s + c.bookedCount, 0)}
                   </p>
                   <p className="text-muted-foreground text-xs">Total bookings (upcoming)</p>
@@ -240,9 +234,9 @@ export function AdminClasses() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <CheckCircle className="h-5 w-5 text-[#4B5B32]" />
+                <CheckCircle className="text-brand-accent h-5 w-5" />
                 <div>
-                  <p className="text-2xl text-[#2E1F33]">{attendanceRate}%</p>
+                  <p className="text-brand-dark text-2xl">{attendanceRate}%</p>
                   <p className="text-muted-foreground text-xs">Attendance rate (completed)</p>
                 </div>
               </div>
@@ -298,21 +292,30 @@ function ClassRow({ classInstance }: { classInstance: AdminClassSessionDto }) {
   const statusBadge = STATUS_BADGE[classInstance.status] || STATUS_BADGE.scheduled;
   const StatusIcon = STATUS_ICON[classInstance.status];
   const typeColor = getTypeColor(classInstance.type as "Yoga" | "Strength" | "HIIT");
-  const fillPercent = classInstance.capacity > 0 ? Math.round((classInstance.bookedCount / classInstance.capacity) * 100) : 0;
+  const fillPercent =
+    classInstance.capacity > 0
+      ? Math.round((classInstance.bookedCount / classInstance.capacity) * 100)
+      : 0;
   const startsAt = new Date(classInstance.startsAtUtc);
   const day = startsAt.toLocaleDateString("en-GB", { weekday: "long" });
-  const date = startsAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  const date = startsAt.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
   const time = startsAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
   return (
     <Link href={`/admin/classes/${classInstance.id}`}>
-      <Card className="cursor-pointer transition-colors hover:border-[#4B5B32]/30">
+      <Card className="hover:border-brand-accent/30 cursor-pointer transition-colors">
         <CardContent className="py-4">
           <div className="flex items-center gap-4">
             {/* Status icon */}
             <div
               className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${
-                classInstance.status === "live" ? "bg-[#4B5B32] text-[#FAFAF8]" : "bg-secondary"
+                classInstance.status === "live"
+                  ? "bg-brand-accent text-brand-white"
+                  : "bg-secondary"
               }`}
             >
               <StatusIcon className="h-5 w-5" />
@@ -345,7 +348,7 @@ function ClassRow({ classInstance }: { classInstance: AdminClassSessionDto }) {
                       ? "bg-destructive"
                       : fillPercent >= 70
                         ? "bg-amber-500"
-                        : "bg-[#4B5B32]"
+                        : "bg-brand-accent"
                   }`}
                   style={{ width: `${fillPercent}%` }}
                 />

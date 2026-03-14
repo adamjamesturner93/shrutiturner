@@ -38,7 +38,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
     if (error instanceof Error && error.message === "INSUFFICIENT_CREDITS") {
-      return NextResponse.json({ message: "Cannot remove more credits than available." }, { status: 400 });
+      return NextResponse.json(
+        { message: "Cannot remove more credits than available." },
+        { status: 400 }
+      );
     }
     console.error("POST /api/admin/members/[id]/credits/adjust failed", error);
     return NextResponse.json({ message: "Failed to adjust credits" }, { status: 500 });

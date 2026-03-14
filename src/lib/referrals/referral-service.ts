@@ -245,7 +245,9 @@ export async function getReferralSummary(userId: string, siteUrl: string) {
     .filter((entry) => entry.type !== ReferralLedgerType.applied && entry.amountPence > 0)
     .reduce((sum, entry) => sum + entry.amountPence, 0);
 
-  const referralCount = events.filter((event) => event.status === ReferralEventStatus.rewarded).length;
+  const referralCount = events.filter(
+    (event) => event.status === ReferralEventStatus.rewarded
+  ).length;
 
   const history = events.map((event) => {
     const amountPence = event.ledgerEntries.reduce((sum, entry) => sum + entry.amountPence, 0);

@@ -8,7 +8,6 @@ import Link from "next/link";
 import {
   ArrowRight,
   BookOpen,
-  Dumbbell,
   Heart,
   Users,
   User,
@@ -74,15 +73,15 @@ export function HomePage() {
       />
 
       {/* Hero Section - Clear single CTA */}
-      <section className="bg-[#2E1F33] py-20 text-[#FAFAF8] md:py-28">
+      <section className="bg-brand-dark text-brand-white py-20 md:py-28">
         <div className="container mx-auto max-w-6xl px-4">
           <div className="grid items-center gap-12 md:grid-cols-2">
             <div className="space-y-6">
-              <div className="text-lg text-[#B5C49B]">Strength & Yoga Coach</div>
+              <div className="text-brand-accent-light text-lg">Strength & Yoga Coach</div>
               <h1 className="text-4xl leading-tight tracking-tight md:text-5xl lg:text-6xl">
                 Coaching for People Who Refuse to Be Fragile
               </h1>
-              <p className="text-xl leading-relaxed text-[#FAFAF8]/90 md:text-2xl">
+              <p className="text-brand-white/90 text-xl leading-relaxed md:text-2xl">
                 I help people with chronic illness and autoimmune conditions build strength and
                 capacity through rehabilitation-informed training that honours your body's
                 complexity.
@@ -91,10 +90,10 @@ export function HomePage() {
                 PhD Biomechanics · PGDip Rehab · 650hr Yoga · Level 4 PT
               </p>
               <div className="flex flex-col gap-4 pt-4 sm:flex-row">
-                <Link href="/classes">
+                <Link href="/coaching">
                   <Button
                     size="lg"
-                    className="bg-[#B5C49B] px-8 text-lg text-[#2E1F33] hover:bg-[#a5b48b]"
+                    className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90 px-8 text-lg"
                   >
                     Explore How I Can Help
                     <ArrowRight className="ml-2 h-5 w-5" />
@@ -104,7 +103,7 @@ export function HomePage() {
                   <Button
                     size="lg"
                     variant="outline"
-                    className="border-[#B5C49B] bg-transparent px-8 text-lg text-[#B5C49B] hover:bg-[#B5C49B]/10"
+                    className="border-brand-accent-light text-brand-accent-light hover:bg-brand-accent-light/10 bg-transparent px-8 text-lg"
                   >
                     About Shruti
                   </Button>
@@ -159,14 +158,14 @@ export function HomePage() {
             </div>
             <div className="bg-background border-primary space-y-4 rounded-lg border border-l-4 p-6">
               <p className="text-muted-foreground leading-relaxed italic">
-                "I've built more strength in 12 weeks than in years of trying generic programs.
+                "I've built more strength in 12 weeks than in years of trying generic programmes.
                 Shruti actually gets what it's like to train with chronic illness."
               </p>
               <p className="text-sm">— James, Rheumatoid Arthritis</p>
             </div>
             <div className="bg-background border-primary space-y-4 rounded-lg border border-l-4 p-6">
               <p className="text-muted-foreground leading-relaxed italic">
-                "The small group program gave me the accountability I needed and a community that
+                "The small group programme gave me the accountability I needed and a community that
                 understands. No toxic positivity, just real support."
               </p>
               <p className="text-sm">— Elena, Chronic Fatigue</p>
@@ -216,7 +215,7 @@ export function HomePage() {
       </section>
 
       {/* Core Promise */}
-      <section className="bg-[#4B5B32] py-20 text-[#FAFAF8] md:py-24">
+      <section className="bg-brand-accent text-brand-white py-20 md:py-24">
         <div className="container mx-auto max-w-4xl px-4 text-center">
           <h2 className="mb-8 text-3xl leading-tight md:text-5xl">
             Build strength, capacity and resilience — without pretending your body is simple.
@@ -234,67 +233,46 @@ export function HomePage() {
           <div className="mb-16 text-center">
             <h2 className="mb-6 text-3xl md:text-5xl">Choose Your Path</h2>
             <p className="text-muted-foreground mx-auto max-w-3xl text-xl leading-relaxed">
-              Whether you want guided classes, personalised 1:1 coaching, or an immersive retreat
-              experience — there's a way in that suits you.
+              Whether you want ongoing Move Well Classes, a more focused small group programme, or
+              personalised 1:1 coaching, there&apos;s a way in that suits you.
             </p>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {/* Yoga Classes */}
+            {/* Move Well Classes */}
             <div className="bg-background group space-y-4 rounded-lg border p-6 transition-shadow hover:shadow-lg">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#4B5B32]/10">
-                <Heart className="h-6 w-6 text-[#4B5B32]" />
+              <div className="bg-brand-accent/10 flex h-12 w-12 items-center justify-center rounded-lg">
+                <Heart className="text-brand-accent h-6 w-6" />
               </div>
-              <h3 className="text-xl">Yoga Classes</h3>
+              <h3 className="text-xl">Move Well Classes</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Rehabilitation-informed yoga that prioritises joint safety, stability, and nervous
-                system regulation.
+                Live adaptive yoga and intelligent strength classes for complex bodies, with
+                real-time modifications and a flare-friendly structure.
               </p>
-              <p className="text-sm text-[#9B6535]">From £7/class with a bundle</p>
-              <Link href="/classes/yoga">
+              <p className="text-bronze-text text-sm">From £7/class with a bundle</p>
+              <Link href="/classes">
                 <Button
                   variant="outline"
                   className="group-hover:bg-primary group-hover:text-primary-foreground w-full transition-colors"
                 >
-                  Explore Yoga
+                  Explore Move Well Classes
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
             </div>
 
-            {/* Strength Classes */}
-            <div className="bg-background group space-y-4 rounded-lg border p-6 transition-shadow hover:shadow-lg">
-              <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-lg">
-                <Dumbbell className="text-primary h-6 w-6" />
-              </div>
-              <h3 className="text-xl">Strength Classes</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Evidence-based resistance training designed for bodies that need intelligent
-                programming.
-              </p>
-              <p className="text-sm text-[#9B6535]">From £7/class with a bundle</p>
-              <Link href="/classes/strength">
-                <Button
-                  variant="outline"
-                  className="group-hover:bg-primary group-hover:text-primary-foreground w-full transition-colors"
-                >
-                  Explore Strength
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-
-            {/* 1:1 Training */}
+            {/* Coaching */}
             <div className="bg-background group space-y-4 rounded-lg border p-6 transition-shadow hover:shadow-lg">
               <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-lg">
                 <User className="text-primary h-6 w-6" />
               </div>
-              <h3 className="text-xl">1:1 Training</h3>
+              <h3 className="text-xl">Coaching</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Fully personalised programming designed around your specific conditions and goals.
+                Three levels of personalised support, from tailored training plans to high-touch 1:1
+                coaching.
               </p>
-              <p className="text-sm text-[#9B6535]">From £75/session</p>
-              <Link href="/pt">
+              <p className="text-bronze-text text-sm">From £60/month</p>
+              <Link href="/coaching">
                 <Button
                   variant="outline"
                   className="group-hover:bg-primary group-hover:text-primary-foreground w-full transition-colors"
@@ -305,7 +283,7 @@ export function HomePage() {
               </Link>
             </div>
 
-            {/* Small Groups */}
+            {/* Small Group Programmes */}
             <div className="bg-background border-primary group relative space-y-4 rounded-lg border-2 p-6 transition-shadow hover:shadow-lg">
               <div className="absolute -top-3 right-4">
                 <span className="bg-primary text-primary-foreground flex items-center gap-1 rounded-full px-3 py-1 text-xs">
@@ -316,14 +294,37 @@ export function HomePage() {
               <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-lg">
                 <Users className="text-primary h-6 w-6" />
               </div>
-              <h3 className="text-xl">Small Groups</h3>
+              <h3 className="text-xl">Small Group Programmes</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Focused cohorts with specific goals. Maximum 6 people for personalised attention.
+                Structured multi-week cohorts for people who want deeper progression, stronger
+                accountability, and more individual attention than regular classes provide.
               </p>
-              <p className="text-sm text-[#9B6535]">From £120 per program</p>
+              <p className="text-bronze-text text-sm">From £120 per programme</p>
               <Link href="/classes/small-groups">
                 <Button className="w-full">
-                  View Programs
+                  View Programmes
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+
+            {/* Retreats */}
+            <div className="bg-background group space-y-4 rounded-lg border p-6 transition-shadow hover:shadow-lg">
+              <div className="bg-brand-plum/10 flex h-12 w-12 items-center justify-center rounded-lg">
+                <Sparkles className="text-brand-plum h-6 w-6" />
+              </div>
+              <h3 className="text-xl">Retreats</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                In-person weekend experiences combining rest, movement, and community for bodies
+                that need more thought.
+              </p>
+              <p className="text-bronze-text text-sm">From £350 per retreat</p>
+              <Link href="/retreats">
+                <Button
+                  variant="outline"
+                  className="group-hover:bg-primary group-hover:text-primary-foreground w-full transition-colors"
+                >
+                  View Retreats
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
@@ -345,13 +346,13 @@ export function HomePage() {
           <div className="hidden overflow-x-auto md:block">
             <table className="bg-background w-full border-collapse overflow-hidden rounded-lg border">
               <thead>
-                <tr className="bg-[#2E1F33] text-[#FAFAF8]">
+                <tr className="bg-brand-dark text-brand-white">
                   <th className="p-4 text-left font-medium">Feature</th>
-                  <th className="p-4 text-center font-medium">Group Classes</th>
-                  <th className="border-x border-[#FAFAF8]/10 p-4 text-center font-medium">
-                    Small Groups
+                  <th className="p-4 text-center font-medium">Move Well Classes</th>
+                  <th className="border-brand-white/10 border-x p-4 text-center font-medium">
+                    Small Group Programmes
                   </th>
-                  <th className="p-4 text-center font-medium">1:1 Training</th>
+                  <th className="p-4 text-center font-medium">Coaching</th>
                 </tr>
               </thead>
               <tbody className="text-sm">
@@ -367,25 +368,25 @@ export function HomePage() {
                     <span className="text-primary">
                       <Check className="mx-auto h-5 w-5" />
                     </span>
-                    <span className="text-muted-foreground block text-xs">Fully bespoke</span>
+                    <span className="text-muted-foreground block text-xs">Tailored support</span>
                   </td>
                 </tr>
                 <tr className="bg-secondary/20 border-t">
                   <td className="text-muted-foreground p-4">Group size</td>
                   <td className="p-4 text-center">Up to 20</td>
                   <td className="border-x p-4 text-center">Max 6</td>
-                  <td className="p-4 text-center">Just you</td>
+                  <td className="p-4 text-center">Independent to 1:1</td>
                 </tr>
                 <tr className="border-t">
                   <td className="text-muted-foreground p-4">Schedule</td>
                   <td className="p-4 text-center">Flexible — attend any class</td>
                   <td className="border-x p-4 text-center">Fixed cohort times</td>
-                  <td className="p-4 text-center">Arranged around you</td>
+                  <td className="p-4 text-center">Self-serve or application-led</td>
                 </tr>
                 <tr className="bg-secondary/20 border-t">
                   <td className="text-muted-foreground p-4">Duration</td>
                   <td className="p-4 text-center">Ongoing</td>
-                  <td className="border-x p-4 text-center">4-6 week programs</td>
+                  <td className="border-x p-4 text-center">4-6 week programmes</td>
                   <td className="p-4 text-center">Ongoing</td>
                 </tr>
                 <tr className="border-t">
@@ -412,17 +413,11 @@ export function HomePage() {
                     <Check className="text-primary mx-auto h-4 w-4" />
                   </td>
                 </tr>
-                <tr className="border-t">
-                  <td className="text-muted-foreground p-4">Replays available</td>
-                  <td className="p-4 text-center">7 days</td>
-                  <td className="border-x p-4 text-center">7 days</td>
-                  <td className="p-4 text-center">N/A</td>
-                </tr>
                 <tr className="bg-secondary/20 border-t">
                   <td className="text-muted-foreground p-4">Starting from</td>
                   <td className="text-primary p-4 text-center">£7/class</td>
-                  <td className="text-primary border-x p-4 text-center">£120/program</td>
-                  <td className="text-primary p-4 text-center">£75/session</td>
+                  <td className="text-primary border-x p-4 text-center">£120/programme</td>
+                  <td className="text-primary p-4 text-center">£60/month</td>
                 </tr>
                 <tr className="border-t">
                   <td className="text-muted-foreground p-4">Free trial</td>
@@ -430,7 +425,9 @@ export function HomePage() {
                     14-day membership trial
                   </td>
                   <td className="text-muted-foreground border-x p-4 text-center text-xs">N/A</td>
-                  <td className="text-muted-foreground p-4 text-center text-xs">Free enquiry</td>
+                  <td className="text-muted-foreground p-4 text-center text-xs">
+                    Direct buy or application
+                  </td>
                 </tr>
                 <tr className="bg-secondary/20 border-t">
                   <td className="text-muted-foreground p-4">Best for</td>
@@ -467,42 +464,39 @@ export function HomePage() {
           <div className="mt-8 space-y-6 md:hidden">
             {[
               {
-                title: "Group Classes",
+                title: "Move Well Classes",
                 price: "From £7/class",
                 features: [
                   { label: "Personalisation", value: "Real-time modifications" },
                   { label: "Group size", value: "Up to 20" },
                   { label: "Schedule", value: "Flexible — attend any class" },
-                  { label: "Replays", value: "7 days" },
                   { label: "Best for", value: "Regular practice, flexible schedule" },
                 ],
-                cta: { label: "View Schedule", to: "/schedule" },
+                cta: { label: "Explore Move Well Classes", to: "/classes" },
                 featured: false,
               },
               {
-                title: "Small Groups",
-                price: "From £120/program",
+                title: "Small Group Programmes",
+                price: "From £120/programme",
                 features: [
                   { label: "Personalisation", value: "Individual feedback each session" },
                   { label: "Group size", value: "Max 6" },
                   { label: "Schedule", value: "Fixed cohort times" },
-                  { label: "Replays", value: "7 days" },
                   { label: "Best for", value: "Specific goals, accountability" },
                 ],
-                cta: { label: "View Programs", to: "/classes/small-groups" },
+                cta: { label: "View Programmes", to: "/classes/small-groups" },
                 featured: false,
               },
               {
-                title: "1:1 Training",
-                price: "From £75/session",
+                title: "Coaching",
+                price: "From £60/month",
                 features: [
-                  { label: "Personalisation", value: "Fully bespoke" },
-                  { label: "Group size", value: "Just you" },
-                  { label: "Schedule", value: "Arranged around you" },
-                  { label: "Replays", value: "N/A" },
+                  { label: "Personalisation", value: "Tailored plans and support tiers" },
+                  { label: "Support", value: "Independent plan to 1:1" },
+                  { label: "Delivery", value: "Website + Everfit" },
                   { label: "Best for", value: "Complex needs, maximum support" },
                 ],
-                cta: { label: "Get in Touch", to: "/contact" },
+                cta: { label: "Explore Coaching", to: "/coaching" },
                 featured: true,
               },
             ].map((option) => (
@@ -631,23 +625,20 @@ export function HomePage() {
       {/* Lead Magnet / Email Capture - Dedicated section */}
       <section className="py-20 md:py-28">
         <div className="container mx-auto max-w-2xl px-4 text-center">
-          <div className="space-y-6 rounded-lg bg-[#2E1F33] p-8 text-[#FAFAF8] md:p-12">
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#B5C49B]/20 px-4 py-2 text-sm text-[#B5C49B]">
+          <div className="bg-brand-dark text-brand-white space-y-6 rounded-lg p-8 md:p-12">
+            <div className="bg-brand-accent-light/20 text-brand-accent-light inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm">
               <BookOpen className="h-4 w-4" />
               <span>Free Guide</span>
             </div>
             <h2 className="text-3xl leading-tight md:text-4xl">
               {signupCopy.leadMagnetTitle || "5 Yoga Poses That Actually Build Strength"}
             </h2>
-            <p className="text-lg leading-relaxed text-[#FAFAF8]/80">
+            <p className="text-brand-white/80 text-lg leading-relaxed">
               {signupCopy.popupDescription ||
                 "Plus research-backed articles on strength, movement, and chronic illness management delivered to your inbox."}
             </p>
             {!newsletterSubmitted ? (
-              <form
-                className="mx-auto max-w-lg space-y-3"
-                onSubmit={handleNewsletterSubmit}
-              >
+              <form className="mx-auto max-w-lg space-y-3" onSubmit={handleNewsletterSubmit}>
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Input
                     type="email"
@@ -655,12 +646,12 @@ export function HomePage() {
                     value={newsletterEmail}
                     onChange={(e) => setNewsletterEmail(e.target.value)}
                     required
-                    className="flex-1 border-[#FAFAF8] bg-[#FAFAF8] text-[#2E1F33]"
+                    className="border-brand-white bg-brand-white text-brand-dark flex-1"
                   />
                   <Button
                     type="submit"
                     size="lg"
-                    className="bg-[#B5C49B] text-[#2E1F33] hover:bg-[#a5b48b]"
+                    className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
                     disabled={
                       newsletterSubmitting || !newsletterConsent || !newsletterTurnstileToken
                     }
@@ -669,30 +660,28 @@ export function HomePage() {
                   </Button>
                 </div>
                 <TurnstileWidget onTokenChange={setNewsletterTurnstileToken} />
-                <label className="flex items-start gap-2 text-sm text-[#FAFAF8]/70">
+                <label className="text-brand-white/70 flex items-start gap-2 text-sm">
                   <input
                     type="checkbox"
                     checked={newsletterConsent}
                     onChange={(e) => setNewsletterConsent(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 accent-[#B5C49B]"
+                    className="accent-brand-accent-light mt-0.5 h-4 w-4"
                     required
                   />
-                  <span>
-                    I want newsletter and update emails. I can unsubscribe anytime.
-                  </span>
+                  <span>I want newsletter and update emails. I can unsubscribe anytime.</span>
                 </label>
               </form>
             ) : (
-              <p className="text-[#B5C49B]">{signupCopy.successMessage}</p>
+              <p className="text-brand-accent-light">{signupCopy.successMessage}</p>
             )}
-            <p className="text-sm text-[#FAFAF8]/50">{signupCopy.consentText}</p>
+            <p className="text-brand-white/50 text-sm">{signupCopy.consentText}</p>
             {newsletterError ? <p className="text-xs text-red-300">{newsletterError}</p> : null}
           </div>
         </div>
       </section>
 
       {/* Final CTA */}
-      <section className="bg-[#4B5B32] py-20 text-[#FAFAF8] md:py-24">
+      <section className="bg-brand-accent text-brand-white py-20 md:py-24">
         <div className="container mx-auto max-w-3xl space-y-8 px-4 text-center">
           <h2 className="text-3xl leading-tight md:text-5xl">
             Ready to Build Strength Without Pretending Your Body Is Simple?
@@ -701,7 +690,7 @@ export function HomePage() {
             <Link href="/contact">
               <Button
                 size="lg"
-                className="bg-[#FAFAF8] px-8 text-lg text-[#4B5B32] hover:bg-[#FAFAF8]/90"
+                className="bg-brand-white text-brand-accent hover:bg-brand-white/90 px-8 text-lg"
               >
                 <MessageCircle className="mr-2 h-5 w-5" />
                 Get in Touch
@@ -711,9 +700,9 @@ export function HomePage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="border-[#FAFAF8] bg-transparent px-8 text-lg text-[#FAFAF8] hover:bg-[#FAFAF8]/10"
+                className="border-brand-white text-brand-white hover:bg-brand-white/10 bg-transparent px-8 text-lg"
               >
-                Explore Classes
+                Explore Move Well Classes
               </Button>
             </Link>
           </div>

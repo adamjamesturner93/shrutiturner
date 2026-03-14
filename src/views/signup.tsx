@@ -56,9 +56,9 @@ export function SignupPage() {
   const waitForSession = async () => {
     for (let i = 0; i < 12; i += 1) {
       const response = await fetch("/api/auth/session", { cache: "no-store" });
-      const data = (await response.json().catch(() => null)) as
-        | { user?: { email?: string | null } | null }
-        | null;
+      const data = (await response.json().catch(() => null)) as {
+        user?: { email?: string | null } | null;
+      } | null;
       if (data?.user?.email) return true;
       await new Promise((resolve) => setTimeout(resolve, 150));
     }
@@ -114,7 +114,8 @@ export function SignupPage() {
         if (!turnstileToken) {
           throw new Error("Please complete the verification challenge.");
         }
-        const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London";
+        const detectedTimezone =
+          Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London";
 
         const response = await fetch("/api/auth/register", {
           method: "POST",
@@ -180,15 +181,15 @@ export function SignupPage() {
 
       <section className="flex-1">
         <div className="flex min-h-[calc(100dvh-4rem)]">
-          <div className="relative hidden bg-[#F7F4EF] p-12 lg:flex lg:w-[45%] lg:flex-col lg:items-center lg:justify-center">
-            <div className="absolute right-8 bottom-0 left-8 h-px bg-gradient-to-r from-transparent via-[#BB7345]/30 to-transparent" />
+          <div className="bg-brand-warm relative hidden p-12 lg:flex lg:w-[45%] lg:flex-col lg:items-center lg:justify-center">
+            <div className="via-bronze/30 absolute right-8 bottom-0 left-8 h-px bg-gradient-to-r from-transparent to-transparent" />
             <div className="max-w-sm space-y-8 text-center">
               <div className="flex justify-center [&>svg]:h-auto [&>svg]:w-56">
                 <IconVertical />
               </div>
               <div className="space-y-3">
-                <h2 className="text-2xl leading-snug text-[#2E1F33]">Join Your Community</h2>
-                <p className="leading-relaxed text-[#2E1F33]/70">
+                <h2 className="text-brand-dark text-2xl leading-snug">Join Your Community</h2>
+                <p className="text-brand-dark/70 leading-relaxed">
                   Evidence-based coaching that respects your body's complexity.
                 </p>
               </div>
@@ -199,10 +200,10 @@ export function SignupPage() {
                   "Supportive community, no toxic positivity",
                 ].map((item) => (
                   <div key={item} className="flex items-center gap-3 text-left">
-                    <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#4B5B32]/10">
-                      <Check className="h-3 w-3 text-[#4B5B32]" />
+                    <div className="bg-brand-accent/10 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full">
+                      <Check className="text-brand-accent h-3 w-3" />
                     </div>
-                    <span className="text-sm text-[#2E1F33]/70">{item}</span>
+                    <span className="text-brand-dark/70 text-sm">{item}</span>
                   </div>
                 ))}
               </div>
@@ -212,10 +213,12 @@ export function SignupPage() {
           <div className="bg-background flex-1 px-6 py-10 md:px-10 md:py-12 lg:flex lg:items-center lg:justify-center">
             <div className="mx-auto w-full max-w-[400px]">
               {refCode && (
-                <div className="mb-6 flex items-start gap-3 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/10 p-4">
-                  <Gift className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
+                <div className="border-brand-accent/20 bg-brand-accent/10 mb-6 flex items-start gap-3 rounded-lg border p-4">
+                  <Gift className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
                   <div>
-                    <p className="text-sm">£10 credit will be applied to your account after sign-up.</p>
+                    <p className="text-sm">
+                      £10 credit will be applied to your account after sign-up.
+                    </p>
                   </div>
                 </div>
               )}
@@ -230,7 +233,7 @@ export function SignupPage() {
                   Join our community and start your strength journey
                 </p>
               </div>
-              <div className="mb-8 h-px w-12 rounded-full bg-[#BB7345]/60" />
+              <div className="bg-bronze/60 mb-8 h-px w-12 rounded-full" />
               {!signupMethod ? (
                 <div className="space-y-4">
                   <Button
@@ -314,7 +317,9 @@ export function SignupPage() {
                             id="firstName"
                             type="text"
                             value={formData.firstName}
-                            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                            onChange={(e) =>
+                              setFormData({ ...formData, firstName: e.target.value })
+                            }
                             required
                           />
                         </div>
@@ -416,8 +421,8 @@ export function SignupPage() {
                           >
                             Health Declaration
                           </Link>
-                          , and I understand that I participate in all classes and programmes at
-                          my own risk
+                          , and I understand that I participate in all classes and programmes at my
+                          own risk
                         </label>
                       </div>
 
@@ -454,7 +459,9 @@ export function SignupPage() {
                           maxLength={6}
                           required
                         />
-                        <p className="text-muted-foreground text-sm">Code sent to {formData.email}</p>
+                        <p className="text-muted-foreground text-sm">
+                          Code sent to {formData.email}
+                        </p>
                       </div>
 
                       <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>

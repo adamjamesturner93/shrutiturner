@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api/auth-user";
 import { getReferralSummary } from "@/lib/referrals/referral-service";
 
@@ -11,6 +11,7 @@ function siteUrlFromRequest(request: Request) {
 
 export async function GET(request: Request) {
   try {
+    await connection();
     const user = await requireSessionUser();
     const summary = await getReferralSummary(user.id, siteUrlFromRequest(request));
     return NextResponse.json(summary);

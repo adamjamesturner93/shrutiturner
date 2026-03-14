@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { claimReferralCode } from "@/lib/referrals/referral-service";
@@ -12,7 +14,8 @@ function first(value: string | string[] | undefined): string {
   return value || "";
 }
 
-export default async function PostLoginPage({ searchParams }: PostLoginPageProps) {
+async function PostLoginRedirect({ searchParams }: PostLoginPageProps) {
+  await connection();
   const [session, params] = await Promise.all([auth(), searchParams]);
 
   if (!session?.user) {
@@ -37,4 +40,13 @@ export default async function PostLoginPage({ searchParams }: PostLoginPageProps
   }
 
   redirect(onboarding ? "/dashboard?onboarding=true" : "/dashboard");
+  return null;
+}
+
+export default function PostLoginPage({ searchParams }: PostLoginPageProps) {
+  return (
+    <Suspense fallback={null}>
+      <PostLoginRedirect searchParams={searchParams} />
+    </Suspense>
+  );
 }

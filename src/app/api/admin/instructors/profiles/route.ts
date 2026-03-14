@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/api/auth-user";
 import { getInstructorProfiles } from "@/lib/content";
 
 export async function GET() {
   try {
+    await connection();
     await requireAdminUser();
     const profiles = await getInstructorProfiles();
     return NextResponse.json(

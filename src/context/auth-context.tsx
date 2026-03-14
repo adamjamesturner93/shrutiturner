@@ -752,9 +752,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (!response.ok) return;
 
-    const payload = (await response.json().catch(() => null)) as
-      | { profile?: { hasAgreedToTerms?: boolean; hasAgreedToHealth?: boolean; termsAgreedAt?: string | null; healthAgreedAt?: string | null } }
-      | null;
+    const payload = (await response.json().catch(() => null)) as {
+      profile?: {
+        hasAgreedToTerms?: boolean;
+        hasAgreedToHealth?: boolean;
+        termsAgreedAt?: string | null;
+        healthAgreedAt?: string | null;
+      };
+    } | null;
     setUser((prev) =>
       prev
         ? {

@@ -60,16 +60,16 @@ export default function BirthdayEmail({
         </Text>
       </Section>
 
+      <Text style={bodyTextStyle}>Hi {firstName},</Text>
+
       <Text style={bodyTextStyle}>
-        Hi {firstName},
+        Wishing you a genuinely wonderful birthday. I hope today brings you rest, joy, and whatever
+        your body needs.
       </Text>
 
       <Text style={bodyTextStyle}>
-        Wishing you a genuinely wonderful birthday. I hope today brings you rest, joy, and whatever your body needs.
-      </Text>
-
-      <Text style={bodyTextStyle}>
-        As a small thank you for being part of this community, {"here's"} a credit to use towards any class:
+        As a small thank you for being part of this community, {"here's"} a credit to use towards
+        any class:
       </Text>
 
       {/* Credit Code Card */}

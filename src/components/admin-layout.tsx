@@ -52,24 +52,24 @@ export function AdminLayout({ children, title, description }: AdminLayoutProps) 
 
   return (
     <AdminGuardWrapper>
-      <div className="flex min-h-screen bg-[#FAFAF8]">
+      <div className="bg-brand-white flex min-h-screen">
         <ScrollToTop />
         <SEO title={title || "Admin - Shruti Turner"} description={description} noIndex />
 
         {/* Sidebar - Desktop */}
-        <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-[#2E1F33] text-[#FAFAF8] lg:flex">
+        <aside className="bg-brand-dark text-brand-white fixed inset-y-0 left-0 z-40 hidden w-64 flex-col lg:flex">
           {/* Brand */}
-          <div className="border-b border-[#FAFAF8]/10 p-6">
+          <div className="border-brand-white/10 border-b p-6">
             <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-[#B5C49B]" />
+              <Shield className="text-brand-accent-light h-5 w-5" />
               <div>
                 <Link
                   href="/admin"
-                  className="text-lg tracking-tight transition-colors hover:text-[#B5C49B]"
+                  className="hover:text-brand-accent-light text-lg tracking-tight transition-colors"
                 >
                   Shruti Turner
                 </Link>
-                <p className="text-xs text-[#FAFAF8]/50">Instructor Admin</p>
+                <p className="text-brand-white/50 text-xs">Instructor Admin</p>
               </div>
             </div>
           </div>
@@ -83,8 +83,8 @@ export function AdminLayout({ children, title, description }: AdminLayoutProps) 
                     href={item.path}
                     className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${
                       isActive(item.path, item.exact)
-                        ? "bg-[#B5C49B]/20 text-[#B5C49B]"
-                        : "text-[#FAFAF8]/70 hover:bg-[#FAFAF8]/5 hover:text-[#FAFAF8]"
+                        ? "bg-brand-accent-light/20 text-brand-accent-light"
+                        : "text-brand-white/70 hover:bg-brand-white/5 hover:text-brand-white"
                     }`}
                   >
                     <item.icon className="h-4 w-4 flex-shrink-0" />
@@ -96,17 +96,17 @@ export function AdminLayout({ children, title, description }: AdminLayoutProps) 
           </nav>
 
           {/* Bottom links */}
-          <div className="space-y-2 border-t border-[#FAFAF8]/10 p-4">
+          <div className="border-brand-white/10 space-y-2 border-t p-4">
             <Link
               href="/dashboard"
-              className="flex w-full items-center gap-3 text-sm text-[#FAFAF8]/50 transition-colors hover:text-[#FAFAF8]"
+              className="text-brand-white/50 hover:text-brand-white flex w-full items-center gap-3 text-sm transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
               <span>Private Studio</span>
             </Link>
             <button
               onClick={handleLogout}
-              className="flex w-full items-center gap-3 text-sm text-[#FAFAF8]/50 transition-colors hover:text-[#FAFAF8]"
+              className="text-brand-white/50 hover:text-brand-white flex w-full items-center gap-3 text-sm transition-colors"
             >
               <LogOut className="h-4 w-4" />
               <span>Back to Site</span>
@@ -115,13 +115,13 @@ export function AdminLayout({ children, title, description }: AdminLayoutProps) 
         </aside>
 
         {/* Mobile header */}
-        <div className="fixed inset-x-0 top-0 z-40 border-b border-[#FAFAF8]/10 bg-[#2E1F33] text-[#FAFAF8] lg:hidden">
+        <div className="border-brand-white/10 bg-brand-dark text-brand-white fixed inset-x-0 top-0 z-40 border-b lg:hidden">
           <div className="flex items-center justify-between px-4 py-3">
             <button onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle menu">
               {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
             <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-[#B5C49B]" />
+              <Shield className="text-brand-accent-light h-4 w-4" />
               <span className="text-sm tracking-tight">Admin</span>
             </div>
             <div className="w-5" />
@@ -132,10 +132,10 @@ export function AdminLayout({ children, title, description }: AdminLayoutProps) 
         {sidebarOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
             <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-            <aside className="absolute inset-y-0 left-0 flex w-72 flex-col bg-[#2E1F33] text-[#FAFAF8]">
-              <div className="flex items-center justify-between border-b border-[#FAFAF8]/10 p-4">
+            <aside className="bg-brand-dark text-brand-white absolute inset-y-0 left-0 flex w-72 flex-col">
+              <div className="border-brand-white/10 flex items-center justify-between border-b p-4">
                 <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-[#B5C49B]" />
+                  <Shield className="text-brand-accent-light h-4 w-4" />
                   <span className="text-sm">Instructor Admin</span>
                 </div>
                 <button onClick={() => setSidebarOpen(false)}>
@@ -151,8 +151,8 @@ export function AdminLayout({ children, title, description }: AdminLayoutProps) 
                         onClick={() => setSidebarOpen(false)}
                         className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${
                           isActive(item.path, item.exact)
-                            ? "bg-[#B5C49B]/20 text-[#B5C49B]"
-                            : "text-[#FAFAF8]/70 hover:bg-[#FAFAF8]/5"
+                            ? "bg-brand-accent-light/20 text-brand-accent-light"
+                            : "text-brand-white/70 hover:bg-brand-white/5"
                         }`}
                       >
                         <item.icon className="h-4 w-4" />
@@ -162,11 +162,11 @@ export function AdminLayout({ children, title, description }: AdminLayoutProps) 
                   ))}
                 </ul>
               </nav>
-              <div className="space-y-2 border-t border-[#FAFAF8]/10 p-4">
+              <div className="border-brand-white/10 space-y-2 border-t p-4">
                 <Link
                   href="/dashboard"
                   onClick={() => setSidebarOpen(false)}
-                  className="flex w-full items-center gap-3 text-sm text-[#FAFAF8]/50 hover:text-[#FAFAF8]"
+                  className="text-brand-white/50 hover:text-brand-white flex w-full items-center gap-3 text-sm"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   <span>Private Studio</span>

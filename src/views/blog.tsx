@@ -4,7 +4,7 @@ import { Layout } from "../components/layout";
 import type { BlogPostContent } from "@/lib/content";
 import { useI18n } from "../lib/use-i18n";
 import Link from "next/link";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -24,7 +24,6 @@ interface BlogPageProps {
 
 export function BlogPage({ posts }: BlogPageProps) {
   const blogData = posts ?? [];
-  const [selectedTag, setSelectedTag] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -39,20 +38,17 @@ export function BlogPage({ posts }: BlogPageProps) {
     return Array.from(tags).sort();
   }, [blogData]);
 
-  useEffect(() => {
+  const selectedTag = useMemo(() => {
     const tagParam = searchParams.get("tag");
     if (!tagParam) {
-      setSelectedTag("all");
-      return;
+      return "all";
     }
 
     const matched = allTags.find((tag) => tag.toLowerCase() === tagParam.toLowerCase());
-    setSelectedTag(matched || "all");
+    return matched || "all";
   }, [searchParams, allTags]);
 
   const handleSetTag = (tag: string) => {
-    setSelectedTag(tag);
-
     const params = new URLSearchParams(searchParams.toString());
     if (tag === "all") {
       params.delete("tag");
@@ -93,10 +89,10 @@ export function BlogPage({ posts }: BlogPageProps) {
   return (
     <Layout>
       {/* Hero */}
-      <section className="bg-[#2E1F33] py-20 text-[#FAFAF8] md:py-28">
+      <section className="bg-brand-dark text-brand-white py-20 md:py-28">
         <div className="container mx-auto max-w-4xl px-4 text-center">
           <h1 className="mb-6 text-4xl leading-tight md:text-6xl">Blog & Resources</h1>
-          <p className="text-xl leading-relaxed text-[#B5C49B] md:text-2xl">
+          <p className="text-brand-accent-light text-xl leading-relaxed md:text-2xl">
             Evidence-based articles on strength training, yoga, and managing chronic conditions.
           </p>
         </div>
@@ -153,7 +149,7 @@ export function BlogPage({ posts }: BlogPageProps) {
                   <ImageWithFallback
                     src={post.coverImage}
                     alt={post.coverAlt}
-                    className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
+                    className="h-48 w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                 </Link>
 

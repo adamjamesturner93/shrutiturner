@@ -1,4 +1,4 @@
-import { CreditEntryType } from "@prisma/client";
+import { CreditEntryType, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 
 export async function getCreditLedger(userId: string) {
@@ -118,7 +118,7 @@ export async function consumeOneCreditForBooking({
 }: {
   userId: string;
   bookingRef: string;
-  tx?: typeof db;
+  tx?: Prisma.TransactionClient | typeof db;
 }) {
   const aggregate = await tx.creditLedgerEntry.aggregate({
     where: { userId },
@@ -147,7 +147,7 @@ export async function refundOneCreditForBooking({
 }: {
   userId: string;
   bookingRef: string;
-  tx?: typeof db;
+  tx?: Prisma.TransactionClient | typeof db;
 }) {
   return tx.creditLedgerEntry.create({
     data: {

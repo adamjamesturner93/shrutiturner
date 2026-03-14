@@ -46,7 +46,10 @@ export function AdminCampaignDetail() {
   return (
     <AdminLayout title="Campaign Detail - Admin">
       <div className="space-y-6">
-        <Link href="/admin/newsletter" className="text-muted-foreground inline-flex items-center gap-2 text-sm hover:text-foreground">
+        <Link
+          href="/admin/newsletter"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-2 text-sm"
+        >
           <ArrowLeft className="h-4 w-4" />
           Back to Newsletter
         </Link>
@@ -54,7 +57,7 @@ export function AdminCampaignDetail() {
         {!loading && !campaign ? (
           <Card>
             <CardContent className="py-10 text-center">
-              <p className="text-sm text-[#2E1F33]">Campaign details are not available yet.</p>
+              <p className="text-brand-dark text-sm">Campaign details are not available yet.</p>
               <p className="text-muted-foreground mt-1 text-xs">
                 Connect campaign telemetry storage to view per-campaign analytics.
               </p>

@@ -40,14 +40,14 @@ export function AdminProgrammes() {
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl text-[#2E1F33]">Small Group Programmes</h1>
+            <h1 className="text-brand-dark text-2xl">Small Group Programmes</h1>
             <p className="text-muted-foreground mt-1">
               {active.length} active · {upcoming.length} upcoming · {completed.length} completed
             </p>
           </div>
           <Button
             onClick={() => setShowCreateModal(true)}
-            className="bg-[#4B5B32] hover:bg-[#4B5B32]/90"
+            className="bg-brand-accent hover:bg-brand-accent/90"
           >
             <PlusCircle className="mr-2 h-4 w-4" />
             Create Programme
@@ -65,7 +65,7 @@ export function AdminProgrammes() {
         {/* Active programmes */}
         {active.length > 0 && (
           <div className="space-y-3">
-            <h2 className="text-lg text-[#2E1F33]">Active</h2>
+            <h2 className="text-brand-dark text-lg">Active</h2>
             {active.map((prog) => (
               <ProgrammeCard key={prog.id} programme={prog} />
             ))}
@@ -75,7 +75,7 @@ export function AdminProgrammes() {
         {/* Upcoming */}
         {upcoming.length > 0 && (
           <div className="space-y-3">
-            <h2 className="text-lg text-[#2E1F33]">Upcoming</h2>
+            <h2 className="text-brand-dark text-lg">Upcoming</h2>
             {upcoming.map((prog) => (
               <ProgrammeCard key={prog.id} programme={prog} />
             ))}
@@ -85,7 +85,7 @@ export function AdminProgrammes() {
         {/* Completed */}
         {completed.length > 0 && (
           <div className="space-y-3">
-            <h2 className="text-lg text-[#2E1F33]">Completed</h2>
+            <h2 className="text-brand-dark text-lg">Completed</h2>
             {completed.map((prog) => (
               <ProgrammeCard key={prog.id} programme={prog} />
             ))}
@@ -102,11 +102,11 @@ function ProgrammeCard({ programme }: { programme: AdminProgramme }) {
 
   return (
     <Link href={`/admin/programmes/${programme.id}`}>
-      <Card className="cursor-pointer transition-colors hover:border-[#4B5B32]/30">
+      <Card className="hover:border-brand-accent/30 cursor-pointer transition-colors">
         <CardContent className="py-5">
           <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-[#4B5B32]/10">
-              <Dumbbell className="h-6 w-6 text-[#4B5B32]" />
+            <div className="bg-brand-accent/10 flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg">
+              <Dumbbell className="text-brand-accent h-6 w-6" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -135,7 +135,7 @@ function ProgrammeCard({ programme }: { programme: AdminProgramme }) {
                 <div className="mt-3">
                   <div className="bg-secondary h-1.5 overflow-hidden rounded-full">
                     <div
-                      className="h-full rounded-full bg-[#4B5B32] transition-all"
+                      className="bg-brand-accent h-full rounded-full transition-all"
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>

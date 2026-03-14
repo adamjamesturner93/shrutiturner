@@ -40,9 +40,7 @@ export default function ClassCancellationEmail({
         Class cancelled
       </Text>
 
-      <Text style={bodyTextStyle}>
-        Hi {firstName},
-      </Text>
+      <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
       <Text style={bodyTextStyle}>
         {"I'm writing to let you know that the following class has been cancelled:"}
@@ -119,7 +117,8 @@ export default function ClassCancellationEmail({
       <Hr style={dividerStyle} />
 
       <Text style={mutedTextStyle}>
-        Any payments or credits for this class will be automatically refunded or returned to your account.
+        Any payments or credits for this class will be automatically refunded or returned to your
+        account.
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>

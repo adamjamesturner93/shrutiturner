@@ -8,10 +8,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Bell, BookOpen, Filter, Search, Users } from "lucide-react";
-import type {
-  AdminSubscriberDto,
-  AdminNewsletterCampaignDetailDto,
-} from "@/lib/api/types";
+import type { AdminSubscriberDto, AdminNewsletterCampaignDetailDto } from "@/lib/api/types";
 
 type NewsletterSummary = {
   totalSubscribers: number;
@@ -35,7 +32,7 @@ const FILTERS = ["all", "newsletter", "blog", "both", "neither"] as const;
 type FilterType = (typeof FILTERS)[number];
 
 function subscriptionBadge(type: AdminSubscriberDto["subscriptionType"]) {
-  if (type === "both") return <Badge className="bg-[#4B5B32] text-[#FAFAF8]">Both</Badge>;
+  if (type === "both") return <Badge className="bg-brand-accent text-brand-white">Both</Badge>;
   if (type === "newsletter") return <Badge variant="secondary">Newsletter</Badge>;
   if (type === "blog") return <Badge variant="outline">Blog</Badge>;
   return <Badge variant="outline">Neither</Badge>;
@@ -100,23 +97,29 @@ export function AdminNewsletter() {
     await refreshSubscribers(next, search);
   };
 
-  const updateSubscriber = async (item: AdminSubscriberDto, updates: Partial<Pick<AdminSubscriberDto, "newsletterSubscribed" | "blogSubscribed">>) => {
+  const updateSubscriber = async (
+    item: AdminSubscriberDto,
+    updates: Partial<Pick<AdminSubscriberDto, "newsletterSubscribed" | "blogSubscribed">>
+  ) => {
     setUpdatingUserId(item.userId);
     try {
-      const res = await fetch(`/api/admin/newsletter/subscribers/${encodeURIComponent(item.userId)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          newsletter:
-            typeof updates.newsletterSubscribed === "boolean"
-              ? updates.newsletterSubscribed
-              : item.newsletterSubscribed,
-          blogUpdates:
-            typeof updates.blogSubscribed === "boolean"
-              ? updates.blogSubscribed
-              : item.blogSubscribed,
-        }),
-      });
+      const res = await fetch(
+        `/api/admin/newsletter/subscribers/${encodeURIComponent(item.userId)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            newsletter:
+              typeof updates.newsletterSubscribed === "boolean"
+                ? updates.newsletterSubscribed
+                : item.newsletterSubscribed,
+            blogUpdates:
+              typeof updates.blogSubscribed === "boolean"
+                ? updates.blogSubscribed
+                : item.blogSubscribed,
+          }),
+        }
+      );
       if (!res.ok) return;
       await refreshSubscribers(filter, search);
       const summaryRes = await fetch("/api/admin/newsletter", { cache: "no-store" });
@@ -132,27 +135,74 @@ export function AdminNewsletter() {
     <AdminLayout title="Newsletter Analytics - Admin">
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl text-[#2E1F33]">Newsletter Analytics</h1>
-          <p className="text-muted-foreground mt-1">Campaign performance and subscriber preferences.</p>
+          <h1 className="text-brand-dark text-2xl">Newsletter Analytics</h1>
+          <p className="text-muted-foreground mt-1">
+            Campaign performance and subscriber preferences.
+          </p>
         </div>
 
         {loading ? <p className="text-muted-foreground text-sm">Loading...</p> : null}
 
         {summary ? (
           <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
-            <Card><CardContent className="pt-6"><div className="text-center"><p className="text-2xl text-[#2E1F33]">{summary.totalSubscribers}</p><p className="text-muted-foreground text-xs">Total</p></div></CardContent></Card>
-            <Card><CardContent className="pt-6"><div className="text-center"><Bell className="mx-auto mb-1 h-4 w-4 text-[#4B5B32]" /><p className="text-xl">{summary.newsletterSubscribers}</p><p className="text-muted-foreground text-xs">Newsletter</p></div></CardContent></Card>
-            <Card><CardContent className="pt-6"><div className="text-center"><BookOpen className="mx-auto mb-1 h-4 w-4 text-[#4B5B32]" /><p className="text-xl">{summary.blogSubscribers}</p><p className="text-muted-foreground text-xs">Blog</p></div></CardContent></Card>
-            <Card><CardContent className="pt-6"><div className="text-center"><p className="text-xl">{summary.bothSubscribers}</p><p className="text-muted-foreground text-xs">Both</p></div></CardContent></Card>
-            <Card><CardContent className="pt-6"><div className="text-center"><p className="text-xl">{summary.neitherSubscribers}</p><p className="text-muted-foreground text-xs">Neither</p></div></CardContent></Card>
-            <Card><CardContent className="pt-6"><div className="text-center"><Users className="mx-auto mb-1 h-4 w-4 text-[#4B5B32]" /><p className="text-xl">{summary.unsubscribes30d}</p><p className="text-muted-foreground text-xs">Unsubs 30d</p></div></CardContent></Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <p className="text-brand-dark text-2xl">{summary.totalSubscribers}</p>
+                  <p className="text-muted-foreground text-xs">Total</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <Bell className="text-brand-accent mx-auto mb-1 h-4 w-4" />
+                  <p className="text-xl">{summary.newsletterSubscribers}</p>
+                  <p className="text-muted-foreground text-xs">Newsletter</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <BookOpen className="text-brand-accent mx-auto mb-1 h-4 w-4" />
+                  <p className="text-xl">{summary.blogSubscribers}</p>
+                  <p className="text-muted-foreground text-xs">Blog</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <p className="text-xl">{summary.bothSubscribers}</p>
+                  <p className="text-muted-foreground text-xs">Both</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <p className="text-xl">{summary.neitherSubscribers}</p>
+                  <p className="text-muted-foreground text-xs">Neither</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <Users className="text-brand-accent mx-auto mb-1 h-4 w-4" />
+                  <p className="text-xl">{summary.unsubscribes30d}</p>
+                  <p className="text-muted-foreground text-xs">Unsubs 30d</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         ) : null}
 
         <Card>
           <CardContent className="space-y-4 pt-6">
             <div className="flex flex-wrap items-center gap-2">
-              <Filter className="h-4 w-4 text-[#4B5B32]" />
+              <Filter className="text-brand-accent h-4 w-4" />
               {FILTERS.map((entry) => (
                 <Button
                   key={entry}
@@ -192,7 +242,11 @@ export function AdminNewsletter() {
                   {(subscribers?.items || []).map((item) => (
                     <tr key={item.userId} className="border-b last:border-0">
                       <td className="py-2">
-                        <p>{item.firstName || item.lastName ? `${item.firstName || ""} ${item.lastName || ""}`.trim() : item.email}</p>
+                        <p>
+                          {item.firstName || item.lastName
+                            ? `${item.firstName || ""} ${item.lastName || ""}`.trim()
+                            : item.email}
+                        </p>
                         <p className="text-muted-foreground text-xs">{item.email}</p>
                       </td>
                       <td className="py-2">{subscriptionBadge(item.subscriptionType)}</td>
@@ -202,7 +256,9 @@ export function AdminNewsletter() {
                           variant={item.newsletterSubscribed ? "default" : "outline"}
                           disabled={updatingUserId === item.userId}
                           onClick={() =>
-                            void updateSubscriber(item, { newsletterSubscribed: !item.newsletterSubscribed })
+                            void updateSubscriber(item, {
+                              newsletterSubscribed: !item.newsletterSubscribed,
+                            })
                           }
                         >
                           {item.newsletterSubscribed ? "On" : "Off"}
@@ -213,7 +269,9 @@ export function AdminNewsletter() {
                           size="sm"
                           variant={item.blogSubscribed ? "default" : "outline"}
                           disabled={updatingUserId === item.userId}
-                          onClick={() => void updateSubscriber(item, { blogSubscribed: !item.blogSubscribed })}
+                          onClick={() =>
+                            void updateSubscriber(item, { blogSubscribed: !item.blogSubscribed })
+                          }
                         >
                           {item.blogSubscribed ? "On" : "Off"}
                         </Button>
@@ -222,7 +280,7 @@ export function AdminNewsletter() {
                   ))}
                   {subscribers && subscribers.items.length === 0 ? (
                     <tr>
-                      <td className="py-6 text-center text-muted-foreground" colSpan={4}>
+                      <td className="text-muted-foreground py-6 text-center" colSpan={4}>
                         No subscribers found.
                       </td>
                     </tr>
@@ -235,21 +293,31 @@ export function AdminNewsletter() {
 
         <Card>
           <CardContent className="space-y-3 pt-6">
-            <h2 className="text-lg text-[#2E1F33]">Recent Campaigns</h2>
+            <h2 className="text-brand-dark text-lg">Recent Campaigns</h2>
             {campaigns.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No campaign telemetry yet. Send a campaign to populate this list.</p>
+              <p className="text-muted-foreground text-sm">
+                No campaign telemetry yet. Send a campaign to populate this list.
+              </p>
             ) : (
               campaigns.map((campaign) => (
                 <div key={campaign.id} className="rounded border p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <Link href={`/admin/newsletter/${campaign.id}`} className="block min-w-0 flex-1 transition-colors hover:text-[#4B5B32]">
+                    <Link
+                      href={`/admin/newsletter/${campaign.id}`}
+                      className="hover:text-brand-accent block min-w-0 flex-1 transition-colors"
+                    >
                       <p>{campaign.subject}</p>
                       <p className="text-muted-foreground text-xs">
-                        {new Date(campaign.sentDate).toLocaleDateString("en-GB")} · {campaign.totalRecipients} recipients
+                        {new Date(campaign.sentDate).toLocaleDateString("en-GB")} ·{" "}
+                        {campaign.totalRecipients} recipients
                       </p>
                       <div className="mt-1 flex flex-wrap gap-1">
-                        {campaign.audienceType ? <Badge variant="outline">{campaign.audienceType}</Badge> : null}
-                        {campaign.triggeredBy ? <Badge variant="secondary">{campaign.triggeredBy}</Badge> : null}
+                        {campaign.audienceType ? (
+                          <Badge variant="outline">{campaign.audienceType}</Badge>
+                        ) : null}
+                        {campaign.triggeredBy ? (
+                          <Badge variant="secondary">{campaign.triggeredBy}</Badge>
+                        ) : null}
                         <Badge
                           variant={
                             campaign.status === "failed" || campaign.status === "failed_partial"
@@ -263,7 +331,7 @@ export function AdminNewsletter() {
                         </Badge>
                       </div>
                     </Link>
-                    <div className="text-right text-xs text-muted-foreground">
+                    <div className="text-muted-foreground text-right text-xs">
                       <p>Open {campaign.openRate}%</p>
                       <p>Click {campaign.clickRate}%</p>
                       {campaign.status === "failed" || campaign.status === "failed_partial" ? (
@@ -271,10 +339,15 @@ export function AdminNewsletter() {
                           size="sm"
                           className="mt-2"
                           onClick={async () => {
-                            await fetch(`/api/admin/newsletter/campaigns/${encodeURIComponent(campaign.id)}/retry`, {
-                              method: "POST",
+                            await fetch(
+                              `/api/admin/newsletter/campaigns/${encodeURIComponent(campaign.id)}/retry`,
+                              {
+                                method: "POST",
+                              }
+                            );
+                            const summaryRes = await fetch("/api/admin/newsletter", {
+                              cache: "no-store",
                             });
-                            const summaryRes = await fetch("/api/admin/newsletter", { cache: "no-store" });
                             if (summaryRes.ok) {
                               setSummary((await summaryRes.json()) as NewsletterSummary);
                             }

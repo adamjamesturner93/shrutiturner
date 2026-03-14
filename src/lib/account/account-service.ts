@@ -134,7 +134,8 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
     }
   }
 
-  if (input.gender !== undefined) data.gender = input.gender ? input.gender.trim().slice(0, 80) : null;
+  if (input.gender !== undefined)
+    data.gender = input.gender ? input.gender.trim().slice(0, 80) : null;
   if (input.ethnicity !== undefined) {
     data.ethnicity = input.ethnicity ? input.ethnicity.trim().slice(0, 120) : null;
   }
@@ -157,23 +158,33 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
 
     if (!existing) throw new Error("USER_NOT_FOUND");
 
-    if (input.hasAgreedToTerms === true && (!existing.hasAgreedToTerms || !existing.termsAgreedAt)) {
+    if (
+      input.hasAgreedToTerms === true &&
+      (!existing.hasAgreedToTerms || !existing.termsAgreedAt)
+    ) {
       data.hasAgreedToTerms = true;
       data.termsAgreedAt = new Date();
     }
 
-    if (input.hasAgreedToHealth === true && (!existing.hasAgreedToHealth || !existing.healthAgreedAt)) {
+    if (
+      input.hasAgreedToHealth === true &&
+      (!existing.hasAgreedToHealth || !existing.healthAgreedAt)
+    ) {
       data.hasAgreedToHealth = true;
       data.healthAgreedAt = new Date();
     }
   }
 
   if (input.heardAboutSource !== undefined) {
-    data.heardAboutSource = input.heardAboutSource ? input.heardAboutSource.trim().slice(0, 120) : null;
+    data.heardAboutSource = input.heardAboutSource
+      ? input.heardAboutSource.trim().slice(0, 120)
+      : null;
   }
 
   if (input.heardAboutDetail !== undefined) {
-    data.heardAboutDetail = input.heardAboutDetail ? input.heardAboutDetail.trim().slice(0, 400) : null;
+    data.heardAboutDetail = input.heardAboutDetail
+      ? input.heardAboutDetail.trim().slice(0, 400)
+      : null;
   }
 
   if (typeof input.isOnboarded === "boolean") {
@@ -216,7 +227,10 @@ export async function getNotificationPreferences(userId: string) {
   return getOrCreateNotificationPreferences(userId);
 }
 
-export async function updateNotificationPreferences(userId: string, input: NotificationPreferenceInput) {
+export async function updateNotificationPreferences(
+  userId: string,
+  input: NotificationPreferenceInput
+) {
   await getOrCreateNotificationPreferences(userId);
 
   const data: NotificationPreferenceInput = {};

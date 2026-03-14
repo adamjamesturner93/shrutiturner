@@ -68,8 +68,12 @@ export async function getAdminDashboardSummary(): Promise<AdminDashboardSummaryD
       trendsByDay.set(day, { booked: 0, attended: 0 });
     }
     const bucket = trendsByDay.get(day)!;
-    bucket.booked += session.bookings.filter((booking) => booking.status === ClassBookingStatus.booked).length;
-    bucket.attended += session.bookings.filter((booking) => booking.status === ClassBookingStatus.attended).length;
+    bucket.booked += session.bookings.filter(
+      (booking) => booking.status === ClassBookingStatus.booked
+    ).length;
+    bucket.attended += session.bookings.filter(
+      (booking) => booking.status === ClassBookingStatus.attended
+    ).length;
   }
 
   return {

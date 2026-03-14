@@ -35,9 +35,9 @@ export function LoginPage() {
   const waitForSession = async () => {
     for (let i = 0; i < 12; i += 1) {
       const response = await fetch("/api/auth/session", { cache: "no-store" });
-      const data = (await response.json().catch(() => null)) as
-        | { user?: { email?: string | null } | null }
-        | null;
+      const data = (await response.json().catch(() => null)) as {
+        user?: { email?: string | null } | null;
+      } | null;
       if (data?.user?.email) return true;
       await new Promise((resolve) => setTimeout(resolve, 150));
     }
@@ -69,7 +69,8 @@ export function LoginPage() {
         }).catch(() => null);
       }
       const destination =
-        sanitizeRedirectPath(redirectTo) || (session?.user?.role === "admin" ? "/admin" : "/dashboard");
+        sanitizeRedirectPath(redirectTo) ||
+        (session?.user?.role === "admin" ? "/admin" : "/dashboard");
       router.replace(destination);
     };
 
@@ -141,15 +142,15 @@ export function LoginPage() {
 
       <section className="flex-1">
         <div className="flex min-h-[calc(100dvh-4rem)]">
-          <div className="relative hidden bg-[#F7F4EF] p-12 lg:flex lg:w-[45%] lg:flex-col lg:items-center lg:justify-center">
-            <div className="absolute right-8 bottom-0 left-8 h-px bg-gradient-to-r from-transparent via-[#BB7345]/30 to-transparent" />
+          <div className="bg-brand-warm relative hidden p-12 lg:flex lg:w-[45%] lg:flex-col lg:items-center lg:justify-center">
+            <div className="via-bronze/30 absolute right-8 bottom-0 left-8 h-px bg-gradient-to-r from-transparent to-transparent" />
             <div className="max-w-sm space-y-8 text-center">
               <div className="flex justify-center [&>svg]:h-auto [&>svg]:w-56">
                 <IconVertical />
               </div>
               <div className="space-y-3">
-                <h2 className="text-2xl leading-snug text-[#2E1F33]">Your Private Studio</h2>
-                <p className="leading-relaxed text-[#2E1F33]/70">
+                <h2 className="text-brand-dark text-2xl leading-snug">Your Private Studio</h2>
+                <p className="text-brand-dark/70 leading-relaxed">
                   Science-backed coaching for chronic illness, autoimmune conditions, and complex
                   bodies.
                 </p>
@@ -161,10 +162,10 @@ export function LoginPage() {
                   "Direct messaging with Shruti",
                 ].map((item) => (
                   <div key={item} className="flex items-center gap-3 text-left">
-                    <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#4B5B32]/10">
-                      <Check className="h-3 w-3 text-[#4B5B32]" />
+                    <div className="bg-brand-accent/10 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full">
+                      <Check className="text-brand-accent h-3 w-3" />
                     </div>
-                    <span className="text-sm text-[#2E1F33]/70">{item}</span>
+                    <span className="text-brand-dark/70 text-sm">{item}</span>
                   </div>
                 ))}
               </div>
@@ -174,8 +175,8 @@ export function LoginPage() {
           <div className="bg-background flex-1 px-6 py-10 md:px-10 md:py-12 lg:flex lg:items-center lg:justify-center">
             <div className="mx-auto w-full max-w-[400px]">
               {refCode && (
-                <div className="mb-6 flex items-start gap-3 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/10 p-4">
-                  <Gift className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
+                <div className="border-brand-accent/20 bg-brand-accent/10 mb-6 flex items-start gap-3 rounded-lg border p-4">
+                  <Gift className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
                   <div>
                     <p className="text-sm">Your free class gift will be added after sign-in.</p>
                   </div>
@@ -198,7 +199,7 @@ export function LoginPage() {
                   Sign in or create your account to get started.
                 </p>
               </div>
-              <div className="mb-8 h-px w-12 rounded-full bg-[#BB7345]/60" />
+              <div className="bg-bronze/60 mb-8 h-px w-12 rounded-full" />
               {!loginMethod ? (
                 <div className="space-y-4">
                   <Button

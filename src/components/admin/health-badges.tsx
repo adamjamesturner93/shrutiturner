@@ -19,7 +19,12 @@ interface HealthBadgesProps {
 }
 
 /** Compact inline health condition badges for attendee lists */
-export function HealthBadges({ memberId, labels: labelsProp, layout = "inline", max = 4 }: HealthBadgesProps) {
+export function HealthBadges({
+  memberId,
+  labels: labelsProp,
+  layout = "inline",
+  max = 4,
+}: HealthBadgesProps) {
   const labels = labelsProp ?? (memberId ? getMemberHealthSummary(memberId) : []);
   if (labels.length === 0) return null;
 
@@ -48,14 +53,12 @@ export function HealthBadges({ memberId, labels: labelsProp, layout = "inline", 
         <Badge
           key={label}
           variant="outline"
-          className="border-amber-200 bg-amber-50 px-1.5 py-0 text-[10px] text-amber-800"
+          className="text-micro border-amber-200 bg-amber-50 px-1.5 py-0 text-amber-800"
         >
           {label}
         </Badge>
       ))}
-      {remaining > 0 && (
-        <span className="text-muted-foreground text-[10px]">+{remaining} more</span>
-      )}
+      {remaining > 0 && <span className="text-muted-foreground text-micro">+{remaining} more</span>}
     </span>
   );
 }
@@ -166,7 +169,7 @@ export function ClassHealthSummary({ attendees }: ClassHealthSummaryProps) {
             <AlertTriangle className="h-4 w-4 text-amber-700" />
           </div>
           <div>
-            <p className="text-sm text-[#2E1F33]">Class Health Prep</p>
+            <p className="text-brand-dark text-sm">Class Health Prep</p>
             <p className="text-muted-foreground text-xs">
               {membersWithProfiles} of {totalMembers} attendees have health profiles ·{" "}
               {totalConditions} condition
@@ -231,7 +234,7 @@ export function ClassHealthSummary({ attendees }: ClassHealthSummaryProps) {
                             key={d.memberName}
                             className="border-l-2 border-amber-200 pl-2 text-xs leading-relaxed"
                           >
-                            <span className="text-[#2E1F33]">{d.memberName}:</span>{" "}
+                            <span className="text-brand-dark">{d.memberName}:</span>{" "}
                             <span className="text-muted-foreground">{d.detail}</span>
                           </p>
                         ))}
@@ -255,7 +258,7 @@ export function ClassHealthSummary({ attendees }: ClassHealthSummaryProps) {
                   return (
                     <div key={i} className="rounded-md border border-amber-100 bg-white/60 p-3">
                       <p className="text-xs leading-relaxed">
-                        <span className="text-[#2E1F33]">{name}:</span>{" "}
+                        <span className="text-brand-dark">{name}:</span>{" "}
                         <span className="text-muted-foreground">{text}</span>
                       </p>
                     </div>
@@ -297,10 +300,10 @@ function aggregateHealthFromConditions(
     .sort((a, b) => b.count - a.count);
 
   return {
-    categories: conditions.length
-      ? [{ categoryTitle: "Health Conditions", conditions }]
-      : [],
-    membersWithProfiles: attendees.filter((attendee) => (attendee.healthConditions?.length || 0) > 0).length,
+    categories: conditions.length ? [{ categoryTitle: "Health Conditions", conditions }] : [],
+    membersWithProfiles: attendees.filter(
+      (attendee) => (attendee.healthConditions?.length || 0) > 0
+    ).length,
     totalMembers: attendees.length,
     keyConsiderations: [] as string[],
   };

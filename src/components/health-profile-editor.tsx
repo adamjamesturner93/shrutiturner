@@ -107,8 +107,8 @@ export function HealthProfileEditor({
   return (
     <div className={compact ? "space-y-4" : "space-y-6"}>
       {/* Privacy note */}
-      <div className="flex items-start gap-3 rounded-lg border border-[#4B5B32]/10 bg-[#4B5B32]/5 p-3">
-        <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#4B5B32]" />
+      <div className="border-brand-accent/10 bg-brand-accent/5 flex items-start gap-3 rounded-lg border p-3">
+        <Info className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
         <div className="text-muted-foreground text-xs leading-relaxed">
           <p>
             This information is only visible to Shruti and is used to adapt sessions for your body.
@@ -163,7 +163,11 @@ export function HealthProfileEditor({
               Skip for now
             </Button>
           )}
-          <Button onClick={handleSave} size="sm" className="bg-[#4B5B32] hover:bg-[#4B5B32]/90">
+          <Button
+            onClick={handleSave}
+            size="sm"
+            className="bg-brand-accent hover:bg-brand-accent/90"
+          >
             {saved ? (
               <>
                 <Check className="mr-1 h-4 w-4" />
@@ -213,12 +217,12 @@ function CategorySection({
         className="hover:bg-secondary/30 flex w-full items-center justify-between p-4 text-left transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#4B5B32]/10">
-            <Icon className="h-4 w-4 text-[#4B5B32]" />
+          <div className="bg-brand-accent/10 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full">
+            <Icon className="text-brand-accent h-4 w-4" />
           </div>
           <div>
             <p className="text-sm">{category.title}</p>
-            {activeCount > 0 && <p className="text-xs text-[#4B5B32]">{activeCount} selected</p>}
+            {activeCount > 0 && <p className="text-brand-accent text-xs">{activeCount} selected</p>}
           </div>
         </div>
         {expanded ? (
@@ -243,7 +247,7 @@ function CategorySection({
                     type="checkbox"
                     checked={!!conditions[item.key]}
                     onChange={() => onToggleCondition(item.key)}
-                    className="h-4 w-4 flex-shrink-0 rounded accent-[#4B5B32]"
+                    className="accent-brand-accent h-4 w-4 flex-shrink-0 rounded"
                   />
                   <span className="text-sm">{item.label}</span>
                 </label>
@@ -256,7 +260,7 @@ function CategorySection({
                       value={details[item.key] || ""}
                       onChange={(e) => onUpdateDetails(item.key, e.target.value)}
                       placeholder={item.detailsPlaceholder}
-                      className="bg-input-background placeholder:text-muted-foreground/50 w-full rounded-md border px-3 py-1.5 text-sm transition-colors outline-none focus:border-[#4B5B32]"
+                      className="bg-input-background placeholder:text-muted-foreground/50 focus:border-brand-accent w-full rounded-md border px-3 py-1.5 text-sm transition-colors outline-none"
                     />
                   </div>
                 )}

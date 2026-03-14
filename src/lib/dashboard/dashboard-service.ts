@@ -13,41 +13,46 @@ export async function getDashboardSummary(userId: string): Promise<DashboardSumm
   const weekEnd = new Date(weekStart);
   weekEnd.setUTCDate(weekEnd.getUTCDate() + 7);
 
-  const [membershipState, upcomingBookings, attendedCount, thisWeekBookedCount, historicalBookings] =
-    await Promise.all([
-      getMembershipState(userId),
-      db.classBooking.findMany({
-        where: {
-          userId,
-          status: ClassBookingStatus.booked,
-          session: {
-            startsAtUtc: { gte: now },
-            status: { in: ["scheduled", "live"] },
-          },
+  const [
+    membershipState,
+    upcomingBookings,
+    attendedCount,
+    thisWeekBookedCount,
+    historicalBookings,
+  ] = await Promise.all([
+    getMembershipState(userId),
+    db.classBooking.findMany({
+      where: {
+        userId,
+        status: ClassBookingStatus.booked,
+        session: {
+          startsAtUtc: { gte: now },
+          status: { in: ["scheduled", "live"] },
         },
-        include: {
-          session: true,
-        },
-        orderBy: {
-          session: { startsAtUtc: "asc" },
-        },
-        take: 8,
-      }),
-      db.classBooking.count({
-        where: { userId, status: ClassBookingStatus.attended },
-      }),
-      db.classBooking.count({
-        where: {
-          userId,
-          status: ClassBookingStatus.booked,
-          session: { startsAtUtc: { gte: weekStart, lt: weekEnd } },
-        },
-      }),
-      db.classBooking.findMany({
-        where: { userId, status: { in: [ClassBookingStatus.booked, ClassBookingStatus.attended] } },
-        select: { sessionId: true },
-      }),
-    ]);
+      },
+      include: {
+        session: true,
+      },
+      orderBy: {
+        session: { startsAtUtc: "asc" },
+      },
+      take: 8,
+    }),
+    db.classBooking.count({
+      where: { userId, status: ClassBookingStatus.attended },
+    }),
+    db.classBooking.count({
+      where: {
+        userId,
+        status: ClassBookingStatus.booked,
+        session: { startsAtUtc: { gte: weekStart, lt: weekEnd } },
+      },
+    }),
+    db.classBooking.findMany({
+      where: { userId, status: { in: [ClassBookingStatus.booked, ClassBookingStatus.attended] } },
+      select: { sessionId: true },
+    }),
+  ]);
 
   const sessionFrequency = new Map<string, number>();
   for (const row of historicalBookings) {

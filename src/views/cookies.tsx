@@ -3,6 +3,8 @@
 import { Layout } from "../components/layout";
 import { SEO } from "../components/seo";
 
+const LAST_UPDATED_LABEL = "12 March 2026";
+
 export function CookiesPage() {
   return (
     <Layout>
@@ -16,7 +18,7 @@ export function CookiesPage() {
         <h1 className="mb-8 text-4xl md:text-5xl">Cookie Policy</h1>
 
         <div className="prose prose-lg text-muted-foreground max-w-none space-y-8">
-          <p className="text-sm italic">Last updated: {new Date().toLocaleDateString("en-GB")}</p>
+          <p className="text-sm italic">Last updated: {LAST_UPDATED_LABEL}</p>
 
           <p className="text-lg">
             <em>

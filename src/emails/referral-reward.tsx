@@ -40,14 +40,11 @@ export default function ReferralRewardEmail({
         Your referral just signed up
       </Text>
 
-      <Text style={bodyTextStyle}>
-        Hi {firstName},
-      </Text>
+      <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
       <Text style={bodyTextStyle}>
-        Great news — <strong>{referredName}</strong> has signed up using your
-        referral link, and {"we've"} added{" "}
-        <strong>{creditAmount} credit</strong> to your account as a thank you.
+        Great news — <strong>{referredName}</strong> has signed up using your referral link, and{" "}
+        {"we've"} added <strong>{creditAmount} credit</strong> to your account as a thank you.
       </Text>
 
       {/* Reward Card */}
@@ -94,13 +91,13 @@ export default function ReferralRewardEmail({
             margin: "0",
           }}
         >
-          Your total credit balance: <strong style={{ color: colors.brandWhite }}>{totalCredits}</strong>
+          Your total credit balance:{" "}
+          <strong style={{ color: colors.brandWhite }}>{totalCredits}</strong>
         </Text>
       </Section>
 
       <Text style={bodyTextStyle}>
-        Your credit can be used towards any class or pack. Ready to put it to
-        good use?
+        Your credit can be used towards any class or pack. Ready to put it to good use?
       </Text>
 
       <Section style={{ textAlign: "center" as const, marginBottom: "28px" }}>
@@ -123,8 +120,8 @@ export default function ReferralRewardEmail({
       </Text>
 
       <Text style={{ ...bodyTextStyle, fontSize: "15px" }}>
-        Every time someone signs up with your link, you both benefit. Share
-        your unique link to earn more credit:
+        Every time someone signs up with your link, you both benefit. Share your unique link to earn
+        more credit:
       </Text>
 
       <Section

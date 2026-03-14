@@ -46,7 +46,7 @@ export function AdminNewsletter() {
     <AdminLayout title="Newsletter Analytics - Admin">
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl text-[#2E1F33]">Newsletter Analytics</h1>
+          <h1 className="text-brand-dark text-2xl">Newsletter Analytics</h1>
           <p className="text-muted-foreground mt-1">Subscriber stats from the live database.</p>
         </div>
 
@@ -61,9 +61,9 @@ export function AdminNewsletter() {
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3">
-                    <Users className="h-5 w-5 text-[#4B5B32]" />
+                    <Users className="text-brand-accent h-5 w-5" />
                     <div>
-                      <p className="text-2xl text-[#2E1F33]">{summary.totalSubscribers}</p>
+                      <p className="text-brand-dark text-2xl">{summary.totalSubscribers}</p>
                       <p className="text-muted-foreground text-xs">Total subscribers</p>
                     </div>
                   </div>
@@ -72,9 +72,9 @@ export function AdminNewsletter() {
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3">
-                    <Bell className="h-5 w-5 text-[#4B5B32]" />
+                    <Bell className="text-brand-accent h-5 w-5" />
                     <div>
-                      <p className="text-2xl text-[#2E1F33]">{summary.newsletterSubscribers}</p>
+                      <p className="text-brand-dark text-2xl">{summary.newsletterSubscribers}</p>
                       <p className="text-muted-foreground text-xs">Newsletter subscribers</p>
                     </div>
                   </div>
@@ -83,9 +83,9 @@ export function AdminNewsletter() {
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3">
-                    <BookOpen className="h-5 w-5 text-[#4B5B32]" />
+                    <BookOpen className="text-brand-accent h-5 w-5" />
                     <div>
-                      <p className="text-2xl text-[#2E1F33]">{summary.blogSubscribers}</p>
+                      <p className="text-brand-dark text-2xl">{summary.blogSubscribers}</p>
                       <p className="text-muted-foreground text-xs">Blog subscribers</p>
                     </div>
                   </div>
@@ -96,7 +96,7 @@ export function AdminNewsletter() {
                   <div className="flex items-center gap-3">
                     <AlertTriangle className="h-5 w-5 text-amber-500" />
                     <div>
-                      <p className="text-2xl text-[#2E1F33]">{summary.unsubscribes30d}</p>
+                      <p className="text-brand-dark text-2xl">{summary.unsubscribes30d}</p>
                       <p className="text-muted-foreground text-xs">Unsubscribes (30d)</p>
                     </div>
                   </div>
@@ -106,9 +106,12 @@ export function AdminNewsletter() {
 
             <Card>
               <CardContent className="py-10 text-center">
-                <p className="text-sm text-[#2E1F33]">Campaign performance is not yet stored in the database.</p>
+                <p className="text-brand-dark text-sm">
+                  Campaign performance is not yet stored in the database.
+                </p>
                 <p className="text-muted-foreground mt-1 text-xs">
-                  Wire Postmark webhooks/events to persist campaign telemetry for detailed analytics.
+                  Wire Postmark webhooks/events to persist campaign telemetry for detailed
+                  analytics.
                 </p>
               </CardContent>
             </Card>

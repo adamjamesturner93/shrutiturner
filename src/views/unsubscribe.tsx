@@ -46,8 +46,8 @@ export function UnsubscribePage() {
       <div className="container mx-auto flex min-h-[60vh] max-w-2xl flex-col items-center justify-center px-4 py-16">
         {status === "done" ? (
           <div className="space-y-6 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#4B5B32]/10">
-              <Check className="h-8 w-8 text-[#4B5B32]" />
+            <div className="bg-brand-accent/10 mx-auto flex h-16 w-16 items-center justify-center rounded-full">
+              <Check className="text-brand-accent h-8 w-8" />
             </div>
             <h1 className="text-3xl md:text-4xl">You've Been Unsubscribed</h1>
             <p className="text-muted-foreground mx-auto max-w-md text-lg">
@@ -107,7 +107,7 @@ export function UnsubscribePage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email address"
                 required
-                className="bg-background text-foreground placeholder:text-muted-foreground w-full rounded-lg border px-4 py-3 focus:ring-2 focus:ring-[#4B5B32]/40 focus:outline-none"
+                className="bg-background text-foreground placeholder:text-muted-foreground focus:ring-brand-accent/40 w-full rounded-lg border px-4 py-3 focus:ring-2 focus:outline-none"
               />
 
               {/* List selection */}
@@ -120,7 +120,7 @@ export function UnsubscribePage() {
                     value="newsletter"
                     checked={unsubList === "newsletter"}
                     onChange={() => setUnsubList("newsletter")}
-                    className="mt-1 accent-[#4B5B32]"
+                    className="accent-brand-accent mt-1"
                   />
                   <div>
                     <span className="text-sm">Newsletter only</span>
@@ -137,7 +137,7 @@ export function UnsubscribePage() {
                     value="blog"
                     checked={unsubList === "blog"}
                     onChange={() => setUnsubList("blog")}
-                    className="mt-1 accent-[#4B5B32]"
+                    className="accent-brand-accent mt-1"
                   />
                   <div>
                     <span className="text-sm">Blog updates only</span>
@@ -153,7 +153,7 @@ export function UnsubscribePage() {
                     value="all"
                     checked={unsubList === "all"}
                     onChange={() => setUnsubList("all")}
-                    className="mt-1 accent-[#4B5B32]"
+                    className="accent-brand-accent mt-1"
                   />
                   <div>
                     <span className="text-sm">All emails</span>

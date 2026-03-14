@@ -201,10 +201,10 @@ export async function updateAdminSubscriber(
         typeof updates.marketingEmails === "boolean"
           ? updates.marketingEmails
           : typeof updates.newsletter === "boolean"
-          ? updates.newsletter
-          : typeof updates.blogUpdates === "boolean"
-            ? updates.blogUpdates
-            : undefined,
+            ? updates.newsletter
+            : typeof updates.blogUpdates === "boolean"
+              ? updates.blogUpdates
+              : undefined,
     },
   });
 
@@ -219,7 +219,9 @@ export async function updateAdminSubscriber(
   };
 }
 
-function aggregateCampaignRows(rows: Array<{ type: string; metadataJson: Prisma.JsonValue | null }>) {
+function aggregateCampaignRows(
+  rows: Array<{ type: string; metadataJson: Prisma.JsonValue | null }>
+) {
   let delivered = 0;
   let opened = 0;
   let clicked = 0;
@@ -252,7 +254,12 @@ function aggregateCampaignRows(rows: Array<{ type: string; metadataJson: Prisma.
         break;
     }
 
-    if (row.type === "Click" && row.metadataJson && typeof row.metadataJson === "object" && !Array.isArray(row.metadataJson)) {
+    if (
+      row.type === "Click" &&
+      row.metadataJson &&
+      typeof row.metadataJson === "object" &&
+      !Array.isArray(row.metadataJson)
+    ) {
       const maybeUrl = (row.metadataJson as Record<string, unknown>).url;
       if (typeof maybeUrl === "string" && maybeUrl.length > 0) {
         topLinks.set(maybeUrl, (topLinks.get(maybeUrl) || 0) + 1);
@@ -334,7 +341,9 @@ export async function getAdminNewsletterSummary(): Promise<AdminNewsletterSummar
   };
 }
 
-export async function getAdminNewsletterCampaign(id: string): Promise<AdminNewsletterCampaignDetailDto | null> {
+export async function getAdminNewsletterCampaign(
+  id: string
+): Promise<AdminNewsletterCampaignDetailDto | null> {
   const campaign = await db.emailCampaign.findUnique({
     where: { id },
     include: {
@@ -348,7 +357,10 @@ export async function getAdminNewsletterCampaign(id: string): Promise<AdminNewsl
   if (!campaign) return null;
 
   const agg = aggregateCampaignRows(campaign.emailEvents);
-  const eventTimelineByDate = new Map<string, { opened: number; clicked: number; bounced: number }>();
+  const eventTimelineByDate = new Map<
+    string,
+    { opened: number; clicked: number; bounced: number }
+  >();
   for (const row of campaign.emailEvents) {
     const key = row.eventAt.toISOString().slice(0, 10);
     const bucket = eventTimelineByDate.get(key) || { opened: 0, clicked: 0, bounced: 0 };

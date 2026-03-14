@@ -31,7 +31,7 @@ export function AdminRetreats() {
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl text-[#2E1F33]">Retreat Management</h1>
+            <h1 className="text-brand-dark text-2xl">Retreat Management</h1>
             <p className="text-muted-foreground mt-1">
               {adminRetreats.length} retreats · {totalBooked} total bookings · £
               {totalRevenue.toLocaleString()} revenue
@@ -39,7 +39,7 @@ export function AdminRetreats() {
           </div>
           <Button
             onClick={() => setShowCreateModal(true)}
-            className="bg-[#4B5B32] hover:bg-[#4B5B32]/90"
+            className="bg-brand-accent hover:bg-brand-accent/90"
           >
             <Mountain className="mr-2 h-4 w-4" />
             Create Retreat
@@ -59,9 +59,9 @@ export function AdminRetreats() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <Mountain className="h-5 w-5 text-[#4B5B32]" />
+                <Mountain className="text-brand-accent h-5 w-5" />
                 <div>
-                  <p className="text-2xl text-[#2E1F33]">{adminRetreats.length}</p>
+                  <p className="text-brand-dark text-2xl">{adminRetreats.length}</p>
                   <p className="text-muted-foreground text-xs">Total retreats</p>
                 </div>
               </div>
@@ -70,9 +70,9 @@ export function AdminRetreats() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <Users className="h-5 w-5 text-[#4B5B32]" />
+                <Users className="text-brand-accent h-5 w-5" />
                 <div>
-                  <p className="text-2xl text-[#2E1F33]">{totalBooked}</p>
+                  <p className="text-brand-dark text-2xl">{totalBooked}</p>
                   <p className="text-muted-foreground text-xs">Total bookings</p>
                 </div>
               </div>
@@ -81,9 +81,9 @@ export function AdminRetreats() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <PoundSterling className="h-5 w-5 text-[#4B5B32]" />
+                <PoundSterling className="text-brand-accent h-5 w-5" />
                 <div>
-                  <p className="text-2xl text-[#2E1F33]">£{totalRevenue.toLocaleString()}</p>
+                  <p className="text-brand-dark text-2xl">£{totalRevenue.toLocaleString()}</p>
                   <p className="text-muted-foreground text-xs">Total revenue</p>
                 </div>
               </div>
@@ -108,11 +108,11 @@ function RetreatCard({ retreat }: { retreat: AdminRetreat }) {
 
   return (
     <Link href={`/admin/retreats/${retreat.id}`}>
-      <Card className="cursor-pointer transition-colors hover:border-[#4B5B32]/30">
+      <Card className="hover:border-brand-accent/30 cursor-pointer transition-colors">
         <CardContent className="py-5">
           <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-[#4B5B32]/10">
-              <Mountain className="h-6 w-6 text-[#4B5B32]" />
+            <div className="bg-brand-accent/10 flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg">
+              <Mountain className="text-brand-accent h-6 w-6" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -154,13 +154,15 @@ function RetreatCard({ retreat }: { retreat: AdminRetreat }) {
                           ? "bg-destructive"
                           : fillPercent >= 70
                             ? "bg-amber-500"
-                            : "bg-[#4B5B32]"
+                            : "bg-brand-accent"
                       }`}
                       style={{ width: `${fillPercent}%` }}
                     />
                   </div>
                 </div>
-                <span className="text-sm text-[#4B5B32]">£{retreat.revenue.toLocaleString()}</span>
+                <span className="text-brand-accent text-sm">
+                  £{retreat.revenue.toLocaleString()}
+                </span>
               </div>
             </div>
             <ChevronRight className="text-muted-foreground mt-1 h-4 w-4 flex-shrink-0" />

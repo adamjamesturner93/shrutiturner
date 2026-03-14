@@ -8,12 +8,12 @@ import {
   ArrowRight,
   Clock,
   Users,
-  Eye,
   EyeOff,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { DeviceSelector } from "./device-selector";
+import { LocalMediaPreview } from "./local-media-preview";
 import type { RoomMode } from "./video-room";
 
 interface PreJoinLobbyProps {
@@ -48,7 +48,7 @@ export function PreJoinLobby({
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#1a1a2e] p-4">
+    <div className="bg-video-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="w-full max-w-3xl">
         {/* Header */}
         <div className="mb-8 text-center">
@@ -66,9 +66,9 @@ export function PreJoinLobby({
           </div>
           {mode !== "live-class" && (
             <div className="mt-2 flex items-center justify-center gap-2">
-              <Badge className="border-[#4B5B32]/30 bg-[#4B5B32]/20 text-[#B5C49B]">
-                <Eye className="mr-1 h-3 w-3" />
-                Community mode on by default
+              <Badge className="border-brand-accent/30 bg-brand-accent/20 text-brand-accent-light">
+                <EyeOff className="mr-1 h-3 w-3" />
+                Starts in focus mode
               </Badge>
             </div>
           )}
@@ -77,29 +77,11 @@ export function PreJoinLobby({
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {/* Self preview */}
           <div className="space-y-4">
-            <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-xl bg-[#252540]">
-              {isCameraOn ? (
-                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#4B5B32]/30 to-[#2E1F33]/30">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#4B5B32]/60 text-2xl text-white">
-                    YO
-                  </div>
-                  <div className="absolute top-3 left-3 h-2 w-2 rounded-full bg-green-500" />
-                </div>
-              ) : (
-                <div className="space-y-2 text-center">
-                  <VideoOff className="mx-auto h-10 w-10 text-white/30" />
-                  <p className="text-xs text-white/30">Camera off</p>
-                </div>
-              )}
-
-              {/* Mute indicator */}
-              {isMuted && (
-                <div className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-red-500/20 px-2 py-1 text-xs text-red-400">
-                  <MicOff className="h-3 w-3" />
-                  Muted
-                </div>
-              )}
-            </div>
+            <LocalMediaPreview
+              cameraEnabled={isCameraOn}
+              micEnabled={!isMuted}
+              className="aspect-video rounded-xl"
+            />
 
             {/* Quick controls */}
             <div className="flex items-center justify-center gap-3">
@@ -142,7 +124,7 @@ export function PreJoinLobby({
               <ul className="space-y-1">
                 {equipment.slice(0, 4).map((item) => (
                   <li key={item} className="flex items-start gap-2 text-sm text-white/70">
-                    <span className="mt-1 text-[#B5C49B]">·</span>
+                    <span className="text-brand-accent-light mt-1">·</span>
                     {item}
                   </li>
                 ))}
@@ -158,13 +140,15 @@ export function PreJoinLobby({
               <div className="flex justify-between text-sm">
                 <span className="text-white/50">View mode</span>
                 <span className="text-white/80">
-                  {mode === "live-class" ? "Focus (instructor only)" : "Community (see everyone)"}
+                  {mode === "live-class"
+                    ? "Focus (instructor only)"
+                    : "Focus to start, instructor can enable community"}
                 </span>
               </div>
               {mode !== "live-class" && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/50">Chat</span>
-                  <span className="text-white/80">Enabled</span>
+                  <span className="text-white/50">Community mode</span>
+                  <span className="text-white/80">Instructor controlled</span>
                 </div>
               )}
             </div>
@@ -173,7 +157,7 @@ export function PreJoinLobby({
             <div className="space-y-3">
               <Button
                 onClick={() => onJoin({ isMuted, isCameraOn })}
-                className="h-12 w-full bg-[#4B5B32] text-white hover:bg-[#4B5B32]/90"
+                className="bg-brand-accent hover:bg-brand-accent/90 h-12 w-full text-white"
               >
                 Join Class
                 <ArrowRight className="ml-2 h-4 w-4" />

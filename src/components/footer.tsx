@@ -45,62 +45,69 @@ export function Footer() {
   };
 
   return (
-    <footer className="mt-24 border-t bg-[#2E1F33] text-[#FAFAF8]">
+    <footer className="bg-brand-dark text-brand-white mt-24 border-t">
       <div className="container mx-auto max-w-7xl px-4 py-16">
         <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-4">
           {/* Brand + Newsletter */}
           <div className="space-y-6 lg:col-span-2">
             <div
-              className="[&>svg]:h-12 [&>svg]:w-auto [&_path]:fill-[#FAFAF8] [&_line]:stroke-[#FAFAF8]"
+              className="[&_line]:stroke-brand-white [&_path]:fill-brand-white [&>svg]:h-12 [&>svg]:w-auto"
               role="img"
               aria-label="Shruti Turner"
             >
               <IconHorizontal />
             </div>
-            <p className="max-w-md leading-relaxed text-[#FAFAF8]/70">
+            <p className="text-brand-white/70 max-w-md leading-relaxed">
               Science-backed strength and yoga coaching for people with chronic illness, autoimmune
               conditions, and complex bodies. PhD Biomechanics. Living with psoriatic arthritis.
             </p>
 
             {/* Newsletter in footer */}
-            <div className="rounded-lg border border-[#FAFAF8]/15 bg-[#FAFAF8]/5 p-4">
-              <h4 className="text-sm uppercase tracking-wide text-[#B5C49B]">Newsletter</h4>
-              <p className="mt-2 mb-3 text-sm text-[#FAFAF8]/75">{signupCopy.hookText}</p>
+            <div className="border-brand-white/15 bg-brand-white/5 rounded-lg border p-4">
+              <h4 className="text-brand-accent-light text-sm tracking-wide uppercase">
+                Newsletter
+              </h4>
+              <p className="text-brand-white/75 mt-2 mb-3 text-sm">{signupCopy.hookText}</p>
               {!subscribed ? (
-                <form onSubmit={handleNewsletterSubmit} className="flex max-w-sm flex-col gap-2 sm:flex-row">
+                <form
+                  onSubmit={handleNewsletterSubmit}
+                  className="flex max-w-sm flex-col gap-2 sm:flex-row"
+                >
                   <Input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={signupCopy.formPlaceholder}
                     required
-                    className="border-[#FAFAF8]/20 bg-[#FAFAF8]/10 text-[#FAFAF8] placeholder:text-[#FAFAF8]/40"
+                    className="border-brand-white/20 bg-brand-white/10 text-brand-white placeholder:text-brand-white/40"
                   />
                   <Button
                     type="submit"
-                    className="flex-shrink-0 bg-[#B5C49B] text-[#2E1F33] hover:bg-[#a5b48b]"
+                    className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90 flex-shrink-0"
                     disabled={isSubmitting || !consent || !turnstileToken}
                   >
                     {isSubmitting ? "Subscribing..." : signupCopy.buttonLabel}
                   </Button>
                 </form>
               ) : (
-                <p className="text-sm text-[#B5C49B]">{signupCopy.successMessage}</p>
+                <p className="text-brand-accent-light text-sm">{signupCopy.successMessage}</p>
               )}
-              {!subscribed ? <div className="mt-3"><TurnstileWidget onTokenChange={setTurnstileToken} /></div> : null}
-              <label className="mt-2 flex cursor-pointer items-start gap-2 text-xs text-[#FAFAF8]/60">
+              {!subscribed ? (
+                <div className="mt-3">
+                  <TurnstileWidget onTokenChange={setTurnstileToken} />
+                </div>
+              ) : null}
+              <label className="text-brand-white/60 mt-2 flex cursor-pointer items-start gap-2 text-xs">
                 <input
                   type="checkbox"
                   checked={consent}
                   onChange={(e) => setConsent(e.target.checked)}
-                  className="mt-0.5 h-3.5 w-3.5 accent-[#B5C49B]"
+                  className="accent-brand-accent-light mt-0.5 h-3.5 w-3.5"
                   required
                 />
-                <span>
-                  I want newsletter and update emails. I can unsubscribe anytime.
-                </span>
+                <span>I want newsletter and update emails. I can unsubscribe anytime.</span>
               </label>
-              <p className="mt-1 text-xs text-[#FAFAF8]/40">{signupCopy.consentText}</p>
+              <p className="text-brand-white/40 mt-1 text-xs">{signupCopy.consentText}</p>
               {error ? <p className="mt-1 text-xs text-red-300">{error}</p> : null}
             </div>
 
@@ -110,7 +117,7 @@ export function Footer() {
                 href="https://instagram.com/shrutiturner"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#FAFAF8]/60 transition-colors hover:text-[#B5C49B]"
+                className="text-brand-white/60 hover:text-brand-accent-light transition-colors"
                 aria-label="Follow on Instagram"
               >
                 <Instagram className="h-5 w-5" />
@@ -119,7 +126,7 @@ export function Footer() {
                 href="https://facebook.com/shrutiturner"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#FAFAF8]/60 transition-colors hover:text-[#B5C49B]"
+                className="text-brand-white/60 hover:text-brand-accent-light transition-colors"
                 aria-label="Follow on Facebook"
               >
                 <Facebook className="h-5 w-5" />
@@ -129,44 +136,39 @@ export function Footer() {
 
           {/* Services */}
           <div>
-            <h4 className="mb-4 text-[#B5C49B]">Services</h4>
-            <ul className="space-y-2 text-[#FAFAF8]/70">
+            <h4 className="text-brand-accent-light mb-4">Services</h4>
+            <ul className="text-brand-white/70 space-y-2">
               <li>
-                <Link href="/classes/yoga" className="transition-colors hover:text-[#B5C49B]">
-                  Yoga Classes
+                <Link href="/classes" className="hover:text-brand-accent-light transition-colors">
+                  Move Well Classes
                 </Link>
               </li>
               <li>
-                <Link href="/classes/strength" className="transition-colors hover:text-[#B5C49B]">
-                  Strength Classes
+                <Link href="/schedule" className="hover:text-brand-accent-light transition-colors">
+                  Schedule
                 </Link>
               </li>
               <li>
                 <Link
                   href="/classes/small-groups"
-                  className="transition-colors hover:text-[#B5C49B]"
+                  className="hover:text-brand-accent-light transition-colors"
                 >
-                  Small Group Programs
+                  Small Group Programmes
                 </Link>
               </li>
               <li>
-                <Link href="/pt" className="transition-colors hover:text-[#B5C49B]">
-                  1:1 Training
+                <Link href="/coaching" className="hover:text-brand-accent-light transition-colors">
+                  Coaching
                 </Link>
               </li>
               <li>
-                <Link href="/retreats" className="transition-colors hover:text-[#B5C49B]">
+                <Link href="/retreats" className="hover:text-brand-accent-light transition-colors">
                   Retreats
                 </Link>
               </li>
               <li>
-                <Link href="/pricing" className="transition-colors hover:text-[#B5C49B]">
+                <Link href="/pricing" className="hover:text-brand-accent-light transition-colors">
                   Pricing
-                </Link>
-              </li>
-              <li>
-                <Link href="/schedule" className="transition-colors hover:text-[#B5C49B]">
-                  Schedule
                 </Link>
               </li>
             </ul>
@@ -174,25 +176,25 @@ export function Footer() {
 
           {/* Company */}
           <div>
-            <h4 className="mb-4 text-[#B5C49B]">Company</h4>
-            <ul className="space-y-2 text-[#FAFAF8]/70">
+            <h4 className="text-brand-accent-light mb-4">Company</h4>
+            <ul className="text-brand-white/70 space-y-2">
               <li>
-                <Link href="/about" className="transition-colors hover:text-[#B5C49B]">
+                <Link href="/about" className="hover:text-brand-accent-light transition-colors">
                   About Shruti
                 </Link>
               </li>
               <li>
-                <Link href="/blog" className="transition-colors hover:text-[#B5C49B]">
+                <Link href="/blog" className="hover:text-brand-accent-light transition-colors">
                   Blog & Resources
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="transition-colors hover:text-[#B5C49B]">
+                <Link href="/contact" className="hover:text-brand-accent-light transition-colors">
                   Contact
                 </Link>
               </li>
               <li>
-                <Link href="/login" className="transition-colors hover:text-[#B5C49B]">
+                <Link href="/login" className="hover:text-brand-accent-light transition-colors">
                   Client Login
                 </Link>
               </li>
@@ -201,25 +203,28 @@ export function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-12 border-t border-[#FAFAF8]/10 pt-8 text-center text-sm text-[#FAFAF8]/50">
+        <div className="border-brand-white/10 text-brand-white/50 mt-12 border-t pt-8 text-center text-sm">
           <div className="mb-4 flex flex-wrap justify-center gap-6">
-            <Link href="/terms" className="transition-colors hover:text-[#B5C49B]">
+            <Link href="/terms" className="hover:text-brand-accent-light transition-colors">
               Terms & Conditions
             </Link>
-            <Link href="/privacy" className="transition-colors hover:text-[#B5C49B]">
+            <Link href="/privacy" className="hover:text-brand-accent-light transition-colors">
               Privacy Policy
             </Link>
-            <Link href="/cookies" className="transition-colors hover:text-[#B5C49B]">
+            <Link href="/cookies" className="hover:text-brand-accent-light transition-colors">
               Cookie Policy
             </Link>
-            <Link href="/health-declaration" className="transition-colors hover:text-[#B5C49B]">
+            <Link
+              href="/health-declaration"
+              className="hover:text-brand-accent-light transition-colors"
+            >
               Health Declaration
             </Link>
-            <Link href="/unsubscribe" className="transition-colors hover:text-[#B5C49B]">
+            <Link href="/unsubscribe" className="hover:text-brand-accent-light transition-colors">
               Manage Subscriptions
             </Link>
           </div>
-          <p>&copy; {new Date().getFullYear()} Shruti Turner. All rights reserved.</p>
+          <p>Copyright Shruti Turner. All rights reserved.</p>
         </div>
       </div>
     </footer>

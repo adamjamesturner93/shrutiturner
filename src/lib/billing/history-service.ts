@@ -16,7 +16,10 @@ type StripeCheckoutObject = {
   };
 };
 
-export async function getBillingHistory(userId: string, limit = 50): Promise<BillingHistoryItemDto[]> {
+export async function getBillingHistory(
+  userId: string,
+  limit = 50
+): Promise<BillingHistoryItemDto[]> {
   const [creditEntries, referralEntries, billingEvents] = await Promise.all([
     db.creditLedgerEntry.findMany({
       where: { userId },
@@ -35,9 +38,13 @@ export async function getBillingHistory(userId: string, limit = 50): Promise<Bil
     }),
   ]);
 
-  const checkoutEvents = billingEvents.filter((event) => event.type === "checkout.session.completed");
+  const checkoutEvents = billingEvents.filter(
+    (event) => event.type === "checkout.session.completed"
+  );
   const invoicePaidEvents = billingEvents.filter((event) => event.type === "invoice.paid");
-  const invoiceFailedEvents = billingEvents.filter((event) => event.type === "invoice.payment_failed");
+  const invoiceFailedEvents = billingEvents.filter(
+    (event) => event.type === "invoice.payment_failed"
+  );
 
   const fromStripeCreditPurchases: BillingHistoryItemDto[] = checkoutEvents
     .map((event) => {
@@ -121,7 +128,13 @@ export async function getBillingHistory(userId: string, limit = 50): Promise<Bil
     stripeInvoiceId: entry.stripeInvoiceId,
   }));
 
-  return [...fromStripeCreditPurchases, ...fromStripeMemberships, ...fromCredits, ...fromReferrals, ...fromEvents]
+  return [
+    ...fromStripeCreditPurchases,
+    ...fromStripeMemberships,
+    ...fromCredits,
+    ...fromReferrals,
+    ...fromEvents,
+  ]
     .sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
     .slice(0, limit);
 }

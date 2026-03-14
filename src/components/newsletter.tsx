@@ -67,7 +67,9 @@ export function NewsletterPopup({ isOpen, onClose }: NewsletterPopupProps) {
         {!submitted ? (
           <>
             <div className="mb-6">
-              <h3 className="mb-2 text-2xl">{signupCopy.popupTitle || "Get Evidence-Based Insights"}</h3>
+              <h3 className="mb-2 text-2xl">
+                {signupCopy.popupTitle || "Get Evidence-Based Insights"}
+              </h3>
               <p className="text-muted-foreground">{signupCopy.popupDescription}</p>
             </div>
 
@@ -111,7 +113,7 @@ export function NewsletterPopup({ isOpen, onClose }: NewsletterPopupProps) {
                   type="checkbox"
                   checked={consent}
                   onChange={(e) => setConsent(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 accent-[#4B5B32]"
+                  className="accent-brand-accent mt-0.5 h-4 w-4"
                   required
                 />
                 <span className="text-muted-foreground">
@@ -204,7 +206,12 @@ export function NewsletterInline() {
         />
       </div>
 
-      <Button type="submit" size="lg" className="w-full" disabled={isSubmitting || !turnstileToken || !consent}>
+      <Button
+        type="submit"
+        size="lg"
+        className="w-full"
+        disabled={isSubmitting || !turnstileToken || !consent}
+      >
         {isSubmitting ? "Subscribing..." : signupCopy.buttonLabel}
       </Button>
       <TurnstileWidget onTokenChange={setTurnstileToken} />
@@ -214,7 +221,7 @@ export function NewsletterInline() {
           type="checkbox"
           checked={consent}
           onChange={(e) => setConsent(e.target.checked)}
-          className="mt-0.5 h-4 w-4 accent-[#4B5B32]"
+          className="accent-brand-accent mt-0.5 h-4 w-4"
           required
         />
         <span className="text-muted-foreground">

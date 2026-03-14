@@ -5,14 +5,17 @@ export const MOVEWELL_ANNUAL_PENCE = 29000;
 export const MEMBERSHIP_TRIAL_DAYS = 14;
 export const CREDITS_EXPIRY_DAYS = 90;
 
-export const MEMBERSHIP_CONFIG: Record<Exclude<MembershipPlan, "instructor">, {
-  label: string;
-  classesPerWeek: number;
-  monthlyPricePence: number;
-  annualPricePence: number;
-  stripePriceIdMonthly: string;
-  stripePriceIdAnnual: string;
-}> = {
+export const MEMBERSHIP_CONFIG: Record<
+  Exclude<MembershipPlan, "instructor">,
+  {
+    label: string;
+    classesPerWeek: number;
+    monthlyPricePence: number;
+    annualPricePence: number;
+    stripePriceIdMonthly: string;
+    stripePriceIdAnnual: string;
+  }
+> = {
   movewell: {
     label: "Move Well Membership",
     classesPerWeek: 99,
@@ -23,13 +26,16 @@ export const MEMBERSHIP_CONFIG: Record<Exclude<MembershipPlan, "instructor">, {
   },
 };
 
-export const CREDIT_BUNDLE_CONFIG: Record<1 | 3 | 10, {
-  label: string;
-  credits: number;
-  pricePence: number;
-  stripePriceId: string;
-  expiryDays: number;
-}> = {
+export const CREDIT_BUNDLE_CONFIG: Record<
+  1 | 3 | 10,
+  {
+    label: string;
+    credits: number;
+    pricePence: number;
+    stripePriceId: string;
+    expiryDays: number;
+  }
+> = {
   1: {
     label: "Drop-in",
     credits: 1,

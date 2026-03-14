@@ -9,7 +9,7 @@ export function getStripeClient() {
   }
   if (!stripeSingleton) {
     stripeSingleton = new Stripe(key, {
-      apiVersion: "2024-06-20",
+      apiVersion: "2025-08-27.basil",
       typescript: true,
     });
   }

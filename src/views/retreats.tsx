@@ -59,11 +59,11 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
   return (
     <Layout>
       {/* Hero Section */}
-      <section className="bg-[#2E1F33] py-20 text-[#FAFAF8] md:py-28">
+      <section className="bg-brand-dark text-brand-white py-20 md:py-28">
         <div className="container mx-auto max-w-5xl px-4">
           <div className="mx-auto max-w-3xl space-y-6 text-center">
             <h1 className="text-4xl leading-tight md:text-6xl">Retreats for Complex Bodies</h1>
-            <p className="text-xl leading-relaxed text-[#B5C49B] md:text-2xl">
+            <p className="text-brand-accent-light text-xl leading-relaxed md:text-2xl">
               Yoga and strength retreats designed for people with chronic illness, autoimmune
               conditions, and bodies that require nuance.
             </p>
@@ -206,15 +206,15 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
       </section>
 
       {/* Contact CTA */}
-      <section className="bg-[#4B5B32] py-20 text-[#FAFAF8] md:py-24">
+      <section className="bg-brand-accent text-brand-white py-20 md:py-24">
         <div className="container mx-auto max-w-2xl space-y-6 px-4 text-center">
           <h2 className="text-3xl md:text-4xl">Questions About Retreats?</h2>
           <p className="text-lg leading-relaxed opacity-90">
             If you have questions about whether a retreat is suitable for your condition or
             circumstances, please get in touch. I'm happy to discuss your specific situation.
           </p>
-          <Link href="/pt">
-            <Button size="lg" className="bg-[#FAFAF8] text-[#4B5B32] hover:bg-[#FAFAF8]/90">
+          <Link href="/coaching">
+            <Button size="lg" className="bg-brand-white text-brand-accent hover:bg-brand-white/90">
               Send an Enquiry
             </Button>
           </Link>

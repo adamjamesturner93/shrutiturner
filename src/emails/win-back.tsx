@@ -38,12 +38,11 @@ export default function WinBackEmail({
         Your practice is here when {"you're"} ready
       </Text>
 
-      <Text style={bodyTextStyle}>
-        Hi {firstName},
-      </Text>
+      <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
       <Text style={bodyTextStyle}>
-        {"It's"} been a little while since your last class, and I just wanted to gently check in. Life gets full, bodies have seasons, and {"there's"} absolutely no pressure here.
+        {"It's"} been a little while since your last class, and I just wanted to gently check in.
+        Life gets full, bodies have seasons, and {"there's"} absolutely no pressure here.
       </Text>
 
       <Text style={bodyTextStyle}>
@@ -136,7 +135,8 @@ export default function WinBackEmail({
             margin: "0 0 12px 0",
           }}
         >
-          {"There's"} no need to dive straight into the deep end. A restorative session or gentle flow is a lovely way to reconnect.
+          {"There's"} no need to dive straight into the deep end. A restorative session or gentle
+          flow is a lovely way to reconnect.
         </Text>
         <Link
           href={scheduleUrl}
@@ -181,7 +181,8 @@ export default function WinBackEmail({
             margin: "0 0 12px 0",
           }}
         >
-          Sometimes inspiration comes before action. Browse evidence-based articles on training with chronic conditions, building strength gently, and more.
+          Sometimes inspiration comes before action. Browse evidence-based articles on training with
+          chronic conditions, building strength gently, and more.
         </Text>
         <Link
           href={blogUrl}
@@ -206,7 +207,9 @@ export default function WinBackEmail({
       <Hr style={dividerStyle} />
 
       <Text style={mutedTextStyle}>
-        {"If your circumstances have changed or you'd like to pause your account, just reply to this email and I'll help you with that. No questions asked."}
+        {
+          "If your circumstances have changed or you'd like to pause your account, just reply to this email and I'll help you with that. No questions asked."
+        }
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>

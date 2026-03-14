@@ -7,7 +7,9 @@ export type HealthProfileInput = {
   additionalNotes?: string;
 };
 
-const VALID_KEYS = new Set(HEALTH_CATEGORIES.flatMap((category) => category.items.map((item) => item.key)));
+const VALID_KEYS = new Set(
+  HEALTH_CATEGORIES.flatMap((category) => category.items.map((item) => item.key))
+);
 
 function normalizeConditions(input: Record<string, boolean> | undefined) {
   const selected = new Set<string>();
@@ -66,7 +68,11 @@ export async function getHealthProfile(userId: string) {
   };
 }
 
-export async function upsertHealthProfile(userId: string, input: HealthProfileInput, updatedByUserId: string) {
+export async function upsertHealthProfile(
+  userId: string,
+  input: HealthProfileInput,
+  updatedByUserId: string
+) {
   const selected = normalizeConditions(input.conditions);
   const detailsMap = normalizeDetails(input.details, selected);
   const additionalNotes = (input.additionalNotes || "").trim().slice(0, 5000);

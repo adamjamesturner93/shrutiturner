@@ -2,13 +2,7 @@ import { useState, useContext, useMemo } from "react";
 import { AuthContext } from "../context/auth-context";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
-import {
-  MessageCircle,
-  Reply,
-  Trash2,
-  CornerDownRight,
-  AlertTriangle,
-} from "lucide-react";
+import { MessageCircle, Reply, Trash2, CornerDownRight, AlertTriangle } from "lucide-react";
 import { useI18n } from "../lib/use-i18n";
 import {
   AlertDialog,
@@ -22,6 +16,10 @@ import {
   AlertDialogTrigger,
 } from "./ui/alert-dialog";
 import Link from "next/link";
+
+function createCommentId() {
+  return `cmt_${crypto.randomUUID()}`;
+}
 
 /* ──────────── Types ──────────── */
 
@@ -132,13 +130,9 @@ export function BlogComments({ postId }: BlogCommentsProps) {
   );
 
   // Separate top-level comments and replies
-  const topLevel = useMemo(
-    () => postComments.filter((c) => c.parentId === null),
-    [postComments]
-  );
+  const topLevel = useMemo(() => postComments.filter((c) => c.parentId === null), [postComments]);
 
-  const getReplies = (commentId: string) =>
-    postComments.filter((c) => c.parentId === commentId);
+  const getReplies = (commentId: string) => postComments.filter((c) => c.parentId === commentId);
 
   const commentCount = postComments.length;
 
@@ -147,7 +141,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
   const handleSubmitComment = () => {
     if (!newComment.trim() || !isAuthenticated || !auth?.user) return;
     const comment: Comment = {
-      id: `cmt_${Date.now()}`,
+      id: createCommentId(),
       postId,
       parentId: null,
       authorName: `${auth.user.firstName} ${auth.user.lastName.charAt(0)}.`,
@@ -164,7 +158,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
   const handleSubmitReply = (parentId: string) => {
     if (!replyText.trim() || !isAuthenticated || !auth?.user) return;
     const reply: Comment = {
-      id: `cmt_${Date.now()}`,
+      id: createCommentId(),
       postId,
       parentId,
       authorName: `${auth.user.firstName} ${auth.user.lastName.charAt(0)}.`,
@@ -181,22 +175,15 @@ export function BlogComments({ postId }: BlogCommentsProps) {
 
   const handleDeleteComment = (commentId: string) => {
     // Delete the comment and all its replies
-    setComments((prev) =>
-      prev.filter((c) => c.id !== commentId && c.parentId !== commentId)
-    );
+    setComments((prev) => prev.filter((c) => c.id !== commentId && c.parentId !== commentId));
     // In production: DELETE /api/blog/:slug/comments/:id (cascades replies server-side)
   };
 
   const handleDeleteThread = (commentId: string) => {
     // Delete the top-level comment and all nested replies
-    const replyIds = comments
-      .filter((c) => c.parentId === commentId)
-      .map((c) => c.id);
+    const replyIds = comments.filter((c) => c.parentId === commentId).map((c) => c.id);
     setComments((prev) =>
-      prev.filter(
-        (c) =>
-          c.id !== commentId && !replyIds.includes(c.id) && c.parentId !== commentId
-      )
+      prev.filter((c) => c.id !== commentId && !replyIds.includes(c.id) && c.parentId !== commentId)
     );
     // In production: DELETE /api/blog/:slug/comments/:id?cascade=true
   };
@@ -206,9 +193,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
   const renderAvatar = (initials: string, isInstructor: boolean) => (
     <div
       className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs ${
-        isInstructor
-          ? "bg-[#4B5B32] text-[#FAFAF8]"
-          : "bg-secondary text-secondary-foreground"
+        isInstructor ? "bg-brand-accent text-brand-white" : "bg-secondary text-secondary-foreground"
       }`}
     >
       {initials}
@@ -226,9 +211,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
             variant="ghost"
             size="sm"
             className="text-muted-foreground hover:text-destructive h-7 px-2 opacity-0 transition-opacity group-hover:opacity-100"
-            aria-label={
-              hasReplies ? "Delete thread" : "Delete comment"
-            }
+            aria-label={hasReplies ? "Delete thread" : "Delete comment"}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
@@ -249,9 +232,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() =>
-                hasReplies
-                  ? handleDeleteThread(comment.id)
-                  : handleDeleteComment(comment.id)
+                hasReplies ? handleDeleteThread(comment.id) : handleDeleteComment(comment.id)
               }
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
@@ -276,11 +257,11 @@ export function BlogComments({ postId }: BlogCommentsProps) {
           {renderAvatar(comment.authorInitials, isInstructor)}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`text-sm ${isInstructor ? "text-[#4B5B32]" : ""}`}>
+              <span className={`text-sm ${isInstructor ? "text-brand-accent" : ""}`}>
                 {comment.authorName}
               </span>
               {isInstructor && (
-                <span className="rounded bg-[#4B5B32]/10 px-1.5 py-0.5 text-[10px] text-[#4B5B32]">
+                <span className="bg-brand-accent/10 text-brand-accent text-micro rounded px-1.5 py-0.5">
                   Instructor
                 </span>
               )}
@@ -289,17 +270,13 @@ export function BlogComments({ postId }: BlogCommentsProps) {
               </span>
               {renderDeleteButton(comment, !isReply)}
             </div>
-            <p className="mt-1.5 text-sm leading-relaxed whitespace-pre-wrap">
-              {comment.content}
-            </p>
+            <p className="mt-1.5 text-sm leading-relaxed whitespace-pre-wrap">{comment.content}</p>
             {!isReply && isAuthenticated && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground hover:text-foreground mt-1 h-7 px-2 text-xs"
-                onClick={() =>
-                  setReplyingTo(replyingTo === comment.id ? null : comment.id)
-                }
+                onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
               >
                 <Reply className="mr-1 h-3.5 w-3.5" />
                 Reply
@@ -369,10 +346,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
             rows={3}
           />
           <div className="flex justify-end">
-            <Button
-              onClick={handleSubmitComment}
-              disabled={!newComment.trim()}
-            >
+            <Button onClick={handleSubmitComment} disabled={!newComment.trim()}>
               Post Comment
             </Button>
           </div>
@@ -390,9 +364,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
 
       {/* Comments list */}
       {topLevel.length > 0 ? (
-        <div className="divide-y">
-          {topLevel.map((comment) => renderComment(comment))}
-        </div>
+        <div className="divide-y">{topLevel.map((comment) => renderComment(comment))}</div>
       ) : (
         <p className="text-muted-foreground py-8 text-center text-sm">
           No comments yet. Be the first to share your thoughts.

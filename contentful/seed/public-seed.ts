@@ -1,4 +1,5 @@
 import { blogPosts } from "../../src/data/blog-data.ts";
+import { themedWeekPromos } from "../../src/data/marketing.ts";
 import { classDetails } from "../../src/data/schedule-data.ts";
 import { retreats } from "../../src/data/retreat-data.ts";
 
@@ -49,8 +50,7 @@ export const CLASS_TEMPLATE_SEED = {
     name: c.name,
     slug: c.slug,
     type: c.type,
-    classCategory:
-      c.type === "Yoga" ? "yoga" : c.type === "HIIT" ? "small-group" : "strength",
+    classCategory: c.type === "Yoga" ? "yoga" : c.type === "HIIT" ? "small-group" : "strength",
     level: c.level,
     defaultDay: c.day,
     defaultTime: c.time,
@@ -101,8 +101,7 @@ export const TESTIMONIAL_SEED = {
   entries: [
     {
       slug: "testimonial-sarah-yoga",
-      quote:
-        "Finally, a yoga teacher who understands that my body isn't just tight, it's complex.",
+      quote: "Finally, a yoga teacher who understands that my body isn't just tight, it's complex.",
       authorName: "Sarah",
       authorCondition: "Hypermobility EDS",
       service: "yoga",
@@ -110,8 +109,7 @@ export const TESTIMONIAL_SEED = {
     },
     {
       slug: "testimonial-james-strength",
-      quote:
-        "I've built more strength in 12 weeks than in years of trying generic programmes.",
+      quote: "I've built more strength in 12 weeks than in years of trying generic programmes.",
       authorName: "James",
       authorCondition: "Rheumatoid Arthritis",
       service: "strength",
@@ -127,6 +125,21 @@ export const TESTIMONIAL_SEED = {
       featured: true,
     },
   ],
+};
+
+export const THEMED_WEEK_PROMO_SEED = {
+  contentType: "themedWeekPromo",
+  entries: themedWeekPromos.map((item, index) => ({
+    slug: item.slug,
+    title: item.title,
+    shortDescription: item.shortDescription,
+    audience: item.audience,
+    ctaHref: item.ctaHref,
+    ctaLabel: item.ctaLabel,
+    status: item.status,
+    sortOrder: (index + 1) * 10,
+    active: true,
+  })),
 };
 
 const venueEntries = new Map<
@@ -483,6 +496,7 @@ export const SEED_GROUPS = [
   GLOBAL_SEED,
   INSTRUCTOR_PROFILE_SEED,
   CLASS_TEMPLATE_SEED,
+  THEMED_WEEK_PROMO_SEED,
   RETREAT_VENUE_SEED,
   RETREAT_TEMPLATE_SEED,
   BLOG_SEED,

@@ -80,7 +80,7 @@ export function DashboardProgramDetail() {
   if (stage === "recording" && activeRecording) {
     const session = program.sessions.find((s) => s.title === activeRecording);
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col bg-[#1a1a2e]">
+      <div className="bg-video-backdrop fixed inset-0 z-[100] flex flex-col">
         <SEO title={`Recording: ${activeRecording} - Shruti Turner`} noIndex />
         <div className="flex items-center justify-between border-b border-white/10 p-4">
           <div className="text-white">
@@ -103,8 +103,8 @@ export function DashboardProgramDetail() {
         </div>
         <div className="flex flex-1 items-center justify-center">
           <div className="space-y-4 text-center">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#4B5B32]/30">
-              <Play className="ml-1 h-10 w-10 text-[#B5C49B]" />
+            <div className="bg-brand-accent/30 mx-auto flex h-20 w-20 items-center justify-center rounded-full">
+              <Play className="text-brand-accent-light ml-1 h-10 w-10" />
             </div>
             <p className="text-sm text-white/70">Session recording playback</p>
             <p className="text-xs text-white/40">[In production: Daily.co recording embed]</p>
@@ -162,11 +162,11 @@ export function DashboardProgramDetail() {
   // Post-session
   if (stage === "post-session") {
     return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#1a1a2e] p-4">
+      <div className="bg-video-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4">
         <SEO title={`Session Complete - Shruti Turner`} noIndex />
-        <div className="w-full max-w-sm space-y-6 rounded-xl border border-white/10 bg-[#252540] p-8 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#4B5B32]/20">
-            <CheckCircle className="h-8 w-8 text-[#B5C49B]" />
+        <div className="bg-video-panel w-full max-w-sm space-y-6 rounded-xl border border-white/10 p-8 text-center">
+          <div className="bg-brand-accent/20 mx-auto flex h-16 w-16 items-center justify-center rounded-full">
+            <CheckCircle className="text-brand-accent-light h-8 w-8" />
           </div>
           <div>
             <h2 className="text-xl text-white">Session complete</h2>
@@ -177,7 +177,7 @@ export function DashboardProgramDetail() {
           <div className="space-y-3">
             <Button
               onClick={() => setStage("detail")}
-              className="w-full bg-[#4B5B32] text-white hover:bg-[#4B5B32]/90"
+              className="bg-brand-accent hover:bg-brand-accent/90 w-full text-white"
             >
               Back to Programme
             </Button>
@@ -225,7 +225,7 @@ export function DashboardProgramDetail() {
             </div>
             <div className="bg-secondary h-3 w-full rounded-full">
               <div
-                className="h-3 rounded-full bg-[#4B5B32] transition-all"
+                className="bg-brand-accent h-3 rounded-full transition-all"
                 style={{ width: `${(program.progress / program.totalSessions) * 100}%` }}
               />
             </div>
@@ -240,7 +240,7 @@ export function DashboardProgramDetail() {
                   key={i}
                   className={`flex items-center justify-between rounded-lg border p-4 ${
                     session.completed
-                      ? "border-[#4B5B32]/20 bg-[#4B5B32]/5"
+                      ? "border-brand-accent/20 bg-brand-accent/5"
                       : session.upcoming
                         ? "border-primary"
                         : ""
@@ -250,7 +250,7 @@ export function DashboardProgramDetail() {
                     <div
                       className={`flex h-8 w-8 items-center justify-center rounded-full ${
                         session.completed
-                          ? "bg-[#4B5B32] text-[#FAFAF8]"
+                          ? "bg-brand-accent text-brand-white"
                           : "bg-secondary text-muted-foreground"
                       }`}
                     >
@@ -287,7 +287,7 @@ export function DashboardProgramDetail() {
                     </Button>
                   )}
                   {session.completed && !session.recordingAvailable && (
-                    <span className="text-xs text-[#4B5B32]">Completed</span>
+                    <span className="text-brand-accent text-xs">Completed</span>
                   )}
                 </div>
               ))}

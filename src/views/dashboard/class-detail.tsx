@@ -18,15 +18,17 @@ import {
   Dumbbell,
   Zap,
   Video,
-  X,
 } from "lucide-react";
 import { getTypeColor } from "@/lib/classes/type-color";
-import { ClassRecordingsSection } from "../../components/class-recording";
 import { useEffect, useState } from "react";
 import type { ClassSessionDetailDto } from "@/lib/api/types";
 import type { ClassDefinitionContent } from "@/lib/content";
 
-export function DashboardClassDetail({ classDetail }: { classDetail: ClassDefinitionContent | null }) {
+export function DashboardClassDetail({
+  classDetail,
+}: {
+  classDetail: ClassDefinitionContent | null;
+}) {
   const { id: slug } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const cls = classDetail && classDetail.slug === slug ? classDetail : null;
@@ -127,7 +129,7 @@ export function DashboardClassDetail({ classDetail }: { classDetail: ClassDefini
               </Badge>
               <Badge variant="outline">{cls.level}</Badge>
               {booked && (
-                <Badge className="gap-1 bg-[#4B5B32] text-[#FAFAF8]">
+                <Badge className="bg-brand-accent text-brand-white gap-1">
                   <CheckCircle className="h-3 w-3" />
                   Booked
                 </Badge>
@@ -156,8 +158,8 @@ export function DashboardClassDetail({ classDetail }: { classDetail: ClassDefini
                       hour: "2-digit",
                       minute: "2-digit",
                     })
-                  : fmtTimeStr(cls.time)} ·{" "}
-                {session ? `${session.durationMinutes} min` : cls.duration}
+                  : fmtTimeStr(cls.time)}{" "}
+                · {session ? `${session.durationMinutes} min` : cls.duration}
               </span>
             </div>
             <div className="text-muted-foreground flex items-center gap-2">
@@ -166,7 +168,7 @@ export function DashboardClassDetail({ classDetail }: { classDetail: ClassDefini
             </div>
             <div className="text-muted-foreground flex items-center gap-2">
               <Video className="text-primary h-4 w-4" />
-              <span>Live online · 7-day replay</span>
+              <span>Live online</span>
             </div>
           </div>
 
@@ -198,7 +200,7 @@ export function DashboardClassDetail({ classDetail }: { classDetail: ClassDefini
             <ul className="space-y-3">
               {cls.whatToExpect.map((item, i) => (
                 <li key={i} className="flex items-start gap-3">
-                  <CheckCircle className="mt-1 h-4 w-4 flex-shrink-0 text-[#4B5B32]" />
+                  <CheckCircle className="text-brand-accent mt-1 h-4 w-4 flex-shrink-0" />
                   <span className="text-muted-foreground">{item}</span>
                 </li>
               ))}
@@ -211,7 +213,7 @@ export function DashboardClassDetail({ classDetail }: { classDetail: ClassDefini
             <ul className="space-y-3">
               {cls.whoItsFor.map((item, i) => (
                 <li key={i} className="flex items-start gap-3">
-                  <CheckCircle className="mt-1 h-4 w-4 flex-shrink-0 text-[#4B5B32]" />
+                  <CheckCircle className="text-brand-accent mt-1 h-4 w-4 flex-shrink-0" />
                   <span className="text-muted-foreground">{item}</span>
                 </li>
               ))}
@@ -235,9 +237,6 @@ export function DashboardClassDetail({ classDetail }: { classDetail: ClassDefini
               </p>
             </div>
           </div>
-
-          {/* Recordings */}
-          <ClassRecordingsSection classSlug={cls.slug} />
         </div>
 
         {/* Sidebar */}
@@ -258,8 +257,8 @@ export function DashboardClassDetail({ classDetail }: { classDetail: ClassDefini
             ) : booked ? (
               <>
                 <div className="space-y-3 text-center">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#4B5B32]/10">
-                    <CheckCircle className="h-7 w-7 text-[#4B5B32]" />
+                  <div className="bg-brand-accent/10 mx-auto flex h-14 w-14 items-center justify-center rounded-full">
+                    <CheckCircle className="text-brand-accent h-7 w-7" />
                   </div>
                   <h3 className="text-xl">You're Booked</h3>
                   <p className="text-muted-foreground text-sm">
@@ -293,7 +292,9 @@ export function DashboardClassDetail({ classDetail }: { classDetail: ClassDefini
                           await fetch(`/api/classes/sessions/${session.id}/booking`, {
                             method: "DELETE",
                           });
-                          setSession((prev) => (prev ? { ...prev, isBookedByCurrentUser: false } : prev));
+                          setSession((prev) =>
+                            prev ? { ...prev, isBookedByCurrentUser: false } : prev
+                          );
                           await refreshMembershipState();
                           return;
                         }
@@ -332,7 +333,7 @@ export function DashboardClassDetail({ classDetail }: { classDetail: ClassDefini
             <div className="border-t pt-4">
               <h4 className="text-muted-foreground mb-2 text-sm">Instructor</h4>
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#4B5B32]/10 text-sm text-[#4B5B32]">
+                <div className="bg-brand-accent/10 text-brand-accent flex h-10 w-10 items-center justify-center rounded-full text-sm">
                   ST
                 </div>
                 <div>

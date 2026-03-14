@@ -191,14 +191,19 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
 
       <section className="bg-secondary/20 py-12 md:py-16">
         <div className="container mx-auto max-w-4xl px-4">
-          <div className="space-y-6 rounded-lg bg-[#4B5B32] p-8 text-center text-[#FAFAF8] md:p-12">
-            <h3 className="text-2xl md:text-3xl">Ready to Build Strength That Works for Your Body?</h3>
+          <div className="bg-brand-accent text-brand-white space-y-6 rounded-lg p-8 text-center md:p-12">
+            <h3 className="text-2xl md:text-3xl">
+              Ready to Build Strength That Works for Your Body?
+            </h3>
             <p className="text-lg leading-relaxed opacity-90">
               Whether you&apos;re interested in group classes, 1:1 coaching, or just have a question
               I&apos;d love to hear from you.
             </p>
             <Link href="/contact">
-              <Button size="lg" className="bg-[#B5C49B] text-[#2E1F33] hover:bg-[#a5b48b]">
+              <Button
+                size="lg"
+                className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
+              >
                 Get in Touch
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>

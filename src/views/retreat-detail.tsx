@@ -65,14 +65,14 @@ export function RetreatDetailPage({
       </div>
 
       {/* Header */}
-      <section className="bg-[#2E1F33] py-12 text-[#FAFAF8] md:py-16">
+      <section className="bg-brand-dark text-brand-white py-12 md:py-16">
         <div className="container mx-auto max-w-5xl px-4">
-          <div className="mb-4 flex items-center gap-2 text-[#B5C49B]">
+          <div className="text-brand-accent-light mb-4 flex items-center gap-2">
             <MapPin className="h-5 w-5" />
             <span className="text-lg">{retreat.location}</span>
           </div>
           <h1 className="mb-4 text-4xl md:text-5xl">{retreat.title}</h1>
-          <p className="text-xl text-[#B5C49B]">{retreat.subtitle}</p>
+          <p className="text-brand-accent-light text-xl">{retreat.subtitle}</p>
         </div>
       </section>
 
@@ -183,7 +183,7 @@ export function RetreatDetailPage({
                     <span className="text-muted-foreground">per person</span>
                   </div>
                   {isEarlyBird && (
-                    <div className="inline-block rounded bg-[#B5C49B]/20 px-3 py-1 text-sm text-[#4B5B32]">
+                    <div className="bg-brand-accent-light/20 text-brand-accent inline-block rounded px-3 py-1 text-sm">
                       Early bird pricing until {fmtDate(retreat.earlyBirdDeadline)}
                     </div>
                   )}
@@ -251,7 +251,7 @@ export function RetreatDetailPage({
               </div>
 
               {/* Contact CTA */}
-              <div className="rounded-lg bg-[#4B5B32]/10 p-4 text-center">
+              <div className="bg-brand-accent/10 rounded-lg p-4 text-center">
                 <p className="text-muted-foreground mb-3 text-sm">Questions about this retreat?</p>
                 <Button variant="outline" size="sm" className="w-full">
                   Contact Shruti

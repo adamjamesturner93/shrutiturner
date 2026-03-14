@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { ClassSessionStatus } from "@prisma/client";
 import { requireAdminUser } from "@/lib/api/auth-user";
 import { listAdminClassSessions } from "@/lib/classes/session-service";
 
 export async function GET(request: Request) {
   try {
+    await connection();
     const adminUser = await requireAdminUser();
     const url = new URL(request.url);
     const from = url.searchParams.get("from");
@@ -15,9 +16,9 @@ export async function GET(request: Request) {
     const status: ClassSessionStatus | "all" =
       statusParam === "all"
         ? "all"
-        : (["scheduled", "live", "completed", "cancelled"].includes(statusParam)
-            ? (statusParam as ClassSessionStatus)
-            : "all");
+        : ["scheduled", "live", "completed", "cancelled"].includes(statusParam)
+          ? (statusParam as ClassSessionStatus)
+          : "all";
 
     const rows = await listAdminClassSessions({
       currentUserId: adminUser.id,

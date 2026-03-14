@@ -52,7 +52,9 @@ export async function POST(request: Request) {
     }
     if (
       error instanceof Error &&
-      ["CLASS_DEFINITION_NOT_FOUND", "INVALID_REPEAT_WEEKS", "DAILY_NOT_CONFIGURED"].includes(error.message)
+      ["CLASS_DEFINITION_NOT_FOUND", "INVALID_REPEAT_WEEKS", "DAILY_NOT_CONFIGURED"].includes(
+        error.message
+      )
     ) {
       return NextResponse.json({ message: error.message }, { status: 400 });
     }

@@ -101,6 +101,27 @@ export const PUBLIC_CONTENT_MODELS: ContentTypeDefinition[] = [
     ],
   },
   {
+    id: "themedWeekPromo",
+    name: "Themed Week Promo",
+    displayField: "title",
+    fields: [
+      { id: "title", name: "Title", type: "Symbol", required: true },
+      { id: "slug", name: "Slug", type: "Symbol", required: true, validations: [{ unique: true }] },
+      { id: "shortDescription", name: "Short Description", type: "Text", required: true },
+      { id: "audience", name: "Audience", type: "Text", required: true },
+      { id: "ctaHref", name: "CTA Href", type: "Symbol", required: true },
+      { id: "ctaLabel", name: "CTA Label", type: "Symbol", required: true },
+      {
+        id: "status",
+        name: "Status",
+        type: "Symbol",
+        validations: [{ in: ["upcoming", "current", "waitlist"] }],
+      },
+      { id: "sortOrder", name: "Sort Order", type: "Integer" },
+      { id: "active", name: "Active", type: "Boolean" },
+    ],
+  },
+  {
     id: "retreatVenue",
     name: "Retreat Venue",
     displayField: "name",

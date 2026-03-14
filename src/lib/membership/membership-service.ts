@@ -4,6 +4,7 @@ import {
   MembershipStatus,
   Prisma,
 } from "@prisma/client";
+import type Stripe from "stripe";
 import { db } from "@/lib/db";
 import { getStripeClient } from "@/lib/billing/stripe-client";
 import { CREDIT_BUNDLE_CONFIG, MEMBERSHIP_CONFIG } from "@/lib/billing/price-map";
@@ -11,11 +12,16 @@ import { getActiveCatalogItem } from "@/lib/billing/catalog-service";
 import { getCreditBalance, getCreditSummary } from "@/lib/credits/credit-service";
 import { getReferralBalancePence } from "@/lib/referrals/referral-discount-service";
 
+function getSubscriptionPeriodEnd(
+  subscription: { current_period_end?: number | null } | Stripe.Subscription
+) {
+  return Number((subscription as { current_period_end?: number | null }).current_period_end || 0);
+}
+
 export function getMembershipLabel(plan: MembershipPlan | null) {
-  if (!plan) return "No plan";
+  if (!plan) return "Pay as you Go";
   if (plan === "instructor") return "Unlimited (instructor)";
-  if (plan === "movewell") return "Move Well Membership";
-  return MEMBERSHIP_CONFIG[plan].label;
+  return "Move Well Membership";
 }
 
 export async function getCurrentMembership(userId: string) {
@@ -28,9 +34,9 @@ export async function getCurrentMembership(userId: string) {
   });
 }
 
-async function resolvePlanFromStripePriceId(stripePriceId?: string | null):
-  | { plan: "movewell"; billingInterval: MembershipBillingInterval }
-  | null {
+async function resolvePlanFromStripePriceId(
+  stripePriceId?: string | null
+): Promise<{ plan: "movewell"; billingInterval: MembershipBillingInterval } | null> {
   if (!stripePriceId) return null;
   if (stripePriceId === MEMBERSHIP_CONFIG.movewell.stripePriceIdMonthly) {
     return { plan: "movewell", billingInterval: "monthly" };
@@ -84,8 +90,8 @@ export async function syncMembershipFromStripe(userId: string) {
       return resolved ? { subscription, ...resolved, priceId } : null;
     })
   );
-  const known = knownRaw.filter(Boolean) as Array<{
-    subscription: { id: string; status: string; current_period_end: number; cancel_at_period_end: boolean };
+  const known = knownRaw.filter(Boolean) as unknown as Array<{
+    subscription: Stripe.Subscription;
     plan: "movewell";
     billingInterval: MembershipBillingInterval;
     priceId: string | null;
@@ -94,8 +100,7 @@ export async function syncMembershipFromStripe(userId: string) {
   if (known.length === 0) return null;
 
   known.sort(
-    (a, b) =>
-      Number(b.subscription.current_period_end || 0) - Number(a.subscription.current_period_end || 0)
+    (a, b) => getSubscriptionPeriodEnd(b.subscription) - getSubscriptionPeriodEnd(a.subscription)
   );
   const latest = known[0];
   const config = MEMBERSHIP_CONFIG[latest.plan];
@@ -113,11 +118,11 @@ export async function syncMembershipFromStripe(userId: string) {
     status: mapStripeStatus(latest.subscription.status),
     pricePence: resolvedPricePence,
     classesPerWeek: config.classesPerWeek,
-    renewsAt: new Date(latest.subscription.current_period_end * 1000),
+    renewsAt: new Date(getSubscriptionPeriodEnd(latest.subscription) * 1000),
     cancelAtPeriodEnd: Boolean(latest.subscription.cancel_at_period_end),
     stripeSubscriptionId: latest.subscription.id,
     stripePriceId: latest.priceId || undefined,
-    stripeCurrentPeriodEnd: new Date(latest.subscription.current_period_end * 1000),
+    stripeCurrentPeriodEnd: new Date(getSubscriptionPeriodEnd(latest.subscription) * 1000),
   };
 
   const upserted = latestDb
@@ -154,10 +159,15 @@ export async function getMembershipState(userId: string) {
         isAnnual: subscription.billingInterval === "annual",
         status: subscription.status,
         label: getMembershipLabel(subscription.plan),
-        renewalDate: subscription.renewsAt ? subscription.renewsAt.toISOString().slice(0, 10) : null,
+        renewalDate: subscription.renewsAt
+          ? subscription.renewsAt.toISOString().slice(0, 10)
+          : null,
         classesPerWeek: subscription.classesPerWeek,
         classesUsedThisWeek: subscription.classesUsedThisWeek,
-        classesRemaining: Math.max(0, subscription.classesPerWeek - subscription.classesUsedThisWeek),
+        classesRemaining: Math.max(
+          0,
+          subscription.classesPerWeek - subscription.classesUsedThisWeek
+        ),
         pricePence: subscription.pricePence,
         cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
       }
@@ -247,7 +257,8 @@ export async function startOrSwitchMembership({
     classesPerWeek: config.classesPerWeek,
     classesUsedThisWeek: 0,
     startsAt: new Date(),
-    renewsAt: nextPeriodEnd || new Date(Date.now() + (billingInterval === "annual" ? 365 : 30) * 86400000),
+    renewsAt:
+      nextPeriodEnd || new Date(Date.now() + (billingInterval === "annual" ? 365 : 30) * 86400000),
     cancelAtPeriodEnd: false,
     stripeSubscriptionId,
     stripePriceId,
@@ -274,7 +285,10 @@ export async function cancelMembership(userId: string) {
     where: { id: current.id },
     data: {
       cancelAtPeriodEnd: true,
-      status: current.status === MembershipStatus.past_due ? MembershipStatus.past_due : MembershipStatus.active,
+      status:
+        current.status === MembershipStatus.past_due
+          ? MembershipStatus.past_due
+          : MembershipStatus.active,
       endsAt: current.renewsAt || null,
     },
   });

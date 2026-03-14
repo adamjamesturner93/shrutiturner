@@ -18,11 +18,7 @@ import {
   Star,
   Crown,
 } from "lucide-react";
-import type {
-  BillingHistoryItemDto,
-  MembershipStateDto,
-  PublicPricingDto,
-} from "@/lib/api/types";
+import type { BillingHistoryItemDto, MembershipStateDto, PublicPricingDto } from "@/lib/api/types";
 
 type CheckoutResult = {
   checkoutUrl: string;
@@ -59,7 +55,8 @@ export function MembershipPage({
   const creditExpiryInfo = useMemo(() => {
     const summary = state?.credits.summary || [];
     const dated = summary.filter((item) => Boolean(item.expiresAt));
-    if (dated.length === 0) return { date: null as string | null, count: 0, daysLeft: null as number | null };
+    if (dated.length === 0)
+      return { date: null as string | null, count: 0, daysLeft: null as number | null };
 
     const earliest = dated
       .map((item) => item.expiresAt as string)
@@ -81,7 +78,9 @@ export function MembershipPage({
 
     if (!membershipRes.ok) throw new Error("Failed to load membership.");
     const membership = (await membershipRes.json()) as MembershipStateDto;
-    const billingHistory = historyRes.ok ? ((await historyRes.json()) as BillingHistoryItemDto[]) : [];
+    const billingHistory = historyRes.ok
+      ? ((await historyRes.json()) as BillingHistoryItemDto[])
+      : [];
     const publicPricing = pricingRes.ok ? ((await pricingRes.json()) as PublicPricingDto) : null;
 
     setState(membership);
@@ -187,16 +186,19 @@ export function MembershipPage({
   return (
     <DashboardLayout title="Membership & Credits - Private Studio">
       <h1 className="mb-2 text-3xl">Membership & Credits</h1>
-      <p className="text-muted-foreground mb-8">Manage your plan, purchase credits, and view billing.</p>
+      <p className="text-muted-foreground mb-8">
+        Manage your plan, purchase credits, and view billing.
+      </p>
 
       {error ? <p className="mb-4 text-sm text-red-600">{error}</p> : null}
 
       {referralBalance > 0 ? (
-        <div className="mb-8 flex items-start gap-3 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 p-4">
-          <Gift className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
+        <div className="border-brand-accent/20 bg-brand-accent/5 mb-8 flex items-start gap-3 rounded-lg border p-4">
+          <Gift className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
           <div>
             <p className="text-sm">
-              You have <span className="text-[#4B5B32]">£{referralBalance}</span> referral balance.
+              You have <span className="text-brand-accent">£{referralBalance}</span> referral
+              balance.
             </p>
             <p className="text-muted-foreground mt-1 text-xs">
               {state.membership ? "Applies to your next renewal" : "Applies to your next purchase"}
@@ -222,38 +224,44 @@ export function MembershipPage({
                   {state.membership.billingInterval === "annual" ? "year" : "month"}
                 </p>
               </div>
-              <Badge variant="outline" className="border-[#4B5B32]/30 bg-[#4B5B32]/5 text-[#4B5B32]">
+              <Badge
+                variant="outline"
+                className="border-brand-accent/30 bg-brand-accent/5 text-brand-accent"
+              >
                 {state.membership.plan === "movewell" ? (
                   <>
                     <Infinity className="mr-1 h-3 w-3" />
                     Unlimited classes
                   </>
                 ) : (
-                  <>{state.membership.classesRemaining}/{state.membership.classesPerWeek} classes left this week</>
+                  <>
+                    {state.membership.classesRemaining}/{state.membership.classesPerWeek} classes
+                    left this week
+                  </>
                 )}
               </Badge>
             </div>
 
             <div className="bg-secondary/20 rounded-lg p-4">
-              <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+              <div className="text-muted-foreground grid gap-2 text-sm sm:grid-cols-2">
                 <div className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-[#4B5B32]" />
+                  <Check className="text-brand-accent h-4 w-4" />
                   All class types included
                 </div>
                 <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-[#4B5B32]" />
+                  <Shield className="text-brand-accent h-4 w-4" />
                   No cancellation penalties
                 </div>
                 <div className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-[#4B5B32]" />
+                  <Check className="text-brand-accent h-4 w-4" />
                   No penalties for no-shows
                 </div>
                 <div className="flex items-center gap-2">
-                  <Star className="h-4 w-4 text-[#4B5B32]" />
+                  <Star className="text-brand-accent h-4 w-4" />
                   Early access to programmes
                 </div>
                 {state.membership.billingInterval === "annual" ? (
-                  <div className="flex items-center gap-2 rounded-md bg-[#4B5B32]/5 px-2 py-1.5 text-[#4B5B32] sm:col-span-2">
+                  <div className="bg-brand-accent/5 text-brand-accent flex items-center gap-2 rounded-md px-2 py-1.5 sm:col-span-2">
                     <Crown className="h-4 w-4" />
                     10% off all programmes & workshops
                   </div>
@@ -261,7 +269,12 @@ export function MembershipPage({
               </div>
             </div>
 
-            <Button variant="outline" size="sm" className="text-destructive" onClick={() => setShowCancel(true)}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive"
+              onClick={() => setShowCancel(true)}
+            >
               Cancel Membership
             </Button>
           </div>
@@ -269,23 +282,25 @@ export function MembershipPage({
       ) : (
         <div className="bg-background border-primary mb-8 rounded-lg border-2 p-6 md:p-8">
           <div className="mb-6 flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-[#4B5B32]" />
+            <Sparkles className="text-brand-accent h-5 w-5" />
             <h2 className="text-xl">Move Well Membership</h2>
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
             <div
               className={`space-y-4 rounded-lg border p-5 ${
-                preferredInterval === "monthly" ? "border-[#4B5B32]/30 bg-[#4B5B32]/5" : ""
+                preferredInterval === "monthly" ? "border-brand-accent/30 bg-brand-accent/5" : ""
               }`}
             >
               <div>
                 <p className="text-muted-foreground mb-1 text-xs">Monthly</p>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl text-[#9B6535]">
+                  <span className="text-bronze-text text-3xl">
                     {referralBalance > 0 ? (
                       <>
-                        <span className="text-muted-foreground mr-1 text-xl line-through">£{monthlyPrice}</span>
+                        <span className="text-muted-foreground mr-1 text-xl line-through">
+                          £{monthlyPrice}
+                        </span>
                         £{Math.max(0, monthlyPrice - referralBalance)}
                       </>
                     ) : (
@@ -295,7 +310,7 @@ export function MembershipPage({
                   <span className="text-muted-foreground text-sm">/ month</span>
                 </div>
                 {referralBalance > 0 ? (
-                  <p className="mt-1 text-xs text-[#4B5B32]">
+                  <p className="text-brand-accent mt-1 text-xs">
                     £{referralBalance} referral discount on first month
                   </p>
                 ) : null}
@@ -303,15 +318,15 @@ export function MembershipPage({
 
               <ul className="space-y-2 text-sm">
                 <li className="flex items-center gap-2">
-                  <Infinity className="h-4 w-4 text-[#4B5B32]" />
+                  <Infinity className="text-brand-accent h-4 w-4" />
                   Unlimited classes
                 </li>
                 <li className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-[#4B5B32]" />
+                  <Shield className="text-brand-accent h-4 w-4" />
                   Penalty-free cancellation
                 </li>
                 <li className="flex items-center gap-2">
-                  <Star className="h-4 w-4 text-[#4B5B32]" />
+                  <Star className="text-brand-accent h-4 w-4" />
                   Early access to programmes
                 </li>
               </ul>
@@ -330,49 +345,49 @@ export function MembershipPage({
             <div
               className={`relative space-y-4 rounded-lg border-2 p-5 ${
                 preferredInterval === "annual"
-                  ? "border-[#4B5B32] bg-[#4B5B32]/5"
-                  : "border-[#4B5B32]/30"
+                  ? "border-brand-accent bg-brand-accent/5"
+                  : "border-brand-accent/30"
               }`}
             >
               <div className="absolute -top-3 right-4">
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#4B5B32] px-2.5 py-1 text-[10px] text-white">
+                <span className="bg-brand-accent text-micro inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-white">
                   <Crown className="h-3 w-3" />
                   Recommended
                 </span>
               </div>
 
               <div>
-                <p className="mb-1 text-xs text-[#4B5B32]">Annual</p>
+                <p className="text-brand-accent mb-1 text-xs">Annual</p>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl text-[#9B6535]">£{annualPrice}</span>
+                  <span className="text-bronze-text text-3xl">£{annualPrice}</span>
                   <span className="text-muted-foreground text-sm">/ year</span>
                 </div>
-                <p className="mt-1 text-xs text-[#4B5B32]">
+                <p className="text-brand-accent mt-1 text-xs">
                   Save £{Math.max(0, monthlyPrice * 12 - annualPrice)} - 2 months free
                 </p>
               </div>
 
               <ul className="space-y-2 text-sm">
                 <li className="flex items-center gap-2">
-                  <Infinity className="h-4 w-4 text-[#4B5B32]" />
+                  <Infinity className="text-brand-accent h-4 w-4" />
                   Unlimited classes
                 </li>
                 <li className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-[#4B5B32]" />
+                  <Shield className="text-brand-accent h-4 w-4" />
                   Penalty-free cancellation
                 </li>
                 <li className="flex items-center gap-2">
-                  <Star className="h-4 w-4 text-[#4B5B32]" />
+                  <Star className="text-brand-accent h-4 w-4" />
                   Early access to programmes
                 </li>
-                <li className="-mx-1 flex items-center gap-2 rounded bg-[#4B5B32]/5 px-1 py-1 text-[#4B5B32]">
+                <li className="bg-brand-accent/5 text-brand-accent -mx-1 flex items-center gap-2 rounded px-1 py-1">
                   <Crown className="h-4 w-4" />
                   10% off programmes & workshops
                 </li>
               </ul>
 
               <Button
-                className="w-full bg-[#4B5B32] text-white hover:bg-[#4B5B32]/90"
+                className="bg-brand-accent hover:bg-brand-accent/90 w-full text-white"
                 onClick={() => void startMembershipCheckout("annual")}
                 disabled={working}
               >
@@ -399,11 +414,14 @@ export function MembershipPage({
             </p>
             {totalCredits > 0 ? (
               <p className="text-muted-foreground text-sm">
-                You have {totalCredits} credit{totalCredits !== 1 ? "s" : ""} that will remain available.
+                You have {totalCredits} credit{totalCredits !== 1 ? "s" : ""} that will remain
+                available.
               </p>
             ) : null}
             {referralBalance > 0 ? (
-              <p className="text-muted-foreground text-sm">Your £{referralBalance} referral balance will carry over.</p>
+              <p className="text-muted-foreground text-sm">
+                Your £{referralBalance} referral balance will carry over.
+              </p>
             ) : null}
             <div className="flex flex-col gap-2">
               <Button
@@ -416,12 +434,19 @@ export function MembershipPage({
                 }}
                 disabled={working}
               >
-                {totalCredits === 0
-                  ? <>Cancel & Switch to 3-Class Pack ({priceWithDiscount(credits3Price)})</>
-                  : "Cancel Membership"}
+                {totalCredits === 0 ? (
+                  <>Cancel & Switch to 3-Class Pack ({priceWithDiscount(credits3Price)})</>
+                ) : (
+                  "Cancel Membership"
+                )}
               </Button>
               {totalCredits === 0 ? (
-                <Button variant="outline" className="text-destructive" onClick={() => void cancelMembership()} disabled={working}>
+                <Button
+                  variant="outline"
+                  className="text-destructive"
+                  onClick={() => void cancelMembership()}
+                  disabled={working}
+                >
                   Cancel without replacement
                 </Button>
               ) : null}
@@ -442,11 +467,13 @@ export function MembershipPage({
             </div>
 
             <p className="text-muted-foreground mb-4 text-sm">
-              You have {totalCredits} credit{totalCredits !== 1 ? "s" : ""} from before your membership.
-              These still expire on their original date.
+              You have {totalCredits} credit{totalCredits !== 1 ? "s" : ""} from before your
+              membership. These still expire on their original date.
             </p>
 
-            {creditExpiryInfo.date && creditExpiryInfo.daysLeft !== null && creditExpiryInfo.daysLeft <= 14 ? (
+            {creditExpiryInfo.date &&
+            creditExpiryInfo.daysLeft !== null &&
+            creditExpiryInfo.daysLeft <= 14 ? (
               <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
                 <p className="text-sm text-amber-800">
@@ -463,7 +490,10 @@ export function MembershipPage({
 
             <div className="space-y-3">
               {state.credits.summary.map((group) => (
-                <div key={group.sourceId} className="flex items-center justify-between border-b py-3 text-sm last:border-0">
+                <div
+                  key={group.sourceId}
+                  className="flex items-center justify-between border-b py-3 text-sm last:border-0"
+                >
                   <div className="flex items-center gap-3">
                     <CreditCard className="text-muted-foreground h-4 w-4 flex-shrink-0" />
                     <div>
@@ -495,7 +525,9 @@ export function MembershipPage({
             <h2 className="text-xl">Class Credits</h2>
           </div>
 
-          {creditExpiryInfo.date && creditExpiryInfo.daysLeft !== null && creditExpiryInfo.daysLeft <= 14 ? (
+          {creditExpiryInfo.date &&
+          creditExpiryInfo.daysLeft !== null &&
+          creditExpiryInfo.daysLeft <= 14 ? (
             <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
               <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
               <p className="text-sm text-amber-800">
@@ -513,7 +545,10 @@ export function MembershipPage({
           {state.credits.summary.length > 0 ? (
             <div className="mb-6 space-y-3">
               {state.credits.summary.map((group) => (
-                <div key={group.sourceId} className="flex items-center justify-between border-b py-3 text-sm last:border-0">
+                <div
+                  key={group.sourceId}
+                  className="flex items-center justify-between border-b py-3 text-sm last:border-0"
+                >
                   <div className="flex items-center gap-3">
                     <CreditCard className="text-muted-foreground h-4 w-4 flex-shrink-0" />
                     <div>
@@ -545,13 +580,28 @@ export function MembershipPage({
               Purchase credits to attend any class. Cancel 4+ hours before to get your credit back.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Button variant="outline" size="sm" onClick={() => void startCreditsCheckout(1)} disabled={working}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void startCreditsCheckout(1)}
+                disabled={working}
+              >
                 Single ({priceWithDiscount(credits1Price)})
               </Button>
-              <Button variant="outline" size="sm" onClick={() => void startCreditsCheckout(3)} disabled={working}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void startCreditsCheckout(3)}
+                disabled={working}
+              >
                 3-Pack ({priceWithDiscount(credits3Price)})
               </Button>
-              <Button variant="outline" size="sm" onClick={() => void startCreditsCheckout(10)} disabled={working}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void startCreditsCheckout(10)}
+                disabled={working}
+              >
                 10-Pack ({priceWithDiscount(credits10Price)})
               </Button>
             </div>
@@ -569,7 +619,10 @@ export function MembershipPage({
             <p className="text-muted-foreground text-sm">No billing events yet.</p>
           ) : (
             history.map((item) => (
-              <div key={item.id} className="flex items-center justify-between border-b py-2 last:border-0">
+              <div
+                key={item.id}
+                className="flex items-center justify-between border-b py-2 last:border-0"
+              >
                 <span className="text-muted-foreground">{item.description}</span>
                 <span>£{(item.amountPence / 100).toFixed(2)}</span>
               </div>

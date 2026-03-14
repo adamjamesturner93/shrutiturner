@@ -59,12 +59,11 @@ export default function RetreatRemainderEmail({
         A friendly reminder about your remaining payment.
       </Text>
 
-      <Text style={bodyTextStyle}>
-        Hi {firstName},
-      </Text>
+      <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
       <Text style={bodyTextStyle}>
-        Just a gentle reminder that the remaining balance for your upcoming retreat is due soon. {"Here's"} a summary:
+        Just a gentle reminder that the remaining balance for your upcoming retreat is due soon.{" "}
+        {"Here's"} a summary:
       </Text>
 
       {/* Retreat Summary */}
@@ -196,7 +195,8 @@ export default function RetreatRemainderEmail({
                 fontSize: "16px",
                 fontWeight: "500",
                 margin: "0",
-                letterSpacing: item.label === "Sort code" || item.label === "Account number" ? "0.06em" : "0",
+                letterSpacing:
+                  item.label === "Sort code" || item.label === "Account number" ? "0.06em" : "0",
               }}
             >
               {item.value}
@@ -222,13 +222,17 @@ export default function RetreatRemainderEmail({
               lineHeight: "1.5",
             }}
           >
-            Please use your payment reference ({paymentReference}) so I can match your payment to your booking.
+            Please use your payment reference ({paymentReference}) so I can match your payment to
+            your booking.
           </Text>
         </Section>
       </Section>
 
       <Text style={bodyTextStyle}>
-        {"If you've already made the payment, you can safely disregard this email. Otherwise, please ensure the balance is settled by"} <strong>{dueDate}</strong> to keep your place.
+        {
+          "If you've already made the payment, you can safely disregard this email. Otherwise, please ensure the balance is settled by"
+        }{" "}
+        <strong>{dueDate}</strong> to keep your place.
       </Text>
 
       <Section style={{ textAlign: "center" as const, marginBottom: "8px" }}>
@@ -240,7 +244,8 @@ export default function RetreatRemainderEmail({
       <Hr style={dividerStyle} />
 
       <Text style={mutedTextStyle}>
-        If you have any questions or need to discuss alternative payment arrangements, please {"don't"} hesitate to reply to this email.
+        If you have any questions or need to discuss alternative payment arrangements, please{" "}
+        {"don't"} hesitate to reply to this email.
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>

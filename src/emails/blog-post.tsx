@@ -33,9 +33,7 @@ export default function BlogPostEmail({
 }: BlogPostEmailProps) {
   return (
     <EmailLayout preview={`New on the blog: ${postTitle}`}>
-      <Text style={{ ...bodyTextStyle, marginBottom: "24px" }}>
-        Hi {firstName},
-      </Text>
+      <Text style={{ ...bodyTextStyle, marginBottom: "24px" }}>Hi {firstName},</Text>
 
       <Text style={bodyTextStyle}>
         {"There\u2019s a new post on the blog I thought you\u2019d enjoy."}
@@ -136,7 +134,8 @@ export default function BlogPostEmail({
       <Hr style={dividerStyle} />
 
       <Text style={{ ...mutedTextStyle, fontSize: "14px" }}>
-        If something resonated with you, feel free to reply to this email. I always love hearing from you.
+        If something resonated with you, feel free to reply to this email. I always love hearing
+        from you.
       </Text>
 
       <Text
@@ -147,10 +146,7 @@ export default function BlogPostEmail({
         }}
       >
         {"You can also "}
-        <Link
-          href={blogUrl}
-          style={{ color: colors.brandAccent, textDecoration: "underline" }}
-        >
+        <Link href={blogUrl} style={{ color: colors.brandAccent, textDecoration: "underline" }}>
           browse all articles
         </Link>
         {" on the blog."}

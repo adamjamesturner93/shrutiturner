@@ -28,6 +28,7 @@ function getCacheTags(contentType?: string): string[] {
 
   if (contentType === "blogPost") return [...base, "content:blog"];
   if (contentType === "classDefinition") return [...base, "content:classes", "content:schedule"];
+  if (contentType === "themedWeekPromo") return [...base, "content:classes"];
   if (contentType === "instructorProfile") return [...base, "content:classes", "content:schedule"];
   if (contentType === "retreatTemplate" || contentType === "retreatVenue") {
     return [...base, "content:retreats"];
@@ -59,16 +60,21 @@ async function cdaFetch<T>(
   const qs = toQueryString(query);
   const url = `https://cdn.contentful.com/spaces/${cfg.spaceId}/environments/${cfg.environment}${path}${qs ? `?${qs}` : ""}`;
 
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${cfg.deliveryToken}`,
-      "Content-Type": "application/json",
-    },
-    next: {
-      revalidate: 60,
-      tags: getCacheTags(typeof query.content_type === "string" ? query.content_type : undefined),
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${cfg.deliveryToken}`,
+        "Content-Type": "application/json",
+      },
+      next: {
+        revalidate: 60,
+        tags: getCacheTags(typeof query.content_type === "string" ? query.content_type : undefined),
+      },
+    });
+  } catch {
+    return null;
+  }
 
   if (!res.ok) {
     return null;

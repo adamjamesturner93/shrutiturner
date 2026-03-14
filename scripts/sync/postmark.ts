@@ -12,7 +12,10 @@ function loadEnvFile(filePath: string) {
     const idx = trimmed.indexOf("=");
     if (idx < 0) continue;
     const key = trimmed.slice(0, idx).trim();
-    const value = trimmed.slice(idx + 1).trim().replace(/^['"]|['"]$/g, "");
+    const value = trimmed
+      .slice(idx + 1)
+      .trim()
+      .replace(/^['"]|['"]$/g, "");
     if (process.env[key] === undefined) process.env[key] = value;
   }
 }
@@ -31,6 +34,17 @@ type PostmarkMessage = {
   Tag?: string;
 };
 
+type PostmarkMessagesResponse = {
+  Messages?: PostmarkMessage[];
+};
+
+type PostmarkMessagesClient = {
+  getOutboundMessages: (input: {
+    count: number;
+    offset: number;
+  }) => Promise<PostmarkMessagesResponse>;
+};
+
 async function main() {
   loadEnv();
   const token = process.env.POSTMARK_API_TOKEN;
@@ -42,12 +56,12 @@ async function main() {
   const client = new ServerClient(token);
   const count = Number(process.env.POSTMARK_SYNC_COUNT || "50");
 
-  const result = await (client as any).getOutboundMessages({
+  const result = await (client as unknown as PostmarkMessagesClient).getOutboundMessages({
     count,
     offset: 0,
   });
 
-  const messages = (result?.Messages || result?.messages || []) as PostmarkMessage[];
+  const messages = (result?.Messages || []) as PostmarkMessage[];
   let processed = 0;
 
   for (const message of messages) {

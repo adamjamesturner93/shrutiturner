@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 
 declare global {
   interface Window {
@@ -20,12 +20,9 @@ interface TurnstileWidgetProps {
 export function TurnstileWidget({ onTokenChange, theme = "auto" }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
-  const siteKey =
-    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA";
-  const containerId = useMemo(
-    () => `turnstile-${Math.random().toString(36).slice(2, 10)}`,
-    []
-  );
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA";
+  const reactId = useId();
+  const containerId = `turnstile-${reactId.replace(/[:]/g, "")}`;
 
   useEffect(() => {
     let cancelled = false;

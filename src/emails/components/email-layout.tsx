@@ -85,21 +85,24 @@ export function EmailLayout({
           </Section>
 
           {/* Accent stripe */}
-          <Section style={{ backgroundColor: colors.brandAccent, height: "3px", lineHeight: "0", fontSize: "0" }}>
+          <Section
+            style={{
+              backgroundColor: colors.brandAccent,
+              height: "3px",
+              lineHeight: "0",
+              fontSize: "0",
+            }}
+          >
             <Text style={{ margin: "0", fontSize: "0", lineHeight: "0" }}>{"\u200B"}</Text>
           </Section>
 
           {/* Content */}
-          <Section style={{ padding: "40px 40px 32px" }}>
-            {children}
-          </Section>
+          <Section style={{ padding: "40px 40px 32px" }}>{children}</Section>
 
           {/* Footer */}
           <Section style={{ padding: "0 40px 40px" }}>
             <Hr style={dividerStyle} />
-            <Text style={footerTextStyle}>
-              Shruti Turner | Private Studio
-            </Text>
+            <Text style={footerTextStyle}>Shruti Turner | Private Studio</Text>
             <Text style={footerTextStyle}>
               <Link
                 href={websiteUrl}
@@ -132,10 +135,7 @@ export function EmailLayout({
             >
               {"You're receiving this because you signed up at shrutiturner.com."}
               <br />
-              <Link
-                href={unsubscribeUrl}
-                style={{ color: "#a0a098", textDecoration: "underline" }}
-              >
+              <Link href={unsubscribeUrl} style={{ color: "#a0a098", textDecoration: "underline" }}>
                 Unsubscribe
               </Link>
             </Text>

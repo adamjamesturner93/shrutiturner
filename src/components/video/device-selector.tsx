@@ -1,6 +1,14 @@
-import { useState } from "react";
-import { X, Mic, Video, Volume2, Check, Monitor } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, Mic, Video, Volume2, X } from "lucide-react";
 import { Button } from "../ui/button";
+import {
+  attachTrack,
+  getPreviewStream,
+  listMediaDevices,
+  loadSavedDeviceSettings,
+  saveDeviceSettings,
+  stopMediaStream,
+} from "@/lib/daily/client";
 
 interface DeviceSelectorProps {
   onClose: () => void;
@@ -11,38 +19,209 @@ interface DeviceOption {
   label: string;
 }
 
-const MOCK_CAMERAS: DeviceOption[] = [
-  { id: "cam1", label: "FaceTime HD Camera" },
-  { id: "cam2", label: "External USB Webcam" },
-];
-
-const MOCK_MICS: DeviceOption[] = [
-  { id: "mic1", label: "Built-in Microphone" },
-  { id: "mic2", label: "External USB Microphone" },
-  { id: "mic3", label: "AirPods Pro" },
-];
-
-const MOCK_SPEAKERS: DeviceOption[] = [
-  { id: "spk1", label: "Built-in Speakers" },
-  { id: "spk2", label: "External Monitor Speakers" },
-  { id: "spk3", label: "AirPods Pro" },
-];
+function toDeviceLabel(kind: "camera" | "microphone" | "speaker", label: string, index: number) {
+  if (label.trim()) return label;
+  if (kind === "camera") return `Camera ${index + 1}`;
+  if (kind === "microphone") return `Microphone ${index + 1}`;
+  return `Speaker ${index + 1}`;
+}
 
 export function DeviceSelector({ onClose }: DeviceSelectorProps) {
-  const [selectedCamera, setSelectedCamera] = useState("cam1");
-  const [selectedMic, setSelectedMic] = useState("mic1");
-  const [selectedSpeaker, setSelectedSpeaker] = useState("spk1");
-  const [testingMic, setTestingMic] = useState(false);
+  const initialSettings = useMemo(() => loadSavedDeviceSettings(), []);
+  const [selectedCamera, setSelectedCamera] = useState(initialSettings.cameraId);
+  const [selectedMic, setSelectedMic] = useState(initialSettings.micId);
+  const [selectedSpeaker, setSelectedSpeaker] = useState(initialSettings.speakerId);
+  const [cameras, setCameras] = useState<DeviceOption[]>([]);
+  const [mics, setMics] = useState<DeviceOption[]>([]);
+  const [speakers, setSpeakers] = useState<DeviceOption[]>([]);
+  const [permissionError, setPermissionError] = useState("");
+  const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
+  const [micLevel, setMicLevel] = useState(0);
   const [testingSpeaker, setTestingSpeaker] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const displayMicLevel = previewStream?.getAudioTracks().length ? micLevel : 0;
+
+  useEffect(() => {
+    let active = true;
+
+    const loadDevices = async () => {
+      const devices = await listMediaDevices();
+      if (!active) return;
+
+      const nextCameras = devices
+        .filter((device) => device.kind === "videoinput")
+        .map((device, index) => ({
+          id: device.deviceId,
+          label: toDeviceLabel("camera", device.label, index),
+        }));
+      const nextMics = devices
+        .filter((device) => device.kind === "audioinput")
+        .map((device, index) => ({
+          id: device.deviceId,
+          label: toDeviceLabel("microphone", device.label, index),
+        }));
+      const nextSpeakers = devices
+        .filter((device) => device.kind === "audiooutput")
+        .map((device, index) => ({
+          id: device.deviceId,
+          label: toDeviceLabel("speaker", device.label, index),
+        }));
+
+      setCameras(nextCameras);
+      setMics(nextMics);
+      setSpeakers(nextSpeakers);
+      setSelectedCamera((current) => current || nextCameras[0]?.id || "");
+      setSelectedMic((current) => current || nextMics[0]?.id || "");
+      setSelectedSpeaker((current) => current || nextSpeakers[0]?.id || "");
+    };
+
+    void loadDevices();
+    navigator.mediaDevices?.addEventListener?.("devicechange", loadDevices);
+
+    return () => {
+      active = false;
+      navigator.mediaDevices?.removeEventListener?.("devicechange", loadDevices);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const settings = {
+      cameraId: selectedCamera,
+      micId: selectedMic,
+      speakerId: selectedSpeaker,
+    };
+
+    void (async () => {
+      try {
+        const nextStream = await getPreviewStream(settings);
+        if (!active) {
+          stopMediaStream(nextStream);
+          return;
+        }
+        setPermissionError("");
+        setPreviewStream((previous) => {
+          stopMediaStream(previous);
+          return nextStream;
+        });
+      } catch (error) {
+        if (!active) return;
+        setPermissionError(
+          error instanceof Error ? error.message : "Unable to access media devices"
+        );
+        setPreviewStream((previous) => {
+          stopMediaStream(previous);
+          return null;
+        });
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [selectedCamera, selectedMic, selectedSpeaker]);
+
+  useEffect(() => {
+    attachTrack(videoRef.current, previewStream?.getVideoTracks()[0] || null, true);
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    };
+  }, [previewStream]);
+
+  useEffect(() => {
+    if (!previewStream?.getAudioTracks().length) {
+      return;
+    }
+
+    const AudioContextCtor =
+      window.AudioContext ||
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) {
+      return;
+    }
+
+    const context = new AudioContextCtor();
+    const source = context.createMediaStreamSource(previewStream);
+    const analyser = context.createAnalyser();
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    source.connect(analyser);
+
+    let frameId = 0;
+    const tick = () => {
+      analyser.getByteFrequencyData(data);
+      const average = data.reduce((sum, value) => sum + value, 0) / Math.max(1, data.length);
+      setMicLevel(Math.min(100, Math.round((average / 255) * 100)));
+      frameId = window.requestAnimationFrame(tick);
+    };
+    tick();
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      void context.close();
+    };
+  }, [previewStream]);
+
+  useEffect(() => {
+    return () => stopMediaStream(previewStream);
+  }, [previewStream]);
+
+  const handleDone = () => {
+    saveDeviceSettings({
+      cameraId: selectedCamera,
+      micId: selectedMic,
+      speakerId: selectedSpeaker,
+    });
+    onClose();
+  };
+
+  const handleSpeakerTest = async () => {
+    const AudioContextCtor =
+      window.AudioContext ||
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) return;
+
+    setTestingSpeaker(true);
+    const context = new AudioContextCtor();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const destination = context.createMediaStreamDestination();
+    const element = document.createElement("audio");
+    element.autoplay = true;
+    element.srcObject = destination.stream;
+
+    if ("setSinkId" in element && selectedSpeaker) {
+      try {
+        await (
+          element as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }
+        ).setSinkId?.(selectedSpeaker);
+      } catch {
+        // Fallback to default output.
+      }
+    }
+
+    oscillator.type = "sine";
+    oscillator.frequency.value = 620;
+    gain.gain.value = 0.04;
+    oscillator.connect(gain);
+    gain.connect(destination);
+    gain.connect(context.destination);
+    oscillator.start();
+    await element.play().catch(() => undefined);
+
+    window.setTimeout(() => {
+      oscillator.stop();
+      void context.close();
+      setTestingSpeaker(false);
+    }, 900);
+  };
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
 
-      {/* Modal */}
-      <div className="relative flex max-h-[85vh] w-full max-w-sm flex-col rounded-xl border border-white/10 bg-[#252540] shadow-2xl">
-        {/* Header */}
+      <div className="bg-video-panel relative flex max-h-[85vh] w-full max-w-sm flex-col rounded-xl border border-white/10 shadow-2xl">
         <div className="flex flex-shrink-0 items-center justify-between border-b border-white/10 p-4">
           <h2 className="text-sm text-white">Device Settings</h2>
           <button onClick={onClose} className="text-white/50 transition-colors hover:text-white">
@@ -51,87 +230,78 @@ export function DeviceSelector({ onClose }: DeviceSelectorProps) {
         </div>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
-          {/* Camera */}
           <DeviceSection
             icon={Video}
             label="Camera"
-            options={MOCK_CAMERAS}
+            options={cameras}
             selected={selectedCamera}
             onSelect={setSelectedCamera}
           />
 
-          {/* Camera preview */}
-          <div className="flex h-28 items-center justify-center overflow-hidden rounded-lg bg-[#1a1a2e]">
-            <div className="space-y-2 text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#4B5B32] text-lg text-white">
-                YO
-              </div>
-              <p className="text-xs text-white/40">Camera preview</p>
-            </div>
-          </div>
-
-          {/* Microphone */}
-          <DeviceSection
-            icon={Mic}
-            label="Microphone"
-            options={MOCK_MICS}
-            selected={selectedMic}
-            onSelect={setSelectedMic}
-          />
-
-          {/* Mic test */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                setTestingMic(true);
-                setTimeout(() => setTestingMic(false), 2000);
-              }}
-              className="rounded-md bg-white/5 px-3 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/10"
-            >
-              {testingMic ? "Listening..." : "Test microphone"}
-            </button>
-            {testingMic && (
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div
-                    key={i}
-                    className="w-1 animate-pulse rounded-full bg-[#4B5B32]"
-                    style={{
-                      height: `${8 + Math.random() * 12}px`,
-                      animationDelay: `${i * 100}ms`,
-                    }}
-                  />
-                ))}
+          <div className="bg-video-control overflow-hidden rounded-lg">
+            {previewStream?.getVideoTracks().length ? (
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="h-32 w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-32 items-center justify-center text-xs text-white/40">
+                {permissionError ? "Camera permission needed" : "No camera preview available"}
               </div>
             )}
           </div>
 
-          {/* Speaker */}
+          <DeviceSection
+            icon={Mic}
+            label="Microphone"
+            options={mics}
+            selected={selectedMic}
+            onSelect={setSelectedMic}
+          />
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs text-white/60">
+              <span>Mic level</span>
+              <span>{displayMicLevel}%</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-white/10">
+              <div
+                className="bg-brand-accent h-full rounded-full transition-[width]"
+                style={{ width: `${displayMicLevel}%` }}
+              />
+            </div>
+          </div>
+
           <DeviceSection
             icon={Volume2}
             label="Speaker"
-            options={MOCK_SPEAKERS}
+            options={speakers}
             selected={selectedSpeaker}
             onSelect={setSelectedSpeaker}
           />
 
-          {/* Speaker test */}
           <button
-            onClick={() => {
-              setTestingSpeaker(true);
-              setTimeout(() => setTestingSpeaker(false), 2000);
-            }}
+            onClick={() => void handleSpeakerTest()}
             className="rounded-md bg-white/5 px-3 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/10"
           >
-            {testingSpeaker ? "Playing test sound..." : "Test speaker"}
+            {testingSpeaker ? "Playing test tone..." : "Test speaker"}
           </button>
+
+          {permissionError ? (
+            <div className="rounded-lg border border-amber-400/20 bg-amber-500/10 p-3 text-xs text-amber-100">
+              Camera or microphone access is blocked. Allow permissions in the browser to test
+              devices.
+            </div>
+          ) : null}
         </div>
 
-        {/* Footer */}
         <div className="flex-shrink-0 border-t border-white/10 p-4">
           <Button
-            onClick={onClose}
-            className="w-full bg-[#4B5B32] text-white hover:bg-[#4B5B32]/90"
+            onClick={handleDone}
+            className="bg-brand-accent hover:bg-brand-accent/90 w-full text-white"
           >
             Done
           </Button>
@@ -161,18 +331,23 @@ function DeviceSection({
         <span className="text-xs tracking-wider text-white/50 uppercase">{label}</span>
       </div>
       <div className="space-y-1">
-        {options.map((opt) => (
+        {options.length === 0 && (
+          <div className="rounded-md border border-white/5 bg-white/5 px-3 py-2 text-sm text-white/40">
+            No {label.toLowerCase()}s detected
+          </div>
+        )}
+        {options.map((option) => (
           <button
-            key={opt.id}
-            onClick={() => onSelect(opt.id)}
+            key={option.id}
+            onClick={() => onSelect(option.id)}
             className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition-colors ${
-              selected === opt.id
-                ? "bg-[#4B5B32]/20 text-[#B5C49B]"
+              selected === option.id
+                ? "bg-brand-accent/20 text-brand-accent-light"
                 : "text-white/70 hover:bg-white/5"
             }`}
           >
-            <span className="truncate">{opt.label}</span>
-            {selected === opt.id && <Check className="h-4 w-4 flex-shrink-0" />}
+            <span className="truncate">{option.label}</span>
+            {selected === option.id ? <Check className="h-4 w-4 flex-shrink-0" /> : null}
           </button>
         ))}
       </div>

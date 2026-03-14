@@ -28,11 +28,7 @@ function getScheduleWindow(weekOffset: number) {
   return { start, end };
 }
 
-export default async function Page({
-  searchParams,
-}: {
-  searchParams: Promise<{ wk?: string }>;
-}) {
+export default async function Page({ searchParams }: { searchParams: Promise<{ wk?: string }> }) {
   const params = await searchParams;
   const parsed = Number.parseInt(params.wk || "0", 10);
   const weekOffset = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;

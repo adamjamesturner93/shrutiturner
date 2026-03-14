@@ -54,33 +54,37 @@ export function SubscribePage() {
         <div className="mx-auto w-full max-w-md space-y-12">
           <div className="space-y-4 text-center">
             <div className="relative inline-block">
-              <div className="relative z-10 mx-auto h-24 w-24 overflow-hidden rounded-full border-4 border-background shadow-md md:h-28 md:w-28">
+              <div className="border-background relative z-10 mx-auto h-24 w-24 overflow-hidden rounded-full border-4 shadow-md md:h-28 md:w-28">
                 <ImageWithFallback
                   src="https://images.unsplash.com/photo-1655249481446-25d575f1c054?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbiUyMHBvcnRyYWl0JTIwaGVhZHNob3R8ZW58MXx8fHwxNzcxNDc0MjI2fDA&ixlib=rb-4.1.0&q=80&w=1080"
                   alt="Shruti Turner profile"
                   className="h-full w-full object-cover"
                 />
               </div>
-              <div className="absolute inset-0 z-0 scale-125 rounded-full bg-[#B5C49B]/20 blur-xl" />
+              <div className="bg-brand-accent-light/20 absolute inset-0 z-0 scale-125 rounded-full blur-xl" />
             </div>
 
             <div className="space-y-1">
               <h1 className="text-foreground text-2xl tracking-tight md:text-3xl">Shruti Turner</h1>
-              <p className="font-medium text-[#849b5c]">PhD Biomechanics • Adaptive Coach</p>
+              <p className="text-brand-accent-muted font-medium">
+                PhD Biomechanics • Adaptive Coach
+              </p>
             </div>
 
             <p className="text-muted-foreground px-4 pt-2 text-sm md:text-base">
-              I help people with chronic illness and hypermobility build resilient bodies without burnout.
+              I help people with chronic illness and hypermobility build resilient bodies without
+              burnout.
             </p>
           </div>
 
-          <div className="relative overflow-hidden rounded-2xl bg-[#2E1F33] p-6 text-[#FAFAF8] shadow-xl">
-            <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-[#B5C49B]/10 blur-3xl" />
+          <div className="bg-brand-dark text-brand-white relative overflow-hidden rounded-2xl p-6 shadow-xl">
+            <div className="bg-brand-accent-light/10 absolute -top-10 -right-10 h-32 w-32 rounded-full blur-3xl" />
             <div className="relative z-10 space-y-4">
               <div className="mb-6 space-y-2 text-center">
                 <h2 className="text-xl tracking-tight">The Weekly Move</h2>
-                <p className="text-sm leading-relaxed text-[#FAFAF8]/80">
-                  Join 2,000+ others getting weekly ideas on mobility, movement, and training longevity.
+                <p className="text-brand-white/80 text-sm leading-relaxed">
+                  Join 2,000+ others getting weekly ideas on mobility, movement, and training
+                  longevity.
                 </p>
               </div>
 
@@ -93,7 +97,7 @@ export function SubscribePage() {
                     placeholder="your.email@example.com"
                     required
                     aria-label="Email address"
-                    className="h-12 border-none bg-[#FAFAF8] text-base text-[#2E1F33] placeholder:text-[#2E1F33]/40"
+                    className="bg-brand-white text-brand-dark placeholder:text-brand-dark/40 h-12 border-none text-base"
                   />
 
                   <label className="group flex cursor-pointer items-start gap-3">
@@ -102,10 +106,11 @@ export function SubscribePage() {
                       required
                       checked={consent}
                       onChange={(e) => setConsent(e.target.checked)}
-                      className="mt-0.5 h-5 w-5 flex-shrink-0 accent-[#B5C49B]"
+                      className="accent-brand-accent-light mt-0.5 h-5 w-5 flex-shrink-0"
                     />
-                    <span className="text-sm leading-snug text-[#FAFAF8]/90 transition-colors group-hover:text-[#FAFAF8]">
-                      I&apos;d like to receive the newsletter and occasional updates when new articles or classes are released.
+                    <span className="text-brand-white/90 group-hover:text-brand-white text-sm leading-snug transition-colors">
+                      I&apos;d like to receive the newsletter and occasional updates when new
+                      articles or classes are released.
                     </span>
                   </label>
 
@@ -114,7 +119,7 @@ export function SubscribePage() {
                   <Button
                     type="submit"
                     size="lg"
-                    className="h-12 w-full bg-[#B5C49B] text-base font-medium text-[#2E1F33] hover:bg-[#a5b48b]"
+                    className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90 h-12 w-full text-base font-medium"
                     disabled={submitting || !consent || !turnstileToken}
                   >
                     {submitting ? "Submitting..." : "Get Free Updates"}
@@ -124,16 +129,18 @@ export function SubscribePage() {
                 </form>
               ) : (
                 <div className="animate-in fade-in zoom-in space-y-3 py-6 text-center duration-300">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#B5C49B]/20">
-                    <Check className="h-6 w-6 text-[#B5C49B]" />
+                  <div className="bg-brand-accent-light/20 mx-auto flex h-12 w-12 items-center justify-center rounded-full">
+                    <Check className="text-brand-accent-light h-6 w-6" />
                   </div>
                   <div>
                     <h3 className="text-lg">You&apos;re on the list!</h3>
-                    <p className="text-sm text-[#FAFAF8]/70">Check your inbox for a confirmation email.</p>
+                    <p className="text-brand-white/70 text-sm">
+                      Check your inbox for a confirmation email.
+                    </p>
                   </div>
                   <Button
                     variant="link"
-                    className="h-auto p-0 text-[#B5C49B] hover:text-[#B5C49B]/80"
+                    className="text-brand-accent-light hover:text-brand-accent-light/80 h-auto p-0"
                     onClick={() => {
                       setSubmitted(false);
                       setEmail("");
@@ -149,7 +156,7 @@ export function SubscribePage() {
           </div>
 
           <div className="space-y-3">
-            <h2 className="text-muted-foreground mb-4 text-center text-sm font-medium uppercase tracking-wider">
+            <h2 className="text-muted-foreground mb-4 text-center text-sm font-medium tracking-wider uppercase">
               Explore More
             </h2>
 
@@ -159,7 +166,9 @@ export function SubscribePage() {
                   <Calendar className="h-5 w-5" />
                 </div>
                 <div className="flex-1 px-4">
-                  <p className="text-foreground group-hover:text-primary font-medium transition-colors">Live Class Schedule</p>
+                  <p className="text-foreground group-hover:text-primary font-medium transition-colors">
+                    Live Class Schedule
+                  </p>
                   <p className="text-muted-foreground text-xs">Adaptive yoga & strength</p>
                 </div>
                 <ArrowRight className="text-muted-foreground group-hover:text-primary h-5 w-5 transition-all group-hover:translate-x-1" />
@@ -168,27 +177,33 @@ export function SubscribePage() {
 
             <Link href="/classes/small-groups" className="group block">
               <div className="bg-card hover:bg-secondary/50 flex items-center rounded-xl border p-4 transition-all duration-200">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[#9B6535]/10 text-[#9B6535]">
+                <div className="bg-bronze-text/10 text-bronze-text flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg">
                   <BookOpen className="h-5 w-5" />
                 </div>
                 <div className="flex-1 px-4">
-                  <p className="text-foreground font-medium transition-colors group-hover:text-[#9B6535]">Small Group Programs</p>
+                  <p className="text-foreground group-hover:text-bronze-text font-medium transition-colors">
+                    Small Group Programmes
+                  </p>
                   <p className="text-muted-foreground text-xs">4-6 week focused cohorts</p>
                 </div>
-                <ArrowRight className="text-muted-foreground h-5 w-5 transition-all group-hover:translate-x-1 group-hover:text-[#9B6535]" />
+                <ArrowRight className="text-muted-foreground group-hover:text-bronze-text h-5 w-5 transition-all group-hover:translate-x-1" />
               </div>
             </Link>
 
-            <Link href="/pt" className="group block">
+            <Link href="/coaching" className="group block">
               <div className="bg-card hover:bg-secondary/50 flex items-center rounded-xl border p-4 transition-all duration-200">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[#56344A]/10 text-[#56344A]">
+                <div className="bg-brand-plum/10 text-brand-plum flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg">
                   <Check className="h-5 w-5" />
                 </div>
                 <div className="flex-1 px-4">
-                  <p className="text-foreground font-medium transition-colors group-hover:text-[#56344A]">1:1 Personal Training</p>
-                  <p className="text-muted-foreground text-xs">Fully personalised coaching</p>
+                  <p className="text-foreground group-hover:text-brand-plum font-medium transition-colors">
+                    Coaching
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    Programming, personal training, and high-touch support
+                  </p>
                 </div>
-                <ArrowRight className="text-muted-foreground h-5 w-5 transition-all group-hover:translate-x-1 group-hover:text-[#56344A]" />
+                <ArrowRight className="text-muted-foreground group-hover:text-brand-plum h-5 w-5 transition-all group-hover:translate-x-1" />
               </div>
             </Link>
 
@@ -198,7 +213,9 @@ export function SubscribePage() {
                   <ExternalLink className="h-5 w-5" />
                 </div>
                 <div className="flex-1 px-4">
-                  <p className="text-foreground font-medium transition-colors group-hover:text-slate-900">Read the Blog</p>
+                  <p className="text-foreground font-medium transition-colors group-hover:text-slate-900">
+                    Read the Blog
+                  </p>
                   <p className="text-muted-foreground text-xs">Articles on training longevity</p>
                 </div>
                 <ArrowRight className="text-muted-foreground h-5 w-5 transition-all group-hover:translate-x-1 group-hover:text-slate-900" />

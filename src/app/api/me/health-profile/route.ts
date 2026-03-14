@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api/auth-user";
 import { getHealthProfile, upsertHealthProfile } from "@/lib/health/health-service";
 
 export async function GET() {
   try {
+    await connection();
     const user = await requireSessionUser();
     const profile = await getHealthProfile(user.id);
     return NextResponse.json(profile);

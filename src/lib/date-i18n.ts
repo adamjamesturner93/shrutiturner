@@ -36,7 +36,7 @@ function getLocale(dateFormat: DateFormatPreference): string {
   }
 }
 
-function useHour12(dateFormat: DateFormatPreference): boolean {
+function isHour12Format(dateFormat: DateFormatPreference): boolean {
   return dateFormat === "MM/DD/YYYY";
 }
 
@@ -110,7 +110,7 @@ export function formatTime(date: Date | string, prefs: I18nPreferences): string 
   return d.toLocaleTimeString(locale, {
     hour: "2-digit",
     minute: "2-digit",
-    hour12: useHour12(prefs.dateFormat),
+    hour12: isHour12Format(prefs.dateFormat),
     timeZone: prefs.timezone,
   });
 }
@@ -123,7 +123,7 @@ export function formatTime(date: Date | string, prefs: I18nPreferences): string 
  * The time is assumed to be in Europe/London already.
  */
 export function formatTimeString(timeStr: string, prefs: I18nPreferences): string {
-  if (useHour12(prefs.dateFormat)) {
+  if (isHour12Format(prefs.dateFormat)) {
     const [h, m] = timeStr.split(":").map(Number);
     const period = h >= 12 ? "PM" : "AM";
     const hour12 = h % 12 || 12;
@@ -147,7 +147,7 @@ export function formatDateTime(date: Date | string, prefs: I18nPreferences): str
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: useHour12(prefs.dateFormat),
+    hour12: isHour12Format(prefs.dateFormat),
     timeZone: prefs.timezone,
   });
 }

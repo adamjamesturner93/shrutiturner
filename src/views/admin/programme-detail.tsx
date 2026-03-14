@@ -64,7 +64,7 @@ export function AdminProgrammeDetail() {
         {/* Header */}
         <div>
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl text-[#2E1F33]">{programme.name}</h1>
+            <h1 className="text-brand-dark text-2xl">{programme.name}</h1>
             <Badge
               variant={
                 programme.status === "active"
@@ -94,8 +94,8 @@ export function AdminProgrammeDetail() {
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="pt-6 text-center">
-              <Users className="mx-auto h-5 w-5 text-[#4B5B32]" />
-              <p className="mt-2 text-2xl text-[#2E1F33]">
+              <Users className="text-brand-accent mx-auto h-5 w-5" />
+              <p className="text-brand-dark mt-2 text-2xl">
                 {programme.currentParticipants}/{programme.maxParticipants}
               </p>
               <p className="text-muted-foreground text-xs">Participants</p>
@@ -103,8 +103,8 @@ export function AdminProgrammeDetail() {
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <Clock className="mx-auto h-5 w-5 text-[#4B5B32]" />
-              <p className="mt-2 text-2xl text-[#2E1F33]">{progressPercent}%</p>
+              <Clock className="text-brand-accent mx-auto h-5 w-5" />
+              <p className="text-brand-dark mt-2 text-2xl">{progressPercent}%</p>
               <p className="text-muted-foreground text-xs">
                 {programme.sessionsCompleted}/{programme.sessionsTotal} sessions
               </p>
@@ -112,15 +112,15 @@ export function AdminProgrammeDetail() {
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <TrendingUp className="mx-auto h-5 w-5 text-[#4B5B32]" />
-              <p className="mt-2 text-2xl text-[#2E1F33]">{avgAttendance.toFixed(1)}</p>
+              <TrendingUp className="text-brand-accent mx-auto h-5 w-5" />
+              <p className="text-brand-dark mt-2 text-2xl">{avgAttendance.toFixed(1)}</p>
               <p className="text-muted-foreground text-xs">Avg attendance</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <PoundSterling className="mx-auto h-5 w-5 text-[#4B5B32]" />
-              <p className="mt-2 text-2xl text-[#2E1F33]">£{revenue}</p>
+              <PoundSterling className="text-brand-accent mx-auto h-5 w-5" />
+              <p className="text-brand-dark mt-2 text-2xl">£{revenue}</p>
               <p className="text-muted-foreground text-xs">Revenue</p>
             </CardContent>
           </Card>
@@ -135,7 +135,7 @@ export function AdminProgrammeDetail() {
             </div>
             <div className="bg-secondary h-3 overflow-hidden rounded-full">
               <div
-                className="h-full rounded-full bg-[#4B5B32] transition-all"
+                className="bg-brand-accent h-full rounded-full transition-all"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -162,7 +162,7 @@ export function AdminProgrammeDetail() {
                         href={
                           p.memberId.startsWith("prog_ext") ? "#" : `/admin/members/${p.memberId}`
                         }
-                        className="text-sm transition-colors hover:text-[#4B5B32]"
+                        className="hover:text-brand-accent text-sm transition-colors"
                       >
                         {p.memberName}
                       </Link>
@@ -195,7 +195,7 @@ export function AdminProgrammeDetail() {
                   >
                     <div className="flex-shrink-0">
                       {session.status === "completed" ? (
-                        <CheckCircle className="h-5 w-5 text-[#4B5B32]" />
+                        <CheckCircle className="text-brand-accent h-5 w-5" />
                       ) : session.status === "cancelled" ? (
                         <XCircle className="text-destructive h-5 w-5" />
                       ) : (

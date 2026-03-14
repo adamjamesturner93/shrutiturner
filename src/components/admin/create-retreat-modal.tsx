@@ -131,7 +131,7 @@ export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetre
                   onClick={() => setSelectedTemplate(t.entryId)}
                   className={`w-full rounded-lg border p-3 text-left transition-colors ${
                     selectedTemplate === t.entryId
-                      ? "border-[#4B5B32] bg-[#4B5B32]/5"
+                      ? "border-brand-accent bg-brand-accent/5"
                       : "border-border hover:bg-secondary/30"
                   }`}
                 >
@@ -142,7 +142,7 @@ export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetre
                       <p className="text-muted-foreground mt-1 text-xs">{t.location}</p>
                     </div>
                     {selectedTemplate === t.entryId && (
-                      <CheckCircle className="h-4 w-4 flex-shrink-0 text-[#4B5B32]" />
+                      <CheckCircle className="text-brand-accent h-4 w-4 flex-shrink-0" />
                     )}
                   </div>
                 </button>
@@ -253,7 +253,7 @@ export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetre
           <Button
             onClick={handleCreate}
             disabled={!template || !startDate || !endDate || !normalPrice}
-            className="bg-[#4B5B32] hover:bg-[#4B5B32]/90"
+            className="bg-brand-accent hover:bg-brand-accent/90"
           >
             Create Retreat Instance
           </Button>

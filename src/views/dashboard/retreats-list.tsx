@@ -11,6 +11,10 @@ import { useI18n } from "../../lib/use-i18n";
 /* Mock: which retreat the user has booked */
 const BOOKED_RETREAT_IDS = ["1"];
 
+function getDaysUntil(date: string) {
+  return Math.max(0, Math.ceil((new Date(date).getTime() - Date.now()) / 86400000));
+}
+
 export function DashboardRetreats() {
   const upcomingRetreats = getUpcomingRetreats();
   const { fmtDateRange, fmtDateMedium } = useI18n();
@@ -31,22 +35,17 @@ export function DashboardRetreats() {
               const retreat = retreats.find((r) => r.id === id);
               if (!retreat) return null;
               const nextDate = retreat.dates[0];
-              const daysUntil = nextDate
-                ? Math.max(
-                    0,
-                    Math.ceil((new Date(nextDate.startDate).getTime() - Date.now()) / 86400000)
-                  )
-                : null;
+              const daysUntil = nextDate ? getDaysUntil(nextDate.startDate) : null;
 
               return (
                 <div
                   key={retreat.id}
-                  className="bg-background rounded-lg border-2 border-[#4B5B32] p-6"
+                  className="bg-background border-brand-accent rounded-lg border-2 p-6"
                 >
                   <div className="flex flex-col justify-between gap-4 md:flex-row">
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Badge className="bg-[#4B5B32] text-[#FAFAF8]">
+                        <Badge className="bg-brand-accent text-brand-white">
                           <Check className="mr-1 h-3 w-3" />
                           Booked
                         </Badge>
@@ -58,12 +57,12 @@ export function DashboardRetreats() {
                       <p className="text-muted-foreground text-sm">{retreat.subtitle}</p>
                       <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
                         <span className="flex items-center gap-1.5">
-                          <MapPin className="h-3.5 w-3.5 text-[#4B5B32]" />
+                          <MapPin className="text-brand-accent h-3.5 w-3.5" />
                           {retreat.location}
                         </span>
                         {nextDate && (
                           <span className="flex items-center gap-1.5">
-                            <Calendar className="h-3.5 w-3.5 text-[#4B5B32]" />
+                            <Calendar className="text-brand-accent h-3.5 w-3.5" />
                             {fmtDateRange(nextDate.startDate, nextDate.endDate)}
                           </span>
                         )}
@@ -113,7 +112,7 @@ export function DashboardRetreats() {
                     {isBooked && (
                       <Badge
                         variant="outline"
-                        className="flex-shrink-0 border-[#4B5B32] text-[#4B5B32]"
+                        className="border-brand-accent text-brand-accent flex-shrink-0"
                       >
                         <Check className="mr-1 h-3 w-3" />
                         Booked

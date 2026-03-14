@@ -29,6 +29,12 @@ interface DashboardLayoutProps {
   description?: string;
 }
 
+type LegalGuardModalProps = {
+  initialTermsChecked: boolean;
+  initialHealthChecked: boolean;
+  onAccept: () => Promise<void>;
+};
+
 const NAV_ITEMS = [
   { path: "/dashboard", label: "Studio Lobby", icon: LayoutDashboard, exact: true },
   { path: "/dashboard/schedule", label: "Schedule", icon: Calendar },
@@ -39,6 +45,92 @@ const NAV_ITEMS = [
   { path: "/dashboard/health", label: "Health Profile", icon: HeartPulse },
   { path: "/account", label: "Account", icon: Settings },
 ];
+
+function LegalGuardModal({
+  initialTermsChecked,
+  initialHealthChecked,
+  onAccept,
+}: LegalGuardModalProps) {
+  const [legalTermsChecked, setLegalTermsChecked] = useState(initialTermsChecked);
+  const [legalHealthChecked, setLegalHealthChecked] = useState(initialHealthChecked);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+      <div className="bg-background w-full max-w-lg rounded-lg border shadow-xl">
+        <div className="space-y-6 p-8">
+          <div className="space-y-3 text-center">
+            <div className="bg-brand-plum/10 mx-auto flex h-16 w-16 items-center justify-center rounded-full">
+              <Shield className="text-brand-plum h-8 w-8" />
+            </div>
+            <h2 className="text-xl">Legal Agreements Required</h2>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              To continue using the studio, please review and accept the following terms.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <label
+              className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${
+                legalTermsChecked
+                  ? "border-brand-accent bg-brand-accent/5"
+                  : "border-border hover:bg-secondary/30"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={legalTermsChecked}
+                onChange={(e) => setLegalTermsChecked(e.target.checked)}
+                className="accent-brand-accent mt-0.5"
+              />
+              <span className="text-sm leading-relaxed">
+                I agree to the{" "}
+                <Link href="/terms" className="text-primary underline" target="_blank">
+                  Terms & Conditions
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" className="text-primary underline" target="_blank">
+                  Privacy Policy
+                </Link>
+              </span>
+            </label>
+            <label
+              className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${
+                legalHealthChecked
+                  ? "border-brand-accent bg-brand-accent/5"
+                  : "border-border hover:bg-secondary/30"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={legalHealthChecked}
+                onChange={(e) => setLegalHealthChecked(e.target.checked)}
+                className="accent-brand-accent mt-0.5"
+              />
+              <span className="text-sm leading-relaxed">
+                I confirm I have read and agree to the{" "}
+                <Link href="/health-declaration" className="text-primary underline" target="_blank">
+                  Health Declaration
+                </Link>
+                , and I understand that I participate in all classes and programmes at my own risk
+              </span>
+            </label>
+          </div>
+          <Button
+            size="lg"
+            className="w-full"
+            disabled={!legalTermsChecked || !legalHealthChecked}
+            onClick={onAccept}
+          >
+            Accept & Continue
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+          <p className="text-muted-foreground text-center text-xs">
+            Both agreements are required to use the studio.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function DashboardLayout({ children, title, description }: DashboardLayoutProps) {
   const {
@@ -60,20 +152,21 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
   const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const onboardingInProgress = searchParams.get("onboarding") === "true";
-  const [showLegalGuard, setShowLegalGuard] = useState(false);
-  const [legalTermsChecked, setLegalTermsChecked] = useState(false);
-  const [legalHealthChecked, setLegalHealthChecked] = useState(false);
   const isDashboardBootstrapping =
     authStatus === "loading" ||
     isSigningOut ||
     (isAuthenticated && !isAdmin && (isProfileLoading || !user));
 
   const needsProfileSetup =
-    Boolean(user) &&
-    (!user?.firstName?.trim() ||
-      !user?.lastName?.trim() ||
-      !user?.dob);
-  const needsLegalAgreement = Boolean(user) && (!user?.hasAgreedToTerms || !user?.hasAgreedToHealth);
+    Boolean(user) && (!user?.firstName?.trim() || !user?.lastName?.trim() || !user?.dob);
+  const needsLegalAgreement =
+    Boolean(user) && (!user?.hasAgreedToTerms || !user?.hasAgreedToHealth);
+  const shouldShowLegalGuard =
+    isAuthenticated &&
+    needsLegalAgreement &&
+    !needsProfileSetup &&
+    !isAdmin &&
+    !onboardingInProgress;
 
   useEffect(() => {
     if (
@@ -85,32 +178,13 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
     ) {
       router.replace("/dashboard?onboarding=true");
     }
-  }, [isDashboardBootstrapping, isAuthenticated, needsProfileSetup, isAdmin, onboardingInProgress, router]);
-
-  useEffect(() => {
-    if (
-      isAuthenticated &&
-      needsLegalAgreement &&
-      !needsProfileSetup &&
-      !isAdmin &&
-      !onboardingInProgress
-    ) {
-      setShowLegalGuard(true);
-      setLegalTermsChecked(Boolean(user?.hasAgreedToTerms));
-      setLegalHealthChecked(Boolean(user?.hasAgreedToHealth));
-      return;
-    }
-
-    setShowLegalGuard(false);
-    setLegalTermsChecked(false);
-    setLegalHealthChecked(false);
   }, [
+    isDashboardBootstrapping,
     isAuthenticated,
-    needsLegalAgreement,
     needsProfileSetup,
     isAdmin,
     onboardingInProgress,
-    user,
+    router,
   ]);
 
   // Auth + profile guard: hold dashboard UI until session and member profile are hydrated.
@@ -174,28 +248,31 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
       <SEO title={title || "Dashboard - Shruti Turner"} description={description} noIndex />
 
       {/* Sidebar – Desktop */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-[#2E1F33] text-[#FAFAF8] lg:flex">
+      <aside className="bg-brand-dark text-brand-white fixed inset-y-0 left-0 z-40 hidden w-64 flex-col lg:flex">
         {/* Brand */}
-        <div className="border-b border-[#FAFAF8]/10 p-6">
-          <Link href="/" className="text-lg tracking-tight transition-colors hover:text-[#B5C49B]">
+        <div className="border-brand-white/10 border-b p-6">
+          <Link
+            href="/"
+            className="hover:text-brand-accent-light text-lg tracking-tight transition-colors"
+          >
             Shruti Turner
           </Link>
-          <p className="mt-1 text-xs text-[#FAFAF8]/50">Private Studio</p>
+          <p className="text-brand-white/50 mt-1 text-xs">Private Studio</p>
         </div>
 
         {/* User card */}
         {user && (
-          <div className="border-b border-[#FAFAF8]/10 p-4">
+          <div className="border-brand-white/10 border-b p-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#B5C49B] text-sm text-[#2E1F33]">
+              <div className="bg-brand-accent-light text-brand-dark flex h-10 w-10 items-center justify-center rounded-full text-sm">
                 {user.avatarInitials}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm">
                   {user.firstName} {user.lastName}
                 </p>
-                <p className="truncate text-xs text-[#FAFAF8]/50">
-                  {membership ? membership.label : "No plan"}
+                <p className="text-brand-white/50 truncate text-xs">
+                  {membership ? membership.label : "Pay as you Go"}
                 </p>
               </div>
             </div>
@@ -211,8 +288,8 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
                   href={item.path}
                   className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${
                     isActive(item.path, item.exact)
-                      ? "bg-[#B5C49B]/20 text-[#B5C49B]"
-                      : "text-[#FAFAF8]/70 hover:bg-[#FAFAF8]/5 hover:text-[#FAFAF8]"
+                      ? "bg-brand-accent-light/20 text-brand-accent-light"
+                      : "text-brand-white/70 hover:bg-brand-white/5 hover:text-brand-white"
                   }`}
                 >
                   <item.icon className="h-4 w-4 flex-shrink-0" />
@@ -225,30 +302,30 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
 
         {/* Credit summary */}
         {!isAdmin && (
-          <div className="border-t border-[#FAFAF8]/10 p-4">
-            <div className="space-y-2 text-xs text-[#FAFAF8]/60">
+          <div className="border-brand-white/10 border-t p-4">
+            <div className="text-brand-white/60 space-y-2 text-xs">
               {membership && membership.plan !== "instructor" && (
                 <div className="flex justify-between">
                   <span>Weekly classes left</span>
-                  <span className="text-[#B5C49B]">{membershipClassesRemaining}</span>
+                  <span className="text-brand-accent-light">{membershipClassesRemaining}</span>
                 </div>
               )}
               {totalCredits > 0 && (
                 <div className="flex justify-between">
                   <span>Class credits</span>
-                  <span className="text-[#B5C49B]">{totalCredits}</span>
+                  <span className="text-brand-accent-light">{totalCredits}</span>
                 </div>
               )}
               {referralBalance > 0 && (
                 <div className="flex justify-between">
                   <span>Referral balance</span>
-                  <span className="text-[#B5C49B]">£{referralBalance}</span>
+                  <span className="text-brand-accent-light">£{referralBalance}</span>
                 </div>
               )}
               {!membership && totalCredits === 0 && referralBalance === 0 && (
                 <div className="flex justify-between">
                   <span>Credits</span>
-                  <span className="text-[#FAFAF8]/40">0</span>
+                  <span className="text-brand-white/40">0</span>
                 </div>
               )}
             </div>
@@ -260,7 +337,7 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
           <div className="px-3 pb-2">
             <Link
               href="/admin"
-              className="flex items-center gap-3 rounded-md bg-[#B5C49B]/10 px-3 py-2.5 text-sm text-[#B5C49B] transition-colors hover:bg-[#B5C49B]/20"
+              className="bg-brand-accent-light/10 text-brand-accent-light hover:bg-brand-accent-light/20 flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors"
             >
               <Shield className="h-4 w-4 flex-shrink-0" />
               <span>Instructor Dashboard</span>
@@ -269,10 +346,10 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
         )}
 
         {/* Logout */}
-        <div className="border-t border-[#FAFAF8]/10 p-4">
+        <div className="border-brand-white/10 border-t p-4">
           <button
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 text-sm text-[#FAFAF8]/50 transition-colors hover:text-[#FAFAF8]"
+            className="text-brand-white/50 hover:text-brand-white flex w-full items-center gap-3 text-sm transition-colors"
           >
             <LogOut className="h-4 w-4" />
             <span>Sign Out</span>
@@ -281,7 +358,7 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
       </aside>
 
       {/* Mobile header */}
-      <div className="fixed inset-x-0 top-0 z-40 border-b border-[#FAFAF8]/10 bg-[#2E1F33] text-[#FAFAF8] lg:hidden">
+      <div className="border-brand-white/10 bg-brand-dark text-brand-white fixed inset-x-0 top-0 z-40 border-b lg:hidden">
         <div className="flex items-center justify-between px-4 py-3">
           <button onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle menu">
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -289,7 +366,7 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
           <Link href="/dashboard" className="text-sm tracking-tight">
             Private Studio
           </Link>
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#B5C49B] text-xs text-[#2E1F33]">
+          <div className="bg-brand-accent-light text-brand-dark flex h-8 w-8 items-center justify-center rounded-full text-xs">
             {user?.avatarInitials || "?"}
           </div>
         </div>
@@ -299,23 +376,23 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 flex w-72 flex-col bg-[#2E1F33] text-[#FAFAF8]">
-            <div className="flex items-center justify-between border-b border-[#FAFAF8]/10 p-4">
+          <aside className="bg-brand-dark text-brand-white absolute inset-y-0 left-0 flex w-72 flex-col">
+            <div className="border-brand-white/10 flex items-center justify-between border-b p-4">
               <span className="text-sm">Private Studio</span>
               <button onClick={() => setSidebarOpen(false)}>
                 <X className="h-5 w-5" />
               </button>
             </div>
             {user && (
-              <div className="border-b border-[#FAFAF8]/10 p-4">
+              <div className="border-brand-white/10 border-b p-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#B5C49B] text-sm text-[#2E1F33]">
+                  <div className="bg-brand-accent-light text-brand-dark flex h-10 w-10 items-center justify-center rounded-full text-sm">
                     {user.avatarInitials}
                   </div>
                   <div>
                     <p className="text-sm">{user.firstName}</p>
-                    <p className="text-xs text-[#FAFAF8]/50">
-                      {membership ? membership.label : "No plan"}
+                    <p className="text-brand-white/50 text-xs">
+                      {membership ? membership.label : "Pay as you Go"}
                     </p>
                   </div>
                 </div>
@@ -330,8 +407,8 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
                       onClick={() => setSidebarOpen(false)}
                       className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${
                         isActive(item.path, item.exact)
-                          ? "bg-[#B5C49B]/20 text-[#B5C49B]"
-                          : "text-[#FAFAF8]/70 hover:bg-[#FAFAF8]/5"
+                          ? "bg-brand-accent-light/20 text-brand-accent-light"
+                          : "text-brand-white/70 hover:bg-brand-white/5"
                       }`}
                     >
                       <item.icon className="h-4 w-4" />
@@ -346,17 +423,17 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
                 <Link
                   href="/admin"
                   onClick={() => setSidebarOpen(false)}
-                  className="flex items-center gap-3 rounded-md bg-[#B5C49B]/10 px-3 py-2.5 text-sm text-[#B5C49B] transition-colors hover:bg-[#B5C49B]/20"
+                  className="bg-brand-accent-light/10 text-brand-accent-light hover:bg-brand-accent-light/20 flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors"
                 >
                   <Shield className="h-4 w-4" />
                   <span>Instructor Dashboard</span>
                 </Link>
               </div>
             )}
-            <div className="border-t border-[#FAFAF8]/10 p-4">
+            <div className="border-brand-white/10 border-t p-4">
               <button
                 onClick={handleLogout}
-                className="flex w-full items-center gap-3 text-sm text-[#FAFAF8]/50 hover:text-[#FAFAF8]"
+                className="text-brand-white/50 hover:text-brand-white flex w-full items-center gap-3 text-sm"
               >
                 <LogOut className="h-4 w-4" />
                 <span>Sign Out</span>
@@ -372,85 +449,13 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
       </main>
 
       {/* Route-level legal agreement guard */}
-      {showLegalGuard && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="bg-background w-full max-w-lg rounded-lg border shadow-xl">
-            <div className="space-y-6 p-8">
-              <div className="space-y-3 text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#56344A]/10">
-                  <Shield className="h-8 w-8 text-[#56344A]" />
-                </div>
-                <h2 className="text-xl">Legal Agreements Required</h2>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  To continue using the studio, please review and accept the following terms.
-                </p>
-              </div>
-              <div className="space-y-3">
-                <label
-                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${
-                    legalTermsChecked
-                      ? "border-[#4B5B32] bg-[#4B5B32]/5"
-                      : "border-border hover:bg-secondary/30"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={legalTermsChecked}
-                    onChange={(e) => setLegalTermsChecked(e.target.checked)}
-                    className="mt-0.5 accent-[#4B5B32]"
-                  />
-                  <span className="text-sm leading-relaxed">
-                    I agree to the{" "}
-                    <Link href="/terms" className="text-primary underline" target="_blank">
-                      Terms & Conditions
-                    </Link>{" "}
-                    and{" "}
-                    <Link href="/privacy" className="text-primary underline" target="_blank">
-                      Privacy Policy
-                    </Link>
-                  </span>
-                </label>
-                <label
-                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${
-                    legalHealthChecked
-                      ? "border-[#4B5B32] bg-[#4B5B32]/5"
-                      : "border-border hover:bg-secondary/30"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={legalHealthChecked}
-                    onChange={(e) => setLegalHealthChecked(e.target.checked)}
-                    className="mt-0.5 accent-[#4B5B32]"
-                  />
-                  <span className="text-sm leading-relaxed">
-                    I confirm I have read and agree to the{" "}
-                    <Link href="/health-declaration" className="text-primary underline" target="_blank">
-                      Health Declaration
-                    </Link>
-                    , and I understand that I participate in all classes and programmes at my own
-                    risk
-                  </span>
-                </label>
-              </div>
-              <Button
-                size="lg"
-                className="w-full"
-                disabled={!legalTermsChecked || !legalHealthChecked}
-                onClick={async () => {
-                  await acceptTermsAndHealth(true, true);
-                  setShowLegalGuard(false);
-                }}
-              >
-                Accept & Continue
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-              <p className="text-muted-foreground text-center text-xs">
-                Both agreements are required to use the studio.
-              </p>
-            </div>
-          </div>
-        </div>
+      {shouldShowLegalGuard && (
+        <LegalGuardModal
+          key={`${user?.id}-${user?.hasAgreedToTerms}-${user?.hasAgreedToHealth}`}
+          initialTermsChecked={Boolean(user?.hasAgreedToTerms)}
+          initialHealthChecked={Boolean(user?.hasAgreedToHealth)}
+          onAccept={() => acceptTermsAndHealth(true, true)}
+        />
       )}
     </div>
   );

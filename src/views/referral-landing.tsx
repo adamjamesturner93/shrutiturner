@@ -20,8 +20,8 @@ export function ReferralLandingPage() {
 
       <section className="flex min-h-[70vh] items-center py-20 md:py-28">
         <div className="container mx-auto max-w-lg space-y-8 px-4 text-center">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#4B5B32]/10">
-            <Gift className="h-10 w-10 text-[#4B5B32]" />
+          <div className="bg-brand-accent/10 mx-auto flex h-20 w-20 items-center justify-center rounded-full">
+            <Gift className="text-brand-accent h-10 w-10" />
           </div>
 
           <div className="space-y-4">
@@ -34,22 +34,22 @@ export function ReferralLandingPage() {
             </p>
           </div>
 
-          <div className="space-y-4 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 p-6">
-            <p className="text-2xl text-[#4B5B32]">Free class gift</p>
+          <div className="border-brand-accent/20 bg-brand-accent/5 space-y-4 rounded-lg border p-6">
+            <p className="text-brand-accent text-2xl">Free class gift</p>
             <p className="text-muted-foreground">
               Sign in through this link and we'll add one free class credit to your account.
             </p>
             <ul className="text-muted-foreground mx-auto max-w-xs space-y-2 text-left text-sm">
               <li className="flex items-start gap-2">
-                <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#4B5B32]" />
+                <Check className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
                 <span>Use on any live class - yoga, strength, or cardio</span>
               </li>
               <li className="flex items-start gap-2">
-                <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#4B5B32]" />
+                <Check className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
                 <span>No commitment required</span>
               </li>
               <li className="flex items-start gap-2">
-                <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#4B5B32]" />
+                <Check className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
                 <span>If you later make your first purchase, your referrer earns £10</span>
               </li>
             </ul>

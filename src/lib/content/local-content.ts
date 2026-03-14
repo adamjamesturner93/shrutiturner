@@ -1,4 +1,5 @@
 import { classDetails, getScheduleByDay, type ClassDetail } from "@/data/schedule-data";
+import { themedWeekPromos } from "@/data/marketing";
 import { retreats } from "@/data/retreat-data";
 import type {
   LegalDocumentContent,
@@ -7,6 +8,7 @@ import type {
   NewsletterSignupContent,
   PageContent,
   RetreatInstanceContent,
+  ThemedWeekPromo,
 } from "./types";
 
 export const LOCAL_GLOBAL_CONTENT: GlobalContent = {
@@ -28,8 +30,9 @@ export const LOCAL_PAGE_CONTENT: Record<string, PageContent> = {
   classes: {
     slug: "classes",
     seo: {
-      title: "Classes",
-      description: "Live online yoga and strength classes designed for complex bodies.",
+      title: "Move Well Classes",
+      description:
+        "Move Well Classes are live online yoga and strength sessions designed for complex bodies.",
     },
   },
   "classes-yoga": { slug: "classes-yoga", seo: { title: "Yoga Classes" } },
@@ -39,6 +42,19 @@ export const LOCAL_PAGE_CONTENT: Record<string, PageContent> = {
     seo: { title: "Small Group Programmes" },
   },
   pt: { slug: "pt", seo: { title: "Personal Training" } },
+  coaching: {
+    slug: "coaching",
+    seo: {
+      title: "Coaching",
+      description:
+        "Three tiers of personalised coaching and training support for complex bodies, from independent programming to high-touch 1:1 coaching.",
+    },
+  },
+  "coaching-apply": { slug: "coaching-apply", seo: { title: "Apply for Coaching" } },
+  "coaching-personal-programme": {
+    slug: "coaching-personal-programme",
+    seo: { title: "Independent Training Plan" },
+  },
   pricing: { slug: "pricing", seo: { title: "Pricing" } },
   about: { slug: "about", seo: { title: "About" } },
   contact: { slug: "contact", seo: { title: "Contact" } },
@@ -48,6 +64,7 @@ export const LOCAL_PAGE_CONTENT: Record<string, PageContent> = {
 };
 
 export const LOCAL_CLASS_DEFINITIONS: ClassDefinitionContent[] = classDetails as ClassDetail[];
+export const LOCAL_THEMED_WEEK_PROMOS: ThemedWeekPromo[] = themedWeekPromos;
 
 export const LOCAL_LEGAL_DOCUMENTS: LegalDocumentContent[] = [
   {

@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api/auth-user";
 import { getBillingHistory } from "@/lib/billing/history-service";
 
 export async function GET(request: Request) {
   try {
+    await connection();
     const user = await requireSessionUser();
     const url = new URL(request.url);
     const limit = Math.min(100, Math.max(10, Number(url.searchParams.get("limit") || 50)));

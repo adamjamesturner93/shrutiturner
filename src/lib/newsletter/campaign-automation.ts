@@ -8,8 +8,10 @@ import { getEntries } from "@/lib/content/contentful-client";
 
 type CampaignAudienceType = "newsletter" | "blog";
 type SupportedContentType = "blogPost" | "newsletterTemplate";
+type SendEmailBatchResponse = Awaited<ReturnType<ServerClient["sendEmailBatch"]>>;
 
-const POSTMARK_FROM_EMAIL = process.env.POSTMARK_FROM_EMAIL || "Shruti Turner <shruti@thechronicyogini.com>";
+const POSTMARK_FROM_EMAIL =
+  process.env.POSTMARK_FROM_EMAIL || "Shruti Turner <shruti@thechronicyogini.com>";
 const POSTMARK_STREAM = process.env.POSTMARK_MESSAGE_STREAM || "outbound";
 
 function chunk<T>(input: T[], size: number): T[][] {
@@ -75,7 +77,9 @@ async function renderCampaignMessage(
     const tags = Array.isArray(fields.tags)
       ? fields.tags.filter((x): x is string => typeof x === "string")
       : [];
-    const postUrl = slug ? `${process.env.NEXT_PUBLIC_SITE_URL || "https://shrutiturner.com"}/blog/${slug}` : undefined;
+    const postUrl = slug
+      ? `${process.env.NEXT_PUBLIC_SITE_URL || "https://shrutiturner.com"}/blog/${slug}`
+      : undefined;
     const html = await render(
       BlogPostEmail({
         firstName,
@@ -128,7 +132,11 @@ async function runCampaign(params: {
   for (const batch of chunk(audience, 300)) {
     const messages = await Promise.all(
       batch.map(async (recipient) => {
-        const rendered = await renderCampaignMessage(params.contentType, entry.fields, recipient.firstName);
+        const rendered = await renderCampaignMessage(
+          params.contentType,
+          entry.fields,
+          recipient.firstName
+        );
         return {
           From: POSTMARK_FROM_EMAIL,
           To: recipient.email,
@@ -147,13 +155,14 @@ async function runCampaign(params: {
       })
     );
 
-    const response = (await client.sendEmailBatch(messages as any)) as Array<{
+    const response = (await client.sendEmailBatch(messages)) as SendEmailBatchResponse;
+    const items = response as Array<{
       ErrorCode?: number;
       Message?: string;
       MessageID?: string;
     }>;
 
-    for (const item of response || []) {
+    for (const item of items) {
       if (item.ErrorCode && item.ErrorCode !== 0) {
         failedCount += 1;
         if (item.Message) errors.push(item.Message);

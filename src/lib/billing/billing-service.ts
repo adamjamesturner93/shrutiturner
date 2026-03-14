@@ -14,16 +14,17 @@ import {
   MEMBERSHIP_TRIAL_DAYS,
   assertPriceConfigured,
 } from "@/lib/billing/price-map";
+import { getActiveCatalogItem, resolvePromotionCodeDiscount } from "@/lib/billing/catalog-service";
 import {
-  getActiveCatalogItem,
-  resolvePromotionCodeDiscount,
-} from "@/lib/billing/catalog-service";
-import { computeReferralDiscountPence, consumeReferralDiscount } from "@/lib/referrals/referral-discount-service";
+  computeReferralDiscountPence,
+  consumeReferralDiscount,
+} from "@/lib/referrals/referral-discount-service";
 import { addCredits } from "@/lib/credits/credit-service";
 import { startOrSwitchMembership } from "@/lib/membership/membership-service";
 import { qualifyReferral } from "@/lib/referrals/referral-service";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 function startOfUtcDay(date: Date) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
@@ -183,14 +184,17 @@ export async function createCreditCheckoutSession(
   const [customerId, referralDiscountPence, promoDiscount] = await Promise.all([
     getOrCreateStripeCustomer(userId),
     computeReferralDiscountPence(userId, catalog.unitAmountPence),
-    promotionCode ? resolvePromotionCodeDiscount(promotionCode, catalog.unitAmountPence) : Promise.resolve(null),
+    promotionCode
+      ? resolvePromotionCodeDiscount(promotionCode, catalog.unitAmountPence)
+      : Promise.resolve(null),
   ]);
   const chosen = chooseDiscount({
     referralPence: referralDiscountPence,
     promoPence: promoDiscount?.discountPence || 0,
   });
 
-  const coupon = chosen.source === "referral" ? await createOneTimeCouponIfNeeded(chosen.amountPence) : null;
+  const coupon =
+    chosen.source === "referral" ? await createOneTimeCouponIfNeeded(chosen.amountPence) : null;
   const stripe = getStripeClient();
 
   const session = await stripe.checkout.sessions.create({
@@ -249,14 +253,17 @@ export async function createMembershipCheckoutSession(
   const [customerId, referralDiscountPence, promoDiscount] = await Promise.all([
     getOrCreateStripeCustomer(userId),
     computeReferralDiscountPence(userId, catalog.unitAmountPence),
-    promotionCode ? resolvePromotionCodeDiscount(promotionCode, catalog.unitAmountPence) : Promise.resolve(null),
+    promotionCode
+      ? resolvePromotionCodeDiscount(promotionCode, catalog.unitAmountPence)
+      : Promise.resolve(null),
   ]);
   const chosen = chooseDiscount({
     referralPence: referralDiscountPence,
     promoPence: promoDiscount?.discountPence || 0,
   });
 
-  const coupon = chosen.source === "referral" ? await createOneTimeCouponIfNeeded(chosen.amountPence) : null;
+  const coupon =
+    chosen.source === "referral" ? await createOneTimeCouponIfNeeded(chosen.amountPence) : null;
   const stripe = getStripeClient();
 
   const session = await stripe.checkout.sessions.create({
@@ -302,9 +309,26 @@ function unixToDate(unix: number | null | undefined) {
   return unix ? new Date(unix * 1000) : undefined;
 }
 
-async function resolvePlanFromStripePriceId(stripePriceId?: string | null):
-  | { plan: "movewell"; billingInterval: MembershipBillingInterval }
-  | null {
+function getStripeSubscriptionPeriodEnd(
+  subscription: Stripe.Subscription | Stripe.Response<Stripe.Subscription>
+) {
+  return (subscription as Stripe.Subscription & { current_period_end?: number | null })
+    .current_period_end;
+}
+
+function getInvoiceSubscriptionId(invoice: Stripe.Invoice) {
+  const subscription = (
+    invoice as Stripe.Invoice & {
+      subscription?: string | { id?: string | null } | null;
+    }
+  ).subscription;
+  if (typeof subscription === "string") return subscription;
+  return subscription?.id || undefined;
+}
+
+async function resolvePlanFromStripePriceId(
+  stripePriceId?: string | null
+): Promise<{ plan: "movewell"; billingInterval: MembershipBillingInterval } | null> {
   if (!stripePriceId) return null;
   if (stripePriceId === MEMBERSHIP_CONFIG.movewell.stripePriceIdMonthly) {
     return { plan: "movewell", billingInterval: "monthly" };
@@ -400,7 +424,7 @@ async function processCheckoutCompleted(event: Stripe.Event, session: Stripe.Che
       billingInterval,
       stripeSubscriptionId: subscription.id,
       stripePriceId,
-      nextPeriodEnd: unixToDate(subscription.current_period_end),
+      nextPeriodEnd: unixToDate(getStripeSubscriptionPeriodEnd(subscription)),
     });
 
     if (discountPence > 0) {
@@ -431,9 +455,7 @@ async function processCheckoutCompleted(event: Stripe.Event, session: Stripe.Che
 
 async function processInvoicePaid(event: Stripe.Event, invoice: Stripe.Invoice) {
   const stripeCustomerId =
-    typeof invoice.customer === "string"
-      ? invoice.customer
-      : (invoice.customer?.id ?? null);
+    typeof invoice.customer === "string" ? invoice.customer : (invoice.customer?.id ?? null);
   if (!stripeCustomerId) return;
 
   const user = await db.user.findUnique({
@@ -442,10 +464,7 @@ async function processInvoicePaid(event: Stripe.Event, invoice: Stripe.Invoice) 
   });
   if (!user) return;
 
-  const subscriptionId =
-    typeof invoice.subscription === "string"
-      ? invoice.subscription
-      : (invoice.subscription?.id ?? undefined);
+  const subscriptionId = getInvoiceSubscriptionId(invoice);
   if (!subscriptionId) return;
 
   const line = invoice.lines.data[0] as Stripe.InvoiceLineItem & {
@@ -492,9 +511,7 @@ async function processInvoicePaid(event: Stripe.Event, invoice: Stripe.Invoice) 
 
 async function processInvoicePaymentFailed(invoice: Stripe.Invoice) {
   const stripeCustomerId =
-    typeof invoice.customer === "string"
-      ? invoice.customer
-      : (invoice.customer?.id ?? null);
+    typeof invoice.customer === "string" ? invoice.customer : (invoice.customer?.id ?? null);
   if (!stripeCustomerId) return;
 
   const user = await db.user.findUnique({
@@ -535,11 +552,11 @@ async function processSubscriptionUpdated(subscription: Stripe.Subscription) {
       ? MembershipStatus.active
       : subscription.status === "past_due"
         ? MembershipStatus.past_due
-      : subscription.status === "canceled"
+        : subscription.status === "canceled"
           ? MembershipStatus.cancelled
-      : subscription.status === "incomplete_expired"
-          ? MembershipStatus.expired
-          : MembershipStatus.paused;
+          : subscription.status === "incomplete_expired"
+            ? MembershipStatus.expired
+            : MembershipStatus.paused;
   const stripePriceId = subscription.items.data[0]?.price?.id || null;
   const resolved = await resolvePlanFromStripePriceId(stripePriceId);
   const resolvedPricePence =
@@ -555,8 +572,8 @@ async function processSubscriptionUpdated(subscription: Stripe.Subscription) {
       pricePence: resolved ? resolvedPricePence : existing.pricePence,
       stripePriceId: stripePriceId || existing.stripePriceId,
       cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
-      stripeCurrentPeriodEnd: unixToDate(subscription.current_period_end),
-      renewsAt: unixToDate(subscription.current_period_end),
+      stripeCurrentPeriodEnd: unixToDate(getStripeSubscriptionPeriodEnd(subscription)),
+      renewsAt: unixToDate(getStripeSubscriptionPeriodEnd(subscription)),
       endsAt: subscription.cancel_at ? unixToDate(subscription.cancel_at) : null,
     },
   });
@@ -608,7 +625,10 @@ async function handleStripeEvent(event: Stripe.Event) {
     return;
   }
 
-  if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
+  if (
+    event.type === "customer.subscription.updated" ||
+    event.type === "customer.subscription.deleted"
+  ) {
     await processSubscriptionUpdated(event.data.object as Stripe.Subscription);
     return;
   }
@@ -628,9 +648,7 @@ async function resolveBillingEventUserId(event: Stripe.Event) {
   if (event.type.startsWith("invoice.")) {
     const invoice = event.data.object as Stripe.Invoice;
     const customerId =
-      typeof invoice.customer === "string"
-        ? invoice.customer
-        : (invoice.customer?.id ?? null);
+      typeof invoice.customer === "string" ? invoice.customer : (invoice.customer?.id ?? null);
     if (!customerId) return null;
     const user = await db.user.findUnique({
       where: { stripeCustomerId: customerId },

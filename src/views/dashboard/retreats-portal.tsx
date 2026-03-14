@@ -45,6 +45,10 @@ const BOOKED_RETREAT = {
   amountPaid: 1450,
 };
 
+function getDaysUntil(date: string) {
+  return Math.max(0, Math.ceil((new Date(date).getTime() - Date.now()) / 86400000));
+}
+
 const PREP_MATERIALS = [
   {
     id: "welcome-pack",
@@ -165,6 +169,7 @@ const TRAVEL_INFO = {
 export function DashboardRetreatDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { fmtDate, fmtDateRange } = useI18n();
   const navigate = (href: string, opts?: { replace?: boolean }) =>
     opts?.replace ? router.replace(href) : router.push(href);
   const upcomingRetreats = getUpcomingRetreats();
@@ -196,8 +201,6 @@ export function DashboardRetreatDetail() {
       </DashboardLayout>
     );
   }
-
-  const { fmtDate, fmtDateRange } = useI18n();
 
   const formatDate = (dateStr: string) =>
     fmtDate(dateStr, {
@@ -236,11 +239,11 @@ export function DashboardRetreatDetail() {
       </p>
 
       {/* ──── Booked retreat header ──── */}
-      <div className="bg-background mb-8 rounded-lg border-2 border-[#4B5B32] p-6 md:p-8">
+      <div className="bg-background border-brand-accent mb-8 rounded-lg border-2 p-6 md:p-8">
         <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge className="bg-[#4B5B32] text-[#FAFAF8]">
+              <Badge className="bg-brand-accent text-brand-white">
                 <Check className="mr-1 h-3 w-3" />
                 Booked
               </Badge>
@@ -252,11 +255,11 @@ export function DashboardRetreatDetail() {
             <p className="text-muted-foreground">{bookedRetreat.subtitle}</p>
             <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
               <span className="flex items-center gap-1.5">
-                <MapPin className="h-4 w-4 text-[#4B5B32]" />
+                <MapPin className="text-brand-accent h-4 w-4" />
                 {bookedRetreat.location}
               </span>
               <span className="flex items-center gap-1.5">
-                <Calendar className="h-4 w-4 text-[#4B5B32]" />
+                <Calendar className="text-brand-accent h-4 w-4" />
                 {formatDateShort(bookedDate.startDate)} – {formatDateShort(bookedDate.endDate)}
               </span>
             </div>
@@ -320,14 +323,9 @@ export function DashboardRetreatDetail() {
 
             {/* Countdown & actions */}
             <div className="space-y-4">
-              <div className="space-y-3 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 p-6 text-center">
-                <Mountain className="mx-auto h-8 w-8 text-[#4B5B32]" />
-                <p className="text-3xl text-[#4B5B32]">
-                  {Math.max(
-                    0,
-                    Math.ceil((new Date(bookedDate.startDate).getTime() - Date.now()) / 86400000)
-                  )}
-                </p>
+              <div className="border-brand-accent/20 bg-brand-accent/5 space-y-3 rounded-lg border p-6 text-center">
+                <Mountain className="text-brand-accent mx-auto h-8 w-8" />
+                <p className="text-brand-accent text-3xl">{getDaysUntil(bookedDate.startDate)}</p>
                 <p className="text-muted-foreground text-sm">days until your retreat</p>
               </div>
 
@@ -381,7 +379,7 @@ export function DashboardRetreatDetail() {
             <div className="grid gap-3 md:grid-cols-2">
               {bookedRetreat.included.map((item, i) => (
                 <div key={i} className="flex items-start gap-2 text-sm">
-                  <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#4B5B32]" />
+                  <CheckCircle className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
                   <span className="text-muted-foreground">{item}</span>
                 </div>
               ))}
@@ -414,11 +412,11 @@ export function DashboardRetreatDetail() {
                   className="bg-background flex flex-col justify-between gap-4 rounded-lg border p-5 sm:flex-row sm:items-center"
                 >
                   <div className="flex flex-1 items-start gap-4">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[#4B5B32]/10">
+                    <div className="bg-brand-accent/10 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg">
                       {material.type === "Form" ? (
-                        <ExternalLink className="h-5 w-5 text-[#4B5B32]" />
+                        <ExternalLink className="text-brand-accent h-5 w-5" />
                       ) : (
-                        <Download className="h-5 w-5 text-[#4B5B32]" />
+                        <Download className="text-brand-accent h-5 w-5" />
                       )}
                     </div>
                     <div>
@@ -510,7 +508,7 @@ export function DashboardRetreatDetail() {
           {/* Venue */}
           <div className="bg-background space-y-4 rounded-lg border p-6">
             <div className="flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-[#4B5B32]" />
+              <MapPin className="text-brand-accent h-5 w-5" />
               <h3 className="text-lg">The Venue</h3>
             </div>
             <div className="space-y-2">
@@ -529,7 +527,7 @@ export function DashboardRetreatDetail() {
           {/* Getting there */}
           <div className="bg-background space-y-4 rounded-lg border p-6">
             <div className="flex items-center gap-2">
-              <Plane className="h-5 w-5 text-[#4B5B32]" />
+              <Plane className="text-brand-accent h-5 w-5" />
               <h3 className="text-lg">Getting There</h3>
             </div>
             <div className="space-y-4">
@@ -545,7 +543,7 @@ export function DashboardRetreatDetail() {
           {/* Weather */}
           <div className="bg-background space-y-3 rounded-lg border p-6">
             <div className="flex items-center gap-2">
-              <Thermometer className="h-5 w-5 text-[#4B5B32]" />
+              <Thermometer className="text-brand-accent h-5 w-5" />
               <h3 className="text-lg">Weather in {TRAVEL_INFO.weather.month}</h3>
             </div>
             <div className="text-muted-foreground space-y-2 text-sm">
@@ -559,7 +557,7 @@ export function DashboardRetreatDetail() {
           {/* Meals */}
           <div className="bg-background space-y-4 rounded-lg border p-6">
             <div className="flex items-center gap-2">
-              <Utensils className="h-5 w-5 text-[#4B5B32]" />
+              <Utensils className="text-brand-accent h-5 w-5" />
               <h3 className="text-lg">Meals</h3>
             </div>
             <p className="text-muted-foreground text-sm leading-relaxed">
@@ -568,7 +566,7 @@ export function DashboardRetreatDetail() {
             <div className="space-y-2">
               {TRAVEL_INFO.meals.schedule.map((meal, i) => (
                 <div key={i} className="text-muted-foreground flex items-center gap-2 text-sm">
-                  <Check className="h-3.5 w-3.5 flex-shrink-0 text-[#4B5B32]" />
+                  <Check className="text-brand-accent h-3.5 w-3.5 flex-shrink-0" />
                   <span>{meal}</span>
                 </div>
               ))}
@@ -579,13 +577,13 @@ export function DashboardRetreatDetail() {
           {/* Practical notes */}
           <div className="bg-background space-y-4 rounded-lg border p-6">
             <div className="flex items-center gap-2">
-              <Luggage className="h-5 w-5 text-[#4B5B32]" />
+              <Luggage className="text-brand-accent h-5 w-5" />
               <h3 className="text-lg">Practical Notes</h3>
             </div>
             <div className="space-y-3">
               {TRAVEL_INFO.practicalNotes.map((note, i) => (
                 <div key={i} className="flex items-start gap-3 text-sm">
-                  <span className="mt-0.5 flex-shrink-0 text-[#4B5B32]">—</span>
+                  <span className="text-brand-accent mt-0.5 flex-shrink-0">—</span>
                   <span className="text-muted-foreground">{note}</span>
                 </div>
               ))}
@@ -614,7 +612,7 @@ export function DashboardRetreatDetail() {
                   className="hover:bg-secondary/20 flex w-full items-center justify-between px-6 py-4 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#4B5B32]/10 text-sm text-[#4B5B32]">
+                    <div className="bg-brand-accent/10 text-brand-accent flex h-8 w-8 items-center justify-center rounded-full text-sm">
                       {i + 1}
                     </div>
                     <span>{day.day}</span>
@@ -630,7 +628,7 @@ export function DashboardRetreatDetail() {
                     <div className="ml-11 space-y-3">
                       {day.activities.map((activity, j) => (
                         <div key={j} className="flex items-start gap-3 text-sm">
-                          <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-[#4B5B32]" />
+                          <Check className="text-brand-accent mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
                           <span className="text-muted-foreground">{activity}</span>
                         </div>
                       ))}
@@ -641,9 +639,9 @@ export function DashboardRetreatDetail() {
             ))}
           </div>
 
-          <div className="text-muted-foreground rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 p-5 text-sm">
+          <div className="text-muted-foreground border-brand-accent/20 bg-brand-accent/5 rounded-lg border p-5 text-sm">
             <p className="flex items-start gap-2">
-              <Heart className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#4B5B32]" />
+              <Heart className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
               <span>
                 All sessions are adapted in real time. If you're having a difficult day, we'll
                 modify everything to suit you. There is no pressure to participate in anything.
@@ -695,7 +693,7 @@ export function DashboardRetreatDetail() {
                   <div
                     className={`flex h-10 w-10 items-center justify-center rounded-full text-sm ${
                       person.isSelf
-                        ? "bg-[#B5C49B] text-[#2E1F33]"
+                        ? "bg-brand-accent-light text-brand-dark"
                         : "bg-secondary text-muted-foreground"
                     }`}
                   >

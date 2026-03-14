@@ -7,7 +7,7 @@ import { getInstructorProfilesByIds } from "@/lib/content";
 import type { AdminHealthProfileDto } from "@/lib/api/types";
 
 function mapMembershipLabel(plan: string | null, status?: MembershipStatus | null) {
-  if (!plan) return "No plan";
+  if (!plan) return "Pay as you Go";
   if (plan === "instructor") return "Unlimited (instructor)";
   const title = plan === "movewell" ? "Move Well Membership" : "Unknown";
   if (status && status !== "active") return `${title} (${status.replaceAll("_", " ")})`;
@@ -47,16 +47,22 @@ const CONDITION_LOOKUP = new Map(
   )
 );
 
-function toAdminHealthProfile(profile: {
-  additionalNotes: string;
-  lastUpdatedAt: Date;
-  selections: Array<{ conditionKey: string; detail: string | null }>;
-} | null): AdminHealthProfileDto | null {
+function toAdminHealthProfile(
+  profile: {
+    additionalNotes: string;
+    lastUpdatedAt: Date;
+    selections: Array<{ conditionKey: string; detail: string | null }>;
+  } | null
+): AdminHealthProfileDto | null {
   if (!profile) return null;
 
   const categories = new Map<
     string,
-    { categoryId: string; categoryTitle: string; conditions: AdminHealthProfileDto["categories"][number]["conditions"] }
+    {
+      categoryId: string;
+      categoryTitle: string;
+      conditions: AdminHealthProfileDto["categories"][number]["conditions"];
+    }
   >();
 
   for (const selection of profile.selections) {
@@ -158,8 +164,13 @@ export async function listAdminMembers(filters: {
         membershipPlan: membership?.plan || null,
         membershipLabel: mapMembershipLabel(membership?.plan || null, membership?.status || null),
         status:
-          (membership?.status as "active" | "paused" | "cancelled" | "expired" | "past_due" | undefined) ||
-          "active",
+          (membership?.status as
+            | "active"
+            | "paused"
+            | "cancelled"
+            | "expired"
+            | "past_due"
+            | undefined) || "active",
         creditBalance,
         referralCode: user.referralCode || "",
         referralsCount: user.referralEventsCreated.length,
@@ -243,8 +254,13 @@ export async function getAdminMemberDetail(userId: string) {
     membershipPlan: membership?.plan || null,
     membershipLabel: mapMembershipLabel(membership?.plan || null, membership?.status || null),
     status:
-      (membership?.status as "active" | "paused" | "cancelled" | "expired" | "past_due" | undefined) ||
-      "active",
+      (membership?.status as
+        | "active"
+        | "paused"
+        | "cancelled"
+        | "expired"
+        | "past_due"
+        | undefined) || "active",
     creditBalance,
     referralCode: user.referralCode || "",
     referralsCount: user.referralEventsCreated.length,

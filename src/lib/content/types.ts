@@ -12,6 +12,16 @@ export interface PageContent {
   seo: SeoContent;
 }
 
+export interface ThemedWeekPromo {
+  slug: string;
+  title: string;
+  shortDescription: string;
+  audience: string;
+  ctaHref: string;
+  ctaLabel: string;
+  status?: "upcoming" | "current" | "waitlist";
+}
+
 export interface GlobalContent {
   siteName: string;
   siteTagline: string;

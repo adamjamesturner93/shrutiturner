@@ -8,7 +8,10 @@ function getSignatureHeader(req: Request) {
 export async function POST(req: Request) {
   const secret = process.env.POSTMARK_WEBHOOK_SECRET;
   if (!secret) {
-    return NextResponse.json({ message: "POSTMARK_WEBHOOK_SECRET is not configured." }, { status: 501 });
+    return NextResponse.json(
+      { message: "POSTMARK_WEBHOOK_SECRET is not configured." },
+      { status: 501 }
+    );
   }
 
   const raw = await req.text();

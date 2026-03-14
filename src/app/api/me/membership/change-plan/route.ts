@@ -5,7 +5,10 @@ import { startOrSwitchMembership } from "@/lib/membership/membership-service";
 export async function POST(request: Request) {
   try {
     const user = await requireSessionUser();
-    const body = (await request.json().catch(() => ({}))) as { plan?: string; billingInterval?: string };
+    const body = (await request.json().catch(() => ({}))) as {
+      plan?: string;
+      billingInterval?: string;
+    };
     const plan = body.plan;
     const billingInterval = body.billingInterval === "annual" ? "annual" : "monthly";
 

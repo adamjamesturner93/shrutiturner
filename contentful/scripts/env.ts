@@ -46,4 +46,3 @@ export function getContentfulScriptEnv() {
 
   return { spaceId, environmentId, managementToken };
 }
-

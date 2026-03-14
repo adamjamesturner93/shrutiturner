@@ -22,13 +22,21 @@ export function Layout({ children }: LayoutProps) {
     // Only show once per session
     if (sessionStorage.getItem("newsletter_shown")) return;
 
+    let scrollThreshold = 0;
+    let resizeObserver: ResizeObserver | null = null;
+
+    const updateScrollThreshold = () => {
+      const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      scrollThreshold = maxScroll * 0.4;
+    };
+
     const handleScroll = () => {
-      const scrollPercent =
-        window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
-      if (scrollPercent > 0.4) {
+      if (window.scrollY > scrollThreshold) {
         setShowPopup(true);
         sessionStorage.setItem("newsletter_shown", "true");
         window.removeEventListener("scroll", handleScroll);
+        window.removeEventListener("resize", updateScrollThreshold);
+        resizeObserver?.disconnect();
       }
     };
 
@@ -40,10 +48,19 @@ export function Layout({ children }: LayoutProps) {
       }
     }, 45000);
 
+    updateScrollThreshold();
     window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", updateScrollThreshold, { passive: true });
+
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(updateScrollThreshold);
+      resizeObserver.observe(document.body);
+    }
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", updateScrollThreshold);
+      resizeObserver?.disconnect();
       clearTimeout(timer);
     };
   }, [pathname]);

@@ -267,7 +267,9 @@ export function AccountPage() {
   return (
     <DashboardLayout title="Account - Shruti Turner">
       <h1 className="mb-2 text-3xl">Account Settings</h1>
-      <p className="text-muted-foreground mb-6">Manage your profile, preferences, and notifications.</p>
+      <p className="text-muted-foreground mb-6">
+        Manage your profile, preferences, and notifications.
+      </p>
       {loading ? <p className="text-muted-foreground mb-6 text-sm">Loading account...</p> : null}
       {error ? <p className="mb-6 text-sm text-red-600">{error}</p> : null}
 
@@ -278,7 +280,7 @@ export function AccountPage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`relative whitespace-nowrap px-4 py-2.5 text-sm transition-colors ${
+              className={`relative px-4 py-2.5 text-sm whitespace-nowrap transition-colors ${
                 activeTab === tab.key
                   ? "text-foreground"
                   : "text-muted-foreground hover:text-foreground"
@@ -288,7 +290,9 @@ export function AccountPage() {
                 <Icon className="h-4 w-4" />
                 {tab.label}
               </span>
-              {activeTab === tab.key ? <span className="bg-primary absolute right-0 bottom-0 left-0 h-0.5" /> : null}
+              {activeTab === tab.key ? (
+                <span className="bg-primary absolute right-0 bottom-0 left-0 h-0.5" />
+              ) : null}
             </button>
           );
         })}
@@ -306,11 +310,19 @@ export function AccountPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name</Label>
-                  <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                  <Input
+                    id="firstName"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Last Name</Label>
-                  <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                  <Input
+                    id="lastName"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                  />
                 </div>
               </div>
 
@@ -343,23 +355,41 @@ export function AccountPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="gender">Gender <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                  <Label htmlFor="gender">
+                    Gender <span className="text-muted-foreground text-xs">(optional)</span>
+                  </Label>
                   <Select value={gender} onValueChange={setGender}>
-                    <SelectTrigger id="gender"><SelectValue placeholder="Prefer not to say" /></SelectTrigger>
+                    <SelectTrigger id="gender">
+                      <SelectValue placeholder="Prefer not to say" />
+                    </SelectTrigger>
                     <SelectContent>
                       {GENDER_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value || "empty"} value={opt.value || "prefer_not_to_say"}>{opt.label}</SelectItem>
+                        <SelectItem
+                          key={opt.value || "empty"}
+                          value={opt.value || "prefer_not_to_say"}
+                        >
+                          {opt.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="ethnicity">Ethnicity <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                  <Label htmlFor="ethnicity">
+                    Ethnicity <span className="text-muted-foreground text-xs">(optional)</span>
+                  </Label>
                   <Select value={ethnicity} onValueChange={setEthnicity}>
-                    <SelectTrigger id="ethnicity"><SelectValue placeholder="Prefer not to say" /></SelectTrigger>
+                    <SelectTrigger id="ethnicity">
+                      <SelectValue placeholder="Prefer not to say" />
+                    </SelectTrigger>
                     <SelectContent>
                       {ETHNICITY_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value || "empty"} value={opt.value || "prefer_not_to_say"}>{opt.label}</SelectItem>
+                        <SelectItem
+                          key={opt.value || "empty"}
+                          value={opt.value || "prefer_not_to_say"}
+                        >
+                          {opt.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -367,9 +397,14 @@ export function AccountPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <Button onClick={handleProfileSave} disabled={!!dobError}>Save Profile</Button>
+                <Button onClick={handleProfileSave} disabled={!!dobError}>
+                  Save Profile
+                </Button>
                 {profileSaved ? (
-                  <span className="flex items-center gap-1 text-sm text-[#4B5B32]"><Check className="h-4 w-4" />Saved</span>
+                  <span className="text-brand-accent flex items-center gap-1 text-sm">
+                    <Check className="h-4 w-4" />
+                    Saved
+                  </span>
                 ) : null}
               </div>
             </div>
@@ -402,7 +437,7 @@ export function AccountPage() {
                     <label className="flex items-start gap-3 rounded-lg border border-amber-200 bg-white p-3">
                       <input
                         type="checkbox"
-                        className="mt-0.5 accent-[#4B5B32]"
+                        className="accent-brand-accent mt-0.5"
                         onChange={async (e) => {
                           if (!e.target.checked) return;
                           await acceptTermsAndHealth(true, false);
@@ -411,7 +446,14 @@ export function AccountPage() {
                         }}
                       />
                       <span className="text-sm leading-relaxed">
-                        I agree to the <Link href="/terms" className="text-primary underline" target="_blank">Terms & Conditions</Link> and <Link href="/privacy" className="text-primary underline" target="_blank">Privacy Policy</Link>
+                        I agree to the{" "}
+                        <Link href="/terms" className="text-primary underline" target="_blank">
+                          Terms & Conditions
+                        </Link>{" "}
+                        and{" "}
+                        <Link href="/privacy" className="text-primary underline" target="_blank">
+                          Privacy Policy
+                        </Link>
                       </span>
                     </label>
                   ) : null}
@@ -419,7 +461,7 @@ export function AccountPage() {
                     <label className="flex items-start gap-3 rounded-lg border border-amber-200 bg-white p-3">
                       <input
                         type="checkbox"
-                        className="mt-0.5 accent-[#4B5B32]"
+                        className="accent-brand-accent mt-0.5"
                         onChange={async (e) => {
                           if (!e.target.checked) return;
                           await acceptTermsAndHealth(false, true);
@@ -428,22 +470,47 @@ export function AccountPage() {
                         }}
                       />
                       <span className="text-sm leading-relaxed">
-                        I agree to the <Link href="/health-declaration" className="text-primary underline" target="_blank">Health Declaration</Link>
+                        I agree to the{" "}
+                        <Link
+                          href="/health-declaration"
+                          className="text-primary underline"
+                          target="_blank"
+                        >
+                          Health Declaration
+                        </Link>
                       </span>
                     </label>
                   ) : null}
                 </div>
               ) : (
-                <div className="space-y-2 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 p-4">
-                  <div className="flex items-center gap-2 text-sm text-[#4B5B32]"><Check className="h-4 w-4" />Terms accepted {termsAgreedAt ? `(${new Date(termsAgreedAt).toLocaleDateString("en-GB")})` : ""}</div>
-                  <div className="flex items-center gap-2 text-sm text-[#4B5B32]"><Check className="h-4 w-4" />Health declaration accepted {healthAgreedAt ? `(${new Date(healthAgreedAt).toLocaleDateString("en-GB")})` : ""}</div>
+                <div className="border-brand-accent/20 bg-brand-accent/5 space-y-2 rounded-lg border p-4">
+                  <div className="text-brand-accent flex items-center gap-2 text-sm">
+                    <Check className="h-4 w-4" />
+                    Terms accepted{" "}
+                    {termsAgreedAt
+                      ? `(${new Date(termsAgreedAt).toLocaleDateString("en-GB")})`
+                      : ""}
+                  </div>
+                  <div className="text-brand-accent flex items-center gap-2 text-sm">
+                    <Check className="h-4 w-4" />
+                    Health declaration accepted{" "}
+                    {healthAgreedAt
+                      ? `(${new Date(healthAgreedAt).toLocaleDateString("en-GB")})`
+                      : ""}
+                  </div>
                 </div>
               )}
 
               <div className="space-y-2 text-sm">
-                <Link href="/terms" className="text-primary block hover:underline">Terms & Conditions</Link>
-                <Link href="/privacy" className="text-primary block hover:underline">Privacy Policy</Link>
-                <Link href="/health-declaration" className="text-primary block hover:underline">Health Declaration</Link>
+                <Link href="/terms" className="text-primary block hover:underline">
+                  Terms & Conditions
+                </Link>
+                <Link href="/privacy" className="text-primary block hover:underline">
+                  Privacy Policy
+                </Link>
+                <Link href="/health-declaration" className="text-primary block hover:underline">
+                  Health Declaration
+                </Link>
               </div>
               <div className="border-t pt-4">
                 <Button variant="outline">Request Data Export</Button>
@@ -464,10 +531,14 @@ export function AccountPage() {
             <div className="space-y-2">
               <Label htmlFor="timezone">Timezone</Label>
               <Select value={timezone} onValueChange={setTimezone}>
-                <SelectTrigger id="timezone"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="timezone">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {getTimezoneOptions().map((tz) => (
-                    <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
+                    <SelectItem key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -475,10 +546,14 @@ export function AccountPage() {
             <div className="space-y-2">
               <Label htmlFor="dateFormat">Date Format</Label>
               <Select value={dateFormat} onValueChange={setDateFormat}>
-                <SelectTrigger id="dateFormat"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="dateFormat">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {DATE_FORMAT_OPTIONS.map((fmt) => (
-                    <SelectItem key={fmt.value} value={fmt.value}>{fmt.label}</SelectItem>
+                    <SelectItem key={fmt.value} value={fmt.value}>
+                      {fmt.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -489,13 +564,24 @@ export function AccountPage() {
                 <span className="text-muted-foreground">Preview:</span>
               </div>
               <div className="space-y-1 text-sm">
-                <p><span className="text-muted-foreground">Today's date: </span>{currentDatePreview}</p>
-                <p><span className="text-muted-foreground">Current time: </span>{currentTimePreview}</p>
+                <p>
+                  <span className="text-muted-foreground">Today's date: </span>
+                  {currentDatePreview}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Current time: </span>
+                  {currentTimePreview}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <Button onClick={handlePrefsSave}>Save Preferences</Button>
-              {prefsSaved ? <span className="flex items-center gap-1 text-sm text-[#4B5B32]"><Check className="h-4 w-4" />Saved</span> : null}
+              {prefsSaved ? (
+                <span className="text-brand-accent flex items-center gap-1 text-sm">
+                  <Check className="h-4 w-4" />
+                  Saved
+                </span>
+              ) : null}
             </div>
           </div>
         ) : null}
@@ -526,13 +612,20 @@ export function AccountPage() {
                 </div>
                 <div className="space-y-2">
                   {activity.upcomingClasses.length === 0 ? (
-                    <p className="text-muted-foreground py-3 text-sm">No upcoming class activity.</p>
+                    <p className="text-muted-foreground py-3 text-sm">
+                      No upcoming class activity.
+                    </p>
                   ) : (
                     activity.upcomingClasses.slice(0, 10).map((item) => (
-                      <div key={item.bookingId} className="flex items-center justify-between rounded-lg border p-3">
+                      <div
+                        key={item.bookingId}
+                        className="flex items-center justify-between rounded-lg border p-3"
+                      >
                         <div>
                           <p className="text-sm">{item.className}</p>
-                          <p className="text-muted-foreground text-xs">{new Date(item.startsAtUtc).toLocaleString("en-GB")}</p>
+                          <p className="text-muted-foreground text-xs">
+                            {new Date(item.startsAtUtc).toLocaleString("en-GB")}
+                          </p>
                         </div>
                         <Badge variant="outline">{item.entitlementType}</Badge>
                       </div>
@@ -554,15 +647,39 @@ export function AccountPage() {
               <div className="space-y-3">
                 <label className="flex items-center justify-between py-2">
                   <span className="text-sm">Class reminders (2 hours before)</span>
-                  <input type="checkbox" checked={notifications.classReminders} onChange={(e) => setNotifications((prev) => ({ ...prev, classReminders: e.target.checked }))} className="accent-[#4B5B32]" />
+                  <input
+                    type="checkbox"
+                    checked={notifications.classReminders}
+                    onChange={(e) =>
+                      setNotifications((prev) => ({ ...prev, classReminders: e.target.checked }))
+                    }
+                    className="accent-brand-accent"
+                  />
                 </label>
                 <label className="flex items-center justify-between py-2">
                   <span className="text-sm">New class schedule updates</span>
-                  <input type="checkbox" checked={notifications.scheduleUpdates} onChange={(e) => setNotifications((prev) => ({ ...prev, scheduleUpdates: e.target.checked }))} className="accent-[#4B5B32]" />
+                  <input
+                    type="checkbox"
+                    checked={notifications.scheduleUpdates}
+                    onChange={(e) =>
+                      setNotifications((prev) => ({ ...prev, scheduleUpdates: e.target.checked }))
+                    }
+                    className="accent-brand-accent"
+                  />
                 </label>
                 <label className="flex items-center justify-between py-2">
                   <span className="text-sm">Program announcements</span>
-                  <input type="checkbox" checked={notifications.programAnnouncements} onChange={(e) => setNotifications((prev) => ({ ...prev, programAnnouncements: e.target.checked }))} className="accent-[#4B5B32]" />
+                  <input
+                    type="checkbox"
+                    checked={notifications.programAnnouncements}
+                    onChange={(e) =>
+                      setNotifications((prev) => ({
+                        ...prev,
+                        programAnnouncements: e.target.checked,
+                      }))
+                    }
+                    className="accent-brand-accent"
+                  />
                 </label>
               </div>
             </div>
@@ -576,20 +693,36 @@ export function AccountPage() {
                 <label className="flex items-center justify-between py-2">
                   <div>
                     <span className="text-sm">Newsletter & Updates</span>
-                    <p className="text-muted-foreground text-xs">Articles, class updates, and training insights</p>
+                    <p className="text-muted-foreground text-xs">
+                      Articles, class updates, and training insights
+                    </p>
                   </div>
-                  <input type="checkbox" checked={notifications.marketingEmails} onChange={(e) => setNotifications((prev) => ({ ...prev, marketingEmails: e.target.checked }))} className="accent-[#4B5B32]" />
+                  <input
+                    type="checkbox"
+                    checked={notifications.marketingEmails}
+                    onChange={(e) =>
+                      setNotifications((prev) => ({ ...prev, marketingEmails: e.target.checked }))
+                    }
+                    className="accent-brand-accent"
+                  />
                 </label>
               </div>
               <div className="flex items-center gap-3">
-                <Button variant="outline" onClick={handleNotificationsSave}>Update Preferences</Button>
-                {notificationsSaved ? <span className="flex items-center gap-1 text-sm text-[#4B5B32]"><Check className="h-4 w-4" />Saved</span> : null}
+                <Button variant="outline" onClick={handleNotificationsSave}>
+                  Update Preferences
+                </Button>
+                {notificationsSaved ? (
+                  <span className="text-brand-accent flex items-center gap-1 text-sm">
+                    <Check className="h-4 w-4" />
+                    Saved
+                  </span>
+                ) : null}
               </div>
             </div>
           </div>
         ) : null}
 
-        <div className="mt-8 rounded-lg border bg-background p-6">
+        <div className="bg-background mt-8 rounded-lg border p-6">
           <Button
             variant="outline"
             onClick={async () => {

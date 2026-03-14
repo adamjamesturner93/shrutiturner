@@ -69,25 +69,26 @@ export function DashboardReferrals() {
     <DashboardLayout title="Referrals - Private Studio">
       <h1 className="mb-2 text-3xl">Refer a Friend</h1>
       <p className="text-muted-foreground mb-8">
-        Share your link. Your friend gets one free class gift, and you receive £10 after their first paid purchase.
+        Share your link. Your friend gets one free class gift, and you receive £10 after their first
+        paid purchase.
       </p>
 
       {/* How it works */}
-      <div className="mb-8 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 p-6 md:p-8">
+      <div className="border-brand-accent/20 bg-brand-accent/5 mb-8 rounded-lg border p-6 md:p-8">
         <div className="grid gap-6 text-center md:grid-cols-3">
           <div className="space-y-2">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#4B5B32]/10">
-              <Gift className="h-6 w-6 text-[#4B5B32]" />
+            <div className="bg-brand-accent/10 mx-auto flex h-12 w-12 items-center justify-center rounded-full">
+              <Gift className="text-brand-accent h-6 w-6" />
             </div>
             <h3 className="text-lg">You Give</h3>
-            <p className="text-2xl text-[#4B5B32]">1 free class</p>
+            <p className="text-brand-accent text-2xl">1 free class</p>
             <p className="text-muted-foreground text-sm">
               Your friend receives one promo class credit
             </p>
           </div>
           <div className="space-y-2">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#4B5B32]/10">
-              <Users className="h-6 w-6 text-[#4B5B32]" />
+            <div className="bg-brand-accent/10 mx-auto flex h-12 w-12 items-center justify-center rounded-full">
+              <Users className="text-brand-accent h-6 w-6" />
             </div>
             <h3 className="text-lg">They Join</h3>
             <p className="text-muted-foreground mt-4 text-sm">
@@ -95,11 +96,11 @@ export function DashboardReferrals() {
             </p>
           </div>
           <div className="space-y-2">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#4B5B32]/10">
-              <Wallet className="h-6 w-6 text-[#4B5B32]" />
+            <div className="bg-brand-accent/10 mx-auto flex h-12 w-12 items-center justify-center rounded-full">
+              <Wallet className="text-brand-accent h-6 w-6" />
             </div>
             <h3 className="text-lg">You Get</h3>
-            <p className="text-2xl text-[#4B5B32]">£10 off</p>
+            <p className="text-brand-accent text-2xl">£10 off</p>
             <p className="text-muted-foreground text-sm">
               Applied to your next {membership ? "renewal" : "purchase"} automatically
             </p>
@@ -127,8 +128,8 @@ export function DashboardReferrals() {
           </Button>
         </div>
         <p className="text-muted-foreground mt-3 text-xs">
-          Share this link with friends. They get a free class gift right away, and you get £10
-          when they complete their first paid purchase.
+          Share this link with friends. They get a free class gift right away, and you get £10 when
+          they complete their first paid purchase.
         </p>
         {referralCode ? (
           <p className="text-muted-foreground mt-2 text-xs">Code: {referralCode}</p>
@@ -146,16 +147,16 @@ export function DashboardReferrals() {
           <p className="text-muted-foreground text-sm">Total Earned</p>
         </div>
         <div className="bg-background rounded-lg border p-5 text-center">
-          <p className="text-3xl text-[#4B5B32]">£{referralBalance}</p>
+          <p className="text-brand-accent text-3xl">£{referralBalance}</p>
           <p className="text-muted-foreground text-sm">Current Balance</p>
         </div>
       </div>
 
       {/* Where balance will be applied */}
       {referralBalance > 0 && (
-        <div className="mb-8 rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 p-5">
+        <div className="border-brand-accent/20 bg-brand-accent/5 mb-8 rounded-lg border p-5">
           <div className="flex items-start gap-3">
-            <Gift className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#4B5B32]" />
+            <Gift className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
             <div>
               <p className="text-sm">{referralAppliesTo}</p>
               <Link href="/dashboard/membership">
@@ -172,7 +173,9 @@ export function DashboardReferrals() {
       {/* Referral history */}
       <div className="bg-background rounded-lg border p-6">
         <h2 className="mb-4 text-xl">Referral History</h2>
-        {loading ? <p className="text-muted-foreground text-sm">Loading referral history...</p> : null}
+        {loading ? (
+          <p className="text-muted-foreground text-sm">Loading referral history...</p>
+        ) : null}
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
         {!loading && !error ? (
           <div className="space-y-3 text-sm">
@@ -191,10 +194,16 @@ export function DashboardReferrals() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <span className={item.amountPence > 0 ? "text-[#4B5B32]" : "text-muted-foreground"}>
+                    <span
+                      className={
+                        item.amountPence > 0 ? "text-brand-accent" : "text-muted-foreground"
+                      }
+                    >
                       {item.amountPence >= 0 ? "+" : "-"}£{Math.abs(item.amountPence) / 100}
                     </span>
-                    <p className="text-muted-foreground text-xs">{item.status.replaceAll("_", " ")}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {item.status.replaceAll("_", " ")}
+                    </p>
                   </div>
                 </div>
               ))

@@ -73,8 +73,9 @@ export default function PurchaseConfirmationEmail({
       </Section>
 
       <Hr style={dividerStyle} />
-      <Text style={mutedTextStyle}>Your credits or membership have been applied to your account.</Text>
+      <Text style={mutedTextStyle}>
+        Your credits or membership have been applied to your account.
+      </Text>
     </EmailLayout>
   );
 }
-

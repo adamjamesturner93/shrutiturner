@@ -1,13 +1,6 @@
 import { Section, Text, Link, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
-import {
-  colors,
-  fonts,
-  headingStyle,
-  bodyTextStyle,
-  buttonStyle,
-  dividerStyle,
-} from "./styles";
+import { colors, fonts, headingStyle, bodyTextStyle, buttonStyle, dividerStyle } from "./styles";
 
 interface WelcomeEmailProps {
   firstName?: string;
@@ -42,7 +35,10 @@ export default function WelcomeEmail({
     : null;
 
   return (
-    <EmailLayout preview={`Welcome, ${firstName} — your free guide is ready`} unsubscribeUrl={unsubscribeUrl}>
+    <EmailLayout
+      preview={`Welcome, ${firstName} — your free guide is ready`}
+      unsubscribeUrl={unsubscribeUrl}
+    >
       <Text
         style={{
           ...headingStyle,
@@ -54,9 +50,7 @@ export default function WelcomeEmail({
         {"Welcome — I'm glad you're here."}
       </Text>
 
-      <Text style={bodyTextStyle}>
-        Hi {firstName},
-      </Text>
+      <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
       {welcomeParagraphs && welcomeParagraphs.length > 0 ? (
         welcomeParagraphs.map((paragraph, index) => (
@@ -143,12 +137,11 @@ export default function WelcomeEmail({
       </Text>
 
       <Text style={bodyTextStyle}>
-        I send occasional emails about new blog posts, class updates, retreat openings, and thoughts on building strength and resilience through intelligent training. No spam, no filler.
+        I send occasional emails about new blog posts, class updates, retreat openings, and thoughts
+        on building strength and resilience through intelligent training. No spam, no filler.
       </Text>
 
-      <Text style={bodyTextStyle}>
-        In the meantime, feel free to explore:{" "}
-      </Text>
+      <Text style={bodyTextStyle}>In the meantime, feel free to explore: </Text>
 
       <Text style={{ ...bodyTextStyle, paddingLeft: "8px" }}>
         {"\u2022 "}

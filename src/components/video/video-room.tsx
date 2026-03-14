@@ -1,200 +1,333 @@
-import { useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  Mic,
-  MicOff,
-  Video,
-  VideoOff,
-  Maximize,
-  Minimize,
-  Settings,
-  LogOut,
-  Users,
-  UserCheck,
   Eye,
   EyeOff,
+  Maximize,
   MessageSquare,
-  VolumeX,
-  ChevronLeft,
-  ChevronRight,
+  Mic,
+  MicOff,
+  Minimize,
   Phone,
+  Settings,
+  Users,
+  Video,
+  VideoOff,
+  VolumeX,
 } from "lucide-react";
-import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
-import { DeviceSelector } from "./device-selector";
 import { ChatPanel } from "./chat-panel";
-
-// ── Types ──
+import { DeviceSelector } from "./device-selector";
+import { useAuth } from "../../context/auth-context";
+import {
+  attachTrack,
+  loadDailyIframe,
+  loadSavedDeviceSettings,
+  type DailyCallObject,
+  type DailyParticipant,
+} from "@/lib/daily/client";
 
 export type RoomMode = "live-class" | "small-group" | "retreat";
 
-export interface VideoParticipant {
-  id: string;
-  name: string;
-  initials: string;
-  isMuted: boolean;
-  isCameraOn: boolean;
-  isInstructor: boolean;
-  color: string;
-}
-
-interface VideoRoomProps {
+type VideoRoomProps = {
+  sessionId?: string;
   mode: RoomMode;
   isInstructor: boolean;
   className: string;
   classTime: string;
   classDuration: string;
   registeredCount: number;
-  onLeave: () => void;
-}
+  initialMuted?: boolean;
+  initialCameraOn?: boolean;
+  initialCommunityMode?: boolean;
+  onLeave: (reason: "left" | "ended" | "removed") => void;
+  onEndSession?: () => Promise<void> | void;
+};
 
-// ── Mock participants ──
-
-const MOCK_PARTICIPANTS: VideoParticipant[] = [
-  {
-    id: "instructor",
-    name: "Shruti Turner",
-    initials: "ST",
-    isMuted: false,
-    isCameraOn: true,
-    isInstructor: true,
-    color: "#4B5B32",
-  },
-  {
-    id: "p1",
-    name: "Sarah Chen",
-    initials: "SC",
-    isMuted: true,
-    isCameraOn: true,
-    isInstructor: false,
-    color: "#6B7280",
-  },
-  {
-    id: "p2",
-    name: "James Whitfield",
-    initials: "JW",
-    isMuted: true,
-    isCameraOn: true,
-    isInstructor: false,
-    color: "#7C3AED",
-  },
-  {
-    id: "p3",
-    name: "Emily Richards",
-    initials: "ER",
-    isMuted: true,
-    isCameraOn: false,
-    isInstructor: false,
-    color: "#2563EB",
-  },
-  {
-    id: "p4",
-    name: "Marcus Lee",
-    initials: "ML",
-    isMuted: true,
-    isCameraOn: true,
-    isInstructor: false,
-    color: "#DC2626",
-  },
-  {
-    id: "p5",
-    name: "Rachel Thompson",
-    initials: "RT",
-    isMuted: true,
-    isCameraOn: true,
-    isInstructor: false,
-    color: "#059669",
-  },
-  {
-    id: "p6",
-    name: "Priya Patel",
-    initials: "PP",
-    isMuted: true,
-    isCameraOn: false,
-    isInstructor: false,
-    color: "#D97706",
-  },
-  {
-    id: "p7",
-    name: "Tom Bennett",
-    initials: "TB",
-    isMuted: true,
-    isCameraOn: true,
-    isInstructor: false,
-    color: "#4338CA",
-  },
-  {
-    id: "p8",
-    name: "Claire Wilson",
-    initials: "CW",
-    isMuted: true,
-    isCameraOn: true,
-    isInstructor: false,
-    color: "#BE185D",
-  },
-];
-
-const PARTICIPANTS_PER_PAGE = 6;
+type ParticipantTileModel = {
+  id: string;
+  userId: string;
+  name: string;
+  initials: string;
+  isLocal: boolean;
+  isInstructor: boolean;
+  isMuted: boolean;
+  isCameraOn: boolean;
+  audioTrack: MediaStreamTrack | null;
+  videoTrack: MediaStreamTrack | null;
+};
 
 export function VideoRoom({
+  sessionId,
   mode,
   isInstructor,
   className: classTitle,
   classTime,
   classDuration,
   registeredCount,
+  initialMuted = false,
+  initialCameraOn = true,
+  initialCommunityMode = false,
   onLeave,
+  onEndSession,
 }: VideoRoomProps) {
-  // Local controls
-  const [isMuted, setIsMuted] = useState(false);
-  const [isCameraOn, setIsCameraOn] = useState(true);
+  const { user } = useAuth();
+  const [callObject, setCallObject] = useState<DailyCallObject | null>(null);
+  const [participants, setParticipants] = useState<ParticipantTileModel[]>([]);
+  const [roomError, setRoomError] = useState("");
+  const [isReady, setIsReady] = useState(false);
+  const [isMuted, setIsMuted] = useState(initialMuted);
+  const [isCameraOn, setIsCameraOn] = useState(initialCameraOn);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showSelfView, setShowSelfView] = useState(true);
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
   const [showChat, setShowChat] = useState(mode !== "live-class");
-  const [communityMode, setCommunityMode] = useState(mode !== "live-class");
+  const [communityMode, setCommunityMode] = useState(initialCommunityMode);
+  const [isEnding, setIsEnding] = useState(false);
+  const [statusText, setStatusText] = useState("Connecting to the live room...");
+  const hasRecordedJoinRef = useRef(false);
 
-  // Instructor controls
-  const [participants, setParticipants] = useState(MOCK_PARTICIPANTS);
-  const [gridPage, setGridPage] = useState(0);
+  const currentUserName =
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() || user?.email || "You";
 
-  const joinedCount = participants.length;
-  const instructor = participants.find((p) => p.isInstructor);
-  const nonInstructorParticipants = participants.filter((p) => !p.isInstructor);
-
-  // Pagination for instructor grid
-  const totalPages = Math.ceil(nonInstructorParticipants.length / PARTICIPANTS_PER_PAGE);
-  const pagedParticipants = nonInstructorParticipants.slice(
-    gridPage * PARTICIPANTS_PER_PAGE,
-    (gridPage + 1) * PARTICIPANTS_PER_PAGE
+  const mapParticipants = useCallback(
+    (nextCallObject: DailyCallObject) => {
+      const nextParticipants = Object.values(nextCallObject.participants() || {}).map(
+        (participant) => toParticipantModel(participant, user?.id || "")
+      );
+      setParticipants(nextParticipants);
+    },
+    [user?.id]
   );
 
-  // Fullscreen toggle
+  useEffect(() => {
+    let cancelled = false;
+    let nextCallObject: DailyCallObject | null = null;
+
+    if (!sessionId) {
+      setRoomError("This live room is not configured yet.");
+      return;
+    }
+
+    void (async () => {
+      try {
+        const response = await fetch(`/api/classes/sessions/${sessionId}/room-token`, {
+          method: "POST",
+          cache: "no-store",
+        });
+        const payload = (await response.json().catch(() => ({}))) as {
+          token?: string;
+          roomUrl?: string;
+          communityModeEnabled?: boolean;
+          message?: string;
+        };
+
+        if (!response.ok || !payload.token || !payload.roomUrl) {
+          throw new Error(payload.message || "Unable to join the live room");
+        }
+
+        const daily = await loadDailyIframe();
+        nextCallObject = daily.createCallObject();
+
+        const syncParticipants = () => mapParticipants(nextCallObject!);
+        const handleRoomMessage = (event?: unknown) => {
+          const payloadData = (event as { data?: Record<string, unknown> } | undefined)?.data;
+          if (!payloadData || typeof payloadData.type !== "string") return;
+
+          if (payloadData.type === "community-mode") {
+            setCommunityMode(Boolean(payloadData.enabled));
+          }
+
+          if (payloadData.type === "moderation") {
+            if (payloadData.targetUserId !== user?.id) return;
+
+            if (payloadData.action === "mute") {
+              setIsMuted(true);
+              void nextCallObject?.setLocalAudio(false);
+            }
+
+            if (payloadData.action === "remove") {
+              setStatusText("The instructor has removed you from class.");
+              void leaveRoom(nextCallObject, false, "removed");
+            }
+          }
+
+          if (payloadData.type === "room-ended") {
+            setStatusText("Class has ended.");
+            void leaveRoom(nextCallObject, false, "ended");
+          }
+        };
+
+        nextCallObject.on("participant-joined", syncParticipants);
+        nextCallObject.on("participant-updated", syncParticipants);
+        nextCallObject.on("participant-left", syncParticipants);
+        nextCallObject.on("app-message", handleRoomMessage);
+
+        const deviceSettings = loadSavedDeviceSettings();
+        if (nextCallObject.setInputDevicesAsync) {
+          await nextCallObject.setInputDevicesAsync({
+            audioSource: deviceSettings.micId || undefined,
+            videoSource: deviceSettings.cameraId || undefined,
+          });
+        }
+        if (nextCallObject.setOutputDeviceAsync && deviceSettings.speakerId) {
+          await nextCallObject
+            .setOutputDeviceAsync(deviceSettings.speakerId)
+            .catch(() => undefined);
+        }
+
+        await nextCallObject.join({
+          url: payload.roomUrl,
+          token: payload.token,
+          userName: currentUserName,
+          startAudioOff: initialMuted,
+          startVideoOff: !initialCameraOn,
+        });
+
+        if (cancelled) {
+          await nextCallObject.leave().catch(() => undefined);
+          nextCallObject.destroy();
+          return;
+        }
+
+        hasRecordedJoinRef.current = true;
+        await fetch(`/api/classes/sessions/${sessionId}/attendance`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "joined" }),
+        }).catch(() => undefined);
+
+        mapParticipants(nextCallObject);
+        setCommunityMode(Boolean(payload.communityModeEnabled));
+        setCallObject(nextCallObject);
+        setIsReady(true);
+        setStatusText("Live now");
+      } catch (error) {
+        if (cancelled) return;
+        setRoomError(error instanceof Error ? error.message : "Unable to join the live room");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      void leaveRoom(nextCallObject, true, "left");
+    };
+  }, [currentUserName, initialCameraOn, initialMuted, mapParticipants, sessionId, user?.id]);
+
+  const localParticipant = participants.find((participant) => participant.isLocal);
+  const instructorParticipant =
+    participants.find((participant) => participant.isInstructor) || localParticipant || null;
+  const otherParticipants = participants.filter(
+    (participant) => !participant.isInstructor && !participant.isLocal
+  );
+  const joinedCount = Math.max(1, participants.length);
+
+  const leaveRoom = useCallback(
+    async (
+      targetCallObject = callObject,
+      suppressCallback = false,
+      reason: "left" | "ended" | "removed" = "left"
+    ) => {
+      if (!targetCallObject) {
+        if (!suppressCallback) onLeave(reason);
+        return;
+      }
+
+      if (hasRecordedJoinRef.current) {
+        await fetch(`/api/classes/sessions/${sessionId}/attendance`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "left" }),
+        }).catch(() => undefined);
+        hasRecordedJoinRef.current = false;
+      }
+
+      await targetCallObject.leave().catch(() => undefined);
+      targetCallObject.destroy();
+      setCallObject(null);
+      setIsReady(false);
+
+      if (!suppressCallback) {
+        onLeave(reason);
+      }
+    },
+    [callObject, onLeave, sessionId]
+  );
+
+  const toggleLocalAudio = async () => {
+    if (!callObject) return;
+    const nextValue = !isMuted;
+    setIsMuted(nextValue);
+    await callObject.setLocalAudio(!nextValue);
+  };
+
+  const toggleLocalVideo = async () => {
+    if (!callObject) return;
+    const nextValue = !isCameraOn;
+    setIsCameraOn(nextValue);
+    await callObject.setLocalVideo(nextValue);
+  };
+
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
+      document.documentElement.requestFullscreen().catch(() => undefined);
       setIsFullscreen(true);
     } else {
-      document.exitFullscreen().catch(() => {});
+      document.exitFullscreen().catch(() => undefined);
       setIsFullscreen(false);
     }
   }, []);
 
-  // Instructor: mute specific participant
-  const muteParticipant = (id: string) => {
-    setParticipants((prev) => prev.map((p) => (p.id === id ? { ...p, isMuted: true } : p)));
+  const broadcastModeration = async (action: "mute" | "remove", targetUserId: string) => {
+    if (!callObject?.sendAppMessage) return;
+    await callObject.sendAppMessage({ type: "moderation", action, targetUserId }, "*");
   };
 
-  // Instructor: mute all
-  const muteAll = () => {
-    setParticipants((prev) => prev.map((p) => (p.isInstructor ? p : { ...p, isMuted: true })));
+  const toggleCommunityMode = async () => {
+    if (!isInstructor) return;
+    const nextValue = !communityMode;
+    const response = await fetch(`/api/classes/sessions/${sessionId}/community-mode`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: nextValue }),
+    });
+    if (!response.ok) return;
+    setCommunityMode(nextValue);
+    await callObject?.sendAppMessage?.({ type: "community-mode", enabled: nextValue }, "*");
   };
+
+  const endSession = async () => {
+    if (!onEndSession) return;
+    setIsEnding(true);
+    try {
+      await onEndSession();
+      await callObject?.sendAppMessage?.({ type: "room-ended" }, "*");
+      await leaveRoom(callObject, false, "ended");
+    } finally {
+      setIsEnding(false);
+    }
+  };
+
+  if (roomError) {
+    return (
+      <div className="bg-video-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4 text-white">
+        <div className="bg-video-panel max-w-sm space-y-4 rounded-xl border border-white/10 p-6 text-center">
+          <h2 className="text-xl">Unable to enter room</h2>
+          <p className="text-sm text-white/60">{roomError}</p>
+          <button onClick={() => onLeave("left")} className="text-sm text-white/70 underline">
+            Go back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-[#1a1a2e] text-white">
-      {/* ── Top bar ── */}
-      <header className="flex flex-shrink-0 items-center justify-between border-b border-white/5 bg-[#1a1a2e]/90 px-4 py-2.5">
+    <div className="bg-video-backdrop fixed inset-0 z-[100] flex flex-col text-white">
+      <header className="bg-video-backdrop/90 flex flex-shrink-0 items-center justify-between border-b border-white/5 px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+          <div
+            className={`h-2 w-2 rounded-full ${isReady ? "animate-pulse bg-red-500" : "bg-amber-400"}`}
+          />
           <div className="min-w-0">
             <h1 className="truncate text-sm">{classTitle}</h1>
             <p className="text-xs text-white/50">
@@ -204,7 +337,6 @@ export function VideoRoom({
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Participant count */}
           <div className="flex items-center gap-1.5 rounded-full bg-white/5 px-2.5 py-1.5 text-xs text-white/60">
             <Users className="h-3.5 w-3.5" />
             <span>
@@ -212,39 +344,24 @@ export function VideoRoom({
             </span>
           </div>
 
-          {/* Community mode toggle */}
-          <button
-            onClick={() => setCommunityMode(!communityMode)}
-            className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs transition-colors ${
-              communityMode
-                ? "bg-[#4B5B32] text-white"
-                : "bg-white/5 text-white/60 hover:bg-white/10"
-            }`}
-            title={
-              communityMode
-                ? "Community mode: see and hear everyone"
-                : "Focus mode: see instructor only"
-            }
-          >
-            {communityMode ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-            <span className="hidden sm:inline">{communityMode ? "Community" : "Focus"}</span>
-          </button>
-
-          {/* Instructor: Mute all */}
-          {isInstructor && (
+          {mode !== "live-class" || isInstructor ? (
             <button
-              onClick={muteAll}
-              className="flex items-center gap-1.5 rounded-full bg-white/5 px-2.5 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/10"
-              title="Mute all participants"
+              onClick={() => void toggleCommunityMode()}
+              disabled={!isInstructor}
+              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs transition-colors ${
+                communityMode
+                  ? "bg-brand-accent text-white"
+                  : "bg-white/5 text-white/60 hover:bg-white/10"
+              } ${!isInstructor ? "cursor-default" : ""}`}
+              title={communityMode ? "Community mode enabled" : "Focus mode enabled"}
             >
-              <VolumeX className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Mute all</span>
+              {communityMode ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">{communityMode ? "Community" : "Focus"}</span>
             </button>
-          )}
+          ) : null}
 
-          {/* Leave */}
           <button
-            onClick={onLeave}
+            onClick={() => void leaveRoom(callObject, false, "left")}
             className="flex items-center gap-1.5 rounded-full bg-red-500/20 px-3 py-1.5 text-xs text-red-400 transition-colors hover:bg-red-500/30"
           >
             <Phone className="h-3.5 w-3.5 rotate-135" />
@@ -253,118 +370,109 @@ export function VideoRoom({
         </div>
       </header>
 
-      {/* ── Main content area ── */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Video area */}
         <div className="flex flex-1 flex-col gap-3 overflow-hidden p-3">
-          {isInstructor ? (
-            /* ── INSTRUCTOR VIEW: See everyone ── */
-            <InstructorGrid
-              instructor={instructor!}
-              participants={pagedParticipants}
-              gridPage={gridPage}
-              totalPages={totalPages}
-              onPageChange={setGridPage}
-              onMuteParticipant={muteParticipant}
-              showSelfView={showSelfView}
+          {!isReady ? (
+            <div className="bg-video-panel flex flex-1 items-center justify-center rounded-lg border border-white/5 text-sm text-white/60">
+              {statusText}
+            </div>
+          ) : isInstructor ? (
+            <InstructorView
+              instructor={localParticipant || instructorParticipant}
+              participants={otherParticipants}
+              communityMode={communityMode}
+              onMute={(userId) => void broadcastModeration("mute", userId)}
+              onRemove={(userId) => void broadcastModeration("remove", userId)}
             />
           ) : communityMode ? (
-            /* ── PARTICIPANT: Community mode ON — See everyone ── */
-            <CommunityGrid
-              instructor={instructor!}
-              participants={nonInstructorParticipants}
-              selfId="self"
-              showSelfView={showSelfView}
-              isMuted={isMuted}
-              isCameraOn={isCameraOn}
+            <CommunityView
+              instructor={instructorParticipant}
+              selfParticipant={localParticipant}
+              participants={otherParticipants}
             />
           ) : (
-            /* ── PARTICIPANT: Focus mode — Instructor only ── */
             <FocusView
-              instructor={instructor!}
+              instructor={instructorParticipant}
+              selfParticipant={localParticipant}
+              participantCount={otherParticipants.length}
               showSelfView={showSelfView}
-              selfMuted={isMuted}
-              selfCameraOn={isCameraOn}
-              participantCount={nonInstructorParticipants.length}
             />
           )}
+
+          {!communityMode && !isInstructor ? (
+            <div className="hidden">
+              {otherParticipants.map((participant) => (
+                <ParticipantAudio key={participant.id} participant={participant} />
+              ))}
+            </div>
+          ) : null}
         </div>
 
-        {/* Chat panel (small group / retreat) */}
-        {showChat && (
+        {showChat ? (
           <ChatPanel
             mode={mode}
-            participantName={isInstructor ? "Shruti" : "You"}
+            participantName={isInstructor ? currentUserName : "You"}
             onClose={() => setShowChat(false)}
           />
-        )}
+        ) : null}
       </div>
 
-      {/* ── Bottom control bar ── */}
-      <footer className="flex flex-shrink-0 items-center justify-center gap-2 border-t border-white/5 bg-[#1a1a2e]/90 px-4 py-3 sm:gap-3">
-        {/* Mic */}
+      <footer className="bg-video-backdrop/90 flex flex-shrink-0 items-center justify-center gap-2 border-t border-white/5 px-4 py-3 sm:gap-3">
         <ControlButton
           active={!isMuted}
-          onClick={() => setIsMuted(!isMuted)}
+          onClick={() => void toggleLocalAudio()}
           icon={isMuted ? MicOff : Mic}
           label={isMuted ? "Unmute" : "Mute"}
           danger={isMuted}
         />
-
-        {/* Camera */}
         <ControlButton
           active={isCameraOn}
-          onClick={() => setIsCameraOn(!isCameraOn)}
+          onClick={() => void toggleLocalVideo()}
           icon={isCameraOn ? Video : VideoOff}
           label={isCameraOn ? "Stop video" : "Start video"}
           danger={!isCameraOn}
         />
-
-        {/* Divider */}
-        <div className="mx-1 hidden h-8 w-px bg-white/10 sm:block" />
-
-        {/* Self view */}
         <ControlButton
           active={showSelfView}
-          onClick={() => setShowSelfView(!showSelfView)}
-          icon={showSelfView ? UserCheck : Users}
+          onClick={() => setShowSelfView((value) => !value)}
+          icon={Users}
           label={showSelfView ? "Hide self" : "Show self"}
         />
-
-        {/* Fullscreen */}
         <ControlButton
           active={isFullscreen}
           onClick={toggleFullscreen}
           icon={isFullscreen ? Minimize : Maximize}
           label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
         />
-
-        {/* Chat toggle (only for small group / retreat) */}
-        {mode !== "live-class" && (
+        {mode !== "live-class" ? (
           <ControlButton
             active={showChat}
-            onClick={() => setShowChat(!showChat)}
+            onClick={() => setShowChat((value) => !value)}
             icon={MessageSquare}
             label={showChat ? "Hide chat" : "Show chat"}
           />
-        )}
-
-        {/* Device selector */}
+        ) : null}
         <ControlButton
           active={showDeviceSelector}
-          onClick={() => setShowDeviceSelector(!showDeviceSelector)}
+          onClick={() => setShowDeviceSelector((value) => !value)}
           icon={Settings}
           label="Devices"
         />
+        {isInstructor && onEndSession ? (
+          <button
+            onClick={() => void endSession()}
+            disabled={isEnding}
+            className="rounded-lg bg-red-500/20 px-3 py-2 text-xs text-red-300 transition-colors hover:bg-red-500/30 disabled:opacity-50"
+          >
+            {isEnding ? "Ending..." : "End class"}
+          </button>
+        ) : null}
       </footer>
 
-      {/* Device selector modal */}
-      {showDeviceSelector && <DeviceSelector onClose={() => setShowDeviceSelector(false)} />}
+      {showDeviceSelector ? <DeviceSelector onClose={() => setShowDeviceSelector(false)} /> : null}
     </div>
   );
 }
-
-/* ── Control button ── */
 
 function ControlButton({
   active,
@@ -392,275 +500,235 @@ function ControlButton({
       title={label}
     >
       <Icon className="h-5 w-5" />
-      <span className="hidden text-[10px] sm:block">{label}</span>
+      <span className="text-micro hidden sm:block">{label}</span>
     </button>
   );
 }
 
-/* ── Video tile ── */
-
-function VideoTile({
-  participant,
-  size = "md",
-  isLocal,
-  showMuteButton,
-  onMute,
-}: {
-  participant: VideoParticipant;
-  size?: "lg" | "md" | "sm" | "pip";
-  isLocal?: boolean;
-  showMuteButton?: boolean;
-  onMute?: () => void;
-}) {
-  const sizeClasses = {
-    lg: "min-h-[300px]",
-    md: "min-h-[160px]",
-    sm: "min-h-[120px]",
-    pip: "w-40 h-28",
-  };
-
-  return (
-    <div
-      className={`relative flex-1 overflow-hidden rounded-lg ${sizeClasses[size]} ${
-        size === "pip" ? "flex-none" : ""
-      }`}
-    >
-      {/* Video / avatar area */}
-      {participant.isCameraOn ? (
-        <div
-          className="absolute inset-0"
-          style={{
-            background: `linear-gradient(135deg, ${participant.color}40, ${participant.color}20)`,
-          }}
-        >
-          {/* Simulated video feed — subtle animated gradient */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div
-              className="flex h-24 w-24 items-center justify-center rounded-full text-2xl text-white/80"
-              style={{ backgroundColor: participant.color + "60" }}
-            >
-              {participant.initials}
-            </div>
-          </div>
-          {/* Subtle "video active" indicator */}
-          <div className="absolute top-2 left-2">
-            <div className="h-2 w-2 rounded-full bg-green-500" />
-          </div>
-        </div>
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-[#252540]">
-          <div
-            className="flex h-16 w-16 items-center justify-center rounded-full text-xl text-white sm:h-20 sm:w-20"
-            style={{ backgroundColor: participant.color }}
-          >
-            {participant.initials}
-          </div>
-        </div>
-      )}
-
-      {/* Name + status overlay */}
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            {participant.isMuted && <MicOff className="h-3 w-3 text-red-400" />}
-            <span className="truncate text-xs text-white/90">
-              {isLocal ? `${participant.name} (You)` : participant.name}
-            </span>
-          </div>
-          {participant.isInstructor && (
-            <Badge className="bg-[#4B5B32]/80 px-1.5 py-0 text-[9px] text-white">Instructor</Badge>
-          )}
-        </div>
-      </div>
-
-      {/* Instructor mute button */}
-      {showMuteButton && !participant.isMuted && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onMute?.();
-          }}
-          className="absolute top-2 right-2 rounded-full bg-black/40 p-1.5 text-white transition-colors hover:bg-red-500/50"
-          title={`Mute ${participant.name}`}
-        >
-          <VolumeX className="h-3 w-3" />
-        </button>
-      )}
-    </div>
-  );
-}
-
-/* ── Instructor grid view ── */
-
-function InstructorGrid({
+function InstructorView({
   instructor,
   participants,
-  gridPage,
-  totalPages,
-  onPageChange,
-  onMuteParticipant,
-  showSelfView,
+  communityMode,
+  onMute,
+  onRemove,
 }: {
-  instructor: VideoParticipant;
-  participants: VideoParticipant[];
-  gridPage: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
-  onMuteParticipant: (id: string) => void;
-  showSelfView: boolean;
+  instructor: ParticipantTileModel | null;
+  participants: ParticipantTileModel[];
+  communityMode: boolean;
+  onMute: (userId: string) => void;
+  onRemove: (userId: string) => void;
 }) {
   return (
-    <div className="flex flex-1 flex-col gap-3 overflow-hidden">
-      {/* Participant grid */}
-      <div className="grid flex-1 auto-rows-fr grid-cols-2 gap-2 md:grid-cols-3">
-        {participants.map((p) => (
-          <VideoTile
-            key={p.id}
-            participant={p}
-            size="md"
-            showMuteButton={true}
-            onMute={() => onMuteParticipant(p.id)}
+    <div className="grid flex-1 grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr]">
+      <ParticipantTile participant={instructor} size="lg" isLocal />
+      <div className="grid grid-cols-2 gap-3">
+        {participants.map((participant) => (
+          <ParticipantTile
+            key={participant.id}
+            participant={participant}
+            size="sm"
+            actionSlot={
+              <div className="flex gap-2">
+                <button
+                  onClick={() => onMute(participant.userId)}
+                  className="rounded-full bg-black/40 p-1.5 text-white transition-colors hover:bg-red-500/50"
+                  title={`Mute ${participant.name}`}
+                >
+                  <VolumeX className="h-3 w-3" />
+                </button>
+                <button
+                  onClick={() => onRemove(participant.userId)}
+                  className="rounded-full bg-black/40 p-1.5 text-white transition-colors hover:bg-red-500/50"
+                  title={`Remove ${participant.name}`}
+                >
+                  <Phone className="h-3 w-3 rotate-135" />
+                </button>
+              </div>
+            }
           />
         ))}
-        {/* Fill empty slots */}
-        {Array.from({ length: Math.max(0, PARTICIPANTS_PER_PAGE - participants.length) }).map(
-          (_, i) => (
-            <div
-              key={`empty-${i}`}
-              className="flex min-h-[160px] items-center justify-center rounded-lg border border-white/5 bg-[#252540]/50"
-            >
-              <span className="text-xs text-white/20">Empty</span>
-            </div>
-          )
-        )}
+        {participants.length === 0 ? (
+          <div className="bg-video-panel/60 col-span-2 flex items-center justify-center rounded-lg border border-white/5 text-sm text-white/40">
+            Waiting for participants...
+          </div>
+        ) : null}
       </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-3">
-          <button
-            onClick={() => onPageChange(Math.max(0, gridPage - 1))}
-            disabled={gridPage === 0}
-            className="rounded-full bg-white/5 p-1.5 transition-colors hover:bg-white/10 disabled:opacity-30"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <span className="text-xs text-white/50">
-            {gridPage + 1} / {totalPages}
-          </span>
-          <button
-            onClick={() => onPageChange(Math.min(totalPages - 1, gridPage + 1))}
-            disabled={gridPage === totalPages - 1}
-            className="rounded-full bg-white/5 p-1.5 transition-colors hover:bg-white/10 disabled:opacity-30"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-      )}
-
-      {/* Self view PIP */}
-      {showSelfView && (
-        <div className="absolute right-4 bottom-20 z-10">
-          <VideoTile participant={instructor} size="pip" isLocal />
-        </div>
-      )}
+      <div className="col-span-full flex items-center gap-2 text-xs text-white/50">
+        <Badge
+          className={communityMode ? "bg-brand-accent text-white" : "bg-white/10 text-white/70"}
+        >
+          {communityMode ? "Community mode enabled" : "Focus mode enabled"}
+        </Badge>
+      </div>
     </div>
   );
 }
 
-/* ── Community grid (participant sees everyone) ── */
-
-function CommunityGrid({
+function CommunityView({
   instructor,
+  selfParticipant,
   participants,
-  selfId,
-  showSelfView,
-  isMuted,
-  isCameraOn,
 }: {
-  instructor: VideoParticipant;
-  participants: VideoParticipant[];
-  selfId: string;
-  showSelfView: boolean;
-  isMuted: boolean;
-  isCameraOn: boolean;
+  instructor: ParticipantTileModel | null;
+  selfParticipant: ParticipantTileModel | null;
+  participants: ParticipantTileModel[];
 }) {
-  const selfParticipant: VideoParticipant = {
-    id: "self",
-    name: "You",
-    initials: "YO",
-    isMuted,
-    isCameraOn,
-    isInstructor: false,
-    color: "#4B5B32",
-  };
-
   return (
     <div className="flex flex-1 flex-col gap-3 overflow-hidden">
-      {/* Instructor spotlight (larger) */}
-      <div className="flex-[2]">
-        <VideoTile participant={instructor} size="lg" />
-      </div>
-
-      {/* Participant strip */}
-      <div className="flex flex-1 gap-2 overflow-x-auto pb-1">
-        {showSelfView && (
-          <div className="w-36 flex-shrink-0 sm:w-44">
-            <VideoTile participant={selfParticipant} size="sm" isLocal />
-          </div>
-        )}
-        {participants.map((p) => (
-          <div key={p.id} className="w-36 flex-shrink-0 sm:w-44">
-            <VideoTile participant={p} size="sm" />
-          </div>
+      <ParticipantTile participant={instructor} size="lg" />
+      <div className="grid flex-1 grid-cols-2 gap-3 md:grid-cols-3">
+        {selfParticipant ? (
+          <ParticipantTile participant={selfParticipant} size="sm" isLocal />
+        ) : null}
+        {participants.map((participant) => (
+          <ParticipantTile key={participant.id} participant={participant} size="sm" />
         ))}
       </div>
     </div>
   );
 }
-
-/* ── Focus view (participant sees instructor only) ── */
 
 function FocusView({
   instructor,
-  showSelfView,
-  selfMuted,
-  selfCameraOn,
+  selfParticipant,
   participantCount,
+  showSelfView,
 }: {
-  instructor: VideoParticipant;
-  showSelfView: boolean;
-  selfMuted: boolean;
-  selfCameraOn: boolean;
+  instructor: ParticipantTileModel | null;
+  selfParticipant: ParticipantTileModel | null;
   participantCount: number;
+  showSelfView: boolean;
 }) {
-  const selfParticipant: VideoParticipant = {
-    id: "self",
-    name: "You",
-    initials: "YO",
-    isMuted: selfMuted,
-    isCameraOn: selfCameraOn,
-    isInstructor: false,
-    color: "#4B5B32",
-  };
-
   return (
     <div className="relative flex-1">
-      {/* Instructor fills the space */}
-      <VideoTile participant={instructor} size="lg" />
-
-      {/* Audio indicator — you can hear others */}
+      <ParticipantTile participant={instructor} size="lg" />
       <div className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-1.5 text-xs text-white/60">
         <Users className="h-3 w-3" />
         <span>{participantCount} others listening</span>
       </div>
-
-      {/* Self view PIP */}
-      {showSelfView && (
-        <div className="absolute right-4 bottom-4">
-          <VideoTile participant={selfParticipant} size="pip" isLocal />
+      {showSelfView && selfParticipant ? (
+        <div className="absolute right-4 bottom-4 w-40">
+          <ParticipantTile participant={selfParticipant} size="pip" isLocal />
         </div>
-      )}
+      ) : null}
     </div>
   );
+}
+
+function ParticipantTile({
+  participant,
+  size = "md",
+  isLocal = false,
+  actionSlot,
+}: {
+  participant: ParticipantTileModel | null;
+  size?: "lg" | "md" | "sm" | "pip";
+  isLocal?: boolean;
+  actionSlot?: ReactNode;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const sizeClasses = {
+    lg: "min-h-[320px]",
+    md: "min-h-[180px]",
+    sm: "min-h-[140px]",
+    pip: "min-h-[110px]",
+  };
+
+  useEffect(() => {
+    attachTrack(videoRef.current, participant?.videoTrack || null, isLocal);
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    };
+  }, [isLocal, participant?.videoTrack]);
+
+  if (!participant) {
+    return (
+      <div
+        className={`bg-video-panel flex items-center justify-center rounded-lg border border-white/5 ${sizeClasses[size]}`}
+      >
+        <span className="text-sm text-white/40">No video yet</span>
+      </div>
+    );
+  }
+
+  const hasVideo = Boolean(participant.videoTrack && participant.isCameraOn);
+
+  return (
+    <div className={`bg-video-surface relative overflow-hidden rounded-lg ${sizeClasses[size]}`}>
+      {hasVideo ? (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted={isLocal}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="from-brand-accent/25 to-video-panel flex h-full items-center justify-center bg-gradient-to-br">
+          <div className="bg-brand-accent/40 flex h-20 w-20 items-center justify-center rounded-full text-2xl text-white">
+            {participant.initials}
+          </div>
+        </div>
+      )}
+      {!isLocal && participant.audioTrack ? <ParticipantAudio participant={participant} /> : null}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            {participant.isMuted ? <MicOff className="h-3 w-3 text-red-300" /> : null}
+            <span className="truncate text-xs text-white/90">
+              {participant.name}
+              {isLocal ? " (You)" : ""}
+            </span>
+          </div>
+          {participant.isInstructor ? (
+            <Badge className="bg-brand-accent/80 text-white">Instructor</Badge>
+          ) : null}
+        </div>
+      </div>
+      {actionSlot ? <div className="absolute top-3 right-3">{actionSlot}</div> : null}
+    </div>
+  );
+}
+
+function ParticipantAudio({ participant }: { participant: ParticipantTileModel }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    attachTrack(audioRef.current, participant.audioTrack, false);
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.srcObject = null;
+      }
+    };
+  }, [participant.audioTrack]);
+
+  return <audio ref={audioRef} autoPlay playsInline />;
+}
+
+function toParticipantModel(
+  participant: DailyParticipant,
+  _currentUserId: string
+): ParticipantTileModel {
+  const name = participant.user_name || (participant.local ? "You" : "Participant");
+  return {
+    id: participant.session_id,
+    userId: participant.user_id || participant.session_id,
+    name,
+    initials: buildInitials(name),
+    isLocal: Boolean(participant.local),
+    isInstructor: Boolean(participant.owner),
+    isMuted: participant.tracks?.audio?.state !== "playable",
+    isCameraOn: participant.tracks?.video?.state === "playable",
+    audioTrack: participant.local ? null : participant.tracks?.audio?.persistentTrack || null,
+    videoTrack: participant.tracks?.video?.persistentTrack || null,
+  };
+}
+
+function buildInitials(name: string) {
+  const parts = name.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "YO";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
 }

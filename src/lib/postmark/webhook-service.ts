@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 
 type RawPostmarkEvent = {
@@ -25,7 +26,11 @@ function toDate(value: string | undefined) {
   return parsed;
 }
 
-export function verifyPostmarkWebhook(body: string, signatureHeader: string | null, secret: string) {
+export function verifyPostmarkWebhook(
+  body: string,
+  signatureHeader: string | null,
+  secret: string
+) {
   if (!signatureHeader) return false;
   const signature = signatureHeader.trim();
 
@@ -53,14 +58,16 @@ export async function ingestPostmarkEvent(payload: RawPostmarkEvent) {
   }
 
   const messageId = payload.MessageID || null;
-  const providerEventId = payload.ID ? String(payload.ID) : `${messageId || "msg"}:${type}:${recipient}:${Date.now()}`;
+  const providerEventId = payload.ID
+    ? String(payload.ID)
+    : `${messageId || "msg"}:${type}:${recipient}:${Date.now()}`;
   const eventAt = toDate(payload.ReceivedAt);
   const metadata = {
     ...(payload.Metadata || {}),
     stream: payload.MessageStream || null,
     tag: payload.Tag || null,
     url: payload.OriginalLink || null,
-  };
+  } as Record<string, unknown>;
 
   const user = await db.user.findUnique({
     where: { email: recipient },
@@ -85,7 +92,8 @@ export async function ingestPostmarkEvent(payload: RawPostmarkEvent) {
   const providerCampaignId =
     (campaignId ? undefined : explicitCampaignId) ||
     (typeof payload.Tag === "string" && payload.Tag) ||
-    (messageId || undefined);
+    messageId ||
+    undefined;
 
   if (!campaignId && providerCampaignId) {
     const campaign = await db.emailCampaign.upsert({
@@ -97,14 +105,14 @@ export async function ingestPostmarkEvent(payload: RawPostmarkEvent) {
         status: type === "Scheduled" ? "scheduled" : "sent",
         sentAt: type === "Scheduled" ? null : eventAt,
         scheduledAt: type === "Scheduled" ? eventAt : null,
-        metadataJson: metadata,
+        metadataJson: metadata as Prisma.InputJsonValue,
       },
       update: {
         subject: payload.Subject || undefined,
         stream: payload.MessageStream || undefined,
         status: type === "Scheduled" ? "scheduled" : "sent",
         sentAt: type === "Scheduled" ? undefined : eventAt,
-        metadataJson: metadata,
+        metadataJson: metadata as Prisma.InputJsonValue,
       },
       select: { id: true },
     });
@@ -122,7 +130,7 @@ export async function ingestPostmarkEvent(payload: RawPostmarkEvent) {
       userId: user?.id,
       campaignId,
       eventAt,
-      metadataJson: metadata,
+      metadataJson: metadata as Prisma.InputJsonValue,
     },
     update: {
       type,
@@ -130,7 +138,7 @@ export async function ingestPostmarkEvent(payload: RawPostmarkEvent) {
       userId: user?.id,
       campaignId,
       eventAt,
-      metadataJson: metadata,
+      metadataJson: metadata as Prisma.InputJsonValue,
     },
   });
 

@@ -17,7 +17,8 @@ export const blogPosts: BlogPost[] = [
     title: "Why Strength Training Matters When You Have Chronic Illness",
     excerpt:
       "Exploring the evidence for resistance training in managing autoimmune conditions, chronic pain, and building resilient bodies.",
-    coverImage: "https://images.unsplash.com/photo-1615388599690-02c0d4a3dfa7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHJlbmd0aCUyMHRyYWluaW5nJTIwcmVoYWJpbGl0YXRpb24lMjBjaHJvbmljJTIwaWxsbmVzc3xlbnwxfHx8fDE3NzI2NDE3NDJ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+    coverImage:
+      "https://images.unsplash.com/photo-1615388599690-02c0d4a3dfa7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHJlbmd0aCUyMHRyYWluaW5nJTIwcmVoYWJpbGl0YXRpb24lMjBjaHJvbmljJTIwaWxsbmVzc3xlbnwxfHx8fDE3NzI2NDE3NDJ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
     coverAlt: "Strength training rehabilitation session",
     content: `
 # Why Strength Training Matters When You Have Chronic Illness
@@ -62,7 +63,8 @@ Strength training for chronic illness requires nuance, patience, and expertise. 
     title: "What Makes Adaptive Yoga Different From Mainstream Yoga",
     excerpt:
       "Understanding the principles and practices that distinguish rehabilitation-informed yoga from conventional classes.",
-    coverImage: "https://images.unsplash.com/photo-1758599879693-9e06f55a4ded?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZGFwdGl2ZSUyMHlvZ2ElMjBtZWRpdGF0aW9uJTIwY2FsbSUyMHN0dWRpb3xlbnwxfHx8fDE3NzI2NDE3NDN8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+    coverImage:
+      "https://images.unsplash.com/photo-1758599879693-9e06f55a4ded?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZGFwdGl2ZSUyMHlvZ2ElMjBtZWRpdGF0aW9uJTIwY2FsbSUyMHN0dWRpb3xlbnwxfHx8fDE3NzI2NDE3NDN8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
     coverAlt: "Calm yoga studio with natural light",
     content: `
 # What Makes Adaptive Yoga Different From Mainstream Yoga
@@ -108,7 +110,8 @@ Your body deserves practices that work with its reality, not against it.
     title: "Programming Strength Training Around Flares and Bad Days",
     excerpt:
       "Practical strategies for maintaining training consistency when chronic illness symptoms fluctuate.",
-    coverImage: "https://images.unsplash.com/photo-1580618849092-0b800b9b05d3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwZXJzb24lMjByZXN0aW5nJTIwcmVjb3ZlcnklMjBmaXRuZXNzJTIwZmF0aWd1ZXxlbnwxfHx8fDE3NzI2NDE3NDN8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+    coverImage:
+      "https://images.unsplash.com/photo-1580618849092-0b800b9b05d3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwZXJzb24lMjByZXN0aW5nJTIwcmVjb3ZlcnklMjBmaXRuZXNzJTIwZmF0aWd1ZXxlbnwxfHx8fDE3NzI2NDE3NDN8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
     coverAlt: "Person resting between training sets",
     content: `
 # Programming Strength Training Around Flares and Bad Days
@@ -158,7 +161,8 @@ You don't need to be consistent every day. You need to be persistent over time.
     title: "Strength Training for Hypermobility: What You Need to Know",
     excerpt:
       "Essential principles for building strength and stability when you have hypermobile joints.",
-    coverImage: "https://images.unsplash.com/photo-1516208685347-1db8b6b227dd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmbGV4aWJsZSUyMHN0cmV0Y2hpbmclMjBtb2JpbGl0eSUyMGV4ZXJjaXNlfGVufDF8fHx8MTc3MjY0MTc0NHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+    coverImage:
+      "https://images.unsplash.com/photo-1516208685347-1db8b6b227dd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmbGV4aWJsZSUyMHN0cmV0Y2hpbmclMjBtb2JpbGl0eSUyMGV4ZXJjaXNlfGVufDF8fHx8MTc3MjY0MTc0NHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
     coverAlt: "Mobility and flexibility exercise demonstration",
     content: `
 # Strength Training for Hypermobility: What You Need to Know
@@ -217,7 +221,8 @@ With proper programming, hypermobile bodies can be incredibly strong and capable
     title: "Exercise with Arthritis: Beyond the Generic Advice",
     excerpt:
       "Evidence-based approaches to movement and strength training when you have inflammatory or degenerative arthritis.",
-    coverImage: "https://images.unsplash.com/photo-1747302653826-42c6cd7295f2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhcnRocml0aXMlMjBqb2ludCUyMGhlYWx0aCUyMHBoeXNpY2FsJTIwdGhlcmFweSUyMGV4ZXJjaXNlfGVufDF8fHx8MTc3MjY0MTc0NHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+    coverImage:
+      "https://images.unsplash.com/photo-1747302653826-42c6cd7295f2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhcnRocml0aXMlMjBqb2ludCUyMGhlYWx0aCUyMHBoeXNpY2FsJTIwdGhlcmFweSUyMGV4ZXJjaXNlfGVufDF8fHx8MTc3MjY0MTc0NHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
     coverAlt: "Guided exercise therapy session",
     content: `
 # Exercise with Arthritis: Beyond the Generic Advice
@@ -290,7 +295,8 @@ That requires expertise, not just enthusiasm.
     title: "Building Training Capacity When You Start From Zero",
     excerpt:
       "How to begin strength training when chronic illness has left you deconditioned and where generic beginner programs don't apply.",
-    coverImage: "https://images.unsplash.com/photo-1709315859957-3b3583bf364c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiZWdpbm5lciUyMHdlaWdodGxpZnRpbmclMjBzdGFydGluZyUyMGd5bSUyMGJhcmJlbGx8ZW58MXx8fHwxNzcyNjQxNzQ0fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+    coverImage:
+      "https://images.unsplash.com/photo-1709315859957-3b3583bf364c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiZWdpbm5lciUyMHdlaWdodGxpZnRpbmclMjBzdGFydGluZyUyMGd5bSUyMGJhcmJlbGx8ZW58MXx8fHwxNzcyNjQxNzQ0fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
     coverAlt: "Beginner approaching weightlifting equipment",
     content: `
 # Building Training Capacity When You Start From Zero

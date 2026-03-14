@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api/auth-user";
 import { getAccount, updateAccount } from "@/lib/account/account-service";
 
@@ -11,6 +11,7 @@ function siteUrlFromRequest(request: Request) {
 
 export async function GET(request: Request) {
   try {
+    await connection();
     const user = await requireSessionUser();
     const account = await getAccount(user.id, siteUrlFromRequest(request));
     return NextResponse.json(account);
@@ -30,18 +31,9 @@ export async function PATCH(request: Request) {
     const updated = await updateAccount(user.id, {
       firstName: typeof body.firstName === "string" ? body.firstName : undefined,
       lastName: typeof body.lastName === "string" ? body.lastName : undefined,
-      dob:
-        typeof body.dob === "string"
-          ? body.dob
-          : body.dob === null
-            ? null
-            : undefined,
+      dob: typeof body.dob === "string" ? body.dob : body.dob === null ? null : undefined,
       gender:
-        typeof body.gender === "string"
-          ? body.gender
-          : body.gender === null
-            ? null
-            : undefined,
+        typeof body.gender === "string" ? body.gender : body.gender === null ? null : undefined,
       ethnicity:
         typeof body.ethnicity === "string"
           ? body.ethnicity

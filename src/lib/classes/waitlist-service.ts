@@ -1,7 +1,10 @@
-import { ClassWaitlistStatus } from "@prisma/client";
+import { ClassWaitlistStatus, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 
-export async function getNextWaitlistPosition(sessionId: string, tx: typeof db = db) {
+export async function getNextWaitlistPosition(
+  sessionId: string,
+  tx: Prisma.TransactionClient | typeof db = db
+) {
   const last = await tx.classWaitlistEntry.findFirst({
     where: { sessionId },
     orderBy: { position: "desc" },
@@ -10,7 +13,11 @@ export async function getNextWaitlistPosition(sessionId: string, tx: typeof db =
   return (last?.position || 0) + 1;
 }
 
-export async function joinWaitlist(sessionId: string, userId: string, tx: typeof db = db) {
+export async function joinWaitlist(
+  sessionId: string,
+  userId: string,
+  tx: Prisma.TransactionClient | typeof db = db
+) {
   const existing = await tx.classWaitlistEntry.findFirst({
     where: { sessionId, userId, status: ClassWaitlistStatus.waiting },
   });
@@ -27,7 +34,11 @@ export async function joinWaitlist(sessionId: string, userId: string, tx: typeof
   });
 }
 
-export async function removeFromWaitlist(sessionId: string, userId: string, tx: typeof db = db) {
+export async function removeFromWaitlist(
+  sessionId: string,
+  userId: string,
+  tx: Prisma.TransactionClient | typeof db = db
+) {
   const entry = await tx.classWaitlistEntry.findFirst({
     where: { sessionId, userId, status: ClassWaitlistStatus.waiting },
   });
@@ -41,7 +52,10 @@ export async function removeFromWaitlist(sessionId: string, userId: string, tx: 
   return entry;
 }
 
-export async function getFirstWaiting(sessionId: string, tx: typeof db = db) {
+export async function getFirstWaiting(
+  sessionId: string,
+  tx: Prisma.TransactionClient | typeof db = db
+) {
   return tx.classWaitlistEntry.findFirst({
     where: { sessionId, status: ClassWaitlistStatus.waiting },
     orderBy: { position: "asc" },

@@ -41,7 +41,7 @@ export function AdminCampaignDetail() {
       <div className="space-y-6">
         <Link
           href="/admin/newsletter"
-          className="text-muted-foreground inline-flex items-center gap-2 text-sm hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-2 text-sm"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Newsletter
@@ -51,7 +51,7 @@ export function AdminCampaignDetail() {
         {!loading && !campaign ? (
           <Card>
             <CardContent className="py-10 text-center">
-              <p className="text-sm text-[#2E1F33]">Campaign not found.</p>
+              <p className="text-brand-dark text-sm">Campaign not found.</p>
               <Link href="/admin/newsletter">
                 <Button variant="outline" className="mt-4">
                   Return to newsletter analytics
@@ -64,7 +64,7 @@ export function AdminCampaignDetail() {
         {campaign ? (
           <>
             <div>
-              <h1 className="text-2xl text-[#2E1F33]">{campaign.subject}</h1>
+              <h1 className="text-brand-dark text-2xl">{campaign.subject}</h1>
               <p className="text-muted-foreground text-sm">
                 {new Date(campaign.sentDate).toLocaleString("en-GB")}
               </p>
@@ -77,14 +77,17 @@ export function AdminCampaignDetail() {
             </div>
             <Card>
               <CardContent className="space-y-2 pt-6">
-                <h2 className="text-lg text-[#2E1F33]">Top Links</h2>
+                <h2 className="text-brand-dark text-lg">Top Links</h2>
                 {campaign.topLinks.length === 0 ? (
                   <p className="text-muted-foreground text-sm">No click links recorded.</p>
                 ) : (
                   campaign.topLinks.map((link) => (
-                    <div key={link.url} className="flex items-center justify-between rounded border p-2">
+                    <div
+                      key={link.url}
+                      className="flex items-center justify-between rounded border p-2"
+                    >
                       <p className="truncate text-sm">{link.url}</p>
-                      <span className="text-xs text-muted-foreground">{link.clicks} clicks</span>
+                      <span className="text-muted-foreground text-xs">{link.clicks} clicks</span>
                     </div>
                   ))
                 )}
@@ -101,7 +104,7 @@ function Metric({ label, value }: { label: string; value: string | number }) {
   return (
     <Card>
       <CardContent className="pt-6 text-center">
-        <p className="text-2xl text-[#2E1F33]">{value}</p>
+        <p className="text-brand-dark text-2xl">{value}</p>
         <p className="text-muted-foreground text-xs">{label}</p>
       </CardContent>
     </Card>

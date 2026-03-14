@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/api/auth-user";
 import { getAdminDashboardSummary } from "@/lib/admin/dashboard-service";
 
 export async function GET() {
   try {
+    await connection();
     await requireAdminUser();
     const summary = await getAdminDashboardSummary();
     return NextResponse.json(summary);
@@ -15,6 +16,9 @@ export async function GET() {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
     console.error("GET /api/admin/dashboard failed", error);
-    return NextResponse.json({ message: "Failed to load admin dashboard summary" }, { status: 500 });
+    return NextResponse.json(
+      { message: "Failed to load admin dashboard summary" },
+      { status: 500 }
+    );
   }
 }

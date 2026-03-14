@@ -6,11 +6,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function Page({
-  searchParams,
-}: {
-  searchParams: Promise<{ ref?: string }>;
-}) {
+export default async function Page({ searchParams }: { searchParams: Promise<{ ref?: string }> }) {
   const params = await searchParams;
   const query = new URLSearchParams();
   if (typeof params.ref === "string" && params.ref) {

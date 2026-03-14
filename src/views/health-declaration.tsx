@@ -3,6 +3,8 @@
 import { Layout } from "../components/layout";
 import { SEO } from "../components/seo";
 
+const LAST_UPDATED_LABEL = "12 March 2026";
+
 export function HealthDeclarationPage() {
   return (
     <Layout>
@@ -16,7 +18,7 @@ export function HealthDeclarationPage() {
         <h1 className="mb-8 text-4xl md:text-5xl">Health Declaration & Informed Consent</h1>
 
         <div className="prose prose-lg text-muted-foreground max-w-none space-y-8">
-          <p className="text-sm italic">Last updated: {new Date().toLocaleDateString("en-GB")}</p>
+          <p className="text-sm italic">Last updated: {LAST_UPDATED_LABEL}</p>
 
           <p className="text-lg">
             <em>
@@ -25,7 +27,7 @@ export function HealthDeclarationPage() {
             </em>
           </p>
 
-          <div className="my-8 rounded-lg border border-[#4B5B32]/30 bg-[#4B5B32]/10 p-6">
+          <div className="border-brand-accent/30 bg-brand-accent/10 my-8 rounded-lg border p-6">
             <p className="text-foreground">
               <strong>Important:</strong> Please read this document carefully. It contains important
               information about your health, safety, and participation in physical activities. By
@@ -288,7 +290,7 @@ export function HealthDeclarationPage() {
               <li>I accept the risks and responsibilities outlined above</li>
             </ul>
 
-            <div className="mt-8 rounded-lg border border-[#4B5B32]/30 bg-[#4B5B32]/10 p-6">
+            <div className="border-brand-accent/30 bg-brand-accent/10 mt-8 rounded-lg border p-6">
               <p className="text-foreground">
                 <strong>For Booking Purposes:</strong>
                 <br />

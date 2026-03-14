@@ -60,7 +60,7 @@ export function AdminDashboard({ initialData }: { initialData?: AdminDashboardSu
     <AdminLayout title="Dashboard - Admin">
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl text-[#2E1F33]">Instructor Dashboard</h1>
+          <h1 className="text-brand-dark text-2xl">Instructor Dashboard</h1>
           <p className="text-muted-foreground mt-1">
             {new Date(summary.today.date).toLocaleDateString("en-GB", {
               weekday: "long",
@@ -77,9 +77,9 @@ export function AdminDashboard({ initialData }: { initialData?: AdminDashboardSu
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-muted-foreground text-sm">Today's Classes</p>
-                  <p className="mt-1 text-3xl text-[#2E1F33]">{summary.today.sessions}</p>
+                  <p className="text-brand-dark mt-1 text-3xl">{summary.today.sessions}</p>
                 </div>
-                <Calendar className="h-6 w-6 text-[#4B5B32]" />
+                <Calendar className="text-brand-accent h-6 w-6" />
               </div>
             </CardContent>
           </Card>
@@ -88,11 +88,11 @@ export function AdminDashboard({ initialData }: { initialData?: AdminDashboardSu
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-muted-foreground text-sm">Booked / Capacity</p>
-                  <p className="mt-1 text-3xl text-[#2E1F33]">
+                  <p className="text-brand-dark mt-1 text-3xl">
                     {summary.today.booked}/{summary.today.capacity}
                   </p>
                 </div>
-                <Users className="h-6 w-6 text-[#4B5B32]" />
+                <Users className="text-brand-accent h-6 w-6" />
               </div>
             </CardContent>
           </Card>
@@ -101,9 +101,9 @@ export function AdminDashboard({ initialData }: { initialData?: AdminDashboardSu
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-muted-foreground text-sm">Live Now</p>
-                  <p className="mt-1 text-3xl text-[#2E1F33]">{summary.today.liveNow}</p>
+                  <p className="text-brand-dark mt-1 text-3xl">{summary.today.liveNow}</p>
                 </div>
-                <Activity className="h-6 w-6 text-[#4B5B32]" />
+                <Activity className="text-brand-accent h-6 w-6" />
               </div>
             </CardContent>
           </Card>
@@ -112,19 +112,19 @@ export function AdminDashboard({ initialData }: { initialData?: AdminDashboardSu
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-muted-foreground text-sm">Upcoming</p>
-                  <p className="mt-1 text-3xl text-[#2E1F33]">{summary.upcoming.length}</p>
+                  <p className="text-brand-dark mt-1 text-3xl">{summary.upcoming.length}</p>
                 </div>
-                <Calendar className="h-6 w-6 text-[#4B5B32]" />
+                <Calendar className="text-brand-accent h-6 w-6" />
               </div>
             </CardContent>
           </Card>
         </div>
 
         {summary.nearFull.length > 0 ? (
-          <Card className="border-[#4B5B32]/20 bg-[#4B5B32]/[0.03]">
+          <Card className="border-brand-accent/20 bg-brand-accent/5">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <AlertCircle className="h-4 w-4 text-[#4B5B32]" />
+                <AlertCircle className="text-brand-accent h-4 w-4" />
                 Near Capacity
               </CardTitle>
             </CardHeader>
@@ -133,7 +133,7 @@ export function AdminDashboard({ initialData }: { initialData?: AdminDashboardSu
                 <Link
                   key={row.id}
                   href={`/admin/classes/${row.id}`}
-                  className="flex items-center justify-between rounded-lg p-2.5 transition-colors hover:bg-[#4B5B32]/5"
+                  className="hover:bg-brand-accent/5 flex items-center justify-between rounded-lg p-2.5 transition-colors"
                 >
                   <p className="text-sm">
                     {row.title} -{" "}
@@ -168,7 +168,7 @@ export function AdminDashboard({ initialData }: { initialData?: AdminDashboardSu
                 <Link
                   key={row.id}
                   href={`/admin/classes/${row.id}`}
-                  className="bg-secondary/40 flex items-center justify-between rounded-lg p-3 transition-colors hover:bg-secondary"
+                  className="bg-secondary/40 hover:bg-secondary flex items-center justify-between rounded-lg p-3 transition-colors"
                 >
                   <div>
                     <p className="text-sm">{row.title}</p>

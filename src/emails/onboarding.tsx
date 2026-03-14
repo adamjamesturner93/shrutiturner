@@ -36,13 +36,11 @@ export default function OnboardingEmail({
         Make the most of your practice
       </Text>
 
-      <Text style={bodyTextStyle}>
-        Hi {firstName},
-      </Text>
+      <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
       <Text style={bodyTextStyle}>
-        {"You've"} been here for a few days now, and I wanted to share a few
-        things that will help you get the most out of your account.
+        {"You've"} been here for a few days now, and I wanted to share a few things that will help
+        you get the most out of your account.
       </Text>
 
       {/* Step Cards */}
@@ -92,9 +90,8 @@ export default function OnboardingEmail({
               marginBottom: "16px",
             }}
           >
-            Get {freeTrialDays} days of full access to every class — no
-            commitment needed. {"It's"} the best way to see what works for your
-            body.
+            Get {freeTrialDays} days of full access to every class — no commitment needed. {"It's"}{" "}
+            the best way to see what works for your body.
           </Text>
           <Link
             href={membershipUrl}
@@ -150,8 +147,8 @@ export default function OnboardingEmail({
               marginBottom: "16px",
             }}
           >
-            Browse upcoming classes by type, time, and level. Whether you prefer
-            morning flow or an evening stretch, {"there's"} something that fits.
+            Browse upcoming classes by type, time, and level. Whether you prefer morning flow or an
+            evening stretch, {"there's"} something that fits.
           </Text>
           <Link
             href={scheduleUrl}
@@ -234,7 +231,8 @@ export default function OnboardingEmail({
       <Hr style={dividerStyle} />
 
       <Text style={{ ...mutedTextStyle, fontSize: "14px" }}>
-        If you have any questions about classes, membership, or just want some guidance on where to start — simply reply to this email. {"I'm"} here to help.
+        If you have any questions about classes, membership, or just want some guidance on where to
+        start — simply reply to this email. {"I'm"} here to help.
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>

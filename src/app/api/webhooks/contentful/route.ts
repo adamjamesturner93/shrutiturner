@@ -6,6 +6,7 @@ const WEBHOOK_SECRET = process.env.CONTENTFUL_WEBHOOK_SECRET;
 
 function topicToTags(topic: string) {
   if (topic.includes("classDefinition")) return ["content:classes", "content:schedule"];
+  if (topic.includes("themedWeekPromo")) return ["content:classes"];
   if (topic.includes("instructorProfile")) return ["content:classes", "content:schedule"];
   if (topic.includes("retreatTemplate") || topic.includes("retreatVenue"))
     return ["content:retreats"];
@@ -35,11 +36,10 @@ export async function POST(req: NextRequest) {
     req.headers.get("x-contentful-content-type") ||
     req.headers.get("x-contentful-resource-type") ||
     "";
-  const body = (await req.json().catch(() => null)) as
-    | { sys?: { id?: string; version?: number; contentType?: { sys?: { id?: string } } } }
-    | null;
-  const entryId =
-    req.headers.get("x-contentful-id") || body?.sys?.id || "";
+  const body = (await req.json().catch(() => null)) as {
+    sys?: { id?: string; version?: number; contentType?: { sys?: { id?: string } } };
+  } | null;
+  const entryId = req.headers.get("x-contentful-id") || body?.sys?.id || "";
   const resolvedContentType =
     (body?.sys?.contentType?.sys?.id ? String(body.sys.contentType.sys.id) : "") || contentType;
 
@@ -48,9 +48,7 @@ export async function POST(req: NextRequest) {
     revalidateTag(tag, "max");
   }
 
-  let campaign:
-    | { skipped: boolean; reason?: string; campaignId?: string }
-    | undefined;
+  let campaign: { skipped: boolean; reason?: string; campaignId?: string } | undefined;
   if (topic.toLowerCase().includes("publish") && resolvedContentType && entryId) {
     campaign = await triggerContentfulPublishCampaign({
       contentType: resolvedContentType,

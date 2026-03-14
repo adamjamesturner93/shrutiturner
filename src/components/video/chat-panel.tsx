@@ -79,7 +79,7 @@ export function ChatPanel({ participantName, onClose }: ChatPanelProps) {
   };
 
   return (
-    <div className="flex w-72 flex-shrink-0 flex-col border-l border-white/5 bg-[#252540] lg:w-80">
+    <div className="bg-video-panel flex w-72 flex-shrink-0 flex-col border-l border-white/5 lg:w-80">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
         <span className="text-sm text-white/80">Live Chat</span>
@@ -93,10 +93,12 @@ export function ChatPanel({ participantName, onClose }: ChatPanelProps) {
         {messages.map((msg) => (
           <div key={msg.id}>
             <div className="flex items-baseline gap-2">
-              <span className={`text-xs ${msg.isLocal ? "text-[#B5C49B]" : "text-white/70"}`}>
+              <span
+                className={`text-xs ${msg.isLocal ? "text-brand-accent-light" : "text-white/70"}`}
+              >
                 {msg.sender}
               </span>
-              <span className="text-[10px] text-white/30">{msg.time}</span>
+              <span className="text-micro text-white/30">{msg.time}</span>
             </div>
             <p className="mt-0.5 text-sm leading-relaxed text-white/90">{msg.text}</p>
           </div>
@@ -113,12 +115,12 @@ export function ChatPanel({ participantName, onClose }: ChatPanelProps) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a message..."
-            className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white transition-colors outline-none placeholder:text-white/30 focus:border-[#4B5B32]"
+            className="focus:border-brand-accent flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white transition-colors outline-none placeholder:text-white/30"
           />
           <button
             onClick={handleSend}
             disabled={!input.trim()}
-            className="rounded-lg bg-[#4B5B32] p-2 text-white transition-colors hover:bg-[#4B5B32]/80 disabled:opacity-30"
+            className="bg-brand-accent hover:bg-brand-accent/80 rounded-lg p-2 text-white transition-colors disabled:opacity-30"
           >
             <Send className="h-4 w-4" />
           </button>

@@ -21,7 +21,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, reason: result.reason }, { status });
     }
 
-    return NextResponse.json({ ok: true, eventId: result.eventId, giftGranted: result.giftGranted });
+    return NextResponse.json({
+      ok: true,
+      eventId: result.eventId,
+      giftGranted: result.giftGranted,
+    });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });

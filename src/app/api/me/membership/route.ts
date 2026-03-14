@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api/auth-user";
 import {
   ensureInstructorMembership,
@@ -8,6 +8,7 @@ import {
 
 export async function GET() {
   try {
+    await connection();
     const user = await requireSessionUser();
     if (user.role === "admin") {
       await ensureInstructorMembership(user.id);

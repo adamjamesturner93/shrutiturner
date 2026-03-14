@@ -18,8 +18,8 @@ export type AdminNewsletterSummary = {
 
 export async function getAdminNewsletterSummary(): Promise<AdminNewsletterSummary> {
   const [newsletterSubscribers, blogSubscribers] = await Promise.all([
-    db.userNotificationPreference.count({ where: { newsletter: true } }),
-    db.userNotificationPreference.count({ where: { blogUpdates: true } }),
+    db.userNotificationPreference.count({ where: { marketingEmails: true } }),
+    Promise.resolve(0),
   ]);
 
   return {
@@ -31,6 +31,8 @@ export async function getAdminNewsletterSummary(): Promise<AdminNewsletterSummar
   };
 }
 
-export async function getAdminNewsletterCampaign(_id: string): Promise<AdminNewsletterCampaignSummary | null> {
+export async function getAdminNewsletterCampaign(
+  _id: string
+): Promise<AdminNewsletterCampaignSummary | null> {
   return null;
 }

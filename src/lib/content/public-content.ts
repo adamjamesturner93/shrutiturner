@@ -6,6 +6,7 @@ import {
   LOCAL_NEWSLETTER_SIGNUP_CONTENT,
   LOCAL_PAGE_CONTENT,
   LOCAL_RETREAT_INSTANCES,
+  LOCAL_THEMED_WEEK_PROMOS,
   getLocalScheduleByDay,
 } from "./local-content";
 import { getContentSource } from "./config";
@@ -28,12 +29,13 @@ import type {
   SeoContent,
   AnnouncementBannerContent,
   FaqItemContent,
+  ThemedWeekPromo,
   TestimonialContent,
   TransactionalEmailTemplateContent,
   TrustBadgeContent,
 } from "./types";
 
-type ScheduleDay = ReturnType<typeof getScheduleByDay>[number];
+type ScheduleDay = ReturnType<typeof getLocalScheduleByDay>[number];
 
 function prefersContentfulSource() {
   const source = getContentSource();
@@ -73,9 +75,7 @@ function combineRetreats(
   venues: RetreatVenueContent[]
 ): RetreatCombinedContent[] {
   const venueBySlug = new Map(venues.map((v) => [v.slug, v]));
-  const venueById = new Map(
-    venues.filter((v) => v.id).map((v) => [String(v.id), v] as const)
-  );
+  const venueById = new Map(venues.filter((v) => v.id).map((v) => [String(v.id), v] as const));
   const combined: RetreatCombinedContent[] = [];
 
   for (const template of templates) {
@@ -161,7 +161,9 @@ export async function getLegalDocumentBySlug(slug: string): Promise<LegalDocumen
         effectiveDate: entry.fields.effectiveDate ? String(entry.fields.effectiveDate) : undefined,
         body: String(entry.fields.body || ""),
         seoTitle: entry.fields.seoTitle ? String(entry.fields.seoTitle) : undefined,
-        seoDescription: entry.fields.seoDescription ? String(entry.fields.seoDescription) : undefined,
+        seoDescription: entry.fields.seoDescription
+          ? String(entry.fields.seoDescription)
+          : undefined,
       };
     }
   }
@@ -196,7 +198,9 @@ export async function getNewsletterSignupContent(): Promise<NewsletterSignupCont
         successMessage: String(
           entry.fields.successMessage || LOCAL_NEWSLETTER_SIGNUP_CONTENT.successMessage
         ),
-        consentText: String(entry.fields.consentText || LOCAL_NEWSLETTER_SIGNUP_CONTENT.consentText),
+        consentText: String(
+          entry.fields.consentText || LOCAL_NEWSLETTER_SIGNUP_CONTENT.consentText
+        ),
         popupTitle: leadMagnetFields?.landingHeadline
           ? String(leadMagnetFields.landingHeadline)
           : entry.fields.popupTitle
@@ -309,10 +313,7 @@ export async function getFaqItems(): Promise<FaqItemContent[]> {
   }));
 }
 
-export async function getFaqItemsFor(
-  page: string,
-  section?: string
-): Promise<FaqItemContent[]> {
+export async function getFaqItemsFor(page: string, section?: string): Promise<FaqItemContent[]> {
   const items = await getFaqItems();
   const scoped = items.filter((item) => {
     const pageTarget = item.targetPage?.trim().toLowerCase();
@@ -385,12 +386,16 @@ export async function getAnnouncementBanners(): Promise<AnnouncementBannerConten
   }));
 }
 
-export async function getTransactionalEmailTemplates(): Promise<TransactionalEmailTemplateContent[]> {
+export async function getTransactionalEmailTemplates(): Promise<
+  TransactionalEmailTemplateContent[]
+> {
   if (!prefersContentfulSource()) {
     return [];
   }
 
-  const res = await getEntries<Record<string, unknown>>("transactionalEmailTemplate", { limit: 200 });
+  const res = await getEntries<Record<string, unknown>>("transactionalEmailTemplate", {
+    limit: 200,
+  });
   if (!res?.items?.length) return [];
 
   return res.items.map((item) => ({
@@ -495,6 +500,31 @@ export async function getClassDefinitions(): Promise<ClassDefinitionContent[]> {
   return LOCAL_CLASS_DEFINITIONS;
 }
 
+export async function getThemedWeekPromos(): Promise<ThemedWeekPromo[]> {
+  if (prefersContentfulSource()) {
+    const res = await getEntries<Record<string, unknown>>("themedWeekPromo", {
+      limit: 100,
+      order: "fields.sortOrder,fields.title",
+      "fields.active": true,
+    });
+    if (res?.items?.length) {
+      return res.items.map((item) => ({
+        slug: String(item.fields.slug || item.sys.id),
+        title: String(item.fields.title || "Themed Week"),
+        shortDescription: String(item.fields.shortDescription || ""),
+        audience: String(item.fields.audience || ""),
+        ctaHref: String(item.fields.ctaHref || "/schedule"),
+        ctaLabel: String(item.fields.ctaLabel || "See What's Running"),
+        status: item.fields.status
+          ? (String(item.fields.status) as "upcoming" | "current" | "waitlist")
+          : undefined,
+      }));
+    }
+  }
+
+  return LOCAL_THEMED_WEEK_PROMOS;
+}
+
 export async function getInstructorProfiles(): Promise<InstructorProfileContent[]> {
   if (prefersContentfulSource()) {
     const res = await getEntries<Record<string, unknown>>("instructorProfile", { limit: 300 });
@@ -531,7 +561,9 @@ export async function getInstructorProfiles(): Promise<InstructorProfileContent[
   ];
 }
 
-export async function getInstructorProfilesByIds(ids: string[]): Promise<InstructorProfileContent[]> {
+export async function getInstructorProfilesByIds(
+  ids: string[]
+): Promise<InstructorProfileContent[]> {
   if (ids.length === 0) return [];
   const all = await getInstructorProfiles();
   const wanted = new Set(ids);
@@ -544,7 +576,8 @@ export async function getClassDefinitionsByCategory(
   const defs = await getClassDefinitions();
   return defs.filter((d) => {
     const inferredCategory =
-      d.classCategory || (d.type === "Yoga" ? "yoga" : d.type === "HIIT" ? "small-group" : "strength");
+      d.classCategory ||
+      (d.type === "Yoga" ? "yoga" : d.type === "HIIT" ? "small-group" : "strength");
     return inferredCategory === category;
   });
 }
@@ -667,9 +700,7 @@ export async function getTestimonials(
     id: String(item.sys.id),
     quote: String(item.fields.quote || ""),
     authorName: String(item.fields.authorName || "Anonymous"),
-    authorCondition: item.fields.authorCondition
-      ? String(item.fields.authorCondition)
-      : undefined,
+    authorCondition: item.fields.authorCondition ? String(item.fields.authorCondition) : undefined,
     service: item.fields.service
       ? (String(item.fields.service) as
           | "yoga"

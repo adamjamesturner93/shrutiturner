@@ -520,7 +520,7 @@ export function getClassesByType(type: string): ClassDetail[] {
 export function getTypeColor(type: string) {
   switch (type.toLowerCase()) {
     case "yoga":
-      return "bg-[#4B5B32]/20 text-[#4B5B32] border-[#4B5B32]/30";
+      return "bg-brand-accent/20 text-brand-accent border-brand-accent/30";
     case "strength":
       return "bg-primary/20 text-primary border-primary/30";
     case "hiit":

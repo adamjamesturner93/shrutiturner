@@ -147,7 +147,7 @@ export function AdminMemberDetail() {
   }
 
   const statusColors: Record<string, string> = {
-    active: "bg-[#4B5B32]/10 text-[#4B5B32] border-[#4B5B32]/30",
+    active: "bg-brand-accent/10 text-brand-accent border-brand-accent/30",
     paused: "bg-amber-50 text-amber-700 border-amber-200",
     expired: "bg-secondary text-muted-foreground",
     cancelled: "bg-red-50 text-red-700 border-red-200",
@@ -218,13 +218,15 @@ export function AdminMemberDetail() {
       const updated = (await res.json()) as typeof member;
       if (!updated) return;
       setCreditBalance(updated.creditBalance || 0);
-      setCreditHistory((updated.creditHistory || []).map((entry) => ({
-        date: entry.date,
-        action: entry.amount >= 0 ? "add" : "remove",
-        amount: Math.abs(entry.amount),
-        reason: entry.reason,
-        by: entry.by,
-      })));
+      setCreditHistory(
+        (updated.creditHistory || []).map((entry) => ({
+          date: entry.date,
+          action: entry.amount >= 0 ? "add" : "remove",
+          amount: Math.abs(entry.amount),
+          reason: entry.reason,
+          by: entry.by,
+        }))
+      );
       toast.success(
         `${creditAction === "add" ? "Added" : "Removed"} ${amount} credit${amount !== 1 ? "s" : ""}`
       );
@@ -247,12 +249,12 @@ export function AdminMemberDetail() {
 
         {/* Header */}
         <div className="flex flex-col gap-6 md:flex-row md:items-start">
-          <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-[#4B5B32] text-xl text-[#FAFAF8]">
+          <div className="bg-brand-accent text-brand-white flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full text-xl">
             {member.avatarInitials}
           </div>
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl text-[#2E1F33]">
+              <h1 className="text-brand-dark text-2xl">
                 {member.firstName} {member.lastName}
               </h1>
               <Badge className={statusColors[member.status]}>
@@ -275,7 +277,7 @@ export function AdminMemberDetail() {
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {isInstructor && (
-                <Badge className="border-[#2E1F33]/30 bg-[#2E1F33]/10 text-[#2E1F33]">
+                <Badge className="border-brand-dark/30 bg-brand-dark/10 text-brand-dark">
                   <Shield className="mr-1 h-3 w-3" />
                   Instructor
                 </Badge>
@@ -312,7 +314,7 @@ export function AdminMemberDetail() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Send className="h-5 w-5 text-[#4B5B32]" />
+                <Send className="text-brand-accent h-5 w-5" />
                 Send Email to {member.firstName}
               </CardTitle>
             </CardHeader>
@@ -346,7 +348,7 @@ export function AdminMemberDetail() {
               <div className="flex items-center gap-3">
                 <Button
                   disabled={!messageSubject.trim() || !messageBody.trim() || messageSending}
-                  className="bg-[#4B5B32] text-white hover:bg-[#4B5B32]/90"
+                  className="bg-brand-accent hover:bg-brand-accent/90 text-white"
                   onClick={() => {
                     setMessageSending(true);
                     console.log("Sending email to:", member.email, {
@@ -394,29 +396,29 @@ export function AdminMemberDetail() {
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="pt-6 text-center">
-              <CreditCard className="mx-auto h-5 w-5 text-[#4B5B32]" />
-              <p className="mt-2 text-2xl text-[#2E1F33]">{member.membershipLabel}</p>
+              <CreditCard className="text-brand-accent mx-auto h-5 w-5" />
+              <p className="text-brand-dark mt-2 text-2xl">{member.membershipLabel}</p>
               <p className="text-muted-foreground text-xs">Membership</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <Bookmark className="mx-auto h-5 w-5 text-[#4B5B32]" />
-              <p className="mt-2 text-2xl text-[#2E1F33]">{member.totalBookings}</p>
+              <Bookmark className="text-brand-accent mx-auto h-5 w-5" />
+              <p className="text-brand-dark mt-2 text-2xl">{member.totalBookings}</p>
               <p className="text-muted-foreground text-xs">Total bookings</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <CreditCard className="mx-auto h-5 w-5 text-[#4B5B32]" />
-              <p className="mt-2 text-2xl text-[#2E1F33]">{creditBalance}</p>
+              <CreditCard className="text-brand-accent mx-auto h-5 w-5" />
+              <p className="text-brand-dark mt-2 text-2xl">{creditBalance}</p>
               <p className="text-muted-foreground text-xs">Credits remaining</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <Gift className="mx-auto h-5 w-5 text-[#4B5B32]" />
-              <p className="mt-2 text-2xl text-[#2E1F33]">{member.referralsCount}</p>
+              <Gift className="text-brand-accent mx-auto h-5 w-5" />
+              <p className="text-brand-dark mt-2 text-2xl">{member.referralsCount}</p>
               <p className="text-muted-foreground text-xs">
                 Referrals (£{member.referralBalance} balance)
               </p>
@@ -430,7 +432,7 @@ export function AdminMemberDetail() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Shield className="h-5 w-5 text-[#2E1F33]" />
+                  <Shield className="text-brand-dark h-5 w-5" />
                   Roles
                 </CardTitle>
                 <span className="text-muted-foreground text-xs">Changes save automatically</span>
@@ -442,13 +444,13 @@ export function AdminMemberDetail() {
                   id="role-instructor"
                   checked={isInstructor}
                   onCheckedChange={(checked) => handleRoleToggle("instructor", checked)}
-                  className="mt-0.5 data-[state=checked]:bg-[#4B5B32]"
+                  className="data-[state=checked]:bg-brand-accent mt-0.5"
                 />
                 <label htmlFor="role-instructor" className="flex-1 cursor-pointer">
                   <div className="flex items-center gap-2">
                     <span className="text-sm">Instructor</span>
                     {isInstructor && (
-                      <Badge className="border-[#2E1F33]/30 bg-[#2E1F33]/10 px-1.5 py-0 text-[10px] text-[#2E1F33]">
+                      <Badge className="border-brand-dark/30 bg-brand-dark/10 text-brand-dark text-micro px-1.5 py-0">
                         Active
                       </Badge>
                     )}
@@ -496,13 +498,13 @@ export function AdminMemberDetail() {
                   id="role-coaching"
                   checked={isCoachingClient}
                   onCheckedChange={(checked) => handleRoleToggle("coaching", checked)}
-                  className="mt-0.5 data-[state=checked]:bg-[#4B5B32]"
+                  className="data-[state=checked]:bg-brand-accent mt-0.5"
                 />
                 <label htmlFor="role-coaching" className="flex-1 cursor-pointer">
                   <div className="flex items-center gap-2">
                     <span className="text-sm">Coaching Client</span>
                     {isCoachingClient && (
-                      <Badge className="border-amber-200 bg-amber-50 px-1.5 py-0 text-[10px] text-amber-700">
+                      <Badge className="text-micro border-amber-200 bg-amber-50 px-1.5 py-0 text-amber-700">
                         Active
                       </Badge>
                     )}
@@ -533,15 +535,15 @@ export function AdminMemberDetail() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <CreditCard className="h-5 w-5 text-[#4B5B32]" />
+                <CreditCard className="text-brand-accent h-5 w-5" />
                 Manage Credits
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
               {/* Current balance callout */}
-              <div className="flex items-center justify-between rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 p-3">
+              <div className="border-brand-accent/20 bg-brand-accent/5 flex items-center justify-between rounded-lg border p-3">
                 <span className="text-muted-foreground text-sm">Current balance</span>
-                <span className="text-xl text-[#2E1F33]">
+                <span className="text-brand-dark text-xl">
                   {creditBalance} credit{creditBalance !== 1 ? "s" : ""}
                 </span>
               </div>
@@ -563,7 +565,7 @@ export function AdminMemberDetail() {
                       <SelectContent>
                         <SelectItem value="add">
                           <span className="flex items-center gap-1.5">
-                            <Plus className="h-3.5 w-3.5 text-[#4B5B32]" /> Add
+                            <Plus className="text-brand-accent h-3.5 w-3.5" /> Add
                           </span>
                         </SelectItem>
                         <SelectItem value="remove">
@@ -604,7 +606,7 @@ export function AdminMemberDetail() {
                   size="sm"
                   className={
                     creditAction === "add"
-                      ? "bg-[#4B5B32] text-white hover:bg-[#4B5B32]/90"
+                      ? "bg-brand-accent hover:bg-brand-accent/90 text-white"
                       : "bg-red-600 text-white hover:bg-red-700"
                   }
                 >
@@ -637,7 +639,7 @@ export function AdminMemberDetail() {
                             <span
                               className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs ${
                                 entry.action === "add"
-                                  ? "bg-[#4B5B32]/10 text-[#4B5B32]"
+                                  ? "bg-brand-accent/10 text-brand-accent"
                                   : "bg-red-50 text-red-600"
                               }`}
                             >
@@ -721,7 +723,7 @@ export function AdminMemberDetail() {
               <div className="space-y-4">
                 <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
                   <div className="flex items-center gap-3">
-                    <Bell className="h-4 w-4 text-[#4B5B32]" />
+                    <Bell className="text-brand-accent h-4 w-4" />
                     <span className="text-sm">Newsletter</span>
                   </div>
                   <Badge variant={member.newsletterSubscribed ? "default" : "outline"}>
@@ -730,7 +732,7 @@ export function AdminMemberDetail() {
                 </div>
                 <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
                   <div className="flex items-center gap-3">
-                    <BookOpen className="h-4 w-4 text-[#4B5B32]" />
+                    <BookOpen className="text-brand-accent h-4 w-4" />
                     <span className="text-sm">Blog notifications</span>
                   </div>
                   <Badge variant={member.blogSubscribed ? "default" : "outline"}>

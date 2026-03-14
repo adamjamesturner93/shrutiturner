@@ -120,7 +120,13 @@ export type PublicPricingDto = {
 export type BillingHistoryItemDto = {
   id: string;
   createdAt: string;
-  kind: "membership_charge" | "credit_purchase" | "credit_refund" | "booking_use" | "referral_discount" | "payment_failed";
+  kind:
+    | "membership_charge"
+    | "credit_purchase"
+    | "credit_refund"
+    | "booking_use"
+    | "referral_discount"
+    | "payment_failed";
   description: string;
   amountPence: number;
   status: "paid" | "failed" | "refunded" | "applied";
@@ -317,8 +323,11 @@ export type ClassSessionListItemDto = {
   bookedCount: number;
   waitlistCount: number;
   dailyRoomUrl: string | null;
+  communityModeEnabled: boolean;
+  lateJoinCutoffAt: string;
   isBookedByCurrentUser: boolean;
   myBookingStatus: "booked" | "cancelled" | "attended" | "no_show" | null;
+  hasPreviouslyJoinedCurrentUser: boolean;
   waitlistPosition: number | null;
 };
 
@@ -333,6 +342,11 @@ export type ClassSessionDetailDto = ClassSessionListItemDto & {
     email: string;
     status: "booked" | "cancelled" | "attended" | "no_show";
     bookedAt: string;
+    firstJoinedAt: string | null;
+    lastJoinedAt: string | null;
+    lastLeftAt: string | null;
+    joinCount: number;
+    attendanceSource: "daily" | "manual" | null;
     healthConditions: string[];
     attendedClassesCount: number;
   }>;

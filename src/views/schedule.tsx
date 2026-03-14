@@ -11,26 +11,24 @@ import { useI18n } from "../lib/use-i18n";
 
 type ApiScheduleDay = {
   day: string;
-  classes: Array<
-    {
-      slug: string;
-      name: string;
-      type: string;
-      day: string;
-      time: string;
-      duration: string;
-      level: string;
-      maxSpaces: number;
-      shortDescription: string;
-      sessionId?: string;
-      dateLabel?: string;
-      spotsRemaining?: number;
-      bookedCount?: number;
-      status?: "scheduled" | "live" | "completed" | "cancelled";
-      isBookedByCurrentUser?: boolean;
-      waitlistPosition?: number | null;
-    }
-  >;
+  classes: Array<{
+    slug: string;
+    name: string;
+    type: string;
+    day: string;
+    time: string;
+    duration: string;
+    level: string;
+    maxSpaces: number;
+    shortDescription: string;
+    sessionId?: string;
+    dateLabel?: string;
+    spotsRemaining?: number;
+    bookedCount?: number;
+    status?: "scheduled" | "live" | "completed" | "cancelled";
+    isBookedByCurrentUser?: boolean;
+    waitlistPosition?: number | null;
+  }>;
 };
 
 interface SchedulePageProps {
@@ -44,15 +42,19 @@ export function SchedulePage({ scheduleData }: SchedulePageProps) {
   return (
     <Layout>
       {/* Hero */}
-      <section className="bg-[#2E1F33] py-20 text-[#FAFAF8] md:py-24">
+      <section className="bg-brand-dark text-brand-white py-20 md:py-24">
         <div className="container mx-auto max-w-4xl px-4 text-center">
-          <h1 className="mb-6 text-4xl md:text-5xl">Class Schedule</h1>
-          <p className="mb-8 text-xl leading-relaxed text-[#B5C49B]">
-            Live online classes every week. Designed for real bodies and long-term joint health.
+          <h1 className="mb-6 text-4xl md:text-5xl">Move Well Classes Schedule</h1>
+          <p className="text-brand-accent-light mb-8 text-xl leading-relaxed">
+            Live online adaptive yoga and intelligent strength classes every week, designed for real
+            bodies and long-term joint health.
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <Link href="/pricing">
-              <Button size="lg" className="bg-[#B5C49B] text-[#2E1F33] hover:bg-[#a5b48b]">
+              <Button
+                size="lg"
+                className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
+              >
                 View Pricing
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -61,9 +63,9 @@ export function SchedulePage({ scheduleData }: SchedulePageProps) {
               <Button
                 size="lg"
                 variant="outline"
-                className="border-[#B5C49B] bg-transparent text-[#B5C49B] hover:bg-[#B5C49B]/10"
+                className="border-brand-accent-light text-brand-accent-light hover:bg-brand-accent-light/10 bg-transparent"
               >
-                Explore Classes
+                Explore Move Well Classes
               </Button>
             </Link>
           </div>
@@ -80,7 +82,7 @@ export function SchedulePage({ scheduleData }: SchedulePageProps) {
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="text-primary h-4 w-4" />
-              <span>Recordings available for 7 days</span>
+              <span>Flare-friendly membership and booking options</span>
             </div>
             <div className="flex items-center gap-2">
               <Clock className="text-primary h-4 w-4" />
@@ -111,7 +113,10 @@ export function SchedulePage({ scheduleData }: SchedulePageProps) {
                 <div className="space-y-6">
                   {daySchedule.classes.map((classItem, idx) => (
                     <div
-                      key={classItem.sessionId || `${classItem.slug}-${classItem.day}-${classItem.time}-${idx}`}
+                      key={
+                        classItem.sessionId ||
+                        `${classItem.slug}-${classItem.day}-${classItem.time}-${idx}`
+                      }
                       className="bg-background rounded-lg border p-6 transition-shadow hover:shadow-md"
                     >
                       <div className="grid items-start gap-6 md:grid-cols-[auto_1fr_auto]">
@@ -124,7 +129,9 @@ export function SchedulePage({ scheduleData }: SchedulePageProps) {
                               {classItem.duration}
                             </div>
                             {"dateLabel" in classItem && classItem.dateLabel ? (
-                              <div className="text-muted-foreground text-xs">{classItem.dateLabel}</div>
+                              <div className="text-muted-foreground text-xs">
+                                {classItem.dateLabel}
+                              </div>
                             ) : null}
                           </div>
                         </div>
@@ -199,10 +206,10 @@ export function SchedulePage({ scheduleData }: SchedulePageProps) {
 
           <div className="grid gap-8 md:grid-cols-3">
             <Link
-              href="/classes/yoga"
+              href="/classes#yoga"
               className="bg-background space-y-3 rounded-lg border p-6 transition-shadow hover:shadow-md"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#4B5B32]/20">
+              <div className="bg-brand-accent/20 flex h-12 w-12 items-center justify-center rounded-lg">
                 <Badge className={getTypeColor("Yoga")}>Yoga</Badge>
               </div>
               <h3 className="text-lg">Adaptive Yoga</h3>
@@ -214,13 +221,13 @@ export function SchedulePage({ scheduleData }: SchedulePageProps) {
             </Link>
 
             <Link
-              href="/classes/strength"
+              href="/classes#strength"
               className="bg-background space-y-3 rounded-lg border p-6 transition-shadow hover:shadow-md"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#56344A]/15">
+              <div className="bg-brand-plum/15 flex h-12 w-12 items-center justify-center rounded-lg">
                 <Badge className={getTypeColor("Strength")}>Strength</Badge>
               </div>
-              <h3 className="text-lg">Strength Training</h3>
+              <h3 className="text-lg">Strength Classes</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
                 Evidence-based strength work adapted for chronic conditions. Progressive resistance
                 training designed to build capacity without aggravating symptoms.
@@ -228,13 +235,14 @@ export function SchedulePage({ scheduleData }: SchedulePageProps) {
             </Link>
 
             <div className="bg-background space-y-3 rounded-lg border p-6">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#8B4A55]/15">
+              <div className="bg-brand-rose/15 flex h-12 w-12 items-center justify-center rounded-lg">
                 <Badge className={getTypeColor("Cardio")}>Cardio</Badge>
               </div>
-              <h3 className="text-lg">Modified Cardio</h3>
+              <h3 className="text-lg">Conditioning Support</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                High-intensity interval training adapted for complex bodies. Work-to-rest ratios
-                designed for people managing fatigue and post-exertional symptoms.
+                Conditioning sessions sit within the wider strength pathway, with adapted intervals
+                and work-to-rest ratios designed for people managing fatigue and post-exertional
+                symptoms.
               </p>
             </div>
           </div>
@@ -278,7 +286,8 @@ export function SchedulePage({ scheduleData }: SchedulePageProps) {
               <h3 className="mb-2 text-lg">Class size</h3>
               <p className="text-muted-foreground leading-relaxed">
                 All classes are capped to ensure everyone gets individual attention and
-                modifications. If a class is full, you can join the waitlist or catch the recording.
+                modifications. If a class is full, you can join the waitlist or choose another live
+                session that week.
               </p>
             </div>
 
@@ -294,21 +303,21 @@ export function SchedulePage({ scheduleData }: SchedulePageProps) {
       </section>
 
       {/* Pricing CTA */}
-      <section className="bg-[#4B5B32] py-20 text-[#FAFAF8] md:py-24">
+      <section className="bg-brand-accent text-brand-white py-20 md:py-24">
         <div className="container mx-auto max-w-3xl space-y-8 px-4 text-center">
           <h2 className="text-3xl md:text-4xl">Ready to Join?</h2>
           <div className="grid gap-6 text-left md:grid-cols-3">
-            <div className="rounded-lg bg-[#FAFAF8]/10 p-6">
+            <div className="bg-brand-white/10 rounded-lg p-6">
               <p className="mb-2 text-sm opacity-75">Single Class</p>
               <p className="mb-2 text-3xl">£9</p>
               <p className="text-sm opacity-90">pay as you go</p>
             </div>
-            <div className="rounded-lg bg-[#FAFAF8]/10 p-6">
+            <div className="bg-brand-white/10 rounded-lg p-6">
               <p className="mb-2 text-sm opacity-75">10-Class Pack</p>
               <p className="mb-2 text-3xl">£70</p>
               <p className="text-sm opacity-90">£7 per class</p>
             </div>
-            <div className="rounded-lg bg-[#FAFAF8]/10 p-6">
+            <div className="bg-brand-white/10 rounded-lg p-6">
               <p className="mb-2 text-sm opacity-75">Unlimited classes</p>
               <p className="mb-2 text-3xl">£29</p>
               <p className="text-sm opacity-90">per month</p>
@@ -316,7 +325,10 @@ export function SchedulePage({ scheduleData }: SchedulePageProps) {
           </div>
           <div className="flex flex-col justify-center gap-4 pt-4 sm:flex-row">
             <Link href="/pricing">
-              <Button size="lg" className="bg-[#FAFAF8] text-[#4B5B32] hover:bg-[#FAFAF8]/90">
+              <Button
+                size="lg"
+                className="bg-brand-white text-brand-accent hover:bg-brand-white/90"
+              >
                 View Full Pricing
               </Button>
             </Link>
@@ -324,9 +336,9 @@ export function SchedulePage({ scheduleData }: SchedulePageProps) {
               <Button
                 size="lg"
                 variant="outline"
-                className="border-[#FAFAF8] bg-transparent text-[#FAFAF8] hover:bg-[#FAFAF8]/10"
+                className="border-brand-white text-brand-white hover:bg-brand-white/10 bg-transparent"
               >
-                Explore Classes
+                Explore Move Well Classes
               </Button>
             </Link>
           </div>

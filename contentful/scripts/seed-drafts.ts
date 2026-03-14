@@ -207,7 +207,9 @@ async function run() {
     }
   }
 
-  const newsletterSignupGroup = SEED_GROUPS.find((g) => g.contentType === "newsletterSignupContent");
+  const newsletterSignupGroup = SEED_GROUPS.find(
+    (g) => g.contentType === "newsletterSignupContent"
+  );
   if (newsletterSignupGroup) {
     report.newsletterSignupContent = { created: 0, updated: 0 };
 
@@ -217,7 +219,11 @@ async function run() {
 
       let activeLeadMagnet: ReturnType<typeof toEntryLink> | undefined;
       if (typeof activeLeadMagnetSlug === "string" && activeLeadMagnetSlug.length > 0) {
-        const leadMagnetId = await getEntryIdBySlug(environment, "leadMagnet", activeLeadMagnetSlug);
+        const leadMagnetId = await getEntryIdBySlug(
+          environment,
+          "leadMagnet",
+          activeLeadMagnetSlug
+        );
         if (!leadMagnetId) {
           throw new Error(
             `Unable to resolve leadMagnet by slug "${activeLeadMagnetSlug}" for newsletter signup "${String(entry.slug || "")}".`

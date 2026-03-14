@@ -48,7 +48,7 @@ export function ProgramsPage() {
           <div
             key={program.id}
             className={`bg-background rounded-lg border p-6 ${
-              program.enrolled ? "border-[#4B5B32] bg-[#4B5B32]/5" : ""
+              program.enrolled ? "border-brand-accent bg-brand-accent/5" : ""
             }`}
           >
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
@@ -56,7 +56,7 @@ export function ProgramsPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="text-xl">{program.title}</h3>
                   {program.enrolled && (
-                    <Badge className="gap-1 bg-[#4B5B32] text-[#FAFAF8]">
+                    <Badge className="bg-brand-accent text-brand-white gap-1">
                       <Check className="h-3 w-3" />
                       Enrolled
                     </Badge>

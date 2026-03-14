@@ -39,7 +39,7 @@ export function AdminBusiness() {
     <AdminLayout title="Business Overview - Shruti Turner">
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl text-[#2E1F33]">Business Overview</h1>
+          <h1 className="text-brand-dark text-2xl">Business Overview</h1>
           <p className="text-muted-foreground mt-1">Live metrics from your database.</p>
         </div>
 
@@ -55,12 +55,12 @@ export function AdminBusiness() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-muted-foreground text-sm">Active Members</p>
-                    <p className="mt-1 text-3xl text-[#2E1F33]">{summary.activeMembers}</p>
+                    <p className="text-brand-dark mt-1 text-3xl">{summary.activeMembers}</p>
                     <p className="text-muted-foreground mt-1 text-xs">
                       of {summary.totalMembers} total
                     </p>
                   </div>
-                  <Users className="h-6 w-6 text-[#4B5B32]" />
+                  <Users className="text-brand-accent h-6 w-6" />
                 </div>
               </CardContent>
             </Card>
@@ -69,11 +69,11 @@ export function AdminBusiness() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-muted-foreground text-sm">Monthly Recurring</p>
-                    <p className="mt-1 text-3xl text-[#2E1F33]">
+                    <p className="text-brand-dark mt-1 text-3xl">
                       £{Math.round(summary.monthlyRecurringRevenuePence / 100)}
                     </p>
                   </div>
-                  <PoundSterling className="h-6 w-6 text-[#4B5B32]" />
+                  <PoundSterling className="text-brand-accent h-6 w-6" />
                 </div>
               </CardContent>
             </Card>
@@ -82,9 +82,9 @@ export function AdminBusiness() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-muted-foreground text-sm">New Members (Month)</p>
-                    <p className="mt-1 text-3xl text-[#2E1F33]">{summary.newMembersThisMonth}</p>
+                    <p className="text-brand-dark mt-1 text-3xl">{summary.newMembersThisMonth}</p>
                   </div>
-                  <UserPlus className="h-6 w-6 text-[#4B5B32]" />
+                  <UserPlus className="text-brand-accent h-6 w-6" />
                 </div>
               </CardContent>
             </Card>
@@ -93,12 +93,12 @@ export function AdminBusiness() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-muted-foreground text-sm">Churn (30d)</p>
-                    <p className="mt-1 text-3xl text-[#2E1F33]">{summary.churnRatePercent}%</p>
+                    <p className="text-brand-dark mt-1 text-3xl">{summary.churnRatePercent}%</p>
                     <p className="text-muted-foreground mt-1 text-xs">
                       {summary.cancelledLast30Days} cancelled/expired
                     </p>
                   </div>
-                  <TrendingUp className="h-6 w-6 text-[#4B5B32]" />
+                  <TrendingUp className="text-brand-accent h-6 w-6" />
                 </div>
               </CardContent>
             </Card>

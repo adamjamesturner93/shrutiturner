@@ -100,7 +100,9 @@ export function AdminMembers() {
         m.tags.some((t) => t.toLowerCase().includes(search.toLowerCase()));
       const matchesStatus =
         statusFilter === "all" ||
-        (statusFilter === "lapsed" ? m.status === "expired" || m.status === "cancelled" : m.status === statusFilter);
+        (statusFilter === "lapsed"
+          ? m.status === "expired" || m.status === "cancelled"
+          : m.status === statusFilter);
       const matchesPlan =
         planFilter === "all" ||
         (planFilter === "none" && !m.membershipPlan) ||
@@ -132,11 +134,13 @@ export function AdminMembers() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl text-[#2E1F33]">Members</h1>
+          <h1 className="text-brand-dark text-2xl">Members</h1>
           <p className="text-muted-foreground mt-1">
             {adminMembers.length} total members · {statusCounts.active} active
           </p>
-          {loading ? <p className="text-muted-foreground mt-2 text-sm">Loading members...</p> : null}
+          {loading ? (
+            <p className="text-muted-foreground mt-2 text-sm">Loading members...</p>
+          ) : null}
           {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
         </div>
 
@@ -145,40 +149,42 @@ export function AdminMembers() {
           <button
             type="button"
             onClick={() => setStatusFilter(statusFilter === "active" ? "all" : "active")}
-            className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B5B32]/50 ${
+            className={`focus-visible:ring-brand-accent/50 flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${
               statusFilter === "active"
-                ? "border-[#4B5B32] bg-[#4B5B32] text-[#FAFAF8]"
-                : "border-transparent bg-[#4B5B32]/10 hover:border-[#4B5B32]/40 hover:bg-[#4B5B32]/5"
+                ? "border-brand-accent bg-brand-accent text-brand-white"
+                : "bg-brand-accent/10 hover:border-brand-accent/40 hover:bg-brand-accent/5 border-transparent"
             }`}
           >
-            <UserCheck className={`h-4 w-4 ${statusFilter === "active" ? "text-[#FAFAF8]" : "text-[#4B5B32]"}`} />
+            <UserCheck
+              className={`h-4 w-4 ${statusFilter === "active" ? "text-brand-white" : "text-brand-accent"}`}
+            />
             <span>{statusCounts.active} active</span>
           </button>
           <button
             type="button"
             onClick={() => setStatusFilter(statusFilter === "paused" ? "all" : "paused")}
-            className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B5B32]/50 ${
+            className={`focus-visible:ring-brand-accent/50 flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${
               statusFilter === "paused"
-                ? "border-[#4B5B32] bg-[#4B5B32] text-[#FAFAF8]"
-                : "border-transparent bg-secondary text-foreground hover:border-[#4B5B32]/40 hover:bg-[#4B5B32]/5"
+                ? "border-brand-accent bg-brand-accent text-brand-white"
+                : "bg-secondary text-foreground hover:border-brand-accent/40 hover:bg-brand-accent/5 border-transparent"
             }`}
           >
             <Pause
-              className={`h-4 w-4 ${statusFilter === "paused" ? "text-[#FAFAF8]" : "text-muted-foreground"}`}
+              className={`h-4 w-4 ${statusFilter === "paused" ? "text-brand-white" : "text-muted-foreground"}`}
             />
             <span>{statusCounts.paused} paused</span>
           </button>
           <button
             type="button"
             onClick={() => setStatusFilter(statusFilter === "lapsed" ? "all" : "lapsed")}
-            className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B5B32]/50 ${
+            className={`focus-visible:ring-brand-accent/50 flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${
               statusFilter === "lapsed"
-                ? "border-[#4B5B32] bg-[#4B5B32] text-[#FAFAF8]"
-                : "border-transparent bg-secondary text-foreground hover:border-[#4B5B32]/40 hover:bg-[#4B5B32]/5"
+                ? "border-brand-accent bg-brand-accent text-brand-white"
+                : "bg-secondary text-foreground hover:border-brand-accent/40 hover:bg-brand-accent/5 border-transparent"
             }`}
           >
             <UserX
-              className={`h-4 w-4 ${statusFilter === "lapsed" ? "text-[#FAFAF8]" : "text-muted-foreground"}`}
+              className={`h-4 w-4 ${statusFilter === "lapsed" ? "text-brand-white" : "text-muted-foreground"}`}
             />
             <span>{statusCounts.expired + statusCounts.cancelled} lapsed</span>
           </button>
@@ -232,7 +238,7 @@ export function AdminMembers() {
                   <option value="all">All plans</option>
                   <option value="instructor">Instructor</option>
                   <option value="movewell">Move Well</option>
-                  <option value="none">No plan</option>
+                  <option value="none">Pay as you Go</option>
                 </select>
                 <select
                   value={roleFilter}
@@ -287,12 +293,12 @@ function MemberRow({ member }: { member: AdminMember }) {
   return (
     <Link href={`/admin/members/${member.id}`}>
       <Card
-        className={`cursor-pointer transition-colors hover:border-[#4B5B32]/30 ${riskStatus === "high" ? "border-amber-300/50" : ""}`}
+        className={`hover:border-brand-accent/30 cursor-pointer transition-colors ${riskStatus === "high" ? "border-amber-300/50" : ""}`}
       >
         <CardContent className="py-4">
           <div className="flex items-center gap-4">
             {/* Avatar */}
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#4B5B32] text-sm text-[#FAFAF8]">
+            <div className="bg-brand-accent text-brand-white flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm">
               {member.avatarInitials}
             </div>
 
@@ -330,7 +336,7 @@ function MemberRow({ member }: { member: AdminMember }) {
             {/* Role badges */}
             <div className="hidden flex-shrink-0 items-center gap-1 sm:flex">
               {member.isInstructor && (
-                <Badge className="border-[#2E1F33]/30 bg-[#2E1F33]/10 text-xs text-[#2E1F33]">
+                <Badge className="border-brand-dark/30 bg-brand-dark/10 text-brand-dark text-xs">
                   <Shield className="mr-0.5 h-3 w-3" />
                   Instructor
                 </Badge>
@@ -346,15 +352,15 @@ function MemberRow({ member }: { member: AdminMember }) {
             {/* Stats */}
             <div className="text-muted-foreground hidden items-center gap-6 text-sm md:flex">
               <div className="text-center">
-                <p className="text-[#2E1F33]">{member.totalBookings}</p>
+                <p className="text-brand-dark">{member.totalBookings}</p>
                 <p className="text-xs">bookings</p>
               </div>
               <div className="text-center">
-                <p className="text-[#2E1F33]">{member.creditBalance}</p>
+                <p className="text-brand-dark">{member.creditBalance}</p>
                 <p className="text-xs">credits</p>
               </div>
               <div className="text-center">
-                <p className="text-[#2E1F33]">{member.referralsCount}</p>
+                <p className="text-brand-dark">{member.referralsCount}</p>
                 <p className="text-xs">referrals</p>
               </div>
             </div>

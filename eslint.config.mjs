@@ -22,7 +22,12 @@ export default defineConfig([
       "jsx-a11y/alt-text": "error",
       "jsx-a11y/anchor-has-content": "error",
       "jsx-a11y/aria-role": "error",
-      "tailwindcss/classnames-order": "warn",
+      "react/no-unescaped-entities": [
+        "warn",
+        {
+          forbid: [">", "}"],
+        },
+      ],
       "tailwindcss/no-contradicting-classname": "warn",
     },
   },

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/api/auth-user";
 import { listAdminSubscribers, type SubscriptionType } from "@/lib/admin/newsletter-service";
 
@@ -6,6 +6,7 @@ const validTypes = new Set(["all", "newsletter", "blog", "both", "neither"]);
 
 export async function GET(req: Request) {
   try {
+    await connection();
     await requireAdminUser();
     const { searchParams } = new URL(req.url);
     const rawType = searchParams.get("type") || "all";

@@ -13,7 +13,10 @@ function readEnvValue(key: "DIRECT_URL" | "DATABASE_URL"): string | undefined {
     const idx = trimmed.indexOf("=");
     if (idx < 0) continue;
     if (trimmed.slice(0, idx).trim() !== key) continue;
-    return trimmed.slice(idx + 1).trim().replace(/^['"]|['"]$/g, "");
+    return trimmed
+      .slice(idx + 1)
+      .trim()
+      .replace(/^['"]|['"]$/g, "");
   }
   return undefined;
 }

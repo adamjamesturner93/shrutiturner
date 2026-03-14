@@ -81,7 +81,7 @@ export function HealthProfilePage() {
           {!editing && (
             <button
               onClick={() => setEditing(true)}
-              className="mt-1 flex items-center gap-1.5 text-sm text-[#4B5B32] transition-colors hover:text-[#4B5B32]/80"
+              className="text-brand-accent hover:text-brand-accent/80 mt-1 flex items-center gap-1.5 text-sm transition-colors"
             >
               <Pencil className="h-4 w-4" />
               Edit
@@ -126,7 +126,7 @@ export function HealthProfilePage() {
                 </div>
                 <button
                   onClick={() => setEditing(true)}
-                  className="text-sm text-[#4B5B32] hover:underline"
+                  className="text-brand-accent text-sm hover:underline"
                 >
                   Add your conditions
                 </button>
@@ -146,7 +146,7 @@ export function HealthProfilePage() {
                           <div key={condition.key}>
                             <Badge
                               variant="outline"
-                              className="text-foreground border-[#4B5B32]/20 bg-[#4B5B32]/5"
+                              className="text-foreground border-brand-accent/20 bg-brand-accent/5"
                             >
                               {condition.label}
                             </Badge>

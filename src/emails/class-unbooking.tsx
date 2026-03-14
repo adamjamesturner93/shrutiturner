@@ -38,9 +38,7 @@ export default function ClassUnbookingEmail({
         Booking cancelled
       </Text>
 
-      <Text style={bodyTextStyle}>
-        Hi {firstName},
-      </Text>
+      <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
       <Text style={bodyTextStyle}>
         {"This is to confirm your booking for the following class has been cancelled:"}
@@ -81,7 +79,9 @@ export default function ClassUnbookingEmail({
       </Section>
 
       <Text style={bodyTextStyle}>
-        {"If this was a mistake, or you'd like to join a different session, you can browse upcoming classes below."}
+        {
+          "If this was a mistake, or you'd like to join a different session, you can browse upcoming classes below."
+        }
       </Text>
 
       <Section style={{ textAlign: "center" as const, marginBottom: "8px" }}>
@@ -93,7 +93,9 @@ export default function ClassUnbookingEmail({
       <Hr style={dividerStyle} />
 
       <Text style={mutedTextStyle}>
-        {"If you have any questions about your booking or our cancellation policy, feel free to reply to this email."}
+        {
+          "If you have any questions about your booking or our cancellation policy, feel free to reply to this email."
+        }
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>

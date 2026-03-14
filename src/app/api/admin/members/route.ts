@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/api/auth-user";
 import { listAdminMembers } from "@/lib/admin/members-service";
 
 export async function GET(request: Request) {
   try {
+    await connection();
     await requireAdminUser();
     const url = new URL(request.url);
     const data = await listAdminMembers({

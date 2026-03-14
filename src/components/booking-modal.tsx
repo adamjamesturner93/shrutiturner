@@ -1,12 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import {
-  X,
-  Check,
-  ArrowRight,
-  AlertCircle,
-  Download,
-} from "lucide-react";
+import { X, Check, ArrowRight, AlertCircle, Download } from "lucide-react";
 import { Button } from "./ui/button";
 import { useAuth, type CreditItem } from "../context/auth-context";
 import { useI18n } from "../lib/use-i18n";
@@ -118,8 +112,8 @@ export function BookingConfirmation({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
       <div className="bg-background animate-in fade-in zoom-in w-full max-w-sm space-y-6 rounded-lg border p-8 text-center shadow-xl duration-200">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#4B5B32]/10">
-          <Check className="h-8 w-8 text-[#4B5B32]" />
+        <div className="bg-brand-accent/10 mx-auto flex h-16 w-16 items-center justify-center rounded-full">
+          <Check className="text-brand-accent h-8 w-8" />
         </div>
         <div>
           <h3 className="mb-2 text-2xl">You're booked.</h3>
@@ -195,7 +189,8 @@ export function PurchaseModal({
     };
   }, []);
 
-  const moveWellMonthlyPrice = pricing?.membershipDisplay?.movewellMonthly ?? pricing?.membership.movewell ?? 29;
+  const moveWellMonthlyPrice =
+    pricing?.membershipDisplay?.movewellMonthly ?? pricing?.membership.movewell ?? 29;
   const credits1Price = pricing?.credits[1] ?? 9;
   const credits3Price = pricing?.credits[3] ?? 24;
   const credits10Price = pricing?.credits[10] ?? 70;
@@ -207,7 +202,7 @@ export function PurchaseModal({
       return (
         <span>
           <span className="text-muted-foreground mr-1 line-through">£{basePrice}</span>
-          <span className="text-[#4B5B32]">£{discounted}</span>
+          <span className="text-brand-accent">£{discounted}</span>
         </span>
       );
     }
@@ -233,9 +228,7 @@ export function PurchaseModal({
     return query ? `${pathname}?${query}` : pathname;
   };
 
-  const startCheckout = async (
-    option: "dropin" | "3pack" | "10pack" | "membership"
-  ) => {
+  const startCheckout = async (option: "dropin" | "3pack" | "10pack" | "membership") => {
     setPurchasing(true);
     setPurchaseError("");
 
@@ -316,7 +309,7 @@ export function PurchaseModal({
             </p>
 
             {discount > 0 && (
-              <div className="rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 px-4 py-3 text-sm text-[#4B5B32]">
+              <div className="border-brand-accent/20 bg-brand-accent/5 text-brand-accent rounded-lg border px-4 py-3 text-sm">
                 £{discount} referral balance will be applied to your purchase.
               </div>
             )}
@@ -384,7 +377,7 @@ export function PurchaseModal({
           /* ── Non-member ── */
           <div className="space-y-4">
             {discount > 0 && (
-              <div className="rounded-lg border border-[#4B5B32]/20 bg-[#4B5B32]/5 px-4 py-3 text-sm text-[#4B5B32]">
+              <div className="border-brand-accent/20 bg-brand-accent/5 text-brand-accent rounded-lg border px-4 py-3 text-sm">
                 £{discount} referral balance will be applied to your purchase.
               </div>
             )}
@@ -496,7 +489,7 @@ export function BookClassButton({
   const [bookingState, setBookingState] = useState<"idle" | "loading" | "waitlisted">("idle");
   const [bookedOverride, setBookedOverride] = useState(false);
   const [resolvedSessionId, setResolvedSessionId] = useState<string | null>(sessionId ?? null);
-  const [autoBookingAttempted, setAutoBookingAttempted] = useState(false);
+  const autoBookingAttemptedRef = useRef(false);
 
   const className = classNameProp || classSlug;
   const day = dayProp || "Monday";
@@ -525,73 +518,78 @@ export function BookClassButton({
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
 
-  const attemptBooking = useCallback(async ({
-    preferredSessionId,
-    openPurchaseModalOnLimit,
-  }: {
-    preferredSessionId?: string;
-    openPurchaseModalOnLimit: boolean;
-  }) => {
-    setBookingState("loading");
-    let targetSessionId = preferredSessionId || effectiveSessionId;
-    if (!targetSessionId) {
-      const sessionResponse = await fetch(
-        `/api/classes/sessions?slug=${encodeURIComponent(classSlug)}&from=${encodeURIComponent(new Date().toISOString())}`,
-        { cache: "no-store" }
-      );
-      if (sessionResponse.ok) {
-        const sessionPayload = (await sessionResponse.json()) as Array<{ id: string }>;
-        targetSessionId = sessionPayload[0]?.id;
+  const attemptBooking = useCallback(
+    async ({
+      preferredSessionId,
+      openPurchaseModalOnLimit,
+    }: {
+      preferredSessionId?: string;
+      openPurchaseModalOnLimit: boolean;
+    }) => {
+      setBookingState("loading");
+      let targetSessionId = preferredSessionId || effectiveSessionId;
+      if (!targetSessionId) {
+        const sessionResponse = await fetch(
+          `/api/classes/sessions?slug=${encodeURIComponent(classSlug)}&from=${encodeURIComponent(new Date().toISOString())}`,
+          { cache: "no-store" }
+        );
+        if (sessionResponse.ok) {
+          const sessionPayload = (await sessionResponse.json()) as Array<{ id: string }>;
+          targetSessionId = sessionPayload[0]?.id;
+        }
       }
-    }
 
-    if (!targetSessionId) {
-      setBookingState("idle");
-      return "missing_session" as const;
-    }
-
-    setResolvedSessionId(targetSessionId);
-    const response = await fetch(`/api/classes/sessions/${targetSessionId}/book`, {
-      method: "POST",
-    });
-    const payload = (await response.json().catch(() => ({}))) as {
-      status?: "booked" | "waitlisted";
-      bookingMode?: "membership" | "credit" | "waitlist" | "manual";
-      message?: string;
-    };
-
-    if (!response.ok) {
-      if (payload.message === "BOOKING_LIMIT_REACHED" && openPurchaseModalOnLimit) {
-        setShowPurchase(true);
+      if (!targetSessionId) {
+        setBookingState("idle");
+        return "missing_session" as const;
       }
-      setBookingState("idle");
-      return payload.message === "BOOKING_LIMIT_REACHED" ? ("limit_reached" as const) : ("failed" as const);
-    }
 
-    if (payload.status === "waitlisted") {
-      setBookingState("waitlisted");
+      setResolvedSessionId(targetSessionId);
+      const response = await fetch(`/api/classes/sessions/${targetSessionId}/book`, {
+        method: "POST",
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        status?: "booked" | "waitlisted";
+        bookingMode?: "membership" | "credit" | "waitlist" | "manual";
+        message?: string;
+      };
+
+      if (!response.ok) {
+        if (payload.message === "BOOKING_LIMIT_REACHED" && openPurchaseModalOnLimit) {
+          setShowPurchase(true);
+        }
+        setBookingState("idle");
+        return payload.message === "BOOKING_LIMIT_REACHED"
+          ? ("limit_reached" as const)
+          : ("failed" as const);
+      }
+
+      if (payload.status === "waitlisted") {
+        setBookingState("waitlisted");
+        await refreshMembershipState();
+        return "waitlisted" as const;
+      }
+
+      const creditUsed: CreditItem = {
+        id: `session_${targetSessionId}`,
+        type: payload.bookingMode === "credit" ? "purchased" : "membership",
+        label:
+          payload.bookingMode === "credit"
+            ? "Class credit"
+            : payload.bookingMode === "manual"
+              ? "Instructor booking"
+              : "Membership class",
+        sourceId: payload.bookingMode === "credit" ? "credit" : "membership",
+        sourceLabel: payload.bookingMode === "credit" ? "Purchased credits" : "Membership",
+      };
+      setConfirmation({ creditUsed });
+      setBookedOverride(true);
+      setBookingState("idle");
       await refreshMembershipState();
-      return "waitlisted" as const;
-    }
-
-    const creditUsed: CreditItem = {
-      id: `session_${targetSessionId}`,
-      type: payload.bookingMode === "credit" ? "purchased" : "membership",
-      label:
-        payload.bookingMode === "credit"
-          ? "Class credit"
-          : payload.bookingMode === "manual"
-            ? "Instructor booking"
-            : "Membership class",
-      sourceId: payload.bookingMode === "credit" ? "credit" : "membership",
-      sourceLabel: payload.bookingMode === "credit" ? "Purchased credits" : "Membership",
-    };
-    setConfirmation({ creditUsed });
-    setBookedOverride(true);
-    setBookingState("idle");
-    await refreshMembershipState();
-    return "booked" as const;
-  }, [classSlug, effectiveSessionId, refreshMembershipState]);
+      return "booked" as const;
+    },
+    [classSlug, effectiveSessionId, refreshMembershipState]
+  );
 
   const handleBook = () => {
     if (isCancelledDueToLowEnrollment) return;
@@ -620,7 +618,7 @@ export function BookClassButton({
 
     if (
       !isAuthenticated ||
-      autoBookingAttempted ||
+      autoBookingAttemptedRef.current ||
       checkoutStatus !== "success" ||
       !shouldAutoBook ||
       targetClassSlug !== classSlug
@@ -632,7 +630,7 @@ export function BookClassButton({
       return;
     }
 
-    setAutoBookingAttempted(true);
+    autoBookingAttemptedRef.current = true;
 
     void (async () => {
       for (let attempt = 0; attempt < 4; attempt += 1) {
@@ -657,7 +655,6 @@ export function BookClassButton({
     })();
   }, [
     attemptBooking,
-    autoBookingAttempted,
     classSlug,
     clearCheckoutIntent,
     effectiveSessionId,
@@ -668,7 +665,12 @@ export function BookClassButton({
 
   if (bookingState === "waitlisted") {
     return (
-      <Button variant="outline" disabled size={effectiveSize} className={variant === "lg" ? "px-8 text-lg" : ""}>
+      <Button
+        variant="outline"
+        disabled
+        size={effectiveSize}
+        className={variant === "lg" ? "px-8 text-lg" : ""}
+      >
         Waitlisted
       </Button>
     );

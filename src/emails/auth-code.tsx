@@ -1,13 +1,6 @@
 import { Section, Text, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
-import {
-  colors,
-  fonts,
-  headingStyle,
-  bodyTextStyle,
-  mutedTextStyle,
-  dividerStyle,
-} from "./styles";
+import { colors, fonts, headingStyle, bodyTextStyle, mutedTextStyle, dividerStyle } from "./styles";
 
 interface AuthCodeEmailProps {
   code?: string;
@@ -74,7 +67,9 @@ export default function AuthCodeEmail({
       <Hr style={dividerStyle} />
 
       <Text style={mutedTextStyle}>
-        {"If you didn't request this code, you can safely ignore this email. Someone may have entered your email address by mistake."}
+        {
+          "If you didn't request this code, you can safely ignore this email. Someone may have entered your email address by mistake."
+        }
       </Text>
 
       <Text style={{ ...mutedTextStyle, marginTop: "16px" }}>

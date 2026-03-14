@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +45,29 @@ function calculateEndDate(startDate: string, durationWeeks: number): string {
   return start.toISOString().split("T")[0];
 }
 
+function buildSessionPlans(
+  durationWeeks: number,
+  sessionsPerWeek: number,
+  previous: SessionPlan[]
+): SessionPlan[] {
+  const totalSessions = durationWeeks * sessionsPerWeek;
+  const next: SessionPlan[] = [];
+
+  for (let i = 0; i < totalSessions; i += 1) {
+    const week = Math.floor(i / sessionsPerWeek) + 1;
+    const sessionInWeek = (i % sessionsPerWeek) + 1;
+    next.push(
+      previous[i] || {
+        number: i + 1,
+        title: `Week ${week}, Session ${sessionInWeek}`,
+        description: "",
+      }
+    );
+  }
+
+  return next;
+}
+
 export function CreateProgrammeModal({ open, onOpenChange, onCreate }: CreateProgrammeModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -58,27 +81,6 @@ export function CreateProgrammeModal({ open, onOpenChange, onCreate }: CreatePro
 
   // Auto-calculate end date
   const endDate = calculateEndDate(startDate, durationWeeks);
-
-  // Auto-generate session slots when duration or sessions/week change
-  useEffect(() => {
-    const totalSessions = durationWeeks * sessionsPerWeek;
-    setSessions((prev) => {
-      if (prev.length === totalSessions) return prev;
-      const next: SessionPlan[] = [];
-      for (let i = 0; i < totalSessions; i++) {
-        const week = Math.floor(i / sessionsPerWeek) + 1;
-        const sessionInWeek = (i % sessionsPerWeek) + 1;
-        next.push(
-          prev[i] || {
-            number: i + 1,
-            title: `Week ${week}, Session ${sessionInWeek}`,
-            description: "",
-          }
-        );
-      }
-      return next;
-    });
-  }, [durationWeeks, sessionsPerWeek]);
 
   const handleCreate = () => {
     if (!name || !startDate || !price) return;
@@ -161,7 +163,13 @@ export function CreateProgrammeModal({ open, onOpenChange, onCreate }: CreatePro
                 min={1}
                 max={52}
                 value={durationWeeks}
-                onChange={(e) => setDurationWeeks(parseInt(e.target.value) || 0)}
+                onChange={(e) => {
+                  const nextDurationWeeks = parseInt(e.target.value) || 0;
+                  setDurationWeeks(nextDurationWeeks);
+                  setSessions((prev) =>
+                    buildSessionPlans(nextDurationWeeks, sessionsPerWeek, prev)
+                  );
+                }}
               />
             </div>
             <div className="space-y-2">
@@ -172,7 +180,13 @@ export function CreateProgrammeModal({ open, onOpenChange, onCreate }: CreatePro
                 min={1}
                 max={7}
                 value={sessionsPerWeek}
-                onChange={(e) => setSessionsPerWeek(parseInt(e.target.value) || 0)}
+                onChange={(e) => {
+                  const nextSessionsPerWeek = parseInt(e.target.value) || 0;
+                  setSessionsPerWeek(nextSessionsPerWeek);
+                  setSessions((prev) =>
+                    buildSessionPlans(durationWeeks, nextSessionsPerWeek, prev)
+                  );
+                }}
               />
             </div>
           </div>
@@ -295,7 +309,7 @@ export function CreateProgrammeModal({ open, onOpenChange, onCreate }: CreatePro
           <Button
             onClick={handleCreate}
             disabled={!name || !startDate || !price}
-            className="bg-[#4B5B32] hover:bg-[#4B5B32]/90"
+            className="bg-brand-accent hover:bg-brand-accent/90"
           >
             Create Programme
           </Button>

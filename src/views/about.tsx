@@ -27,16 +27,16 @@ export function AboutPage() {
       />
 
       {/* Hero */}
-      <section className="bg-[#2E1F33] py-20 text-[#FAFAF8] md:py-28">
+      <section className="bg-brand-dark text-brand-white py-20 md:py-28">
         <div className="container mx-auto max-w-5xl px-4">
           <div className="grid items-center gap-12 md:grid-cols-2">
             <div className="space-y-6">
               <h1 className="text-4xl leading-tight md:text-5xl">About Shruti</h1>
-              <p className="text-xl leading-relaxed text-[#B5C49B]">
+              <p className="text-brand-accent-light text-xl leading-relaxed">
                 Strength and yoga coach specialising in rehabilitation-informed training for people
                 with chronic illness and complex bodies.
               </p>
-              <p className="text-lg leading-relaxed text-[#FAFAF8]/80">
+              <p className="text-brand-white/80 text-lg leading-relaxed">
                 I live with psoriatic arthritis. I understand what it's like to train with
                 unpredictable capacity, chronic pain, and the fear of making things worse. This work
                 isn't just my profession — it's personal.
@@ -174,8 +174,8 @@ export function AboutPage() {
           <h2 className="mb-8 text-3xl md:text-4xl">My Approach</h2>
           <div className="space-y-8">
             <div className="flex items-start gap-4">
-              <div className="mt-1 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[#4B5B32]/10">
-                <BookOpen className="h-5 w-5 text-[#4B5B32]" />
+              <div className="bg-brand-accent/10 mt-1 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg">
+                <BookOpen className="text-brand-accent h-5 w-5" />
               </div>
               <div>
                 <h3 className="mb-2 text-xl">Evidence Over Dogma</h3>
@@ -188,8 +188,8 @@ export function AboutPage() {
             </div>
 
             <div className="flex items-start gap-4">
-              <div className="mt-1 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[#4B5B32]/10">
-                <Heart className="h-5 w-5 text-[#4B5B32]" />
+              <div className="bg-brand-accent/10 mt-1 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg">
+                <Heart className="text-brand-accent h-5 w-5" />
               </div>
               <div>
                 <h3 className="mb-2 text-xl">Lived Experience Matters</h3>
@@ -203,8 +203,8 @@ export function AboutPage() {
             </div>
 
             <div className="flex items-start gap-4">
-              <div className="mt-1 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[#4B5B32]/10">
-                <Users className="h-5 w-5 text-[#4B5B32]" />
+              <div className="bg-brand-accent/10 mt-1 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg">
+                <Users className="text-brand-accent h-5 w-5" />
               </div>
               <div>
                 <h3 className="mb-2 text-xl">Respect, Not Pity</h3>
@@ -257,7 +257,7 @@ export function AboutPage() {
       </section>
 
       {/* CTA */}
-      <section className="bg-[#4B5B32] py-20 text-[#FAFAF8] md:py-24">
+      <section className="bg-brand-accent text-brand-white py-20 md:py-24">
         <div className="container mx-auto max-w-3xl space-y-8 px-4 text-center">
           <h2 className="text-3xl leading-tight md:text-4xl">Ready to Work Together?</h2>
           <p className="text-lg leading-relaxed opacity-90">
@@ -266,7 +266,10 @@ export function AboutPage() {
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <Link href="/contact">
-              <Button size="lg" className="bg-[#FAFAF8] text-[#4B5B32] hover:bg-[#FAFAF8]/90">
+              <Button
+                size="lg"
+                className="bg-brand-white text-brand-accent hover:bg-brand-white/90"
+              >
                 <MessageCircle className="mr-2 h-4 w-4" />
                 Get in Touch
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -276,9 +279,9 @@ export function AboutPage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="border-[#FAFAF8] bg-transparent text-[#FAFAF8] hover:bg-[#FAFAF8]/10"
+                className="border-brand-white text-brand-white hover:bg-brand-white/10 bg-transparent"
               >
-                Explore Classes
+                Explore Move Well Classes
               </Button>
             </Link>
           </div>

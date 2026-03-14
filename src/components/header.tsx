@@ -5,8 +5,6 @@ import {
   Menu,
   X,
   ChevronDown,
-  Heart,
-  Dumbbell,
   Users,
   CalendarDays,
   User,
@@ -20,10 +18,12 @@ import { IconHorizontal } from "./icon";
 export function Header() {
   const pathname = usePathname();
   const { isAuthenticated, user } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [servicesDropdownOpen, setServicesDropdownOpen] = useState(false);
+  const [mobileMenuPath, setMobileMenuPath] = useState<string | null>(null);
+  const [servicesDropdownPath, setServicesDropdownPath] = useState<string | null>(null);
   const servicesDropdownRef = useRef<HTMLDivElement>(null);
   const servicesTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mobileMenuOpen = mobileMenuPath === pathname;
+  const servicesDropdownOpen = servicesDropdownPath === pathname;
 
   const isActive = (path: string) => {
     if (path === "/") {
@@ -39,24 +39,18 @@ export function Header() {
         servicesDropdownRef.current &&
         !servicesDropdownRef.current.contains(event.target as Node)
       ) {
-        setServicesDropdownOpen(false);
+        setServicesDropdownPath(null);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Close dropdown on route change
-  useEffect(() => {
-    setServicesDropdownOpen(false);
-    setMobileMenuOpen(false);
-  }, [pathname]);
-
   useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setServicesDropdownOpen(false);
-        setMobileMenuOpen(false);
+        setServicesDropdownPath(null);
+        setMobileMenuPath(null);
       }
     }
 
@@ -66,38 +60,32 @@ export function Header() {
 
   const handleServicesMouseEnter = () => {
     if (servicesTimeoutRef.current) clearTimeout(servicesTimeoutRef.current);
-    setServicesDropdownOpen(true);
+    setServicesDropdownPath(pathname);
   };
 
   const handleServicesMouseLeave = () => {
     servicesTimeoutRef.current = setTimeout(() => {
-      setServicesDropdownOpen(false);
+      setServicesDropdownPath(null);
     }, 150);
   };
 
   const servicesLinks = [
     {
-      path: "/classes/yoga",
-      label: "Yoga Classes",
-      description: "Rehabilitation-informed yoga",
-      icon: Heart,
-    },
-    {
-      path: "/classes/strength",
-      label: "Strength Classes",
-      description: "Evidence-based resistance training",
-      icon: Dumbbell,
+      path: "/classes",
+      label: "Move Well Classes",
+      description: "Adaptive yoga and intelligent strength",
+      icon: CalendarDays,
     },
     {
       path: "/classes/small-groups",
-      label: "Small Group Programs",
+      label: "Small Group Programmes",
       description: "Focused cohorts, max 6 people",
       icon: Users,
     },
     {
-      path: "/pt",
-      label: "1:1 Training",
-      description: "Personalised coaching sessions",
+      path: "/coaching",
+      label: "Coaching",
+      description: "Three tiers of personalised support",
       icon: User,
     },
     {
@@ -133,41 +121,30 @@ export function Header() {
             onMouseLeave={handleServicesMouseLeave}
           >
             <button
-              onClick={() => setServicesDropdownOpen(!servicesDropdownOpen)}
+              onClick={() => setServicesDropdownPath(servicesDropdownOpen ? null : pathname)}
               aria-expanded={servicesDropdownOpen}
               aria-haspopup="true"
               aria-label="Toggle services menu"
-              className={`hover:text-primary flex items-center gap-1 transition-colors ${isActive("/classes") ||
+              className={`hover:text-primary flex items-center gap-1 transition-colors ${
+                isActive("/classes") ||
                 isActive("/schedule") ||
-                isActive("/pt") ||
+                isActive("/coaching") ||
                 isActive("/retreats")
-                ? "text-primary"
-                : "text-foreground"
-                }`}
+                  ? "text-primary"
+                  : "text-foreground"
+              }`}
             >
               Services
               <ChevronDown
-                className={`h-4 w-4 transition-transform ${servicesDropdownOpen ? "rotate-180" : ""
-                  }`}
+                className={`h-4 w-4 transition-transform ${
+                  servicesDropdownOpen ? "rotate-180" : ""
+                }`}
               />
             </button>
 
             {servicesDropdownOpen && (
               <div className="absolute top-full left-1/2 w-80 -translate-x-1/2 pt-2">
                 <div className="bg-background space-y-1 rounded-lg border p-2 shadow-lg">
-                  {/* All Classes link */}
-                  <Link
-                    href="/classes"
-                    className="hover:bg-secondary block rounded-md px-3 py-2 text-sm transition-colors"
-                  >
-                    <span className="text-foreground">All Classes</span>
-                    <p className="text-muted-foreground mt-0.5 text-xs">
-                      Overview of all class types
-                    </p>
-                  </Link>
-
-                  <div className="bg-border mx-2 h-px" />
-
                   {servicesLinks.map((link) => (
                     <Link
                       key={link.path}
@@ -209,8 +186,9 @@ export function Header() {
             <Link
               key={link.path}
               href={link.path}
-              className={`hover:text-primary transition-colors ${isActive(link.path) ? "text-primary" : "text-foreground"
-                }`}
+              className={`hover:text-primary transition-colors ${
+                isActive(link.path) ? "text-primary" : "text-foreground"
+              }`}
             >
               {link.label}
             </Link>
@@ -243,7 +221,7 @@ export function Header() {
         {/* Mobile Menu Button */}
         <button
           className="lg:hidden"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          onClick={() => setMobileMenuPath(mobileMenuOpen ? null : pathname)}
           aria-expanded={mobileMenuOpen}
           aria-controls="mobile-main-menu"
           aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
@@ -260,9 +238,10 @@ export function Header() {
             <div className="space-y-1">
               <Link
                 href="/classes"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`hover:bg-secondary block rounded-md px-3 py-2 transition-colors ${pathname === "/classes" ? "text-primary bg-secondary" : "text-foreground"
-                  }`}
+                onClick={() => setMobileMenuPath(null)}
+                className={`hover:bg-secondary block rounded-md px-3 py-2 transition-colors ${
+                  pathname === "/classes" ? "text-primary bg-secondary" : "text-foreground"
+                }`}
               >
                 Services
               </Link>
@@ -271,9 +250,10 @@ export function Header() {
                   <Link
                     key={link.path}
                     href={link.path}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`hover:bg-secondary flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${isActive(link.path) ? "text-primary bg-secondary" : "text-muted-foreground"
-                      }`}
+                    onClick={() => setMobileMenuPath(null)}
+                    className={`hover:bg-secondary flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
+                      isActive(link.path) ? "text-primary bg-secondary" : "text-muted-foreground"
+                    }`}
                   >
                     <link.icon className="h-4 w-4" />
                     {link.label}
@@ -281,9 +261,10 @@ export function Header() {
                 ))}
                 <Link
                   href="/schedule"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`hover:bg-secondary flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${isActive("/schedule") ? "text-primary bg-secondary" : "text-muted-foreground"
-                    }`}
+                  onClick={() => setMobileMenuPath(null)}
+                  className={`hover:bg-secondary flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
+                    isActive("/schedule") ? "text-primary bg-secondary" : "text-muted-foreground"
+                  }`}
                 >
                   <CalendarDays className="h-4 w-4" />
                   Schedule
@@ -295,9 +276,10 @@ export function Header() {
               <Link
                 key={link.path}
                 href={link.path}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`hover:bg-secondary block rounded-md px-3 py-2 transition-colors ${isActive(link.path) ? "text-primary bg-secondary" : "text-foreground"
-                  }`}
+                onClick={() => setMobileMenuPath(null)}
+                className={`hover:bg-secondary block rounded-md px-3 py-2 transition-colors ${
+                  isActive(link.path) ? "text-primary bg-secondary" : "text-foreground"
+                }`}
               >
                 {link.label}
               </Link>
@@ -305,23 +287,23 @@ export function Header() {
 
             <div className="flex flex-col space-y-2 border-t pt-4">
               {isAuthenticated ? (
-                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                <Link href="/dashboard" onClick={() => setMobileMenuPath(null)}>
                   <Button className="w-full">My Studio</Button>
                 </Link>
               ) : (
                 <>
-                  <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                  <Link href="/login" onClick={() => setMobileMenuPath(null)}>
                     <Button variant="ghost" className="w-full">
                       Sign In
                     </Button>
                   </Link>
-                  <Link href="/contact" onClick={() => setMobileMenuOpen(false)}>
+                  <Link href="/contact" onClick={() => setMobileMenuPath(null)}>
                     <Button variant="outline" className="w-full">
                       <MessageCircle className="mr-1.5 h-4 w-4" />
                       Get in Touch
                     </Button>
                   </Link>
-                  <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                  <Link href="/login" onClick={() => setMobileMenuPath(null)}>
                     <Button className="w-full">Sign In</Button>
                   </Link>
                 </>

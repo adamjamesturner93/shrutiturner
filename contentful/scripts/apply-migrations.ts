@@ -40,8 +40,7 @@ async function upsertAndPublishContentType(
 ) {
   let contentType: ContentTypeLike;
 
-  const getFieldKey = (field: Record<string, unknown>) =>
-    String(field.apiName || field.id || "");
+  const getFieldKey = (field: Record<string, unknown>) => String(field.apiName || field.id || "");
 
   const toOmittedField = (field: Record<string, unknown>) => ({
     id: String(field.apiName || field.id),
@@ -59,7 +58,9 @@ async function upsertAndPublishContentType(
   try {
     contentType = await environment.getContentType(model.id);
 
-    const incomingFieldKeys = new Set(model.fields.map((f) => getFieldKey(f as Record<string, unknown>)));
+    const incomingFieldKeys = new Set(
+      model.fields.map((f) => getFieldKey(f as Record<string, unknown>))
+    );
     const removedFields = (contentType.fields as Array<Record<string, unknown>>).filter((field) => {
       const key = getFieldKey(field);
       return key && !incomingFieldKeys.has(key);
@@ -190,7 +191,9 @@ async function configureSlugEditor(contentTypeId: string, trackingFieldId: strin
 
 async function run() {
   const space = await client.getSpace(spaceId);
-  const environment = (await space.getEnvironment(environmentId)) as unknown as ContentfulEnvironmentLike;
+  const environment = (await space.getEnvironment(
+    environmentId
+  )) as unknown as ContentfulEnvironmentLike;
 
   for (const model of PUBLIC_CONTENT_MODELS) {
     await upsertAndPublishContentType(environment, model);

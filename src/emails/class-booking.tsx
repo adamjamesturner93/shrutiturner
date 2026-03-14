@@ -53,9 +53,7 @@ export default function ClassBookingEmail({
         Your spot is confirmed for the class below.
       </Text>
 
-      <Text style={bodyTextStyle}>
-        Hi {firstName},
-      </Text>
+      <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
       <Text style={bodyTextStyle}>
         {"Great news — your booking is confirmed. Here are the details:"}
@@ -151,7 +149,8 @@ export default function ClassBookingEmail({
       <Hr style={dividerStyle} />
 
       <Text style={mutedTextStyle}>
-        Need to cancel? You can do so up to 2 hours before the class starts from your account dashboard.
+        Need to cancel? You can do so up to 2 hours before the class starts from your account
+        dashboard.
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>

@@ -63,7 +63,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         authCode: { label: "Code", type: "text" },
       },
       async authorize(credentials) {
-        const email = String(credentials?.email || "").trim().toLowerCase();
+        const email = String(credentials?.email || "")
+          .trim()
+          .toLowerCase();
         const authCode = normalizeAuthCode(String(credentials?.authCode || ""));
         if (!email || !authCode) {
           if (process.env.NODE_ENV === "development") {

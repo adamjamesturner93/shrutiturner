@@ -64,7 +64,7 @@ export function AdminRetreatDetail() {
         {/* Header */}
         <div>
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl text-[#2E1F33]">{retreat.title}</h1>
+            <h1 className="text-brand-dark text-2xl">{retreat.title}</h1>
             <Badge
               variant={
                 retreat.status === "open"
@@ -103,8 +103,8 @@ export function AdminRetreatDetail() {
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="pt-6 text-center">
-              <Users className="mx-auto h-5 w-5 text-[#4B5B32]" />
-              <p className="mt-2 text-2xl text-[#2E1F33]">
+              <Users className="text-brand-accent mx-auto h-5 w-5" />
+              <p className="text-brand-dark mt-2 text-2xl">
                 {retreat.bookedSpaces}/{retreat.totalSpaces}
               </p>
               <p className="text-muted-foreground text-xs">Booked / Capacity</p>
@@ -112,15 +112,15 @@ export function AdminRetreatDetail() {
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <PoundSterling className="mx-auto h-5 w-5 text-[#4B5B32]" />
-              <p className="mt-2 text-2xl text-[#2E1F33]">£{retreat.revenue.toLocaleString()}</p>
+              <PoundSterling className="text-brand-accent mx-auto h-5 w-5" />
+              <p className="text-brand-dark mt-2 text-2xl">£{retreat.revenue.toLocaleString()}</p>
               <p className="text-muted-foreground text-xs">Revenue</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <PoundSterling className="mx-auto h-5 w-5 text-[#4B5B32]" />
-              <p className="mt-2 text-2xl text-[#2E1F33]">{earlyBirdCount}</p>
+              <PoundSterling className="text-brand-accent mx-auto h-5 w-5" />
+              <p className="text-brand-dark mt-2 text-2xl">{earlyBirdCount}</p>
               <p className="text-muted-foreground text-xs">
                 Early bird (£{retreat.earlyBirdPrice})
               </p>
@@ -129,7 +129,7 @@ export function AdminRetreatDetail() {
           <Card>
             <CardContent className="pt-6 text-center">
               <PoundSterling className="text-muted-foreground mx-auto h-5 w-5" />
-              <p className="mt-2 text-2xl text-[#2E1F33]">{normalCount}</p>
+              <p className="text-brand-dark mt-2 text-2xl">{normalCount}</p>
               <p className="text-muted-foreground text-xs">Normal (£{retreat.normalPrice})</p>
             </CardContent>
           </Card>
@@ -145,7 +145,7 @@ export function AdminRetreatDetail() {
           </div>
           <div className="bg-secondary h-3 overflow-hidden rounded-full">
             <div
-              className="h-full rounded-full bg-[#4B5B32] transition-all"
+              className="bg-brand-accent h-full rounded-full transition-all"
               style={{
                 width: `${(retreat.bookedSpaces / retreat.totalSpaces) * 100}%`,
               }}
@@ -187,7 +187,7 @@ export function AdminRetreatDetail() {
                               ? "#"
                               : `/admin/members/${booking.memberId}`
                           }
-                          className="transition-colors hover:text-[#4B5B32]"
+                          className="hover:text-brand-accent transition-colors"
                         >
                           {booking.memberName}
                         </Link>

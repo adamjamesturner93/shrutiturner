@@ -18,7 +18,9 @@ type ContentfulEntry = {
 };
 
 type ContentfulEnvironment = {
-  getEntries: (query: Record<string, unknown>) => Promise<{ items?: ContentfulEntry[]; total?: number }>;
+  getEntries: (
+    query: Record<string, unknown>
+  ) => Promise<{ items?: ContentfulEntry[]; total?: number }>;
 };
 
 function readField(entry: ContentfulEntry, field: string, locale = "en-US") {
@@ -63,7 +65,9 @@ async function listAllTestimonials(environment: ContentfulEnvironment) {
 
 async function run() {
   const space = await client.getSpace(spaceId);
-  const environment = (await space.getEnvironment(environmentId)) as unknown as ContentfulEnvironment;
+  const environment = (await space.getEnvironment(
+    environmentId
+  )) as unknown as ContentfulEnvironment;
 
   const entries = await listAllTestimonials(environment);
   const groups = new Map<string, ContentfulEntry[]>();

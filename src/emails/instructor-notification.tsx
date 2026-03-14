@@ -24,7 +24,9 @@ export default function InstructorNotificationEmail({
   const isFirstSignup = type === "first-signup";
 
   return (
-    <EmailLayout preview={isFirstSignup ? `New booking: ${className}` : `Class empty: ${className}`}>
+    <EmailLayout
+      preview={isFirstSignup ? `New booking: ${className}` : `Class empty: ${className}`}
+    >
       <Text
         style={{
           ...headingStyle,
@@ -74,4 +76,3 @@ export default function InstructorNotificationEmail({
     </EmailLayout>
   );
 }
-

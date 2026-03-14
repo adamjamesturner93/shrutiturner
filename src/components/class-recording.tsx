@@ -27,6 +27,13 @@ const CLASS_RECORDING_RETENTION_DAYS = 7;
 /** Programme session recordings have an extended retention window */
 const PROGRAMME_RECORDING_RETENTION_DAYS = 30;
 
+function getDaysRemaining(expiresAt: string) {
+  return Math.max(
+    0,
+    Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  );
+}
+
 /* ──────────── Mock recordings (last 7 days) ──────────── */
 
 function generateMockRecordings(): ClassRecording[] {
@@ -149,7 +156,9 @@ export function useRecordingAccess() {
 
   const isMember = membership !== null;
   const isUnlimited = membership?.plan === "movewell" || membership?.plan === "instructor";
-  const isCapped = membership?.plan ? membership.plan !== "movewell" && membership.plan !== "instructor" : false;
+  const isCapped = membership?.plan
+    ? membership.plan !== "movewell" && membership.plan !== "instructor"
+    : false;
   const isProgramOnly = !isMember && enrolledProgramIds.length > 0;
 
   return { hasAccess, isMember, isUnlimited, isCapped, isProgramOnly, enrolledProgramIds };
@@ -179,10 +188,7 @@ export function RecordingCard({ recording, isProgrammeRecording = false }: Recor
   const watchCheck = canWatchRecording(recording.classSlug);
   const isUnlimited = membership?.plan === "movewell" || membership?.plan === "instructor";
 
-  const daysRemaining = Math.max(
-    0,
-    Math.ceil((new Date(recording.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-  );
+  const daysRemaining = getDaysRemaining(recording.expiresAt);
 
   const handleWatch = () => {
     if (isProgrammeRecording || isUnlimited || alreadyWatched) {
@@ -207,10 +213,10 @@ export function RecordingCard({ recording, isProgrammeRecording = false }: Recor
   if (isPlaying) {
     return (
       <div className="overflow-hidden rounded-lg border">
-        <div className="relative flex aspect-video items-center justify-center bg-[#1a1a2e]">
+        <div className="bg-video-backdrop relative flex aspect-video items-center justify-center">
           <div className="space-y-3 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#4B5B32]/30">
-              <Play className="ml-1 h-8 w-8 text-[#B5C49B]" />
+            <div className="bg-brand-accent/30 mx-auto flex h-16 w-16 items-center justify-center rounded-full">
+              <Play className="text-brand-accent-light ml-1 h-8 w-8" />
             </div>
             <p className="text-sm text-white/70">Recording playback would start here</p>
             <p className="text-xs text-white/40">[In production: Daily.co recording embed]</p>
@@ -238,7 +244,7 @@ export function RecordingCard({ recording, isProgrammeRecording = false }: Recor
           <div
             className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${
               recording.classType === "Yoga"
-                ? "bg-[#4B5B32]/10 text-[#4B5B32]"
+                ? "bg-brand-accent/10 text-brand-accent"
                 : recording.classType === "HIIT"
                   ? "bg-orange-100 text-orange-600"
                   : "bg-primary/10 text-primary"
@@ -255,7 +261,7 @@ export function RecordingCard({ recording, isProgrammeRecording = false }: Recor
               {daysRemaining <= 2 && (
                 <Badge
                   variant="outline"
-                  className="border-orange-200 px-1.5 py-0 text-[10px] text-orange-600"
+                  className="text-micro border-orange-200 px-1.5 py-0 text-orange-600"
                 >
                   {daysRemaining === 0 ? "Expires today" : `${daysRemaining}d left`}
                 </Badge>
@@ -263,7 +269,7 @@ export function RecordingCard({ recording, isProgrammeRecording = false }: Recor
               {alreadyWatched && (
                 <Badge
                   variant="outline"
-                  className="gap-0.5 border-[#4B5B32]/20 px-1.5 py-0 text-[10px] text-[#4B5B32]"
+                  className="border-brand-accent/20 text-brand-accent text-micro gap-0.5 px-1.5 py-0"
                 >
                   <CheckCircle className="h-2.5 w-2.5" />
                   Watched
@@ -309,7 +315,7 @@ export function RecordingCard({ recording, isProgrammeRecording = false }: Recor
         !alreadyWatched &&
         !showCreditWarning &&
         watchCheck.allowed && (
-          <p className="text-muted-foreground/60 mt-2 flex items-center gap-1 text-[10px]">
+          <p className="text-muted-foreground/60 text-micro mt-2 flex items-center gap-1">
             <Info className="h-3 w-3" />
             First watch uses 1 of your {membership?.classesPerWeek} weekly classes (
             {membershipClassesRemaining} remaining). Rewatches are free.
@@ -362,13 +368,13 @@ export function ClassRecordingsSection({ classSlug }: ClassRecordingsSectionProp
         {isUnlimited && (
           <Badge
             variant="outline"
-            className="border-[#4B5B32]/20 px-1.5 py-0 text-[10px] text-[#4B5B32]"
+            className="border-brand-accent/20 text-brand-accent text-micro px-1.5 py-0"
           >
             Unlimited access
           </Badge>
         )}
         {isCapped && (
-          <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+          <Badge variant="outline" className="text-micro px-1.5 py-0">
             Counts as class attended
           </Badge>
         )}

@@ -57,12 +57,12 @@ export default function RetreatBookingEmail({
         Deposit received — {"you're"} confirmed.
       </Text>
 
-      <Text style={bodyTextStyle}>
-        Hi {firstName},
-      </Text>
+      <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
       <Text style={bodyTextStyle}>
-        {"Wonderful news — your deposit has been received and your place on the retreat is now secured. I'm so pleased you'll be joining."}
+        {
+          "Wonderful news — your deposit has been received and your place on the retreat is now secured. I'm so pleased you'll be joining."
+        }
       </Text>
 
       {/* Retreat Details Card */}
@@ -197,7 +197,9 @@ export default function RetreatBookingEmail({
       <Hr style={dividerStyle} />
 
       <Text style={mutedTextStyle}>
-        {"I'll be in touch closer to the date with full joining instructions, including what to bring and how to get there."}
+        {
+          "I'll be in touch closer to the date with full joining instructions, including what to bring and how to get there."
+        }
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>

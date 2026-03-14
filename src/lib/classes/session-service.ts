@@ -1,10 +1,16 @@
-import { ClassBookingStatus, ClassSessionStatus, ClassWaitlistStatus, Prisma } from "@prisma/client";
+import {
+  ClassBookingStatus,
+  ClassSessionStatus,
+  ClassWaitlistStatus,
+  Prisma,
+} from "@prisma/client";
 import { db } from "@/lib/db";
 import {
   getClassDefinitionBySlug,
   getClassDefinitions,
   getInstructorProfilesByIds,
 } from "@/lib/content";
+import { finalizeSessionNoShows } from "@/lib/classes/attendance-service";
 import { createSessionRoom, isDailyConfigured } from "@/lib/daily/service";
 import { HEALTH_CATEGORIES } from "@/data/health-profile-data";
 import type {
@@ -29,7 +35,8 @@ function toHealthConditionLabel(conditionKey: string, detail: string | null) {
 
 function parseOffsetToMinutes(offsetToken: string): number {
   if (offsetToken === "GMT" || offsetToken === "UTC") return 0;
-  const match = offsetToken.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/) ||
+  const match =
+    offsetToken.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/) ||
     offsetToken.match(/UTC([+-])(\d{1,2})(?::?(\d{2}))?/);
   if (!match) return 0;
   const sign = match[1] === "-" ? -1 : 1;
@@ -50,7 +57,11 @@ function getTimeZoneOffsetMinutes(date: Date, timeZone: string): number {
   return parseOffsetToMinutes(token);
 }
 
-export function toUtcFromLocalDateTime(localDate: string, localTime: string, timeZone: string): Date {
+export function toUtcFromLocalDateTime(
+  localDate: string,
+  localTime: string,
+  timeZone: string
+): Date {
   const [year, month, day] = localDate.split("-").map(Number);
   const [hour, minute] = localTime.split(":").map(Number);
   const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, 0));
@@ -58,22 +69,18 @@ export function toUtcFromLocalDateTime(localDate: string, localTime: string, tim
   return new Date(utcGuess.getTime() - offsetMinutes * 60_000);
 }
 
-function getBookedCount(session: {
-  bookings: Array<{ status: ClassBookingStatus }>;
-}) {
+function getBookedCount(session: { bookings: Array<{ status: ClassBookingStatus }> }) {
   return session.bookings.filter((b) => b.status === ClassBookingStatus.booked).length;
 }
 
-function getWaitlistCount(session: {
-  waitlist: Array<{ status: ClassWaitlistStatus }>;
-}) {
+function getWaitlistCount(session: { waitlist: Array<{ status: ClassWaitlistStatus }> }) {
   return session.waitlist.filter((w) => w.status === ClassWaitlistStatus.waiting).length;
 }
 
 function toSessionListItem(
   session: Prisma.ClassSessionGetPayload<{
     include: {
-      bookings: { select: { userId: true; status: true } };
+      bookings: { select: { userId: true; status: true; firstJoinedAt: true } };
       waitlist: { select: { userId: true; status: true; position: true } };
     };
   }>,
@@ -83,10 +90,14 @@ function toSessionListItem(
   const bookedCount = getBookedCount(session);
   const waitlistCount = getWaitlistCount(session);
   const myBooking = currentUserId
-    ? session.bookings.find((b) => b.userId === currentUserId && b.status !== ClassBookingStatus.cancelled)
+    ? session.bookings.find(
+        (b) => b.userId === currentUserId && b.status !== ClassBookingStatus.cancelled
+      )
     : null;
   const myWaitlist = currentUserId
-    ? session.waitlist.find((w) => w.userId === currentUserId && w.status === ClassWaitlistStatus.waiting)
+    ? session.waitlist.find(
+        (w) => w.userId === currentUserId && w.status === ClassWaitlistStatus.waiting
+      )
     : null;
 
   return {
@@ -109,8 +120,11 @@ function toSessionListItem(
     bookedCount,
     waitlistCount,
     dailyRoomUrl: session.dailyRoomUrl,
+    communityModeEnabled: session.communityModeEnabled,
+    lateJoinCutoffAt: new Date(session.startsAtUtc.getTime() + 5 * 60_000).toISOString(),
     isBookedByCurrentUser: Boolean(myBooking && myBooking.status === ClassBookingStatus.booked),
     myBookingStatus: myBooking?.status ?? null,
+    hasPreviouslyJoinedCurrentUser: Boolean(myBooking?.firstJoinedAt),
     waitlistPosition: myWaitlist?.position ?? null,
   };
 }
@@ -138,6 +152,7 @@ export async function listClassSessions(params: {
         select: {
           userId: true,
           status: true,
+          firstJoinedAt: true,
         },
       },
       waitlist: {
@@ -167,12 +182,17 @@ export async function listClassSessions(params: {
     toSessionListItem(
       session,
       params.currentUserId,
-      session.instructorProfileEntryId ? profileById.get(session.instructorProfileEntryId) : undefined
+      session.instructorProfileEntryId
+        ? profileById.get(session.instructorProfileEntryId)
+        : undefined
     )
   );
 }
 
-export async function getClassSessionDetail(sessionId: string, currentUserId?: string): Promise<ClassSessionDetailDto | null> {
+export async function getClassSessionDetail(
+  sessionId: string,
+  currentUserId?: string
+): Promise<ClassSessionDetailDto | null> {
   const session = await db.classSession.findUnique({
     where: { id: sessionId },
     include: {
@@ -241,8 +261,16 @@ export async function getClassSessionDetail(sessionId: string, currentUserId?: s
   const base = toSessionListItem(
     {
       ...session,
-      bookings: session.bookings.map((b) => ({ userId: b.userId, status: b.status })),
-      waitlist: session.waitlist.map((w) => ({ userId: w.userId, status: w.status, position: w.position })),
+      bookings: session.bookings.map((b) => ({
+        userId: b.userId,
+        status: b.status,
+        firstJoinedAt: b.firstJoinedAt,
+      })),
+      waitlist: session.waitlist.map((w) => ({
+        userId: w.userId,
+        status: w.status,
+        position: w.position,
+      })),
     },
     currentUserId,
     profile
@@ -260,6 +288,11 @@ export async function getClassSessionDetail(sessionId: string, currentUserId?: s
       email: booking.user.email,
       status: booking.status,
       bookedAt: booking.bookedAt.toISOString(),
+      firstJoinedAt: booking.firstJoinedAt?.toISOString() || null,
+      lastJoinedAt: booking.lastJoinedAt?.toISOString() || null,
+      lastLeftAt: booking.lastLeftAt?.toISOString() || null,
+      joinCount: booking.joinCount,
+      attendanceSource: booking.attendanceSource,
       healthConditions: (booking.user.healthProfile?.selections || []).map((selection) =>
         toHealthConditionLabel(selection.conditionKey, selection.detail)
       ),
@@ -281,7 +314,9 @@ export async function getClassSessionDetail(sessionId: string, currentUserId?: s
 function buildWeeklyDates(startDate: string, repeatWeeks: number, weekdays: number[]) {
   const [year, month, day] = startDate.split("-").map(Number);
   const start = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
-  const uniqueWeekdays = Array.from(new Set(weekdays)).filter((d) => d >= 0 && d <= 6).sort();
+  const uniqueWeekdays = Array.from(new Set(weekdays))
+    .filter((d) => d >= 0 && d <= 6)
+    .sort();
   const all: Date[] = [];
 
   for (let week = 0; week < repeatWeeks; week += 1) {
@@ -298,12 +333,13 @@ function buildWeeklyDates(startDate: string, repeatWeeks: number, weekdays: numb
     }
   }
 
-  return all
-    .map((d) => d.toISOString().slice(0, 10))
-    .sort();
+  return all.map((d) => d.toISOString().slice(0, 10)).sort();
 }
 
-export async function bulkCreateClassSessions(input: BulkCreateSessionsInput, fallbackInstructorUserId: string) {
+export async function bulkCreateClassSessions(
+  input: BulkCreateSessionsInput,
+  fallbackInstructorUserId: string
+) {
   const classDef = await getClassDefinitionBySlug(input.classDefinitionSlug);
   if (!classDef) {
     throw new Error("CLASS_DEFINITION_NOT_FOUND");
@@ -313,7 +349,9 @@ export async function bulkCreateClassSessions(input: BulkCreateSessionsInput, fa
     throw new Error("INVALID_REPEAT_WEEKS");
   }
 
-  const days = input.weekdays.length ? input.weekdays : [new Date(`${input.startDate}T00:00:00Z`).getUTCDay()];
+  const days = input.weekdays.length
+    ? input.weekdays
+    : [new Date(`${input.startDate}T00:00:00Z`).getUTCDay()];
   const dateStrings = buildWeeklyDates(input.startDate, input.repeatWeeks, days);
 
   const instructorUserId = input.instructorUserId || fallbackInstructorUserId;
@@ -418,7 +456,7 @@ export async function updateClassSession(
     notes?: string;
   }
 ) {
-  return db.classSession.update({
+  const updated = await db.classSession.update({
     where: { id: sessionId },
     data: {
       startsAtUtc: updates.startsAtUtc,
@@ -428,6 +466,12 @@ export async function updateClassSession(
       notes: updates.notes,
     },
   });
+
+  if (updates.status === ClassSessionStatus.completed) {
+    await finalizeSessionNoShows(sessionId);
+  }
+
+  return updated;
 }
 
 export async function listAdminClassSessions(params: {
@@ -444,7 +488,12 @@ export async function listAdminClassSessions(params: {
     statusIn:
       params.status && params.status !== "all"
         ? [params.status]
-        : [ClassSessionStatus.scheduled, ClassSessionStatus.live, ClassSessionStatus.completed, ClassSessionStatus.cancelled],
+        : [
+            ClassSessionStatus.scheduled,
+            ClassSessionStatus.live,
+            ClassSessionStatus.completed,
+            ClassSessionStatus.cancelled,
+          ],
     type: params.type && params.type !== "all" ? params.type : undefined,
   });
 

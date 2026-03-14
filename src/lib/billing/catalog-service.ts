@@ -69,19 +69,19 @@ function catalogMetaForKey(key: BillingCatalogKey) {
     case "credits_1":
       return {
         name: "Credits · 1 class",
-        recurring: null as const,
+        recurring: null,
         fallbackPence: CREDIT_BUNDLE_CONFIG[1].pricePence,
       };
     case "credits_3":
       return {
         name: "Credits · 3 classes",
-        recurring: null as const,
+        recurring: null,
         fallbackPence: CREDIT_BUNDLE_CONFIG[3].pricePence,
       };
     case "credits_10":
       return {
         name: "Credits · 10 classes",
-        recurring: null as const,
+        recurring: null,
         fallbackPence: CREDIT_BUNDLE_CONFIG[10].pricePence,
       };
   }
@@ -218,7 +218,9 @@ export async function createPromotionCode(input: {
     coupon: coupon.id,
     code: input.code,
     max_redemptions: input.maxRedemptions,
-    expires_at: input.expiresAt ? Math.floor(new Date(input.expiresAt).getTime() / 1000) : undefined,
+    expires_at: input.expiresAt
+      ? Math.floor(new Date(input.expiresAt).getTime() / 1000)
+      : undefined,
     active: true,
   });
 

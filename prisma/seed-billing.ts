@@ -23,7 +23,10 @@ function readEnvValue(key: "DIRECT_URL" | "DATABASE_URL"): string | undefined {
     const idx = trimmed.indexOf("=");
     if (idx < 0) continue;
     if (trimmed.slice(0, idx).trim() !== key) continue;
-    return trimmed.slice(idx + 1).trim().replace(/^['"]|['"]$/g, "");
+    return trimmed
+      .slice(idx + 1)
+      .trim()
+      .replace(/^['"]|['"]$/g, "");
   }
   return undefined;
 }
@@ -239,13 +242,17 @@ async function upsertUser(index: number) {
     where: { userId: user.id },
     update: {
       additionalNotes:
-        index % 2 === 0 ? "Morning stiffness around wrists and shoulders." : "Energy fluctuates day to day.",
+        index % 2 === 0
+          ? "Morning stiffness around wrists and shoulders."
+          : "Energy fluctuates day to day.",
       lastUpdatedAt: datePlus(-(index % 20)),
     },
     create: {
       userId: user.id,
       additionalNotes:
-        index % 2 === 0 ? "Morning stiffness around wrists and shoulders." : "Energy fluctuates day to day.",
+        index % 2 === 0
+          ? "Morning stiffness around wrists and shoulders."
+          : "Energy fluctuates day to day.",
       lastUpdatedAt: datePlus(-(index % 20)),
     },
   });
@@ -292,9 +299,30 @@ async function seedClassSessions(userIds: string[]) {
   if (!instructor) return;
 
   const templates = [
-    { slug: "adaptive-yoga-flow", title: "Adaptive Yoga Flow", type: "Yoga", level: "All levels", durationMinutes: 60, capacity: 10 },
-    { slug: "strength-foundations", title: "Strength Foundations", type: "Strength", level: "Beginner", durationMinutes: 45, capacity: 8 },
-    { slug: "chair-based-strength", title: "Chair-Based Strength", type: "Strength", level: "Adaptive", durationMinutes: 45, capacity: 8 },
+    {
+      slug: "adaptive-yoga-flow",
+      title: "Adaptive Yoga Flow",
+      type: "Yoga",
+      level: "All levels",
+      durationMinutes: 60,
+      capacity: 10,
+    },
+    {
+      slug: "strength-foundations",
+      title: "Strength Foundations",
+      type: "Strength",
+      level: "Beginner",
+      durationMinutes: 45,
+      capacity: 8,
+    },
+    {
+      slug: "chair-based-strength",
+      title: "Chair-Based Strength",
+      type: "Strength",
+      level: "Adaptive",
+      durationMinutes: 45,
+      capacity: 8,
+    },
   ];
 
   for (let week = 0; week < 8; week += 1) {
@@ -385,7 +413,9 @@ async function main() {
   await seedReferrals(users);
   await seedClassSessions(users.map((u) => u.id));
 
-  console.log("Seeded billing dataset: 25 members with membership, credit, referral, health, and class sessions.");
+  console.log(
+    "Seeded billing dataset: 25 members with membership, credit, referral, health, and class sessions."
+  );
 }
 
 main()
