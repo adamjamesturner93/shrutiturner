@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import {
-  unsubscribeMarketingEmailByAddress,
+  requestMarketingUnsubscribeByAddress,
   unsubscribeMarketingEmailByToken,
 } from "@/lib/newsletter/subscriber-service";
+import { sendMarketingUnsubscribeRequestEmail } from "@/lib/newsletter/unsubscribe-email";
 
 type UnsubscribeBody = {
   email?: unknown;
@@ -25,8 +26,24 @@ export async function POST(request: Request) {
     }
 
     if (email) {
-      const unsubscribedEmail = await unsubscribeMarketingEmailByAddress(email);
-      return NextResponse.json({ ok: true, email: unsubscribedEmail });
+      const pendingRequest = await requestMarketingUnsubscribeByAddress(email);
+      if (pendingRequest) {
+        const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://shrutiturner.com").replace(
+          /\/$/,
+          ""
+        );
+        const unsubscribeUrl = `${siteUrl}/unsubscribe?token=${encodeURIComponent(pendingRequest.token)}`;
+        await sendMarketingUnsubscribeRequestEmail({
+          email: pendingRequest.email,
+          unsubscribeUrl,
+        });
+      }
+
+      return NextResponse.json({
+        ok: true,
+        requested: true,
+        message: "If that email is subscribed, we have sent a secure unsubscribe link.",
+      });
     }
 
     return NextResponse.json(
@@ -39,6 +56,12 @@ export async function POST(request: Request) {
       (error.message === "INVALID_TOKEN" || error.message === "INVALID_EMAIL")
     ) {
       return NextResponse.json({ message: "Invalid unsubscribe request." }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "POSTMARK_NOT_CONFIGURED") {
+      return NextResponse.json(
+        { message: "Email delivery is not configured right now. Please try again later." },
+        { status: 500 }
+      );
     }
     if (error instanceof Error && error.message === "NOT_FOUND") {
       return NextResponse.json(

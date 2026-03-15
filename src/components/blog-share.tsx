@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
 import { Link2, Check, Mail } from "lucide-react";
+import { buildBlogShareLinks } from "@/lib/blog/share-links";
 
 /** Social platform icons as inline SVGs for reliable rendering */
 function XIcon({ className }: { className?: string }) {
@@ -51,17 +52,7 @@ export function BlogShare({ url, title, excerpt, variant = "inline" }: BlogShare
   const [copied, setCopied] = useState(false);
 
   const shareUrl = url || (typeof window !== "undefined" ? window.location.href : "");
-  const encodedUrl = encodeURIComponent(shareUrl);
-  const encodedTitle = encodeURIComponent(title);
-  const encodedExcerpt = encodeURIComponent(excerpt || "");
-
-  const shareLinks = {
-    x: `https://x.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`,
-    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
-    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
-    whatsapp: `https://wa.me/?text=${encodedTitle}%20${encodedUrl}`,
-    email: `mailto:?subject=${encodedTitle}&body=${encodedExcerpt}%0A%0A${encodedUrl}`,
-  };
+  const shareLinks = buildBlogShareLinks({ url: shareUrl, title, excerpt });
 
   const handleCopyLink = async () => {
     try {

@@ -32,3 +32,4 @@ coverage
 
 # OS/editor noise
 .DS_Store
+test-results/

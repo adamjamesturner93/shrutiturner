@@ -145,6 +145,25 @@ export async function unsubscribeMarketingEmailByAddress(emailInput: string) {
   return user.email;
 }
 
+export async function requestMarketingUnsubscribeByAddress(emailInput: string) {
+  const email = normalizeEmail(emailInput);
+  if (!email) throw new Error("INVALID_EMAIL");
+
+  const subscriber = await db.newsletterSubscriber.findUnique({
+    where: { email },
+    select: { email: true, token: true },
+  });
+
+  if (!subscriber) {
+    return null;
+  }
+
+  return {
+    email: subscriber.email,
+    token: subscriber.token,
+  };
+}
+
 export async function syncMarketingPreferenceForUser(userId: string, marketingEmails: boolean) {
   const user = await db.user.findUnique({
     where: { id: userId },

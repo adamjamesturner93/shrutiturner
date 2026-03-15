@@ -17,28 +17,8 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
-
-function getPostAuthors(post: BlogPostContent) {
-  if (post.authors.length > 0) return post.authors;
-  if (post.author) {
-    return [
-      {
-        id: post.author,
-        slug: post.author.toLowerCase().replace(/\s+/g, "-"),
-        name: post.author,
-        bio: "",
-      },
-    ];
-  }
-  return [];
-}
-
-function getAuthorLabel(post: BlogPostContent) {
-  const authors = getPostAuthors(post);
-  if (authors.length === 0) return "Shruti Turner";
-  if (authors.length === 1) return authors[0]?.name || "Shruti Turner";
-  return `${authors[0]?.name || "Shruti Turner"} + ${authors.length - 1}`;
-}
+import { getAuthorLabel, getPostAuthors } from "@/lib/blog/view-model";
+import { filterAndSortPosts, resolveSelectedTag } from "@/lib/blog/listing";
 
 interface BlogPageProps {
   posts?: BlogPostContent[];
@@ -61,13 +41,7 @@ export function BlogPage({ posts }: BlogPageProps) {
   }, [blogData]);
 
   const selectedTag = useMemo(() => {
-    const tagParam = searchParams.get("tag");
-    if (!tagParam) {
-      return "all";
-    }
-
-    const matched = allTags.find((tag) => tag.toLowerCase() === tagParam.toLowerCase());
-    return matched || "all";
+    return resolveSelectedTag(searchParams.get("tag"), allTags);
   }, [searchParams, allTags]);
 
   const handleSetTag = (tag: string) => {
@@ -83,23 +57,7 @@ export function BlogPage({ posts }: BlogPageProps) {
 
   // Filter and sort posts
   const filteredAndSortedPosts = useMemo(() => {
-    let posts = [...blogData];
-
-    // Filter by tag
-    if (selectedTag !== "all") {
-      posts = posts.filter((post) => post.tags.includes(selectedTag));
-    }
-
-    // Sort
-    if (sortBy === "newest") {
-      posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    } else if (sortBy === "oldest") {
-      posts.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    } else if (sortBy === "a-z") {
-      posts.sort((a, b) => a.title.localeCompare(b.title));
-    }
-
-    return posts;
+    return filterAndSortPosts(blogData, selectedTag, sortBy as "newest" | "oldest" | "a-z");
   }, [selectedTag, sortBy, blogData]);
 
   const { fmtDate } = useI18n();
@@ -165,7 +123,7 @@ export function BlogPage({ posts }: BlogPageProps) {
             {filteredAndSortedPosts.map((post) => (
               <article
                 key={post.id}
-                className="bg-card overflow-hidden rounded-lg border transition-shadow hover:shadow-lg"
+                className="bg-card group overflow-hidden rounded-lg border transition-shadow hover:shadow-lg"
               >
                 <Link href={`/blog/${post.id}`} className="block overflow-hidden">
                   <ImageWithFallback

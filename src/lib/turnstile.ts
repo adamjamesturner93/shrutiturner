@@ -9,6 +9,9 @@ interface TurnstileVerifyResponse {
 
 export async function verifyTurnstileToken(token: string, remoteIp?: string): Promise<boolean> {
   if (!token) return false;
+  if (process.env.NEXT_PUBLIC_E2E_TEST_MODE === "1" && token === "e2e-turnstile-token") {
+    return true;
+  }
 
   const body = new URLSearchParams();
   body.set("secret", TURNSTILE_SECRET_KEY);

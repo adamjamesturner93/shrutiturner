@@ -12,32 +12,11 @@ import { BlogComments } from "@/components/blog-comments";
 import type { BlogPostContent } from "@/lib/content";
 import { BlogShare } from "../components/blog-share";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { formatAuthorList, getPostAuthors, getRelatedPosts } from "@/lib/blog/view-model";
 
 interface BlogPostPageProps {
   post: BlogPostContent | null;
   posts: BlogPostContent[];
-}
-
-function getPostAuthors(post: BlogPostContent) {
-  if (post.authors.length > 0) return post.authors;
-  if (post.author) {
-    return [
-      {
-        id: post.author,
-        slug: post.author.toLowerCase().replace(/\s+/g, "-"),
-        name: post.author,
-        bio: "",
-      },
-    ];
-  }
-  return [];
-}
-
-function formatAuthorList(post: BlogPostContent) {
-  const authors = getPostAuthors(post).map((author) => author.name);
-  if (authors.length <= 1) return authors[0] || "Shruti Turner";
-  if (authors.length === 2) return `${authors[0]} and ${authors[1]}`;
-  return `${authors.slice(0, -1).join(", ")}, and ${authors[authors.length - 1]}`;
 }
 
 export function BlogPostPage({ post, posts }: BlogPostPageProps) {
@@ -62,9 +41,7 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
     );
   }
 
-  const relatedPosts = posts
-    .filter((p) => p.id !== post.id && p.tags.some((tag) => post.tags.includes(tag)))
-    .slice(0, 3);
+  const relatedPosts = getRelatedPosts(post, posts);
   const authors = getPostAuthors(post);
   const authorHeading = authors.length > 1 ? "About the Authors" : "About the Author";
   const articleSchemaAuthors = authors.map((author) => ({

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Instagram, Facebook } from "lucide-react";
+import { Facebook, Instagram, Youtube } from "lucide-react";
 import { useNewsletterSignupCopy } from "@/lib/use-newsletter-signup-copy";
 import { submitNewsletterSignup } from "@/lib/newsletter-signup";
 import { TurnstileWidget } from "@/components/turnstile-widget";
@@ -10,6 +10,7 @@ import { IconHorizontal } from "./icon";
 
 export function Footer() {
   const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
   const [consent, setConsent] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,6 +25,7 @@ export function Footer() {
     setIsSubmitting(true);
     const result = await submitNewsletterSignup({
       email,
+      firstName,
       marketingOptIn: consent,
       consent,
       source: "footer",
@@ -39,6 +41,7 @@ export function Footer() {
     setTimeout(() => {
       setSubscribed(false);
       setEmail("");
+      setFirstName("");
       setConsent(false);
       setTurnstileToken("");
     }, 3000);
@@ -69,25 +72,32 @@ export function Footer() {
               </h4>
               <p className="text-brand-white/75 mt-2 mb-3 text-sm">{signupCopy.hookText}</p>
               {!subscribed ? (
-                <form
-                  onSubmit={handleNewsletterSubmit}
-                  className="flex max-w-sm flex-col gap-2 sm:flex-row"
-                >
+                <form onSubmit={handleNewsletterSubmit} className="max-w-sm space-y-2">
                   <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder={signupCopy.formPlaceholder}
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Your first name"
                     required
                     className="border-brand-white/20 bg-brand-white/10 text-brand-white placeholder:text-brand-white/40"
                   />
-                  <Button
-                    type="submit"
-                    className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90 flex-shrink-0"
-                    disabled={isSubmitting || !consent || !turnstileToken}
-                  >
-                    {isSubmitting ? "Subscribing..." : signupCopy.buttonLabel}
-                  </Button>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder={signupCopy.formPlaceholder}
+                      required
+                      className="border-brand-white/20 bg-brand-white/10 text-brand-white placeholder:text-brand-white/40"
+                    />
+                    <Button
+                      type="submit"
+                      className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90 flex-shrink-0"
+                      disabled={isSubmitting || !consent || !turnstileToken}
+                    >
+                      {isSubmitting ? "Subscribing..." : signupCopy.buttonLabel}
+                    </Button>
+                  </div>
                 </form>
               ) : (
                 <p className="text-brand-accent-light text-sm">{signupCopy.successMessage}</p>
@@ -113,6 +123,15 @@ export function Footer() {
 
             {/* Social Media */}
             <div className="flex items-center gap-4 pt-2">
+              <a
+                href="https://youtube.com/@shrutiturner"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand-white/60 hover:text-brand-accent-light transition-colors"
+                aria-label="Follow on YouTube"
+              >
+                <Youtube className="h-5 w-5" />
+              </a>
               <a
                 href="https://instagram.com/shrutiturner"
                 target="_blank"
@@ -196,6 +215,14 @@ export function Footer() {
               <li>
                 <Link href="/login" className="hover:text-brand-accent-light transition-colors">
                   Client Login
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/unsubscribe"
+                  className="hover:text-brand-accent-light transition-colors"
+                >
+                  Manage Subscriptions
                 </Link>
               </li>
             </ul>

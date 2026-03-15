@@ -29,6 +29,7 @@ import { TurnstileWidget } from "@/components/turnstile-widget";
 export function HomePage() {
   const recentPosts = blogPosts.slice(0, 3);
   const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterFirstName, setNewsletterFirstName] = useState("");
   const [newsletterConsent, setNewsletterConsent] = useState(false);
   const [newsletterTurnstileToken, setNewsletterTurnstileToken] = useState("");
   const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
@@ -43,6 +44,7 @@ export function HomePage() {
     setNewsletterSubmitting(true);
     const result = await submitNewsletterSignup({
       email: newsletterEmail,
+      firstName: newsletterFirstName,
       marketingOptIn: newsletterConsent,
       consent: newsletterConsent,
       source: "homepage",
@@ -58,6 +60,7 @@ export function HomePage() {
     setTimeout(() => {
       setNewsletterSubmitted(false);
       setNewsletterEmail("");
+      setNewsletterFirstName("");
       setNewsletterConsent(false);
       setNewsletterTurnstileToken("");
     }, 3000);
@@ -634,11 +637,19 @@ export function HomePage() {
               {signupCopy.leadMagnetTitle || "5 Yoga Poses That Actually Build Strength"}
             </h2>
             <p className="text-brand-white/80 text-lg leading-relaxed">
-              {signupCopy.popupDescription ||
-                "Plus research-backed articles on strength, movement, and chronic illness management delivered to your inbox."}
+              A free guide for bodies that need more than generic stretching advice, plus
+              research-backed articles on strength, movement, and chronic illness management.
             </p>
             {!newsletterSubmitted ? (
               <form className="mx-auto max-w-lg space-y-3" onSubmit={handleNewsletterSubmit}>
+                <Input
+                  type="text"
+                  placeholder="First name"
+                  value={newsletterFirstName}
+                  onChange={(e) => setNewsletterFirstName(e.target.value)}
+                  required
+                  className="border-brand-white bg-brand-white text-brand-dark"
+                />
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Input
                     type="email"
@@ -672,7 +683,12 @@ export function HomePage() {
                 </label>
               </form>
             ) : (
-              <p className="text-brand-accent-light">{signupCopy.successMessage}</p>
+              <div className="space-y-2 text-center">
+                <p className="text-brand-accent-light text-lg">Your guide is on its way.</p>
+                <p className="text-brand-white/70 text-sm">
+                  Check your inbox for the guide and confirmation email.
+                </p>
+              </div>
             )}
             <p className="text-brand-white/50 text-sm">{signupCopy.consentText}</p>
             {newsletterError ? <p className="text-xs text-red-300">{newsletterError}</p> : null}

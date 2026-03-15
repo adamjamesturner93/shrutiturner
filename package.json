@@ -11,6 +11,10 @@
     "dev:clean": "rm -rf .next && next dev",
     "build": "next build",
     "start": "next start",
+    "test": "pnpm run test:unit && pnpm run test:integration && pnpm run test:e2e",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "playwright test",
     "typecheck": "next typegen && tsc --noEmit --incremental false",
     "lint": "eslint contentful prisma scripts src eslint.config.mjs middleware.ts next-env.d.ts next.config.mjs postcss.config.mjs prisma.config.ts",
     "lint:fix": "eslint contentful prisma scripts src eslint.config.mjs middleware.ts next-env.d.ts next.config.mjs postcss.config.mjs prisma.config.ts --fix",
@@ -30,6 +34,7 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "prisma:seed:admin": "node --experimental-strip-types --experimental-specifier-resolution=node prisma/seed-auth.ts",
+    "prisma:seed:test-admin": "node --experimental-strip-types --experimental-specifier-resolution=node prisma/seed-test-admin.ts",
     "prisma:seed:billing": "node --experimental-strip-types --experimental-specifier-resolution=node prisma/seed-billing.ts",
     "stripe:seed:products": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/stripe/seed-products.ts",
     "sync:postmark": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/sync/postmark.ts",
@@ -105,6 +110,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.4",
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "^22.10.2",
     "@types/react": "^19.2.14",
@@ -119,6 +125,7 @@
     "prettier-plugin-tailwindcss": "^0.6.12",
     "prisma": "^7.5.0",
     "tailwindcss": "4.2.1",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.0"
   }
 }

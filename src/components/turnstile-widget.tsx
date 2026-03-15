@@ -21,8 +21,25 @@ export function TurnstileWidget({ onTokenChange, theme = "auto" }: TurnstileWidg
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA";
+  const isE2ETestMode = process.env.NEXT_PUBLIC_E2E_TEST_MODE === "1";
   const reactId = useId();
   const containerId = `turnstile-${reactId.replace(/[:]/g, "")}`;
+
+  useEffect(() => {
+    if (!isE2ETestMode) return;
+    onTokenChange("e2e-turnstile-token");
+  }, [isE2ETestMode, onTokenChange]);
+
+  if (isE2ETestMode) {
+    return (
+      <div
+        data-testid="turnstile-bypass"
+        className="text-muted-foreground min-h-[65px] rounded border border-dashed px-3 py-4 text-xs"
+      >
+        Verification ready
+      </div>
+    );
+  }
 
   useEffect(() => {
     let cancelled = false;
