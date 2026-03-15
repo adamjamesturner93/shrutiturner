@@ -5,7 +5,7 @@ import { useI18n } from "../lib/use-i18n";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { SEO } from "../components/seo";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Globe, Instagram } from "lucide-react";
 import Link from "next/link";
 import { BlogReactions } from "@/components/blog-reactions";
 import { BlogComments } from "@/components/blog-comments";
@@ -16,6 +16,28 @@ import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 interface BlogPostPageProps {
   post: BlogPostContent | null;
   posts: BlogPostContent[];
+}
+
+function getPostAuthors(post: BlogPostContent) {
+  if (post.authors.length > 0) return post.authors;
+  if (post.author) {
+    return [
+      {
+        id: post.author,
+        slug: post.author.toLowerCase().replace(/\s+/g, "-"),
+        name: post.author,
+        bio: "",
+      },
+    ];
+  }
+  return [];
+}
+
+function formatAuthorList(post: BlogPostContent) {
+  const authors = getPostAuthors(post).map((author) => author.name);
+  if (authors.length <= 1) return authors[0] || "Shruti Turner";
+  if (authors.length === 2) return `${authors[0]} and ${authors[1]}`;
+  return `${authors.slice(0, -1).join(", ")}, and ${authors[authors.length - 1]}`;
 }
 
 export function BlogPostPage({ post, posts }: BlogPostPageProps) {
@@ -43,6 +65,14 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
   const relatedPosts = posts
     .filter((p) => p.id !== post.id && p.tags.some((tag) => post.tags.includes(tag)))
     .slice(0, 3);
+  const authors = getPostAuthors(post);
+  const authorHeading = authors.length > 1 ? "About the Authors" : "About the Author";
+  const articleSchemaAuthors = authors.map((author) => ({
+    "@type": "Person",
+    name: author.name,
+    url: author.websiteUrl || "https://shrutiturner.com/about",
+    jobTitle: author.role || "Contributor",
+  }));
 
   return (
     <Layout>
@@ -77,12 +107,44 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
 
             <h1 className="text-4xl leading-tight md:text-5xl">{post.title}</h1>
 
-            <div className="text-muted-foreground flex flex-wrap items-center gap-4">
-              <span>By {post.author}</span>
-              <span>•</span>
-              <span>{fmtDate(post.date)}</span>
-              <span>•</span>
-              <span>{post.readTime}</span>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex -space-x-2">
+                  {authors.slice(0, 4).map((author) => (
+                    <div
+                      key={author.slug}
+                      className="border-background bg-brand-warm h-11 w-11 overflow-hidden rounded-full border"
+                    >
+                      {author.avatarImageUrl ? (
+                        <ImageWithFallback
+                          src={author.avatarImageUrl}
+                          alt={author.avatarAlt || `${author.name} avatar`}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="text-brand-dark flex h-full w-full items-center justify-center text-xs font-medium">
+                          {author.name
+                            .split(" ")
+                            .map((part) => part[0])
+                            .join("")
+                            .slice(0, 2)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-brand-dark text-sm font-medium">By {formatAuthorList(post)}</p>
+                  <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
+                    <span>{fmtDate(post.date)}</span>
+                    <span>•</span>
+                    <span>{post.readTime}</span>
+                  </div>
+                </div>
+              </div>
+              {authors.some((author) => author.isGuestContributor) ? (
+                <Badge variant="outline">Guest Contributor</Badge>
+              ) : null}
             </div>
 
             <BlogShare
@@ -168,6 +230,83 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
               })}
             </div>
           </div>
+
+          {authors.length > 0 ? (
+            <section className="mt-14 border-t pt-10">
+              <div className="mb-6 flex items-center justify-between gap-3">
+                <h2 className="text-2xl md:text-3xl">{authorHeading}</h2>
+                {authors.length > 1 ? (
+                  <Badge variant="secondary">{authors.length} contributors</Badge>
+                ) : null}
+              </div>
+
+              <div className="grid gap-5 md:grid-cols-2">
+                {authors.map((author) => (
+                  <div key={author.slug} className="bg-card rounded-2xl border p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="bg-brand-warm h-16 w-16 overflow-hidden rounded-full">
+                        {author.avatarImageUrl ? (
+                          <ImageWithFallback
+                            src={author.avatarImageUrl}
+                            alt={author.avatarAlt || `${author.name} avatar`}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="text-brand-dark flex h-full w-full items-center justify-center text-sm font-semibold">
+                            {author.name
+                              .split(" ")
+                              .map((part) => part[0])
+                              .join("")
+                              .slice(0, 2)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-xl">{author.name}</h3>
+                          {author.isGuestContributor ? (
+                            <Badge variant="outline">Guest Contributor</Badge>
+                          ) : null}
+                        </div>
+                        {author.role ? (
+                          <p className="text-muted-foreground text-sm">{author.role}</p>
+                        ) : null}
+                        {author.bio ? (
+                          <p className="text-muted-foreground text-sm leading-relaxed">
+                            {author.bio}
+                          </p>
+                        ) : null}
+                        <div className="flex flex-wrap gap-3 pt-2 text-sm">
+                          {author.websiteUrl ? (
+                            <Link
+                              href={author.websiteUrl}
+                              className="text-brand-accent inline-flex items-center gap-1 hover:underline"
+                            >
+                              <Globe className="h-4 w-4" />
+                              Website
+                            </Link>
+                          ) : null}
+                          {author.instagramHandle ? (
+                            <Link
+                              href={
+                                author.instagramHandle.startsWith("http")
+                                  ? author.instagramHandle
+                                  : `https://instagram.com/${author.instagramHandle.replace(/^@/, "")}`
+                              }
+                              className="text-brand-accent inline-flex items-center gap-1 hover:underline"
+                            >
+                              <Instagram className="h-4 w-4" />
+                              {author.instagramHandle}
+                            </Link>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
         </div>
       </article>
 
@@ -273,19 +412,8 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
             headline: post.title,
             description: post.excerpt,
             image: post.coverImage,
-            author: {
-              "@type": "Person",
-              name: post.author,
-              url: "https://shrutiturner.com/about",
-              jobTitle: "Strength & Yoga Coach",
-              knowsAbout: [
-                "Biomechanics",
-                "Rehabilitation",
-                "Chronic Illness",
-                "Yoga",
-                "Strength Training",
-              ],
-            },
+            author:
+              articleSchemaAuthors.length === 1 ? articleSchemaAuthors[0] : articleSchemaAuthors,
             datePublished: post.date,
             publisher: {
               "@type": "Organization",

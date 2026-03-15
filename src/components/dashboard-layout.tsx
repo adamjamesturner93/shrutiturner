@@ -19,6 +19,7 @@ import {
   HeartPulse,
   Shield,
   ArrowRight,
+  Compass,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { SEO } from "./seo";
@@ -38,7 +39,8 @@ type LegalGuardModalProps = {
 const NAV_ITEMS = [
   { path: "/dashboard", label: "Studio Lobby", icon: LayoutDashboard, exact: true },
   { path: "/dashboard/schedule", label: "Schedule", icon: Calendar },
-  { path: "/dashboard/programs", label: "Programs", icon: Users },
+  { path: "/dashboard/coaching", label: "Coaching", icon: Compass },
+  { path: "/dashboard/small-groups", label: "Small Group Programmes", icon: Users },
   { path: "/dashboard/retreats", label: "Retreats", icon: Mountain },
   { path: "/dashboard/membership", label: "Membership", icon: CreditCard, memberOnly: true },
   { path: "/dashboard/referrals", label: "Referrals", icon: Gift, memberOnly: true },
@@ -64,7 +66,8 @@ function LegalGuardModal({
             </div>
             <h2 className="text-xl">Legal Agreements Required</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              To continue using the studio, please review and accept the following terms.
+              To continue using the studio, please review and accept the current versions of these
+              agreements.
             </p>
           </div>
           <div className="space-y-3">
@@ -108,7 +111,7 @@ function LegalGuardModal({
               <span className="text-sm leading-relaxed">
                 I confirm I have read and agree to the{" "}
                 <Link href="/health-declaration" className="text-primary underline" target="_blank">
-                  Health Declaration
+                  Health & Liability Waiver
                 </Link>
                 , and I understand that I participate in all classes and programmes at my own risk
               </span>
@@ -124,7 +127,8 @@ function LegalGuardModal({
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
           <p className="text-muted-foreground text-center text-xs">
-            Both agreements are required to use the studio.
+            The current Terms & Conditions and Health & Liability Waiver are required to use the
+            studio.
           </p>
         </div>
       </div>

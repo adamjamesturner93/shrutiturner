@@ -40,6 +40,8 @@ export type AccountProfileDto = {
   lastName: string | null;
   name: string | null;
   email: string;
+  isCoachingClient: boolean;
+  hasHealthProfile: boolean;
   dob: string | null;
   gender: string | null;
   ethnicity: string | null;
@@ -50,6 +52,17 @@ export type AccountProfileDto = {
   hasAgreedToHealth: boolean;
   termsAgreedAt: string | null;
   healthAgreedAt: string | null;
+  acceptedTermsVersion: string | null;
+  acceptedHealthWaiverVersion: string | null;
+  currentTermsVersion: string;
+  currentHealthWaiverVersion: string;
+  needsTermsReacceptance: boolean;
+  needsHealthWaiverReacceptance: boolean;
+  hasConsentedToHealthData: boolean;
+  healthDataConsentedAt: string | null;
+  acceptedHealthDataConsentVersion: string | null;
+  currentHealthDataConsentVersion: string;
+  needsHealthDataConsentRefresh: boolean;
   heardAboutSource: string | null;
   heardAboutDetail: string | null;
 };
@@ -58,6 +71,168 @@ export type AccountDto = {
   profile: AccountProfileDto;
   notifications: NotificationPreferencesDto;
   referral: ReferralSummaryDto;
+};
+
+export type BlogCommentDto = {
+  id: string;
+  postSlug: string;
+  parentId: string | null;
+  content: string;
+  createdAt: string;
+  status: "visible" | "hidden" | "deleted";
+  authorId: string;
+  authorName: string;
+  authorInitials: string;
+  replies?: BlogCommentDto[];
+};
+
+export type BlogEngagementDto = {
+  postSlug: string;
+  reactionCount: number;
+  commentCount: number;
+  hasReacted: boolean;
+  comments: BlogCommentDto[];
+};
+
+export type ContactSubmissionResponseDto = {
+  ok: boolean;
+  id: string;
+};
+
+export type CoachingApplicationResponseDto = {
+  ok: boolean;
+  id: string;
+};
+
+export type CoachingDashboardDto = {
+  state: "not_a_client" | "application_pending" | "onboarding" | "active" | "paused" | "completed";
+  hasProfile: boolean;
+  isCoachingClient: boolean;
+  profile: null | {
+    id: string;
+    tier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
+    status: "application_pending" | "onboarding" | "active" | "paused" | "completed";
+    includesMoveWellMembership: boolean;
+    everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue";
+    nextCheckInDueAt: string | null;
+    nextCheckInStatus: "due" | "submitted" | "reviewed" | "overdue" | null;
+    nextSessionStartsAt: string | null;
+    latestCoachResponseSummary: string | null;
+  };
+  application: null | {
+    id: string;
+    status:
+      | "submitted"
+      | "under_review"
+      | "follow_up_needed"
+      | "approved"
+      | "declined"
+      | "converted";
+    tier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
+    createdAt: string;
+  };
+};
+
+export type RetreatBookingSummaryDto = {
+  id: string;
+  retreatSlug: string;
+  retreatTitle: string;
+  location: string;
+  startsAt: string;
+  endsAt: string;
+  bookingStatus: string;
+  paymentStatus: string;
+  totalPricePence: number;
+  depositPaidPence: number;
+  balanceAmountPence: number;
+  balanceDueAt: string | null;
+  roomType: string | null;
+  dietaryRequirements: string | null;
+  medicalConditions: string | null;
+  mobilityNeeds: string | null;
+  canPayBalance: boolean;
+};
+
+export type RetreatBookingDetailDto = RetreatBookingSummaryDto & {
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+};
+
+export type AdminCoachingApplicationDto = {
+  id: string;
+  applicantName: string;
+  applicantEmail: string;
+  status: string;
+  tier: string;
+  createdAt: string;
+  reviewedAt: string | null;
+  approvedAt: string | null;
+  userId: string | null;
+  isLinkedUserCoachingClient: boolean;
+  hasMoveWellMembershipSnapshot: boolean;
+  answers: Record<string, string>;
+  adminNotes: string;
+};
+
+export type AdminRetreatSummaryDto = {
+  id: string;
+  retreatSlug: string;
+  title: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  bookedSpaces: number;
+  totalSpaces: number;
+  revenuePence: number;
+  earlyBirdPricePence: number;
+  normalPricePence: number;
+};
+
+export type AdminRetreatDetailDto = {
+  id: string;
+  retreatSlug: string;
+  title: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  capacity: number;
+  revenuePence: number;
+  depositAmountPence: number;
+  pricePence: number;
+  singleRoomSupplementPence: number;
+  balanceDueAt: string | null;
+  bookings: Array<{
+    id: string;
+    purchaserName: string;
+    purchaserEmail: string;
+    attendeeName: string;
+    attendeeEmail: string;
+    roomType: string | null;
+    dietaryRequirements: string | null;
+    medicalConditions: string | null;
+    mobilityNeeds: string | null;
+    paymentStatus: string;
+    bookingStatus: string;
+    depositPaidPence: number;
+    balancePaidPence: number;
+    totalPricePence: number;
+    bookedAt: string;
+  }>;
+};
+
+export type AdminBlogCommentDto = {
+  id: string;
+  postSlug: string;
+  parentId: string | null;
+  content: string;
+  status: string;
+  createdAt: string;
+  authorId: string;
+  authorEmail: string;
+  authorName: string;
+  replyCount: number;
 };
 
 export type MembershipStateDto = {
@@ -135,6 +310,7 @@ export type BillingHistoryItemDto = {
 };
 
 export type DashboardSummaryDto = {
+  hasHealthProfile: boolean;
   upcomingClasses: Array<{
     bookingId: string;
     sessionId: string;

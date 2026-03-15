@@ -56,6 +56,31 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
   const retreatFaqs = faqs && faqs.length > 0 ? faqs : DEFAULT_RETREAT_FAQS;
   const { fmtDateRange, fmtDateShort } = useI18n();
 
+  const getStartingPrice = (retreat: RetreatCombinedContent) => {
+    const prices = retreat.dates.flatMap((date) =>
+      date.roomOptions.map((roomOption) => roomOption.normalPricePence)
+    );
+    return prices.length > 0 ? Math.min(...prices) : retreat.normalPrice * 100;
+  };
+
+  const getStartingDeposit = (retreat: RetreatCombinedContent) => {
+    const deposits = retreat.dates.flatMap((date) =>
+      date.roomOptions.map((roomOption) =>
+        roomOption.depositPence && roomOption.depositPence > 0
+          ? roomOption.depositPence
+          : Math.min(roomOption.normalPricePence, 30000)
+      )
+    );
+    return deposits.length > 0 ? Math.min(...deposits) : 0;
+  };
+
+  const formatMoney = (pence: number) =>
+    new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: "GBP",
+      maximumFractionDigits: 0,
+    }).format(pence / 100);
+
   return (
     <Layout>
       {/* Hero Section */}
@@ -166,18 +191,22 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
 
                   {/* Pricing */}
                   <div className="border-t pt-4">
-                    <div className="mb-4 flex items-baseline gap-2">
-                      <span className="text-2xl font-medium">£{retreat.earlyBirdPrice}</span>
-                      <span className="text-muted-foreground text-sm">early bird</span>
-                      <span className="text-muted-foreground">·</span>
-                      <span className="text-muted-foreground text-sm">
-                        £{retreat.normalPrice} after {fmtDateShort(retreat.earlyBirdDeadline)}
-                      </span>
+                    <div className="mb-4 space-y-1">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl font-medium">
+                          {formatMoney(getStartingPrice(retreat))}
+                        </span>
+                        <span className="text-muted-foreground text-sm">from</span>
+                      </div>
+                      <p className="text-muted-foreground text-sm">
+                        Deposit from {formatMoney(getStartingDeposit(retreat))} · early bird until{" "}
+                        {fmtDateShort(retreat.earlyBirdDeadline)}
+                      </p>
                     </div>
 
                     <Link href={`/retreats/${retreat.slug}`}>
                       <Button className="w-full">
-                        View Details & Book
+                        View Retreat Details
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     </Link>
@@ -213,7 +242,7 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
             If you have questions about whether a retreat is suitable for your condition or
             circumstances, please get in touch. I'm happy to discuss your specific situation.
           </p>
-          <Link href="/coaching">
+          <Link href="/contact">
             <Button size="lg" className="bg-brand-white text-brand-accent hover:bg-brand-white/90">
               Send an Enquiry
             </Button>

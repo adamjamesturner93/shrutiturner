@@ -135,7 +135,7 @@ export function LoginPage() {
     <Layout>
       <SEO
         title="Login - Shruti Turner"
-        description="Access your personalized training programs, class schedules, and coaching resources."
+        description="Access your personalised training programmes, class schedules, and coaching resources."
         canonicalUrl="https://shrutiturner.com/login"
         noIndex
       />

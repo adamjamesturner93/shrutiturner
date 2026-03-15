@@ -108,7 +108,7 @@ export function TermsPage() {
           <section>
             <h2 className="text-foreground mb-4 text-2xl">6. Intellectual Property</h2>
             <p>
-              All content, including but not limited to videos, written materials, programs, and
+              All content, including but not limited to videos, written materials, programmes, and
               educational resources, are the intellectual property of Shruti Turner and are
               protected by copyright.
             </p>

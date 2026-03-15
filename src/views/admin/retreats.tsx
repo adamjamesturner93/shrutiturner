@@ -1,68 +1,100 @@
 "use client";
 
-import { AdminLayout } from "../../components/admin-layout";
-import { Card, CardContent } from "../../components/ui/card";
-import { Badge } from "../../components/ui/badge";
-import { Button } from "../../components/ui/button";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Mountain, MapPin, Calendar, Users, PoundSterling, ChevronRight } from "lucide-react";
-import { adminRetreats, type AdminRetreat } from "../../data/admin-data";
-import { CreateRetreatModal } from "../../components/admin/create-retreat-modal";
-import { useState } from "react";
+import { Calendar, ChevronRight, MapPin, Mountain, PoundSterling, Users } from "lucide-react";
+import { AdminLayout } from "@/components/admin-layout";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import type { AdminRetreatSummaryDto } from "@/lib/api/types";
 
-const STATUS_CONFIG: Record<
-  string,
-  { label: string; variant: "default" | "secondary" | "outline" | "destructive" }
-> = {
-  open: { label: "Open", variant: "default" },
-  "sold-out": { label: "Sold Out", variant: "destructive" },
-  completed: { label: "Completed", variant: "outline" },
-  draft: { label: "Draft", variant: "secondary" },
-};
+function formatCurrency(pence: number) {
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: "GBP",
+    maximumFractionDigits: 0,
+  }).format(pence / 100);
+}
 
-export function AdminRetreats() {
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const totalRevenue = adminRetreats.reduce((s, r) => s + r.revenue, 0);
-  const totalBooked = adminRetreats.reduce((s, r) => s + r.bookedSpaces, 0);
+function formatDateRange(start: string, end: string) {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  return `${formatter.format(new Date(start))} - ${formatter.format(new Date(end))}`;
+}
+
+function statusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
+  if (status === "open") return "default";
+  if (status === "sold_out") return "destructive";
+  if (status === "completed") return "outline";
+  return "secondary";
+}
+
+export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSummaryDto[] | null }) {
+  const [retreats, setRetreats] = useState<AdminRetreatSummaryDto[]>(initialData || []);
+  const [loading, setLoading] = useState(!initialData);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (initialData) return;
+    let active = true;
+    void (async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await fetch("/api/admin/retreats", { cache: "no-store" });
+        if (!response.ok) throw new Error("Failed to load retreats.");
+        const payload = (await response.json()) as AdminRetreatSummaryDto[];
+        if (active) setRetreats(payload);
+      } catch (loadError) {
+        if (active) {
+          setError(loadError instanceof Error ? loadError.message : "Failed to load retreats.");
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [initialData]);
+
+  const summary = useMemo(() => {
+    const totalRevenuePence = retreats.reduce((sum, retreat) => sum + retreat.revenuePence, 0);
+    const totalBooked = retreats.reduce((sum, retreat) => sum + retreat.bookedSpaces, 0);
+    return {
+      totalRevenuePence,
+      totalBooked,
+    };
+  }, [retreats]);
 
   return (
     <AdminLayout title="Retreats - Admin">
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-brand-dark text-2xl">Retreat Management</h1>
-            <p className="text-muted-foreground mt-1">
-              {adminRetreats.length} retreats · {totalBooked} total bookings · £
-              {totalRevenue.toLocaleString()} revenue
-            </p>
-          </div>
-          <Button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-brand-accent hover:bg-brand-accent/90"
-          >
-            <Mountain className="mr-2 h-4 w-4" />
-            Create Retreat
-          </Button>
+        <div>
+          <h1 className="text-brand-dark text-2xl">Retreat Management</h1>
+          <p className="text-muted-foreground mt-1">
+            Live retreat bookings, payment status, and operational capacity across all published
+            dates.
+          </p>
         </div>
 
-        <CreateRetreatModal
-          open={showCreateModal}
-          onOpenChange={setShowCreateModal}
-          onCreate={(data) => {
-            console.log("Created retreat:", data);
-          }}
-        />
+        {error ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {error}
+          </div>
+        ) : null}
 
-        {/* Summary cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-3">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
                 <Mountain className="text-brand-accent h-5 w-5" />
                 <div>
-                  <p className="text-brand-dark text-2xl">{adminRetreats.length}</p>
-                  <p className="text-muted-foreground text-xs">Total retreats</p>
+                  <p className="text-brand-dark text-2xl">{retreats.length}</p>
+                  <p className="text-muted-foreground text-xs">Retreat dates</p>
                 </div>
               </div>
             </CardContent>
@@ -72,8 +104,8 @@ export function AdminRetreats() {
               <div className="flex items-center gap-3">
                 <Users className="text-brand-accent h-5 w-5" />
                 <div>
-                  <p className="text-brand-dark text-2xl">{totalBooked}</p>
-                  <p className="text-muted-foreground text-xs">Total bookings</p>
+                  <p className="text-brand-dark text-2xl">{summary.totalBooked}</p>
+                  <p className="text-muted-foreground text-xs">Confirmed places</p>
                 </div>
               </div>
             </CardContent>
@@ -83,92 +115,95 @@ export function AdminRetreats() {
               <div className="flex items-center gap-3">
                 <PoundSterling className="text-brand-accent h-5 w-5" />
                 <div>
-                  <p className="text-brand-dark text-2xl">£{totalRevenue.toLocaleString()}</p>
-                  <p className="text-muted-foreground text-xs">Total revenue</p>
+                  <p className="text-brand-dark text-2xl">
+                    {formatCurrency(summary.totalRevenuePence)}
+                  </p>
+                  <p className="text-muted-foreground text-xs">Captured revenue</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Retreat cards */}
+        {loading ? <p className="text-muted-foreground text-sm">Loading retreats...</p> : null}
+
         <div className="space-y-4">
-          {adminRetreats.map((retreat) => (
-            <RetreatCard key={retreat.id} retreat={retreat} />
-          ))}
+          {retreats.map((retreat) => {
+            const fillPercent =
+              retreat.totalSpaces > 0
+                ? Math.round((retreat.bookedSpaces / retreat.totalSpaces) * 100)
+                : 0;
+
+            return (
+              <Link key={retreat.id} href={`/admin/retreats/${retreat.id}`}>
+                <Card className="hover:border-brand-accent/30 transition-colors">
+                  <CardContent className="py-5">
+                    <div className="flex items-start gap-4">
+                      <div className="bg-brand-accent/10 flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg">
+                        <Mountain className="text-brand-accent h-6 w-6" />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-base">{retreat.title}</p>
+                          <Badge variant={statusVariant(retreat.status)}>
+                            {retreat.status.replaceAll("_", " ")}
+                          </Badge>
+                        </div>
+                        <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-4 text-sm">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3.5 w-3.5" />
+                            {retreat.location}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {formatDateRange(retreat.startDate, retreat.endDate)}
+                          </span>
+                        </div>
+
+                        <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                          <div className="w-full max-w-xs">
+                            <div className="mb-1 flex justify-between text-xs">
+                              <span>
+                                {retreat.bookedSpaces}/{retreat.totalSpaces} booked
+                              </span>
+                              <span className="text-muted-foreground">{fillPercent}%</span>
+                            </div>
+                            <div className="bg-secondary h-2 overflow-hidden rounded-full">
+                              <div
+                                className="bg-brand-accent h-full rounded-full"
+                                style={{ width: `${fillPercent}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="text-sm">
+                            <p>{formatCurrency(retreat.revenuePence)} captured</p>
+                            <p className="text-muted-foreground">
+                              From {formatCurrency(retreat.earlyBirdPricePence)} /{" "}
+                              {formatCurrency(retreat.normalPricePence)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <ChevronRight className="text-muted-foreground mt-1 h-4 w-4 flex-shrink-0" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
+
+        {!loading && retreats.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-muted-foreground">No retreat dates are synced yet.</p>
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     </AdminLayout>
-  );
-}
-
-function RetreatCard({ retreat }: { retreat: AdminRetreat }) {
-  const statusConfig = STATUS_CONFIG[retreat.status];
-  const fillPercent = Math.round((retreat.bookedSpaces / retreat.totalSpaces) * 100);
-
-  return (
-    <Link href={`/admin/retreats/${retreat.id}`}>
-      <Card className="hover:border-brand-accent/30 cursor-pointer transition-colors">
-        <CardContent className="py-5">
-          <div className="flex items-start gap-4">
-            <div className="bg-brand-accent/10 flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg">
-              <Mountain className="text-brand-accent h-6 w-6" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-base">{retreat.title}</p>
-                <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
-              </div>
-              <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-4 text-sm">
-                <span className="flex items-center gap-1">
-                  <MapPin className="h-3.5 w-3.5" />
-                  {retreat.location}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5" />
-                  {new Date(retreat.startDate).toLocaleDateString("en-GB", {
-                    day: "numeric",
-                    month: "short",
-                  })}{" "}
-                  -{" "}
-                  {new Date(retreat.endDate).toLocaleDateString("en-GB", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </span>
-              </div>
-              {/* Capacity */}
-              <div className="mt-3 flex items-center gap-4">
-                <div className="max-w-48 flex-1">
-                  <div className="mb-1 flex justify-between text-xs">
-                    <span>
-                      {retreat.bookedSpaces}/{retreat.totalSpaces} booked
-                    </span>
-                    <span className="text-muted-foreground">{fillPercent}%</span>
-                  </div>
-                  <div className="bg-secondary h-2 overflow-hidden rounded-full">
-                    <div
-                      className={`h-full rounded-full ${
-                        fillPercent >= 90
-                          ? "bg-destructive"
-                          : fillPercent >= 70
-                            ? "bg-amber-500"
-                            : "bg-brand-accent"
-                      }`}
-                      style={{ width: `${fillPercent}%` }}
-                    />
-                  </div>
-                </div>
-                <span className="text-brand-accent text-sm">
-                  £{retreat.revenue.toLocaleString()}
-                </span>
-              </div>
-            </div>
-            <ChevronRight className="text-muted-foreground mt-1 h-4 w-4 flex-shrink-0" />
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
   );
 }

@@ -10,6 +10,11 @@ import {
 } from "react";
 import { signOut as nextAuthSignOut, useSession } from "next-auth/react";
 import type { MembershipStateDto } from "@/lib/api/types";
+import {
+  CURRENT_HEALTH_DATA_CONSENT_VERSION,
+  CURRENT_HEALTH_WAIVER_VERSION,
+  CURRENT_TERMS_VERSION,
+} from "@/data/legal-documents";
 
 /* ──────────── Types ──────────── */
 
@@ -95,6 +100,7 @@ export interface UserProfile {
   avatarInitials: string;
   joinedDate: string;
   isOnboarded: boolean;
+  hasHealthProfile: boolean;
   dob: string | null;
   gender: string | null;
   ethnicity: string | null;
@@ -104,6 +110,17 @@ export interface UserProfile {
   hasAgreedToHealth: boolean;
   termsAgreedAt: string | null;
   healthAgreedAt: string | null;
+  acceptedTermsVersion: string | null;
+  acceptedHealthWaiverVersion: string | null;
+  currentTermsVersion: string;
+  currentHealthWaiverVersion: string;
+  needsTermsReacceptance: boolean;
+  needsHealthWaiverReacceptance: boolean;
+  hasConsentedToHealthData: boolean;
+  healthDataConsentedAt: string | null;
+  acceptedHealthDataConsentVersion: string | null;
+  currentHealthDataConsentVersion: string;
+  needsHealthDataConsentRefresh: boolean;
   heardAboutSource: string | null;
   heardAboutDetail: string | null;
 }
@@ -147,6 +164,7 @@ interface AuthContextValue extends AuthState {
   cancelMembership: () => void;
   completeOnboarding: () => void;
   acceptTermsAndHealth: (terms: boolean, health: boolean) => Promise<void>;
+  acceptHealthDataConsent: () => Promise<void>;
   saveOnboardingSource: (source: string, detail?: string) => Promise<void>;
   refreshAccountProfile: () => Promise<void>;
   isClassBooked: (classSlug: string) => boolean;
@@ -215,6 +233,8 @@ type AccountAndReferralResponse = {
   profile?: {
     firstName?: string | null;
     lastName?: string | null;
+    isCoachingClient?: boolean;
+    hasHealthProfile?: boolean;
     dob?: string | null;
     gender?: string | null;
     ethnicity?: string | null;
@@ -225,6 +245,17 @@ type AccountAndReferralResponse = {
     hasAgreedToHealth?: boolean;
     termsAgreedAt?: string | null;
     healthAgreedAt?: string | null;
+    acceptedTermsVersion?: string | null;
+    acceptedHealthWaiverVersion?: string | null;
+    currentTermsVersion?: string;
+    currentHealthWaiverVersion?: string;
+    needsTermsReacceptance?: boolean;
+    needsHealthWaiverReacceptance?: boolean;
+    hasConsentedToHealthData?: boolean;
+    healthDataConsentedAt?: string | null;
+    acceptedHealthDataConsentVersion?: string | null;
+    currentHealthDataConsentVersion?: string;
+    needsHealthDataConsentRefresh?: boolean;
     heardAboutSource?: string | null;
     heardAboutDetail?: string | null;
   };
@@ -260,6 +291,7 @@ const MOCK_ADMIN_USER: UserProfile = {
   avatarInitials: "ST",
   joinedDate: "2024-01-01",
   isOnboarded: true,
+  hasHealthProfile: true,
   dob: "1978-03-22",
   gender: "Female",
   ethnicity: "White",
@@ -269,6 +301,17 @@ const MOCK_ADMIN_USER: UserProfile = {
   hasAgreedToHealth: true,
   termsAgreedAt: null,
   healthAgreedAt: null,
+  acceptedTermsVersion: CURRENT_TERMS_VERSION,
+  acceptedHealthWaiverVersion: CURRENT_HEALTH_WAIVER_VERSION,
+  currentTermsVersion: CURRENT_TERMS_VERSION,
+  currentHealthWaiverVersion: CURRENT_HEALTH_WAIVER_VERSION,
+  needsTermsReacceptance: false,
+  needsHealthWaiverReacceptance: false,
+  hasConsentedToHealthData: true,
+  healthDataConsentedAt: null,
+  acceptedHealthDataConsentVersion: CURRENT_HEALTH_DATA_CONSENT_VERSION,
+  currentHealthDataConsentVersion: CURRENT_HEALTH_DATA_CONSENT_VERSION,
+  needsHealthDataConsentRefresh: false,
   heardAboutSource: null,
   heardAboutDetail: null,
 };
@@ -490,15 +533,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               timezone: data.profile?.timezone || prev.timezone,
               dateFormat: data.profile?.dateFormat || prev.dateFormat,
               isOnboarded: data.profile?.isOnboarded ?? prev.isOnboarded,
+              hasHealthProfile: data.profile?.hasHealthProfile ?? prev.hasHealthProfile,
               hasAgreedToTerms: data.profile?.hasAgreedToTerms ?? prev.hasAgreedToTerms,
               hasAgreedToHealth: data.profile?.hasAgreedToHealth ?? prev.hasAgreedToHealth,
               termsAgreedAt: data.profile?.termsAgreedAt ?? prev.termsAgreedAt,
               healthAgreedAt: data.profile?.healthAgreedAt ?? prev.healthAgreedAt,
+              acceptedTermsVersion: data.profile?.acceptedTermsVersion ?? prev.acceptedTermsVersion,
+              acceptedHealthWaiverVersion:
+                data.profile?.acceptedHealthWaiverVersion ?? prev.acceptedHealthWaiverVersion,
+              currentTermsVersion: data.profile?.currentTermsVersion ?? prev.currentTermsVersion,
+              currentHealthWaiverVersion:
+                data.profile?.currentHealthWaiverVersion ?? prev.currentHealthWaiverVersion,
+              needsTermsReacceptance:
+                data.profile?.needsTermsReacceptance ?? prev.needsTermsReacceptance,
+              needsHealthWaiverReacceptance:
+                data.profile?.needsHealthWaiverReacceptance ?? prev.needsHealthWaiverReacceptance,
+              hasConsentedToHealthData:
+                data.profile?.hasConsentedToHealthData ?? prev.hasConsentedToHealthData,
+              healthDataConsentedAt:
+                data.profile?.healthDataConsentedAt ?? prev.healthDataConsentedAt,
+              acceptedHealthDataConsentVersion:
+                data.profile?.acceptedHealthDataConsentVersion ??
+                prev.acceptedHealthDataConsentVersion,
+              currentHealthDataConsentVersion:
+                data.profile?.currentHealthDataConsentVersion ??
+                prev.currentHealthDataConsentVersion,
+              needsHealthDataConsentRefresh:
+                data.profile?.needsHealthDataConsentRefresh ?? prev.needsHealthDataConsentRefresh,
               heardAboutSource: data.profile?.heardAboutSource ?? prev.heardAboutSource,
               heardAboutDetail: data.profile?.heardAboutDetail ?? prev.heardAboutDetail,
             }
           : prev
       );
+      setIsCoachingClient(data.profile?.isCoachingClient === true);
       setReferralCode(data.referral?.referralCode || "");
       setReferralCount(data.referral?.referralCount || 0);
       setReferralEarned(Math.floor((data.referral?.referralEarnedPence || 0) / 100));
@@ -558,6 +625,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         avatarInitials: initials,
         joinedDate: "",
         isOnboarded: false,
+        hasHealthProfile: false,
         dob: null,
         gender: null,
         ethnicity: null,
@@ -567,6 +635,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         hasAgreedToHealth: false,
         termsAgreedAt: null,
         healthAgreedAt: null,
+        acceptedTermsVersion: null,
+        acceptedHealthWaiverVersion: null,
+        currentTermsVersion: CURRENT_TERMS_VERSION,
+        currentHealthWaiverVersion: CURRENT_HEALTH_WAIVER_VERSION,
+        needsTermsReacceptance: true,
+        needsHealthWaiverReacceptance: true,
+        hasConsentedToHealthData: false,
+        healthDataConsentedAt: null,
+        acceptedHealthDataConsentVersion: null,
+        currentHealthDataConsentVersion: CURRENT_HEALTH_DATA_CONSENT_VERSION,
+        needsHealthDataConsentRefresh: true,
         heardAboutSource: null,
         heardAboutDetail: null,
       });
@@ -758,6 +837,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         hasAgreedToHealth?: boolean;
         termsAgreedAt?: string | null;
         healthAgreedAt?: string | null;
+        acceptedTermsVersion?: string | null;
+        acceptedHealthWaiverVersion?: string | null;
+        currentTermsVersion?: string;
+        currentHealthWaiverVersion?: string;
+        needsTermsReacceptance?: boolean;
+        needsHealthWaiverReacceptance?: boolean;
       };
     } | null;
     setUser((prev) =>
@@ -768,6 +853,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             hasAgreedToHealth: payload?.profile?.hasAgreedToHealth ?? prev.hasAgreedToHealth,
             termsAgreedAt: payload?.profile?.termsAgreedAt ?? prev.termsAgreedAt,
             healthAgreedAt: payload?.profile?.healthAgreedAt ?? prev.healthAgreedAt,
+            acceptedTermsVersion:
+              payload?.profile?.acceptedTermsVersion ?? prev.acceptedTermsVersion,
+            acceptedHealthWaiverVersion:
+              payload?.profile?.acceptedHealthWaiverVersion ?? prev.acceptedHealthWaiverVersion,
+            currentTermsVersion: payload?.profile?.currentTermsVersion ?? prev.currentTermsVersion,
+            currentHealthWaiverVersion:
+              payload?.profile?.currentHealthWaiverVersion ?? prev.currentHealthWaiverVersion,
+            needsTermsReacceptance:
+              payload?.profile?.needsTermsReacceptance ?? prev.needsTermsReacceptance,
+            needsHealthWaiverReacceptance:
+              payload?.profile?.needsHealthWaiverReacceptance ?? prev.needsHealthWaiverReacceptance,
+          }
+        : prev
+    );
+  }, []);
+
+  const acceptHealthDataConsent = useCallback(async () => {
+    const response = await fetch("/api/me", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        hasConsentedToHealthData: true,
+      }),
+    });
+    if (!response.ok) return;
+
+    const payload = (await response.json().catch(() => null)) as {
+      profile?: {
+        hasConsentedToHealthData?: boolean;
+        healthDataConsentedAt?: string | null;
+        acceptedHealthDataConsentVersion?: string | null;
+        currentHealthDataConsentVersion?: string;
+        needsHealthDataConsentRefresh?: boolean;
+      };
+    } | null;
+
+    setUser((prev) =>
+      prev
+        ? {
+            ...prev,
+            hasConsentedToHealthData:
+              payload?.profile?.hasConsentedToHealthData ?? prev.hasConsentedToHealthData,
+            healthDataConsentedAt:
+              payload?.profile?.healthDataConsentedAt ?? prev.healthDataConsentedAt,
+            acceptedHealthDataConsentVersion:
+              payload?.profile?.acceptedHealthDataConsentVersion ??
+              prev.acceptedHealthDataConsentVersion,
+            currentHealthDataConsentVersion:
+              payload?.profile?.currentHealthDataConsentVersion ??
+              prev.currentHealthDataConsentVersion,
+            needsHealthDataConsentRefresh:
+              payload?.profile?.needsHealthDataConsentRefresh ?? prev.needsHealthDataConsentRefresh,
           }
         : prev
     );
@@ -907,6 +1044,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         cancelMembership,
         completeOnboarding,
         acceptTermsAndHealth,
+        acceptHealthDataConsent,
         saveOnboardingSource,
         refreshAccountProfile,
         isClassBooked,

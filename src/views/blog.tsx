@@ -18,6 +18,28 @@ import {
 } from "../components/ui/select";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 
+function getPostAuthors(post: BlogPostContent) {
+  if (post.authors.length > 0) return post.authors;
+  if (post.author) {
+    return [
+      {
+        id: post.author,
+        slug: post.author.toLowerCase().replace(/\s+/g, "-"),
+        name: post.author,
+        bio: "",
+      },
+    ];
+  }
+  return [];
+}
+
+function getAuthorLabel(post: BlogPostContent) {
+  const authors = getPostAuthors(post);
+  if (authors.length === 0) return "Shruti Turner";
+  if (authors.length === 1) return authors[0]?.name || "Shruti Turner";
+  return `${authors[0]?.name || "Shruti Turner"} + ${authors.length - 1}`;
+}
+
 interface BlogPageProps {
   posts?: BlogPostContent[];
 }
@@ -172,6 +194,43 @@ export function BlogPage({ posts }: BlogPageProps) {
                   </h3>
 
                   <p className="text-muted-foreground text-sm leading-relaxed">{post.excerpt}</p>
+
+                  <div className="flex items-center gap-3">
+                    <div className="flex -space-x-2">
+                      {getPostAuthors(post)
+                        .slice(0, 3)
+                        .map((author) => (
+                          <div
+                            key={author.slug}
+                            className="border-background bg-brand-warm h-9 w-9 overflow-hidden rounded-full border"
+                          >
+                            {author.avatarImageUrl ? (
+                              <ImageWithFallback
+                                src={author.avatarImageUrl}
+                                alt={author.avatarAlt || `${author.name} avatar`}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="text-brand-dark flex h-full w-full items-center justify-center text-xs font-medium">
+                                {author.name
+                                  .split(" ")
+                                  .map((part) => part[0])
+                                  .join("")
+                                  .slice(0, 2)}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-brand-dark truncate text-sm font-medium">
+                        {getAuthorLabel(post)}
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        {getPostAuthors(post).length > 1 ? "Contributors" : "Author"}
+                      </p>
+                    </div>
+                  </div>
 
                   <div className="text-muted-foreground flex items-center justify-between border-t pt-2 text-sm">
                     <span>{formatDate(post.date)}</span>

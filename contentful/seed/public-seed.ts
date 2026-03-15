@@ -1,7 +1,9 @@
-import { blogPosts } from "../../src/data/blog-data.ts";
+import { blogAuthors, blogPosts } from "../../src/data/blog-data.ts";
+import { LEGAL_DOCUMENTS } from "../../src/data/legal-documents.ts";
 import { themedWeekPromos } from "../../src/data/marketing.ts";
 import { classDetails } from "../../src/data/schedule-data.ts";
 import { retreats } from "../../src/data/retreat-data.ts";
+import { smallGroupTemplates } from "../../src/data/small-group-programmes.ts";
 
 function compactImageUrl(raw: string): string {
   try {
@@ -142,6 +144,28 @@ export const THEMED_WEEK_PROMO_SEED = {
   })),
 };
 
+export const SMALL_GROUP_PROGRAMME_SEED = {
+  contentType: "smallGroupProgramme",
+  entries: smallGroupTemplates.map((programme) => ({
+    slug: programme.slug,
+    title: programme.title,
+    subtitle: programme.subtitle,
+    shortSummary: programme.shortSummary,
+    fullDescription: programme.fullDescription,
+    longDescription: programme.longDescription,
+    outcomes: programme.outcomes,
+    durationLabel: programme.durationLabel,
+    durationWeeks: programme.durationWeeks,
+    cohortSize: programme.cohortSize,
+    sessionsPerWeek: programme.sessionsPerWeek,
+    defaultPricePence: programme.defaultPricePence,
+    whoItsFor: programme.whoItsFor,
+    equipment: programme.equipment,
+    inclusions: programme.inclusions,
+    weekByWeek: programme.weekByWeek,
+  })),
+};
+
 const venueEntries = new Map<
   string,
   {
@@ -201,6 +225,26 @@ export const RETREAT_TEMPLATE_SEED = {
   })),
 };
 
+export const RETREAT_INSTANCE_SEED = {
+  contentType: "retreatInstance",
+  entries: retreats.flatMap((retreat) =>
+    retreat.dates.map((date) => ({
+      slug: `${retreat.slug}-${date.id}`,
+      externalDateId: date.id,
+      templateSlug: retreat.slug,
+      startDate: date.startDate,
+      endDate: date.endDate,
+      availableSpaces: date.availableSpaces,
+      totalSpaces: date.totalSpaces,
+      earlyBirdPrice: retreat.earlyBirdPrice,
+      normalPrice: retreat.normalPrice,
+      earlyBirdDeadline: retreat.earlyBirdDeadline,
+      currency: retreat.currency,
+      roomOptions: date.roomOptions,
+    }))
+  ),
+};
+
 export const BLOG_SEED = {
   contentType: "blogPost",
   entries: blogPosts.map((p) => ({
@@ -210,7 +254,8 @@ export const BLOG_SEED = {
     coverAlt: p.coverAlt,
     excerpt: p.excerpt,
     content: p.content,
-    authorName: p.author,
+    authorName: p.authors[0]?.name || p.author || "Shruti Turner",
+    authorSlugs: p.authors.map((author) => author.slug),
     publishDate: p.date,
     tags: p.tags,
     readTime: p.readTime,
@@ -220,46 +265,25 @@ export const BLOG_SEED = {
   })),
 };
 
+export const AUTHOR_PROFILE_SEED = {
+  contentType: "authorProfile",
+  entries: blogAuthors.map((author) => ({
+    slug: author.slug,
+    name: author.name,
+    role: author.role,
+    bio: author.bio,
+    avatarImageUrl: author.avatarImageUrl,
+    avatarAlt: author.avatarAlt,
+    websiteUrl: author.websiteUrl,
+    instagramHandle: author.instagramHandle,
+    isGuestContributor: author.isGuestContributor,
+    active: author.active ?? true,
+  })),
+};
+
 export const LEGAL_DOCUMENT_SEED = {
   contentType: "legalDocument",
-  entries: [
-    {
-      slug: "terms",
-      title: "Terms & Conditions",
-      version: "1.0",
-      effectiveDate: "2026-03-01",
-      body: "Replace with approved Terms & Conditions copy.",
-      seoTitle: "Terms & Conditions - Shruti Turner",
-      seoDescription: "Terms and conditions for services provided by Shruti Turner.",
-    },
-    {
-      slug: "privacy",
-      title: "Privacy Policy",
-      version: "1.0",
-      effectiveDate: "2026-03-01",
-      body: "Replace with approved Privacy Policy copy.",
-      seoTitle: "Privacy Policy - Shruti Turner",
-      seoDescription: "How Shruti Turner collects, uses, and protects personal data.",
-    },
-    {
-      slug: "cookies",
-      title: "Cookie Policy",
-      version: "1.0",
-      effectiveDate: "2026-03-01",
-      body: "Replace with approved Cookie Policy copy.",
-      seoTitle: "Cookie Policy - Shruti Turner",
-      seoDescription: "How cookies and tracking technologies are used on this site.",
-    },
-    {
-      slug: "health-declaration",
-      title: "Health Declaration & Informed Consent",
-      version: "1.0",
-      effectiveDate: "2026-03-01",
-      body: "Replace with approved Health Declaration copy.",
-      seoTitle: "Health Declaration - Shruti Turner",
-      seoDescription: "Health declaration and informed consent for participation.",
-    },
-  ],
+  entries: LEGAL_DOCUMENTS.map(({ id: _id, ...document }) => document),
 };
 
 export const FAQ_SEED = {
@@ -494,11 +518,14 @@ export const NEWSLETTER_TEMPLATE_SEED = {
 
 export const SEED_GROUPS = [
   GLOBAL_SEED,
+  AUTHOR_PROFILE_SEED,
   INSTRUCTOR_PROFILE_SEED,
   CLASS_TEMPLATE_SEED,
   THEMED_WEEK_PROMO_SEED,
+  SMALL_GROUP_PROGRAMME_SEED,
   RETREAT_VENUE_SEED,
   RETREAT_TEMPLATE_SEED,
+  RETREAT_INSTANCE_SEED,
   BLOG_SEED,
   TESTIMONIAL_SEED,
   LEGAL_DOCUMENT_SEED,

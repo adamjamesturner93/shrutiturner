@@ -31,6 +31,10 @@ interface PricingPageProps {
   faqs?: FaqItemContent[];
 }
 
+type PricingCheckoutIntent =
+  | { kind: "membership"; interval: "monthly" | "annual" }
+  | { kind: "credits"; bundle: 1 | 3 | 10 };
+
 const DEFAULT_PRICING_FAQS: FaqItemContent[] = [
   {
     slug: "monthly-vs-annual",
@@ -94,7 +98,34 @@ export function PricingPage({ faqs }: PricingPageProps) {
     [faqs]
   );
 
-  const purchaseLink = isAuthenticated ? "/dashboard/membership" : "/login";
+  const buildAuthenticatedPurchaseHref = (intent: PricingCheckoutIntent) => {
+    const params = new URLSearchParams({ intent: "pricing-checkout", kind: intent.kind });
+    if (intent.kind === "membership") {
+      params.set("interval", intent.interval);
+    } else {
+      params.set("bundle", String(intent.bundle));
+    }
+    return `/auth/post-login?${params.toString()}`;
+  };
+
+  const buildAnonymousPurchaseHref = (intent: PricingCheckoutIntent) => {
+    const postLoginParams = new URLSearchParams({
+      intent: "pricing-checkout",
+      kind: intent.kind,
+    });
+
+    if (intent.kind === "membership") {
+      postLoginParams.set("interval", intent.interval);
+    } else {
+      postLoginParams.set("bundle", String(intent.bundle));
+    }
+
+    return `/login?redirect=${encodeURIComponent(`/auth/post-login?${postLoginParams.toString()}`)}`;
+  };
+
+  const getPurchaseHref = (intent: PricingCheckoutIntent) =>
+    isAuthenticated ? buildAuthenticatedPurchaseHref(intent) : buildAnonymousPurchaseHref(intent);
+
   const monthlyPrice = pricing?.membershipDisplay?.movewellMonthly ?? 29;
   const annualPrice = pricing?.membershipDisplay?.movewellAnnual ?? 290;
   const trialDays = pricing?.membershipDisplay?.trialDays ?? 14;
@@ -170,7 +201,7 @@ export function PricingPage({ faqs }: PricingPageProps) {
                   Early access to programmes
                 </li>
               </ul>
-              <Link href={`${purchaseLink}${isAuthenticated ? "?interval=monthly" : ""}`}>
+              <Link href={getPurchaseHref({ kind: "membership", interval: "monthly" })}>
                 <Button
                   size="lg"
                   variant="outline"
@@ -221,7 +252,7 @@ export function PricingPage({ faqs }: PricingPageProps) {
                   10% off all programmes & workshops
                 </li>
               </ul>
-              <Link href={`${purchaseLink}${isAuthenticated ? "?interval=annual" : ""}`}>
+              <Link href={getPurchaseHref({ kind: "membership", interval: "annual" })}>
                 <Button
                   size="lg"
                   className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90 w-full"
@@ -240,6 +271,18 @@ export function PricingPage({ faqs }: PricingPageProps) {
             <Shield className="h-4 w-4" />
             <p className="text-sm">Every membership begins with {trialDays} days on us.</p>
           </div>
+
+          <p className="text-brand-white/55 mx-auto mt-5 max-w-2xl text-sm leading-relaxed">
+            By continuing to checkout, you agree to the{" "}
+            <Link href="/terms" className="underline">
+              Terms & Conditions
+            </Link>{" "}
+            and can review the{" "}
+            <Link href="/refund-policy" className="underline">
+              Refund & Cancellation Policy
+            </Link>
+            .
+          </p>
 
           <p className="text-brand-white/40 mt-6 text-sm">Founding members remain at £25/month.</p>
         </div>
@@ -289,7 +332,7 @@ export function PricingPage({ faqs }: PricingPageProps) {
                   <span>No subscription</span>
                 </div>
               </div>
-              <Link href={purchaseLink}>
+              <Link href={getPurchaseHref({ kind: "credits", bundle: 1 })}>
                 <Button
                   variant="outline"
                   size="sm"
@@ -329,7 +372,7 @@ export function PricingPage({ faqs }: PricingPageProps) {
                   <span>No subscription</span>
                 </div>
               </div>
-              <Link href={purchaseLink}>
+              <Link href={getPurchaseHref({ kind: "credits", bundle: 3 })}>
                 <Button
                   variant="outline"
                   size="sm"
@@ -373,7 +416,7 @@ export function PricingPage({ faqs }: PricingPageProps) {
                   <span>No subscription</span>
                 </div>
               </div>
-              <Link href={purchaseLink}>
+              <Link href={getPurchaseHref({ kind: "credits", bundle: 10 })}>
                 <Button size="sm" className="bg-bronze hover:bg-bronze/90 w-full text-white">
                   Buy 10-Pack
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -393,6 +436,18 @@ export function PricingPage({ faqs }: PricingPageProps) {
               Cancel 4+ hours before class to keep your credit
             </span>
           </div>
+
+          <p className="text-muted-foreground mx-auto mt-5 max-w-2xl text-center text-sm leading-relaxed">
+            Credit-pack purchases are subject to the{" "}
+            <Link href="/terms" className="text-primary underline">
+              Terms & Conditions
+            </Link>{" "}
+            and the{" "}
+            <Link href="/refund-policy" className="text-primary underline">
+              Refund & Cancellation Policy
+            </Link>
+            .
+          </p>
         </div>
       </section>
 
@@ -591,7 +646,7 @@ export function PricingPage({ faqs }: PricingPageProps) {
             class from day one.
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
-            <Link href={purchaseLink}>
+            <Link href={getPurchaseHref({ kind: "membership", interval: "monthly" })}>
               <Button
                 size="lg"
                 className="bg-brand-white text-brand-accent hover:bg-brand-white/90"

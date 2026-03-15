@@ -218,10 +218,16 @@ export function Footer() {
               href="/health-declaration"
               className="hover:text-brand-accent-light transition-colors"
             >
-              Health Declaration
+              Health & Liability Waiver
             </Link>
-            <Link href="/unsubscribe" className="hover:text-brand-accent-light transition-colors">
-              Manage Subscriptions
+            <Link href="/refund-policy" className="hover:text-brand-accent-light transition-colors">
+              Refund & Cancellation Policy
+            </Link>
+            <Link
+              href="/acceptable-use"
+              className="hover:text-brand-accent-light transition-colors"
+            >
+              Acceptable Use Policy
             </Link>
           </div>
           <p>Copyright Shruti Turner. All rights reserved.</p>

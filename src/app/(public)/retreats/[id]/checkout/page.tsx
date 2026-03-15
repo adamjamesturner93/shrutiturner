@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { RetreatCheckoutPage } from "@/views/retreat-checkout";
-import { getRetreatBySlug } from "@/data/retreat-data";
+import { getOperationalRetreatBySlug } from "@/lib/retreats/service";
 
 export async function generateMetadata({
   params,
@@ -8,7 +8,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const retreat = getRetreatBySlug(id);
+  const retreat = await getOperationalRetreatBySlug(id);
 
   if (!retreat) {
     return { title: "Checkout" };
@@ -20,6 +20,8 @@ export async function generateMetadata({
   };
 }
 
-export default function Page() {
-  return <RetreatCheckoutPage />;
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const retreat = await getOperationalRetreatBySlug(id);
+  return <RetreatCheckoutPage retreat={retreat} />;
 }

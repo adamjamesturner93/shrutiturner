@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { CheckCircle2, ArrowRight, Mail, MessageCircle } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 
 const INTEREST_OPTIONS = [
   { value: "group-classes", label: "Move Well Classes (yoga, strength, cardio)" },
@@ -39,6 +40,9 @@ const HOW_FOUND_OPTIONS = [
 
 export function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -49,10 +53,37 @@ export function ContactPage() {
     message: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Contact form submitted:", formData);
-    setSubmitted(true);
+    if (!turnstileToken) return;
+    setSubmitting(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...formData,
+          turnstileToken,
+          honeypot: "",
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(payload?.message || "Failed to submit enquiry.");
+      }
+
+      setSubmitted(true);
+      setTurnstileToken("");
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "Failed to submit enquiry.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -239,10 +270,21 @@ export function ContactPage() {
                   />
                 </div>
 
-                <Button type="submit" size="lg" className="w-full" disabled={!formData.interest}>
-                  Send Enquiry
+                <div className="space-y-3">
+                  <TurnstileWidget onTokenChange={setTurnstileToken} />
+                </div>
+
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full"
+                  disabled={!formData.interest || !turnstileToken || submitting}
+                >
+                  {submitting ? "Sending..." : "Send Enquiry"}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
+
+                {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
                 <p className="text-muted-foreground text-center text-xs">
                   Your information is kept private and never shared. I typically reply within 2

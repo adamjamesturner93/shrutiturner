@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { RetreatDetailPage } from "@/views/retreat-detail";
-import { getRetreatBySlugCombined, getRetreatsCombined } from "@/lib/content";
+import { getRetreatsCombined } from "@/lib/content";
+import { getOperationalRetreatBySlug } from "@/lib/retreats/service";
 
 export async function generateMetadata({
   params,
@@ -8,7 +9,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const retreat = await getRetreatBySlugCombined(id);
+  const retreat = await getOperationalRetreatBySlug(id);
 
   if (!retreat) {
     return { title: "Retreat Not Found" };
@@ -22,7 +23,7 @@ export async function generateMetadata({
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const retreat = await getRetreatBySlugCombined(id);
+  const retreat = await getOperationalRetreatBySlug(id);
   const allRetreats = await getRetreatsCombined();
   const otherRetreatsAtVenue = retreat
     ? allRetreats.filter((item) => {

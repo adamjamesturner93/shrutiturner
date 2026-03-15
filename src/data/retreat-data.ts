@@ -1,9 +1,12 @@
+import type { RetreatRoomOptionContent } from "@/lib/content/types";
+
 export interface RetreatDate {
   id: string;
   startDate: string;
   endDate: string;
   availableSpaces: number;
   totalSpaces: number;
+  roomOptions: RetreatRoomOptionContent[];
 }
 
 export interface Retreat {
@@ -30,6 +33,10 @@ export interface Retreat {
   suitableFor: string[];
 }
 
+function roomOption(input: RetreatRoomOptionContent): RetreatRoomOptionContent {
+  return input;
+}
+
 export const retreats: Retreat[] = [
   {
     id: "1",
@@ -39,12 +46,12 @@ export const retreats: Retreat[] = [
     location: "Portuguese Countryside",
     imageUrl: "yoga retreat portugal countryside",
     shortDescription:
-      "5 days of rehabilitation-informed yoga, strength work, and community for people with chronic illness, autoimmune conditions, and complex bodies.",
+      "Five days of rehabilitation-informed yoga, strength work, and community for people with chronic illness, autoimmune conditions, and complex bodies.",
     fullDescription: `This is not a mainstream yoga retreat. This is a carefully designed experience for people whose bodies require intelligent, evidence-based approaches to movement.
 
-Sankalpa means "intention" in Sanskrit. This retreat is about setting intentions that honor your body's reality—building capacity, not bypassing limitations.
+Sankalpa means "intention" in Sanskrit. This retreat is about setting intentions that honour your body's reality, building capacity without bypassing limitations, and learning in a space where fluctuating symptoms are expected rather than awkward.
 
-You'll practice rehabilitation-informed yoga, learn about strength training principles for complex bodies, connect with others who understand chronic illness, and rest in the Portuguese countryside.
+You'll practise rehabilitation-informed yoga, learn about strength training principles for complex bodies, connect with others who understand chronic illness, and rest in the Portuguese countryside.
 
 This is for people who are tired of pretending their bodies are simple.`,
     dates: [
@@ -54,6 +61,45 @@ This is for people who are tired of pretending their bodies are simple.`,
         endDate: "2026-09-20",
         availableSpaces: 8,
         totalSpaces: 12,
+        roomOptions: [
+          roomOption({
+            id: "1a-shared-twin",
+            label: "Shared Twin",
+            description:
+              "Twin-share accommodation with ensuite bathroom. Ideal if you are happy to share.",
+            type: "shared_twin",
+            guestsIncluded: 1,
+            capacity: 8,
+            availableSpots: 6,
+            earlyBirdPricePence: 145000,
+            normalPricePence: 165000,
+            depositPence: 30000,
+          }),
+          roomOption({
+            id: "1a-single-room",
+            label: "Single Room",
+            description: "A private room for one person for the full retreat stay.",
+            type: "single",
+            guestsIncluded: 1,
+            capacity: 2,
+            availableSpots: 1,
+            earlyBirdPricePence: 165000,
+            normalPricePence: 185000,
+            depositPence: 30000,
+          }),
+          roomOption({
+            id: "1a-private-double",
+            label: "Private Double for Two",
+            description: "Private double room reserved for you and one guest.",
+            type: "shared_private",
+            guestsIncluded: 2,
+            capacity: 2,
+            availableSpots: 1,
+            earlyBirdPricePence: 280000,
+            normalPricePence: 320000,
+            depositPence: 60000,
+          }),
+        ],
       },
       {
         id: "1b",
@@ -61,6 +107,45 @@ This is for people who are tired of pretending their bodies are simple.`,
         endDate: "2026-10-25",
         availableSpaces: 10,
         totalSpaces: 12,
+        roomOptions: [
+          roomOption({
+            id: "1b-shared-twin",
+            label: "Shared Twin",
+            description:
+              "Twin-share accommodation with ensuite bathroom. Ideal if you are happy to share.",
+            type: "shared_twin",
+            guestsIncluded: 1,
+            capacity: 8,
+            availableSpots: 8,
+            earlyBirdPricePence: 145000,
+            normalPricePence: 165000,
+            depositPence: 30000,
+          }),
+          roomOption({
+            id: "1b-single-room",
+            label: "Single Room",
+            description: "A private room for one person for the full retreat stay.",
+            type: "single",
+            guestsIncluded: 1,
+            capacity: 2,
+            availableSpots: 1,
+            earlyBirdPricePence: 165000,
+            normalPricePence: 185000,
+            depositPence: 30000,
+          }),
+          roomOption({
+            id: "1b-private-double",
+            label: "Private Double for Two",
+            description: "Private double room reserved for you and one guest.",
+            type: "shared_private",
+            guestsIncluded: 2,
+            capacity: 2,
+            availableSpots: 1,
+            earlyBirdPricePence: 280000,
+            normalPricePence: 320000,
+            depositPence: 60000,
+          }),
+        ],
       },
     ],
     earlyBirdPrice: 1450,
@@ -68,11 +153,11 @@ This is for people who are tired of pretending their bodies are simple.`,
     normalPrice: 1650,
     currency: "GBP",
     included: [
-      "5 nights shared accommodation",
-      "All meals (catering to dietary requirements)",
-      "Daily yoga sessions (morning & evening)",
-      "Strength training workshop",
-      "Movement workshops for chronic conditions",
+      "Five nights shared accommodation",
+      "All meals, tailored to dietary requirements",
+      "Daily yoga sessions (morning and evening)",
+      "Strength workshop for complex bodies",
+      "Movement workshops and education",
       "Pool and outdoor space access",
       "Airport transfers from Lisbon",
       "Small group size (max 12 people)",
@@ -81,7 +166,7 @@ This is for people who are tired of pretending their bodies are simple.`,
       "Flights to Lisbon",
       "Travel insurance (required)",
       "Personal expenses",
-      "Single room supplement (£200)",
+      "Optional private room upgrade",
     ],
     schedule: [
       {
@@ -115,7 +200,7 @@ This is for people who are tired of pretending their bodies are simple.`,
       },
     ],
     accommodation:
-      "Traditional Portuguese villa with shared twin rooms, ensuite bathrooms, pool, and gardens. Single room supplement available for £200.",
+      "A traditional Portuguese villa with shared twin rooms, a small number of private rooms, and one private double option for two guests. Ensuite bathrooms, pool, and calm outdoor space included.",
     suitableFor: [
       "People with chronic illness or autoimmune conditions",
       "Anyone with psoriatic arthritis, rheumatoid arthritis, or chronic pain",
@@ -132,14 +217,14 @@ This is for people who are tired of pretending their bodies are simple.`,
     location: "Scottish Highlands",
     imageUrl: "scottish highlands winter retreat",
     shortDescription:
-      "4 days of strength training, restorative yoga, and community in the Scottish Highlands for people managing chronic conditions.",
+      "Four days of strength training, restorative yoga, and community in the Scottish Highlands for people managing chronic conditions.",
     fullDescription: `A winter retreat designed specifically for people with complex bodies who want to build strength and find stillness.
 
 This retreat combines evidence-based strength training principles with restorative yoga practices, all adapted for people managing chronic illness, autoimmune conditions, and chronic pain.
 
 Set in the Scottish Highlands, you'll have space to rest, move intelligently, and connect with others who understand the reality of living with chronic conditions.
 
-Small group (max 10 people), led by Shruti Turner with guest physiotherapist.`,
+Small group, led by Shruti Turner with a guest physiotherapist.`,
     dates: [
       {
         id: "2a",
@@ -147,6 +232,32 @@ Small group (max 10 people), led by Shruti Turner with guest physiotherapist.`,
         endDate: "2027-01-22",
         availableSpaces: 6,
         totalSpaces: 10,
+        roomOptions: [
+          roomOption({
+            id: "2a-shared-twin",
+            label: "Twin Share",
+            description: "Twin-share room with ensuite bathroom.",
+            type: "shared_twin",
+            guestsIncluded: 1,
+            capacity: 8,
+            availableSpots: 5,
+            earlyBirdPricePence: 95000,
+            normalPricePence: 110000,
+            depositPence: 25000,
+          }),
+          roomOption({
+            id: "2a-single-room",
+            label: "Single Room",
+            description: "Private room with more space for rest and decompression.",
+            type: "single",
+            guestsIncluded: 1,
+            capacity: 2,
+            availableSpots: 1,
+            earlyBirdPricePence: 110000,
+            normalPricePence: 125000,
+            depositPence: 30000,
+          }),
+        ],
       },
     ],
     earlyBirdPrice: 950,
@@ -154,25 +265,25 @@ Small group (max 10 people), led by Shruti Turner with guest physiotherapist.`,
     normalPrice: 1100,
     currency: "GBP",
     included: [
-      "4 nights accommodation (twin share)",
+      "Four nights accommodation (twin share)",
       "All meals and snacks",
       "Daily strength training sessions",
       "Restorative yoga sessions",
       "Movement workshops with guest physiotherapist",
       "Use of gym equipment and facilities",
-      "Small group coaching (max 10 people)",
+      "Small group coaching",
     ],
     notIncluded: [
-      "Transport to/from venue",
+      "Transport to and from the venue",
       "Travel insurance (required)",
       "Personal expenses",
-      "Single room supplement (£150)",
+      "Optional private room upgrade",
     ],
     schedule: [
       {
         day: "Day 1 - Arrival",
         activities: [
-          "Arrive afternoon (self-transport)",
+          "Arrive in the afternoon",
           "Welcome and orientation",
           "Light movement session",
           "Dinner and group introduction",
@@ -181,11 +292,11 @@ Small group (max 10 people), led by Shruti Turner with guest physiotherapist.`,
       {
         day: "Day 2-3 - Full Days",
         activities: [
-          "Morning strength training session (60 mins)",
+          "Morning strength training session",
           "Breakfast",
-          "Workshop: Programming for complex bodies",
+          "Workshop: programming for complex bodies",
           "Lunch and rest time",
-          "Afternoon: Restorative yoga or optional walk",
+          "Afternoon restorative yoga or optional walk",
           "Evening session and reflection",
           "Dinner",
         ],
@@ -196,13 +307,13 @@ Small group (max 10 people), led by Shruti Turner with guest physiotherapist.`,
       },
     ],
     accommodation:
-      "Comfortable Scottish lodge with twin rooms, ensuite bathrooms, communal spaces, and access to gym equipment. Single room supplement available.",
+      "A comfortable lodge with twin rooms, a small number of private rooms, communal spaces, and easy access to equipment and outdoor rest areas.",
     suitableFor: [
       "People wanting to learn strength training for chronic conditions",
       "Those managing autoimmune arthritis or chronic pain",
       "Anyone looking for evidence-based approaches to building capacity",
       "People who want small group coaching and community",
-      'Those ready to challenge the "just rest" narrative',
+      "Those ready to challenge the 'just rest' narrative",
     ],
   },
   {
@@ -213,14 +324,12 @@ Small group (max 10 people), led by Shruti Turner with guest physiotherapist.`,
     location: "Online (Live via Video)",
     imageUrl: "online yoga class laptop home",
     shortDescription:
-      "A 2-day live online retreat bringing the retreat experience home — adaptive yoga, strength workshops, community connection, and rest, all from wherever you are.",
-    fullDescription: `Not everyone can travel to a retreat. Whether it's finances, health limitations, caring responsibilities, or simply that travelling triggers your symptoms — you deserve a retreat experience too.
+      "A two-day live online retreat bringing the retreat experience home — adaptive yoga, strength workshops, community connection, and rest.",
+    fullDescription: `Not everyone can travel to a retreat. Whether it's finances, health limitations, caring responsibilities, or simply that travelling triggers your symptoms, you deserve a retreat experience too.
 
-Virtual Immersion Weekend is a fully live, interactive 2-day online retreat that brings the depth and community of an in-person retreat into your home. This is not a set of pre-recorded videos. Every session is live, every interaction is real.
+Virtual Immersion Weekend is a fully live, interactive two-day online retreat that brings the depth and community of an in-person retreat into your home. This is not a set of pre-recorded videos. Every session is live, every interaction is real.
 
-You'll move through adaptive yoga, learn strength training principles, connect with a small group who understand chronic illness, and have genuine rest built into the schedule. Shruti teaches every session with the same care and attention as the in-person retreats.
-
-Sessions are paced with generous breaks. Camera-on is encouraged but never required. Community mode lets you see and chat with fellow participants between sessions. And the whole thing is designed for bodies that fluctuate — if you need to lie down during a session, that's not just allowed, it's anticipated.`,
+You'll move through adaptive yoga, learn strength training principles, connect with a small group who understand chronic illness, and have genuine rest built into the schedule.`,
     dates: [
       {
         id: "3a",
@@ -228,6 +337,21 @@ Sessions are paced with generous breaks. Camera-on is encouraged but never requi
         endDate: "2026-06-14",
         availableSpaces: 14,
         totalSpaces: 20,
+        roomOptions: [
+          roomOption({
+            id: "3a-online-pass",
+            label: "Virtual Retreat Pass",
+            description:
+              "Live online access for one person, including the full weekend and replay access.",
+            type: "virtual",
+            guestsIncluded: 1,
+            capacity: 20,
+            availableSpots: 14,
+            earlyBirdPricePence: 12000,
+            normalPricePence: 15000,
+            depositPence: 12000,
+          }),
+        ],
       },
       {
         id: "3b",
@@ -235,6 +359,21 @@ Sessions are paced with generous breaks. Camera-on is encouraged but never requi
         endDate: "2026-11-08",
         availableSpaces: 20,
         totalSpaces: 20,
+        roomOptions: [
+          roomOption({
+            id: "3b-online-pass",
+            label: "Virtual Retreat Pass",
+            description:
+              "Live online access for one person, including the full weekend and replay access.",
+            type: "virtual",
+            guestsIncluded: 1,
+            capacity: 20,
+            availableSpots: 20,
+            earlyBirdPricePence: 12000,
+            normalPricePence: 15000,
+            depositPence: 12000,
+          }),
+        ],
       },
     ],
     earlyBirdPrice: 120,
@@ -242,56 +381,44 @@ Sessions are paced with generous breaks. Camera-on is encouraged but never requi
     normalPrice: 150,
     currency: "GBP",
     included: [
-      "All live sessions over 2 days (approx. 8 hours total)",
-      "Adaptive yoga sessions (morning & afternoon)",
+      "All live sessions over two days",
+      "Adaptive yoga sessions",
       "Strength training workshop",
-      "Community connection sessions with chat",
-      "Digital welcome pack with schedule & equipment list",
-      "7-day replay access to all sessions",
-      "Small group size (max 20 people)",
+      "Community connection sessions",
+      "Digital welcome pack with schedule and equipment list",
+      "Seven-day replay access",
       "Printable movement guides to keep",
     ],
-    notIncluded: [
-      "Physical equipment (list provided in advance)",
-      "Food & drink (suggested snack/meal ideas provided)",
-    ],
+    notIncluded: ["Physical equipment (list provided in advance)", "Food and drink"],
     schedule: [
       {
         day: "Day 1 - Saturday",
         activities: [
-          "10:00 - Welcome circle and introductions (camera on encouraged)",
-          "10:30 - Adaptive Yoga Flow (60 mins)",
-          "11:45 - Break (15 mins)",
-          "12:00 - Strength Workshop: Foundations for Complex Bodies (45 mins)",
-          "12:45 - Lunch break (90 mins — rest, eat, be human)",
-          "14:15 - Movement exploration: Find what works for your body (45 mins)",
-          "15:00 - Community tea & chat (camera on, informal)",
-          "15:30 - Restorative Yoga (45 mins)",
-          "16:15 - Close & evening intention setting",
+          "10:00 Welcome circle and introductions",
+          "10:30 Adaptive Yoga Flow",
+          "12:00 Strength workshop: foundations for complex bodies",
+          "14:15 Movement exploration",
+          "15:30 Restorative yoga",
         ],
       },
       {
         day: "Day 2 - Sunday",
         activities: [
-          "10:00 - Morning check-in & gentle movement (30 mins)",
-          "10:30 - Yoga for Nervous System Regulation (60 mins)",
-          "11:45 - Break (15 mins)",
-          "12:00 - Strength Workshop: Building Your Own Practice (45 mins)",
-          "12:45 - Lunch break (75 mins)",
-          "14:00 - Community Q&A with Shruti (45 mins)",
-          "14:45 - Final restorative practice (30 mins)",
-          "15:15 - Closing circle, reflections & next steps",
+          "10:00 Morning check-in and gentle movement",
+          "10:30 Yoga for nervous system regulation",
+          "12:00 Strength workshop: building your own practice",
+          "14:00 Community Q&A",
+          "14:45 Final restorative practice",
         ],
       },
     ],
     accommodation:
-      "Your own home. We recommend setting up a comfortable space with your yoga mat, a chair, and any props you have. A printable setup guide is included in your welcome pack.",
+      "Your own home. A printable setup guide is included so you can create a calmer space with props, a chair, and whatever support you already have.",
     suitableFor: [
-      "People who can't travel to in-person retreats",
+      "People who cannot travel to in-person retreats",
       "Anyone managing chronic illness, autoimmune conditions, or chronic pain",
       "Those wanting a structured weekend of movement and rest",
       "People curious about retreats but not ready for the in-person commitment",
-      "Anyone who benefits from exercising in their own familiar space",
       "Carers or parents who need to stay close to home",
     ],
   },

@@ -7,6 +7,7 @@ import {
   sendAuthCodeEmail,
 } from "@/lib/auth-code";
 import { getClientIp, verifyTurnstileToken } from "@/lib/turnstile";
+import { CURRENT_HEALTH_WAIVER_VERSION, CURRENT_TERMS_VERSION } from "@/data/legal-documents";
 
 type RegisterBody = {
   firstName?: string;
@@ -67,7 +68,10 @@ export async function POST(req: Request) {
 
   if (!agreeToTerms || !agreeToHealth) {
     return NextResponse.json(
-      { message: "You must accept Terms and Health Declaration to create an account." },
+      {
+        message:
+          "You must accept the Terms & Conditions and Health & Liability Waiver to create an account.",
+      },
       { status: 400 }
     );
   }
@@ -98,6 +102,8 @@ export async function POST(req: Request) {
         dateFormat,
         hasAgreedToTerms: true,
         hasAgreedToHealth: true,
+        acceptedTermsVersion: CURRENT_TERMS_VERSION,
+        acceptedHealthWaiverVersion: CURRENT_HEALTH_WAIVER_VERSION,
         termsAgreedAt: new Date(),
         healthAgreedAt: new Date(),
       },
@@ -119,6 +125,8 @@ export async function POST(req: Request) {
         authCodeExpiry: expiry,
         hasAgreedToTerms: true,
         hasAgreedToHealth: true,
+        acceptedTermsVersion: CURRENT_TERMS_VERSION,
+        acceptedHealthWaiverVersion: CURRENT_HEALTH_WAIVER_VERSION,
         termsAgreedAt: now,
         healthAgreedAt: now,
       },

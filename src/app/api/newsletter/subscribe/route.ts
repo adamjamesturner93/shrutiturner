@@ -4,6 +4,8 @@ import { getNewsletterSignupContent } from "@/lib/content";
 import { render } from "@react-email/render";
 import WelcomeEmail from "@/emails/welcome";
 import { getClientIp, verifyTurnstileToken } from "@/lib/turnstile";
+import { db } from "@/lib/db";
+import { subscribeMarketingEmail } from "@/lib/newsletter/subscriber-service";
 
 type SignupRequestBody = {
   email?: unknown;
@@ -141,7 +143,17 @@ export async function POST(req: Request) {
 
   const siteUrl = getBaseSiteUrl().replace(/\/$/, "");
   const leadMagnetUrl = signupContent.assetUrl || `${siteUrl}/blog`;
-  const unsubscribeUrl = `${siteUrl}/unsubscribe?email=${encodeURIComponent(email)}`;
+  const existingUser = await db.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+  const subscriber = await subscribeMarketingEmail({
+    email,
+    userId: existingUser?.id || null,
+    source,
+  });
+
+  const unsubscribeUrl = `${siteUrl}/unsubscribe?token=${encodeURIComponent(subscriber.token)}`;
   const welcomeCopy = applyTokens(signupContent.emailBody || fallbackBody, {
     firstName,
     email,
@@ -183,6 +195,7 @@ export async function POST(req: Request) {
         consent: "true",
         marketingOptIn: "true",
         subscribedAt: new Date().toISOString(),
+        subscriberId: subscriber.id,
       },
     });
   } catch (error) {

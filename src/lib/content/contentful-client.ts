@@ -27,10 +27,16 @@ function getCacheTags(contentType?: string): string[] {
   }
 
   if (contentType === "blogPost") return [...base, "content:blog"];
+  if (contentType === "authorProfile") return [...base, "content:blog"];
   if (contentType === "classDefinition") return [...base, "content:classes", "content:schedule"];
   if (contentType === "themedWeekPromo") return [...base, "content:classes"];
+  if (contentType === "smallGroupProgramme") return [...base, "content:classes"];
   if (contentType === "instructorProfile") return [...base, "content:classes", "content:schedule"];
-  if (contentType === "retreatTemplate" || contentType === "retreatVenue") {
+  if (
+    contentType === "retreatTemplate" ||
+    contentType === "retreatVenue" ||
+    contentType === "retreatInstance"
+  ) {
     return [...base, "content:retreats"];
   }
   if (contentType === "legalDocument") return [...base, "content:legal"];

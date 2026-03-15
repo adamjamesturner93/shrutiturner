@@ -19,6 +19,7 @@ export async function getDashboardSummary(userId: string): Promise<DashboardSumm
     attendedCount,
     thisWeekBookedCount,
     historicalBookings,
+    healthProfile,
   ] = await Promise.all([
     getMembershipState(userId),
     db.classBooking.findMany({
@@ -52,6 +53,10 @@ export async function getDashboardSummary(userId: string): Promise<DashboardSumm
       where: { userId, status: { in: [ClassBookingStatus.booked, ClassBookingStatus.attended] } },
       select: { sessionId: true },
     }),
+    db.healthProfile.findUnique({
+      where: { userId },
+      select: { id: true },
+    }),
   ]);
 
   const sessionFrequency = new Map<string, number>();
@@ -77,6 +82,7 @@ export async function getDashboardSummary(userId: string): Promise<DashboardSumm
   const favouriteById = new Map(favouriteSessions.map((session) => [session.id, session]));
 
   return {
+    hasHealthProfile: Boolean(healthProfile),
     upcomingClasses: upcomingBookings.map((booking) => ({
       bookingId: booking.id,
       sessionId: booking.sessionId,

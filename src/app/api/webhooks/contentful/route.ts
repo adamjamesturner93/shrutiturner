@@ -7,8 +7,13 @@ const WEBHOOK_SECRET = process.env.CONTENTFUL_WEBHOOK_SECRET;
 function topicToTags(topic: string) {
   if (topic.includes("classDefinition")) return ["content:classes", "content:schedule"];
   if (topic.includes("themedWeekPromo")) return ["content:classes"];
+  if (topic.includes("smallGroupProgramme")) return ["content:classes"];
   if (topic.includes("instructorProfile")) return ["content:classes", "content:schedule"];
-  if (topic.includes("retreatTemplate") || topic.includes("retreatVenue"))
+  if (
+    topic.includes("retreatTemplate") ||
+    topic.includes("retreatVenue") ||
+    topic.includes("retreatInstance")
+  )
     return ["content:retreats"];
   if (topic.includes("blogPost")) return ["content:blog"];
   if (topic.includes("legalDocument")) return ["content:legal"];

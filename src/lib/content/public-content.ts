@@ -1,4 +1,4 @@
-import { blogPosts as LOCAL_BLOG_POSTS } from "@/data/blog-data";
+import { blogAuthors as LOCAL_BLOG_AUTHORS, blogPosts as LOCAL_BLOG_POSTS } from "@/data/blog-data";
 import {
   LOCAL_CLASS_DEFINITIONS,
   LOCAL_GLOBAL_CONTENT,
@@ -6,6 +6,7 @@ import {
   LOCAL_NEWSLETTER_SIGNUP_CONTENT,
   LOCAL_PAGE_CONTENT,
   LOCAL_RETREAT_INSTANCES,
+  LOCAL_SMALL_GROUP_PROGRAMMES,
   LOCAL_THEMED_WEEK_PROMOS,
   getLocalScheduleByDay,
 } from "./local-content";
@@ -23,16 +24,19 @@ import type {
   NewsletterTemplateContent,
   PageContent,
   RetreatCombinedContent,
+  RetreatRoomOptionContent,
   RetreatInstanceContent,
   RetreatTemplateContent,
   RetreatVenueContent,
   SeoContent,
+  SmallGroupTemplateContent,
   AnnouncementBannerContent,
   FaqItemContent,
   ThemedWeekPromo,
   TestimonialContent,
   TransactionalEmailTemplateContent,
   TrustBadgeContent,
+  AuthorProfileContent,
 } from "./types";
 
 type ScheduleDay = ReturnType<typeof getLocalScheduleByDay>[number];
@@ -52,6 +56,19 @@ function parseStringArray(value: unknown): string[] {
   return value.filter((v): v is string => typeof v === "string");
 }
 
+function parseObjectArray<T>(
+  value: unknown,
+  mapper: (item: Record<string, unknown>) => T | null
+): T[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+      return mapper(item as Record<string, unknown>);
+    })
+    .filter((item): item is T => Boolean(item));
+}
+
 function getLinkedEntryId(value: unknown): string | undefined {
   if (!value || typeof value !== "object" || !("sys" in value)) {
     return undefined;
@@ -67,6 +84,93 @@ function getIncludedEntryById(
 ) {
   if (!includes || !id) return null;
   return includes.find((entry) => entry.sys.id === id) || null;
+}
+
+function slugify(input: string) {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/['’"]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function createFallbackAvatar(name: string) {
+  return `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(name)}`;
+}
+
+const localBlogAuthorBySlug = new Map(LOCAL_BLOG_AUTHORS.map((author) => [author.slug, author]));
+const localBlogAuthorByName = new Map(
+  LOCAL_BLOG_AUTHORS.map((author) => [author.name.toLowerCase(), author])
+);
+
+function mapAuthorProfile(
+  id: string,
+  fields: Record<string, unknown> | null | undefined
+): AuthorProfileContent | null {
+  if (!fields) return null;
+
+  const name = fields.name ? String(fields.name) : "";
+  if (!name) return null;
+
+  return {
+    id,
+    slug: String(fields.slug || slugify(name) || id),
+    name,
+    role: fields.role ? String(fields.role) : undefined,
+    bio: fields.bio ? String(fields.bio) : "",
+    avatarImageUrl: fields.avatarImageUrl
+      ? String(fields.avatarImageUrl)
+      : createFallbackAvatar(name),
+    avatarAlt: fields.avatarAlt ? String(fields.avatarAlt) : `${name} avatar`,
+    websiteUrl: fields.websiteUrl ? String(fields.websiteUrl) : undefined,
+    instagramHandle: fields.instagramHandle ? String(fields.instagramHandle) : undefined,
+    isGuestContributor: fields.isGuestContributor === true,
+    active: fields.active !== false,
+  };
+}
+
+function resolveLegacyAuthor(name: string): AuthorProfileContent {
+  const localMatch = localBlogAuthorByName.get(name.toLowerCase());
+  if (localMatch) return localMatch;
+
+  return {
+    id: slugify(name) || name,
+    slug: slugify(name) || name,
+    name,
+    role: "Contributor",
+    bio: "",
+    avatarImageUrl: createFallbackAvatar(name),
+    avatarAlt: `${name} avatar`,
+    isGuestContributor: false,
+    active: true,
+  };
+}
+
+function mapBlogPostAuthors(
+  item: { sys: { id: string }; fields: Record<string, unknown> },
+  includes: Array<{ sys: { id: string }; fields: Record<string, unknown> }> | undefined
+) {
+  const linkedAuthors = Array.isArray(item.fields.authors)
+    ? item.fields.authors
+        .map((authorRef) => {
+          const authorId = getLinkedEntryId(authorRef);
+          const localAuthor = authorId ? localBlogAuthorBySlug.get(authorId) : undefined;
+          if (localAuthor) return localAuthor;
+          const linkedEntry = getIncludedEntryById(includes, authorId);
+          return mapAuthorProfile(authorId || "", linkedEntry?.fields);
+        })
+        .filter((author): author is AuthorProfileContent => Boolean(author))
+    : [];
+
+  if (linkedAuthors.length > 0) {
+    return linkedAuthors;
+  }
+
+  const legacyAuthorName = item.fields.authorName
+    ? String(item.fields.authorName)
+    : "Shruti Turner";
+  return [resolveLegacyAuthor(legacyAuthorName)];
 }
 
 function combineRetreats(
@@ -103,6 +207,7 @@ function combineRetreats(
         endDate: i.endDate,
         availableSpaces: i.availableSpaces,
         totalSpaces: i.totalSpaces,
+        roomOptions: i.roomOptions || [],
       })),
       earlyBirdPrice: first.earlyBirdPrice,
       earlyBirdDeadline: first.earlyBirdDeadline,
@@ -432,6 +537,7 @@ export async function getBlogPosts(): Promise<BlogPostContent[]> {
     const res = await getEntries<Record<string, unknown>>("blogPost", {
       order: "-fields.publishDate",
       limit: 200,
+      include: 2,
     });
     if (res?.items?.length) {
       return res.items.map((item) => ({
@@ -439,7 +545,8 @@ export async function getBlogPosts(): Promise<BlogPostContent[]> {
         title: String(item.fields.title || "Untitled"),
         excerpt: String(item.fields.excerpt || ""),
         content: String(item.fields.content || ""),
-        author: String(item.fields.authorName || "Shruti Turner"),
+        author: item.fields.authorName ? String(item.fields.authorName) : undefined,
+        authors: mapBlogPostAuthors(item, res.includes?.Entry),
         date: String(item.fields.publishDate || ""),
         tags: parseStringArray(item.fields.tags),
         readTime: String(item.fields.readTime || ""),
@@ -524,6 +631,68 @@ export async function getThemedWeekPromos(): Promise<ThemedWeekPromo[]> {
 
   return LOCAL_THEMED_WEEK_PROMOS;
 }
+
+export async function getSmallGroupTemplates(): Promise<SmallGroupTemplateContent[]> {
+  if (prefersContentfulSource()) {
+    const res = await getEntries<Record<string, unknown>>("smallGroupProgramme", {
+      limit: 100,
+      order: "fields.title",
+    });
+    if (res?.items?.length) {
+      return res.items.map((item) => ({
+        id: String(item.sys.id),
+        slug: String(item.fields.slug || item.sys.id),
+        title: String(item.fields.title || "Small Group Programme"),
+        subtitle: item.fields.subtitle ? String(item.fields.subtitle) : undefined,
+        shortSummary: String(item.fields.shortSummary || ""),
+        fullDescription: item.fields.fullDescription
+          ? String(item.fields.fullDescription)
+          : undefined,
+        longDescription: item.fields.longDescription
+          ? String(item.fields.longDescription)
+          : undefined,
+        outcomes: parseStringArray(item.fields.outcomes),
+        durationLabel: String(item.fields.durationLabel || ""),
+        durationWeeks:
+          item.fields.durationWeeks === undefined ? undefined : Number(item.fields.durationWeeks),
+        cohortSize: Number(item.fields.cohortSize || 0),
+        sessionsPerWeek:
+          item.fields.sessionsPerWeek === undefined
+            ? undefined
+            : Number(item.fields.sessionsPerWeek),
+        defaultPricePence:
+          item.fields.defaultPricePence === undefined
+            ? undefined
+            : Number(item.fields.defaultPricePence),
+        whoItsFor: parseStringArray(item.fields.whoItsFor),
+        equipment: parseStringArray(item.fields.equipment),
+        inclusions: parseStringArray(item.fields.inclusions),
+        weekByWeek: parseObjectArray(item.fields.weekByWeek, (week) => {
+          const weekNumber = Number(week.weekNumber);
+          if (!Number.isFinite(weekNumber) || weekNumber <= 0) return null;
+          return {
+            weekNumber,
+            title: String(week.title || `Week ${weekNumber}`),
+            focus: week.focus ? String(week.focus) : undefined,
+            sessionTitles: parseStringArray(week.sessionTitles),
+          };
+        }),
+      }));
+    }
+  }
+
+  return LOCAL_SMALL_GROUP_PROGRAMMES;
+}
+
+export async function getSmallGroupTemplateBySlug(
+  slug: string
+): Promise<SmallGroupTemplateContent | null> {
+  const programmes = await getSmallGroupTemplates();
+  return programmes.find((programme) => programme.slug === slug) || null;
+}
+
+export const getSmallGroupProgrammes = getSmallGroupTemplates;
+export const getSmallGroupProgrammeBySlug = getSmallGroupTemplateBySlug;
 
 export async function getInstructorProfiles(): Promise<InstructorProfileContent[]> {
   if (prefersContentfulSource()) {
@@ -634,7 +803,46 @@ export async function getRetreatTemplates(): Promise<RetreatTemplateContent[]> {
 }
 
 export async function getRetreatInstances(): Promise<RetreatInstanceContent[]> {
-  // Backend/admin-managed source of truth for run dates and pricing.
+  if (prefersContentfulSource()) {
+    const res = await getEntries<Record<string, unknown>>("retreatInstance", {
+      limit: 200,
+      order: "fields.startDate",
+    });
+    if (res?.items?.length) {
+      return res.items.map((item) => ({
+        id: String(item.fields.externalDateId || item.fields.slug || item.sys.id),
+        templateSlug: String(item.fields.templateSlug || ""),
+        startDate: String(item.fields.startDate || ""),
+        endDate: String(item.fields.endDate || ""),
+        availableSpaces: Number(item.fields.availableSpaces || 0),
+        totalSpaces: Number(item.fields.totalSpaces || 0),
+        earlyBirdPrice: Number(item.fields.earlyBirdPrice || 0),
+        normalPrice: Number(item.fields.normalPrice || 0),
+        earlyBirdDeadline: String(item.fields.earlyBirdDeadline || ""),
+        currency: String(item.fields.currency || "GBP"),
+        roomOptions: parseObjectArray(item.fields.roomOptions, (room) => {
+          const id = room.id ? String(room.id) : "";
+          const label = room.label ? String(room.label) : "";
+          if (!id || !label) return null;
+          return {
+            id,
+            label,
+            description: String(room.description || ""),
+            type: String(room.type || "shared_twin") as RetreatRoomOptionContent["type"],
+            guestsIncluded: Number(room.guestsIncluded || 1),
+            capacity: Number(room.capacity || 0),
+            availableSpots: Number(room.availableSpots || 0),
+            earlyBirdPricePence:
+              room.earlyBirdPricePence === undefined ? undefined : Number(room.earlyBirdPricePence),
+            normalPricePence: Number(room.normalPricePence || 0),
+            depositPence: room.depositPence === undefined ? undefined : Number(room.depositPence),
+            isWaitlistOnly: room.isWaitlistOnly === true,
+          };
+        }),
+      }));
+    }
+  }
+
   return LOCAL_RETREAT_INSTANCES;
 }
 

@@ -1,313 +1,181 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { ArrowLeft, Calendar, CheckCircle2, Clock3, Users } from "lucide-react";
 import { DashboardLayout } from "../../components/dashboard-layout";
+import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { useState } from "react";
-import { ArrowLeft, Video, Calendar, Check, CheckCircle, Users, Play } from "lucide-react";
-import { PreJoinLobby } from "../../components/video/pre-join-lobby";
-import { VideoRoom } from "../../components/video/video-room";
-import { SEO } from "../../components/seo";
-import { useI18n } from "../../lib/use-i18n";
+import type { MemberSmallGroupDetail } from "@/lib/small-groups/service";
 
-type Stage = "detail" | "pre-join" | "live" | "post-session" | "recording";
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
 
-export function DashboardProgramDetail() {
-  const { id } = useParams<{ id: string }>();
-  const [stage, setStage] = useState<Stage>("detail");
-  const [activeRecording, setActiveRecording] = useState<string | null>(null);
-  const { fmtDate } = useI18n();
+function statusLabel(value: string) {
+  return value.replaceAll("_", " ");
+}
 
-  // Mock program data
-  const program = {
-    title: "Shoulder Resilience & Mobility",
-    duration: "6 weeks",
-    startDate: "2026-03-17",
-    progress: 3,
-    totalSessions: 12,
-    cohortSize: 5,
-    sessions: [
-      {
-        week: 1,
-        session: 1,
-        title: "Assessment & Baseline",
-        completed: true,
-        recordingAvailable: true,
-      },
-      {
-        week: 1,
-        session: 2,
-        title: "Rotator Cuff Foundations",
-        completed: true,
-        recordingAvailable: true,
-      },
-      {
-        week: 2,
-        session: 1,
-        title: "Scapular Stability",
-        completed: true,
-        recordingAvailable: true,
-      },
-      {
-        week: 2,
-        session: 2,
-        title: "Overhead Mobility Prep",
-        completed: false,
-        upcoming: true,
-        recordingAvailable: false,
-      },
-      {
-        week: 3,
-        session: 1,
-        title: "Loaded Overhead Work",
-        completed: false,
-        recordingAvailable: false,
-      },
-      {
-        week: 3,
-        session: 2,
-        title: "Integration & Practice",
-        completed: false,
-        recordingAvailable: false,
-      },
-    ],
-  };
-
-  const upcomingSession = program.sessions.find((s) => s.upcoming);
-
-  // Recording playback
-  if (stage === "recording" && activeRecording) {
-    const session = program.sessions.find((s) => s.title === activeRecording);
+export function DashboardSmallGroupDetail({
+  initialData,
+}: {
+  initialData: MemberSmallGroupDetail | null;
+}) {
+  if (!initialData) {
     return (
-      <div className="bg-video-backdrop fixed inset-0 z-[100] flex flex-col">
-        <SEO title={`Recording: ${activeRecording} - Shruti Turner`} noIndex />
-        <div className="flex items-center justify-between border-b border-white/10 p-4">
-          <div className="text-white">
-            <p className="text-sm text-white/50">Programme Recording</p>
-            <p className="text-base">
-              {program.title}: {activeRecording}
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-white/70 hover:text-white"
-            onClick={() => {
-              setStage("detail");
-              setActiveRecording(null);
-            }}
-          >
-            Close
+      <DashboardLayout title="Small Group Programme - Private Studio">
+        <div className="py-16 text-center">
+          <p className="text-muted-foreground">Programme not found.</p>
+          <Button asChild variant="outline" className="mt-6">
+            <Link href="/dashboard/small-groups">Back to small group programmes</Link>
           </Button>
         </div>
-        <div className="flex flex-1 items-center justify-center">
-          <div className="space-y-4 text-center">
-            <div className="bg-brand-accent/30 mx-auto flex h-20 w-20 items-center justify-center rounded-full">
-              <Play className="text-brand-accent-light ml-1 h-10 w-10" />
-            </div>
-            <p className="text-sm text-white/70">Session recording playback</p>
-            <p className="text-xs text-white/40">[In production: Daily.co recording embed]</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Pre-join lobby
-  if (stage === "pre-join") {
-    return (
-      <>
-        <SEO title={`Joining ${upcomingSession?.title || program.title} - Shruti Turner`} noIndex />
-        <PreJoinLobby
-          className={`${program.title}: ${upcomingSession?.title || "Session"}`}
-          classTime="11:00"
-          classDuration="45 min"
-          classLevel="Programme"
-          instructor="Shruti Turner"
-          equipment={[
-            "Light dumbbells (2-5kg)",
-            "Resistance band (light-medium)",
-            "Yoga mat",
-            "Chair for support",
-          ]}
-          registeredCount={program.cohortSize}
-          maxSpaces={program.cohortSize}
-          mode="small-group"
-          onJoin={() => setStage("live")}
-          onBack={() => setStage("detail")}
-        />
-      </>
-    );
-  }
-
-  // Live video room
-  if (stage === "live") {
-    return (
-      <>
-        <SEO title={`${upcomingSession?.title || program.title} - Live - Shruti Turner`} noIndex />
-        <VideoRoom
-          mode="small-group"
-          isInstructor={false}
-          className={`${program.title}: ${upcomingSession?.title || "Session"}`}
-          classTime="11:00"
-          classDuration="45 min"
-          registeredCount={program.cohortSize}
-          onLeave={() => setStage("post-session")}
-        />
-      </>
-    );
-  }
-
-  // Post-session
-  if (stage === "post-session") {
-    return (
-      <div className="bg-video-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4">
-        <SEO title={`Session Complete - Shruti Turner`} noIndex />
-        <div className="bg-video-panel w-full max-w-sm space-y-6 rounded-xl border border-white/10 p-8 text-center">
-          <div className="bg-brand-accent/20 mx-auto flex h-16 w-16 items-center justify-center rounded-full">
-            <CheckCircle className="text-brand-accent-light h-8 w-8" />
-          </div>
-          <div>
-            <h2 className="text-xl text-white">Session complete</h2>
-            <p className="mt-2 text-sm leading-relaxed text-white/50">
-              Well done. Your progress has been updated.
-            </p>
-          </div>
-          <div className="space-y-3">
-            <Button
-              onClick={() => setStage("detail")}
-              className="bg-brand-accent hover:bg-brand-accent/90 w-full text-white"
-            >
-              Back to Programme
-            </Button>
-          </div>
-        </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <DashboardLayout title={`${program.title} - Private Studio`}>
-      <nav className="mb-6">
+    <DashboardLayout title={`${initialData.title} - Private Studio`}>
+      <div className="space-y-6">
         <Link
-          href="/dashboard/programs"
-          className="text-muted-foreground hover:text-primary inline-flex items-center text-sm"
+          href="/dashboard/small-groups"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-2 text-sm transition-colors"
         >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Programs
+          <ArrowLeft className="h-4 w-4" />
+          Back to small group programmes
         </Link>
-      </nav>
 
-      <div className="grid gap-8 lg:grid-cols-3">
-        <div className="space-y-8 lg:col-span-2">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="mb-2 text-3xl">{program.title}</h1>
-            <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
-              <span className="flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
-                {program.duration}
-              </span>
-              <span className="flex items-center gap-1">
-                <Users className="h-4 w-4" />
-                {program.cohortSize} in cohort
-              </span>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <Badge className="bg-brand-accent text-brand-white">
+                {initialData.enrolled ? "Enrolled" : "Available"}
+              </Badge>
+              <Badge variant="outline">{statusLabel(initialData.status)}</Badge>
             </div>
+            <h1 className="text-3xl">{initialData.title}</h1>
+            <p className="text-muted-foreground mt-3 max-w-3xl leading-relaxed">
+              {initialData.longDescription || initialData.shortSummary}
+            </p>
           </div>
-
-          {/* Progress */}
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-xl">Progress</h2>
-              <span className="text-muted-foreground text-sm">
-                {program.progress} / {program.totalSessions} sessions
-              </span>
-            </div>
-            <div className="bg-secondary h-3 w-full rounded-full">
-              <div
-                className="bg-brand-accent h-3 rounded-full transition-all"
-                style={{ width: `${(program.progress / program.totalSessions) * 100}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Sessions */}
-          <div>
-            <h2 className="mb-4 text-xl">Sessions</h2>
-            <div className="space-y-3">
-              {program.sessions.map((session, i) => (
-                <div
-                  key={i}
-                  className={`flex items-center justify-between rounded-lg border p-4 ${
-                    session.completed
-                      ? "border-brand-accent/20 bg-brand-accent/5"
-                      : session.upcoming
-                        ? "border-primary"
-                        : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                        session.completed
-                          ? "bg-brand-accent text-brand-white"
-                          : "bg-secondary text-muted-foreground"
-                      }`}
-                    >
-                      {session.completed ? (
-                        <Check className="h-4 w-4" />
-                      ) : (
-                        <span className="text-xs">W{session.week}</span>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-sm">{session.title}</p>
-                      <p className="text-muted-foreground text-xs">
-                        Week {session.week}, Session {session.session}
-                      </p>
-                    </div>
-                  </div>
-                  {session.upcoming && (
-                    <Button size="sm" onClick={() => setStage("pre-join")}>
-                      <Video className="mr-2 h-3.5 w-3.5" />
-                      Join
-                    </Button>
-                  )}
-                  {session.completed && session.recordingAvailable && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setActiveRecording(session.title);
-                        setStage("recording");
-                      }}
-                    >
-                      <Play className="mr-1.5 h-3.5 w-3.5" />
-                      Recording
-                    </Button>
-                  )}
-                  {session.completed && !session.recordingAvailable && (
-                    <span className="text-brand-accent text-xs">Completed</span>
-                  )}
-                </div>
-              ))}
-            </div>
+          <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
+            <span className="flex items-center gap-1">
+              <Calendar className="h-4 w-4" />
+              {initialData.durationLabel}
+            </span>
+            <span className="flex items-center gap-1">
+              <Users className="h-4 w-4" />
+              {initialData.cohortSize} places
+            </span>
           </div>
         </div>
 
-        {/* Sidebar */}
-        <div>
-          <div className="bg-background sticky top-6 space-y-4 rounded-lg border p-6">
-            <h3 className="text-lg">Your Cohort</h3>
-            <div className="space-y-3">
-              {["You", "Emma T.", "Marcus L.", "Priya K.", "Alex R."].map((name, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className="bg-secondary flex h-8 w-8 items-center justify-center rounded-full text-xs">
-                    {name[0]}
-                  </div>
-                  <span className="text-sm">{name}</span>
+        <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="space-y-6">
+            <div className="bg-background rounded-[1.5rem] border p-6">
+              <h2 className="mb-4 text-xl">Programme Overview</h2>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-xl border p-4">
+                  <p className="text-muted-foreground text-xs tracking-[0.16em] uppercase">
+                    Schedule
+                  </p>
+                  <p className="mt-2 text-sm">
+                    {initialData.scheduleLabel || "Schedule announced soon"}
+                  </p>
                 </div>
-              ))}
+                <div className="rounded-xl border p-4">
+                  <p className="text-muted-foreground text-xs tracking-[0.16em] uppercase">Price</p>
+                  <p className="mt-2 text-sm">{initialData.priceLabel}</p>
+                </div>
+                <div className="rounded-xl border p-4">
+                  <p className="text-muted-foreground text-xs tracking-[0.16em] uppercase">
+                    Progress
+                  </p>
+                  <p className="mt-2 text-sm">
+                    {initialData.progressSummary ||
+                      `${initialData.sessionsAttended} session${initialData.sessionsAttended === 1 ? "" : "s"} attended`}
+                  </p>
+                </div>
+                <div className="rounded-xl border p-4">
+                  <p className="text-muted-foreground text-xs tracking-[0.16em] uppercase">
+                    Next session
+                  </p>
+                  <p className="mt-2 text-sm">
+                    {initialData.nextSessionStartsAt
+                      ? formatDateTime(initialData.nextSessionStartsAt)
+                      : "No future session scheduled yet"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-background rounded-[1.5rem] border p-6">
+              <h2 className="mb-4 text-xl">Sessions</h2>
+              <div className="space-y-3">
+                {initialData.sessions.map((session) => (
+                  <div
+                    key={session.id}
+                    className="flex items-center justify-between gap-4 rounded-xl border p-4"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm">
+                        Week {session.sequenceNumber}: {session.title}
+                      </p>
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        {formatDateTime(session.startsAt)}
+                      </p>
+                    </div>
+                    <Badge variant={session.status === "completed" ? "default" : "outline"}>
+                      {statusLabel(session.status)}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="border-brand-accent/20 bg-brand-accent/5 rounded-[1.5rem] border p-6">
+              <div className="mb-4 flex items-center gap-2">
+                <CheckCircle2 className="text-brand-accent h-5 w-5" />
+                <h2 className="text-xl">What to do next</h2>
+              </div>
+              <div className="space-y-3 text-sm leading-relaxed">
+                <p>
+                  {initialData.enrolled
+                    ? "Keep an eye on your next session time and use your regular dashboard for class bookings around it."
+                    : "This programme is not linked to your account yet. Use the public programme page to register interest or join the waitlist."}
+                </p>
+                <p className="text-muted-foreground">
+                  Small group programme support stays close to the same calm, adaptive training
+                  approach as Move Well Classes, but in a tighter cohort.
+                </p>
+              </div>
+              <div className="mt-5 flex flex-col gap-3">
+                <Button asChild>
+                  <Link href={initialData.publicHref}>View public programme details</Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/contact">Contact Shruti</Link>
+                </Button>
+              </div>
+            </div>
+
+            <div className="bg-background rounded-[1.5rem] border p-6">
+              <div className="mb-4 flex items-center gap-2">
+                <Clock3 className="text-brand-accent h-5 w-5" />
+                <h2 className="text-xl">Planning</h2>
+              </div>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Use this page to track the structure of the programme block, then bring any
+                day-to-day questions back to class, email, or your wider coaching support when
+                relevant.
+              </p>
             </div>
           </div>
         </div>

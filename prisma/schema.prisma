@@ -103,6 +103,138 @@ enum BillingEventStatus {
   failed
 }
 
+enum NewsletterSubscriberStatus {
+  subscribed
+  unsubscribed
+}
+
+enum RetreatDateStatus {
+  open
+  sold_out
+  cancelled
+  completed
+}
+
+enum RetreatBookingStatus {
+  pending
+  deposit_paid
+  balance_due
+  paid_in_full
+  cancelled
+  refunded
+}
+
+enum RetreatPaymentStatus {
+  unpaid
+  deposit_paid
+  partially_paid
+  paid_in_full
+  refunded
+  failed
+}
+
+enum GiftType {
+  retreat
+  small_group
+}
+
+enum GiftPurchaseStatus {
+  pending_payment
+  purchased
+  redeemed
+  expired
+  cancelled
+}
+
+enum GiftDeliveryTarget {
+  recipient
+  buyer
+}
+
+enum CoachingSupportTier {
+  personal_programme
+  coached_plan
+  coaching
+  unsure
+}
+
+enum CoachingApplicationStatus {
+  submitted
+  under_review
+  follow_up_needed
+  approved
+  declined
+  converted
+}
+
+enum CoachingClientStatus {
+  application_pending
+  onboarding
+  active
+  paused
+  completed
+}
+
+enum EverfitConnectionStatus {
+  not_started
+  invite_sent
+  connected
+  sync_issue
+}
+
+enum CoachingSessionStatus {
+  scheduled
+  completed
+  cancelled
+}
+
+enum CoachingCheckInCadence {
+  weekly
+  monthly
+}
+
+enum CoachingCheckInStatus {
+  due
+  submitted
+  reviewed
+  overdue
+}
+
+enum BlogCommentStatus {
+  visible
+  hidden
+  deleted
+}
+
+enum ContactSubmissionStatus {
+  new
+  archived
+}
+
+enum SmallGroupProgrammeStatus {
+  draft
+  upcoming
+  open
+  in_progress
+  completed
+  waitlist
+  archived
+}
+
+enum SmallGroupSessionStatus {
+  scheduled
+  completed
+  cancelled
+}
+
+enum SmallGroupEnrollmentStatus {
+  pending_payment
+  active
+  completed
+  cancelled
+  waitlist
+}
+
 model User {
   id               String    @id @default(cuid())
   firstName        String?
@@ -122,6 +254,11 @@ model User {
   hasAgreedToHealth Boolean  @default(false)
   termsAgreedAt    DateTime?
   healthAgreedAt   DateTime?
+  acceptedTermsVersion String?
+  acceptedHealthWaiverVersion String?
+  hasConsentedToHealthData Boolean @default(false)
+  acceptedHealthDataConsentVersion String?
+  healthDataConsentedAt DateTime?
   heardAboutSource String?
   heardAboutDetail String?
   stripeCustomerId String?   @unique
@@ -157,6 +294,17 @@ model User {
   emailEvents            EmailEvent[]
   attendanceOverrides    ClassBooking[]             @relation("AttendanceMarkedBy")
   classAttendanceEvents  ClassAttendanceEvent[]
+  newsletterSubscriber   NewsletterSubscriber?
+  giftPurchasesMade      GiftPurchase[]          @relation("GiftPurchasePurchaser")
+  giftPurchasesRedeemed  GiftPurchase[]          @relation("GiftPurchaseRedeemer")
+  retreatBookingsPurchased RetreatBooking[]         @relation("RetreatBookingPurchaser")
+  retreatBookingsAttending RetreatBooking[]         @relation("RetreatBookingAttendee")
+  coachingApplications   CoachingApplication[]
+  coachingProfile        CoachingClientProfile?
+  blogComments           BlogComment[]
+  blogReactions          BlogReaction[]
+  smallGroupEnrollments  SmallGroupProgrammeEnrollment[]
+  contactSubmissions     ContactSubmission[]
 }
 
 model Account {
@@ -591,4 +739,413 @@ model PromotionCodeMirror {
   updatedAt             DateTime @updatedAt
 
   @@index([active, code])
+}
+
+model NewsletterSubscriber {
+  id             String                     @id @default(cuid())
+  email          String                     @unique
+  userId         String?                    @unique
+  status         NewsletterSubscriberStatus @default(subscribed)
+  source         String?
+  token          String                     @unique
+  subscribedAt   DateTime                   @default(now())
+  unsubscribedAt DateTime?
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, updatedAt])
+}
+
+model RetreatDate {
+  id                          String            @id @default(cuid())
+  externalDateId              String            @unique
+  retreatSlug                 String
+  retreatTitleSnapshot        String
+  retreatLocationSnapshot     String
+  startsAt                    DateTime
+  endsAt                      DateTime
+  capacity                    Int
+  status                      RetreatDateStatus @default(open)
+  currency                    String            @default("GBP")
+  pricePence                  Int
+  depositAmountPence          Int
+  singleRoomSupplementPence   Int               @default(0)
+  balanceDueAt                DateTime?
+  createdAt                   DateTime          @default(now())
+  updatedAt                   DateTime          @updatedAt
+
+  bookings     RetreatBooking[]
+  roomOptions  RetreatRoomOption[]
+  giftPurchases GiftPurchase[]
+
+  @@index([retreatSlug, startsAt])
+  @@index([status, startsAt])
+}
+
+model RetreatRoomOption {
+  id                 String      @id @default(cuid())
+  retreatDateId      String
+  externalRoomOptionId String
+  label              String
+  description        String?
+  roomType           String
+  guestsIncluded     Int         @default(1)
+  capacity           Int
+  availableSpots     Int
+  pricePence         Int
+  depositAmountPence Int?
+  isWaitlistOnly     Boolean     @default(false)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  retreatDate    RetreatDate      @relation(fields: [retreatDateId], references: [id], onDelete: Cascade)
+  bookings       RetreatBooking[]
+  giftPurchases  GiftPurchase[]
+
+  @@unique([retreatDateId, externalRoomOptionId])
+  @@index([retreatDateId, availableSpots])
+}
+
+model RetreatBooking {
+  id                           String               @id @default(cuid())
+  retreatDateId                String
+  roomOptionId                 String?
+  purchaserUserId              String?
+  attendeeUserId               String?
+  purchaserFirstName           String
+  purchaserLastName            String
+  purchaserEmail               String
+  attendeeFirstName            String
+  attendeeLastName             String
+  attendeeEmail                String
+  phone                        String
+  emergencyContactName         String
+  emergencyContactPhone        String
+  dietaryRequirements          String?
+  medicalConditions            String?
+  mobilityNeeds                String?
+  guestTwoFirstName            String?
+  guestTwoLastName             String?
+  guestTwoEmail                String?
+  guestTwoDietaryRequirements  String?
+  singleRoomRequested          Boolean              @default(false)
+  roomType                     String?
+  roomOptionLabelSnapshot      String?
+  roomOptionTypeSnapshot       String?
+  guestsIncluded               Int                  @default(1)
+  giftPurchaseId               String?              @unique
+  acceptedTermsVersion         String?
+  acceptedHealthWaiverVersion  String?
+  acceptedHealthDataVersion    String?
+  totalPricePence              Int
+  depositAmountPence           Int
+  balanceAmountPence           Int
+  depositPaidPence             Int                  @default(0)
+  balancePaidPence             Int                  @default(0)
+  currency                     String               @default("GBP")
+  paymentStatus                RetreatPaymentStatus @default(unpaid)
+  bookingStatus                RetreatBookingStatus @default(pending)
+  stripeDepositSessionId       String?              @unique
+  stripeBalanceSessionId       String?              @unique
+  stripeDepositPaymentIntentId String?
+  stripeBalancePaymentIntentId String?
+  balancePaymentUrlToken       String?              @unique
+  balanceDueAt                 DateTime?
+  bookedAt                     DateTime             @default(now())
+  depositPaidAt                DateTime?
+  balancePaidAt                DateTime?
+  cancelledAt                  DateTime?
+  createdAt                    DateTime             @default(now())
+  updatedAt                    DateTime             @updatedAt
+
+  retreatDate    RetreatDate @relation(fields: [retreatDateId], references: [id], onDelete: Restrict)
+  roomOption     RetreatRoomOption? @relation(fields: [roomOptionId], references: [id], onDelete: SetNull)
+  purchaserUser  User?       @relation("RetreatBookingPurchaser", fields: [purchaserUserId], references: [id], onDelete: SetNull)
+  attendeeUser   User?       @relation("RetreatBookingAttendee", fields: [attendeeUserId], references: [id], onDelete: SetNull)
+  giftPurchase   GiftPurchase? @relation("GiftPurchaseRetreatBooking", fields: [giftPurchaseId], references: [id], onDelete: SetNull)
+
+  @@index([retreatDateId, bookingStatus])
+  @@index([roomOptionId, bookingStatus])
+  @@index([purchaserUserId, bookingStatus])
+  @@index([attendeeUserId, bookingStatus])
+  @@index([purchaserEmail, bookingStatus])
+  @@index([attendeeEmail, bookingStatus])
+  @@index([paymentStatus, balanceDueAt])
+}
+
+model GiftPurchase {
+  id                    String             @id @default(cuid())
+  code                  String             @unique
+  type                  GiftType
+  status                GiftPurchaseStatus @default(pending_payment)
+  purchaserUserId       String?
+  redeemedByUserId      String?
+  purchaserFirstName    String
+  purchaserLastName     String
+  purchaserEmail        String
+  recipientFirstName    String
+  recipientLastName     String
+  recipientEmail        String
+  recipientMessage      String?            @db.Text
+  deliveryTarget        GiftDeliveryTarget
+  productSlug           String
+  productTitleSnapshot  String
+  currency              String             @default("GBP")
+  totalPaidPence        Int
+  stripeCheckoutSessionId String?          @unique
+  stripePaymentIntentId String?
+  retreatDateId         String?
+  retreatRoomOptionId   String?
+  smallGroupProgrammeId String?
+  expiresAt             DateTime?
+  purchasedAt           DateTime?
+  redeemedAt            DateTime?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  purchaserUser      User?                @relation("GiftPurchasePurchaser", fields: [purchaserUserId], references: [id], onDelete: SetNull)
+  redeemedByUser     User?                @relation("GiftPurchaseRedeemer", fields: [redeemedByUserId], references: [id], onDelete: SetNull)
+  retreatDate        RetreatDate?         @relation(fields: [retreatDateId], references: [id], onDelete: SetNull)
+  retreatRoomOption  RetreatRoomOption?   @relation(fields: [retreatRoomOptionId], references: [id], onDelete: SetNull)
+  smallGroupProgramme SmallGroupProgramme? @relation(fields: [smallGroupProgrammeId], references: [id], onDelete: SetNull)
+  retreatBooking     RetreatBooking?      @relation("GiftPurchaseRetreatBooking")
+  enrolment          SmallGroupProgrammeEnrollment? @relation("GiftPurchaseProgrammeEnrollment")
+
+  @@index([status, type, createdAt])
+  @@index([recipientEmail, status])
+  @@index([purchaserEmail, status])
+  @@index([retreatDateId, status])
+  @@index([smallGroupProgrammeId, status])
+}
+
+model CoachingApplication {
+  id                             String                   @id @default(cuid())
+  userId                         String?
+  applicantFirstName             String
+  applicantLastName              String
+  applicantEmail                 String
+  tier                           CoachingSupportTier
+  answersJson                    Json
+  hasMoveWellMembershipSnapshot  Boolean                  @default(false)
+  isExistingCoachingClientSnapshot Boolean                @default(false)
+  source                         String?
+  coachingAgreementVersion       String?
+  coachingAgreementAcceptedAt    DateTime
+  status                         CoachingApplicationStatus @default(submitted)
+  adminNotes                     String?
+  reviewedAt                     DateTime?
+  approvedAt                     DateTime?
+  convertedAt                    DateTime?
+  createdAt                      DateTime                 @default(now())
+  updatedAt                      DateTime                 @updatedAt
+
+  user          User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  clientProfile CoachingClientProfile?
+
+  @@index([status, createdAt])
+  @@index([tier, createdAt])
+  @@index([userId, createdAt])
+  @@index([applicantEmail, createdAt])
+}
+
+model CoachingClientProfile {
+  id                        String                  @id @default(cuid())
+  userId                    String                  @unique
+  applicationId             String?                 @unique
+  tier                      CoachingSupportTier
+  status                    CoachingClientStatus    @default(onboarding)
+  includesMoveWellMembership Boolean                @default(false)
+  everfitConnectionStatus   EverfitConnectionStatus @default(not_started)
+  onboardingChecklistJson   Json?
+  nextCheckInDueAt          DateTime?
+  latestCoachResponseSummary String?
+  startDate                 DateTime?
+  pausedAt                  DateTime?
+  completedAt               DateTime?
+  createdAt                 DateTime                @default(now())
+  updatedAt                 DateTime                @updatedAt
+
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application CoachingApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  sessions    CoachingSession[]
+  checkIns    CoachingCheckIn[]
+
+  @@index([status, updatedAt])
+  @@index([tier, updatedAt])
+}
+
+model CoachingSession {
+  id               String                @id @default(cuid())
+  clientProfileId  String
+  startsAt         DateTime
+  endsAt           DateTime?
+  sessionType      String                @default("coaching")
+  status           CoachingSessionStatus @default(scheduled)
+  summary          String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  clientProfile CoachingClientProfile @relation(fields: [clientProfileId], references: [id], onDelete: Cascade)
+
+  @@index([clientProfileId, startsAt])
+  @@index([status, startsAt])
+}
+
+model CoachingCheckIn {
+  id                    String                @id @default(cuid())
+  clientProfileId       String
+  cadence               CoachingCheckInCadence
+  dueAt                 DateTime
+  submittedAt           DateTime?
+  reviewedAt            DateTime?
+  status                CoachingCheckInStatus @default(due)
+  answersJson           Json?
+  coachResponseSummary  String?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  clientProfile CoachingClientProfile @relation(fields: [clientProfileId], references: [id], onDelete: Cascade)
+
+  @@index([clientProfileId, dueAt])
+  @@index([status, dueAt])
+}
+
+model SmallGroupProgramme {
+  id                 String                   @id @default(cuid())
+  slug               String                   @unique
+  runSlug            String                   @unique
+  templateSlug       String
+  title              String
+  subtitle           String?
+  shortDescription   String                   @db.Text
+  description        String?                  @db.Text
+  longDescription    String?                  @db.Text
+  durationLabel      String
+  durationWeeks      Int?
+  cohortSize         Int
+  startDate          DateTime?
+  endDate            DateTime?
+  scheduleLabel      String?
+  pricePence         Int
+  sessionsPerWeek    Int?
+  totalSessions      Int?
+  status             SmallGroupProgrammeStatus @default(draft)
+  ctaLabel           String?
+  ctaHref            String?
+  featuredBadge      String?
+  whoItsForJson      Json?
+  equipmentJson      Json?
+  inclusionsJson     Json?
+  weekByWeekJson     Json?
+  contentfulEntryId  String?                  @unique
+  templateContentfulEntryId String?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+
+  sessions    SmallGroupProgrammeSession[]
+  enrollments SmallGroupProgrammeEnrollment[]
+  giftPurchases GiftPurchase[]
+
+  @@index([status, startDate])
+  @@index([templateSlug, status, startDate])
+}
+
+model SmallGroupProgrammeSession {
+  id                String                  @id @default(cuid())
+  programmeId       String
+  title             String
+  startsAt          DateTime
+  endsAt            DateTime?
+  sequenceNumber    Int
+  status            SmallGroupSessionStatus @default(scheduled)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  programme SmallGroupProgramme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+
+  @@unique([programmeId, sequenceNumber])
+  @@index([programmeId, startsAt])
+}
+
+model SmallGroupProgrammeEnrollment {
+  id              String                     @id @default(cuid())
+  programmeId     String
+  userId          String?
+  attendeeName    String
+  attendeeEmail   String
+  sessionsAttended Int                       @default(0)
+  progressSummary String?
+  status          SmallGroupEnrollmentStatus @default(active)
+  pricePaidPence  Int?
+  currency        String                     @default("GBP")
+  stripeCheckoutSessionId String?            @unique
+  stripePaymentIntentId String?
+  paymentWindowExpiresAt DateTime?
+  giftPurchaseId  String?                    @unique
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+
+  programme SmallGroupProgramme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  user      User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  giftPurchase GiftPurchase?    @relation("GiftPurchaseProgrammeEnrollment", fields: [giftPurchaseId], references: [id], onDelete: SetNull)
+
+  @@index([programmeId, status])
+  @@index([userId, status])
+  @@index([attendeeEmail, status])
+  @@index([paymentWindowExpiresAt, status])
+}
+
+model BlogComment {
+  id           String            @id @default(cuid())
+  postSlug     String
+  authorUserId String
+  parentId     String?
+  content      String            @db.Text
+  status       BlogCommentStatus @default(visible)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  author  User          @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  parent  BlogComment?  @relation("BlogCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies BlogComment[] @relation("BlogCommentReplies")
+
+  @@index([postSlug, status, createdAt])
+  @@index([authorUserId, createdAt])
+  @@index([parentId])
+}
+
+model BlogReaction {
+  id             String   @id @default(cuid())
+  postSlug       String
+  userId         String?
+  anonymousToken String?
+  createdAt      DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postSlug, userId])
+  @@unique([postSlug, anonymousToken])
+  @@index([postSlug, createdAt])
+}
+
+model ContactSubmission {
+  id         String                  @id @default(cuid())
+  userId     String?
+  firstName  String
+  lastName   String
+  email      String
+  topic      String
+  conditions String?
+  howFound   String?
+  message    String                  @db.Text
+  status     ContactSubmissionStatus @default(new)
+  createdAt  DateTime                @default(now())
+  updatedAt  DateTime                @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([email, createdAt])
 }

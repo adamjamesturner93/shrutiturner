@@ -1,5 +1,5 @@
-import { ProgramsPage } from "@/views/dashboard/programs";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <ProgramsPage />;
+  redirect("/dashboard/small-groups");
 }

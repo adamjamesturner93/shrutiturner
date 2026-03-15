@@ -1,224 +1,183 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, Calendar, Clock3, Users } from "lucide-react";
 import { AdminLayout } from "../../components/admin-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import {
-  ArrowLeft,
-  Calendar,
-  Users,
-  Clock,
-  CheckCircle,
-  Circle,
-  XCircle,
-  TrendingUp,
-  PoundSterling,
-} from "lucide-react";
-import { adminProgrammes } from "../../data/admin-data";
-import { HealthBadges, ClassHealthSummary } from "../../components/admin/health-badges";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import type { AdminSmallGroupDetail } from "@/lib/small-groups/service";
+import { buildSmallGroupTemplateHref } from "@/lib/small-groups/routes";
 
-export function AdminProgrammeDetail() {
-  const { id } = useParams<{ id: string }>();
-  const router = useRouter();
-  const navigate = (href: string, opts?: { replace?: boolean }) =>
-    opts?.replace ? router.replace(href) : router.push(href);
-  const programme = adminProgrammes.find((p) => p.id === id);
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
 
-  if (!programme) {
+export function AdminProgrammeDetail({
+  initialData,
+}: {
+  initialData: AdminSmallGroupDetail | null;
+}) {
+  if (!initialData) {
     return (
       <AdminLayout title="Programme Not Found - Admin">
         <div className="py-20 text-center">
           <p className="text-muted-foreground">Programme not found.</p>
-          <Link href="/admin/programmes">
-            <Button variant="outline" className="mt-4">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Programmes
-            </Button>
-          </Link>
+          <Button asChild variant="outline" className="mt-4">
+            <Link href="/admin/programmes">Back to Programmes</Link>
+          </Button>
         </div>
       </AdminLayout>
     );
   }
 
-  const progressPercent = Math.round((programme.sessionsCompleted / programme.sessionsTotal) * 100);
-  const avgAttendance =
-    programme.sessions
-      .filter((s) => s.status === "completed")
-      .reduce((sum, s) => sum + s.attendanceCount, 0) / Math.max(programme.sessionsCompleted, 1);
-  const revenue = programme.currentParticipants * programme.price;
-
   return (
-    <AdminLayout title={`${programme.name} - Admin`}>
+    <AdminLayout title={`${initialData.title} - Admin`}>
       <div className="space-y-6">
-        {/* Back nav */}
-        <button
-          onClick={() => navigate("/admin/programmes")}
-          className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-sm transition-colors"
+        <Link
+          href="/admin/programmes"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-2 text-sm transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Programmes
-        </button>
+        </Link>
 
-        {/* Header */}
         <div>
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-brand-dark text-2xl">{programme.name}</h1>
-            <Badge
-              variant={
-                programme.status === "active"
-                  ? "default"
-                  : programme.status === "upcoming"
-                    ? "secondary"
-                    : "outline"
-              }
-            >
-              {programme.status.charAt(0).toUpperCase() + programme.status.slice(1)}
-            </Badge>
+            <h1 className="text-brand-dark text-2xl">{initialData.title}</h1>
+            <Badge>{initialData.status.replaceAll("_", " ")}</Badge>
+            <Badge variant="outline">{initialData.runSlug}</Badge>
           </div>
-          <p className="text-muted-foreground mt-2">{programme.description}</p>
-          <div className="text-muted-foreground mt-3 flex flex-wrap gap-4 text-sm">
+          <p className="text-muted-foreground mt-3 max-w-3xl">{initialData.longDescription}</p>
+          <div className="text-muted-foreground mt-4 flex flex-wrap gap-4 text-sm">
             <span className="flex items-center gap-1">
               <Calendar className="h-4 w-4" />
-              {programme.startDate} to {programme.endDate}
+              {initialData.durationLabel}
             </span>
             <span className="flex items-center gap-1">
-              <Clock className="h-4 w-4" />
-              {programme.schedule}
+              <Users className="h-4 w-4" />
+              {initialData.activeEnrolmentCount} active participants
             </span>
+            <span>{initialData.priceLabel}</span>
+            <span>{initialData.scheduleLabel || "Schedule announced soon"}</span>
           </div>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="pt-6 text-center">
-              <Users className="text-brand-accent mx-auto h-5 w-5" />
-              <p className="text-brand-dark mt-2 text-2xl">
-                {programme.currentParticipants}/{programme.maxParticipants}
-              </p>
-              <p className="text-muted-foreground text-xs">Participants</p>
+              <p className="text-brand-dark text-2xl">{initialData.enrolmentCount}</p>
+              <p className="text-muted-foreground text-xs">Total enrolments</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <Clock className="text-brand-accent mx-auto h-5 w-5" />
-              <p className="text-brand-dark mt-2 text-2xl">{progressPercent}%</p>
-              <p className="text-muted-foreground text-xs">
-                {programme.sessionsCompleted}/{programme.sessionsTotal} sessions
-              </p>
+              <p className="text-brand-dark text-2xl">{initialData.activeEnrolmentCount}</p>
+              <p className="text-muted-foreground text-xs">Active enrolments</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <TrendingUp className="text-brand-accent mx-auto h-5 w-5" />
-              <p className="text-brand-dark mt-2 text-2xl">{avgAttendance.toFixed(1)}</p>
-              <p className="text-muted-foreground text-xs">Avg attendance</p>
+              <p className="text-brand-dark text-2xl">{initialData.sessionCount}</p>
+              <p className="text-muted-foreground text-xs">Sessions</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <PoundSterling className="text-brand-accent mx-auto h-5 w-5" />
-              <p className="text-brand-dark mt-2 text-2xl">£{revenue}</p>
-              <p className="text-muted-foreground text-xs">Revenue</p>
+              <p className="text-brand-dark text-2xl">{initialData.completedSessionCount}</p>
+              <p className="text-muted-foreground text-xs">Completed</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Progress bar */}
-        {programme.status === "active" && (
-          <div>
-            <div className="mb-2 flex justify-between text-sm">
-              <span>Programme progress</span>
-              <span className="text-muted-foreground">{progressPercent}%</span>
-            </div>
-            <div className="bg-secondary h-3 overflow-hidden rounded-full">
-              <div
-                className="bg-brand-accent h-full rounded-full transition-all"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Aggregated health prep for the programme group */}
-        <ClassHealthSummary attendees={programme.participants} />
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Participants */}
+        <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">
-                Participants ({programme.participants.length})
-              </CardTitle>
+              <CardTitle>Participants</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {programme.participants.map((p) => (
-                  <div key={p.memberId} className="bg-secondary/50 rounded-lg p-3">
-                    <div className="flex items-center justify-between">
-                      <Link
-                        href={
-                          p.memberId.startsWith("prog_ext") ? "#" : `/admin/members/${p.memberId}`
-                        }
-                        className="hover:text-brand-accent text-sm transition-colors"
-                      >
-                        {p.memberName}
-                      </Link>
-                      <Badge variant="outline" className="text-xs">
-                        {p.sessionsAttended}/
-                        {programme.sessionsCompleted || programme.sessionsTotal} attended
-                      </Badge>
+            <CardContent className="space-y-3">
+              {initialData.enrolments.length > 0 ? (
+                initialData.enrolments.map((enrolment) => (
+                  <div key={enrolment.id} className="rounded-xl border p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm">{enrolment.attendeeName}</p>
+                        <p className="text-muted-foreground text-xs">{enrolment.attendeeEmail}</p>
+                      </div>
+                      <Badge variant="outline">{enrolment.status}</Badge>
                     </div>
-                    <p className="text-muted-foreground mt-1 text-xs">{p.progress}</p>
-                    <div className="mt-1">
-                      <HealthBadges memberId={p.memberId} max={4} />
-                    </div>
+                    <p className="text-muted-foreground mt-2 text-xs">
+                      {enrolment.progressSummary ||
+                        `${enrolment.sessionsAttended} session${enrolment.sessionsAttended === 1 ? "" : "s"} attended`}
+                    </p>
                   </div>
-                ))}
-              </div>
+                ))
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  No participants have been enrolled into this programme yet.
+                </p>
+              )}
             </CardContent>
           </Card>
 
-          {/* Sessions */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Sessions ({programme.sessionsTotal})</CardTitle>
+              <CardTitle>Sessions</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="max-h-96 space-y-2 overflow-y-auto">
-                {programme.sessions.map((session) => (
-                  <div
-                    key={session.number}
-                    className="bg-secondary/50 flex items-center gap-3 rounded-lg p-3"
-                  >
-                    <div className="flex-shrink-0">
-                      {session.status === "completed" ? (
-                        <CheckCircle className="text-brand-accent h-5 w-5" />
-                      ) : session.status === "cancelled" ? (
-                        <XCircle className="text-destructive h-5 w-5" />
-                      ) : (
-                        <Circle className="text-muted-foreground h-5 w-5" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
+            <CardContent className="space-y-3">
+              {initialData.sessions.map((session) => (
+                <div key={session.id} className="rounded-xl border p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
                       <p className="text-sm">
-                        Session {session.number}: {session.topic}
+                        Week {session.sequenceNumber}: {session.title}
                       </p>
-                      <p className="text-muted-foreground text-xs">
-                        {new Date(session.date).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                        })}
-                        {session.status === "completed" && ` · ${session.attendanceCount} attended`}
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        {formatDateTime(session.startsAt)}
                       </p>
                     </div>
+                    <Badge variant={session.status === "completed" ? "default" : "outline"}>
+                      {session.status}
+                    </Badge>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </CardContent>
           </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Template outcomes</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {initialData.outcomes.length > 0 ? (
+              initialData.outcomes.map((item) => <p key={item}>• {item}</p>)
+            ) : (
+              <p className="text-muted-foreground">No template outcomes have been added yet.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="text-muted-foreground rounded-[1.5rem] border p-6 text-sm leading-relaxed">
+          <p>
+            This detail view is now centred on a scheduled run. Public content comes from the
+            template, while dates, capacity, pricing, enrolments, and gifts are driven by the live
+            run record.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Button asChild variant="outline">
+              <Link href={buildSmallGroupTemplateHref(initialData.templateSlug)}>
+                View public template page
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
     </AdminLayout>

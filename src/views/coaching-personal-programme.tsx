@@ -112,12 +112,12 @@ export function CoachingPersonalProgrammePage() {
             structure or accountability.
           </p>
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link href="/coaching/apply?tier=independent-plan">
+            <Link href="/pricing#coaching">
               <Button
                 size="lg"
                 className="bg-brand-white text-brand-accent hover:bg-brand-white/90"
               >
-                Start the Process
+                View Pricing & Next Steps
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>

@@ -1,5 +1,6 @@
-import { DashboardProgramDetail } from "@/views/dashboard/program-detail";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return <DashboardProgramDetail />;
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  redirect(`/dashboard/small-groups/${id}`);
 }

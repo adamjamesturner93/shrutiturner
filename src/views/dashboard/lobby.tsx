@@ -34,6 +34,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
     isAdmin,
     completeOnboarding,
     acceptTermsAndHealth,
+    acceptHealthDataConsent,
     saveOnboardingSource,
     refreshAccountProfile,
   } = useAuth();
@@ -61,6 +62,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
     Boolean(user) && (!user?.firstName?.trim() || !user?.lastName?.trim() || !user?.dob);
   const needsLegalAgreement =
     Boolean(user) && (!user?.hasAgreedToTerms || !user?.hasAgreedToHealth);
+  const needsHealthProfile = Boolean(user) && !user?.hasHealthProfile;
 
   useEffect(() => {
     if (initialData) return;
@@ -105,12 +107,12 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
       setOnboardingStep("legal");
       return;
     }
-    if (user.heardAboutSource) {
+    if (user.heardAboutSource && needsHealthProfile) {
       setOnboardingStep("health");
       return;
     }
     setOnboardingStep("welcome");
-  }, [isOnboarding, isAdmin, user, needsProfileDetails, needsLegalAgreement]);
+  }, [isOnboarding, isAdmin, user, needsProfileDetails, needsLegalAgreement, needsHealthProfile]);
 
   const finishOnboarding = () => {
     completeOnboarding();
@@ -143,7 +145,13 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
       }
 
       await refreshAccountProfile();
-      setOnboardingStep(needsLegalAgreement ? "legal" : "welcome");
+      if (needsLegalAgreement) {
+        setOnboardingStep("legal");
+      } else if (user?.heardAboutSource && needsHealthProfile) {
+        setOnboardingStep("health");
+      } else {
+        setOnboardingStep("welcome");
+      }
     } catch (saveError) {
       setProfileError(
         saveError instanceof Error ? saveError.message : "Could not save profile details."
@@ -153,12 +161,19 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
     }
   };
 
-  const handleHealthSave = async (profile: HealthProfile) => {
-    await fetch("/api/me/health-profile", {
+  const handleHealthSave = async (profile: HealthProfile, consentAccepted: boolean) => {
+    const response = await fetch("/api/me/health-profile", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(profile),
-    }).catch(() => null);
+    });
+    if (!response.ok) {
+      throw new Error("Could not save health profile.");
+    }
+    if (consentAccepted && !user?.hasConsentedToHealthData) {
+      await acceptHealthDataConsent();
+    }
+    await refreshAccountProfile();
     finishOnboarding();
   };
 
@@ -269,8 +284,8 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                   </div>
                   <h2 className="text-xl">Before We Begin</h2>
                   <p className="text-muted-foreground text-sm leading-relaxed">
-                    To use the studio, please review and accept the following. This is a one-time
-                    step.
+                    To use the studio, please review and accept the current versions of the required
+                    agreements.
                   </p>
                 </div>
                 <div className="space-y-3">
@@ -306,7 +321,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                         className="text-primary underline"
                         target="_blank"
                       >
-                        Health Declaration
+                        Health & Liability Waiver
                       </Link>
                       , and I understand that I participate at my own risk
                     </span>
@@ -317,7 +332,11 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                   disabled={!legalTerms || !legalHealth}
                   onClick={async () => {
                     await acceptTermsAndHealth(true, true);
-                    setOnboardingStep("welcome");
+                    if (user?.heardAboutSource && needsHealthProfile) {
+                      setOnboardingStep("health");
+                    } else {
+                      setOnboardingStep("welcome");
+                    }
                   }}
                 >
                   Accept & Continue
@@ -349,8 +368,25 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                     <span>Classes adapt to how you feel on the day</span>
                   </p>
                 </div>
-                <Button className="w-full" onClick={() => setOnboardingStep("source")}>
-                  Next: How Did You Hear About Us?
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    if (user?.heardAboutSource) {
+                      if (needsHealthProfile) {
+                        setOnboardingStep("health");
+                      } else {
+                        finishOnboarding();
+                      }
+                      return;
+                    }
+                    setOnboardingStep("source");
+                  }}
+                >
+                  {user?.heardAboutSource
+                    ? needsHealthProfile
+                      ? "Next: Tell Us About Your Body"
+                      : "Enter Studio"
+                    : "Next: How Did You Hear About Us?"}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
                 <button
@@ -408,7 +444,11 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                   disabled={!heardAboutSource}
                   onClick={async () => {
                     await saveOnboardingSource(heardAboutSource, heardAboutDetail);
-                    setOnboardingStep("health");
+                    if (needsHealthProfile) {
+                      setOnboardingStep("health");
+                    } else {
+                      finishOnboarding();
+                    }
                   }}
                 >
                   Next: Tell Us About Your Body
@@ -437,6 +477,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                   profile={EMPTY_HEALTH_PROFILE}
                   onSave={handleHealthSave}
                   compact
+                  initialConsentAccepted={Boolean(user?.hasConsentedToHealthData)}
                   onSkip={finishOnboarding}
                 />
               </div>
@@ -624,15 +665,15 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
             </Link>
 
             <Link
-              href="/dashboard/programs"
+              href="/dashboard/small-groups"
               className="bg-background rounded-lg border p-5 transition-shadow hover:shadow-md"
             >
               <div className="mb-2 flex items-center gap-3">
                 <Users className="text-primary h-5 w-5" />
-                <h3 className="text-lg">Programs</h3>
+                <h3 className="text-lg">Small Group Programmes</h3>
               </div>
               <p className="text-muted-foreground text-sm">
-                Explore your small group programs and longer-term training blocks.
+                Explore your small group programmes and longer-term training blocks.
               </p>
             </Link>
 

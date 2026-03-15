@@ -1,7 +1,23 @@
 import { db } from "@/lib/db";
 import { getReferralSummary } from "@/lib/referrals/referral-service";
+import {
+  CURRENT_HEALTH_DATA_CONSENT_VERSION,
+  CURRENT_HEALTH_WAIVER_VERSION,
+  CURRENT_TERMS_VERSION,
+} from "@/data/legal-documents";
+import { linkPendingRecordsForUser } from "@/lib/link-pending-records";
+import { syncMarketingPreferenceForUser } from "@/lib/newsletter/subscriber-service";
 
 const DATE_FORMATS = new Set(["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"]);
+
+type LegalAcceptanceShape = {
+  acceptedTermsVersion: string | null;
+  acceptedHealthWaiverVersion: string | null;
+  acceptedHealthDataConsentVersion: string | null;
+  termsAgreedAt: Date | null;
+  healthAgreedAt: Date | null;
+  healthDataConsentedAt: Date | null;
+};
 
 export type AccountUpdateInput = {
   firstName?: string;
@@ -13,6 +29,7 @@ export type AccountUpdateInput = {
   dateFormat?: string;
   hasAgreedToTerms?: boolean;
   hasAgreedToHealth?: boolean;
+  hasConsentedToHealthData?: boolean;
   heardAboutSource?: string | null;
   heardAboutDetail?: string | null;
   isOnboarded?: boolean;
@@ -41,7 +58,42 @@ async function getOrCreateNotificationPreferences(userId: string) {
   return db.userNotificationPreference.create({ data: { userId } });
 }
 
+function mapLegalAcceptance<T extends LegalAcceptanceShape>(user: T) {
+  const hasCurrentTerms = user.acceptedTermsVersion === CURRENT_TERMS_VERSION;
+  const hasCurrentHealthWaiver = user.acceptedHealthWaiverVersion === CURRENT_HEALTH_WAIVER_VERSION;
+  const hasCurrentHealthDataConsent =
+    user.acceptedHealthDataConsentVersion === CURRENT_HEALTH_DATA_CONSENT_VERSION;
+
+  return {
+    hasAgreedToTerms: hasCurrentTerms,
+    hasAgreedToHealth: hasCurrentHealthWaiver,
+    termsAgreedAt: user.termsAgreedAt ? user.termsAgreedAt.toISOString() : null,
+    healthAgreedAt: user.healthAgreedAt ? user.healthAgreedAt.toISOString() : null,
+    acceptedTermsVersion: user.acceptedTermsVersion,
+    acceptedHealthWaiverVersion: user.acceptedHealthWaiverVersion,
+    currentTermsVersion: CURRENT_TERMS_VERSION,
+    currentHealthWaiverVersion: CURRENT_HEALTH_WAIVER_VERSION,
+    needsTermsReacceptance: !hasCurrentTerms,
+    needsHealthWaiverReacceptance: !hasCurrentHealthWaiver,
+    hasConsentedToHealthData: hasCurrentHealthDataConsent,
+    healthDataConsentedAt: user.healthDataConsentedAt
+      ? user.healthDataConsentedAt.toISOString()
+      : null,
+    acceptedHealthDataConsentVersion: user.acceptedHealthDataConsentVersion,
+    currentHealthDataConsentVersion: CURRENT_HEALTH_DATA_CONSENT_VERSION,
+    needsHealthDataConsentRefresh: !hasCurrentHealthDataConsent,
+  };
+}
+
 export async function getAccount(userId: string, siteUrl: string) {
+  const accountUser = await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true },
+  });
+  if (!accountUser) throw new Error("USER_NOT_FOUND");
+
+  await linkPendingRecordsForUser(accountUser.id, accountUser.email);
+
   const [user, notifications, referral] = await Promise.all([
     db.user.findUnique({
       where: { id: userId },
@@ -57,12 +109,16 @@ export async function getAccount(userId: string, siteUrl: string) {
         timezone: true,
         dateFormat: true,
         isOnboarded: true,
-        hasAgreedToTerms: true,
-        hasAgreedToHealth: true,
+        acceptedTermsVersion: true,
+        acceptedHealthWaiverVersion: true,
+        hasConsentedToHealthData: true,
+        acceptedHealthDataConsentVersion: true,
         termsAgreedAt: true,
         healthAgreedAt: true,
+        healthDataConsentedAt: true,
         heardAboutSource: true,
         heardAboutDetail: true,
+        isCoachingClient: true,
       },
     }),
     getOrCreateNotificationPreferences(userId),
@@ -71,12 +127,17 @@ export async function getAccount(userId: string, siteUrl: string) {
 
   if (!user) throw new Error("USER_NOT_FOUND");
 
+  const healthProfile = await db.healthProfile.findUnique({
+    where: { userId },
+    select: { id: true },
+  });
+
   return {
     profile: {
       ...user,
+      hasHealthProfile: Boolean(healthProfile),
       dob: user.dob ? user.dob.toISOString().slice(0, 10) : null,
-      termsAgreedAt: user.termsAgreedAt ? user.termsAgreedAt.toISOString() : null,
-      healthAgreedAt: user.healthAgreedAt ? user.healthAgreedAt.toISOString() : null,
+      ...mapLegalAcceptance(user),
     },
     notifications,
     referral,
@@ -95,8 +156,13 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
     dateFormat?: string;
     hasAgreedToTerms?: boolean;
     hasAgreedToHealth?: boolean;
+    acceptedTermsVersion?: string;
+    acceptedHealthWaiverVersion?: string;
+    hasConsentedToHealthData?: boolean;
+    acceptedHealthDataConsentVersion?: string;
     termsAgreedAt?: Date;
     healthAgreedAt?: Date;
+    healthDataConsentedAt?: Date;
     heardAboutSource?: string | null;
     heardAboutDetail?: string | null;
     isOnboarded?: boolean;
@@ -145,14 +211,20 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
     data.dateFormat = input.dateFormat;
   }
 
-  if (input.hasAgreedToTerms === true || input.hasAgreedToHealth === true) {
+  if (
+    input.hasAgreedToTerms === true ||
+    input.hasAgreedToHealth === true ||
+    input.hasConsentedToHealthData === true
+  ) {
     const existing = await db.user.findUnique({
       where: { id: userId },
       select: {
-        hasAgreedToTerms: true,
-        hasAgreedToHealth: true,
+        acceptedTermsVersion: true,
+        acceptedHealthWaiverVersion: true,
+        acceptedHealthDataConsentVersion: true,
         termsAgreedAt: true,
         healthAgreedAt: true,
+        healthDataConsentedAt: true,
       },
     });
 
@@ -160,18 +232,29 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
 
     if (
       input.hasAgreedToTerms === true &&
-      (!existing.hasAgreedToTerms || !existing.termsAgreedAt)
+      existing.acceptedTermsVersion !== CURRENT_TERMS_VERSION
     ) {
       data.hasAgreedToTerms = true;
       data.termsAgreedAt = new Date();
+      data.acceptedTermsVersion = CURRENT_TERMS_VERSION;
     }
 
     if (
       input.hasAgreedToHealth === true &&
-      (!existing.hasAgreedToHealth || !existing.healthAgreedAt)
+      existing.acceptedHealthWaiverVersion !== CURRENT_HEALTH_WAIVER_VERSION
     ) {
       data.hasAgreedToHealth = true;
       data.healthAgreedAt = new Date();
+      data.acceptedHealthWaiverVersion = CURRENT_HEALTH_WAIVER_VERSION;
+    }
+
+    if (
+      input.hasConsentedToHealthData === true &&
+      existing.acceptedHealthDataConsentVersion !== CURRENT_HEALTH_DATA_CONSENT_VERSION
+    ) {
+      data.hasConsentedToHealthData = true;
+      data.healthDataConsentedAt = new Date();
+      data.acceptedHealthDataConsentVersion = CURRENT_HEALTH_DATA_CONSENT_VERSION;
     }
   }
 
@@ -206,10 +289,13 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
       timezone: true,
       dateFormat: true,
       isOnboarded: true,
-      hasAgreedToTerms: true,
-      hasAgreedToHealth: true,
+      acceptedTermsVersion: true,
+      acceptedHealthWaiverVersion: true,
+      hasConsentedToHealthData: true,
+      acceptedHealthDataConsentVersion: true,
       termsAgreedAt: true,
       healthAgreedAt: true,
+      healthDataConsentedAt: true,
       heardAboutSource: true,
       heardAboutDetail: true,
     },
@@ -218,8 +304,7 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
   return {
     ...updated,
     dob: updated.dob ? updated.dob.toISOString().slice(0, 10) : null,
-    termsAgreedAt: updated.termsAgreedAt ? updated.termsAgreedAt.toISOString() : null,
-    healthAgreedAt: updated.healthAgreedAt ? updated.healthAgreedAt.toISOString() : null,
+    ...mapLegalAcceptance(updated),
   };
 }
 
@@ -243,8 +328,14 @@ export async function updateNotificationPreferences(
     if (typeof input[key] === "boolean") data[key] = input[key];
   }
 
-  return db.userNotificationPreference.update({
+  const updated = await db.userNotificationPreference.update({
     where: { userId },
     data,
   });
+
+  if (typeof data.marketingEmails === "boolean") {
+    await syncMarketingPreferenceForUser(userId, data.marketingEmails);
+  }
+
+  return updated;
 }

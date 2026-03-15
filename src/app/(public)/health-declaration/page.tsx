@@ -5,7 +5,7 @@ import { LegalDocumentPage } from "@/views/legal-document";
 
 export async function generateMetadata(): Promise<Metadata> {
   const doc = await getLegalDocumentBySlug("health-declaration");
-  if (!doc) return { title: "Health Declaration" };
+  if (!doc) return { title: "Health & Liability Waiver" };
 
   return {
     title: doc.seoTitle || doc.title,

@@ -11,9 +11,11 @@ import {
   type HealthProfile,
 } from "../../data/health-profile-data";
 import { useI18n } from "../../lib/use-i18n";
+import { useAuth } from "@/context/auth-context";
 
 export function HealthProfilePage() {
   const { fmtDate } = useI18n();
+  const { user, acceptHealthDataConsent, refreshAccountProfile } = useAuth();
   const [profile, setProfile] = useState<HealthProfile>(EMPTY_HEALTH_PROFILE);
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -51,7 +53,7 @@ export function HealthProfilePage() {
       }))
   );
 
-  const handleSave = async (updated: HealthProfile) => {
+  const handleSave = async (updated: HealthProfile, consentAccepted: boolean) => {
     setError("");
     try {
       const res = await fetch("/api/me/health-profile", {
@@ -61,6 +63,10 @@ export function HealthProfilePage() {
       });
       if (!res.ok) throw new Error("Failed to save health profile.");
       const next = (await res.json()) as HealthProfile;
+      if (consentAccepted && !user?.hasConsentedToHealthData) {
+        await acceptHealthDataConsent();
+        await refreshAccountProfile();
+      }
       setProfile(next);
       setEditing(false);
     } catch (e) {
@@ -76,6 +82,10 @@ export function HealthProfilePage() {
             <h1 className="text-3xl">Health Profile</h1>
             <p className="text-muted-foreground mt-1">
               Help Shruti understand your body so sessions can be adapted for you.
+            </p>
+            <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
+              The health information you share is used to assess suitability, tailor training, and
+              deliver sessions safely.
             </p>
           </div>
           {!editing && (
@@ -101,7 +111,11 @@ export function HealthProfilePage() {
         ) : editing ? (
           /* Edit mode */
           <div className="mt-6">
-            <HealthProfileEditor profile={profile} onSave={handleSave} />
+            <HealthProfileEditor
+              profile={profile}
+              onSave={handleSave}
+              initialConsentAccepted={Boolean(user?.hasConsentedToHealthData)}
+            />
             <button
               onClick={() => setEditing(false)}
               className="text-muted-foreground hover:text-foreground mt-3 text-sm transition-colors"

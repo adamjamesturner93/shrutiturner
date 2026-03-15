@@ -372,6 +372,18 @@ export function PurchaseModal({
                 </Button>
               </div>
             )}
+
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              By continuing to payment, you agree to the{" "}
+              <a href="/terms" className="text-primary underline">
+                Terms & Conditions
+              </a>{" "}
+              and can review the{" "}
+              <a href="/refund-policy" className="text-primary underline">
+                Refund & Cancellation Policy
+              </a>
+              .
+            </p>
           </div>
         ) : (
           /* ── Non-member ── */
@@ -439,6 +451,18 @@ export function PurchaseModal({
                 </Button>
               </div>
             </div>
+
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              By continuing to payment, you agree to the{" "}
+              <a href="/terms" className="text-primary underline">
+                Terms & Conditions
+              </a>{" "}
+              and can review the{" "}
+              <a href="/refund-policy" className="text-primary underline">
+                Refund & Cancellation Policy
+              </a>
+              .
+            </p>
           </div>
         )}
 

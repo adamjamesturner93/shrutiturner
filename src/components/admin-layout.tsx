@@ -12,6 +12,8 @@ import {
   Dumbbell,
   Mountain,
   Mail,
+  Compass,
+  MessageCircle,
   Menu,
   X,
   LogOut,
@@ -29,9 +31,11 @@ interface AdminLayoutProps {
 const NAV_ITEMS = [
   { path: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { path: "/admin/classes", label: "Classes", icon: Calendar },
+  { path: "/admin/coaching", label: "Coaching", icon: Compass },
   { path: "/admin/programmes", label: "Programmes", icon: Dumbbell },
   { path: "/admin/members", label: "Members", icon: Users },
   { path: "/admin/retreats", label: "Retreats", icon: Mountain },
+  { path: "/admin/blog-comments", label: "Blog Comments", icon: MessageCircle },
   { path: "/admin/newsletter", label: "Newsletter", icon: Mail },
   { path: "/admin/business", label: "Business", icon: TrendingUp },
 ];

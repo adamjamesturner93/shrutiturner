@@ -1,6 +1,8 @@
 import { classDetails, getScheduleByDay, type ClassDetail } from "@/data/schedule-data";
 import { themedWeekPromos } from "@/data/marketing";
 import { retreats } from "@/data/retreat-data";
+import { LEGAL_DOCUMENTS } from "@/data/legal-documents";
+import { smallGroupTemplates } from "@/data/small-group-programmes";
 import type {
   LegalDocumentContent,
   ClassDefinitionContent,
@@ -8,6 +10,7 @@ import type {
   NewsletterSignupContent,
   PageContent,
   RetreatInstanceContent,
+  SmallGroupTemplateContent,
   ThemedWeekPromo,
 } from "./types";
 
@@ -56,6 +59,13 @@ export const LOCAL_PAGE_CONTENT: Record<string, PageContent> = {
     seo: { title: "Independent Training Plan" },
   },
   pricing: { slug: "pricing", seo: { title: "Pricing" } },
+  terms: { slug: "terms", seo: { title: "Terms & Conditions" } },
+  privacy: { slug: "privacy", seo: { title: "Privacy Policy" } },
+  cookies: { slug: "cookies", seo: { title: "Cookie Policy" } },
+  "health-declaration": { slug: "health-declaration", seo: { title: "Health & Liability Waiver" } },
+  "refund-policy": { slug: "refund-policy", seo: { title: "Refund & Cancellation Policy" } },
+  "acceptable-use": { slug: "acceptable-use", seo: { title: "Acceptable Use Policy" } },
+  "coaching-agreement": { slug: "coaching-agreement", seo: { title: "Coaching Agreement" } },
   about: { slug: "about", seo: { title: "About" } },
   contact: { slug: "contact", seo: { title: "Contact" } },
   schedule: { slug: "schedule", seo: { title: "Schedule" } },
@@ -65,37 +75,9 @@ export const LOCAL_PAGE_CONTENT: Record<string, PageContent> = {
 
 export const LOCAL_CLASS_DEFINITIONS: ClassDefinitionContent[] = classDetails as ClassDetail[];
 export const LOCAL_THEMED_WEEK_PROMOS: ThemedWeekPromo[] = themedWeekPromos;
+export const LOCAL_SMALL_GROUP_PROGRAMMES: SmallGroupTemplateContent[] = smallGroupTemplates;
 
-export const LOCAL_LEGAL_DOCUMENTS: LegalDocumentContent[] = [
-  {
-    id: "local-terms",
-    slug: "terms",
-    title: "Terms & Conditions",
-    version: "1.0",
-    body: "Placeholder legal content. Replace by publishing a `legalDocument` entry in Contentful.",
-  },
-  {
-    id: "local-privacy",
-    slug: "privacy",
-    title: "Privacy Policy",
-    version: "1.0",
-    body: "Placeholder legal content. Replace by publishing a `legalDocument` entry in Contentful.",
-  },
-  {
-    id: "local-cookies",
-    slug: "cookies",
-    title: "Cookie Policy",
-    version: "1.0",
-    body: "Placeholder legal content. Replace by publishing a `legalDocument` entry in Contentful.",
-  },
-  {
-    id: "local-health-declaration",
-    slug: "health-declaration",
-    title: "Health Declaration",
-    version: "1.0",
-    body: "Placeholder legal content. Replace by publishing a `legalDocument` entry in Contentful.",
-  },
-];
+export const LOCAL_LEGAL_DOCUMENTS: LegalDocumentContent[] = LEGAL_DOCUMENTS;
 
 export const LOCAL_NEWSLETTER_SIGNUP_CONTENT: NewsletterSignupContent = {
   slug: "default",
@@ -129,6 +111,7 @@ export const LOCAL_RETREAT_INSTANCES: RetreatInstanceContent[] = retreats.flatMa
     normalPrice: retreat.normalPrice,
     earlyBirdDeadline: retreat.earlyBirdDeadline,
     currency: retreat.currency,
+    roomOptions: d.roomOptions,
   }))
 );
 

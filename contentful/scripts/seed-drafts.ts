@@ -36,6 +36,7 @@ function buildAutoSlug(contentType: string, entry: Record<string, unknown>) {
   if (existingSlug) return existingSlug;
 
   const byType: Record<string, string | undefined> = {
+    authorProfile: typeof entry.name === "string" ? entry.name : undefined,
     instructorProfile: typeof entry.name === "string" ? entry.name : undefined,
     testimonial:
       typeof entry.authorName === "string"
@@ -160,7 +161,8 @@ async function run() {
     (g) =>
       g.contentType !== "retreatTemplate" &&
       g.contentType !== "newsletterSignupContent" &&
-      g.contentType !== "classDefinition"
+      g.contentType !== "classDefinition" &&
+      g.contentType !== "blogPost"
   )) {
     report[group.contentType] = { created: 0, updated: 0 };
     for (const entry of group.entries) {
@@ -204,6 +206,37 @@ async function run() {
         ...(defaultInstructorProfile ? { defaultInstructorProfile } : {}),
       });
       report.classDefinition[result.action as "created" | "updated"] += 1;
+    }
+  }
+
+  const blogPostGroup = SEED_GROUPS.find((g) => g.contentType === "blogPost");
+  if (blogPostGroup) {
+    report.blogPost = { created: 0, updated: 0 };
+
+    for (const rawEntry of blogPostGroup.entries) {
+      const entry = rawEntry as Record<string, unknown> & { authorSlugs?: string[] };
+      const { authorSlugs, ...rest } = entry;
+
+      let authors: Array<ReturnType<typeof toEntryLink>> | undefined;
+      if (Array.isArray(authorSlugs) && authorSlugs.length > 0) {
+        authors = [];
+        for (const authorSlug of authorSlugs) {
+          if (typeof authorSlug !== "string" || authorSlug.length === 0) continue;
+          const authorId = await getEntryIdBySlug(environment, "authorProfile", authorSlug);
+          if (!authorId) {
+            throw new Error(
+              `Unable to resolve authorProfile by slug "${authorSlug}" for blog post "${String(entry.slug || "")}".`
+            );
+          }
+          authors.push(toEntryLink(authorId));
+        }
+      }
+
+      const result = await upsertDraftEntry(environment, "blogPost", {
+        ...rest,
+        ...(authors && authors.length > 0 ? { authors } : {}),
+      });
+      report.blogPost[result.action as "created" | "updated"] += 1;
     }
   }
 

@@ -26,11 +26,13 @@ const CATEGORY_ICONS: Record<string, typeof Activity> = {
 
 interface HealthProfileEditorProps {
   profile: HealthProfile;
-  onSave: (profile: HealthProfile) => void;
+  onSave: (profile: HealthProfile, consentAccepted: boolean) => void | Promise<void>;
   /** Compact mode for onboarding — hides notes, uses smaller spacing */
   compact?: boolean;
   /** Show a "Skip" button */
   onSkip?: () => void;
+  requireConsentAcknowledgement?: boolean;
+  initialConsentAccepted?: boolean;
 }
 
 export function HealthProfileEditor({
@@ -38,6 +40,8 @@ export function HealthProfileEditor({
   onSave,
   compact = false,
   onSkip,
+  requireConsentAcknowledgement = true,
+  initialConsentAccepted = false,
 }: HealthProfileEditorProps) {
   const [conditions, setConditions] = useState<Record<string, boolean>>(() => ({
     ...profile.conditions,
@@ -57,6 +61,7 @@ export function HealthProfileEditor({
     return expanded;
   });
   const [saved, setSaved] = useState(false);
+  const [consentAccepted, setConsentAccepted] = useState(initialConsentAccepted);
 
   const toggleCategory = (id: string) => {
     setExpandedCategories((prev) => {
@@ -91,13 +96,16 @@ export function HealthProfileEditor({
     setSaved(false);
   };
 
-  const handleSave = () => {
-    onSave({
-      conditions,
-      details,
-      additionalNotes,
-      lastUpdated: new Date().toISOString().split("T")[0],
-    });
+  const handleSave = async () => {
+    await onSave(
+      {
+        conditions,
+        details,
+        additionalNotes,
+        lastUpdated: new Date().toISOString().split("T")[0],
+      },
+      consentAccepted
+    );
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
@@ -117,6 +125,21 @@ export function HealthProfileEditor({
           </p>
         </div>
       </div>
+
+      {requireConsentAcknowledgement ? (
+        <label className="bg-secondary/20 flex cursor-pointer items-start gap-3 rounded-lg border p-4 text-sm">
+          <input
+            type="checkbox"
+            checked={consentAccepted}
+            onChange={(event) => setConsentAccepted(event.target.checked)}
+            className="accent-brand-accent mt-0.5 h-4 w-4"
+          />
+          <span className="text-muted-foreground leading-relaxed">
+            I agree to Shruti Turner using the health information I provide to assess suitability,
+            tailor training, and deliver sessions safely.
+          </span>
+        </label>
+      ) : null}
 
       {/* Categories */}
       {HEALTH_CATEGORIES.map((category) => (
@@ -164,9 +187,10 @@ export function HealthProfileEditor({
             </Button>
           )}
           <Button
-            onClick={handleSave}
+            onClick={() => void handleSave()}
             size="sm"
             className="bg-brand-accent hover:bg-brand-accent/90"
+            disabled={requireConsentAcknowledgement && !consentAccepted}
           >
             {saved ? (
               <>

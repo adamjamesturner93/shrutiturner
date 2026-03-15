@@ -174,7 +174,7 @@ export function SignupPage() {
     <Layout>
       <SEO
         title="Sign Up - Shruti Turner"
-        description="Create your account to access personalized training programs, online classes, and expert coaching."
+        description="Create your account to access personalised training programmes, online classes, and expert coaching."
         canonicalUrl="https://shrutiturner.com/signup"
         noIndex
       />
@@ -195,7 +195,7 @@ export function SignupPage() {
               </div>
               <div className="space-y-3 pt-4">
                 {[
-                  "Personalised programs for complex bodies",
+                  "Personalised programmes for complex bodies",
                   "Online & in-person yoga + strength classes",
                   "Supportive community, no toxic positivity",
                 ].map((item) => (
@@ -388,7 +388,7 @@ export function SignupPage() {
                         >
                           I agree to the{" "}
                           <Link href="/terms" className="text-primary hover:underline">
-                            Terms of Service
+                            Terms & Conditions
                           </Link>{" "}
                           and{" "}
                           <Link href="/privacy" className="text-primary hover:underline">
@@ -419,7 +419,7 @@ export function SignupPage() {
                             className="text-primary hover:underline"
                             target="_blank"
                           >
-                            Health Declaration
+                            Health & Liability Waiver
                           </Link>
                           , and I understand that I participate in all classes and programmes at my
                           own risk

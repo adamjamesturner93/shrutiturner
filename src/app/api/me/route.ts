@@ -46,6 +46,10 @@ export async function PATCH(request: Request) {
         typeof body.hasAgreedToTerms === "boolean" ? body.hasAgreedToTerms : undefined,
       hasAgreedToHealth:
         typeof body.hasAgreedToHealth === "boolean" ? body.hasAgreedToHealth : undefined,
+      hasConsentedToHealthData:
+        typeof body.hasConsentedToHealthData === "boolean"
+          ? body.hasConsentedToHealthData
+          : undefined,
       heardAboutSource:
         typeof body.heardAboutSource === "string"
           ? body.heardAboutSource

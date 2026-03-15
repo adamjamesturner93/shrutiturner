@@ -1,17 +1,15 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { ClassesSmallGroupsPage } from "@/views/classes-small-groups";
 import { buildPageMetadata } from "@/lib/content/metadata";
-import { getClassDefinitionsByCategory, getTestimonials } from "@/lib/content";
+import { listSmallGroupCatalogue } from "@/lib/small-groups/service";
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildPageMetadata("classes-small-groups", "Small Group Programmes");
 }
 
 export default async function Page() {
-  const [classDefinitions, testimonials] = await Promise.all([
-    getClassDefinitionsByCategory("small-group"),
-    getTestimonials("small-group"),
-  ]);
-
-  return <ClassesSmallGroupsPage classDefinitions={classDefinitions} testimonials={testimonials} />;
+  await connection();
+  const programmes = await listSmallGroupCatalogue();
+  return <ClassesSmallGroupsPage programmes={programmes} />;
 }

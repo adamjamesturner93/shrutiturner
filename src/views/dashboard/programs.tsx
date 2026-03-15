@@ -1,109 +1,173 @@
 "use client";
 
-import { DashboardLayout } from "../../components/dashboard-layout";
-import { Button } from "../../components/ui/button";
-import { Badge } from "../../components/ui/badge";
-import { useI18n } from "../../lib/use-i18n";
 import Link from "next/link";
-import { ArrowRight, Check, Sparkles, Users, Calendar } from "lucide-react";
+import { ArrowRight, Calendar, CheckCircle2, Sparkles, Users } from "lucide-react";
+import { DashboardLayout } from "../../components/dashboard-layout";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import type { MemberSmallGroupSummary } from "@/lib/small-groups/service";
+import { buildDashboardSmallGroupRunHref } from "@/lib/small-groups/routes";
 
-const PROGRAMS = [
-  {
-    id: "press-up-progression",
-    title: "Press-Up Progression",
-    duration: "4 weeks",
-    startDate: "2026-03-10",
-    spots: 6,
-    spotsRemaining: 3,
-    price: "£120",
-    level: "All levels",
-    description: "Build your first full press-up with intelligent, adaptive progression.",
-    enrolled: false,
-  },
-  {
-    id: "shoulder-resilience",
-    title: "Shoulder Resilience & Mobility",
-    duration: "6 weeks",
-    startDate: "2026-03-17",
-    spots: 6,
-    spotsRemaining: 2,
-    price: "£165",
-    level: "All levels",
-    description: "Build durable, pain-free shoulders through targeted strength and mobility.",
-    enrolled: true,
-  },
-];
+function formatDate(value: string | null) {
+  if (!value) return "Dates announced soon";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(value));
+}
 
-export function ProgramsPage() {
-  const { fmtDate } = useI18n();
+function statusLabel(value: MemberSmallGroupSummary["status"]) {
+  return value.replaceAll("_", " ");
+}
+
+export function DashboardSmallGroupsPage({
+  initialData,
+}: {
+  initialData: MemberSmallGroupSummary[];
+}) {
+  const enrolled = initialData.filter((programme) => programme.enrolled);
+  const available = initialData.filter(
+    (programme) => !programme.enrolled && programme.status !== "completed"
+  );
+
   return (
-    <DashboardLayout title="Programs - Private Studio">
-      <h1 className="mb-2 text-3xl">Small Group Programs</h1>
-      <p className="text-muted-foreground mb-8">
-        4-6 week focused cohorts with specific skill outcomes. Max 6 people per group.
-      </p>
-
-      <div className="space-y-6">
-        {PROGRAMS.map((program) => (
-          <div
-            key={program.id}
-            className={`bg-background rounded-lg border p-6 ${
-              program.enrolled ? "border-brand-accent bg-brand-accent/5" : ""
-            }`}
-          >
-            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
-              <div className="flex-1 space-y-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-xl">{program.title}</h3>
-                  {program.enrolled && (
-                    <Badge className="bg-brand-accent text-brand-white gap-1">
-                      <Check className="h-3 w-3" />
-                      Enrolled
-                    </Badge>
-                  )}
-                  {program.spotsRemaining <= 2 && !program.enrolled && (
-                    <Badge variant="outline" className="gap-1 border-orange-200 text-orange-600">
-                      <Sparkles className="h-3 w-3" />
-                      {program.spotsRemaining} spots left
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-muted-foreground text-sm">{program.description}</p>
-                <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3.5 w-3.5" />
-                    {program.duration} · Starts{" "}
-                    {fmtDate(program.startDate, { day: "numeric", month: "long", year: "numeric" })}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Users className="h-3.5 w-3.5" />
-                    {program.spots - program.spotsRemaining}/{program.spots} filled
-                  </span>
-                  <span>{program.price}</span>
-                </div>
-              </div>
-              <div>
-                {program.enrolled ? (
-                  <Link href={`/dashboard/programs/${program.id}`}>
-                    <Button>
-                      View Program
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                ) : (
-                  <Button variant="outline">Register · {program.price}</Button>
-                )}
-              </div>
-            </div>
+    <DashboardLayout title="Small Group Programmes - Private Studio">
+      <div className="space-y-8">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="mb-2 text-3xl">Small Group Programmes</h1>
+            <p className="text-muted-foreground max-w-2xl">
+              A clearer view of your current programme runs, what is coming next, and what is
+              currently open for registration.
+            </p>
           </div>
-        ))}
-      </div>
+          <Button asChild variant="outline">
+            <Link href="/classes/small-groups">View public programmes</Link>
+          </Button>
+        </div>
 
-      <div className="bg-secondary/20 mt-8 rounded-lg border p-6 text-center">
-        <p className="text-muted-foreground mb-2">New programs announced monthly.</p>
-        <p className="text-muted-foreground text-sm italic">
-          [Placeholder — program data will come from Supabase]
-        </p>
+        {enrolled.length > 0 ? (
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="text-brand-accent h-5 w-5" />
+              <h2 className="text-xl">Your Programmes</h2>
+            </div>
+            <div className="grid gap-5">
+              {enrolled.map((programme) => (
+                <div key={programme.id} className="bg-background rounded-[1.5rem] border p-6">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-xl">{programme.title}</h3>
+                        <Badge className="bg-brand-accent text-brand-white">Enrolled</Badge>
+                        <Badge variant="outline">{statusLabel(programme.status)}</Badge>
+                      </div>
+                      <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
+                        {programme.shortSummary}
+                      </p>
+                      <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          {programme.durationLabel} · {formatDate(programme.startDate)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Users className="h-4 w-4" />
+                          {programme.cohortSize} places
+                        </span>
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="rounded-xl border p-4">
+                          <p className="text-muted-foreground text-xs tracking-[0.16em] uppercase">
+                            Progress
+                          </p>
+                          <p className="mt-2 text-sm">
+                            {programme.progressSummary ||
+                              `${programme.sessionsAttended} session${programme.sessionsAttended === 1 ? "" : "s"} attended`}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border p-4">
+                          <p className="text-muted-foreground text-xs tracking-[0.16em] uppercase">
+                            Next session
+                          </p>
+                          <p className="mt-2 text-sm">
+                            {programme.nextSessionStartsAt
+                              ? formatDate(programme.nextSessionStartsAt)
+                              : "No future session scheduled yet"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      <Button asChild>
+                        <Link href={buildDashboardSmallGroupRunHref(programme.runSlug)}>
+                          View programme
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <section className="bg-secondary/20 rounded-[1.75rem] border p-8 md:p-10">
+            <div className="mx-auto max-w-3xl text-center">
+              <p className="text-brand-accent mb-3 text-sm tracking-[0.18em] uppercase">
+                No active enrolments
+              </p>
+              <h2 className="mb-4 text-2xl md:text-3xl">You are not enrolled in a programme yet</h2>
+              <p className="text-muted-foreground mb-6 text-sm leading-relaxed md:text-base">
+                When you join a small group programme, your sessions, progress, and next steps will
+                appear here.
+              </p>
+              <Button asChild>
+                <Link href="/classes/small-groups">Explore current programmes</Link>
+              </Button>
+            </div>
+          </section>
+        )}
+
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="text-brand-accent h-5 w-5" />
+            <h2 className="text-xl">Currently Open</h2>
+          </div>
+          <div className="grid gap-5 lg:grid-cols-2">
+            {available.map((programme) => (
+              <div key={programme.id} className="bg-background rounded-[1.5rem] border p-6">
+                <div className="space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-xl">{programme.title}</h3>
+                      <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                        {programme.shortSummary}
+                      </p>
+                    </div>
+                    {programme.badge ? <Badge variant="outline">{programme.badge}</Badge> : null}
+                  </div>
+                  <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
+                    <span>{programme.durationLabel}</span>
+                    <span>{programme.scheduleLabel || "Schedule announced soon"}</span>
+                    <span>{programme.priceLabel}</span>
+                  </div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-muted-foreground text-sm">
+                      {formatDate(programme.startDate)}
+                    </p>
+                    <Button asChild variant="outline">
+                      <Link href={programme.publicHref}>
+                        View template
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </DashboardLayout>
   );

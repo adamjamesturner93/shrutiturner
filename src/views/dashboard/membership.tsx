@@ -401,6 +401,17 @@ export function MembershipPage({
             Every membership begins with {trialDays} days on us. Card details are collected now,
             first charge after trial unless cancelled.
           </p>
+          <p className="text-muted-foreground mt-3 text-center text-xs leading-relaxed">
+            By continuing to checkout, you agree to the{" "}
+            <a href="/terms" className="text-primary underline">
+              Terms & Conditions
+            </a>{" "}
+            and can review the{" "}
+            <a href="/refund-policy" className="text-primary underline">
+              Refund & Cancellation Policy
+            </a>
+            .
+          </p>
         </div>
       )}
 
@@ -607,6 +618,17 @@ export function MembershipPage({
             </div>
             <p className="text-muted-foreground mt-2 text-xs">
               All credits expire {creditsExpiryDays} days from purchase. No auto-renewal.
+            </p>
+            <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+              Credit purchases are subject to the{" "}
+              <a href="/terms" className="text-primary underline">
+                Terms & Conditions
+              </a>{" "}
+              and the{" "}
+              <a href="/refund-policy" className="text-primary underline">
+                Refund & Cancellation Policy
+              </a>
+              .
             </p>
           </div>
         </div>

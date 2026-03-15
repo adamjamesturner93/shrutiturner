@@ -1,97 +1,91 @@
 "use client";
 
+import Link from "next/link";
+import { ArrowRight, Calendar, Check, Clock3, Sparkles, Users } from "lucide-react";
 import { Layout } from "../components/layout";
 import { SEO } from "../components/seo";
+import { NewsletterInline } from "../components/newsletter";
 import { Button } from "../components/ui/button";
-import Link from "next/link";
-import { ArrowRight, Users, Calendar, Sparkles, Check } from "lucide-react";
-import type { ClassDefinitionContent, TestimonialContent } from "@/lib/content";
+import type { PublicSmallGroupTemplateListItem } from "@/lib/small-groups/service";
 
 interface ClassesSmallGroupsPageProps {
-  classDefinitions?: ClassDefinitionContent[];
-  testimonials?: TestimonialContent[];
+  programmes?: PublicSmallGroupTemplateListItem[];
 }
 
-export function ClassesSmallGroupsPage({
-  classDefinitions = [],
-  testimonials = [],
-}: ClassesSmallGroupsPageProps) {
+function formatDate(value: string | null) {
+  if (!value) return "Dates announced soon";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+export function ClassesSmallGroupsPage({ programmes = [] }: ClassesSmallGroupsPageProps) {
   return (
     <Layout>
       <SEO
-        title="Small Group Programmes - Focused Skill Progression - Shruti Turner"
-        description="Multi-week small group programmes with specific skill outcomes, structured progression, and genuine individual attention for complex bodies."
-        keywords="small group fitness online, online strength course, small group training chronic illness, focused training programme"
+        title="Small Group Programmes - Shruti Turner"
+        description="Focused six-week style programme blocks with a clear outcome, a fixed cohort, and more accountability than regular classes."
         canonicalUrl="https://shrutiturner.com/classes/small-groups"
       />
 
-      <section className="bg-brand-dark text-brand-white py-20 md:py-28">
+      <section className="bg-brand-dark py-20 text-white md:py-28">
         <div className="container mx-auto max-w-4xl px-4 text-center">
-          <div className="bg-brand-accent-light/20 text-brand-accent-light mb-6 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm">
+          <div className="bg-brand-accent-light/15 text-brand-accent-light mb-6 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm">
             <Sparkles className="h-4 w-4" />
-            <span>Limited to 6 people per cohort</span>
+            Limited numbers. Clear outcomes. Real progression.
           </div>
-          <h1 className="mb-6 text-4xl leading-tight md:text-6xl">Small Group Programmes</h1>
-          <p className="text-brand-accent-light mb-8 text-xl leading-relaxed md:text-2xl">
-            Multi-week small cohort training with a specific outcome, stronger accountability, and
-            more structure than regular classes.
+          <h1 className="text-4xl md:text-6xl">Small Group Programmes</h1>
+          <p className="text-brand-accent-light mx-auto mt-6 max-w-3xl text-lg leading-relaxed md:text-2xl">
+            Multi-week small cohort programmes for a specific goal, with more structure,
+            accountability, and individual guidance than a standard class rhythm.
           </p>
-          <div className="flex flex-col justify-center gap-4 sm:flex-row">
-            <Link href="#current-programmes">
-              <Button
-                size="lg"
-                className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
-              >
-                View Current Programmes
-                <Calendar className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link href="/classes">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-brand-accent-light text-brand-accent-light hover:bg-brand-accent-light/10 bg-transparent"
-              >
-                Back to Move Well Classes
-              </Button>
-            </Link>
+          <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
+            <Button asChild size="lg">
+              <Link href="#current-programmes">View Current Programmes</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline" className="bg-transparent text-white">
+              <Link href="/classes">Back to Move Well Classes</Link>
+            </Button>
           </div>
         </div>
       </section>
 
       <section className="py-20 md:py-24">
         <div className="container mx-auto max-w-5xl px-4">
-          <h2 className="mb-4 text-center text-3xl md:text-5xl">Why a Programme?</h2>
-          <p className="text-muted-foreground mx-auto mb-12 max-w-2xl text-center text-lg leading-relaxed">
-            Move Well Classes are ideal for ongoing practice. Programmes are for the season when you
-            want a tighter container, a fixed group, and a more deliberate build toward one goal.
-          </p>
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-3xl md:text-5xl">Why a Programme?</h2>
+            <p className="text-muted-foreground mt-5 text-lg leading-relaxed">
+              Move Well Classes are the ongoing practice. Programmes are the focused season when you
+              want a tighter container, a fixed group, and a more deliberate build towards one
+              specific result.
+            </p>
+          </div>
 
-          <div className="grid gap-8 md:grid-cols-3">
-            <div className="bg-secondary/20 space-y-4 rounded-lg border p-6">
-              <Users className="text-primary h-8 w-8" />
-              <h3 className="text-xl">Personalised Attention</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                With only 6 people, you get more individual feedback, coaching cues, and progression
-                support in every session.
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            <div className="rounded-[1.5rem] border p-6">
+              <Users className="text-brand-accent h-7 w-7" />
+              <h3 className="mt-4 text-xl">More individual attention</h3>
+              <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                With a small cohort, there is more room for feedback, progression, and adaptation to
+                your actual body rather than generic group cues.
               </p>
             </div>
-
-            <div className="bg-secondary/20 space-y-4 rounded-lg border p-6">
-              <Sparkles className="text-primary h-8 w-8" />
-              <h3 className="text-xl">Clear Progression</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Each programme is built around a specific theme or skill outcome. You are not just
-                attending classes, you are moving through a structured block.
+            <div className="rounded-[1.5rem] border p-6">
+              <Clock3 className="text-brand-accent h-7 w-7" />
+              <h3 className="mt-4 text-xl">A defined progression</h3>
+              <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                Each programme is built around one clear outcome, so sessions build week by week
+                instead of feeling disconnected.
               </p>
             </div>
-
-            <div className="bg-secondary/20 space-y-4 rounded-lg border p-6">
-              <Check className="text-primary h-8 w-8" />
-              <h3 className="text-xl">Accountability</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Small cohorts create momentum. You train with the same people over several weeks,
-                which makes showing up and progressing much easier.
+            <div className="rounded-[1.5rem] border p-6">
+              <Check className="text-brand-accent h-7 w-7" />
+              <h3 className="mt-4 text-xl">Accountability without overwhelm</h3>
+              <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                You stay with the same group over a fixed block, which makes consistency much easier
+                than trying to restart every week.
               </p>
             </div>
           </div>
@@ -100,209 +94,118 @@ export function ClassesSmallGroupsPage({
 
       <section id="current-programmes" className="bg-secondary/20 py-20 md:py-24">
         <div className="container mx-auto max-w-6xl px-4">
-          <h2 className="mb-12 text-center text-3xl md:text-5xl">Current Programmes</h2>
+          <h2 className="text-center text-4xl md:text-6xl">Current Programmes</h2>
 
-          {classDefinitions.length > 0 ? (
-            <div className="mx-auto grid max-w-5xl gap-8 md:grid-cols-2">
-              {classDefinitions.map((program) => (
-                <div
-                  key={program.id}
-                  className="bg-background overflow-hidden rounded-lg border-2 transition-shadow hover:shadow-lg"
-                >
-                  <div className="space-y-6 p-8">
-                    <div>
-                      <h3 className="mb-2 text-2xl">{program.name}</h3>
-                      <div className="text-muted-foreground flex items-center gap-4 text-sm">
-                        <span>{program.duration}</span>
-                        <span>•</span>
-                        <span>{program.level}</span>
-                      </div>
+          {programmes.length > 0 ? (
+            <div className="mx-auto mt-12 grid max-w-5xl gap-8 lg:grid-cols-2">
+              {programmes.map((programme) => {
+                const run = programme.featuredRun;
+                return (
+                  <article
+                    key={programme.id}
+                    className="bg-background flex h-full flex-col rounded-[1.75rem] border p-8 shadow-[0_20px_60px_rgba(37,24,47,0.08)]"
+                  >
+                    {run?.badge ? (
+                      <span className="mb-6 inline-flex w-fit rounded-full bg-orange-50 px-4 py-2 text-sm text-orange-700">
+                        {run.badge}
+                      </span>
+                    ) : null}
+
+                    <h3 className="text-3xl leading-tight md:text-4xl">{programme.title}</h3>
+                    {programme.subtitle ? (
+                      <p className="text-muted-foreground mt-3 text-base">{programme.subtitle}</p>
+                    ) : null}
+
+                    <div className="text-muted-foreground mt-5 flex flex-wrap items-center gap-3 text-sm">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock3 className="h-4 w-4" />
+                        {programme.durationLabel}
+                      </span>
+                      {run?.startDate ? <span>•</span> : null}
+                      {run?.startDate ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          Starts {formatDate(run.startDate)}
+                        </span>
+                      ) : null}
+                      <span>•</span>
+                      <span className="inline-flex items-center gap-1">
+                        <Users className="h-4 w-4" />
+                        Max {run?.cohortSize || programme.cohortSize}
+                      </span>
                     </div>
 
-                    <p className="text-muted-foreground leading-relaxed">
-                      {program.shortDescription}
+                    <p className="text-muted-foreground mt-8 text-lg leading-relaxed">
+                      {programme.shortSummary}
                     </p>
 
-                    <Link href={`/schedule/${program.slug}`}>
-                      <Button>
-                        View Programme
-                        <ArrowRight className="ml-2 h-4 w-4" />
+                    <div className="mt-8">
+                      <h4 className="text-xl">What You&apos;ll Achieve:</h4>
+                      <ul className="text-muted-foreground mt-4 space-y-3 text-base leading-relaxed">
+                        {[
+                          `Train within a more focused ${programme.durationLabel.toLowerCase()} block`,
+                          `Work towards a defined outcome with a stable group`,
+                          `Receive more individual feedback than in a standard class`,
+                        ].map((point) => (
+                          <li key={point} className="flex items-start gap-3">
+                            <Check className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
+                            <span>{point}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="mt-auto border-t pt-8">
+                      <div className="mb-5">
+                        <p className="text-brand-accent text-4xl">
+                          {run?.priceLabel || "Details on request"}
+                        </p>
+                        {run ? (
+                          <p className="text-muted-foreground mt-2 text-sm">
+                            {run.spotsFilled} of {run.cohortSize} spots filled
+                          </p>
+                        ) : (
+                          <p className="text-muted-foreground mt-2 text-sm">
+                            New dates will appear here when the next run is scheduled.
+                          </p>
+                        )}
+                      </div>
+
+                      <Button asChild size="lg" className="w-full">
+                        <Link href={programme.detailHref}>
+                          View Programme Details
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
                       </Button>
-                    </Link>
-                  </div>
-                </div>
-              ))}
+
+                      <p className="text-muted-foreground mt-5 text-center text-sm">
+                        {run?.scheduleLabel || "Schedule announced soon"}
+                      </p>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           ) : (
-            <div className="text-center">
-              <p className="text-muted-foreground mb-6">
-                No small-group programmes are currently published in Contentful.
-              </p>
-              <Link href="/">
-                <Button variant="outline" size="lg">
-                  Join Newsletter for Early Access
-                </Button>
-              </Link>
-            </div>
-          )}
-
-          <p className="text-muted-foreground mx-auto mt-12 max-w-2xl text-center text-sm leading-relaxed">
-            New programme blocks are announced through the newsletter and schedule updates. If the
-            current cohort is not the right fit, keep an eye out for the next intake.
-          </p>
-        </div>
-      </section>
-
-      <section className="py-20 md:py-24">
-        <div className="container mx-auto max-w-4xl px-4">
-          <h2 className="mb-12 text-center text-3xl md:text-5xl">How It Works</h2>
-
-          <div className="space-y-6">
-            <div className="flex items-start gap-6">
-              <div className="bg-primary text-primary-foreground flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full font-medium">
-                1
-              </div>
-              <div>
-                <h3 className="mb-2 text-lg">Choose Your Programme</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  Pick the programme that matches the skill, theme, or training outcome you want to
-                  work toward next.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-6">
-              <div className="bg-primary text-primary-foreground flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full font-medium">
-                2
-              </div>
-              <div>
-                <h3 className="mb-2 text-lg">Commit to the Cohort</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  Each programme runs across a fixed block, with scheduled sessions and a stable
-                  group so progression can build week by week.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-6">
-              <div className="bg-primary text-primary-foreground flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full font-medium">
-                3
-              </div>
-              <div>
-                <h3 className="mb-2 text-lg">Get More Individual Feedback</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  The smaller group size allows more tailored cueing, clearer progressions, and a
-                  stronger sense of accountability than a standard class format.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-6">
-              <div className="bg-primary text-primary-foreground flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full font-medium">
-                4
-              </div>
-              <div>
-                <h3 className="mb-2 text-lg">Carry It Back Into Your Regular Practice</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  Use your programme block to build capacity, then bring that confidence back into
-                  Move Well Classes and the rest of your training.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-secondary/20 py-20 md:py-24">
-        <div className="container mx-auto max-w-4xl px-4">
-          <h2 className="mb-12 text-center text-3xl md:text-5xl">Who This Is For</h2>
-
-          <div className="grid gap-8 md:grid-cols-2">
-            <div className="bg-background space-y-4 rounded-lg border p-8">
-              <h3 className="text-xl">This is for you if:</h3>
-              <ul className="text-muted-foreground space-y-3">
-                <li className="flex items-start gap-2">
-                  <Check className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
-                  <span>You want a specific outcome rather than open-ended drop-ins</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
-                  <span>You value accountability and a small, familiar cohort</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
-                  <span>You are happy committing to a set schedule for a few weeks</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
-                  <span>You want more structure and feedback than regular classes provide</span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="bg-background space-y-4 rounded-lg border p-8">
-              <h3 className="text-xl">This is not the best fit if:</h3>
-              <ul className="text-muted-foreground space-y-3">
-                <li>• You want maximum flexibility week to week</li>
-                <li>• You are looking for general practice rather than a focused block</li>
-                <li>• You prefer to dip in and out rather than commit to a cohort</li>
-                <li>• You would be better served by regular Move Well Classes first</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-20 md:py-24">
-        <div className="container mx-auto max-w-5xl px-4">
-          <h2 className="mb-12 text-center text-3xl md:text-4xl">What Students Say</h2>
-
-          {testimonials.length > 0 ? (
-            <div className="mx-auto grid max-w-4xl gap-8 md:grid-cols-2">
-              {testimonials.map((item) => (
-                <div key={item.id} className="bg-secondary/20 space-y-4 rounded-lg border p-6">
-                  <p className="text-muted-foreground leading-relaxed italic">"{item.quote}"</p>
-                  <p className="text-sm">
-                    — {item.authorName}
-                    {item.authorCondition ? `, ${item.authorCondition}` : ""}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-center">
-              No small-group testimonials are currently published in Contentful.
+            <p className="text-muted-foreground mt-10 text-center">
+              No programmes are currently published.
             </p>
           )}
-        </div>
-      </section>
 
-      <section className="bg-brand-accent text-brand-white py-20 md:py-24">
-        <div className="container mx-auto max-w-3xl space-y-8 px-4 text-center">
-          <h2 className="text-3xl leading-tight md:text-4xl">Ready to Go Deeper?</h2>
-          <p className="text-lg leading-relaxed opacity-90">
-            If you want a more structured block than weekly classes can give you, a small group
-            programme is the next step.
-          </p>
-          <div className="flex flex-col justify-center gap-4 sm:flex-row">
-            <Link href="#current-programmes">
-              <Button
-                size="lg"
-                className="bg-brand-white text-brand-accent hover:bg-brand-white/90"
-              >
-                View Current Programmes
-                <Calendar className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link href="/classes">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-brand-white text-brand-white hover:bg-brand-white/10 bg-transparent"
-              >
-                Explore Move Well Classes
-              </Button>
-            </Link>
+          <div className="bg-background mx-auto mt-14 max-w-4xl rounded-[1.75rem] border p-8 md:p-10">
+            <div className="mx-auto max-w-3xl text-center">
+              <p className="text-brand-accent text-sm tracking-[0.18em] uppercase">Early Notice</p>
+              <h3 className="mt-3 text-2xl md:text-3xl">
+                Join the newsletter for first notice of new programmes
+              </h3>
+              <p className="text-muted-foreground mt-4 text-sm leading-relaxed md:text-base">
+                New programme blocks often fill quietly from the waitlist first. Join the mailing
+                list for early notice when the next focused intake opens.
+              </p>
+              <div className="mt-8">
+                <NewsletterInline />
+              </div>
+            </div>
           </div>
         </div>
       </section>

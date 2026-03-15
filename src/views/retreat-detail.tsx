@@ -1,58 +1,138 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Layout } from "../components/layout";
-import { Button } from "../components/ui/button";
-import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
-import { Label } from "../components/ui/label";
-import { ImageWithFallback } from "../components/figma/ImageWithFallback";
-import { useState } from "react";
-import { Calendar, MapPin, Users, Check, X, Clock, AlertCircle, ArrowRight } from "lucide-react";
-import { useI18n } from "../lib/use-i18n";
-import type { RetreatCombinedContent } from "@/lib/content";
+import { useMemo, useState } from "react";
+import {
+  AlertCircle,
+  ArrowRight,
+  BedDouble,
+  Calendar,
+  Check,
+  Clock,
+  Gift,
+  MapPin,
+  X,
+} from "lucide-react";
+import { Layout } from "@/components/layout";
+import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
+import { SEO } from "@/components/seo";
+import { Button } from "@/components/ui/button";
+import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content";
+import { useI18n } from "@/lib/use-i18n";
 
 interface RetreatDetailPageProps {
   retreat?: RetreatCombinedContent | null;
   otherRetreatsAtVenue?: RetreatCombinedContent[];
 }
 
+function formatMoney(value: number, currency = "GBP") {
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(value / 100);
+}
+
+function getRoomPrice(roomOption: RetreatRoomOptionContent) {
+  return roomOption.normalPricePence;
+}
+
+function getRoomDeposit(roomOption: RetreatRoomOptionContent) {
+  if (typeof roomOption.depositPence === "number" && roomOption.depositPence > 0) {
+    return roomOption.depositPence;
+  }
+  if (roomOption.normalPricePence <= 25000) return roomOption.normalPricePence;
+  return Math.min(roomOption.normalPricePence, 30000);
+}
+
+function getDefaultRoomOptionId(date: RetreatCombinedContent["dates"][number] | null | undefined) {
+  if (!date) return "";
+  return (
+    date.roomOptions.find((option) => !option.isWaitlistOnly && option.availableSpots > 0)?.id ||
+    date.roomOptions[0]?.id ||
+    ""
+  );
+}
+
+function getRoomTypeLabel(roomOption: RetreatRoomOptionContent) {
+  if (roomOption.type === "single") return "Private room";
+  if (roomOption.type === "shared_private") return "Private room for two";
+  if (roomOption.type === "virtual") return "Virtual attendance";
+  return "Shared room";
+}
+
 export function RetreatDetailPage({
   retreat: retreatProp,
   otherRetreatsAtVenue = [],
 }: RetreatDetailPageProps) {
-  const router = useRouter();
   const retreat = retreatProp ?? null;
-  const [selectedDateId, setSelectedDateId] = useState<string>("");
-
   const { fmtDate, fmtDateRange } = useI18n();
+  const [selectedDateId, setSelectedDateId] = useState(retreat?.dates[0]?.id || "");
+  const [selectedRoomId, setSelectedRoomId] = useState(
+    getDefaultRoomOptionId(retreat?.dates[0] || null)
+  );
+
+  const selectedDate = useMemo(
+    () => retreat?.dates.find((date) => date.id === selectedDateId) || retreat?.dates[0] || null,
+    [retreat, selectedDateId]
+  );
+
+  const selectedRoom =
+    selectedDate?.roomOptions.find((roomOption) => roomOption.id === selectedRoomId) ||
+    selectedDate?.roomOptions[0] ||
+    null;
+
+  const priceFromPence = useMemo(() => {
+    if (!retreat) return retreat?.normalPrice ? retreat.normalPrice * 100 : 0;
+    const prices = retreat.dates.flatMap((date) =>
+      date.roomOptions.map((roomOption) => getRoomPrice(roomOption))
+    );
+    return prices.length > 0 ? Math.min(...prices) : retreat.normalPrice * 100;
+  }, [retreat]);
+
+  const depositFromPence = useMemo(() => {
+    if (!retreat) return 0;
+    const deposits = retreat.dates.flatMap((date) =>
+      date.roomOptions.map((roomOption) => getRoomDeposit(roomOption))
+    );
+    return deposits.length > 0 ? Math.min(...deposits) : 0;
+  }, [retreat]);
 
   if (!retreat) {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-20 text-center">
-          <h1 className="mb-4 text-3xl">Retreat Not Found</h1>
-          <Link href="/retreats">
-            <Button>View All Retreats</Button>
-          </Link>
+        <SEO title="Retreat Not Found - Shruti Turner" noIndex />
+        <div className="container mx-auto px-4 py-24 text-center">
+          <h1 className="text-3xl">Retreat not found</h1>
+          <p className="text-muted-foreground mt-4">
+            This retreat may have moved or is no longer available.
+          </p>
+          <Button asChild className="mt-6">
+            <Link href="/retreats">View retreats</Link>
+          </Button>
         </div>
       </Layout>
     );
   }
 
-  const isEarlyBird = new Date() < new Date(retreat.earlyBirdDeadline);
-  const price = isEarlyBird ? retreat.earlyBirdPrice : retreat.normalPrice;
-
-  const handleBookNow = () => {
-    if (selectedDateId) {
-      router.push(`/retreats/${retreat.slug}/checkout?date=${selectedDateId}`);
-    }
-  };
+  const checkoutHref =
+    selectedDate && selectedRoom
+      ? `/retreats/${retreat.slug}/checkout?date=${selectedDate.id}&room=${selectedRoom.id}`
+      : `/retreats/${retreat.slug}/checkout`;
+  const giftHref =
+    selectedDate && selectedRoom
+      ? `/retreats/${retreat.slug}/checkout?date=${selectedDate.id}&room=${selectedRoom.id}&gift=1`
+      : `/retreats/${retreat.slug}/checkout?gift=1`;
 
   return (
     <Layout>
-      {/* Hero Image */}
-      <div className="bg-secondary relative aspect-[21/9]">
+      <SEO
+        title={`${retreat.title} - Shruti Turner`}
+        description={retreat.shortDescription}
+        canonicalUrl={`https://shrutiturner.com/retreats/${retreat.slug}`}
+      />
+
+      <div className="bg-secondary relative aspect-[21/9] min-h-[18rem]">
         <ImageWithFallback
           src={
             retreat.slug === "sankalpa"
@@ -64,53 +144,78 @@ export function RetreatDetailPage({
         />
       </div>
 
-      {/* Header */}
-      <section className="bg-brand-dark text-brand-white py-12 md:py-16">
-        <div className="container mx-auto max-w-5xl px-4">
-          <div className="text-brand-accent-light mb-4 flex items-center gap-2">
-            <MapPin className="h-5 w-5" />
-            <span className="text-lg">{retreat.location}</span>
+      <section className="bg-brand-dark py-14 text-white md:py-18">
+        <div className="container mx-auto max-w-6xl px-4">
+          <div className="text-brand-accent-light inline-flex items-center gap-2 text-sm">
+            <MapPin className="h-4 w-4" />
+            {retreat.location}
           </div>
-          <h1 className="mb-4 text-4xl md:text-5xl">{retreat.title}</h1>
-          <p className="text-brand-accent-light text-xl">{retreat.subtitle}</p>
+          <h1 className="mt-5 text-4xl leading-tight md:text-6xl">{retreat.title}</h1>
+          <p className="text-brand-accent-light mt-4 max-w-3xl text-xl leading-relaxed">
+            {retreat.subtitle}
+          </p>
+          <p className="text-brand-accent-light mt-6 max-w-4xl text-base leading-relaxed md:text-lg">
+            {retreat.shortDescription}
+          </p>
         </div>
       </section>
 
-      <div className="container mx-auto max-w-6xl px-4 py-12 md:py-16">
-        <div className="grid gap-12 lg:grid-cols-3">
-          {/* Main Content */}
-          <div className="space-y-12 lg:col-span-2">
-            {/* Description */}
-            <div className="prose prose-lg max-w-none">
-              <div className="text-muted-foreground leading-relaxed whitespace-pre-line">
-                {retreat.fullDescription}
-              </div>
+      <section className="py-16 md:py-20">
+        <div className="container mx-auto grid max-w-6xl gap-12 px-4 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="space-y-10">
+            <div className="text-muted-foreground leading-relaxed whitespace-pre-line">
+              {retreat.fullDescription}
             </div>
 
-            {/* Suitable For */}
             <div>
-              <h2 className="mb-6 text-2xl">This Retreat Is For:</h2>
-              <ul className="space-y-3">
-                {retreat.suitableFor.map((item, index) => (
-                  <li key={index} className="flex items-start gap-3">
-                    <Check className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
-                    <span className="text-muted-foreground">{item}</span>
+              <h2 className="text-3xl md:text-4xl">Who it&apos;s for</h2>
+              <ul className="mt-6 space-y-4">
+                {retreat.suitableFor.map((item) => (
+                  <li key={item} className="flex items-start gap-3">
+                    <Check className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
+                    <span className="text-muted-foreground leading-relaxed">{item}</span>
                   </li>
                 ))}
               </ul>
             </div>
 
-            {/* Schedule */}
             <div>
-              <h2 className="mb-6 text-2xl">Daily Schedule</h2>
-              <div className="space-y-6">
-                {retreat.schedule.map((day, index) => (
-                  <div key={index} className="border-primary border-l-2 pl-6">
-                    <h3 className="mb-3 text-lg">{day.day}</h3>
-                    <ul className="text-muted-foreground space-y-2">
-                      {day.activities.map((activity, actIndex) => (
-                        <li key={actIndex} className="flex items-start gap-2">
-                          <Clock className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <h2 className="text-3xl md:text-4xl">What&apos;s included</h2>
+              <div className="mt-6 grid gap-8 md:grid-cols-2">
+                <div>
+                  <ul className="space-y-3">
+                    {retreat.included.map((item) => (
+                      <li key={item} className="flex items-start gap-3">
+                        <Check className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
+                        <span className="text-muted-foreground">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="mb-4 text-xl">Not included</h3>
+                  <ul className="space-y-3">
+                    {retreat.notIncluded.map((item) => (
+                      <li key={item} className="flex items-start gap-3">
+                        <X className="text-muted-foreground mt-0.5 h-5 w-5 flex-shrink-0" />
+                        <span className="text-muted-foreground">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-3xl md:text-4xl">Daily rhythm</h2>
+              <div className="mt-6 space-y-5">
+                {retreat.schedule.map((day) => (
+                  <div key={day.day} className="rounded-[1.25rem] border p-5">
+                    <h3 className="text-xl">{day.day}</h3>
+                    <ul className="text-muted-foreground mt-4 space-y-3 text-sm leading-relaxed">
+                      {day.activities.map((activity) => (
+                        <li key={activity} className="flex items-start gap-3">
+                          <Clock className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
                           <span>{activity}</span>
                         </li>
                       ))}
@@ -120,147 +225,168 @@ export function RetreatDetailPage({
               </div>
             </div>
 
-            {/* Included / Not Included */}
-            <div className="grid gap-8 md:grid-cols-2">
-              <div>
-                <h3 className="mb-4 text-xl">What&apos;s Included</h3>
-                <ul className="space-y-3">
-                  {retreat.included.map((item, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <Check className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
-                      <span className="text-muted-foreground">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="mb-4 text-xl">Not Included</h3>
-                <ul className="space-y-3">
-                  {retreat.notIncluded.map((item, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <X className="text-muted-foreground mt-0.5 h-5 w-5 flex-shrink-0" />
-                      <span className="text-muted-foreground">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            {/* Accommodation */}
             <div>
-              <h2 className="mb-4 text-2xl">Accommodation</h2>
-              <p className="text-muted-foreground leading-relaxed">{retreat.accommodation}</p>
+              <h2 className="text-3xl md:text-4xl">Accommodation</h2>
+              <p className="text-muted-foreground mt-4 leading-relaxed">{retreat.accommodation}</p>
             </div>
 
-            {otherRetreatsAtVenue.length > 0 && (
+            {otherRetreatsAtVenue.length > 0 ? (
               <div>
-                <h2 className="mb-6 text-2xl">Other retreats at this venue</h2>
-                <div className="grid gap-4 md:grid-cols-2">
+                <h2 className="text-3xl md:text-4xl">Other retreats at this venue</h2>
+                <div className="mt-6 grid gap-4 md:grid-cols-2">
                   {otherRetreatsAtVenue.map((other) => (
                     <Link
                       key={other.slug}
                       href={`/retreats/${other.slug}`}
-                      className="bg-background hover:bg-secondary/40 block rounded-lg border p-4 transition-colors"
+                      className="hover:bg-secondary/20 rounded-[1.25rem] border p-5 transition-colors"
                     >
-                      <h3 className="mb-1 text-lg">{other.title}</h3>
-                      <p className="text-muted-foreground text-sm">{other.subtitle}</p>
+                      <h3 className="text-xl">{other.title}</h3>
+                      <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                        {other.subtitle}
+                      </p>
                     </Link>
                   ))}
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
 
-          {/* Booking Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-24 space-y-6">
-              {/* Pricing Card */}
-              <div className="bg-background rounded-lg border p-6 shadow-sm">
-                <div className="mb-6">
-                  <div className="mb-2 flex items-baseline gap-2">
-                    <span className="text-3xl">£{price}</span>
-                    <span className="text-muted-foreground">per person</span>
-                  </div>
-                  {isEarlyBird && (
-                    <div className="bg-brand-accent-light/20 text-brand-accent inline-block rounded px-3 py-1 text-sm">
-                      Early bird pricing until {fmtDate(retreat.earlyBirdDeadline)}
-                    </div>
-                  )}
-                  {!isEarlyBird && (
-                    <div className="text-muted-foreground text-sm">
-                      Early bird pricing (£{retreat.earlyBirdPrice}) has ended
-                    </div>
-                  )}
-                </div>
+          <aside>
+            <div className="sticky top-24 rounded-[1.75rem] border p-6 shadow-sm">
+              <p className="text-brand-accent text-sm tracking-[0.16em] uppercase">
+                Book this retreat
+              </p>
+              <div className="mt-4 flex items-baseline gap-3">
+                <span className="text-4xl">{formatMoney(priceFromPence, retreat.currency)}</span>
+                <span className="text-muted-foreground text-sm">from</span>
+              </div>
+              {depositFromPence > 0 ? (
+                <p className="text-muted-foreground mt-2 text-sm">
+                  Deposit from {formatMoney(depositFromPence, retreat.currency)}, balance later
+                </p>
+              ) : null}
+              <p className="text-muted-foreground mt-3 text-sm">
+                Early bird pricing until {fmtDate(retreat.earlyBirdDeadline)} where available.
+              </p>
 
-                {/* Date Selection */}
-                <div className="mb-6 space-y-3">
-                  <Label>Select Your Date</Label>
-                  <RadioGroup value={selectedDateId} onValueChange={setSelectedDateId}>
-                    {retreat.dates.map((date) => (
-                      <div
+              <div className="mt-8">
+                <h3 className="text-lg">Choose your date</h3>
+                <div className="mt-4 grid gap-3">
+                  {retreat.dates.map((date) => {
+                    const isSelected = date.id === selectedDate?.id;
+                    return (
+                      <button
                         key={date.id}
-                        className="hover:bg-secondary/50 flex cursor-pointer items-center space-x-2 rounded-lg border p-4 transition-colors"
+                        type="button"
+                        onClick={() => {
+                          setSelectedDateId(date.id);
+                          setSelectedRoomId(getDefaultRoomOptionId(date));
+                        }}
+                        className={`rounded-[1rem] border p-4 text-left transition-colors ${
+                          isSelected
+                            ? "border-brand-accent bg-brand-accent/5"
+                            : "hover:bg-secondary/20"
+                        }`}
                       >
-                        <RadioGroupItem value={date.id} id={date.id} />
-                        <label htmlFor={date.id} className="flex-1 cursor-pointer">
-                          <div className="mb-1 flex items-center gap-2">
-                            <Calendar className="text-primary h-4 w-4" />
-                            <span className="font-medium">
-                              {fmtDateRange(date.startDate, date.endDate)}
-                            </span>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p>{fmtDateRange(date.startDate, date.endDate)}</p>
+                            <p className="text-muted-foreground mt-1 text-sm">
+                              {date.availableSpaces} places currently available
+                            </p>
                           </div>
-                          <div className="text-muted-foreground flex items-center gap-1 text-sm">
-                            <Users className="h-3 w-3" />
-                            <span>
-                              {date.availableSpaces} of {date.totalSpaces} spaces available
-                            </span>
-                          </div>
-                        </label>
-                      </div>
-                    ))}
-                  </RadioGroup>
+                          <Calendar className="text-brand-accent h-4 w-4" />
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
+              </div>
 
+              {selectedDate ? (
+                <div className="mt-8">
+                  <h3 className="text-lg">Choose your room</h3>
+                  <div className="mt-4 grid gap-3">
+                    {selectedDate.roomOptions.map((roomOption) => {
+                      const isSelected = roomOption.id === selectedRoom?.id;
+                      return (
+                        <button
+                          key={roomOption.id}
+                          type="button"
+                          onClick={() => setSelectedRoomId(roomOption.id)}
+                          className={`rounded-[1rem] border p-4 text-left transition-colors ${
+                            isSelected
+                              ? "border-brand-accent bg-brand-accent/5"
+                              : "hover:bg-secondary/20"
+                          } ${roomOption.availableSpots <= 0 || roomOption.isWaitlistOnly ? "opacity-60" : ""}`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p>{roomOption.label}</p>
+                              <p className="text-muted-foreground mt-1 text-sm">
+                                {getRoomTypeLabel(roomOption)} ·{" "}
+                                {roomOption.guestsIncluded > 1
+                                  ? `for ${roomOption.guestsIncluded} guests`
+                                  : "for one guest"}
+                              </p>
+                            </div>
+                            <span className="text-sm">
+                              {formatMoney(getRoomPrice(roomOption), retreat.currency)}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mt-8 space-y-3">
                 <Button
+                  asChild
                   className="w-full"
                   size="lg"
-                  disabled={!selectedDateId}
-                  onClick={handleBookNow}
+                  disabled={!selectedDate || !selectedRoom}
                 >
-                  Book This Retreat
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <Link href={checkoutHref}>
+                    Choose this retreat
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full">
+                  <Link href={giftHref}>
+                    Buy as a gift
+                    <Gift className="ml-2 h-4 w-4" />
+                  </Link>
                 </Button>
               </div>
 
-              {/* Important Info */}
-              <div className="bg-secondary/20 rounded-lg border p-6">
-                <div className="mb-4 flex items-start gap-3">
-                  <AlertCircle className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
-                  <div>
-                    <h3 className="mb-2 font-medium">Important Information</h3>
-                    <ul className="text-muted-foreground space-y-2 text-sm">
-                      <li>• Travel insurance required</li>
-                      <li>• Full payment due at booking</li>
-                      <li>• See cancellation policy in FAQ</li>
-                      <li>• Health declaration required</li>
-                    </ul>
-                  </div>
+              <div className="mt-8 space-y-3 text-sm">
+                <div className="flex items-start gap-3 rounded-xl border p-4">
+                  <AlertCircle className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
+                  <p className="text-muted-foreground">
+                    Room choice, deposit, and any gifted place are all reserved against this
+                    selected retreat date.
+                  </p>
+                </div>
+                <div className="flex items-start gap-3 rounded-xl border p-4">
+                  <BedDouble className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
+                  <p className="text-muted-foreground">
+                    Accessibility and room questions are welcome before you book. Use the contact
+                    form if you need to check suitability first.
+                  </p>
                 </div>
               </div>
 
-              {/* Contact CTA */}
-              <div className="bg-brand-accent/10 rounded-lg p-4 text-center">
-                <p className="text-muted-foreground mb-3 text-sm">Questions about this retreat?</p>
-                <Button variant="outline" size="sm" className="w-full">
-                  Contact Shruti
+              <div className="mt-8 border-t pt-6">
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/contact">Ask a question about this retreat</Link>
                 </Button>
               </div>
             </div>
-          </div>
+          </aside>
         </div>
-      </div>
+      </section>
     </Layout>
   );
 }

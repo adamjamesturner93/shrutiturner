@@ -3,8 +3,6 @@ import { requireAdminUser } from "@/lib/api/auth-user";
 import { updateAdminSubscriber } from "@/lib/admin/newsletter-service";
 
 type Body = {
-  newsletter?: unknown;
-  blogUpdates?: unknown;
   marketingEmails?: unknown;
 };
 
@@ -14,8 +12,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ userId
     const { userId } = await params;
     const body = (await req.json().catch(() => ({}))) as Body;
     const payload = await updateAdminSubscriber(userId, {
-      newsletter: typeof body.newsletter === "boolean" ? body.newsletter : undefined,
-      blogUpdates: typeof body.blogUpdates === "boolean" ? body.blogUpdates : undefined,
       marketingEmails: typeof body.marketingEmails === "boolean" ? body.marketingEmails : undefined,
     });
     return NextResponse.json(payload);
@@ -28,6 +24,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ userId
     }
     if (error instanceof Error && error.message === "NOT_FOUND") {
       return NextResponse.json({ message: "Subscriber not found." }, { status: 404 });
+    }
+    if (error instanceof Error && error.message === "INVALID_UPDATE") {
+      return NextResponse.json({ message: "Invalid subscriber update." }, { status: 400 });
     }
     console.error("PATCH /api/admin/newsletter/subscribers/[userId] failed", error);
     return NextResponse.json({ message: "Failed to update subscriber." }, { status: 500 });

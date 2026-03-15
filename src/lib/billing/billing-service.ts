@@ -22,6 +22,9 @@ import {
 import { addCredits } from "@/lib/credits/credit-service";
 import { startOrSwitchMembership } from "@/lib/membership/membership-service";
 import { qualifyReferral } from "@/lib/referrals/referral-service";
+import { processGiftPurchaseCheckoutCompleted } from "@/lib/gifts/service";
+import { processRetreatCheckoutCompleted } from "@/lib/retreats/service";
+import { processSmallGroupCheckoutCompleted } from "@/lib/small-groups/service";
 
 const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -611,7 +614,19 @@ async function processPromotionCodeUpdated(promotionCode: Stripe.PromotionCode) 
 
 async function handleStripeEvent(event: Stripe.Event) {
   if (event.type === "checkout.session.completed") {
-    await processCheckoutCompleted(event, event.data.object as Stripe.Checkout.Session);
+    const session = event.data.object as Stripe.Checkout.Session;
+    const handledRetreat = await processRetreatCheckoutCompleted(session);
+    if (handledRetreat) {
+      return;
+    }
+    const handledGift = await processGiftPurchaseCheckoutCompleted(session);
+    if (handledGift) {
+      return;
+    }
+    const handledProgramme = await processSmallGroupCheckoutCompleted(session);
+    if (!handledProgramme) {
+      await processCheckoutCompleted(event, session);
+    }
     return;
   }
 

@@ -476,7 +476,7 @@ export function AccountPage() {
                           className="text-primary underline"
                           target="_blank"
                         >
-                          Health Declaration
+                          Health & Liability Waiver
                         </Link>
                       </span>
                     </label>
@@ -493,7 +493,7 @@ export function AccountPage() {
                   </div>
                   <div className="text-brand-accent flex items-center gap-2 text-sm">
                     <Check className="h-4 w-4" />
-                    Health declaration accepted{" "}
+                    Health & Liability Waiver accepted{" "}
                     {healthAgreedAt
                       ? `(${new Date(healthAgreedAt).toLocaleDateString("en-GB")})`
                       : ""}
@@ -509,7 +509,7 @@ export function AccountPage() {
                   Privacy Policy
                 </Link>
                 <Link href="/health-declaration" className="text-primary block hover:underline">
-                  Health Declaration
+                  Health & Liability Waiver
                 </Link>
               </div>
               <div className="border-t pt-4">
@@ -668,7 +668,7 @@ export function AccountPage() {
                   />
                 </label>
                 <label className="flex items-center justify-between py-2">
-                  <span className="text-sm">Program announcements</span>
+                  <span className="text-sm">Programme announcements</span>
                   <input
                     type="checkbox"
                     checked={notifications.programAnnouncements}

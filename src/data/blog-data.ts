@@ -1,15 +1,47 @@
-export interface BlogPost {
+import type { AuthorProfileContent, BlogPostContent } from "../lib/content/types";
+
+export interface BlogPost extends BlogPostContent {
   id: string;
   title: string;
   excerpt: string;
   content: string;
-  author: string;
+  author?: string;
+  authors: AuthorProfileContent[];
   date: string;
   tags: string[];
   readTime: string;
   coverImage: string;
   coverAlt: string;
 }
+
+export const blogAuthors: AuthorProfileContent[] = [
+  {
+    id: "shruti-turner",
+    slug: "shruti-turner",
+    name: "Shruti Turner",
+    role: "Strength & Yoga Coach",
+    bio: "Shruti combines strength coaching, adaptive yoga, and rehabilitation-informed movement to help people with chronic illness, pain, hypermobility, and fluctuating energy build long-term capacity without boom-and-bust.",
+    avatarImageUrl: "https://api.dicebear.com/9.x/initials/svg?seed=Shruti%20Turner",
+    avatarAlt: "Portrait illustration of Shruti Turner",
+    websiteUrl: "https://shrutiturner.com/about",
+    instagramHandle: "@shrutiturner",
+    isGuestContributor: false,
+    active: true,
+  },
+  {
+    id: "dr-hannah-lewis",
+    slug: "dr-hannah-lewis",
+    name: "Dr Hannah Lewis",
+    role: "Guest Physiotherapist",
+    bio: "Hannah is a musculoskeletal physiotherapist with a specialist interest in inflammatory arthritis, pacing, and helping people return to confident movement when symptoms are unpredictable.",
+    avatarImageUrl: "https://api.dicebear.com/9.x/initials/svg?seed=Hannah%20Lewis",
+    avatarAlt: "Portrait illustration of Dr Hannah Lewis",
+    websiteUrl: "https://example.com/hannah-lewis",
+    instagramHandle: "@drhannahlewis",
+    isGuestContributor: true,
+    active: true,
+  },
+];
 
 export const blogPosts: BlogPost[] = [
   {
@@ -54,6 +86,7 @@ The goal isn't to pretend your body is simple. It's to work with your body's com
 Strength training for chronic illness requires nuance, patience, and expertise. But done well, it can be transformative.
     `,
     author: "Shruti Turner",
+    authors: [blogAuthors[0]],
     date: "2026-02-15",
     tags: ["Strength Training", "Chronic Illness", "Evidence-Based"],
     readTime: "6 min read",
@@ -101,6 +134,7 @@ Adaptive yoga isn't about lowering standards. It's about raising them—requirin
 Your body deserves practices that work with its reality, not against it.
     `,
     author: "Shruti Turner",
+    authors: [blogAuthors[0]],
     date: "2026-02-10",
     tags: ["Yoga", "Adaptive Movement", "Chronic Pain"],
     readTime: "5 min read",
@@ -152,6 +186,7 @@ Building strength with chronic illness requires patience, flexibility, and self-
 You don't need to be consistent every day. You need to be persistent over time.
     `,
     author: "Shruti Turner",
+    authors: [blogAuthors[0]],
     date: "2026-02-05",
     tags: ["Strength Training", "Chronic Illness", "Programming"],
     readTime: "7 min read",
@@ -212,6 +247,7 @@ The goal isn't to eliminate your hypermobility—that's not possible. It's to bu
 With proper programming, hypermobile bodies can be incredibly strong and capable. But it requires working with your body's reality, not against it.
     `,
     author: "Shruti Turner",
+    authors: [blogAuthors[0]],
     date: "2026-01-28",
     tags: ["Hypermobility", "Strength Training", "Joint Health"],
     readTime: "6 min read",
@@ -286,6 +322,7 @@ The goal isn't to train despite your arthritis. It's to train in a way that mana
 That requires expertise, not just enthusiasm.
     `,
     author: "Shruti Turner",
+    authors: [blogAuthors[0], blogAuthors[1]],
     date: "2026-01-20",
     tags: ["Arthritis", "Exercise", "Chronic Pain"],
     readTime: "7 min read",
@@ -362,6 +399,7 @@ But it requires patience, intelligent programming, and consistent effort.
 You're not broken. You're building.
     `,
     author: "Shruti Turner",
+    authors: [blogAuthors[0]],
     date: "2026-01-12",
     tags: ["Beginners", "Strength Training", "Chronic Illness"],
     readTime: "6 min read",

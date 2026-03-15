@@ -2,7 +2,7 @@ import { connection, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/api/auth-user";
 import { listAdminSubscribers, type SubscriptionType } from "@/lib/admin/newsletter-service";
 
-const validTypes = new Set(["all", "newsletter", "blog", "both", "neither"]);
+const validTypes = new Set(["all", "subscribed", "unsubscribed"]);
 
 export async function GET(req: Request) {
   try {

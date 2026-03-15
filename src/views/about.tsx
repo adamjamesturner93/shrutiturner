@@ -65,10 +65,10 @@ export function AboutPage() {
               jar.
             </p>
             <p>
-              I tried generic fitness programs. I tried yoga classes. I tried physiotherapy. Nothing
-              accounted for the reality of living with a fluctuating chronic condition. The fitness
-              industry told me to "push through." Yoga teachers told me to "listen to my body"
-              without giving me the tools to understand what my body was actually saying.
+              I tried generic fitness programmes. I tried yoga classes. I tried physiotherapy.
+              Nothing accounted for the reality of living with a fluctuating chronic condition. The
+              fitness industry told me to "push through." Yoga teachers told me to "listen to my
+              body" without giving me the tools to understand what my body was actually saying.
             </p>
             <p>
               So I built something different. I combined my academic background in biomechanics and

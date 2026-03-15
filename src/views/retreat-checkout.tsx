@@ -1,452 +1,1071 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
-import { Layout } from "../components/layout";
-import { SEO } from "../components/seo";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import { Textarea } from "../components/ui/textarea";
-import { Checkbox } from "../components/ui/checkbox";
-import { useMemo, useState } from "react";
-import { ArrowLeft, AlertCircle, CreditCard } from "lucide-react";
-import { getRetreatBySlug } from "../data/retreat-data";
-import { useI18n } from "../lib/use-i18n";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  BedDouble,
+  Calendar,
+  Check,
+  Gift,
+  Mail,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
+import { Layout } from "@/components/layout";
+import { SEO } from "@/components/seo";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/context/auth-context";
+import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content";
+import { useI18n } from "@/lib/use-i18n";
 
-export function RetreatCheckoutPage() {
-  const { id } = useParams<{ id: string }>();
+function formatMoney(pence: number, currency = "GBP") {
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(pence / 100);
+}
+
+function getDepositAmountPence(roomOption: RetreatRoomOptionContent) {
+  if (typeof roomOption.depositPence === "number" && roomOption.depositPence > 0) {
+    return roomOption.depositPence;
+  }
+  if (roomOption.normalPricePence <= 25000) return roomOption.normalPricePence;
+  return Math.min(roomOption.normalPricePence, 30000);
+}
+
+function getDefaultRoomOptionId(date: RetreatCombinedContent["dates"][number] | null | undefined) {
+  if (!date) return "";
+  return (
+    date.roomOptions.find((option) => !option.isWaitlistOnly && option.availableSpots > 0)?.id ||
+    date.roomOptions[0]?.id ||
+    ""
+  );
+}
+
+function getRoomAvailabilityLabel(roomOption: RetreatRoomOptionContent) {
+  if (roomOption.isWaitlistOnly) return "Waitlist only";
+  if (roomOption.availableSpots <= 0) return "Sold out";
+  return `${roomOption.availableSpots} ${roomOption.availableSpots === 1 ? "place" : "places"} left`;
+}
+
+function getRoomGuestLabel(roomOption: RetreatRoomOptionContent) {
+  return roomOption.guestsIncluded > 1
+    ? `Includes ${roomOption.guestsIncluded} guests`
+    : "For one guest";
+}
+
+export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedContent | null }) {
   const searchParams = useSearchParams();
-  const retreat = getRetreatBySlug(id || "");
-  const { fmtDateRange } = useI18n();
+  const { fmtDate, fmtDateRange } = useI18n();
+  const { user, acceptTermsAndHealth, acceptHealthDataConsent } = useAuth();
 
+  const queryDateId = searchParams.get("date");
+  const queryRoomId = searchParams.get("room");
+  const checkoutState = searchParams.get("checkout");
+  const isGiftDefault = searchParams.get("gift") === "1";
+
+  const [purchaseMode, setPurchaseMode] = useState<"self" | "gift">(
+    isGiftDefault ? "gift" : "self"
+  );
+  const [selectedDateId, setSelectedDateId] = useState(queryDateId || retreat?.dates[0]?.id || "");
+  const [selectedRoomId, setSelectedRoomId] = useState(queryRoomId || "");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
+    purchaserFirstName: "",
+    purchaserLastName: "",
+    purchaserEmail: "",
     phone: "",
-    emergencyContact: "",
-    emergencyPhone: "",
+    emergencyContactName: "",
+    emergencyContactPhone: "",
     dietaryRequirements: "",
     medicalConditions: "",
     mobilityNeeds: "",
-    singleRoom: false,
+    bookingForAnotherAttendee: false,
+    attendeeFirstName: "",
+    attendeeLastName: "",
+    attendeeEmail: "",
+    guestTwoFirstName: "",
+    guestTwoLastName: "",
+    guestTwoEmail: "",
+    guestTwoDietaryRequirements: "",
     agreedToTerms: false,
     agreedToHealth: false,
+    agreedToHealthData: false,
+    recipientFirstName: "",
+    recipientLastName: "",
+    recipientEmail: "",
+    recipientMessage: "",
+    deliveryTarget: "recipient" as "recipient" | "buyer",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const selectedDateId = useMemo(() => {
-    const dateId = searchParams.get("date");
-    if (dateId) return dateId;
-    return retreat?.dates[0]?.id || "";
-  }, [retreat, searchParams]);
+
+  useEffect(() => {
+    if (!retreat) return;
+    const nextDateId =
+      retreat.dates.find((date) => date.id === selectedDateId)?.id || retreat.dates[0]?.id || "";
+    if (nextDateId !== selectedDateId) {
+      setSelectedDateId(nextDateId);
+    }
+  }, [retreat, selectedDateId]);
+
+  const selectedDate = useMemo(
+    () => retreat?.dates.find((date) => date.id === selectedDateId) || retreat?.dates[0] || null,
+    [retreat, selectedDateId]
+  );
+
+  useEffect(() => {
+    if (!selectedDate) return;
+    const validRoom = selectedDate.roomOptions.find((option) => option.id === selectedRoomId);
+    if (!validRoom) {
+      setSelectedRoomId(getDefaultRoomOptionId(selectedDate));
+    }
+  }, [selectedDate, selectedRoomId]);
+
+  useEffect(() => {
+    if (!user) return;
+    setFormData((current) => ({
+      ...current,
+      purchaserFirstName: current.purchaserFirstName || user.firstName || "",
+      purchaserLastName: current.purchaserLastName || user.lastName || "",
+      purchaserEmail: current.purchaserEmail || user.email || "",
+      attendeeFirstName: current.attendeeFirstName || user.firstName || "",
+      attendeeLastName: current.attendeeLastName || user.lastName || "",
+      attendeeEmail: current.attendeeEmail || user.email || "",
+    }));
+  }, [user]);
+
+  const selectedRoom =
+    selectedDate?.roomOptions.find((option) => option.id === selectedRoomId) ||
+    selectedDate?.roomOptions[0] ||
+    null;
 
   if (!retreat) {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-20 text-center">
-          <h1 className="mb-4 text-3xl">Retreat Not Found</h1>
-          <Link href="/retreats">
-            <Button>View All Retreats</Button>
-          </Link>
+        <SEO title="Retreat Checkout" noIndex />
+        <div className="container mx-auto px-4 py-24 text-center">
+          <h1 className="text-3xl">Retreat not found</h1>
+          <p className="text-muted-foreground mt-4">This retreat is no longer available.</p>
+          <Button asChild className="mt-6">
+            <Link href="/retreats">View retreats</Link>
+          </Button>
         </div>
       </Layout>
     );
   }
 
-  const selectedDate = retreat.dates.find((d) => d.id === selectedDateId);
-  const isEarlyBird = new Date() < new Date(retreat.earlyBirdDeadline);
-  const price = isEarlyBird ? retreat.earlyBirdPrice : retreat.normalPrice;
-  const totalPrice = formData.singleRoom ? price + 200 : price;
+  const totalPricePence = selectedRoom?.normalPricePence ?? 0;
+  const depositAmountPence = selectedRoom ? getDepositAmountPence(selectedRoom) : 0;
+  const balanceAmountPence = Math.max(totalPricePence - depositAmountPence, 0);
+  const termsSatisfied = Boolean(user?.hasAgreedToTerms || formData.agreedToTerms);
+  const waiverSatisfied = Boolean(user?.hasAgreedToHealth || formData.agreedToHealth);
+  const healthDataSatisfied = Boolean(
+    user?.hasConsentedToHealthData || formData.agreedToHealthData
+  );
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const purchaserFirstName = formData.purchaserFirstName || user?.firstName || "";
+  const purchaserLastName = formData.purchaserLastName || user?.lastName || "";
+  const purchaserEmail = formData.purchaserEmail || user?.email || "";
+  const attendeeFirstName = formData.bookingForAnotherAttendee
+    ? formData.attendeeFirstName
+    : purchaserFirstName;
+  const attendeeLastName = formData.bookingForAnotherAttendee
+    ? formData.attendeeLastName
+    : purchaserLastName;
+  const attendeeEmail = formData.bookingForAnotherAttendee
+    ? formData.attendeeEmail
+    : purchaserEmail;
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
     setIsSubmitting(true);
 
-    // In production, this would:
-    // 1. Validate all form data
-    // 2. Create booking in database
-    // 3. Initialize Stripe checkout session
-    // 4. Redirect to Stripe payment page
-
-    console.log("Booking submitted:", {
-      retreat,
-      selectedDate,
-      formData,
-      totalPrice,
-    });
-
-    setTimeout(() => {
-      alert(
-        "Booking submitted successfully! In production, you would now be redirected to Stripe for secure payment processing."
-      );
+    if (!selectedDate || !selectedRoom) {
+      setError("Please choose a retreat date and room option before continuing.");
       setIsSubmitting(false);
-      // navigate('/dashboard'); // Would redirect after successful payment
-    }, 1000);
-  };
+      return;
+    }
 
-  if (!selectedDate) {
-    return (
-      <Layout>
-        <div className="container mx-auto px-4 py-20 text-center">
-          <h1 className="mb-4 text-3xl">Please Select a Date</h1>
-          <p className="text-muted-foreground mb-6">
-            You need to select a retreat date before proceeding to checkout.
-          </p>
-          <Link href={`/retreats/${retreat.slug}`}>
-            <Button>Back to Retreat Details</Button>
-          </Link>
-        </div>
-      </Layout>
-    );
-  }
+    if (selectedRoom.isWaitlistOnly || selectedRoom.availableSpots <= 0) {
+      setError("That room option is no longer available.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (purchaseMode === "self") {
+      if (!termsSatisfied || !waiverSatisfied || !healthDataSatisfied) {
+        setError("Please complete the required agreements before continuing.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (formData.bookingForAnotherAttendee) {
+        if (!attendeeFirstName.trim() || !attendeeLastName.trim() || !attendeeEmail.trim()) {
+          setError("Please complete the attendee details before continuing.");
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      if (
+        selectedRoom.guestsIncluded > 1 &&
+        (!formData.guestTwoFirstName.trim() ||
+          !formData.guestTwoLastName.trim() ||
+          !formData.guestTwoEmail.trim())
+      ) {
+        setError("Please complete the second guest details before continuing.");
+        setIsSubmitting(false);
+        return;
+      }
+    } else if (
+      !formData.recipientFirstName.trim() ||
+      !formData.recipientLastName.trim() ||
+      !formData.recipientEmail.trim()
+    ) {
+      setError("Please complete the gift recipient details before continuing.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      if (purchaseMode === "self" && user) {
+        if (!user.hasAgreedToTerms || !user.hasAgreedToHealth) {
+          await acceptTermsAndHealth(!user.hasAgreedToTerms, !user.hasAgreedToHealth);
+        }
+        if (!user.hasConsentedToHealthData) {
+          await acceptHealthDataConsent();
+        }
+      }
+
+      const response = await fetch(`/api/retreats/${retreat.slug}/checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          retreatDateId: selectedDate.id,
+          roomOptionId: selectedRoom.id,
+          purchaseMode,
+          purchaserFirstName,
+          purchaserLastName,
+          purchaserEmail,
+          attendeeFirstName,
+          attendeeLastName,
+          attendeeEmail,
+          phone: formData.phone,
+          emergencyContactName: formData.emergencyContactName,
+          emergencyContactPhone: formData.emergencyContactPhone,
+          dietaryRequirements: formData.dietaryRequirements,
+          medicalConditions: formData.medicalConditions,
+          mobilityNeeds: formData.mobilityNeeds,
+          guestTwoFirstName: formData.guestTwoFirstName,
+          guestTwoLastName: formData.guestTwoLastName,
+          guestTwoEmail: formData.guestTwoEmail,
+          guestTwoDietaryRequirements: formData.guestTwoDietaryRequirements,
+          acceptedTermsVersion:
+            purchaseMode === "self" ? (user?.currentTermsVersion ?? null) : undefined,
+          acceptedHealthWaiverVersion:
+            purchaseMode === "self" ? (user?.currentHealthWaiverVersion ?? null) : undefined,
+          acceptedHealthDataVersion:
+            purchaseMode === "self" ? (user?.currentHealthDataConsentVersion ?? null) : undefined,
+          recipientFirstName: formData.recipientFirstName,
+          recipientLastName: formData.recipientLastName,
+          recipientEmail: formData.recipientEmail,
+          recipientMessage: formData.recipientMessage,
+          deliveryTarget: formData.deliveryTarget,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as {
+        checkoutUrl?: string;
+        message?: string;
+      } | null;
+      if (!response.ok || !payload?.checkoutUrl) {
+        throw new Error(payload?.message || "Failed to start checkout.");
+      }
+
+      window.location.href = payload.checkoutUrl;
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "Failed to start checkout.");
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <Layout>
       <SEO
-        title={`Book ${retreat.title} - Checkout`}
-        description="Complete your retreat booking"
+        title={`Book ${retreat.title} - Shruti Turner`}
+        description={`Select your retreat date and room for ${retreat.title}.`}
         canonicalUrl={`https://shrutiturner.com/retreats/${retreat.slug}/checkout`}
+        noIndex
       />
 
-      {/* Checkout Header */}
-      <section className="bg-brand-dark text-brand-white py-8">
-        <div className="container mx-auto max-w-5xl px-4">
+      <section className="bg-brand-dark py-14 text-white md:py-18">
+        <div className="container mx-auto max-w-6xl px-4">
           <Link
             href={`/retreats/${retreat.slug}`}
-            className="text-brand-accent-light mb-4 inline-flex items-center gap-2 hover:underline"
+            className="text-brand-accent-light inline-flex items-center gap-2 text-sm hover:underline"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to retreat details
           </Link>
-          <h1 className="text-3xl md:text-4xl">Complete Your Booking</h1>
-          <p className="text-brand-accent-light mt-2">{retreat.title}</p>
+
+          <div className="mt-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h1 className="text-4xl md:text-5xl">
+                {purchaseMode === "gift" ? "Gift This Retreat" : "Complete Your Retreat Booking"}
+              </h1>
+              <p className="text-brand-accent-light mt-3 max-w-2xl text-lg">
+                {retreat.title} · {retreat.location}
+              </p>
+            </div>
+            {selectedRoom ? (
+              <div className="rounded-full border border-white/15 px-4 py-2 text-sm">
+                {purchaseMode === "gift"
+                  ? `${formatMoney(totalPricePence, retreat.currency)} due today`
+                  : `${formatMoney(depositAmountPence, retreat.currency)} deposit today`}
+              </div>
+            ) : null}
+          </div>
         </div>
       </section>
 
-      <div className="container mx-auto max-w-6xl px-4 py-12">
-        <div className="grid gap-8 lg:grid-cols-3">
-          {/* Main Form - 2 columns */}
-          <div className="lg:col-span-2">
-            <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Personal Information */}
-              <div className="bg-background space-y-6 rounded-lg border p-6">
-                <h2 className="text-2xl">Personal Information</h2>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name *</Label>
-                    <Input
-                      id="firstName"
-                      required
-                      value={formData.firstName}
-                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name *</Label>
-                    <Input
-                      id="lastName"
-                      required
-                      value={formData.lastName}
-                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      required
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number *</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      required
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    />
-                  </div>
-                </div>
+      <section className="py-16">
+        <div className="container mx-auto grid max-w-6xl gap-8 px-4 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="space-y-6">
+            {checkoutState === "success" ? (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                {purchaseMode === "gift"
+                  ? "Payment received. The gift email is on its way."
+                  : "Your deposit has been received. A confirmation and balance payment link have been sent to your email."}
               </div>
-
-              {/* Emergency Contact */}
-              <div className="bg-background space-y-6 rounded-lg border p-6">
-                <h2 className="text-2xl">Emergency Contact</h2>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="emergencyContact">Contact Name *</Label>
-                    <Input
-                      id="emergencyContact"
-                      required
-                      value={formData.emergencyContact}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          emergencyContact: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="emergencyPhone">Contact Phone *</Label>
-                    <Input
-                      id="emergencyPhone"
-                      type="tel"
-                      required
-                      value={formData.emergencyPhone}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          emergencyPhone: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                </div>
+            ) : null}
+            {checkoutState === "cancelled" ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                Checkout was cancelled. Your selections are still here if you want to try again.
               </div>
-
-              {/* Health & Requirements */}
-              <div className="bg-background space-y-6 rounded-lg border p-6">
-                <h2 className="text-2xl">Health & Requirements</h2>
-
-                <div className="space-y-2">
-                  <Label htmlFor="dietaryRequirements">Dietary Requirements</Label>
-                  <Textarea
-                    id="dietaryRequirements"
-                    rows={3}
-                    placeholder="Please list any allergies, dietary restrictions, or preferences"
-                    value={formData.dietaryRequirements}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        dietaryRequirements: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="medicalConditions">Medical Conditions *</Label>
-                  <Textarea
-                    id="medicalConditions"
-                    rows={4}
-                    required
-                    placeholder="Please describe your chronic conditions, symptoms, and any relevant medical information that will help us support you during the retreat"
-                    value={formData.medicalConditions}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        medicalConditions: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="mobilityNeeds">Mobility or Accessibility Needs</Label>
-                  <Textarea
-                    id="mobilityNeeds"
-                    rows={3}
-                    placeholder="Please describe any mobility aids, accessibility requirements, or physical accommodations you need"
-                    value={formData.mobilityNeeds}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        mobilityNeeds: e.target.value,
-                      })
-                    }
-                  />
-                </div>
+            ) : null}
+            {error ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                {error}
               </div>
+            ) : null}
 
-              {/* Room Preference */}
-              <div className="bg-background space-y-4 rounded-lg border p-6">
-                <h2 className="text-2xl">Accommodation</h2>
-                <div className="flex items-start space-x-3 rounded-lg border p-4">
-                  <Checkbox
-                    id="singleRoom"
-                    checked={formData.singleRoom}
-                    onCheckedChange={(checked) =>
-                      setFormData({
-                        ...formData,
-                        singleRoom: checked as boolean,
-                      })
-                    }
-                  />
-                  <div className="flex-1">
-                    <label htmlFor="singleRoom" className="block cursor-pointer font-medium">
-                      Single room supplement (+£200)
-                    </label>
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      Standard accommodation is twin share. Select this option for a private room.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Terms & Conditions */}
-              <div className="bg-background space-y-4 rounded-lg border p-6">
-                <h2 className="text-2xl">Terms & Conditions</h2>
-
-                <div className="space-y-4">
-                  <div className="flex items-start space-x-3">
-                    <Checkbox
-                      id="agreedToTerms"
-                      checked={formData.agreedToTerms}
-                      onCheckedChange={(checked) =>
-                        setFormData({
-                          ...formData,
-                          agreedToTerms: checked as boolean,
-                        })
-                      }
-                    />
-                    <label htmlFor="agreedToTerms" className="cursor-pointer text-sm">
-                      I agree to the{" "}
-                      <Link href="/terms" className="text-primary underline" target="_blank">
-                        Terms & Conditions
-                      </Link>{" "}
-                      and{" "}
-                      <Link href="/privacy" className="text-primary underline" target="_blank">
-                        Privacy Policy
-                      </Link>{" "}
-                      *
-                    </label>
-                  </div>
-
-                  <div className="flex items-start space-x-3">
-                    <Checkbox
-                      id="agreedToHealth"
-                      checked={formData.agreedToHealth}
-                      onCheckedChange={(checked) =>
-                        setFormData({
-                          ...formData,
-                          agreedToHealth: checked as boolean,
-                        })
-                      }
-                    />
-                    <label htmlFor="agreedToHealth" className="cursor-pointer text-sm">
-                      I have read and agree to the{" "}
-                      <Link
-                        href="/health-declaration"
-                        className="text-primary underline"
-                        target="_blank"
-                      >
-                        Health Declaration
-                      </Link>{" "}
-                      *
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Submit Button - Mobile */}
-              <div className="lg:hidden">
+            <div className="rounded-[1.5rem] border p-6">
+              <div className="flex flex-wrap gap-3">
                 <Button
-                  type="submit"
-                  size="lg"
-                  className="w-full"
-                  disabled={!formData.agreedToTerms || !formData.agreedToHealth || isSubmitting}
+                  type="button"
+                  variant={purchaseMode === "self" ? "default" : "outline"}
+                  onClick={() => setPurchaseMode("self")}
                 >
-                  <CreditCard className="mr-2 h-5 w-5" />
-                  {isSubmitting ? "Processing..." : "Proceed to Payment"}
+                  Booking for me
+                </Button>
+                <Button
+                  type="button"
+                  variant={purchaseMode === "gift" ? "default" : "outline"}
+                  onClick={() => setPurchaseMode("gift")}
+                >
+                  Buy as a gift
                 </Button>
               </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="rounded-[1.5rem] border p-6">
+                <h2 className="text-2xl">1. Choose your date</h2>
+                <div className="mt-6 grid gap-4">
+                  {retreat.dates.map((date) => {
+                    const isSelected = date.id === selectedDate?.id;
+                    return (
+                      <button
+                        key={date.id}
+                        type="button"
+                        className={`rounded-[1.25rem] border p-4 text-left transition-colors ${
+                          isSelected
+                            ? "border-brand-accent bg-brand-accent/5"
+                            : "hover:bg-secondary/20"
+                        }`}
+                        onClick={() => setSelectedDateId(date.id)}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-lg">{fmtDateRange(date.startDate, date.endDate)}</p>
+                            <p className="text-muted-foreground mt-1 text-sm">
+                              {date.availableSpaces} of {date.totalSpaces} places currently
+                              available
+                            </p>
+                          </div>
+                          <Calendar className="text-brand-accent h-5 w-5" />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-[1.5rem] border p-6">
+                <h2 className="text-2xl">2. Choose your room</h2>
+                {selectedDate ? (
+                  <div className="mt-6 grid gap-4">
+                    {selectedDate.roomOptions.map((roomOption) => {
+                      const isSelected = roomOption.id === selectedRoom?.id;
+                      const isUnavailable =
+                        roomOption.isWaitlistOnly || roomOption.availableSpots <= 0;
+                      return (
+                        <button
+                          key={roomOption.id}
+                          type="button"
+                          disabled={isUnavailable}
+                          className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
+                            isSelected
+                              ? "border-brand-accent bg-brand-accent/5"
+                              : "hover:bg-secondary/20"
+                          } ${isUnavailable ? "opacity-60" : ""}`}
+                          onClick={() => setSelectedRoomId(roomOption.id)}
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-4">
+                            <div className="space-y-2">
+                              <div className="flex flex-wrap items-center gap-3">
+                                <p className="text-xl">{roomOption.label}</p>
+                                <span className="bg-secondary/60 rounded-full px-3 py-1 text-xs tracking-[0.16em] uppercase">
+                                  {getRoomAvailabilityLabel(roomOption)}
+                                </span>
+                              </div>
+                              <p className="text-muted-foreground text-sm leading-relaxed">
+                                {roomOption.description}
+                              </p>
+                              <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
+                                <span className="inline-flex items-center gap-2">
+                                  <Users className="h-4 w-4" />
+                                  {getRoomGuestLabel(roomOption)}
+                                </span>
+                                <span className="inline-flex items-center gap-2">
+                                  <BedDouble className="h-4 w-4" />
+                                  {roomOption.type === "single"
+                                    ? "Private room"
+                                    : roomOption.type === "shared_private"
+                                      ? "Private double room"
+                                      : "Shared accommodation"}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="text-right">
+                              <p className="text-2xl">
+                                {formatMoney(roomOption.normalPricePence, retreat.currency)}
+                              </p>
+                              <p className="text-muted-foreground mt-1 text-sm">
+                                Deposit today{" "}
+                                {formatMoney(getDepositAmountPence(roomOption), retreat.currency)}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="rounded-[1.5rem] border p-6">
+                <h2 className="text-2xl">3. Purchaser details</h2>
+                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="purchaserFirstName">First name</Label>
+                    <Input
+                      id="purchaserFirstName"
+                      required
+                      value={purchaserFirstName}
+                      onChange={(event) =>
+                        setFormData((current) => ({
+                          ...current,
+                          purchaserFirstName: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="purchaserLastName">Last name</Label>
+                    <Input
+                      id="purchaserLastName"
+                      required
+                      value={purchaserLastName}
+                      onChange={(event) =>
+                        setFormData((current) => ({
+                          ...current,
+                          purchaserLastName: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 space-y-2">
+                  <Label htmlFor="purchaserEmail">Email</Label>
+                  <Input
+                    id="purchaserEmail"
+                    required
+                    type="email"
+                    value={purchaserEmail}
+                    onChange={(event) =>
+                      setFormData((current) => ({
+                        ...current,
+                        purchaserEmail: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+
+              {purchaseMode === "self" ? (
+                <>
+                  <div className="rounded-[1.5rem] border p-6">
+                    <div className="flex items-start gap-3 rounded-xl border p-4">
+                      <Checkbox
+                        id="bookingForAnotherAttendee"
+                        checked={formData.bookingForAnotherAttendee}
+                        onCheckedChange={(checked) =>
+                          setFormData((current) => ({
+                            ...current,
+                            bookingForAnotherAttendee: checked === true,
+                          }))
+                        }
+                      />
+                      <div>
+                        <label htmlFor="bookingForAnotherAttendee" className="cursor-pointer">
+                          The attendee is someone else
+                        </label>
+                        <p className="text-muted-foreground mt-1 text-sm">
+                          Keep the purchaser and attendee separate if you are securing the place for
+                          another person.
+                        </p>
+                      </div>
+                    </div>
+
+                    {formData.bookingForAnotherAttendee ? (
+                      <div className="mt-6">
+                        <h2 className="text-2xl">4. Attendee details</h2>
+                        <div className="mt-6 grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="attendeeFirstName">First name</Label>
+                            <Input
+                              id="attendeeFirstName"
+                              required={formData.bookingForAnotherAttendee}
+                              value={formData.attendeeFirstName}
+                              onChange={(event) =>
+                                setFormData((current) => ({
+                                  ...current,
+                                  attendeeFirstName: event.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="attendeeLastName">Last name</Label>
+                            <Input
+                              id="attendeeLastName"
+                              required={formData.bookingForAnotherAttendee}
+                              value={formData.attendeeLastName}
+                              onChange={(event) =>
+                                setFormData((current) => ({
+                                  ...current,
+                                  attendeeLastName: event.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                        </div>
+                        <div className="mt-4 space-y-2">
+                          <Label htmlFor="attendeeEmail">Email</Label>
+                          <Input
+                            id="attendeeEmail"
+                            required={formData.bookingForAnotherAttendee}
+                            type="email"
+                            value={formData.attendeeEmail}
+                            onChange={(event) =>
+                              setFormData((current) => ({
+                                ...current,
+                                attendeeEmail: event.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="rounded-[1.5rem] border p-6">
+                    <h2 className="text-2xl">5. Health, access, and emergency details</h2>
+                    <div className="mt-6 grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Phone</Label>
+                        <Input
+                          id="phone"
+                          required
+                          value={formData.phone}
+                          onChange={(event) =>
+                            setFormData((current) => ({ ...current, phone: event.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="emergencyContactPhone">Emergency contact phone</Label>
+                        <Input
+                          id="emergencyContactPhone"
+                          required
+                          value={formData.emergencyContactPhone}
+                          onChange={(event) =>
+                            setFormData((current) => ({
+                              ...current,
+                              emergencyContactPhone: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      <Label htmlFor="emergencyContactName">Emergency contact name</Label>
+                      <Input
+                        id="emergencyContactName"
+                        required
+                        value={formData.emergencyContactName}
+                        onChange={(event) =>
+                          setFormData((current) => ({
+                            ...current,
+                            emergencyContactName: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="dietaryRequirements">Dietary requirements</Label>
+                        <Textarea
+                          id="dietaryRequirements"
+                          value={formData.dietaryRequirements}
+                          onChange={(event) =>
+                            setFormData((current) => ({
+                              ...current,
+                              dietaryRequirements: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="mobilityNeeds">Accessibility or mobility needs</Label>
+                        <Textarea
+                          id="mobilityNeeds"
+                          value={formData.mobilityNeeds}
+                          onChange={(event) =>
+                            setFormData((current) => ({
+                              ...current,
+                              mobilityNeeds: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      <Label htmlFor="medicalConditions">Health notes</Label>
+                      <Textarea
+                        id="medicalConditions"
+                        required
+                        value={formData.medicalConditions}
+                        onChange={(event) =>
+                          setFormData((current) => ({
+                            ...current,
+                            medicalConditions: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  {selectedRoom && selectedRoom.guestsIncluded > 1 ? (
+                    <div className="rounded-[1.5rem] border p-6">
+                      <h2 className="text-2xl">6. Second guest details</h2>
+                      <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                        This room reserves space for two guests, so please add the second guest now.
+                      </p>
+                      <div className="mt-6 grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="guestTwoFirstName">First name</Label>
+                          <Input
+                            id="guestTwoFirstName"
+                            required
+                            value={formData.guestTwoFirstName}
+                            onChange={(event) =>
+                              setFormData((current) => ({
+                                ...current,
+                                guestTwoFirstName: event.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="guestTwoLastName">Last name</Label>
+                          <Input
+                            id="guestTwoLastName"
+                            required
+                            value={formData.guestTwoLastName}
+                            onChange={(event) =>
+                              setFormData((current) => ({
+                                ...current,
+                                guestTwoLastName: event.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-4 space-y-2">
+                        <Label htmlFor="guestTwoEmail">Email</Label>
+                        <Input
+                          id="guestTwoEmail"
+                          required
+                          type="email"
+                          value={formData.guestTwoEmail}
+                          onChange={(event) =>
+                            setFormData((current) => ({
+                              ...current,
+                              guestTwoEmail: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="mt-4 space-y-2">
+                        <Label htmlFor="guestTwoDietaryRequirements">Dietary requirements</Label>
+                        <Textarea
+                          id="guestTwoDietaryRequirements"
+                          value={formData.guestTwoDietaryRequirements}
+                          onChange={(event) =>
+                            setFormData((current) => ({
+                              ...current,
+                              guestTwoDietaryRequirements: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="rounded-[1.5rem] border p-6">
+                    <h2 className="text-2xl">7. Agreements</h2>
+
+                    {user?.hasAgreedToTerms ? (
+                      <div className="mt-6 flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                        <Check className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                        <span>Terms & Conditions already accepted on your account.</span>
+                      </div>
+                    ) : (
+                      <label className="mt-6 flex items-start gap-3 text-sm">
+                        <Checkbox
+                          checked={formData.agreedToTerms}
+                          onCheckedChange={(checked) =>
+                            setFormData((current) => ({
+                              ...current,
+                              agreedToTerms: checked === true,
+                            }))
+                          }
+                        />
+                        <span>
+                          I agree to the{" "}
+                          <Link href="/terms" target="_blank" className="text-primary underline">
+                            Terms & Conditions
+                          </Link>{" "}
+                          and have read the{" "}
+                          <Link
+                            href="/refund-policy"
+                            target="_blank"
+                            className="text-primary underline"
+                          >
+                            Refund & Cancellation Policy
+                          </Link>
+                          .
+                        </span>
+                      </label>
+                    )}
+
+                    {user?.hasAgreedToHealth ? (
+                      <div className="mt-4 flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                        <Check className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                        <span>Health & Liability Waiver already accepted on your account.</span>
+                      </div>
+                    ) : (
+                      <label className="mt-4 flex items-start gap-3 text-sm">
+                        <Checkbox
+                          checked={formData.agreedToHealth}
+                          onCheckedChange={(checked) =>
+                            setFormData((current) => ({
+                              ...current,
+                              agreedToHealth: checked === true,
+                            }))
+                          }
+                        />
+                        <span>
+                          I have read and agree to the{" "}
+                          <Link
+                            href="/health-declaration"
+                            target="_blank"
+                            className="text-primary underline"
+                          >
+                            Health & Liability Waiver
+                          </Link>
+                          .
+                        </span>
+                      </label>
+                    )}
+
+                    {user?.hasConsentedToHealthData ? (
+                      <div className="mt-4 flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                        <Check className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                        <span>Health-data consent already recorded on your account.</span>
+                      </div>
+                    ) : (
+                      <label className="mt-4 flex items-start gap-3 text-sm">
+                        <Checkbox
+                          checked={formData.agreedToHealthData}
+                          onCheckedChange={(checked) =>
+                            setFormData((current) => ({
+                              ...current,
+                              agreedToHealthData: checked === true,
+                            }))
+                          }
+                        />
+                        <span>
+                          I explicitly consent to Shruti Turner processing the health information I
+                          provide so this retreat can be delivered safely and appropriately.
+                        </span>
+                      </label>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-[1.5rem] border p-6">
+                  <h2 className="flex items-center gap-2 text-2xl">
+                    <Gift className="text-brand-accent h-5 w-5" />
+                    4. Gift details
+                  </h2>
+                  <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                    Gift purchases reserve this retreat place now. The recipient completes their own
+                    attendee, health, and access details later through the redemption link.
+                  </p>
+                  <div className="mt-6 grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="recipientFirstName">Recipient first name</Label>
+                      <Input
+                        id="recipientFirstName"
+                        required
+                        value={formData.recipientFirstName}
+                        onChange={(event) =>
+                          setFormData((current) => ({
+                            ...current,
+                            recipientFirstName: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="recipientLastName">Recipient last name</Label>
+                      <Input
+                        id="recipientLastName"
+                        required
+                        value={formData.recipientLastName}
+                        onChange={(event) =>
+                          setFormData((current) => ({
+                            ...current,
+                            recipientLastName: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <Label htmlFor="recipientEmail">Recipient email</Label>
+                    <Input
+                      id="recipientEmail"
+                      required
+                      type="email"
+                      value={formData.recipientEmail}
+                      onChange={(event) =>
+                        setFormData((current) => ({
+                          ...current,
+                          recipientEmail: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <Label htmlFor="recipientMessage">Message</Label>
+                    <Textarea
+                      id="recipientMessage"
+                      value={formData.recipientMessage}
+                      onChange={(event) =>
+                        setFormData((current) => ({
+                          ...current,
+                          recipientMessage: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="mt-4 rounded-xl border p-4">
+                    <p className="text-sm">Delivery</p>
+                    <div className="mt-3 flex flex-col gap-3 text-sm">
+                      <label className="flex cursor-pointer items-center gap-3">
+                        <input
+                          type="radio"
+                          checked={formData.deliveryTarget === "recipient"}
+                          onChange={() =>
+                            setFormData((current) => ({
+                              ...current,
+                              deliveryTarget: "recipient",
+                            }))
+                          }
+                        />
+                        <span className="inline-flex items-center gap-2">
+                          <Mail className="h-4 w-4" />
+                          Send the gift directly to the recipient
+                        </span>
+                      </label>
+                      <label className="flex cursor-pointer items-center gap-3">
+                        <input
+                          type="radio"
+                          checked={formData.deliveryTarget === "buyer"}
+                          onChange={() =>
+                            setFormData((current) => ({
+                              ...current,
+                              deliveryTarget: "buyer",
+                            }))
+                          }
+                        />
+                        <span>Send the redemption link to me to forward later</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div className="bg-secondary/20 text-muted-foreground mt-4 rounded-xl border p-4 text-sm">
+                    Gift purchases follow the{" "}
+                    <Link href="/terms" target="_blank" className="text-primary underline">
+                      Terms & Conditions
+                    </Link>{" "}
+                    and{" "}
+                    <Link href="/refund-policy" target="_blank" className="text-primary underline">
+                      Refund & Cancellation Policy
+                    </Link>
+                    .
+                  </div>
+                </div>
+              )}
+
+              <Button type="submit" size="lg" className="w-full md:w-auto" disabled={isSubmitting}>
+                {isSubmitting
+                  ? "Redirecting..."
+                  : purchaseMode === "gift"
+                    ? "Continue to gift checkout"
+                    : "Continue to deposit checkout"}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
             </form>
           </div>
 
-          {/* Order Summary Sidebar - 1 column */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-24 space-y-6">
-              {/* Order Summary */}
-              <div className="bg-background space-y-4 rounded-lg border p-6">
-                <h2 className="text-xl font-medium">Order Summary</h2>
+          <aside>
+            <div className="sticky top-24 rounded-[1.75rem] border p-6 shadow-sm">
+              <p className="text-brand-accent text-sm tracking-[0.16em] uppercase">
+                Booking summary
+              </p>
+              <h2 className="mt-3 text-2xl">{retreat.title}</h2>
 
-                <div className="space-y-3 border-b pb-4">
-                  <div>
-                    <p className="font-medium">{retreat.title}</p>
-                    <p className="text-muted-foreground text-sm">{retreat.location}</p>
-                  </div>
-
-                  <div className="text-sm">
-                    <p className="text-muted-foreground">Dates:</p>
-                    <p>{fmtDateRange(selectedDate.startDate, selectedDate.endDate)}</p>
-                  </div>
+              <div className="mt-6 space-y-4 text-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="text-muted-foreground">Date</span>
+                  <span className="max-w-[14rem] text-right">
+                    {selectedDate
+                      ? fmtDateRange(selectedDate.startDate, selectedDate.endDate)
+                      : "Select a date"}
+                  </span>
                 </div>
+                <div className="flex items-start justify-between gap-3">
+                  <span className="text-muted-foreground">Room</span>
+                  <span className="max-w-[14rem] text-right">
+                    {selectedRoom?.label || "Select a room"}
+                  </span>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <span className="text-muted-foreground">Guests</span>
+                  <span>{selectedRoom ? getRoomGuestLabel(selectedRoom) : "TBC"}</span>
+                </div>
+              </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Retreat price</span>
-                    <span>£{price}</span>
+              {selectedRoom ? (
+                <>
+                  <div className="bg-secondary/20 mt-6 rounded-[1.25rem] border p-4">
+                    {purchaseMode === "gift" ? (
+                      <>
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="text-muted-foreground">Due today</span>
+                          <span className="text-xl">
+                            {formatMoney(totalPricePence, retreat.currency)}
+                          </span>
+                        </div>
+                        <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                          Gift purchases reserve this exact room and date in full.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="text-muted-foreground">Deposit today</span>
+                          <span className="text-xl">
+                            {formatMoney(depositAmountPence, retreat.currency)}
+                          </span>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between gap-4">
+                          <span className="text-muted-foreground">Balance later</span>
+                          <span>{formatMoney(balanceAmountPence, retreat.currency)}</span>
+                        </div>
+                        <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                          The balance will be payable later from your dashboard or the secure link
+                          sent by email.
+                        </p>
+                      </>
+                    )}
                   </div>
-                  {formData.singleRoom && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Single room supplement</span>
-                      <span>£200</span>
+
+                  <div className="mt-6 space-y-3 text-sm">
+                    <div className="flex items-start gap-3 rounded-xl border p-4">
+                      <ShieldCheck className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
+                      <p className="text-muted-foreground leading-relaxed">
+                        {purchaseMode === "gift"
+                          ? "The recipient completes their own attendee and health details securely when they redeem the gift."
+                          : "Health and access details are collected now so the retreat can be delivered safely and appropriately."}
+                      </p>
                     </div>
-                  )}
-                </div>
-
-                <div className="border-t pt-4">
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-lg font-medium">Total Due</span>
-                    <span className="text-2xl font-medium">£{totalPrice}</span>
+                    <div className="flex items-start gap-3 rounded-xl border p-4">
+                      <AlertCircle className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
+                      <p className="text-muted-foreground leading-relaxed">
+                        Please contact Shruti before booking if you have accessibility questions
+                        about the venue or room set-up.
+                      </p>
+                    </div>
                   </div>
-                  {isEarlyBird && (
-                    <p className="text-brand-accent mt-2 text-sm">🎉 Early bird pricing applied</p>
-                  )}
-                </div>
-              </div>
+                </>
+              ) : null}
 
-              {/* Important Info */}
-              <div className="border-brand-accent/20 bg-brand-accent/10 rounded-lg border p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
-                  <div className="space-y-2 text-sm">
-                    <p className="text-foreground font-medium">Important</p>
-                    <ul className="text-muted-foreground space-y-1">
-                      <li>• Payment in full required today</li>
-                      <li>• Travel insurance mandatory</li>
-                      <li>• See cancellation policy in T&Cs</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              {/* Desktop Submit Button */}
-              <div className="hidden lg:block">
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="w-full"
-                  disabled={!formData.agreedToTerms || !formData.agreedToHealth || isSubmitting}
-                  onClick={handleSubmit}
-                >
-                  <CreditCard className="mr-2 h-5 w-5" />
-                  {isSubmitting ? "Processing..." : "Proceed to Payment"}
-                </Button>
-                <p className="text-muted-foreground mt-3 text-center text-xs">
-                  Secure payment powered by Stripe
-                </p>
-              </div>
-
-              {/* Trust Signals */}
-              <div className="border-t pt-4 text-center">
-                <p className="text-muted-foreground text-xs">
-                  🔒 Your payment information is secure and encrypted
+              <div className="text-muted-foreground mt-6 border-t pt-6 text-sm">
+                <p>
+                  Retreat: {retreat.location}
+                  {selectedDate ? ` · ${fmtDate(selectedDate.startDate)}` : ""}
                 </p>
               </div>
             </div>
-          </div>
+          </aside>
         </div>
-      </div>
+      </section>
     </Layout>
   );
 }

@@ -22,6 +22,49 @@ export interface ThemedWeekPromo {
   status?: "upcoming" | "current" | "waitlist";
 }
 
+export interface SmallGroupProgrammeWeekContent {
+  weekNumber: number;
+  title: string;
+  focus?: string;
+  sessionTitles?: string[];
+}
+
+export interface SmallGroupTemplateContent {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle?: string;
+  shortSummary: string;
+  fullDescription?: string;
+  longDescription?: string;
+  outcomes: string[];
+  durationLabel: string;
+  durationWeeks?: number;
+  cohortSize: number;
+  sessionsPerWeek?: number;
+  defaultPricePence?: number;
+  whoItsFor?: string[];
+  equipment?: string[];
+  inclusions?: string[];
+  weekByWeek?: SmallGroupProgrammeWeekContent[];
+}
+
+export type SmallGroupProgrammeContent = SmallGroupTemplateContent;
+
+export interface RetreatRoomOptionContent {
+  id: string;
+  label: string;
+  description: string;
+  type: "shared_twin" | "single" | "shared_private" | "virtual";
+  guestsIncluded: number;
+  capacity: number;
+  availableSpots: number;
+  earlyBirdPricePence?: number;
+  normalPricePence: number;
+  depositPence?: number;
+  isWaitlistOnly?: boolean;
+}
+
 export interface GlobalContent {
   siteName: string;
   siteTagline: string;
@@ -36,7 +79,15 @@ export interface GlobalContent {
 
 export interface LegalDocumentContent {
   id: string;
-  slug: "terms" | "privacy" | "cookies" | "health-declaration" | (string & {});
+  slug:
+    | "terms"
+    | "privacy"
+    | "cookies"
+    | "health-declaration"
+    | "refund-policy"
+    | "acceptable-use"
+    | "coaching-agreement"
+    | (string & {});
   title: string;
   version: string;
   effectiveDate?: string;
@@ -140,7 +191,8 @@ export interface BlogPostContent {
   title: string;
   excerpt: string;
   content: string;
-  author: string;
+  author?: string;
+  authors: AuthorProfileContent[];
   date: string;
   tags: string[];
   readTime: string;
@@ -148,6 +200,20 @@ export interface BlogPostContent {
   coverAlt: string;
   seoTitle?: string;
   seoDescription?: string;
+}
+
+export interface AuthorProfileContent {
+  id: string;
+  slug: string;
+  name: string;
+  role?: string;
+  bio: string;
+  avatarImageUrl?: string;
+  avatarAlt?: string;
+  websiteUrl?: string;
+  instagramHandle?: string;
+  isGuestContributor?: boolean;
+  active?: boolean;
 }
 
 export interface ClassDefinitionContent {
@@ -240,6 +306,7 @@ export interface RetreatInstanceContent {
   normalPrice: number;
   earlyBirdDeadline: string;
   currency: string;
+  roomOptions?: RetreatRoomOptionContent[];
 }
 
 export interface RetreatCombinedContent {
@@ -257,6 +324,7 @@ export interface RetreatCombinedContent {
     endDate: string;
     availableSpaces: number;
     totalSpaces: number;
+    roomOptions: RetreatRoomOptionContent[];
   }>;
   earlyBirdPrice: number;
   earlyBirdDeadline: string;
