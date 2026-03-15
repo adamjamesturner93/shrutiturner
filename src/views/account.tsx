@@ -32,8 +32,12 @@ import {
 import { getTimezoneOptions } from "../lib/date-i18n";
 import type { AccountDto, DashboardSummaryDto } from "@/lib/api/types";
 
+const UNANSWERED_VALUE = "__unanswered__";
+const PREFER_NOT_TO_SAY_VALUE = "prefer_not_to_say";
+
 const GENDER_OPTIONS = [
-  { value: "", label: "Prefer not to say" },
+  { value: UNANSWERED_VALUE, label: "Not answered" },
+  { value: PREFER_NOT_TO_SAY_VALUE, label: "Prefer not to say" },
   { value: "Female", label: "Female" },
   { value: "Male", label: "Male" },
   { value: "Non-binary", label: "Non-binary" },
@@ -41,7 +45,8 @@ const GENDER_OPTIONS = [
 ];
 
 const ETHNICITY_OPTIONS = [
-  { value: "", label: "Prefer not to say" },
+  { value: UNANSWERED_VALUE, label: "Not answered" },
+  { value: PREFER_NOT_TO_SAY_VALUE, label: "Prefer not to say" },
   { value: "Asian", label: "Asian or Asian British" },
   { value: "Black", label: "Black, African, Caribbean or Black British" },
   { value: "Mixed", label: "Mixed or multiple ethnic groups" },
@@ -90,8 +95,16 @@ function formatDateForDisplay(dateStr: string, format: string): string {
   }
 }
 
+function toSelectValue(value: string | null | undefined) {
+  return value && value.trim() ? value : UNANSWERED_VALUE;
+}
+
+function fromSelectValue(value: string) {
+  return value === UNANSWERED_VALUE ? null : value;
+}
+
 export function AccountPage() {
-  const { logout, acceptTermsAndHealth } = useAuth();
+  const { logout, acceptTermsAndHealth, refreshAccountProfile } = useAuth();
 
   const [activeTab, setActiveTab] = useState<AccountTab>("profile");
 
@@ -121,9 +134,11 @@ export function AccountPage() {
   const [prefsSaved, setPrefsSaved] = useState(false);
   const [notificationsSaved, setNotificationsSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [legalSaving, setLegalSaving] = useState<"terms" | "health" | null>(null);
 
   const [dobError, setDobError] = useState("");
   const [error, setError] = useState("");
+  const [legalError, setLegalError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -144,8 +159,8 @@ export function AccountPage() {
         setLastName(data.profile.lastName || "");
         setEmail(data.profile.email || "");
         setDob(data.profile.dob || "");
-        setGender(data.profile.gender || "");
-        setEthnicity(data.profile.ethnicity || "");
+        setGender(toSelectValue(data.profile.gender));
+        setEthnicity(toSelectValue(data.profile.ethnicity));
         setTimezone(data.profile.timezone || "Europe/London");
         setDateFormat(data.profile.dateFormat || "DD/MM/YYYY");
         setHasAgreedToTerms(data.profile.hasAgreedToTerms);
@@ -202,8 +217,8 @@ export function AccountPage() {
           firstName,
           lastName,
           dob: dob || null,
-          gender: gender || null,
-          ethnicity: ethnicity || null,
+          gender: fromSelectValue(gender),
+          ethnicity: fromSelectValue(ethnicity),
         }),
       });
       if (!res.ok) {
@@ -214,6 +229,32 @@ export function AccountPage() {
       setTimeout(() => setProfileSaved(false), 3000);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save profile.");
+    }
+  };
+
+  const handleLegalAcceptance = async (type: "terms" | "health") => {
+    setLegalSaving(type);
+    setLegalError("");
+    setError("");
+
+    try {
+      await acceptTermsAndHealth(type === "terms", type === "health");
+      await refreshAccountProfile();
+
+      const accountRes = await fetch("/api/me", { cache: "no-store" });
+      if (!accountRes.ok) {
+        throw new Error("Failed to refresh agreement status.");
+      }
+
+      const data = (await accountRes.json()) as AccountDto;
+      setHasAgreedToTerms(data.profile.hasAgreedToTerms);
+      setHasAgreedToHealth(data.profile.hasAgreedToHealth);
+      setTermsAgreedAt(data.profile.termsAgreedAt);
+      setHealthAgreedAt(data.profile.healthAgreedAt);
+    } catch (e) {
+      setLegalError(e instanceof Error ? e.message : "Failed to update legal agreements.");
+    } finally {
+      setLegalSaving(null);
     }
   };
 
@@ -328,7 +369,11 @@ export function AccountPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} readOnly />
+                <Input id="email" type="email" value={email} readOnly disabled />
+                <p className="text-muted-foreground text-xs">
+                  Your sign-in email is fixed here because it is linked to billing and account
+                  records.
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -360,14 +405,11 @@ export function AccountPage() {
                   </Label>
                   <Select value={gender} onValueChange={setGender}>
                     <SelectTrigger id="gender">
-                      <SelectValue placeholder="Prefer not to say" />
+                      <SelectValue placeholder="Not answered" />
                     </SelectTrigger>
                     <SelectContent>
                       {GENDER_OPTIONS.map((opt) => (
-                        <SelectItem
-                          key={opt.value || "empty"}
-                          value={opt.value || "prefer_not_to_say"}
-                        >
+                        <SelectItem key={opt.value} value={opt.value}>
                           {opt.label}
                         </SelectItem>
                       ))}
@@ -380,14 +422,11 @@ export function AccountPage() {
                   </Label>
                   <Select value={ethnicity} onValueChange={setEthnicity}>
                     <SelectTrigger id="ethnicity">
-                      <SelectValue placeholder="Prefer not to say" />
+                      <SelectValue placeholder="Not answered" />
                     </SelectTrigger>
                     <SelectContent>
                       {ETHNICITY_OPTIONS.map((opt) => (
-                        <SelectItem
-                          key={opt.value || "empty"}
-                          value={opt.value || "prefer_not_to_say"}
-                        >
+                        <SelectItem key={opt.value} value={opt.value}>
                           {opt.label}
                         </SelectItem>
                       ))}
@@ -433,16 +472,16 @@ export function AccountPage() {
                   <p className="text-sm text-amber-800">
                     You still need to accept required agreements.
                   </p>
+                  {legalError ? <p className="text-sm text-red-600">{legalError}</p> : null}
                   {!hasAgreedToTerms ? (
                     <label className="flex items-start gap-3 rounded-lg border border-amber-200 bg-white p-3">
                       <input
                         type="checkbox"
                         className="accent-brand-accent mt-0.5"
+                        disabled={legalSaving !== null}
                         onChange={async (e) => {
                           if (!e.target.checked) return;
-                          await acceptTermsAndHealth(true, false);
-                          setHasAgreedToTerms(true);
-                          setTermsAgreedAt(new Date().toISOString());
+                          await handleLegalAcceptance("terms");
                         }}
                       />
                       <span className="text-sm leading-relaxed">
@@ -462,11 +501,10 @@ export function AccountPage() {
                       <input
                         type="checkbox"
                         className="accent-brand-accent mt-0.5"
+                        disabled={legalSaving !== null}
                         onChange={async (e) => {
                           if (!e.target.checked) return;
-                          await acceptTermsAndHealth(false, true);
-                          setHasAgreedToHealth(true);
-                          setHealthAgreedAt(new Date().toISOString());
+                          await handleLegalAcceptance("health");
                         }}
                       />
                       <span className="text-sm leading-relaxed">
@@ -511,9 +549,6 @@ export function AccountPage() {
                 <Link href="/health-declaration" className="text-primary block hover:underline">
                   Health & Liability Waiver
                 </Link>
-              </div>
-              <div className="border-t pt-4">
-                <Button variant="outline">Request Data Export</Button>
               </div>
             </div>
           </div>

@@ -18,12 +18,13 @@ import {
   Users,
   Video,
 } from "lucide-react";
-import type { ClassDefinitionContent, ThemedWeekPromo } from "@/lib/content";
+import type { ClassDefinitionContent } from "@/lib/content";
+import type { PublicThemedWeek } from "@/lib/themed-weeks/service";
 
 interface ClassesHubPageProps {
   yogaClasses: ClassDefinitionContent[];
   strengthClasses: ClassDefinitionContent[];
-  themedWeeks: ThemedWeekPromo[];
+  themedWeeks: PublicThemedWeek[];
 }
 
 export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: ClassesHubPageProps) {
@@ -40,8 +41,8 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
         <div className="container mx-auto max-w-4xl px-4 text-center">
           <h1 className="mb-6 text-4xl leading-tight md:text-6xl">Move Well Classes</h1>
           <p className="text-brand-accent-light mb-8 text-xl leading-relaxed md:text-2xl">
-            Live online classes combining adaptive yoga and intelligent strength training for
-            complex bodies.
+            Live online classes combining adaptive yoga and intelligent strength training. For
+            complex bodies that deserve more than generic fitness.
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <Link href="/schedule">
@@ -112,24 +113,59 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
             <div className="bg-background rounded-lg border p-6">
               <h3 className="mb-3 text-lg">Rehab-Informed</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                A fundamentally different approach that prioritises joint safety and nervous system
-                regulation.
+                Not mainstream yoga with modifications. A fundamentally different approach that
+                prioritises joint safety and nervous system regulation.
               </p>
             </div>
             <div className="bg-background rounded-lg border p-6">
               <h3 className="mb-3 text-lg">Evidence-Based</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Biomechanics, pain science, and progressive overload applied to real bodies with
-                real limitations.
+                PhD-level understanding of biomechanics, pain science, and progressive overload
+                applied to real bodies with real limitations.
               </p>
             </div>
             <div className="bg-background rounded-lg border p-6">
               <h3 className="mb-3 text-lg">Lived Experience</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Every class reflects what actually works in messy reality, not idealised fitness
-                assumptions.
+                I train with arthritis, fatigue, and unpredictable symptoms. Every class reflects
+                what actually works in messy reality.
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-20 md:py-24">
+        <div className="container mx-auto max-w-5xl px-4">
+          <h2 className="mb-4 text-center text-3xl md:text-4xl">Why Yoga + Strength?</h2>
+          <p className="text-muted-foreground mx-auto mb-12 max-w-3xl text-center text-lg leading-relaxed">
+            These aren&apos;t separate disciplines bolted together. They reinforce each other to build
+            awareness, resilience, and sustainable strength.
+          </p>
+          <div className="grid gap-6 md:grid-cols-2">
+            {[
+              {
+                title: "Awareness Before Load",
+                body: "Yoga develops body awareness and proprioception so strength work feels safer, clearer, and more connected.",
+              },
+              {
+                title: "Strength Protects Flexibility",
+                body: "Flexibility without strength is vulnerability, especially in hypermobile and complex bodies.",
+              },
+              {
+                title: "Both Scale to You",
+                body: "Both disciplines can be adapted intelligently, whether you need more support today or more challenge next month.",
+              },
+              {
+                title: "Nervous System Regulation",
+                body: "The combination helps you build physical capacity while respecting the regulation needs that chronic illness often brings.",
+              },
+            ].map((item) => (
+              <div key={item.title} className="bg-background rounded-lg border p-6">
+                <h3 className="mb-3 text-xl">{item.title}</h3>
+                <p className="text-muted-foreground leading-relaxed">{item.body}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>

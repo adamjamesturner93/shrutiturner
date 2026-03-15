@@ -24,6 +24,16 @@ import { useI18n } from "../lib/use-i18n";
 import { useEffect, useState } from "react";
 import type { ClassDefinitionContent } from "@/lib/content";
 
+type UpcomingSession = {
+  id: string;
+  startsAtUtc: string;
+  durationMinutes: number;
+  spotsRemaining: number;
+  capacity: number;
+  instructorName?: string | null;
+  instructorBio?: string | null;
+};
+
 interface ClassDetailPageProps {
   classDetail?: ClassDefinitionContent | null;
   allClasses?: ClassDefinitionContent[];
@@ -37,6 +47,7 @@ export function ClassDetailPage({
   const selectedSessionId = searchParams.get("session");
   const classDetail = classDetailProp ?? null;
   const [nextSessionId, setNextSessionId] = useState<string | null>(null);
+  const [upcomingSessions, setUpcomingSessions] = useState<UpcomingSession[]>([]);
   const [sessionInstructor, setSessionInstructor] = useState<{
     name: string | null;
     bio: string | null;
@@ -55,15 +66,12 @@ export function ClassDetailPage({
           }
         );
         if (!response.ok) return;
-        const payload = (await response.json()) as Array<{
-          id: string;
-          instructorName?: string | null;
-          instructorBio?: string | null;
-        }>;
+        const payload = (await response.json()) as UpcomingSession[];
         const resolvedSession =
           (selectedSessionId ? payload.find((item) => item.id === selectedSessionId) : undefined) ||
           payload[0];
         if (active) {
+          setUpcomingSessions(payload.slice(0, 4));
           setNextSessionId(resolvedSession?.id || null);
           setSessionInstructor({
             name: resolvedSession?.instructorName || null,
@@ -124,7 +132,6 @@ export function ClassDetailPage({
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() || "")
     .join("");
-
   return (
     <Layout>
       {/* Hero */}
@@ -200,12 +207,91 @@ export function ClassDetailPage({
                 variant="outline"
                 className="border-brand-accent-light text-brand-accent-light hover:bg-brand-accent-light/10 bg-transparent"
               >
-                View Full Schedule
+                View All Dates
               </Button>
             </Link>
           </div>
         </div>
       </section>
+
+      {upcomingSessions.length > 0 ? (
+        <section className="py-16 md:py-20">
+          <div className="container mx-auto max-w-5xl px-4">
+            <div className="mb-8 flex items-start gap-4">
+              <div className="bg-primary/10 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg">
+                <Calendar className="text-primary h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-3xl md:text-4xl">Upcoming Sessions</h2>
+                <p className="text-muted-foreground mt-1">
+                  Every {classDetail.day} at {fmtTimeStr(classDetail.time)} · {classDetail.duration}
+                </p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              {upcomingSessions.map((session, index) => {
+                const startsAt = new Date(session.startsAtUtc);
+                const month = new Intl.DateTimeFormat("en-GB", {
+                  month: "short",
+                  timeZone: "Europe/London",
+                }).format(startsAt);
+                const dayNumber = new Intl.DateTimeFormat("en-GB", {
+                  day: "numeric",
+                  timeZone: "Europe/London",
+                }).format(startsAt);
+                const weekday = new Intl.DateTimeFormat("en-GB", {
+                  weekday: "short",
+                  timeZone: "Europe/London",
+                }).format(startsAt);
+                const dateLabel = new Intl.DateTimeFormat("en-GB", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                  timeZone: "Europe/London",
+                }).format(startsAt);
+
+                return (
+                  <div key={session.id} className="bg-background rounded-xl border p-5 md:p-6">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-secondary flex min-w-16 flex-col items-center rounded-lg px-3 py-2 text-center">
+                          <span className="text-xs uppercase tracking-wide">{month}</span>
+                          <span className="text-2xl">{dayNumber}</span>
+                          <span className="text-xs uppercase tracking-wide">{weekday}</span>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm">
+                            {fmtTimeStr(classDetail.time)} GMT · {session.durationMinutes} min
+                          </p>
+                          <p className="text-muted-foreground text-sm">
+                            {session.spotsRemaining} of {session.capacity} spots left
+                          </p>
+                          {index === 0 ? (
+                            <Badge variant="outline" className="mt-1">
+                              Next session
+                            </Badge>
+                          ) : null}
+                        </div>
+                      </div>
+                      <BookClassButton
+                        sessionId={session.id}
+                        classSlug={classDetail.slug}
+                        className={classDetail.name}
+                        day={dateLabel}
+                        time={fmtTimeStr(classDetail.time)}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-muted-foreground mt-4 text-sm">
+              Members: no penalties for cancellation or no-shows. Credit packs can rebook when they
+              cancel before class.
+            </p>
+          </div>
+        </section>
+      ) : null}
 
       {/* Long Description */}
       <section className="py-16 md:py-20">
@@ -374,8 +460,8 @@ export function ClassDetailPage({
         <div className="container mx-auto max-w-3xl space-y-8 px-4 text-center">
           <h2 className="text-3xl md:text-4xl">Ready to Try {classDetail.name}?</h2>
           <p className="text-lg leading-relaxed opacity-90">
-            Join live with class credits or choose a membership for regular support and easier
-            weekly practice.
+            Drop in from £9, or join the Move Well Membership for regular support and easier weekly
+            practice.
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <Link href="/pricing">

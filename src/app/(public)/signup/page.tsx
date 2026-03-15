@@ -6,11 +6,25 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ ref?: string }> }) {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const params = await searchParams;
   const query = new URLSearchParams();
-  if (typeof params.ref === "string" && params.ref) {
-    query.set("ref", params.ref);
+
+  for (const [key, value] of Object.entries(params)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item) query.append(key, item);
+      }
+      continue;
+    }
+    if (value) {
+      query.set(key, value);
+    }
   }
+
   redirect(query.toString() ? `/login?${query.toString()}` : "/login");
 }

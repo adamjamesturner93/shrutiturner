@@ -15,6 +15,7 @@ import {
   GraduationCap,
   Award,
   Shield,
+  Dumbbell,
   Check,
   X,
   MessageCircle,
@@ -80,35 +81,38 @@ export function HomePage() {
         <div className="container mx-auto max-w-6xl px-4">
           <div className="grid items-center gap-12 md:grid-cols-2">
             <div className="space-y-6">
-              <div className="text-brand-accent-light text-lg">Strength & Yoga Coach</div>
+              <div className="text-brand-accent-light text-lg">
+                Understanding · Movement · Strength
+              </div>
               <h1 className="text-4xl leading-tight tracking-tight md:text-5xl lg:text-6xl">
-                Coaching for People Who Refuse to Be Fragile
+                Understand Your Body. Build Sustainable Strength.
               </h1>
               <p className="text-brand-white/90 text-xl leading-relaxed md:text-2xl">
-                I help people with chronic illness and autoimmune conditions build strength and
-                capacity through rehabilitation-informed training that honours your body's
-                complexity.
+                Movement coaching for complex bodies. I help people living with chronic illness,
+                autoimmune conditions, and hypermobility build strength that listens to your body,
+                not against it.
               </p>
               <p className="text-sm opacity-75">
-                PhD Biomechanics · PGDip Rehab · 650hr Yoga · Level 4 PT
+                PhD Rehabilitation · MSc Biomedical Engineering · 760hr+ Yoga Training · Level 4
+                S&C · CIMSPA
               </p>
               <div className="flex flex-col gap-4 pt-4 sm:flex-row">
-                <Link href="/coaching">
+                <Link href="/classes">
                   <Button
                     size="lg"
                     className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90 px-8 text-lg"
                   >
-                    Explore How I Can Help
+                    Explore Move Well Classes
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
-                <Link href="/about">
+                <Link href="/coaching">
                   <Button
                     size="lg"
                     variant="outline"
                     className="border-brand-accent-light text-brand-accent-light hover:bg-brand-accent-light/10 bg-transparent px-8 text-lg"
                   >
-                    About Shruti
+                    1:1 Coaching
                   </Button>
                 </Link>
               </div>
@@ -130,19 +134,19 @@ export function HomePage() {
           <div className="flex flex-wrap items-center justify-center gap-8">
             <div className="text-muted-foreground flex items-center gap-2">
               <GraduationCap className="text-primary h-5 w-5" />
-              <span className="text-sm">PhD Biomechanics</span>
+              <span className="text-sm">PhD Rehabilitation</span>
             </div>
             <div className="text-muted-foreground flex items-center gap-2">
               <Award className="text-primary h-5 w-5" />
-              <span className="text-sm">PGDip Rehabilitation</span>
+              <span className="text-sm">MSc Biomedical Engineering</span>
             </div>
             <div className="text-muted-foreground flex items-center gap-2">
               <Heart className="text-primary h-5 w-5" />
-              <span className="text-sm">650hr Yoga Training</span>
+              <span className="text-sm">760hr+ Yoga Training</span>
             </div>
             <div className="text-muted-foreground flex items-center gap-2">
               <Shield className="text-primary h-5 w-5" />
-              <span className="text-sm">Level 4 PT · CIMSPA</span>
+              <span className="text-sm">Level 4 S&C · CIMSPA</span>
             </div>
           </div>
         </div>
@@ -209,6 +213,7 @@ export function HomePage() {
                 <li>Intelligent and research-oriented</li>
                 <li>Frustrated by generic fitness advice</li>
                 <li>Tired of being told to "just rest"</li>
+                <li>Burned by trainers or classes that didn't listen</li>
                 <li>Ready to build genuine capacity</li>
                 <li>Looking for evidence-based approaches</li>
               </ul>
@@ -221,11 +226,58 @@ export function HomePage() {
       <section className="bg-brand-accent text-brand-white py-20 md:py-24">
         <div className="container mx-auto max-w-4xl px-4 text-center">
           <h2 className="mb-8 text-3xl leading-tight md:text-5xl">
-            Build strength, capacity and resilience — without pretending your body is simple.
+            Train with your body, not against it.
           </h2>
           <p className="text-xl leading-relaxed opacity-90">
             This is not generic fitness. This is intelligent, evidence-based training for bodies
             that require nuance.
+          </p>
+        </div>
+      </section>
+
+      <section className="py-20 md:py-28">
+        <div className="container mx-auto max-w-6xl px-4">
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 text-3xl md:text-5xl">My Coaching Philosophy</h2>
+            <p className="text-muted-foreground mx-auto max-w-2xl text-lg leading-relaxed">
+              Every decision I make is guided by three principles: understanding, movement, and
+              strength.
+            </p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-3">
+            {[
+              {
+                title: "Understanding",
+                body: "Before we load, we listen. I help you understand your body, your triggers, and the difference between challenge and threat.",
+                icon: BookOpen,
+              },
+              {
+                title: "Movement",
+                body: "Yoga and strength aren't opposites. They work together to build awareness, regulation, and movement choices that hold up in real life.",
+                icon: Heart,
+              },
+              {
+                title: "Strength",
+                body: "Progressive load tolerance is built gradually and adapted intelligently, so you can get stronger without sliding into boom-and-bust training.",
+                icon: Dumbbell,
+              },
+            ].map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.title} className="bg-background rounded-lg border p-8 text-center">
+                  <div className="bg-primary/10 mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full">
+                    <Icon className="text-primary h-6 w-6" />
+                  </div>
+                  <h3 className="mb-4 text-2xl">{item.title}</h3>
+                  <p className="text-muted-foreground leading-relaxed">{item.body}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="text-muted-foreground mt-8 text-center text-lg">
+            You won&apos;t be pushed too hard, but you won&apos;t be held back by fear either.
           </p>
         </div>
       </section>
@@ -236,8 +288,8 @@ export function HomePage() {
           <div className="mb-16 text-center">
             <h2 className="mb-6 text-3xl md:text-5xl">Choose Your Path</h2>
             <p className="text-muted-foreground mx-auto max-w-3xl text-xl leading-relaxed">
-              Whether you want ongoing Move Well Classes, a more focused small group programme, or
-              personalised 1:1 coaching, there&apos;s a way in that suits you.
+              Start with classes to build trust. Add structure with a small group. Step into 1:1
+              coaching when you need the deepest support.
             </p>
           </div>
 
@@ -247,12 +299,12 @@ export function HomePage() {
               <div className="bg-brand-accent/10 flex h-12 w-12 items-center justify-center rounded-lg">
                 <Heart className="text-brand-accent h-6 w-6" />
               </div>
-              <h3 className="text-xl">Move Well Classes</h3>
+              <h3 className="text-xl">Move Well Membership</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Live adaptive yoga and intelligent strength classes for complex bodies, with
-                real-time modifications and a flare-friendly structure.
+                Adaptive yoga and intelligent strength training designed for fluctuating capacity,
+                with regular live classes and a flare-friendly structure.
               </p>
-              <p className="text-bronze-text text-sm">From £7/class with a bundle</p>
+              <p className="text-bronze-text text-sm">From £29/month · 14-day trial</p>
               <Link href="/classes">
                 <Button
                   variant="outline"
@@ -269,12 +321,12 @@ export function HomePage() {
               <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-lg">
                 <User className="text-primary h-6 w-6" />
               </div>
-              <h3 className="text-xl">Coaching</h3>
+              <h3 className="text-xl">1:1 Coaching</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Three levels of personalised support, from tailored training plans to high-touch 1:1
-                coaching.
+                Three tiers of personalised support, from tailored programming to high-touch
+                coaching for more complex needs.
               </p>
-              <p className="text-bronze-text text-sm">From £60/month</p>
+              <p className="text-bronze-text text-sm">From £60/month · Free enquiry</p>
               <Link href="/coaching">
                 <Button
                   variant="outline"
@@ -552,7 +604,7 @@ export function HomePage() {
                 </p>
                 <p>
                   My approach combines a PhD in Biomechanics and postgraduate rehabilitation
-                  training with 650 hours of yoga education and Level 4 personal training. This
+                  training with 760+ hours of yoga education and Level 4 strength and conditioning. This
                   isn't guesswork — it's evidence-based coaching for bodies that need more than
                   standard protocols.
                 </p>

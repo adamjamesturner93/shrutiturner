@@ -9,7 +9,7 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-const NO_POPUP_PATHS = ["/login", "/signup", "/dashboard", "/unsubscribe", "/subscribe"];
+const NO_POPUP_PATHS = ["/login", "/dashboard", "/unsubscribe", "/subscribe"];
 
 export function Layout({ children }: LayoutProps) {
   const [showPopup, setShowPopup] = useState(false);

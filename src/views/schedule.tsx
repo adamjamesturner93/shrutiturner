@@ -8,6 +8,7 @@ import { Clock, Video, Calendar, ArrowRight, Users, Globe } from "lucide-react";
 import { getTypeColor } from "@/lib/classes/type-color";
 import { BookClassButton } from "../components/booking-modal";
 import { useI18n } from "../lib/use-i18n";
+import type { PublicThemedWeek } from "@/lib/themed-weeks/service";
 
 type ApiScheduleDay = {
   day: string;
@@ -33,21 +34,28 @@ type ApiScheduleDay = {
 
 interface SchedulePageProps {
   scheduleData?: ApiScheduleDay[];
+  themedWeek?: PublicThemedWeek | null;
 }
 
-export function SchedulePage({ scheduleData }: SchedulePageProps) {
+export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
   const renderedScheduleData = (scheduleData ?? []) as ApiScheduleDay[];
   const { fmtTimeStr, tzAbbr, londonOffset } = useI18n();
+  const themedWeekDateLabel = themedWeek?.startDate
+    ? new Intl.DateTimeFormat("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }).format(new Date(themedWeek.startDate))
+    : null;
 
   return (
     <Layout>
       {/* Hero */}
       <section className="bg-brand-dark text-brand-white py-20 md:py-24">
         <div className="container mx-auto max-w-4xl px-4 text-center">
-          <h1 className="mb-6 text-4xl md:text-5xl">Move Well Classes Schedule</h1>
+          <h1 className="mb-6 text-4xl md:text-5xl">Class Schedule</h1>
           <p className="text-brand-accent-light mb-8 text-xl leading-relaxed">
-            Live online adaptive yoga and intelligent strength classes every week, designed for real
-            bodies and long-term joint health.
+            Live online classes every week. Designed for real bodies and long-term joint health.
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <Link href="/pricing">
@@ -65,7 +73,7 @@ export function SchedulePage({ scheduleData }: SchedulePageProps) {
                 variant="outline"
                 className="border-brand-accent-light text-brand-accent-light hover:bg-brand-accent-light/10 bg-transparent"
               >
-                Explore Move Well Classes
+                Explore Classes
               </Button>
             </Link>
           </div>
@@ -75,6 +83,9 @@ export function SchedulePage({ scheduleData }: SchedulePageProps) {
       {/* Schedule Info Bar */}
       <section className="bg-secondary/30 border-b">
         <div className="container mx-auto px-4 py-6">
+          <div className="text-muted-foreground mb-4 flex justify-center text-sm">
+            <span>Schedule</span>
+          </div>
           <div className="text-muted-foreground flex flex-wrap justify-center gap-6 text-sm">
             <div className="flex items-center gap-2">
               <Video className="text-primary h-4 w-4" />
@@ -97,6 +108,36 @@ export function SchedulePage({ scheduleData }: SchedulePageProps) {
           </div>
         </div>
       </section>
+
+      {themedWeek ? (
+        <section className="py-6">
+          <div className="container mx-auto max-w-6xl px-4">
+            <div className="bg-brand-accent/5 border-brand-accent/20 flex flex-col gap-6 rounded-xl border p-6 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="bg-brand-accent/10 text-brand-accent flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg">
+                  <Calendar className="h-5 w-5" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-brand-accent text-sm">
+                    Themed Week
+                    {themedWeekDateLabel ? ` · ${themedWeekDateLabel}` : ""}
+                  </p>
+                  <h2 className="text-2xl">{themedWeek.title}</h2>
+                  <p className="text-muted-foreground max-w-3xl leading-relaxed">
+                    {themedWeek.shortDescription}
+                  </p>
+                </div>
+              </div>
+              <Link href={themedWeek.ctaHref}>
+                <Button className="bg-brand-accent hover:bg-brand-accent/90 text-white">
+                  {themedWeek.ctaLabel}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {/* Weekly Schedule */}
       <section className="py-16 md:py-20">

@@ -45,7 +45,7 @@ const NAV_ITEMS = [
   { path: "/dashboard/membership", label: "Membership", icon: CreditCard, memberOnly: true },
   { path: "/dashboard/referrals", label: "Referrals", icon: Gift, memberOnly: true },
   { path: "/dashboard/health", label: "Health Profile", icon: HeartPulse },
-  { path: "/account", label: "Account", icon: Settings },
+  { path: "/dashboard/account", label: "Account", icon: Settings },
 ];
 
 function LegalGuardModal({

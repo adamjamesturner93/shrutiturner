@@ -99,7 +99,6 @@ describe("newsletter public journeys integration", () => {
 
   afterAll(async () => {
     await cleanupTestRows();
-    await db.$disconnect();
   });
 
   it("creates or links a subscriber and updates the user's marketing preference", async () => {

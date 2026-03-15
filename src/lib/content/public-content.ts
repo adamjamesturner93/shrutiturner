@@ -7,7 +7,6 @@ import {
   LOCAL_PAGE_CONTENT,
   LOCAL_RETREAT_INSTANCES,
   LOCAL_SMALL_GROUP_PROGRAMMES,
-  LOCAL_THEMED_WEEK_PROMOS,
   getLocalScheduleByDay,
 } from "./local-content";
 import { getContentSource } from "./config";
@@ -32,7 +31,6 @@ import type {
   SmallGroupTemplateContent,
   AnnouncementBannerContent,
   FaqItemContent,
-  ThemedWeekPromo,
   TestimonialContent,
   TransactionalEmailTemplateContent,
   TrustBadgeContent,
@@ -605,31 +603,6 @@ export async function getClassDefinitions(): Promise<ClassDefinitionContent[]> {
   }
 
   return LOCAL_CLASS_DEFINITIONS;
-}
-
-export async function getThemedWeekPromos(): Promise<ThemedWeekPromo[]> {
-  if (prefersContentfulSource()) {
-    const res = await getEntries<Record<string, unknown>>("themedWeekPromo", {
-      limit: 100,
-      order: "fields.sortOrder,fields.title",
-      "fields.active": true,
-    });
-    if (res?.items?.length) {
-      return res.items.map((item) => ({
-        slug: String(item.fields.slug || item.sys.id),
-        title: String(item.fields.title || "Themed Week"),
-        shortDescription: String(item.fields.shortDescription || ""),
-        audience: String(item.fields.audience || ""),
-        ctaHref: String(item.fields.ctaHref || "/schedule"),
-        ctaLabel: String(item.fields.ctaLabel || "See What's Running"),
-        status: item.fields.status
-          ? (String(item.fields.status) as "upcoming" | "current" | "waitlist")
-          : undefined,
-      }));
-    }
-  }
-
-  return LOCAL_THEMED_WEEK_PROMOS;
 }
 
 export async function getSmallGroupTemplates(): Promise<SmallGroupTemplateContent[]> {

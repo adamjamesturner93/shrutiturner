@@ -107,7 +107,11 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
       setOnboardingStep("legal");
       return;
     }
-    if (user.heardAboutSource && needsHealthProfile) {
+    if (!user.heardAboutSource) {
+      setOnboardingStep("source");
+      return;
+    }
+    if (needsHealthProfile) {
       setOnboardingStep("health");
       return;
     }
@@ -147,7 +151,9 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
       await refreshAccountProfile();
       if (needsLegalAgreement) {
         setOnboardingStep("legal");
-      } else if (user?.heardAboutSource && needsHealthProfile) {
+      } else if (!user?.heardAboutSource) {
+        setOnboardingStep("source");
+      } else if (needsHealthProfile) {
         setOnboardingStep("health");
       } else {
         setOnboardingStep("welcome");
@@ -174,7 +180,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
       await acceptHealthDataConsent();
     }
     await refreshAccountProfile();
-    finishOnboarding();
+    setOnboardingStep("welcome");
   };
 
   if (loading) {
@@ -332,7 +338,9 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                   disabled={!legalTerms || !legalHealth}
                   onClick={async () => {
                     await acceptTermsAndHealth(true, true);
-                    if (user?.heardAboutSource && needsHealthProfile) {
+                    if (!user?.heardAboutSource) {
+                      setOnboardingStep("source");
+                    } else if (needsHealthProfile) {
                       setOnboardingStep("health");
                     } else {
                       setOnboardingStep("welcome");
@@ -368,25 +376,8 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                     <span>Classes adapt to how you feel on the day</span>
                   </p>
                 </div>
-                <Button
-                  className="w-full"
-                  onClick={() => {
-                    if (user?.heardAboutSource) {
-                      if (needsHealthProfile) {
-                        setOnboardingStep("health");
-                      } else {
-                        finishOnboarding();
-                      }
-                      return;
-                    }
-                    setOnboardingStep("source");
-                  }}
-                >
-                  {user?.heardAboutSource
-                    ? needsHealthProfile
-                      ? "Next: Tell Us About Your Body"
-                      : "Enter Studio"
-                    : "Next: How Did You Hear About Us?"}
+                <Button className="w-full" onClick={finishOnboarding}>
+                  Enter Studio
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
                 <button
@@ -447,16 +438,16 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                     if (needsHealthProfile) {
                       setOnboardingStep("health");
                     } else {
-                      finishOnboarding();
+                      setOnboardingStep("welcome");
                     }
                   }}
                 >
-                  Next: Tell Us About Your Body
+                  {needsHealthProfile ? "Next: Tell Us About Your Body" : "Continue"}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
                 <div className="text-center">
                   <button
-                    onClick={finishOnboarding}
+                    onClick={() => setOnboardingStep("welcome")}
                     className="text-muted-foreground hover:text-foreground text-sm transition-colors"
                   >
                     Skip and continue
@@ -478,7 +469,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                   onSave={handleHealthSave}
                   compact
                   initialConsentAccepted={Boolean(user?.hasConsentedToHealthData)}
-                  onSkip={finishOnboarding}
+                  onSkip={() => setOnboardingStep("welcome")}
                 />
               </div>
             ) : null}

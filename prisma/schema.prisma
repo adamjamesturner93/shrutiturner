@@ -1097,6 +1097,24 @@ model SmallGroupProgrammeEnrollment {
   @@index([paymentWindowExpiresAt, status])
 }
 
+model ThemedWeek {
+  id               String   @id @default(cuid())
+  slug             String   @unique
+  title            String
+  shortDescription String   @db.Text
+  audience         String   @db.Text
+  ctaHref          String
+  ctaLabel         String
+  startDate        DateTime
+  endDate          DateTime
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([startDate, endDate])
+  @@index([sortOrder, startDate])
+}
+
 model BlogComment {
   id           String            @id @default(cuid())
   postSlug     String

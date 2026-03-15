@@ -19,16 +19,6 @@ export interface CoachingTierMarketing {
   features: string[];
 }
 
-export interface ThemedWeekPromo {
-  slug: string;
-  title: string;
-  shortDescription: string;
-  audience: string;
-  ctaHref: string;
-  ctaLabel: string;
-  status?: "upcoming" | "current" | "waitlist";
-}
-
 export interface JourneyStep {
   step: number;
   title: string;
@@ -176,38 +166,5 @@ export const coachingFaqs: CoachingFaq[] = [
     question: "Do all coaching tiers include Move Well Membership?",
     answer:
       "No. Move Well Membership is included with Coached Training Plan and 1:1 Coaching. The Independent Training Plan keeps classes optional so it stays lower-friction and more affordable.",
-  },
-];
-
-export const themedWeekPromos: ThemedWeekPromo[] = [
-  {
-    slug: "pain-management-week",
-    title: "Pain Management Week",
-    shortDescription:
-      "A focused run of classes exploring pacing, flare-aware movement, and strategies that help you keep moving without boom-and-bust.",
-    audience: "Best for people navigating pain spikes and unpredictable symptoms.",
-    ctaHref: "/schedule",
-    ctaLabel: "See What's Running",
-    status: "current",
-  },
-  {
-    slug: "energy-and-pacing-week",
-    title: "Energy & Pacing Week",
-    shortDescription:
-      "Short-term class support for people who need smarter ways to train around fatigue, recovery, and fluctuating capacity.",
-    audience: "Best for clients managing fatigue, energy variability, and recovery planning.",
-    ctaHref: "/schedule",
-    ctaLabel: "See What's Running",
-    status: "upcoming",
-  },
-  {
-    slug: "hypermobility-support-week",
-    title: "Hypermobility Support Week",
-    shortDescription:
-      "A themed class focus on stability, control, and confidence for hypermobile bodies that need strength more than stretching.",
-    audience: "Best for people who need more stability, strength, and body trust.",
-    ctaHref: "/schedule",
-    ctaLabel: "See What's Running",
-    status: "waitlist",
   },
 ];

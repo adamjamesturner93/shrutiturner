@@ -135,7 +135,7 @@ export function LoginPage() {
     <Layout>
       <SEO
         title="Login - Shruti Turner"
-        description="Access your personalised training programmes, class schedules, and coaching resources."
+        description="Sign in to your Private Studio to access classes, coaching, health details, and account tools."
         canonicalUrl="https://shrutiturner.com/login"
         noIndex
       />
@@ -194,9 +194,10 @@ export function LoginPage() {
               </div>
 
               <div className="mb-8">
-                <h2 className="text-3xl tracking-tight">Welcome</h2>
+                <h2 className="text-3xl tracking-tight">Sign in to your studio</h2>
                 <p className="text-muted-foreground mt-2">
-                  Sign in or create your account to get started.
+                  Use your email or Google account to continue. If you&apos;re new, we&apos;ll set
+                  up the rest after you verify.
                 </p>
               </div>
               <div className="bg-bronze/60 mb-8 h-px w-12 rounded-full" />
@@ -249,7 +250,8 @@ export function LoginPage() {
                   </Button>
 
                   <div className="text-muted-foreground mt-6 text-center text-sm">
-                    No account yet? Just sign in - we&apos;ll set you up.
+                    First time here? You&apos;ll finish your profile inside the studio after
+                    sign-in.
                   </div>
                 </div>
               ) : loginMethod === "passwordless" ? (
@@ -295,7 +297,10 @@ export function LoginPage() {
                       <TurnstileWidget onTokenChange={setTurnstileToken} />
 
                       <p className="text-muted-foreground text-center text-sm">
-                        We'll send a 6-digit code to your email
+                        We&apos;ll email you a 6-digit sign-in code.
+                      </p>
+                      <p className="text-muted-foreground text-center text-xs">
+                        New to the studio? We&apos;ll set up your profile after verification.
                       </p>
                     </>
                   ) : (
@@ -315,7 +320,7 @@ export function LoginPage() {
                       </div>
 
                       <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
-                        {isSubmitting ? "Verifying..." : "Verify & Sign In"}
+                        {isSubmitting ? "Verifying..." : "Continue"}
                       </Button>
 
                       <Button

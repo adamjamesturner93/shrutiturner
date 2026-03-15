@@ -1,5 +1,4 @@
 import { classDetails, getScheduleByDay, type ClassDetail } from "@/data/schedule-data";
-import { themedWeekPromos } from "@/data/marketing";
 import { retreats } from "@/data/retreat-data";
 import { LEGAL_DOCUMENTS } from "@/data/legal-documents";
 import { smallGroupTemplates } from "@/data/small-group-programmes";
@@ -11,7 +10,6 @@ import type {
   PageContent,
   RetreatInstanceContent,
   SmallGroupTemplateContent,
-  ThemedWeekPromo,
 } from "./types";
 
 export const LOCAL_GLOBAL_CONTENT: GlobalContent = {
@@ -74,7 +72,6 @@ export const LOCAL_PAGE_CONTENT: Record<string, PageContent> = {
 };
 
 export const LOCAL_CLASS_DEFINITIONS: ClassDefinitionContent[] = classDetails as ClassDetail[];
-export const LOCAL_THEMED_WEEK_PROMOS: ThemedWeekPromo[] = themedWeekPromos;
 export const LOCAL_SMALL_GROUP_PROGRAMMES: SmallGroupTemplateContent[] = smallGroupTemplates;
 
 export const LOCAL_LEGAL_DOCUMENTS: LegalDocumentContent[] = LEGAL_DOCUMENTS;

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { ClassesHubPage } from "@/views/classes-hub";
 import { buildPageMetadata } from "@/lib/content/metadata";
-import { getClassDefinitions, getThemedWeekPromos } from "@/lib/content";
+import { getClassDefinitions } from "@/lib/content";
 import type { ClassDefinitionContent } from "@/lib/content";
+import { listPublicThemedWeeks } from "@/lib/themed-weeks/service";
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildPageMetadata("classes", "Move Well Classes");
@@ -29,7 +30,7 @@ function sortClasses(items: ClassDefinitionContent[]) {
 export default async function Page() {
   const [classDefinitions, themedWeeks] = await Promise.all([
     getClassDefinitions(),
-    getThemedWeekPromos(),
+    listPublicThemedWeeks(),
   ]);
 
   const yogaClasses = sortClasses(

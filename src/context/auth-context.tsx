@@ -829,7 +829,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         hasAgreedToHealth: health || undefined,
       }),
     });
-    if (!response.ok) return;
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      throw new Error(payload?.message || "Failed to update legal agreements.");
+    }
 
     const payload = (await response.json().catch(() => null)) as {
       profile?: {
@@ -877,7 +880,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         hasConsentedToHealthData: true,
       }),
     });
-    if (!response.ok) return;
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      throw new Error(payload?.message || "Failed to update health data consent.");
+    }
 
     const payload = (await response.json().catch(() => null)) as {
       profile?: {
@@ -919,7 +925,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         heardAboutDetail: detail || null,
       }),
     });
-    if (!response.ok) return;
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      throw new Error(payload?.message || "Failed to save onboarding source.");
+    }
 
     setUser((prev) =>
       prev

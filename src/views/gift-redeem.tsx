@@ -111,7 +111,6 @@ export function GiftRedeemPage({
   };
 
   const loginHref = `/login?redirect=/gift/redeem/${code}`;
-  const signupHref = `/signup?redirect=/gift/redeem/${code}`;
   const needsSecondGuest = gift.retreat?.guestsIncluded === 2;
 
   return (
@@ -173,15 +172,13 @@ export function GiftRedeemPage({
               <div className="rounded-[1.5rem] border p-6">
                 <h2 className="text-2xl">Sign in to redeem</h2>
                 <p className="text-muted-foreground mt-3 max-w-xl leading-relaxed">
-                  The gift is reserved. Sign in or create your account first, then you can finish
-                  the redemption details securely.
+                  The gift is reserved. Sign in first, then you can finish the redemption details
+                  securely. If you&apos;re new, the studio will guide you through account setup
+                  after verification.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Button asChild>
-                    <Link href={signupHref}>Create account</Link>
-                  </Button>
-                  <Button asChild variant="outline">
-                    <Link href={loginHref}>Sign in</Link>
+                    <Link href={loginHref}>Continue to sign in</Link>
                   </Button>
                 </div>
               </div>

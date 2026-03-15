@@ -402,6 +402,56 @@ async function seedClassSessions(userIds: string[]) {
   });
 }
 
+async function seedThemedWeeks() {
+  const themedWeeks = [
+    {
+      slug: "pain-management-week",
+      title: "Pain Management Week",
+      shortDescription:
+        "A focused run of classes exploring pacing, flare-aware movement, and strategies that help you keep moving without boom-and-bust.",
+      audience: "Best for people navigating pain spikes and unpredictable symptoms.",
+      ctaHref: "/schedule",
+      ctaLabel: "See What's Running",
+      startDate: new Date("2026-03-09T00:00:00.000Z"),
+      endDate: new Date("2026-03-15T23:59:59.999Z"),
+      sortOrder: 0,
+    },
+    {
+      slug: "pelvic-floor-health-week",
+      title: "Pelvic Floor Health Week",
+      shortDescription:
+        "All your regular classes this week will incorporate pelvic floor-aware cueing, breath strategies, and strength work that supports pressure management.",
+      audience:
+        "Best for clients who want more confidence, understanding, and support around pelvic floor health.",
+      ctaHref: "/classes",
+      ctaLabel: "Register",
+      startDate: new Date("2026-03-23T00:00:00.000Z"),
+      endDate: new Date("2026-03-29T23:59:59.999Z"),
+      sortOrder: 1,
+    },
+    {
+      slug: "hypermobility-support-week",
+      title: "Hypermobility Support Week",
+      shortDescription:
+        "A themed class focus on stability, control, and confidence for hypermobile bodies that need strength more than stretching.",
+      audience: "Best for people who need more stability, strength, and body trust.",
+      ctaHref: "/classes",
+      ctaLabel: "Register",
+      startDate: new Date("2026-04-20T00:00:00.000Z"),
+      endDate: new Date("2026-04-26T23:59:59.999Z"),
+      sortOrder: 2,
+    },
+  ];
+
+  for (const themedWeek of themedWeeks) {
+    await prisma.themedWeek.upsert({
+      where: { slug: themedWeek.slug },
+      update: themedWeek,
+      create: themedWeek,
+    });
+  }
+}
+
 async function main() {
   const users: Array<{ id: string; referralCode: string | null }> = [];
 
@@ -412,9 +462,10 @@ async function main() {
 
   await seedReferrals(users);
   await seedClassSessions(users.map((u) => u.id));
+  await seedThemedWeeks();
 
   console.log(
-    "Seeded billing dataset: 25 members with membership, credit, referral, health, and class sessions."
+    "Seeded billing dataset: 25 members with membership, credit, referral, health, class sessions, and themed weeks."
   );
 }
 
