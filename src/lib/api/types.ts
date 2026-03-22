@@ -65,12 +65,20 @@ export type AccountProfileDto = {
   needsHealthDataConsentRefresh: boolean;
   heardAboutSource: string | null;
   heardAboutDetail: string | null;
+  onboarding: OnboardingStateDto;
 };
 
 export type AccountDto = {
   profile: AccountProfileDto;
   notifications: NotificationPreferencesDto;
   referral: ReferralSummaryDto;
+};
+
+export type OnboardingStateDto = {
+  isComplete: boolean;
+  checklistComplete: boolean;
+  nextStep: "profile" | "legal" | "source" | "health" | "welcome" | "complete";
+  missingSteps: Array<"profile" | "legal" | "source" | "health">;
 };
 
 export type BlogCommentDto = {
@@ -249,6 +257,8 @@ export type MembershipStateDto = {
     classesRemaining: number;
     pricePence: number;
     cancelAtPeriodEnd: boolean;
+    accessActive: boolean;
+    endsAt: string | null;
   } | null;
   credits: {
     balance: number;

@@ -17,6 +17,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import type { AdminMemberListItemDto } from "@/lib/api/types";
+import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 
 type AdminMember = AdminMemberListItemDto & {
   status: "active" | "paused" | "cancelled" | "expired" | "past_due";
@@ -132,17 +133,20 @@ export function AdminMembers() {
   return (
     <AdminLayout title="Members - Admin">
       <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-brand-dark text-2xl">Members</h1>
-          <p className="text-muted-foreground mt-1">
-            {adminMembers.length} total members · {statusCounts.active} active
-          </p>
-          {loading ? (
-            <p className="text-muted-foreground mt-2 text-sm">Loading members...</p>
-          ) : null}
-          {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
-        </div>
+        <AppPageHeader
+          eyebrow="Member operations"
+          title="Members"
+          description={`${adminMembers.length} total members · ${statusCounts.active} active`}
+          meta={loading ? "Loading members..." : undefined}
+        />
+        {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+
+        <AppMetricGrid className="lg:grid-cols-4">
+          <AppMetricCard label="Active" value={statusCounts.active} detail="currently active members" />
+          <AppMetricCard label="Paused" value={statusCounts.paused} detail="temporarily paused" />
+          <AppMetricCard label="Lapsed" value={statusCounts.expired + statusCounts.cancelled} detail="cancelled or expired" />
+          <AppMetricCard label="At risk" value={atRiskCounts.total} detail="members needing follow-up" />
+        </AppMetricGrid>
 
         {/* Stat pills */}
         <div className="flex flex-wrap gap-3">

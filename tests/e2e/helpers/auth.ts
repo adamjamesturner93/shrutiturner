@@ -38,43 +38,31 @@ export async function preparePasswordlessCode(email: string, code = "123456") {
 }
 
 export async function loginWithEmail(page: Page, email: string, code = "123456") {
-  await preparePasswordlessCode(email, code);
   await page.goto("/login");
-  const csrfToken = await page.evaluate(async () => {
-    const payload = (await fetch("/api/auth/csrf", {
-      credentials: "same-origin",
-    }).then((response) => response.json())) as { csrfToken?: string };
-    return payload.csrfToken || "";
-  });
-
-  await page.evaluate(
-    ({ signInEmail, signInCode, signInCsrfToken }) => {
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = "/api/auth/callback/credentials";
-
-      for (const [name, value] of [
-        ["csrfToken", signInCsrfToken],
-        ["email", signInEmail],
-        ["authCode", signInCode],
-        ["callbackUrl", `${window.location.origin}/dashboard`],
-      ]) {
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = name;
-        input.value = value;
-        form.appendChild(input);
-      }
-
-      document.body.appendChild(form);
-      form.submit();
-    },
-    {
-      signInEmail: email,
-      signInCode: code,
-      signInCsrfToken: csrfToken,
-    }
-  );
+  await page.getByRole("button", { name: "Continue with Email" }).click();
+  await page.getByLabel("Email Address").fill(email);
+  await expect(page.getByTestId("turnstile-bypass").first()).toBeVisible();
+  await page.getByRole("button", { name: "Send Verification Code" }).click();
+  await expect(page.getByLabel("Verification Code")).toBeVisible();
+  const normalizedEmail = email.toLowerCase();
+  let issuedCode = code;
+  await expect
+    .poll(
+      async () => {
+        const user = await db.user.findUnique({
+          where: { email: normalizedEmail },
+          select: { authCode: true },
+        });
+        if (user?.authCode) {
+          issuedCode = user.authCode;
+        }
+        return Boolean(user?.authCode);
+      },
+      { timeout: 10_000 }
+    )
+    .toBe(true);
+  await page.getByLabel("Verification Code").fill(issuedCode);
+  await page.getByRole("button", { name: "Continue" }).click();
 
   await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15_000 });
   await expect

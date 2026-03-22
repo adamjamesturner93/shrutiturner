@@ -137,6 +137,28 @@ async function getOrCreateStripeCustomer(userId: string) {
   return customer.id;
 }
 
+export async function createBillingPortalSession(
+  userId: string,
+  options?: {
+    returnPath?: string;
+  }
+) {
+  const customerId = await getOrCreateStripeCustomer(userId);
+  const stripe = getStripeClient();
+  const session = await stripe.billingPortal.sessions.create({
+    customer: customerId,
+    return_url: `${APP_URL}${options?.returnPath || "/dashboard/membership"}`,
+  });
+
+  if (!session.url) {
+    throw new Error("STRIPE_BILLING_PORTAL_URL_MISSING");
+  }
+
+  return {
+    portalUrl: session.url,
+  };
+}
+
 async function createOneTimeCouponIfNeeded(discountPence: number) {
   if (discountPence <= 0) return null;
   const stripe = getStripeClient();

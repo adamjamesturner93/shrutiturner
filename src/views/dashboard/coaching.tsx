@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { CoachingDashboardDto } from "@/lib/api/types";
+import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 
 const tierLabels: Record<string, string> = {
   personal_programme: "Independent Training Plan",
@@ -149,21 +150,47 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
   return (
     <DashboardLayout title="Coaching - Private Studio">
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="text-3xl">Coaching</h1>
-            <p className="text-muted-foreground mt-2 max-w-2xl">
-              A single place for application status, onboarding, check-ins, and the next coaching
-              action that matters.
-            </p>
-          </div>
-          <Badge
-            variant={statusVariant(data.profile?.status || data.application?.status || data.state)}
-          >
-            {statusLabels[data.profile?.status || data.application?.status || data.state] ||
-              "Coaching"}
-          </Badge>
-        </div>
+        <AppPageHeader
+          eyebrow="Coaching dashboard"
+          title="Coaching"
+          description="A single place for application status, onboarding, check-ins, and the next coaching action that matters."
+          actions={
+            <Badge
+              variant={statusVariant(data.profile?.status || data.application?.status || data.state)}
+            >
+              {statusLabels[data.profile?.status || data.application?.status || data.state] ||
+                "Coaching"}
+            </Badge>
+          }
+        />
+
+        <AppMetricGrid className="lg:grid-cols-3">
+          <AppMetricCard
+            label="Current state"
+            value={statusLabels[data.state] || "Coaching"}
+            detail={data.profile ? tierLabels[data.profile.tier] : "Awaiting coaching profile"}
+          />
+          <AppMetricCard
+            label="Application"
+            value={data.application ? statusLabels[data.application.status] : "Not submitted"}
+            detail={
+              data.application ? tierLabels[data.application.tier] : "No coaching application on file"
+            }
+          />
+          <AppMetricCard
+            label="Everfit"
+            value={
+              data.profile
+                ? everfitLabels[data.profile.everfitConnectionStatus]
+                : "Not started"
+            }
+            detail={
+              data.profile?.nextCheckInDueAt
+                ? `Next check-in ${formatDateTime(data.profile.nextCheckInDueAt)}`
+                : "No check-in scheduled yet"
+            }
+          />
+        </AppMetricGrid>
 
         <Card className="border-brand-accent/20 bg-brand-accent/5">
           <CardHeader>

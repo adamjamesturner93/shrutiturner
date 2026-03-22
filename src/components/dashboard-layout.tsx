@@ -161,33 +161,34 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
     isSigningOut ||
     (isAuthenticated && !isAdmin && (isProfileLoading || !user));
 
-  const needsProfileSetup =
-    Boolean(user) && (!user?.firstName?.trim() || !user?.lastName?.trim() || !user?.dob);
-  const needsLegalAgreement =
-    Boolean(user) && (!user?.hasAgreedToTerms || !user?.hasAgreedToHealth);
+  const needsOnboarding = Boolean(user) && !user?.onboarding.isComplete;
+  const needsLegalAgreement = Boolean(user) && user?.onboarding.missingSteps.includes("legal");
   const shouldShowLegalGuard =
     isAuthenticated &&
     needsLegalAgreement &&
-    !needsProfileSetup &&
     !isAdmin &&
-    !onboardingInProgress;
+    !onboardingInProgress &&
+    pathname !== "/dashboard" &&
+    pathname !== "/dashboard/account";
 
   useEffect(() => {
     if (
       !isDashboardBootstrapping &&
       isAuthenticated &&
-      needsProfileSetup &&
+      needsOnboarding &&
       !isAdmin &&
-      !onboardingInProgress
+      !onboardingInProgress &&
+      pathname === "/dashboard"
     ) {
       router.replace("/dashboard?onboarding=true");
     }
   }, [
     isDashboardBootstrapping,
     isAuthenticated,
-    needsProfileSetup,
+    needsOnboarding,
     isAdmin,
     onboardingInProgress,
+    pathname,
     router,
   ]);
 
@@ -247,12 +248,12 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
   };
 
   return (
-    <div className="bg-secondary/20 flex min-h-screen">
+    <div className="dashboard-surface flex min-h-screen">
       <ScrollToTop />
       <SEO title={title || "Dashboard - Shruti Turner"} description={description} noIndex />
 
       {/* Sidebar – Desktop */}
-      <aside className="bg-brand-dark text-brand-white fixed inset-y-0 left-0 z-40 hidden w-64 flex-col lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-brand-white/10 bg-[linear-gradient(180deg,rgba(46,31,51,0.98),rgba(86,52,74,0.98))] text-brand-white shadow-[0_24px_80px_rgba(46,31,51,0.28)] lg:flex">
         {/* Brand */}
         <div className="border-brand-white/10 border-b p-6">
           <Link
@@ -362,7 +363,7 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
       </aside>
 
       {/* Mobile header */}
-      <div className="border-brand-white/10 bg-brand-dark text-brand-white fixed inset-x-0 top-0 z-40 border-b lg:hidden">
+      <div className="fixed inset-x-0 top-0 z-40 border-b border-brand-white/10 bg-[linear-gradient(180deg,rgba(46,31,51,0.98),rgba(86,52,74,0.98))] text-brand-white shadow-[0_18px_50px_rgba(46,31,51,0.22)] lg:hidden">
         <div className="flex items-center justify-between px-4 py-3">
           <button onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle menu">
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -380,7 +381,7 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-          <aside className="bg-brand-dark text-brand-white absolute inset-y-0 left-0 flex w-72 flex-col">
+          <aside className="absolute inset-y-0 left-0 flex w-72 flex-col bg-[linear-gradient(180deg,rgba(46,31,51,0.99),rgba(86,52,74,0.99))] text-brand-white shadow-[0_24px_70px_rgba(46,31,51,0.3)]">
             <div className="border-brand-white/10 flex items-center justify-between border-b p-4">
               <span className="text-sm">Private Studio</span>
               <button onClick={() => setSidebarOpen(false)}>
@@ -448,8 +449,8 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
       )}
 
       {/* Main content */}
-      <main className="min-h-screen flex-1 pt-14 lg:ml-64 lg:pt-0">
-        <div className="max-w-6xl p-6 md:p-8 lg:p-10">{children}</div>
+      <main className="min-h-screen flex-1 pt-14 lg:ml-72 lg:pt-0">
+        <div className="mx-auto max-w-7xl p-6 md:p-8 lg:p-10">{children}</div>
       </main>
 
       {/* Route-level legal agreement guard */}

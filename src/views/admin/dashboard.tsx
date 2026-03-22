@@ -10,6 +10,7 @@ import { DashboardSkeleton } from "../../components/dashboard-skeleton";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Calendar, Users, Activity, AlertCircle, ArrowRight } from "lucide-react";
 import type { AdminDashboardSummaryDto } from "@/lib/api/types";
+import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 
 export function AdminDashboard({ initialData }: { initialData?: AdminDashboardSummaryDto | null }) {
   const [summary, setSummary] = useState<AdminDashboardSummaryDto | null>(initialData || null);
@@ -59,66 +60,23 @@ export function AdminDashboard({ initialData }: { initialData?: AdminDashboardSu
   return (
     <AdminLayout title="Dashboard - Admin">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-brand-dark text-2xl">Instructor Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            {new Date(summary.today.date).toLocaleDateString("en-GB", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
-          </p>
-        </div>
+        <AppPageHeader
+          eyebrow="Admin overview"
+          title="Instructor Dashboard"
+          description={new Date(summary.today.date).toLocaleDateString("en-GB", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })}
+        />
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-muted-foreground text-sm">Today's Classes</p>
-                  <p className="text-brand-dark mt-1 text-3xl">{summary.today.sessions}</p>
-                </div>
-                <Calendar className="text-brand-accent h-6 w-6" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-muted-foreground text-sm">Booked / Capacity</p>
-                  <p className="text-brand-dark mt-1 text-3xl">
-                    {summary.today.booked}/{summary.today.capacity}
-                  </p>
-                </div>
-                <Users className="text-brand-accent h-6 w-6" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-muted-foreground text-sm">Live Now</p>
-                  <p className="text-brand-dark mt-1 text-3xl">{summary.today.liveNow}</p>
-                </div>
-                <Activity className="text-brand-accent h-6 w-6" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-muted-foreground text-sm">Upcoming</p>
-                  <p className="text-brand-dark mt-1 text-3xl">{summary.upcoming.length}</p>
-                </div>
-                <Calendar className="text-brand-accent h-6 w-6" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <AppMetricGrid>
+          <AppMetricCard label="Today's classes" value={summary.today.sessions} detail="scheduled sessions" />
+          <AppMetricCard label="Booked / capacity" value={`${summary.today.booked}/${summary.today.capacity}`} detail="current occupancy" />
+          <AppMetricCard label="Live now" value={summary.today.liveNow} detail="sessions in progress" />
+          <AppMetricCard label="Upcoming" value={summary.upcoming.length} detail="next scheduled sessions" />
+        </AppMetricGrid>
 
         {summary.nearFull.length > 0 ? (
           <Card className="border-brand-accent/20 bg-brand-accent/5">

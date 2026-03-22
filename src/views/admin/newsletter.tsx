@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 
 type CampaignSummary = {
   id: string;
@@ -148,61 +149,30 @@ export function AdminNewsletter() {
   return (
     <AdminLayout title="Newsletter Analytics - Admin">
       <div className="space-y-6">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="text-brand-dark text-2xl">Marketing Email Audience</h1>
-            <p className="text-muted-foreground mt-1">
-              Unified marketing consent, unsubscribe trends, and recent Postmark campaign results.
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => void Promise.all([refreshSummary(), refreshSubscribers(filter, search)])}
-          >
-            <RefreshCcw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
-        </div>
+        <AppPageHeader
+          eyebrow="Marketing audience"
+          title="Marketing Email Audience"
+          description="Unified marketing consent, unsubscribe trends, and recent Postmark campaign results."
+          actions={
+            <Button
+              variant="outline"
+              onClick={() => void Promise.all([refreshSummary(), refreshSubscribers(filter, search)])}
+            >
+              <RefreshCcw className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
+          }
+        />
 
         {loading ? <p className="text-muted-foreground text-sm">Loading...</p> : null}
 
         {summary ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <p className="text-brand-dark text-2xl">{summary.totalSubscribers}</p>
-                  <p className="text-muted-foreground text-xs">Total subscribers</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <Bell className="text-brand-accent mx-auto mb-1 h-4 w-4" />
-                  <p className="text-xl">{summary.subscribed}</p>
-                  <p className="text-muted-foreground text-xs">Subscribed</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <Users className="text-brand-accent mx-auto mb-1 h-4 w-4" />
-                  <p className="text-xl">{summary.unsubscribed}</p>
-                  <p className="text-muted-foreground text-xs">Unsubscribed</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <p className="text-xl">{summary.unsubscribes30d}</p>
-                  <p className="text-muted-foreground text-xs">Unsubs 30d</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <AppMetricGrid>
+            <AppMetricCard label="Total subscribers" value={summary.totalSubscribers} detail="all marketing contacts" />
+            <AppMetricCard label="Subscribed" value={summary.subscribed} detail="currently opted in" />
+            <AppMetricCard label="Unsubscribed" value={summary.unsubscribed} detail="currently opted out" />
+            <AppMetricCard label="Unsubs 30d" value={summary.unsubscribes30d} detail="recent audience loss" />
+          </AppMetricGrid>
         ) : null}
 
         <Card>

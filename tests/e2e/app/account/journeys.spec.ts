@@ -6,18 +6,9 @@ import {
   CURRENT_TERMS_VERSION,
 } from "@/data/legal-documents";
 import {
-  cleanupE2eAuthUsers,
   loginWithEmail,
   makeE2eAuthEmail,
 } from "../../helpers/auth";
-
-test.beforeEach(async () => {
-  await cleanupE2eAuthUsers();
-});
-
-test.afterAll(async () => {
-  await cleanupE2eAuthUsers();
-});
 
 test("account page saves profile and preference updates while keeping email disabled", async ({
   page,
@@ -110,4 +101,65 @@ test("health profile can be updated from the signed-in health page and persists 
   await page.reload();
   await expect(page.getByText("Autoimmune condition")).toBeVisible();
   await expect(page.getByText("Prefers to begin with a gentler warmup.")).toBeVisible();
+});
+
+test("account page saves notification preferences", async ({ page }) => {
+  const email = makeE2eAuthEmail("account-notifications");
+  await db.user.create({
+    data: {
+      email,
+      firstName: "Jordan",
+      lastName: "Signals",
+      dob: new Date("1990-08-09"),
+      isOnboarded: true,
+      acceptedTermsVersion: CURRENT_TERMS_VERSION,
+      acceptedHealthWaiverVersion: CURRENT_HEALTH_WAIVER_VERSION,
+      hasConsentedToHealthData: true,
+      acceptedHealthDataConsentVersion: CURRENT_HEALTH_DATA_CONSENT_VERSION,
+    },
+  });
+
+  await loginWithEmail(page, email);
+  await page.goto("/dashboard/account");
+
+  await page.getByRole("button", { name: "Notifications" }).click();
+  await page.getByRole("checkbox", { name: "Newsletter & Updates" }).uncheck();
+  await page.getByRole("checkbox", { name: "New class schedule updates" }).uncheck();
+  await page.getByRole("button", { name: "Update Preferences" }).click();
+  await expect(page.getByText("Saved")).toBeVisible();
+
+  await page.reload();
+  await page.getByRole("button", { name: "Notifications" }).click();
+  await expect(page.getByRole("checkbox", { name: "Newsletter & Updates" })).not.toBeChecked();
+  await expect(
+    page.getByRole("checkbox", { name: "New class schedule updates" })
+  ).not.toBeChecked();
+});
+
+test("account page can complete missing legal agreements", async ({ page }) => {
+  const email = makeE2eAuthEmail("account-legal");
+  await db.user.create({
+    data: {
+      email,
+      firstName: "Alex",
+      lastName: "Pending",
+      dob: new Date("1989-04-13"),
+      isOnboarded: false,
+    },
+  });
+
+  await loginWithEmail(page, email);
+  await page.goto("/dashboard/account");
+
+  await expect(page.getByText("You still need to accept required agreements.")).toBeVisible();
+  await page
+    .getByTestId("accept-terms-checkbox")
+    .locator('input[type="checkbox"]')
+    .check();
+  await page
+    .getByTestId("accept-health-checkbox")
+    .locator('input[type="checkbox"]')
+    .check();
+  await expect(page.getByText("Terms accepted")).toBeVisible();
+  await expect(page.getByText("Health & Liability Waiver accepted")).toBeVisible();
 });

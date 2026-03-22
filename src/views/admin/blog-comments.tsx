@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { AdminBlogCommentDto } from "@/lib/api/types";
+import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("en-GB", {
@@ -96,19 +97,17 @@ export function AdminBlogComments({ initialData }: { initialData?: AdminBlogComm
   return (
     <AdminLayout title="Blog Comments - Admin">
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="text-brand-dark text-2xl">Blog Comments</h1>
-            <p className="text-muted-foreground mt-1">
-              Review the live comment stream, hide threads when needed, and remove spam or duplicate
-              replies.
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => void loadComments()}>
-            <RefreshCcw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
-        </div>
+        <AppPageHeader
+          eyebrow="Community moderation"
+          title="Blog Comments"
+          description="Review the live comment stream, hide threads when needed, and remove spam or duplicate replies."
+          actions={
+            <Button variant="outline" onClick={() => void loadComments()}>
+              <RefreshCcw className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
+          }
+        />
 
         {error ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -116,26 +115,11 @@ export function AdminBlogComments({ initialData }: { initialData?: AdminBlogComm
           </div>
         ) : null}
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-muted-foreground text-sm">Visible</p>
-              <p className="mt-2 text-3xl">{summary.visible}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-muted-foreground text-sm">Hidden</p>
-              <p className="mt-2 text-3xl">{summary.hidden}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-muted-foreground text-sm">Replies</p>
-              <p className="mt-2 text-3xl">{summary.replies}</p>
-            </CardContent>
-          </Card>
-        </div>
+        <AppMetricGrid className="lg:grid-cols-3">
+          <AppMetricCard label="Visible" value={summary.visible} detail="public comments" />
+          <AppMetricCard label="Hidden" value={summary.hidden} detail="moderated threads" />
+          <AppMetricCard label="Replies" value={summary.replies} detail="nested responses" />
+        </AppMetricGrid>
 
         <Card>
           <CardContent className="flex flex-col gap-4 pt-6 md:flex-row">

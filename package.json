@@ -46,7 +46,11 @@
     "sync:stripe:metrics": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/sync/stripe-metrics.ts"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx,mjs,cjs}": "pnpm exec eslint --fix --max-warnings=0"
+    "*.{js,jsx,ts,tsx,mjs,cjs}": [
+      "prettier --write",
+      "pnpm exec eslint --fix --max-warnings=0"
+    ],
+    "*.{json,md,css,scss,yml,yaml}": "prettier --write"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.8.0",

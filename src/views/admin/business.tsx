@@ -7,6 +7,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { PoundSterling, TrendingUp, UserPlus, Users } from "lucide-react";
 import type { AdminBusinessMetricDto } from "@/lib/api/types";
+import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 
 export function AdminBusiness() {
   const [summary, setSummary] = useState<AdminBusinessMetricDto | null>(null);
@@ -69,17 +70,16 @@ export function AdminBusiness() {
   return (
     <AdminLayout title="Business Overview - Shruti Turner">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-brand-dark text-2xl">Business Overview</h1>
-          <p className="text-muted-foreground mt-1">
-            Stripe + membership analytics from local projections.
-          </p>
-          {summary?.dataFreshnessIso ? (
-            <p className="text-muted-foreground mt-1 text-xs">
-              Data freshness: {new Date(summary.dataFreshnessIso).toLocaleString("en-GB")}
-            </p>
-          ) : null}
-        </div>
+        <AppPageHeader
+          eyebrow="Business operations"
+          title="Business Overview"
+          description="Stripe + membership analytics from local projections."
+          meta={
+            summary?.dataFreshnessIso
+              ? `Data freshness: ${new Date(summary.dataFreshnessIso).toLocaleString("en-GB")}`
+              : undefined
+          }
+        />
 
         {loading ? <p className="text-muted-foreground text-sm">Loading...</p> : null}
         {!loading && !summary ? (
@@ -112,34 +112,32 @@ export function AdminBusiness() {
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <MetricCard
-                title="Active Members"
+            <AppMetricGrid>
+              <AppMetricCard
+                label="Active members"
                 value={summary.activeMembers}
-                sub={`of ${summary.totalMembers} total`}
-                icon={<Users className="text-brand-accent h-6 w-6" />}
+                detail={`of ${summary.totalMembers} total`}
               />
-              <MetricCard
-                title="MRR"
+              <AppMetricCard
+                label="MRR"
                 value={`£${Math.round(summary.monthlyRecurringRevenuePence / 100)}`}
-                icon={<PoundSterling className="text-brand-accent h-6 w-6" />}
+                detail="monthly recurring revenue"
               />
-              <MetricCard
-                title="New Members (MTD)"
+              <AppMetricCard
+                label="New members (MTD)"
                 value={summary.newMembersThisMonth}
-                icon={<UserPlus className="text-brand-accent h-6 w-6" />}
+                detail="joined this month"
               />
-              <MetricCard
-                title="Churn (30d)"
+              <AppMetricCard
+                label="Churn (30d)"
                 value={`${summary.churnRatePercent}%`}
-                sub={`${summary.cancelledLast30Days} cancelled/expired`}
-                icon={<TrendingUp className="text-brand-accent h-6 w-6" />}
+                detail={`${summary.cancelledLast30Days} cancelled/expired`}
               />
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <MetricCard title="Failed Payments (7d)" value={summary.failedPayments7d} />
-              <MetricCard title="Failed Payments (30d)" value={summary.failedPayments30d} />
-            </div>
+            </AppMetricGrid>
+            <AppMetricGrid className="lg:grid-cols-2">
+              <AppMetricCard label="Failed payments (7d)" value={summary.failedPayments7d} />
+              <AppMetricCard label="Failed payments (30d)" value={summary.failedPayments30d} />
+            </AppMetricGrid>
 
             {activeTab === "pricing" ? (
               <Card>
@@ -294,32 +292,5 @@ export function AdminBusiness() {
         ) : null}
       </div>
     </AdminLayout>
-  );
-}
-
-function MetricCard({
-  title,
-  value,
-  sub,
-  icon,
-}: {
-  title: string;
-  value: string | number;
-  sub?: string;
-  icon?: ReactNode;
-}) {
-  return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <p className="text-muted-foreground text-sm">{title}</p>
-            <p className="text-brand-dark mt-1 text-3xl">{value}</p>
-            {sub ? <p className="text-muted-foreground mt-1 text-xs">{sub}</p> : null}
-          </div>
-          {icon}
-        </div>
-      </CardContent>
-    </Card>
   );
 }

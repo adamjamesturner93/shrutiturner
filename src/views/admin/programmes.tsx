@@ -10,6 +10,7 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { useEffect, useState } from "react";
 import type { AdminSmallGroupSummary, SmallGroupTemplateOption } from "@/lib/small-groups/service";
+import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 
 function statusVariant(status: AdminSmallGroupSummary["status"]) {
   if (status === "open" || status === "in_progress") return "default" as const;
@@ -136,13 +137,21 @@ export function AdminProgrammes({
   return (
     <AdminLayout title="Programmes - Admin">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-brand-dark text-2xl">Small Group Programmes</h1>
-          <p className="text-muted-foreground mt-1">
-            Schedule live runs from Contentful templates, then manage enrolments and session
-            progress for each cohort.
-          </p>
-        </div>
+        <AppPageHeader
+          eyebrow="Programme operations"
+          title="Small Group Programmes"
+          description="Schedule live runs from Contentful templates, then manage enrolments and session progress for each cohort."
+        />
+
+        <AppMetricGrid className="lg:grid-cols-3">
+          <AppMetricCard label="Total runs" value={programmes.length} detail="current and historical cohorts" />
+          <AppMetricCard
+            label="Open / in progress"
+            value={programmes.filter((programme) => programme.status === "open" || programme.status === "in_progress").length}
+            detail="active cohorts needing attention"
+          />
+          <AppMetricCard label="Templates" value={templates.length} detail="available programme templates" />
+        </AppMetricGrid>
 
         <Card>
           <CardContent className="pt-6">

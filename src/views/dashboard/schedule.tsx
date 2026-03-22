@@ -11,7 +11,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Clock,
   Users,
-  Calendar,
   Heart,
   Dumbbell,
   Zap,
@@ -22,6 +21,7 @@ import {
 } from "lucide-react";
 import { getTypeColor } from "@/lib/classes/type-color";
 import { useI18n } from "../../lib/use-i18n";
+import { AppPageHeader } from "@/components/app-surface";
 
 const TYPE_FILTERS = ["All", "Yoga", "Strength", "HIIT"];
 const LEVEL_FILTERS = ["All Levels", "Beginner", "Intermediate", "Adaptive", "Specialised"];
@@ -155,19 +155,21 @@ export function DashboardSchedule({
 
   return (
     <DashboardLayout title="Schedule - Private Studio">
-      <div className="mb-8">
-        <h1 className="mb-2 text-3xl">Class Schedule</h1>
-        <p className="text-muted-foreground">
-          Browse, filter, and book your classes. Start with what feels manageable.
-        </p>
-        <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-4 text-xs">
-          <span className="flex items-center gap-1.5">
-            <Clock className="text-primary h-3.5 w-3.5" />
-            Times shown in {tzAbbr}
-          </span>
-          {londonOffset && <span className="text-muted-foreground/70">({londonOffset})</span>}
-        </div>
-      </div>
+      <AppPageHeader
+        eyebrow="Training schedule"
+        title="Class Schedule"
+        description="Browse, filter, and book your classes. Start with what feels manageable."
+        meta={
+          <>
+            <span className="flex items-center gap-1.5">
+              <Clock className="text-primary h-3.5 w-3.5" />
+              Times shown in {tzAbbr}
+            </span>
+            {londonOffset ? <span className="text-muted-foreground/70">({londonOffset})</span> : null}
+          </>
+        }
+        className="mb-8"
+      />
 
       <>
         {/* Filters */}

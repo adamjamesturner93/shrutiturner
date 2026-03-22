@@ -19,10 +19,32 @@ import {
   Crown,
 } from "lucide-react";
 import type { BillingHistoryItemDto, MembershipStateDto, PublicPricingDto } from "@/lib/api/types";
+import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 
 type CheckoutResult = {
   checkoutUrl: string;
 };
+
+type PortalResult = {
+  portalUrl: string;
+};
+
+function formatMembershipStatus(
+  status: "active" | "paused" | "cancelled" | "expired" | "past_due"
+) {
+  if (status === "past_due") return "Payment issue";
+  if (status === "cancelled") return "Cancelled";
+  if (status === "expired") return "Ended";
+  if (status === "paused") return "Paused";
+  return "Active";
+}
+
+function formatBillingHistoryStatus(status: BillingHistoryItemDto["status"]) {
+  if (status === "paid") return "Paid";
+  if (status === "failed") return "Failed";
+  if (status === "refunded") return "Refunded";
+  return "Applied";
+}
 
 export function MembershipPage({
   initialState,
@@ -36,9 +58,13 @@ export function MembershipPage({
   const [history, setHistory] = useState<BillingHistoryItemDto[]>(initialHistory || []);
   const [loading, setLoading] = useState(!initialState);
   const [working, setWorking] = useState(false);
+  const [portalWorking, setPortalWorking] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
   const [error, setError] = useState("");
   const [pricing, setPricing] = useState<PublicPricingDto | null>(null);
+  const membership = state?.membership || null;
+  const hasActiveMembership = Boolean(membership?.accessActive);
+  const checkoutState = searchParams.get("checkout");
 
   const totalCredits = state?.credits.balance || 0;
   const referralBalance = Math.floor((state?.referral.balancePence || 0) / 100);
@@ -151,9 +177,43 @@ export function MembershipPage({
       if (!res.ok) throw new Error("Failed to cancel membership.");
       await load();
       setShowCancel(false);
+      setWorking(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to cancel membership.");
       setWorking(false);
+    }
+  };
+
+  const resumeMembership = async () => {
+    setWorking(true);
+    setError("");
+    try {
+      const res = await fetch("/api/me/membership/resume", { method: "POST" });
+      if (!res.ok) throw new Error("Failed to resume membership.");
+      await load();
+      setShowCancel(false);
+      setWorking(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to resume membership.");
+      setWorking(false);
+    }
+  };
+
+  const openBillingPortal = async () => {
+    setPortalWorking(true);
+    setError("");
+    try {
+      const res = await fetch("/api/me/billing/portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ returnPath: "/dashboard/membership" }),
+      });
+      if (!res.ok) throw new Error("Failed to open billing portal.");
+      const payload = (await res.json()) as PortalResult;
+      window.location.href = payload.portalUrl;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to open billing portal.");
+      setPortalWorking(false);
     }
   };
 
@@ -166,6 +226,16 @@ export function MembershipPage({
       </span>
     );
   };
+
+  const membershipDetail = membership
+    ? membership.cancelAtPeriodEnd && membership.endsAt
+      ? `Ends ${membership.endsAt}`
+      : membership.accessActive
+        ? `Renews ${membership.renewalDate || "-"}`
+        : membership.endsAt
+          ? `Ended ${membership.endsAt}`
+          : formatMembershipStatus(membership.status)
+    : "Choose monthly, annual, or credits";
 
   if (loading) {
     return (
@@ -185,12 +255,48 @@ export function MembershipPage({
 
   return (
     <DashboardLayout title="Membership & Credits - Private Studio">
-      <h1 className="mb-2 text-3xl">Membership & Credits</h1>
-      <p className="text-muted-foreground mb-8">
-        Manage your plan, purchase credits, and view billing.
-      </p>
+      <AppPageHeader
+        eyebrow="Billing"
+        title="Membership & Credits"
+        description="Manage your plan, purchase credits, and view billing."
+        className="mb-8"
+      />
 
       {error ? <p className="mb-4 text-sm text-red-600">{error}</p> : null}
+
+      <AppMetricGrid className="mb-8 lg:grid-cols-3">
+        <AppMetricCard
+          label="Membership"
+          value={membership ? membership.label : "No active plan"}
+          detail={membershipDetail}
+        />
+        <AppMetricCard
+          label="Credits"
+          value={totalCredits}
+          detail={totalCredits === 1 ? "1 credit available" : `${totalCredits} credits available`}
+        />
+        <AppMetricCard
+          label="Referral balance"
+          value={`£${referralBalance}`}
+          detail={
+            referralBalance > 0
+              ? "applies automatically at checkout"
+              : "share your link to earn credit"
+          }
+        />
+      </AppMetricGrid>
+
+      {checkoutState === "success" ? (
+        <div className="mb-8 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          Checkout completed. Your membership and billing history will refresh automatically.
+        </div>
+      ) : null}
+
+      {checkoutState === "cancelled" ? (
+        <div className="mb-8 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Checkout was cancelled. Your current membership and credits were left unchanged.
+        </div>
+      ) : null}
 
       {referralBalance > 0 ? (
         <div className="border-brand-accent/20 bg-brand-accent/5 mb-8 flex items-start gap-3 rounded-lg border p-4">
@@ -201,46 +307,72 @@ export function MembershipPage({
               balance.
             </p>
             <p className="text-muted-foreground mt-1 text-xs">
-              {state.membership ? "Applies to your next renewal" : "Applies to your next purchase"}
+              {hasActiveMembership
+                ? "Applies to your next renewal"
+                : "Applies to your next purchase"}
             </p>
           </div>
         </div>
       ) : null}
 
-      {state.membership && state.membership.plan !== "instructor" ? (
+      {membership && membership.plan !== "instructor" ? (
         <div className="bg-background mb-8 rounded-lg border p-6">
           <div className="mb-4 flex items-center gap-2">
             <CreditCard className="text-primary h-5 w-5" />
-            <h2 className="text-xl">Current Plan</h2>
+            <h2 className="text-xl">Membership Status</h2>
           </div>
 
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <p className="text-lg">{state.membership.label}</p>
+                <p className="text-lg">{membership.label}</p>
                 <p className="text-muted-foreground text-sm">
-                  Renews {state.membership.renewalDate || "-"} · £
-                  {Math.floor(state.membership.pricePence / 100)}/
-                  {state.membership.billingInterval === "annual" ? "year" : "month"}
+                  £{Math.floor(membership.pricePence / 100)}/
+                  {membership.billingInterval === "annual" ? "year" : "month"}
+                  {membership.cancelAtPeriodEnd && membership.endsAt
+                    ? ` · Ends ${membership.endsAt}`
+                    : membership.renewalDate
+                      ? ` · Renews ${membership.renewalDate}`
+                      : membership.endsAt
+                        ? ` · Ended ${membership.endsAt}`
+                        : ""}
                 </p>
               </div>
               <Badge
                 variant="outline"
                 className="border-brand-accent/30 bg-brand-accent/5 text-brand-accent"
               >
-                {state.membership.plan === "movewell" ? (
+                {hasActiveMembership && membership.plan === "movewell" ? (
                   <>
                     <Infinity className="mr-1 h-3 w-3" />
                     Unlimited classes
                   </>
                 ) : (
-                  <>
-                    {state.membership.classesRemaining}/{state.membership.classesPerWeek} classes
-                    left this week
-                  </>
+                  formatMembershipStatus(membership.status)
                 )}
               </Badge>
             </div>
+
+            {membership.status === "past_due" ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                Payment for your membership needs attention. Use the billing portal to update your
+                card, review invoices, or recover access.
+              </div>
+            ) : null}
+
+            {membership.cancelAtPeriodEnd && membership.endsAt ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                Your membership is scheduled to end on {membership.endsAt}. You can keep using the
+                studio until then, or resume renewal before that date.
+              </div>
+            ) : null}
+
+            {!membership.accessActive && membership.status !== "past_due" ? (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-800">
+                This membership is no longer active. You can restart the plan below or continue
+                attending with credit packs.
+              </div>
+            ) : null}
 
             <div className="bg-secondary/20 rounded-lg p-4">
               <div className="text-muted-foreground grid gap-2 text-sm sm:grid-cols-2">
@@ -260,7 +392,7 @@ export function MembershipPage({
                   <Star className="text-brand-accent h-4 w-4" />
                   Early access to programmes
                 </div>
-                {state.membership.billingInterval === "annual" ? (
+                {membership.billingInterval === "annual" ? (
                   <div className="bg-brand-accent/5 text-brand-accent flex items-center gap-2 rounded-md px-2 py-1.5 sm:col-span-2">
                     <Crown className="h-4 w-4" />
                     10% off all programmes & workshops
@@ -269,17 +401,30 @@ export function MembershipPage({
               </div>
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-destructive"
-              onClick={() => setShowCancel(true)}
-            >
-              Cancel Membership
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button variant="outline" size="sm" onClick={() => void openBillingPortal()} disabled={portalWorking}>
+                Manage billing details
+              </Button>
+              {membership.cancelAtPeriodEnd ? (
+                <Button size="sm" onClick={() => void resumeMembership()} disabled={working}>
+                  Resume renewal
+                </Button>
+              ) : membership.accessActive ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive"
+                  onClick={() => setShowCancel(true)}
+                >
+                  Cancel membership
+                </Button>
+              ) : null}
+            </div>
           </div>
         </div>
-      ) : (
+      ) : null}
+
+      {!hasActiveMembership ? (
         <div className="bg-background border-primary mb-8 rounded-lg border-2 p-6 md:p-8">
           <div className="mb-6 flex items-center gap-2">
             <Sparkles className="text-brand-accent h-5 w-5" />
@@ -413,12 +558,19 @@ export function MembershipPage({
             .
           </p>
         </div>
-      )}
+      ) : null}
 
       {showCancel ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cancel-membership-heading"
+        >
           <div className="bg-background w-full max-w-sm space-y-4 rounded-lg border p-6 shadow-xl">
-            <h3 className="text-xl">Cancel your membership?</h3>
+            <h3 id="cancel-membership-heading" className="text-xl">
+              Cancel your membership?
+            </h3>
             <p className="text-muted-foreground text-sm leading-relaxed">
               Your membership will remain active until the renewal date. After that, you can still
               attend using credit packs.
@@ -469,7 +621,7 @@ export function MembershipPage({
         </div>
       ) : null}
 
-      {state.membership ? (
+      {hasActiveMembership ? (
         totalCredits > 0 ? (
           <div className="bg-background mb-8 rounded-lg border p-6">
             <div className="mb-4 flex items-center gap-2">
@@ -643,9 +795,14 @@ export function MembershipPage({
             history.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between border-b py-2 last:border-0"
+                className="flex flex-col gap-2 border-b py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between"
               >
-                <span className="text-muted-foreground">{item.description}</span>
+                <div>
+                  <p className="text-foreground">{item.description}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {item.createdAt.slice(0, 10)} · {formatBillingHistoryStatus(item.status)}
+                  </p>
+                </div>
                 <span>£{(item.amountPence / 100).toFixed(2)}</span>
               </div>
             ))

@@ -125,6 +125,12 @@ describe("account journeys integration", () => {
       heardAboutSource: "google",
       isOnboarded: true,
       hasHealthProfile: true,
+      onboarding: {
+        isComplete: true,
+        checklistComplete: true,
+        nextStep: "complete",
+        missingSteps: [],
+      },
     });
     expect(health).toMatchObject({
       conditions: { autoimmune: true },

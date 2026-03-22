@@ -16,6 +16,7 @@ import {
 } from "../../components/admin/schedule-class-modal";
 import type { AdminClassSessionDto } from "@/lib/classes/types";
 import { getTypeColor } from "@/lib/classes/type-color";
+import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 
 const STATUS_ICON: Record<string, typeof Play> = {
   scheduled: Clock,
@@ -178,23 +179,21 @@ export function AdminClasses() {
   return (
     <AdminLayout title="Classes - Admin">
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-brand-dark text-2xl">Class Management</h1>
-            <p className="text-muted-foreground mt-1">
-              {scheduled.length} upcoming · {completed.length} completed this period
-            </p>
-            {loading ? <p className="text-muted-foreground mt-1 text-sm">Loading...</p> : null}
-          </div>
-          <Button
-            onClick={() => setShowScheduleModal(true)}
-            className="bg-brand-accent hover:bg-brand-accent/90"
-          >
-            <Calendar className="mr-2 h-4 w-4" />
-            Schedule Class
-          </Button>
-        </div>
+        <AppPageHeader
+          eyebrow="Operations"
+          title="Class Management"
+          description={`${scheduled.length} upcoming · ${completed.length} completed this period`}
+          meta={loading ? "Loading latest sessions..." : undefined}
+          actions={
+            <Button
+              onClick={() => setShowScheduleModal(true)}
+              className="bg-brand-accent hover:bg-brand-accent/90"
+            >
+              <Calendar className="mr-2 h-4 w-4" />
+              Schedule Class
+            </Button>
+          }
+        />
 
         <ScheduleClassModal
           open={showScheduleModal}
@@ -206,43 +205,15 @@ export function AdminClasses() {
         />
 
         {/* Quick stats */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Calendar className="text-brand-accent h-5 w-5" />
-                <div>
-                  <p className="text-brand-dark text-2xl">{scheduled.length}</p>
-                  <p className="text-muted-foreground text-xs">Upcoming classes</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Users className="text-brand-accent h-5 w-5" />
-                <div>
-                  <p className="text-brand-dark text-2xl">
-                    {scheduled.reduce((s, c) => s + c.bookedCount, 0)}
-                  </p>
-                  <p className="text-muted-foreground text-xs">Total bookings (upcoming)</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="text-brand-accent h-5 w-5" />
-                <div>
-                  <p className="text-brand-dark text-2xl">{attendanceRate}%</p>
-                  <p className="text-muted-foreground text-xs">Attendance rate (completed)</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <AppMetricGrid className="lg:grid-cols-3">
+          <AppMetricCard label="Upcoming classes" value={scheduled.length} detail="still to teach" />
+          <AppMetricCard
+            label="Upcoming bookings"
+            value={scheduled.reduce((s, c) => s + c.bookedCount, 0)}
+            detail="across scheduled sessions"
+          />
+          <AppMetricCard label="Attendance rate" value={`${attendanceRate}%`} detail="completed sessions" />
+        </AppMetricGrid>
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3">

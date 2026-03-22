@@ -8,7 +8,7 @@ export function DashboardSkeleton() {
   return (
     <div className="animate-in fade-in space-y-6 duration-300">
       {/* Header skeleton */}
-      <div className="space-y-2">
+      <div className="app-page-header space-y-2">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-4 w-96 max-w-full" />
       </div>
@@ -16,7 +16,7 @@ export function DashboardSkeleton() {
       {/* Stat cards skeleton */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="space-y-3 rounded-lg border p-6">
+          <div key={i} className="app-metric-card space-y-3">
             <Skeleton className="h-4 w-24" />
             <Skeleton className="h-8 w-16" />
             <Skeleton className="h-3 w-32" />

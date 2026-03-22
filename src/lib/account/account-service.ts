@@ -7,6 +7,7 @@ import {
 } from "@/data/legal-documents";
 import { linkPendingRecordsForUser } from "@/lib/link-pending-records";
 import { syncMarketingPreferenceForUser } from "@/lib/newsletter/subscriber-service";
+import { deriveOnboardingState } from "@/lib/account/onboarding-service";
 
 const DATE_FORMATS = new Set(["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"]);
 
@@ -138,6 +139,20 @@ export async function getAccount(userId: string, siteUrl: string) {
       hasHealthProfile: Boolean(healthProfile),
       dob: user.dob ? user.dob.toISOString().slice(0, 10) : null,
       ...mapLegalAcceptance(user),
+      onboarding: deriveOnboardingState({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        dob: user.dob,
+        isOnboarded: user.isOnboarded,
+        hasAgreedToTerms: user.acceptedTermsVersion === CURRENT_TERMS_VERSION,
+        hasAgreedToHealth: user.acceptedHealthWaiverVersion === CURRENT_HEALTH_WAIVER_VERSION,
+        heardAboutSource: user.heardAboutSource,
+        hasHealthProfile: Boolean(healthProfile),
+        hasConsentedToHealthData:
+          user.acceptedHealthDataConsentVersion === CURRENT_HEALTH_DATA_CONSENT_VERSION,
+        needsHealthDataConsentRefresh:
+          user.acceptedHealthDataConsentVersion !== CURRENT_HEALTH_DATA_CONSENT_VERSION,
+      }),
     },
     notifications,
     referral,
@@ -301,10 +316,31 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
     },
   });
 
+  const healthProfile = await db.healthProfile.findUnique({
+    where: { userId },
+    select: { id: true },
+  });
+
   return {
     ...updated,
+    hasHealthProfile: Boolean(healthProfile),
     dob: updated.dob ? updated.dob.toISOString().slice(0, 10) : null,
     ...mapLegalAcceptance(updated),
+    onboarding: deriveOnboardingState({
+      firstName: updated.firstName,
+      lastName: updated.lastName,
+      dob: updated.dob,
+      isOnboarded: updated.isOnboarded,
+      hasAgreedToTerms: updated.acceptedTermsVersion === CURRENT_TERMS_VERSION,
+      hasAgreedToHealth:
+        updated.acceptedHealthWaiverVersion === CURRENT_HEALTH_WAIVER_VERSION,
+      heardAboutSource: updated.heardAboutSource,
+      hasHealthProfile: Boolean(healthProfile),
+      hasConsentedToHealthData:
+        updated.acceptedHealthDataConsentVersion === CURRENT_HEALTH_DATA_CONSENT_VERSION,
+      needsHealthDataConsentRefresh:
+        updated.acceptedHealthDataConsentVersion !== CURRENT_HEALTH_DATA_CONSENT_VERSION,
+    }),
   };
 }
 

@@ -32,6 +32,10 @@ export async function saveAuthCodeForEmail(email: string, code: string, expiresA
 }
 
 export async function sendAuthCodeEmail(email: string, code: string, expiryMinutes = 10) {
+  if (process.env.NEXT_PUBLIC_E2E_TEST_MODE === "1") {
+    return;
+  }
+
   const postmarkToken = process.env.POSTMARK_API_TOKEN;
   if (!postmarkToken) {
     throw new Error("POSTMARK_API_TOKEN is not configured.");

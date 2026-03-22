@@ -1,13 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { cleanupE2eAuthUsers, loginWithEmail, makeE2eAuthEmail } from "../../helpers/auth";
-
-test.beforeEach(async () => {
-  await cleanupE2eAuthUsers();
-});
-
-test.afterAll(async () => {
-  await cleanupE2eAuthUsers();
-});
+import { db } from "@/lib/db";
+import {
+  CURRENT_HEALTH_WAIVER_VERSION,
+  CURRENT_TERMS_VERSION,
+} from "@/data/legal-documents";
+import { loginWithEmail, makeE2eAuthEmail } from "../../helpers/auth";
 
 test("first-time login completes onboarding and persists account and health details", async ({
   page,
@@ -50,4 +47,37 @@ test("first-time login completes onboarding and persists account and health deta
 
   await page.goto("/dashboard/health");
   await expect(page.getByText("Back")).toBeVisible();
+});
+
+test("partially completed onboarding resumes at the next required step", async ({ page }) => {
+  const email = makeE2eAuthEmail("onboarding-resume");
+
+  await db.user.create({
+    data: {
+      email,
+      firstName: "Jamie",
+      lastName: "Resume",
+      dob: new Date("1988-02-10"),
+      acceptedTermsVersion: CURRENT_TERMS_VERSION,
+      acceptedHealthWaiverVersion: CURRENT_HEALTH_WAIVER_VERSION,
+      isOnboarded: false,
+    },
+  });
+
+  await loginWithEmail(page, email);
+
+  await expect(page).toHaveURL(/\/dashboard(\?onboarding=true)?$/);
+  await expect(page.getByRole("heading", { name: "Where Did You Hear About Me?" })).toBeVisible();
+
+  await page.getByRole("radio", { name: "Instagram" }).check();
+  await page.getByRole("button", { name: "Next: Tell Us About Your Body" }).click();
+
+  await expect(page.getByRole("heading", { name: "Your Health Profile" })).toBeVisible();
+  await page.getByLabel("Hip").check();
+  await page
+    .getByRole("checkbox", { name: /I agree to Shruti Turner using the health information/i })
+    .check();
+  await page.getByRole("button", { name: "Continue" }).click();
+
+  await expect(page.getByRole("heading", { name: "Welcome, Jamie." })).toBeVisible();
 });

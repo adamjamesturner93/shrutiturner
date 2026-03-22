@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { AdminCoachingApplicationDto } from "@/lib/api/types";
+import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 
 const tierLabels: Record<string, string> = {
   personal_programme: "Independent Training Plan",
@@ -142,19 +143,17 @@ export function AdminCoaching({
   return (
     <AdminLayout title="Coaching - Admin">
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="text-brand-dark text-2xl">Coaching Applications</h1>
-            <p className="text-muted-foreground mt-1">
-              Review new applications, add notes, and convert approved applicants into active
-              coaching clients.
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => void loadApplications()}>
-            <RefreshCcw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
-        </div>
+        <AppPageHeader
+          eyebrow="Coaching pipeline"
+          title="Coaching Applications"
+          description="Review new applications, add notes, and convert approved applicants into active coaching clients."
+          actions={
+            <Button variant="outline" onClick={() => void loadApplications()}>
+              <RefreshCcw className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
+          }
+        />
 
         {error ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -162,26 +161,11 @@ export function AdminCoaching({
           </div>
         ) : null}
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-muted-foreground text-sm">Submitted</p>
-              <p className="mt-2 text-3xl">{summary.submitted}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-muted-foreground text-sm">Under review</p>
-              <p className="mt-2 text-3xl">{summary.underReview}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-muted-foreground text-sm">Approved / converted</p>
-              <p className="mt-2 text-3xl">{summary.approved}</p>
-            </CardContent>
-          </Card>
-        </div>
+        <AppMetricGrid className="lg:grid-cols-3">
+          <AppMetricCard label="Submitted" value={summary.submitted} detail="awaiting initial review" />
+          <AppMetricCard label="Under review" value={summary.underReview} detail="active decision queue" />
+          <AppMetricCard label="Approved / converted" value={summary.approved} detail="ready for onboarding or already active" />
+        </AppMetricGrid>
 
         <Card>
           <CardContent className="flex flex-col gap-4 pt-6 md:flex-row">

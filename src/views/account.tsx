@@ -28,9 +28,11 @@ import {
   Check,
   History,
   Settings,
+  ArrowRight,
 } from "lucide-react";
 import { getTimezoneOptions } from "../lib/date-i18n";
-import type { AccountDto, DashboardSummaryDto } from "@/lib/api/types";
+import type { AccountDto, DashboardSummaryDto, OnboardingStateDto } from "@/lib/api/types";
+import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 
 const UNANSWERED_VALUE = "__unanswered__";
 const PREFER_NOT_TO_SAY_VALUE = "prefer_not_to_say";
@@ -68,6 +70,13 @@ const TABS: { key: AccountTab; label: string; icon: typeof User }[] = [
   { key: "activity", label: "Activity", icon: History },
   { key: "notifications", label: "Notifications", icon: Bell },
 ];
+
+const ONBOARDING_STEP_LABELS: Record<OnboardingStateDto["missingSteps"][number], string> = {
+  profile: "Complete your profile details",
+  legal: "Accept the current legal agreements",
+  source: "Tell Shruti how you heard about the studio",
+  health: "Finish your health profile and consent",
+};
 
 function calculateAge(dob: string): number {
   const birth = new Date(dob);
@@ -129,6 +138,7 @@ export function AccountPage() {
   const [healthAgreedAt, setHealthAgreedAt] = useState<string | null>(null);
 
   const [activity, setActivity] = useState<DashboardSummaryDto | null>(null);
+  const [onboardingState, setOnboardingState] = useState<OnboardingStateDto | null>(null);
 
   const [profileSaved, setProfileSaved] = useState(false);
   const [prefsSaved, setPrefsSaved] = useState(false);
@@ -139,6 +149,36 @@ export function AccountPage() {
   const [dobError, setDobError] = useState("");
   const [error, setError] = useState("");
   const [legalError, setLegalError] = useState("");
+
+  const applyAccountData = (data: AccountDto) => {
+    setFirstName(data.profile.firstName || "");
+    setLastName(data.profile.lastName || "");
+    setEmail(data.profile.email || "");
+    setDob(data.profile.dob || "");
+    setGender(toSelectValue(data.profile.gender));
+    setEthnicity(toSelectValue(data.profile.ethnicity));
+    setTimezone(data.profile.timezone || "Europe/London");
+    setDateFormat(data.profile.dateFormat || "DD/MM/YYYY");
+    setHasAgreedToTerms(data.profile.hasAgreedToTerms);
+    setHasAgreedToHealth(data.profile.hasAgreedToHealth);
+    setTermsAgreedAt(data.profile.termsAgreedAt);
+    setHealthAgreedAt(data.profile.healthAgreedAt);
+    setOnboardingState(data.profile.onboarding);
+    setNotifications({
+      classReminders: data.notifications.classReminders,
+      scheduleUpdates: data.notifications.scheduleUpdates,
+      programAnnouncements: data.notifications.programAnnouncements,
+      marketingEmails: data.notifications.marketingEmails,
+    });
+  };
+
+  const reloadAccount = async () => {
+    const accountRes = await fetch("/api/me", { cache: "no-store" });
+    if (!accountRes.ok) throw new Error("Failed to load account.");
+    const data = (await accountRes.json()) as AccountDto;
+    applyAccountData(data);
+    return data;
+  };
 
   useEffect(() => {
     let active = true;
@@ -154,25 +194,7 @@ export function AccountPage() {
         if (!accountRes.ok) throw new Error("Failed to load account.");
         const data = (await accountRes.json()) as AccountDto;
         if (!active) return;
-
-        setFirstName(data.profile.firstName || "");
-        setLastName(data.profile.lastName || "");
-        setEmail(data.profile.email || "");
-        setDob(data.profile.dob || "");
-        setGender(toSelectValue(data.profile.gender));
-        setEthnicity(toSelectValue(data.profile.ethnicity));
-        setTimezone(data.profile.timezone || "Europe/London");
-        setDateFormat(data.profile.dateFormat || "DD/MM/YYYY");
-        setHasAgreedToTerms(data.profile.hasAgreedToTerms);
-        setHasAgreedToHealth(data.profile.hasAgreedToHealth);
-        setTermsAgreedAt(data.profile.termsAgreedAt);
-        setHealthAgreedAt(data.profile.healthAgreedAt);
-        setNotifications({
-          classReminders: data.notifications.classReminders,
-          scheduleUpdates: data.notifications.scheduleUpdates,
-          programAnnouncements: data.notifications.programAnnouncements,
-          marketingEmails: data.notifications.marketingEmails,
-        });
+        applyAccountData(data);
 
         if (activityRes.ok) {
           const activityData = (await activityRes.json()) as DashboardSummaryDto;
@@ -225,6 +247,8 @@ export function AccountPage() {
         const payload = (await res.json().catch(() => ({}))) as { message?: string };
         throw new Error(payload.message || "Failed to save profile.");
       }
+      await refreshAccountProfile();
+      await reloadAccount();
       setProfileSaved(true);
       setTimeout(() => setProfileSaved(false), 3000);
     } catch (e) {
@@ -240,17 +264,7 @@ export function AccountPage() {
     try {
       await acceptTermsAndHealth(type === "terms", type === "health");
       await refreshAccountProfile();
-
-      const accountRes = await fetch("/api/me", { cache: "no-store" });
-      if (!accountRes.ok) {
-        throw new Error("Failed to refresh agreement status.");
-      }
-
-      const data = (await accountRes.json()) as AccountDto;
-      setHasAgreedToTerms(data.profile.hasAgreedToTerms);
-      setHasAgreedToHealth(data.profile.hasAgreedToHealth);
-      setTermsAgreedAt(data.profile.termsAgreedAt);
-      setHealthAgreedAt(data.profile.healthAgreedAt);
+      await reloadAccount();
     } catch (e) {
       setLegalError(e instanceof Error ? e.message : "Failed to update legal agreements.");
     } finally {
@@ -270,6 +284,8 @@ export function AccountPage() {
         const payload = (await res.json().catch(() => ({}))) as { message?: string };
         throw new Error(payload.message || "Failed to save preferences.");
       }
+      await refreshAccountProfile();
+      await reloadAccount();
       setPrefsSaved(true);
       setTimeout(() => setPrefsSaved(false), 3000);
     } catch (e) {
@@ -307,12 +323,67 @@ export function AccountPage() {
 
   return (
     <DashboardLayout title="Account - Shruti Turner">
-      <h1 className="mb-2 text-3xl">Account Settings</h1>
-      <p className="text-muted-foreground mb-6">
-        Manage your profile, preferences, and notifications.
-      </p>
+      <AppPageHeader
+        eyebrow="Account"
+        title="Account Settings"
+        description="Manage your profile, preferences, and notifications."
+        className="mb-6"
+      />
       {loading ? <p className="text-muted-foreground mb-6 text-sm">Loading account...</p> : null}
       {error ? <p className="mb-6 text-sm text-red-600">{error}</p> : null}
+
+      <AppMetricGrid className="mb-8 lg:grid-cols-3">
+        <AppMetricCard
+          label="Upcoming classes"
+          value={activity?.upcomingClasses.length ?? 0}
+          detail="booked sessions"
+        />
+        <AppMetricCard
+          label="Credits"
+          value={activity?.credits.balance ?? 0}
+          detail="available on your account"
+        />
+        <AppMetricCard
+          label="Legal status"
+          value={hasAgreedToTerms && hasAgreedToHealth ? "Complete" : "Action needed"}
+          detail={
+            hasAgreedToTerms && hasAgreedToHealth
+              ? "required agreements accepted"
+              : "review outstanding agreements below"
+          }
+        />
+      </AppMetricGrid>
+
+      {onboardingState && !onboardingState.isComplete ? (
+        <div className="bg-background mb-8 flex flex-col gap-4 rounded-lg border p-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">Onboarding</Badge>
+              <span className="text-muted-foreground text-sm">
+                {onboardingState.missingSteps.length} step
+                {onboardingState.missingSteps.length === 1 ? "" : "s"} remaining
+              </span>
+            </div>
+            <p className="text-sm leading-relaxed">
+              Finish the remaining setup steps so your studio account, legal agreements, and health
+              profile stay complete.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {onboardingState.missingSteps.map((step) => (
+                <Badge key={step} variant="secondary">
+                  {ONBOARDING_STEP_LABELS[step]}
+                </Badge>
+              ))}
+            </div>
+          </div>
+          <Link href="/dashboard?onboarding=true">
+            <Button>
+              Continue onboarding
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
+      ) : null}
 
       <div className="mb-8 flex gap-1 overflow-x-auto border-b">
         {TABS.map((tab) => {
@@ -461,20 +532,31 @@ export function AccountPage() {
               </Link>
             </div>
 
-            <div className="bg-background space-y-4 rounded-lg border p-6">
+            <section
+              className="bg-background space-y-4 rounded-lg border p-6"
+              aria-labelledby="privacy-legal-heading"
+            >
               <div className="mb-2 flex items-center gap-3">
                 <Shield className="text-primary h-5 w-5" />
-                <h2 className="text-xl">Privacy & Legal</h2>
+                <h2 id="privacy-legal-heading" className="text-xl">
+                  Privacy & Legal
+                </h2>
               </div>
 
               {!hasAgreedToTerms || !hasAgreedToHealth ? (
-                <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <div
+                  className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4"
+                  data-testid="legal-pending-panel"
+                >
                   <p className="text-sm text-amber-800">
                     You still need to accept required agreements.
                   </p>
                   {legalError ? <p className="text-sm text-red-600">{legalError}</p> : null}
                   {!hasAgreedToTerms ? (
-                    <label className="flex items-start gap-3 rounded-lg border border-amber-200 bg-white p-3">
+                    <label
+                      className="flex items-start gap-3 rounded-lg border border-amber-200 bg-white p-3"
+                      data-testid="accept-terms-checkbox"
+                    >
                       <input
                         type="checkbox"
                         className="accent-brand-accent mt-0.5"
@@ -497,7 +579,10 @@ export function AccountPage() {
                     </label>
                   ) : null}
                   {!hasAgreedToHealth ? (
-                    <label className="flex items-start gap-3 rounded-lg border border-amber-200 bg-white p-3">
+                    <label
+                      className="flex items-start gap-3 rounded-lg border border-amber-200 bg-white p-3"
+                      data-testid="accept-health-checkbox"
+                    >
                       <input
                         type="checkbox"
                         className="accent-brand-accent mt-0.5"
@@ -550,7 +635,7 @@ export function AccountPage() {
                   Health & Liability Waiver
                 </Link>
               </div>
-            </div>
+            </section>
           </div>
         ) : null}
 

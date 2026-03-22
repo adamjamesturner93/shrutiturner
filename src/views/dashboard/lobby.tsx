@@ -11,6 +11,12 @@ import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
 import {
+  AppEmptyState,
+  AppMetricCard,
+  AppMetricGrid,
+  AppPageHeader,
+} from "@/components/app-surface";
+import {
   Calendar,
   CreditCard,
   Gift,
@@ -22,11 +28,16 @@ import {
   Users,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
-import type { DashboardSummaryDto } from "@/lib/api/types";
+import type { DashboardSummaryDto, OnboardingStateDto } from "@/lib/api/types";
 import { EMPTY_HEALTH_PROFILE, type HealthProfile } from "@/data/health-profile-data";
 import { getGreeting } from "@/components/greeting";
 
-type OnboardingStep = "profile" | "legal" | "welcome" | "source" | "health";
+type OnboardingStep = Exclude<OnboardingStateDto["nextStep"], "complete">;
+
+function resolveOnboardingStep(nextStep?: OnboardingStateDto["nextStep"] | null): OnboardingStep {
+  if (!nextStep || nextStep === "complete") return "welcome";
+  return nextStep;
+}
 
 export function DashboardLobby({ initialData }: { initialData?: DashboardSummaryDto | null }) {
   const {
@@ -57,12 +68,6 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
   const [profileDob, setProfileDob] = useState("");
   const [profileError, setProfileError] = useState("");
   const [profileSubmitting, setProfileSubmitting] = useState(false);
-
-  const needsProfileDetails =
-    Boolean(user) && (!user?.firstName?.trim() || !user?.lastName?.trim() || !user?.dob);
-  const needsLegalAgreement =
-    Boolean(user) && (!user?.hasAgreedToTerms || !user?.hasAgreedToHealth);
-  const needsHealthProfile = Boolean(user) && !user?.hasHealthProfile;
 
   useEffect(() => {
     if (initialData) return;
@@ -98,28 +103,11 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
     setLegalTerms(Boolean(user.hasAgreedToTerms));
     setLegalHealth(Boolean(user.hasAgreedToHealth));
     setProfileError("");
+    setOnboardingStep(resolveOnboardingStep(user.onboarding.nextStep));
+  }, [isOnboarding, isAdmin, user]);
 
-    if (needsProfileDetails) {
-      setOnboardingStep("profile");
-      return;
-    }
-    if (needsLegalAgreement) {
-      setOnboardingStep("legal");
-      return;
-    }
-    if (!user.heardAboutSource) {
-      setOnboardingStep("source");
-      return;
-    }
-    if (needsHealthProfile) {
-      setOnboardingStep("health");
-      return;
-    }
-    setOnboardingStep("welcome");
-  }, [isOnboarding, isAdmin, user, needsProfileDetails, needsLegalAgreement, needsHealthProfile]);
-
-  const finishOnboarding = () => {
-    completeOnboarding();
+  const finishOnboarding = async () => {
+    await completeOnboarding();
     setShowOnboarding(false);
     setOnboardingStep("welcome");
     const params = new URLSearchParams(searchParams.toString());
@@ -148,16 +136,8 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
         throw new Error(payload?.message || "Could not save profile details.");
       }
 
-      await refreshAccountProfile();
-      if (needsLegalAgreement) {
-        setOnboardingStep("legal");
-      } else if (!user?.heardAboutSource) {
-        setOnboardingStep("source");
-      } else if (needsHealthProfile) {
-        setOnboardingStep("health");
-      } else {
-        setOnboardingStep("welcome");
-      }
+      const account = await refreshAccountProfile();
+      setOnboardingStep(resolveOnboardingStep(account?.profile?.onboarding?.nextStep));
     } catch (saveError) {
       setProfileError(
         saveError instanceof Error ? saveError.message : "Could not save profile details."
@@ -179,8 +159,8 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
     if (consentAccepted && !user?.hasConsentedToHealthData) {
       await acceptHealthDataConsent();
     }
-    await refreshAccountProfile();
-    setOnboardingStep("welcome");
+    const account = await refreshAccountProfile();
+    setOnboardingStep(resolveOnboardingStep(account?.profile?.onboarding?.nextStep));
   };
 
   if (loading) {
@@ -338,13 +318,8 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                   disabled={!legalTerms || !legalHealth}
                   onClick={async () => {
                     await acceptTermsAndHealth(true, true);
-                    if (!user?.heardAboutSource) {
-                      setOnboardingStep("source");
-                    } else if (needsHealthProfile) {
-                      setOnboardingStep("health");
-                    } else {
-                      setOnboardingStep("welcome");
-                    }
+                    const account = await refreshAccountProfile();
+                    setOnboardingStep(resolveOnboardingStep(account?.profile?.onboarding?.nextStep));
                   }}
                 >
                   Accept & Continue
@@ -376,15 +351,15 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                     <span>Classes adapt to how you feel on the day</span>
                   </p>
                 </div>
-                <Button className="w-full" onClick={finishOnboarding}>
+                <Button className="w-full" onClick={() => void finishOnboarding()}>
                   Enter Studio
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
                 <button
-                  onClick={finishOnboarding}
+                  onClick={() => void finishOnboarding()}
                   className="text-muted-foreground hover:text-foreground text-sm transition-colors"
                 >
-                  Skip and continue
+                  Enter without the tour
                 </button>
               </div>
             ) : null}
@@ -435,24 +410,15 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                   disabled={!heardAboutSource}
                   onClick={async () => {
                     await saveOnboardingSource(heardAboutSource, heardAboutDetail);
-                    if (needsHealthProfile) {
-                      setOnboardingStep("health");
-                    } else {
-                      setOnboardingStep("welcome");
-                    }
+                    const account = await refreshAccountProfile();
+                    setOnboardingStep(resolveOnboardingStep(account?.profile?.onboarding?.nextStep));
                   }}
                 >
-                  {needsHealthProfile ? "Next: Tell Us About Your Body" : "Continue"}
+                  {user?.onboarding.missingSteps.includes("health")
+                    ? "Next: Tell Us About Your Body"
+                    : "Continue"}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
-                <div className="text-center">
-                  <button
-                    onClick={() => setOnboardingStep("welcome")}
-                    className="text-muted-foreground hover:text-foreground text-sm transition-colors"
-                  >
-                    Skip and continue
-                  </button>
-                </div>
               </div>
             ) : null}
 
@@ -469,7 +435,6 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                   onSave={handleHealthSave}
                   compact
                   initialConsentAccepted={Boolean(user?.hasConsentedToHealthData)}
-                  onSkip={() => setOnboardingStep("welcome")}
                 />
               </div>
             ) : null}
@@ -478,14 +443,22 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
       ) : null}
 
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl md:text-4xl">
-            {getGreeting()}, {user?.firstName || "there"}.
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Here&apos;s your training overview for this week.
-          </p>
-        </div>
+        <AppPageHeader
+          eyebrow="Private Studio"
+          title={
+            <>
+              {getGreeting()}, {user?.firstName || "there"}.
+            </>
+          }
+          description="Here&apos;s your training overview for this week."
+          meta={
+            summary.membership ? (
+              <Badge className="bg-brand-accent text-brand-white">Membership active</Badge>
+            ) : (
+              <Badge variant="outline">{totalCredits} credits ready to use</Badge>
+            )
+          }
+        />
 
         {referralBalance > 0 ? (
           <div className="border-brand-accent/20 bg-brand-accent/5 flex items-start gap-3 rounded-lg border p-4">
@@ -504,63 +477,34 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
           </div>
         ) : null}
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="gap-0">
-            <CardContent className="pt-6">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">Upcoming Classes</span>
-                <Calendar className="h-4 w-4" />
-              </div>
-              <p className="text-3xl">{summary.upcomingClasses.length}</p>
-              <p className="text-muted-foreground mt-1 text-xs">scheduled</p>
-            </CardContent>
-          </Card>
-
-          <Card className="gap-0">
-            <CardContent className="pt-6">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">Weekly Bookings</span>
-                <CheckCircle className="h-4 w-4" />
-              </div>
-              <p className="text-3xl">{summary.attendance.thisWeekBookedCount}</p>
-              <p className="text-muted-foreground mt-1 text-xs">this week</p>
-            </CardContent>
-          </Card>
-
-          <Card className="gap-0">
-            <CardContent className="pt-6">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">
-                  {summary.membership ? "Membership" : "Class Credits"}
-                </span>
-                <CreditCard className="h-4 w-4" />
-              </div>
-              <p className={summary.membership ? "text-brand-accent text-lg" : "text-3xl"}>
-                {summary.membership ? "Active" : totalCredits}
-              </p>
-              <p className="text-muted-foreground mt-1 text-xs">
-                {summary.membership
-                  ? "all live classes included"
-                  : totalCredits === 1
-                    ? "1 credit available"
-                    : `${totalCredits} credits available`}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="gap-0">
-            <CardContent className="pt-6">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">Referral Balance</span>
-                <Gift className="h-4 w-4" />
-              </div>
-              <p className="text-3xl">£{referralBalance}</p>
-              <p className="text-muted-foreground mt-1 text-xs">
-                {referralBalance > 0 ? "available now" : "share your link to earn credit"}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        <AppMetricGrid>
+          <AppMetricCard
+            label="Upcoming classes"
+            value={summary.upcomingClasses.length}
+            detail="scheduled"
+          />
+          <AppMetricCard
+            label="Weekly bookings"
+            value={summary.attendance.thisWeekBookedCount}
+            detail="this week"
+          />
+          <AppMetricCard
+            label={summary.membership ? "Membership" : "Class credits"}
+            value={summary.membership ? "Active" : totalCredits}
+            detail={
+              summary.membership
+                ? "all live classes included"
+                : totalCredits === 1
+                  ? "1 credit available"
+                  : `${totalCredits} credits available`
+            }
+          />
+          <AppMetricCard
+            label="Referral balance"
+            value={`£${referralBalance}`}
+            detail={referralBalance > 0 ? "available now" : "share your link to earn credit"}
+          />
+        </AppMetricGrid>
 
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-4">
@@ -579,29 +523,23 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
           </div>
 
           {summary.upcomingClasses.length === 0 ? (
-            <div className="bg-background space-y-4 rounded-lg border p-8 text-center">
-              <div className="bg-brand-accent/10 mx-auto flex h-14 w-14 items-center justify-center rounded-full">
-                <Calendar className="text-brand-accent h-7 w-7" />
-              </div>
-              <div>
-                <p className="text-lg">Your schedule is clear</p>
-                <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm leading-relaxed">
-                  Browse the schedule and book your next class. Start with whatever feels
-                  manageable.
-                </p>
-              </div>
-              <div className="flex flex-col justify-center gap-3 pt-2 sm:flex-row">
-                <Link href="/dashboard/schedule">
-                  <Button>
-                    Browse Schedule
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-                <Link href="/dashboard/health">
-                  <Button variant="outline">Complete Health Profile</Button>
-                </Link>
-              </div>
-            </div>
+            <AppEmptyState
+              title="Your schedule is clear"
+              description="Browse the schedule and book your next class. Start with whatever feels manageable."
+              action={
+                <div className="flex flex-col justify-center gap-3 sm:flex-row">
+                  <Link href="/dashboard/schedule">
+                    <Button>
+                      Browse Schedule
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                  <Link href="/dashboard/health">
+                    <Button variant="outline">Complete Health Profile</Button>
+                  </Link>
+                </div>
+              }
+            />
           ) : (
             <div className="space-y-3">
               {summary.upcomingClasses.map((booking) => (

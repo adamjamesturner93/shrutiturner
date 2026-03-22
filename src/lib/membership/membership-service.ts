@@ -18,6 +18,18 @@ function getSubscriptionPeriodEnd(
   return Number((subscription as { current_period_end?: number | null }).current_period_end || 0);
 }
 
+function unixToDate(value?: number | null) {
+  return value ? new Date(value * 1000) : null;
+}
+
+function isAccessActiveStatus(status: MembershipStatus) {
+  return (
+    status === MembershipStatus.active ||
+    status === MembershipStatus.paused ||
+    status === MembershipStatus.past_due
+  );
+}
+
 export function getMembershipLabel(plan: MembershipPlan | null) {
   if (!plan) return "Pay as you Go";
   if (plan === "instructor") return "Unlimited (instructor)";
@@ -30,6 +42,13 @@ export async function getCurrentMembership(userId: string) {
       userId,
       status: { in: [MembershipStatus.active, MembershipStatus.paused, MembershipStatus.past_due] },
     },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+async function getLatestMembership(userId: string) {
+  return db.membershipSubscription.findFirst({
+    where: { userId },
     orderBy: { createdAt: "desc" },
   });
 }
@@ -65,15 +84,62 @@ function mapStripeStatus(status: string): MembershipStatus {
   return MembershipStatus.paused;
 }
 
-export async function syncMembershipFromStripe(userId: string) {
-  const existingCurrent = await getCurrentMembership(userId);
-  if (existingCurrent) return existingCurrent;
+async function upsertMembershipFromStripeSubscription(params: {
+  userId: string;
+  subscription: Stripe.Subscription;
+  billingInterval: MembershipBillingInterval;
+  plan: "movewell";
+  priceId: string | null;
+}) {
+  const config = MEMBERSHIP_CONFIG[params.plan];
+  const resolvedPricePence =
+    params.billingInterval === "annual" ? config.annualPricePence : config.monthlyPricePence;
+  const latestDb = await getLatestMembership(params.userId);
+  const status = mapStripeStatus(params.subscription.status);
+  const periodEnd = unixToDate(getSubscriptionPeriodEnd(params.subscription));
+  const endsAt = params.subscription.cancel_at
+    ? unixToDate(params.subscription.cancel_at)
+    : status === MembershipStatus.cancelled || status === MembershipStatus.expired
+      ? periodEnd
+      : null;
+  const membershipData = {
+    plan: params.plan,
+    billingInterval: params.billingInterval,
+    status,
+    pricePence: resolvedPricePence,
+    classesPerWeek: config.classesPerWeek,
+    renewsAt: periodEnd,
+    endsAt,
+    cancelAtPeriodEnd: Boolean(params.subscription.cancel_at_period_end),
+    stripeSubscriptionId: params.subscription.id,
+    stripePriceId: params.priceId || undefined,
+    stripeCurrentPeriodEnd: periodEnd,
+  };
 
+  if (latestDb) {
+    return db.membershipSubscription.update({
+      where: { id: latestDb.id },
+      data: membershipData,
+    });
+  }
+
+  return db.membershipSubscription.create({
+    data: {
+      userId: params.userId,
+      ...membershipData,
+      currency: "GBP",
+      classesUsedThisWeek: 0,
+      startsAt: new Date(),
+    },
+  });
+}
+
+export async function syncMembershipFromStripe(userId: string) {
   const user = await db.user.findUnique({
     where: { id: userId },
     select: { stripeCustomerId: true },
   });
-  if (!user?.stripeCustomerId) return null;
+  if (!user?.stripeCustomerId) return getLatestMembership(userId);
 
   const stripe = getStripeClient();
   const subscriptions = await stripe.subscriptions.list({
@@ -97,55 +163,40 @@ export async function syncMembershipFromStripe(userId: string) {
     priceId: string | null;
   }>;
 
-  if (known.length === 0) return null;
+  if (known.length === 0) {
+    const latestDb = await getLatestMembership(userId);
+    if (!latestDb) return null;
+
+    if (latestDb.stripeSubscriptionId && isAccessActiveStatus(latestDb.status)) {
+      return db.membershipSubscription.update({
+        where: { id: latestDb.id },
+        data: {
+          status: MembershipStatus.cancelled,
+          cancelAtPeriodEnd: false,
+          endsAt: latestDb.renewsAt || latestDb.endsAt || new Date(),
+        },
+      });
+    }
+
+    return latestDb;
+  }
 
   known.sort(
     (a, b) => getSubscriptionPeriodEnd(b.subscription) - getSubscriptionPeriodEnd(a.subscription)
   );
   const latest = known[0];
-  const config = MEMBERSHIP_CONFIG[latest.plan];
-  const resolvedPricePence =
-    latest.billingInterval === "annual" ? config.annualPricePence : config.monthlyPricePence;
-
-  const latestDb = await db.membershipSubscription.findFirst({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
-  });
-
-  const membershipData = {
-    plan: latest.plan,
+  return upsertMembershipFromStripeSubscription({
+    userId,
+    subscription: latest.subscription,
     billingInterval: latest.billingInterval,
-    status: mapStripeStatus(latest.subscription.status),
-    pricePence: resolvedPricePence,
-    classesPerWeek: config.classesPerWeek,
-    renewsAt: new Date(getSubscriptionPeriodEnd(latest.subscription) * 1000),
-    cancelAtPeriodEnd: Boolean(latest.subscription.cancel_at_period_end),
-    stripeSubscriptionId: latest.subscription.id,
-    stripePriceId: latest.priceId || undefined,
-    stripeCurrentPeriodEnd: new Date(getSubscriptionPeriodEnd(latest.subscription) * 1000),
-  };
-
-  const upserted = latestDb
-    ? await db.membershipSubscription.update({
-        where: { id: latestDb.id },
-        data: membershipData,
-      })
-    : await db.membershipSubscription.create({
-        data: {
-          userId,
-          ...membershipData,
-          currency: "GBP",
-          classesUsedThisWeek: 0,
-          startsAt: new Date(),
-        },
-      });
-
-  return upserted;
+    plan: latest.plan,
+    priceId: latest.priceId,
+  });
 }
 
 export async function getMembershipState(userId: string) {
   const [subscription, creditBalance, creditSummary, referralBalancePence] = await Promise.all([
-    getCurrentMembership(userId),
+    getLatestMembership(userId),
     getCreditBalance(userId),
     getCreditSummary(userId),
     getReferralBalancePence(userId),
@@ -162,6 +213,7 @@ export async function getMembershipState(userId: string) {
         renewalDate: subscription.renewsAt
           ? subscription.renewsAt.toISOString().slice(0, 10)
           : null,
+        endsAt: subscription.endsAt ? subscription.endsAt.toISOString().slice(0, 10) : null,
         classesPerWeek: subscription.classesPerWeek,
         classesUsedThisWeek: subscription.classesUsedThisWeek,
         classesRemaining: Math.max(
@@ -170,6 +222,7 @@ export async function getMembershipState(userId: string) {
         ),
         pricePence: subscription.pricePence,
         cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+        accessActive: isAccessActiveStatus(subscription.status),
       }
     : null;
 
@@ -186,7 +239,7 @@ export async function getMembershipState(userId: string) {
 }
 
 export async function ensureInstructorMembership(userId: string) {
-  const existing = await getCurrentMembership(userId);
+  const existing = await getLatestMembership(userId);
   if (existing?.plan === "instructor") return existing;
 
   if (existing) {
@@ -278,8 +331,26 @@ export async function startOrSwitchMembership({
 }
 
 export async function cancelMembership(userId: string) {
-  const current = await getCurrentMembership(userId);
+  const current = await getLatestMembership(userId);
   if (!current) return null;
+
+  if (current.stripeSubscriptionId) {
+    const stripe = getStripeClient();
+    const subscription = await stripe.subscriptions.update(current.stripeSubscriptionId, {
+      cancel_at_period_end: true,
+    });
+    const priceId = subscription.items.data[0]?.price?.id || null;
+    const resolved = await resolvePlanFromStripePriceId(priceId);
+    if (!resolved) throw new Error("UNKNOWN_MEMBERSHIP_PRICE");
+
+    return upsertMembershipFromStripeSubscription({
+      userId,
+      subscription,
+      billingInterval: resolved.billingInterval,
+      plan: resolved.plan,
+      priceId,
+    });
+  }
 
   return db.membershipSubscription.update({
     where: { id: current.id },
@@ -290,6 +361,37 @@ export async function cancelMembership(userId: string) {
           ? MembershipStatus.past_due
           : MembershipStatus.active,
       endsAt: current.renewsAt || null,
+    },
+  });
+}
+
+export async function resumeMembershipCancellation(userId: string) {
+  const current = await getLatestMembership(userId);
+  if (!current) throw new Error("MEMBERSHIP_NOT_FOUND");
+
+  if (current.stripeSubscriptionId) {
+    const stripe = getStripeClient();
+    const subscription = await stripe.subscriptions.update(current.stripeSubscriptionId, {
+      cancel_at_period_end: false,
+    });
+    const priceId = subscription.items.data[0]?.price?.id || null;
+    const resolved = await resolvePlanFromStripePriceId(priceId);
+    if (!resolved) throw new Error("UNKNOWN_MEMBERSHIP_PRICE");
+
+    return upsertMembershipFromStripeSubscription({
+      userId,
+      subscription,
+      billingInterval: resolved.billingInterval,
+      plan: resolved.plan,
+      priceId,
+    });
+  }
+
+  return db.membershipSubscription.update({
+    where: { id: current.id },
+    data: {
+      cancelAtPeriodEnd: false,
+      endsAt: null,
     },
   });
 }

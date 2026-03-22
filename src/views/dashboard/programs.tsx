@@ -7,6 +7,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import type { MemberSmallGroupSummary } from "@/lib/small-groups/service";
 import { buildDashboardSmallGroupRunHref } from "@/lib/small-groups/routes";
+import { AppEmptyState, AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 
 function formatDate(value: string | null) {
   if (!value) return "Dates announced soon";
@@ -34,18 +35,26 @@ export function DashboardSmallGroupsPage({
   return (
     <DashboardLayout title="Small Group Programmes - Private Studio">
       <div className="space-y-8">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="mb-2 text-3xl">Small Group Programmes</h1>
-            <p className="text-muted-foreground max-w-2xl">
-              A clearer view of your current programme runs, what is coming next, and what is
-              currently open for registration.
-            </p>
-          </div>
-          <Button asChild variant="outline">
-            <Link href="/classes/small-groups">View public programmes</Link>
-          </Button>
-        </div>
+        <AppPageHeader
+          eyebrow="Small-group training"
+          title="Small Group Programmes"
+          description="A clearer view of your current programme runs, what is coming next, and what is currently open for registration."
+          actions={
+            <Button asChild variant="outline">
+              <Link href="/classes/small-groups">View public programmes</Link>
+            </Button>
+          }
+        />
+
+        <AppMetricGrid className="lg:grid-cols-3">
+          <AppMetricCard label="Enrolled runs" value={enrolled.length} detail="currently in your dashboard" />
+          <AppMetricCard label="Open runs" value={available.length} detail="available to register" />
+          <AppMetricCard
+            label="Completed"
+            value={initialData.filter((programme) => programme.status === "completed").length}
+            detail="archived programme runs"
+          />
+        </AppMetricGrid>
 
         {enrolled.length > 0 ? (
           <section className="space-y-4">
@@ -112,21 +121,15 @@ export function DashboardSmallGroupsPage({
             </div>
           </section>
         ) : (
-          <section className="bg-secondary/20 rounded-[1.75rem] border p-8 md:p-10">
-            <div className="mx-auto max-w-3xl text-center">
-              <p className="text-brand-accent mb-3 text-sm tracking-[0.18em] uppercase">
-                No active enrolments
-              </p>
-              <h2 className="mb-4 text-2xl md:text-3xl">You are not enrolled in a programme yet</h2>
-              <p className="text-muted-foreground mb-6 text-sm leading-relaxed md:text-base">
-                When you join a small group programme, your sessions, progress, and next steps will
-                appear here.
-              </p>
+          <AppEmptyState
+            title="You are not enrolled in a programme yet"
+            description="When you join a small group programme, your sessions, progress, and next steps will appear here."
+            action={
               <Button asChild>
                 <Link href="/classes/small-groups">Explore current programmes</Link>
               </Button>
-            </div>
-          </section>
+            }
+          />
         )}
 
         <section className="space-y-4">

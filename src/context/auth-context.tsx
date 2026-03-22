@@ -9,7 +9,7 @@ import {
   useRef,
 } from "react";
 import { signOut as nextAuthSignOut, useSession } from "next-auth/react";
-import type { MembershipStateDto } from "@/lib/api/types";
+import type { MembershipStateDto, OnboardingStateDto } from "@/lib/api/types";
 import {
   CURRENT_HEALTH_DATA_CONSENT_VERSION,
   CURRENT_HEALTH_WAIVER_VERSION,
@@ -123,6 +123,7 @@ export interface UserProfile {
   needsHealthDataConsentRefresh: boolean;
   heardAboutSource: string | null;
   heardAboutDetail: string | null;
+  onboarding: OnboardingStateDto;
 }
 
 export interface AuthState {
@@ -162,11 +163,11 @@ interface AuthContextValue extends AuthState {
   purchaseDropIn: () => void;
   upgradeMembership: (plan: "movewell") => void;
   cancelMembership: () => void;
-  completeOnboarding: () => void;
+  completeOnboarding: () => Promise<void>;
   acceptTermsAndHealth: (terms: boolean, health: boolean) => Promise<void>;
   acceptHealthDataConsent: () => Promise<void>;
   saveOnboardingSource: (source: string, detail?: string) => Promise<void>;
-  refreshAccountProfile: () => Promise<void>;
+  refreshAccountProfile: () => Promise<AccountAndReferralResponse | null>;
   isClassBooked: (classSlug: string) => boolean;
   getBookingForClass: (classSlug: string) => Booking | undefined;
   /** Total purchased class credits available */
@@ -258,6 +259,7 @@ type AccountAndReferralResponse = {
     needsHealthDataConsentRefresh?: boolean;
     heardAboutSource?: string | null;
     heardAboutDetail?: string | null;
+    onboarding?: OnboardingStateDto;
   };
   referral?: {
     referralCode?: string;
@@ -314,6 +316,12 @@ const MOCK_ADMIN_USER: UserProfile = {
   needsHealthDataConsentRefresh: false,
   heardAboutSource: null,
   heardAboutDetail: null,
+  onboarding: {
+    isComplete: true,
+    checklistComplete: true,
+    nextStep: "complete",
+    missingSteps: [],
+  },
 };
 
 /** Instructor mock membership */
@@ -367,7 +375,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
 
   const applyMembershipState = useCallback((state: MembershipStateDto) => {
-    if (state.membership) {
+    if (state.membership?.accessActive) {
       setMembership({
         plan: state.membership.plan,
         label: state.membership.label,
@@ -518,7 +526,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshAccountProfile = useCallback(async () => {
     try {
       const res = await fetch("/api/me", { cache: "no-store" });
-      if (!res.ok) return;
+      if (!res.ok) return null;
       const data = (await res.json()) as AccountAndReferralResponse;
 
       setUser((prev) =>
@@ -562,6 +570,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 data.profile?.needsHealthDataConsentRefresh ?? prev.needsHealthDataConsentRefresh,
               heardAboutSource: data.profile?.heardAboutSource ?? prev.heardAboutSource,
               heardAboutDetail: data.profile?.heardAboutDetail ?? prev.heardAboutDetail,
+              onboarding: data.profile?.onboarding ?? prev.onboarding,
             }
           : prev
       );
@@ -570,8 +579,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setReferralCount(data.referral?.referralCount || 0);
       setReferralEarned(Math.floor((data.referral?.referralEarnedPence || 0) / 100));
       setReferralBalance(Math.floor((data.referral?.referralBalancePence || 0) / 100));
+      return data;
     } catch {
       // Keep existing state when refresh fails.
+      return null;
     }
   }, []);
 
@@ -648,6 +659,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         needsHealthDataConsentRefresh: true,
         heardAboutSource: null,
         heardAboutDetail: null,
+        onboarding: {
+          isComplete: false,
+          checklistComplete: false,
+          nextStep: "profile",
+          missingSteps: ["profile", "legal", "source", "health"],
+        },
       });
       setMembership(null);
       setCredits([]);
@@ -811,9 +828,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [loadMembershipState]);
 
-  const completeOnboarding = useCallback(() => {
-    setUser((prev) => (prev ? { ...prev, isOnboarded: true } : prev));
-    void fetch("/api/me", {
+  const completeOnboarding = useCallback(async () => {
+    setUser((prev) =>
+      prev
+        ? {
+            ...prev,
+            isOnboarded: true,
+            onboarding: {
+              isComplete: true,
+              checklistComplete: true,
+              nextStep: "complete",
+              missingSteps: [],
+            },
+          }
+        : prev
+    );
+    await fetch("/api/me", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isOnboarded: true }),
@@ -846,6 +876,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         currentHealthWaiverVersion?: string;
         needsTermsReacceptance?: boolean;
         needsHealthWaiverReacceptance?: boolean;
+        onboarding?: OnboardingStateDto;
       };
     } | null;
     setUser((prev) =>
@@ -867,6 +898,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               payload?.profile?.needsTermsReacceptance ?? prev.needsTermsReacceptance,
             needsHealthWaiverReacceptance:
               payload?.profile?.needsHealthWaiverReacceptance ?? prev.needsHealthWaiverReacceptance,
+            onboarding: payload?.profile?.onboarding ?? prev.onboarding,
           }
         : prev
     );
@@ -892,6 +924,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         acceptedHealthDataConsentVersion?: string | null;
         currentHealthDataConsentVersion?: string;
         needsHealthDataConsentRefresh?: boolean;
+        onboarding?: OnboardingStateDto;
       };
     } | null;
 
@@ -911,6 +944,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               prev.currentHealthDataConsentVersion,
             needsHealthDataConsentRefresh:
               payload?.profile?.needsHealthDataConsentRefresh ?? prev.needsHealthDataConsentRefresh,
+            onboarding: payload?.profile?.onboarding ?? prev.onboarding,
           }
         : prev
     );
@@ -930,12 +964,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(payload?.message || "Failed to save onboarding source.");
     }
 
+    const payload = (await response.json().catch(() => null)) as {
+      profile?: {
+        heardAboutSource?: string | null;
+        heardAboutDetail?: string | null;
+        onboarding?: OnboardingStateDto;
+      };
+    } | null;
+
     setUser((prev) =>
       prev
         ? {
             ...prev,
-            heardAboutSource: source,
-            heardAboutDetail: detail || null,
+            heardAboutSource: payload?.profile?.heardAboutSource ?? source,
+            heardAboutDetail: payload?.profile?.heardAboutDetail ?? detail ?? null,
+            onboarding: payload?.profile?.onboarding ?? prev.onboarding,
           }
         : prev
     );

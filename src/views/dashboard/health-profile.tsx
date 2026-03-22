@@ -5,6 +5,7 @@ import { DashboardLayout } from "../../components/dashboard-layout";
 import { HealthProfileEditor } from "../../components/health-profile-editor";
 import { Badge } from "../../components/ui/badge";
 import { Calendar, Pencil, Activity } from "lucide-react";
+import { AppEmptyState, AppPageHeader } from "@/components/app-surface";
 import {
   EMPTY_HEALTH_PROFILE,
   HEALTH_CATEGORIES,
@@ -76,28 +77,30 @@ export function HealthProfilePage() {
 
   return (
     <DashboardLayout title="Health Profile - Private Studio">
-      <div className="max-w-2xl">
-        <div className="mb-2 flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl">Health Profile</h1>
-            <p className="text-muted-foreground mt-1">
-              Help Shruti understand your body so sessions can be adapted for you.
-            </p>
-            <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
+      <div className="max-w-5xl">
+        <AppPageHeader
+          eyebrow="Health and safety"
+          title="Health Profile"
+          description="Help Shruti understand your body so sessions can be adapted for you."
+          meta={
+            <p className="max-w-xl text-sm leading-relaxed">
               The health information you share is used to assess suitability, tailor training, and
               deliver sessions safely.
             </p>
-          </div>
-          {!editing && (
-            <button
-              onClick={() => setEditing(true)}
-              className="text-brand-accent hover:text-brand-accent/80 mt-1 flex items-center gap-1.5 text-sm transition-colors"
-            >
-              <Pencil className="h-4 w-4" />
-              Edit
-            </button>
-          )}
-        </div>
+          }
+          actions={
+            !editing ? (
+              <button
+                onClick={() => setEditing(true)}
+                className="text-brand-accent hover:text-brand-accent/80 mt-1 flex items-center gap-1.5 text-sm transition-colors"
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </button>
+            ) : null
+          }
+          className="mb-2"
+        />
 
         {profile.lastUpdated && !editing && (
           <p className="text-muted-foreground mb-6 flex items-center gap-1.5 text-xs">
@@ -128,23 +131,19 @@ export function HealthProfilePage() {
           /* View mode */
           <div className="mt-6 space-y-6">
             {activeConditions.length === 0 ? (
-              <div className="space-y-4 rounded-lg border p-8 text-center">
-                <div className="bg-secondary mx-auto flex h-14 w-14 items-center justify-center rounded-full">
-                  <Activity className="text-muted-foreground h-7 w-7" />
-                </div>
-                <div>
-                  <p className="text-muted-foreground">No conditions recorded yet.</p>
-                  <p className="text-muted-foreground mt-1 text-sm">
-                    Adding your conditions helps Shruti adapt every session for your body.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setEditing(true)}
-                  className="text-brand-accent text-sm hover:underline"
-                >
-                  Add your conditions
-                </button>
-              </div>
+              <AppEmptyState
+                title="No conditions recorded yet."
+                description="Adding your conditions helps Shruti adapt every session for your body."
+                action={
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="text-brand-accent text-sm hover:underline"
+                  >
+                    Add your conditions
+                  </button>
+                }
+                className="py-10"
+              />
             ) : (
               <>
                 {/* Grouped by category */}

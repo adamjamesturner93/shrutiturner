@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { Gift, Copy, Check, Users, CreditCard, ArrowRight, Wallet } from "lucide-react";
 import Link from "next/link";
 import type { ReferralSummaryDto } from "@/lib/api/types";
+import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 
 export function DashboardReferrals() {
   const { referralAppliesTo, membership } = useAuth();
@@ -67,11 +68,12 @@ export function DashboardReferrals() {
 
   return (
     <DashboardLayout title="Referrals - Private Studio">
-      <h1 className="mb-2 text-3xl">Refer a Friend</h1>
-      <p className="text-muted-foreground mb-8">
-        Share your link. Your friend gets one free class gift, and you receive £10 after their first
-        paid purchase.
-      </p>
+      <AppPageHeader
+        eyebrow="Member referrals"
+        title="Refer a Friend"
+        description="Share your link. Your friend gets one free class gift, and you receive £10 after their first paid purchase."
+        className="mb-8"
+      />
 
       {/* How it works */}
       <div className="border-brand-accent/20 bg-brand-accent/5 mb-8 rounded-lg border p-6 md:p-8">
@@ -137,20 +139,11 @@ export function DashboardReferrals() {
       </div>
 
       {/* Stats */}
-      <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        <div className="bg-background rounded-lg border p-5 text-center">
-          <p className="text-3xl">{referralCount}</p>
-          <p className="text-muted-foreground text-sm">Friends Joined</p>
-        </div>
-        <div className="bg-background rounded-lg border p-5 text-center">
-          <p className="text-3xl">£{referralEarned}</p>
-          <p className="text-muted-foreground text-sm">Total Earned</p>
-        </div>
-        <div className="bg-background rounded-lg border p-5 text-center">
-          <p className="text-brand-accent text-3xl">£{referralBalance}</p>
-          <p className="text-muted-foreground text-sm">Current Balance</p>
-        </div>
-      </div>
+      <AppMetricGrid className="mb-8 lg:grid-cols-3">
+        <AppMetricCard label="Friends joined" value={referralCount} detail="completed referrals" />
+        <AppMetricCard label="Total earned" value={`£${referralEarned}`} detail="lifetime referral earnings" />
+        <AppMetricCard label="Current balance" value={`£${referralBalance}`} detail="ready for your next purchase" />
+      </AppMetricGrid>
 
       {/* Where balance will be applied */}
       {referralBalance > 0 && (
