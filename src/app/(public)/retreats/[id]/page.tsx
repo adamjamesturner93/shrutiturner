@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { RetreatDetailPage } from "@/views/retreat-detail";
 import { getRetreatsCombined } from "@/lib/content";
 import { getOperationalRetreatBySlug } from "@/lib/retreats/service";
@@ -22,6 +23,7 @@ export async function generateMetadata({
 }
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  await connection();
   const { id } = await params;
   const retreat = await getOperationalRetreatBySlug(id);
   const allRetreats = await getRetreatsCombined();

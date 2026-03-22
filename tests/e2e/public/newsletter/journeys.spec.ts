@@ -26,7 +26,7 @@ test("subscribe page submits the lead-magnet form with the expected source", asy
   await expect(mainContent.getByRole("button", { name: "Send Me the Free Guide" })).toBeEnabled();
   await mainContent.getByRole("button", { name: "Send Me the Free Guide" }).click();
 
-  await expect(page.getByText("Your guide is on its way!")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Your guide is on its way/i })).toBeVisible();
   expect(requestBody).toMatchObject({
     firstName: "Taylor",
     email: "taylor@example.com",

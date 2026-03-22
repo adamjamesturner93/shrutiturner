@@ -98,9 +98,13 @@ test("blog post shows the logged-out comment prompt", async ({ page }) => {
 
 test("related articles navigate to the linked post", async ({ page }) => {
   await page.goto("/blog/strength-training-chronic-illness");
-  await page
+  await expect(page.getByRole("heading", { name: "Related Articles" })).toBeVisible();
+  const relatedArticle = page
+    .locator("article")
+    .filter({ hasText: "Programming Strength Training Around Flares and Bad Days" })
+    .last();
+  await relatedArticle
     .getByRole("link", { name: "Programming Strength Training Around Flares and Bad Days" })
-    .first()
     .click();
 
   await expect(page).toHaveURL(/\/blog\/programming-around-flares$/);

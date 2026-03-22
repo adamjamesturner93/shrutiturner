@@ -62,14 +62,13 @@ export async function listPublicThemedWeeks(): Promise<PublicThemedWeek[]> {
   return rows.map(mapPublicThemedWeek);
 }
 
-export async function getScheduleThemedWeek(now: Date = new Date()): Promise<PublicThemedWeek | null> {
-  const today = startOfLondonDay(now);
+export async function getScheduleThemedWeek(now?: Date): Promise<PublicThemedWeek | null> {
   const rows = await db.themedWeek.findMany({
     where: {
-      endDate: { gte: today },
+      endDate: { gte: startOfLondonDay(now ?? new Date()) },
     },
     orderBy: [{ sortOrder: "asc" }, { startDate: "asc" }],
   });
 
-  return selectScheduleThemedWeek(rows.map(mapPublicThemedWeek), today);
+  return selectScheduleThemedWeek(rows.map(mapPublicThemedWeek), now);
 }

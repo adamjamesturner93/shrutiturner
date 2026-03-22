@@ -11,10 +11,13 @@
     "dev:clean": "rm -rf .next && next dev",
     "build": "next build",
     "start": "next start",
+    "prepare": "husky",
     "test": "pnpm run test:unit && pnpm run test:integration && pnpm run test:e2e",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "playwright test",
+    "test:a11y": "playwright test tests/e2e/public/accessibility.spec.ts",
+    "test:lighthouse": "node scripts/lighthouse-public-scan.mjs",
     "typecheck": "next typegen && tsc --noEmit --incremental false",
     "lint": "eslint contentful prisma scripts src eslint.config.mjs middleware.ts next-env.d.ts next.config.mjs postcss.config.mjs prisma.config.ts",
     "lint:fix": "eslint contentful prisma scripts src eslint.config.mjs middleware.ts next-env.d.ts next.config.mjs postcss.config.mjs prisma.config.ts --fix",
@@ -39,6 +42,9 @@
     "stripe:seed:products": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/stripe/seed-products.ts",
     "sync:postmark": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/sync/postmark.ts",
     "sync:stripe:metrics": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/sync/stripe-metrics.ts"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs,cjs}": "pnpm exec eslint --fix --max-warnings=0"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.8.0",
@@ -109,18 +115,23 @@
     "vaul": "1.1.2"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.1",
     "@eslint/eslintrc": "^3.3.4",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "^22.10.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "chrome-launcher": "^1.2.1",
     "contentful-management": "^11.74.0",
     "eslint": "^9.39.0",
     "eslint-config-next": "^16.1.6",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-tailwindcss": "beta",
+    "husky": "^9.1.7",
+    "lighthouse": "^13.0.3",
+    "lint-staged": "^16.4.0",
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.6.12",
     "prisma": "^7.5.0",

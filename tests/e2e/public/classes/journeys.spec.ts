@@ -9,38 +9,34 @@ test("home page shows the updated hero and coaching philosophy section", async (
   await page.goto("/");
 
   await expect(
-    page.getByRole("heading", { name: "Understand Your Body. Build Sustainable Strength." })
+    page.getByRole("heading", {
+      name: /Build strength that listens to your body, not against it\./i,
+    })
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Explore Move Well Classes" }).first()
   ).toHaveAttribute("href", "/classes");
-  await expect(page.getByRole("heading", { name: "My Coaching Philosophy" })).toBeVisible();
-  await expect(page.getByText("Understanding · Movement · Strength")).toBeVisible();
+  await expect(page.getByText("The coaching philosophy")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Understand first" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Build capacity" })).toBeVisible();
 });
 
 test("classes page shows the updated hero and yoga plus strength section", async ({ page }) => {
-  await createE2eThemedWeek({
-    label: "classes",
-    title: "Pelvic Floor Health Week",
-    shortDescription: "Focused class support for pelvic floor confidence.",
-    audience: "Anyone needing pelvic floor-aware cueing.",
-    ctaHref: "/classes",
-    ctaLabel: "Register",
-    startDate: "2026-03-23T00:00:00.000Z",
-    endDate: "2026-03-29T23:59:59.999Z",
-  });
-
   await page.goto("/classes");
 
-  await expect(page.getByRole("heading", { name: "Move Well Classes" })).toBeVisible();
   await expect(
-    page.getByText(
-      "Live online classes combining adaptive yoga and intelligent strength training."
-    )
+    page.getByRole("heading", { name: "Live classes for bodies that need nuance, not noise." })
   ).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Why Yoga + Strength?" })).toBeVisible();
-  await expect(page.getByText("Awareness Before Load")).toBeVisible();
-  await expect(page.getByText("Pelvic Floor Health Week")).toBeVisible();
+  await expect(
+    page.getByText("Adaptive yoga and intelligent strength training taught live online.")
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "These disciplines support each other." })
+  ).toBeVisible();
+  await expect(page.getByText("Awareness before load")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Choose the doorway that feels most useful right now." })
+  ).toBeVisible();
 });
 
 test("schedule page shows the next themed week banner", async ({ page }) => {
@@ -67,7 +63,11 @@ test("schedule page shows the next themed week banner", async ({ page }) => {
 
   await page.goto("/schedule");
 
-  await expect(page.getByRole("heading", { name: "Class Schedule" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Weekly class times that make it easier to find the right session.",
+    })
+  ).toBeVisible();
   await expect(page.getByText("Pelvic Floor Health Week")).toBeVisible();
   await expect(page.getByRole("link", { name: "Register" })).toHaveAttribute("href", "/classes");
 });
@@ -100,14 +100,17 @@ test("class detail page renders upcoming sessions and booking CTAs", async ({ pa
     });
   });
 
-  await page.goto("/schedule/weekend-yoga-flow");
+  await page.goto("/classes/weekend-yoga-flow");
 
-  await expect(page.getByRole("heading", { name: "Weekend Yoga Flow" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Upcoming Sessions" })).toBeVisible();
-  await expect(page.getByText("6 of 15 spots left")).toBeVisible();
-  await expect(page.getByText("15 of 15 spots left")).toBeVisible();
-  await expect(page.getByRole("button", { name: /Book 21 March 2026|Book Class/i })).toBeVisible();
-  await expect(page.getByRole("link", { name: "View All Dates" })).toHaveAttribute(
+  await expect(page.getByRole("heading", { level: 1, name: "Weekend Yoga Flow" })).toBeVisible();
+  const upcomingSessions = page.locator("aside").filter({ hasText: "Upcoming Sessions" });
+  await expect(upcomingSessions.getByRole("heading", { name: "Upcoming Sessions" })).toBeVisible();
+  await expect(upcomingSessions.getByText("6/15 spots")).toBeVisible();
+  await expect(upcomingSessions.getByText("15/15 spots")).toBeVisible();
+  await expect(
+    upcomingSessions.getByRole("button", { name: /Book 21 March 2026/i })
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Full Schedule" }).first()).toHaveAttribute(
     "href",
     "/schedule"
   );

@@ -192,7 +192,7 @@ export function ClassesYogaPage({
                       </span>
                     </div>
                   </div>
-                  <Link href={`/schedule/${cls.slug}`}>
+                  <Link href={`/classes/${cls.slug}`}>
                     <Button variant="outline" className="w-full md:w-auto">
                       View Details
                     </Button>

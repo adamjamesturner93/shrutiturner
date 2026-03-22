@@ -4,6 +4,7 @@ import { Layout } from "../components/layout";
 import { useI18n } from "../lib/use-i18n";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
+import { MarketingSection } from "@/components/marketing/sections";
 import { SEO } from "../components/seo";
 import { ArrowLeft, ArrowRight, Globe, Instagram } from "lucide-react";
 import Link from "next/link";
@@ -61,92 +62,139 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
         canonicalUrl={`https://shrutiturner.com/blog/${post.id}`}
       />
 
-      <article className="py-16 md:py-20">
-        <div className="container mx-auto max-w-4xl px-4">
-          <Link
-            href="/blog"
-            className="text-muted-foreground hover:text-primary mb-8 inline-flex items-center text-sm"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Blog
-          </Link>
+      <section className="marketing-grid overflow-hidden px-4 py-12 text-brand-white md:py-16">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid items-start gap-8 lg:grid-cols-[0.95fr_1.05fr]">
+            <div>
+              <Link
+                href="/blog"
+                className="text-brand-white/70 hover:text-brand-accent-light inline-flex items-center text-sm"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Blog
+              </Link>
 
-          <div className="mb-12 space-y-6">
-            <div className="flex flex-wrap gap-2">
-              {post.tags.map((tag) => (
-                <Link key={tag} href={`/blog?tag=${encodeURIComponent(tag)}`}>
-                  <Badge variant="secondary" className="hover:bg-secondary/80 cursor-pointer">
-                    {tag}
-                  </Badge>
-                </Link>
-              ))}
-            </div>
-
-            <h1 className="text-4xl leading-tight md:text-5xl">{post.title}</h1>
-
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-3">
-                <div className="flex -space-x-2">
-                  {authors.slice(0, 4).map((author) => (
-                    <div
-                      key={author.slug}
-                      className="border-background bg-brand-warm h-11 w-11 overflow-hidden rounded-full border"
+              <div className="mt-6 flex flex-wrap gap-2">
+                {post.tags.map((tag) => (
+                  <Link key={tag} href={`/blog?tag=${encodeURIComponent(tag)}`}>
+                    <Badge
+                      variant="secondary"
+                      className="cursor-pointer border border-brand-white/10 bg-brand-white/8 text-brand-white hover:bg-brand-white/12"
                     >
-                      {author.avatarImageUrl ? (
-                        <ImageWithFallback
-                          src={author.avatarImageUrl}
-                          alt={author.avatarAlt || `${author.name} avatar`}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="text-brand-dark flex h-full w-full items-center justify-center text-xs font-medium">
-                          {author.name
-                            .split(" ")
-                            .map((part) => part[0])
-                            .join("")
-                            .slice(0, 2)}
-                        </div>
-                      )}
+                      {tag}
+                    </Badge>
+                  </Link>
+                ))}
+              </div>
+
+              <h1 className="mt-5 max-w-4xl text-4xl leading-[1.08] tracking-[-0.03em] md:text-5xl">
+                {post.title}
+              </h1>
+
+              <div className="mt-6 flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex -space-x-2">
+                    {authors.slice(0, 4).map((author) => (
+                      <div
+                        key={author.slug}
+                        className="border-brand-dark bg-brand-warm h-11 w-11 overflow-hidden rounded-full border"
+                      >
+                        {author.avatarImageUrl ? (
+                          <ImageWithFallback
+                            src={author.avatarImageUrl}
+                            alt={author.avatarAlt || `${author.name} avatar`}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="text-brand-dark flex h-full w-full items-center justify-center text-xs font-medium">
+                            {author.name
+                              .split(" ")
+                              .map((part) => part[0])
+                              .join("")
+                              .slice(0, 2)}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-brand-white">By {formatAuthorList(post)}</p>
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-brand-white/70">
+                      <span>{fmtDate(post.date)}</span>
+                      <span>•</span>
+                      <span>{post.readTime}</span>
                     </div>
-                  ))}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-brand-dark text-sm font-medium">By {formatAuthorList(post)}</p>
-                  <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
-                    <span>{fmtDate(post.date)}</span>
-                    <span>•</span>
-                    <span>{post.readTime}</span>
                   </div>
                 </div>
+                {authors.some((author) => author.isGuestContributor) ? (
+                  <Badge variant="outline" className="border-brand-white/20 text-brand-white/80">
+                    Guest Contributor
+                  </Badge>
+                ) : null}
               </div>
-              {authors.some((author) => author.isGuestContributor) ? (
-                <Badge variant="outline">Guest Contributor</Badge>
-              ) : null}
+
+              <div className="mt-7">
+                <BlogShare
+                  title={post.title}
+                  excerpt={post.excerpt}
+                  url={`https://shrutiturner.com/blog/${post.id}`}
+                />
+              </div>
             </div>
 
-            <BlogShare
-              title={post.title}
-              excerpt={post.excerpt}
-              url={`https://shrutiturner.com/blog/${post.id}`}
-            />
+            <div className="overflow-hidden rounded-[2rem] border border-brand-white/10 bg-brand-white/8 p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+              <ImageWithFallback
+                src={post.coverImage}
+                alt={post.coverAlt}
+                className="h-full max-h-[28rem] w-full rounded-[1.45rem] object-cover"
+              />
+            </div>
           </div>
+        </div>
+      </section>
 
-          <div className="mb-12 overflow-hidden rounded-lg">
-            <ImageWithFallback
-              src={post.coverImage}
-              alt={post.coverAlt}
-              className="h-64 w-full object-cover md:h-96"
-            />
-          </div>
+      <MarketingSection className="section-wash" contentClassName="max-w-4xl">
+          <article className="marketing-panel rounded-[2rem] p-6 md:p-8">
+            <div className="prose prose-lg max-w-none">
+              <div className="space-y-6 leading-relaxed" style={{ whiteSpace: "pre-line" }}>
+                {post.content.split("\n## ").map((section, index) => {
+                  if (index === 0) {
+                    const lines = section.split("\n").filter((line) => line.trim());
+                    return (
+                      <div key={index} className="space-y-4">
+                        {lines.slice(1).map((line, lineIndex) => {
+                          if (line.startsWith("### ")) {
+                            return (
+                              <h3 key={lineIndex} className="mt-8 mb-4 text-2xl">
+                                {line.replace("### ", "")}
+                              </h3>
+                            );
+                          }
+                          if (line.match(/^\d+\.\s/)) {
+                            return (
+                              <p key={lineIndex} className="ml-4">
+                                {line}
+                              </p>
+                            );
+                          }
+                          if (line.startsWith("- ")) {
+                            return (
+                              <p key={lineIndex} className="ml-4">
+                                {line}
+                              </p>
+                            );
+                          }
+                          return <p key={lineIndex}>{line}</p>;
+                        })}
+                      </div>
+                    );
+                  }
 
-          <div className="prose prose-lg max-w-none">
-            <div className="space-y-6 leading-relaxed" style={{ whiteSpace: "pre-line" }}>
-              {post.content.split("\n## ").map((section, index) => {
-                if (index === 0) {
-                  const lines = section.split("\n").filter((line) => line.trim());
+                  const [heading, ...content] = section.split("\n").filter((line) => line.trim());
                   return (
                     <div key={index} className="space-y-4">
-                      {lines.slice(1).map((line, lineIndex) => {
+                      <h2 className="mt-12 mb-6 text-3xl">{heading}</h2>
+                      {content.map((line, lineIndex) => {
                         if (line.startsWith("### ")) {
                           return (
                             <h3 key={lineIndex} className="mt-8 mb-4 text-2xl">
@@ -172,44 +220,13 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
                       })}
                     </div>
                   );
-                }
-
-                const [heading, ...content] = section.split("\n").filter((line) => line.trim());
-                return (
-                  <div key={index} className="space-y-4">
-                    <h2 className="mt-12 mb-6 text-3xl">{heading}</h2>
-                    {content.map((line, lineIndex) => {
-                      if (line.startsWith("### ")) {
-                        return (
-                          <h3 key={lineIndex} className="mt-8 mb-4 text-2xl">
-                            {line.replace("### ", "")}
-                          </h3>
-                        );
-                      }
-                      if (line.match(/^\d+\.\s/)) {
-                        return (
-                          <p key={lineIndex} className="ml-4">
-                            {line}
-                          </p>
-                        );
-                      }
-                      if (line.startsWith("- ")) {
-                        return (
-                          <p key={lineIndex} className="ml-4">
-                            {line}
-                          </p>
-                        );
-                      }
-                      return <p key={lineIndex}>{line}</p>;
-                    })}
-                  </div>
-                );
-              })}
+                })}
+              </div>
             </div>
-          </div>
+          </article>
 
           {authors.length > 0 ? (
-            <section className="mt-14 border-t pt-10">
+            <section className="mt-10">
               <div className="mb-6 flex items-center justify-between gap-3">
                 <h2 className="text-2xl md:text-3xl">{authorHeading}</h2>
                 {authors.length > 1 ? (
@@ -219,7 +236,7 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
 
               <div className="grid gap-5 md:grid-cols-2">
                 {authors.map((author) => (
-                  <div key={author.slug} className="bg-card rounded-2xl border p-6">
+                  <div key={author.slug} className="bg-card rounded-[1.6rem] border border-brand-dark/10 p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
                     <div className="flex items-start gap-4">
                       <div className="bg-brand-warm h-16 w-16 overflow-hidden rounded-full">
                         {author.avatarImageUrl ? (
@@ -284,12 +301,11 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
               </div>
             </section>
           ) : null}
-        </div>
-      </article>
+      </MarketingSection>
 
-      <section className="py-12 md:py-16">
-        <div className="container mx-auto max-w-4xl space-y-10 px-4">
-          <div className="flex flex-col items-start justify-between gap-4 border-y py-6 sm:flex-row sm:items-center">
+      <MarketingSection compact contentClassName="max-w-4xl">
+        <div className="space-y-8">
+          <div className="marketing-panel flex flex-col items-start justify-between gap-4 rounded-[1.75rem] p-6 sm:flex-row sm:items-center">
             <p className="text-muted-foreground">
               Found this useful? Share it with someone who might benefit.
             </p>
@@ -303,81 +319,75 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
           <BlogReactions postId={post.id} />
           <BlogComments postId={post.id} />
         </div>
-      </section>
+      </MarketingSection>
 
-      <section className="bg-secondary/20 py-12 md:py-16">
-        <div className="container mx-auto max-w-4xl px-4">
-          <div className="bg-brand-accent text-brand-white space-y-6 rounded-lg p-8 text-center md:p-12">
-            <h3 className="text-2xl md:text-3xl">
-              Ready to Build Strength That Works for Your Body?
-            </h3>
-            <p className="text-lg leading-relaxed opacity-90">
-              Whether you&apos;re interested in group classes, 1:1 coaching, or just have a question
-              I&apos;d love to hear from you.
-            </p>
-            <Link href="/contact">
-              <Button
-                size="lg"
-                className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
-              >
-                Get in Touch
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-          </div>
+      <MarketingSection className="section-wash" compact contentClassName="max-w-4xl">
+        <div className="bg-brand-accent text-brand-white space-y-6 rounded-[2rem] p-8 text-center md:p-10">
+          <h3 className="text-2xl md:text-3xl">Ready to Build Strength That Works for Your Body?</h3>
+          <p className="text-lg leading-relaxed opacity-90">
+            Whether you&apos;re interested in group classes, 1:1 coaching, or just have a question
+            I&apos;d love to hear from you.
+          </p>
+          <Link href="/contact">
+            <Button
+              size="lg"
+              className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
+            >
+              Get in Touch
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          </Link>
         </div>
-      </section>
+      </MarketingSection>
 
       {relatedPosts.length > 0 && (
-        <section className="py-16 md:py-20">
-          <div className="container mx-auto max-w-6xl px-4">
-            <h3 className="mb-8 text-3xl">Related Articles</h3>
-            <div className="grid gap-8 md:grid-cols-3">
-              {relatedPosts.map((relatedPost) => (
-                <article
-                  key={relatedPost.id}
-                  className="bg-card group overflow-hidden rounded-lg border transition-shadow hover:shadow-lg"
-                >
-                  <Link href={`/blog/${relatedPost.id}`} className="block overflow-hidden">
-                    <ImageWithFallback
-                      src={relatedPost.coverImage}
-                      alt={relatedPost.coverAlt}
-                      className="h-40 w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                  </Link>
-                  <div className="space-y-4 p-6">
-                    <div className="flex flex-wrap gap-2">
-                      {relatedPost.tags.slice(0, 2).map((tag) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-
-                    <h4 className="leading-tight">
-                      <Link
-                        href={`/blog/${relatedPost.id}`}
-                        className="hover:text-primary transition-colors"
-                      >
-                        {relatedPost.title}
-                      </Link>
-                    </h4>
-
-                    <p className="text-muted-foreground line-clamp-3 text-sm leading-relaxed">
-                      {relatedPost.excerpt}
-                    </p>
-
-                    <Link href={`/blog/${relatedPost.id}`}>
-                      <Button variant="ghost" size="sm" className="w-full">
-                        Read Article
-                      </Button>
-                    </Link>
+        <MarketingSection compact contentClassName="max-w-6xl">
+          <h3 className="mb-8 text-3xl">Related Articles</h3>
+          <div className="grid gap-8 md:grid-cols-3">
+            {relatedPosts.map((relatedPost) => (
+              <article
+                key={relatedPost.id}
+                className="bg-card group overflow-hidden rounded-[1.75rem] border border-brand-dark/10 shadow-[0_20px_50px_rgba(46,31,51,0.06)] transition-shadow hover:shadow-lg"
+              >
+                <Link href={`/blog/${relatedPost.id}`} className="block overflow-hidden">
+                  <ImageWithFallback
+                    src={relatedPost.coverImage}
+                    alt={relatedPost.coverAlt}
+                    className="h-44 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </Link>
+                <div className="space-y-4 p-6">
+                  <div className="flex flex-wrap gap-2">
+                    {relatedPost.tags.slice(0, 2).map((tag) => (
+                      <Badge key={tag} variant="secondary" className="text-xs">
+                        {tag}
+                      </Badge>
+                    ))}
                   </div>
-                </article>
-              ))}
-            </div>
+
+                  <h4 className="text-xl leading-tight">
+                    <Link
+                      href={`/blog/${relatedPost.id}`}
+                      className="hover:text-primary transition-colors"
+                    >
+                      {relatedPost.title}
+                    </Link>
+                  </h4>
+
+                  <p className="text-muted-foreground line-clamp-3 text-sm leading-relaxed">
+                    {relatedPost.excerpt}
+                  </p>
+
+                  <Link href={`/blog/${relatedPost.id}`}>
+                    <Button variant="ghost" size="sm" className="w-full justify-between">
+                      Read Article
+                    </Button>
+                  </Link>
+                </div>
+              </article>
+            ))}
           </div>
-        </section>
+        </MarketingSection>
       )}
 
       <script

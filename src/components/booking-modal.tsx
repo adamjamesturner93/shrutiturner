@@ -482,6 +482,7 @@ interface BookClassButtonProps {
   sessionId?: string;
   isBooked?: boolean;
   classSlug: string;
+  label?: string;
   /** Optional display metadata for confirmation/schedule labels */
   className?: string;
   day?: string;
@@ -496,6 +497,7 @@ export function BookClassButton({
   sessionId,
   isBooked: isBookedProp = false,
   classSlug,
+  label,
   className: classNameProp,
   day: dayProp,
   time: timeProp,
@@ -742,9 +744,7 @@ export function BookClassButton({
       >
         {bookingState === "loading"
           ? "Booking..."
-          : effectiveSize === "sm"
-            ? "Book"
-            : "Book This Class"}
+          : label || (effectiveSize === "sm" ? "Book" : "Book This Class")}
         <ArrowRight className="ml-2 h-4 w-4" />
       </Button>
 

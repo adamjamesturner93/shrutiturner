@@ -9,6 +9,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { NewsletterInline } from "../components/newsletter";
+import { MarketingSection, SectionHeading } from "@/components/marketing/sections";
 import {
   Select,
   SelectContent,
@@ -68,21 +69,50 @@ export function BlogPage({ posts }: BlogPageProps) {
 
   return (
     <Layout>
-      {/* Hero */}
-      <section className="bg-brand-dark text-brand-white py-20 md:py-28">
-        <div className="container mx-auto max-w-4xl px-4 text-center">
-          <h1 className="mb-6 text-4xl leading-tight md:text-6xl">Blog & Resources</h1>
-          <p className="text-brand-accent-light text-xl leading-relaxed md:text-2xl">
-            Evidence-based articles on strength training, yoga, and managing chronic conditions.
-          </p>
+      <section className="marketing-grid overflow-hidden px-4 py-12 text-brand-white md:py-16">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid items-center gap-8 lg:grid-cols-[0.95fr_1.05fr]">
+            <div>
+              <p className="text-brand-accent-light text-xs tracking-[0.3em] uppercase">
+                Blog & Resources
+              </p>
+              <h1 className="mt-4 text-4xl leading-[1.08] tracking-[-0.03em] md:text-5xl">
+                Evidence-based writing for people training with more context.
+              </h1>
+              <p className="text-brand-white/80 mt-5 max-w-2xl text-lg leading-relaxed md:text-[1.35rem]">
+                Strength training, yoga, pain, hypermobility, pacing, and chronic-illness-aware
+                decision-making without generic wellness language.
+              </p>
+            </div>
+
+            <div className="marketing-panel rounded-[2rem] p-6 md:p-7">
+              <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">
+                What you&apos;ll find here
+              </p>
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                {[
+                  "Training decisions for fluctuating bodies",
+                  "Adaptation-first strength and yoga guidance",
+                  "Practical breakdowns of pain, pacing, and progression",
+                  "Clearer thinking for people tired of oversimplified advice",
+                ].map((item) => (
+                  <div
+                    key={item}
+                    className="rounded-[1.35rem] border border-brand-dark/10 bg-background px-4 py-4 text-sm leading-relaxed text-muted-foreground"
+                  >
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Filters and Content */}
-      <section className="py-16 md:py-20">
+      <section className="section-wash py-12 md:py-16">
         <div className="container mx-auto max-w-6xl px-4">
-          {/* Filter and Sort Controls */}
-          <div className="mb-12 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+          <div className="marketing-panel mb-10 rounded-[1.75rem] p-5 md:p-6">
+            <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
             <div className="flex flex-wrap gap-2">
               <Button
                 variant={selectedTag === "all" ? "default" : "outline"}
@@ -106,7 +136,11 @@ export function BlogPage({ posts }: BlogPageProps) {
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground text-sm">Sort by:</span>
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger
+                  id="blog-sort"
+                  aria-label="Sort blog posts by"
+                  className="w-[150px]"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -117,32 +151,32 @@ export function BlogPage({ posts }: BlogPageProps) {
               </Select>
             </div>
           </div>
+          </div>
 
-          {/* Blog Grid */}
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {filteredAndSortedPosts.map((post) => (
               <article
                 key={post.id}
-                className="bg-card group overflow-hidden rounded-lg border transition-shadow hover:shadow-lg"
+                className="bg-card group overflow-hidden rounded-[1.75rem] border border-brand-dark/10 shadow-[0_20px_50px_rgba(46,31,51,0.06)] transition-shadow hover:shadow-lg"
               >
                 <Link href={`/blog/${post.id}`} className="block overflow-hidden">
                   <ImageWithFallback
                     src={post.coverImage}
                     alt={post.coverAlt}
-                    className="h-48 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    className="h-56 w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                 </Link>
 
                 <div className="space-y-4 p-6">
                   <div className="flex flex-wrap gap-2">
                     {post.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary">
+                      <Badge key={tag} variant="secondary" className="text-[11px]">
                         {tag}
                       </Badge>
                     ))}
                   </div>
 
-                  <h3 className="text-xl leading-tight">
+                  <h3 className="text-2xl leading-tight">
                     <Link
                       href={`/blog/${post.id}`}
                       className="hover:text-primary transition-colors"
@@ -196,7 +230,7 @@ export function BlogPage({ posts }: BlogPageProps) {
                   </div>
 
                   <Link href={`/blog/${post.id}`}>
-                    <Button variant="ghost" className="w-full">
+                    <Button variant="ghost" className="w-full justify-between">
                       Read Article
                     </Button>
                   </Link>
@@ -213,17 +247,19 @@ export function BlogPage({ posts }: BlogPageProps) {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="bg-secondary/20 py-16 md:py-20">
-        <div className="container mx-auto max-w-3xl space-y-6 px-4 text-center">
-          <h2 className="text-3xl md:text-4xl">Get New Articles in Your Inbox</h2>
-          <p className="text-muted-foreground text-lg leading-relaxed">
-            Get new articles, class updates, and practical training insights for chronic illness
-            support.
-          </p>
-          <NewsletterInline />
+      <MarketingSection className="section-divider" compact contentClassName="max-w-4xl">
+        <div className="marketing-panel rounded-[2rem] p-8 text-center md:p-10">
+          <SectionHeading
+            eyebrow="Newsletter"
+            title="Get new articles in your inbox."
+            description="Get new articles, class updates, and practical training insights for chronic illness support."
+            align="center"
+          />
+          <div className="mt-8">
+            <NewsletterInline />
+          </div>
         </div>
-      </section>
+      </MarketingSection>
     </Layout>
   );
 }

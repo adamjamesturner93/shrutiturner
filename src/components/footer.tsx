@@ -104,7 +104,10 @@ export function Footer() {
               )}
               {!subscribed ? (
                 <div className="mt-3">
-                  <TurnstileWidget onTokenChange={setTurnstileToken} />
+                  <TurnstileWidget
+                    onTokenChange={setTurnstileToken}
+                    className="border-brand-white/30 bg-brand-white/8 text-brand-white/80"
+                  />
                 </div>
               ) : null}
               <label className="text-brand-white/60 mt-2 flex cursor-pointer items-start gap-2 text-xs">
@@ -117,7 +120,7 @@ export function Footer() {
                 />
                 <span>I want newsletter and update emails. I can unsubscribe anytime.</span>
               </label>
-              <p className="text-brand-white/40 mt-1 text-xs">{signupCopy.consentText}</p>
+              <p className="text-brand-white/70 mt-1 text-xs">{signupCopy.consentText}</p>
               {error ? <p className="mt-1 text-xs text-red-300">{error}</p> : null}
             </div>
 

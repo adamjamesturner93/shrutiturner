@@ -8,30 +8,51 @@ import { SEO } from "../components/seo";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Mail, Gift, Check, ArrowLeft } from "lucide-react";
+import { Checkbox } from "../components/ui/checkbox";
+import { Mail, Gift, Info, Check, ArrowLeft } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { TurnstileWidget } from "@/components/turnstile-widget";
-import { sanitizeRedirectPath } from "@/lib/navigation/safe-redirect";
 import { IconHorizontal, IconVertical } from "@/components/icon";
 
-export function LoginPage() {
-  const { data: session, status } = useSession();
+function calculateAge(dob: string): number {
+  const birth = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
+}
+
+export function SignupPage() {
+  const { status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  const redirectTo = searchParams.get("redirect");
-  const intent = searchParams.get("intent");
   const refCode = searchParams.get("ref");
 
-  const [loginMethod, setLoginMethod] = useState<"passwordless" | "google" | null>(null);
-  const [email, setEmail] = useState("");
+  const [signupMethod, setSignupMethod] = useState<"email" | "google" | null>(null);
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    dob: "",
+    agreeToTerms: false,
+    agreeToHealth: false,
+  });
+  const [dobError, setDobError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const [codeSent, setCodeSent] = useState(false);
   const [code, setCode] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
-  const [error, setError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const referralClaimedRef = useRef(false);
 
+  const buildPostSignupUrl = () => {
+    const params = new URLSearchParams({ onboarding: "1" });
+    if (refCode) params.set("ref", refCode);
+    return `/auth/post-login?${params.toString()}`;
+  };
   const waitForSession = async () => {
     for (let i = 0; i < 12; i += 1) {
       const response = await fetch("/api/auth/session", { cache: "no-store" });
@@ -42,19 +63,6 @@ export function LoginPage() {
       await new Promise((resolve) => setTimeout(resolve, 150));
     }
     return false;
-  };
-
-  const buildPostLoginUrl = () => {
-    const params = new URLSearchParams();
-    const safeRedirect = sanitizeRedirectPath(redirectTo);
-    if (safeRedirect) {
-      params.set("redirect", safeRedirect);
-    }
-    if (refCode) {
-      params.set("ref", refCode);
-    }
-    const query = params.toString();
-    return query ? `/auth/post-login?${query}` : "/auth/post-login";
   };
 
   useEffect(() => {
@@ -68,18 +76,37 @@ export function LoginPage() {
           body: JSON.stringify({ code: refCode }),
         }).catch(() => null);
       }
-      const destination =
-        sanitizeRedirectPath(redirectTo) ||
-        (session?.user?.role === "admin" ? "/admin" : "/dashboard");
-      router.replace(destination);
+      router.replace(buildPostSignupUrl());
     };
-
     void claimAndRedirect();
-  }, [redirectTo, refCode, router, session?.user?.role, status]);
+  }, [refCode, router, status]);
 
-  const handlePasswordlessLogin = async (e: React.FormEvent) => {
+  const handleDobChange = (value: string) => {
+    setFormData({ ...formData, dob: value });
+    setDobError("");
+    if (value && calculateAge(value) < 18) {
+      setDobError(
+        "You must be 18 or over to create an account. Shruti's insurance covers adults only."
+      );
+    }
+  };
+
+  const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (formData.dob && calculateAge(formData.dob) < 18) {
+      setDobError(
+        "You must be 18 or over to create an account. Shruti's insurance covers adults only."
+      );
+      return;
+    }
+
+    if (!formData.dob) {
+      setDobError("Date of birth is required for insurance purposes.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -87,15 +114,29 @@ export function LoginPage() {
         if (!turnstileToken) {
           throw new Error("Please complete the verification challenge.");
         }
-        const response = await fetch("/api/auth/send-code", {
+        const detectedTimezone =
+          Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London";
+
+        const response = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, turnstileToken }),
+          body: JSON.stringify({
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            dob: formData.dob,
+            timezone: detectedTimezone,
+            dateFormat: "DD/MM/YYYY",
+            refCode,
+            turnstileToken,
+            agreeToTerms: formData.agreeToTerms,
+            agreeToHealth: formData.agreeToHealth,
+          }),
         });
 
         const data = (await response.json().catch(() => ({}))) as { message?: string };
         if (!response.ok) {
-          throw new Error(data.message || "Failed to send verification code.");
+          throw new Error(data.message || "Failed to create account.");
         }
 
         setCodeSent(true);
@@ -103,7 +144,7 @@ export function LoginPage() {
       }
 
       const result = await signIn("credentials", {
-        email,
+        email: formData.email,
         authCode: code,
         redirect: false,
       });
@@ -114,29 +155,27 @@ export function LoginPage() {
 
       const hasSession = await waitForSession();
       if (!hasSession) {
-        throw new Error("Sign-in succeeded but session was not established. Please try again.");
+        throw new Error("Sign-up succeeded but session was not established. Please try again.");
       }
 
-      router.replace(buildPostLoginUrl());
+      router.replace(buildPostSignupUrl());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to complete sign-in.");
+      setError(err instanceof Error ? err.message : "Unable to complete sign-up.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setError("");
-    const callbackUrl = buildPostLoginUrl();
-    await signIn("google", { callbackUrl });
+  const handleGoogleSignup = async () => {
+    await signIn("google", { callbackUrl: buildPostSignupUrl() });
   };
 
   return (
     <Layout>
       <SEO
-        title="Login - Shruti Turner"
-        description="Sign in to your Private Studio to access classes, coaching, health details, and account tools."
-        canonicalUrl="https://shrutiturner.com/login"
+        title="Sign Up - Shruti Turner"
+        description="Create your account to access personalised training programmes, online classes, and expert coaching."
+        canonicalUrl="https://shrutiturner.com/signup"
         noIndex
       />
 
@@ -144,10 +183,10 @@ export function LoginPage() {
         <div className="section-wash min-h-[calc(100dvh-4rem)] px-4 py-6 md:py-8">
           <div className="container mx-auto max-w-6xl">
             <div className="grid gap-6 lg:min-h-[calc(100dvh-10rem)] lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-              <div className="marketing-grid relative overflow-hidden rounded-[2rem] px-6 py-7 text-brand-white shadow-[0_30px_80px_rgba(46,31,51,0.16)] md:px-8 md:py-8 lg:min-h-[560px]">
+              <div className="marketing-grid relative overflow-hidden rounded-[2rem] px-6 py-7 text-brand-white shadow-[0_30px_80px_rgba(46,31,51,0.16)] md:px-8 md:py-8 lg:min-h-[620px]">
                 <div className="relative z-10 flex h-full flex-col">
                   <p className="text-brand-accent-light text-xs tracking-[0.3em] uppercase">
-                    Private Studio
+                    Join The Studio
                   </p>
                   <div className="mt-5 max-w-md space-y-5">
                     <div className="hidden [&>svg]:h-auto [&>svg]:w-52 lg:block">
@@ -157,19 +196,19 @@ export function LoginPage() {
                       <IconHorizontal />
                     </div>
                     <h1 className="text-4xl leading-tight md:text-5xl">
-                      Sign in to the part of the studio built around your actual life.
+                      Create an account that starts with context, not pressure.
                     </h1>
                     <p className="text-brand-white/78 text-lg leading-relaxed">
-                      Book classes, check your plan, update health details, and keep everything in
-                      one calmer place.
+                      Join classes, coaching, and future bookings through a setup that respects
+                      health history, capacity, and adult responsibility.
                     </p>
                   </div>
 
                   <div className="mt-7 grid gap-3 sm:grid-cols-3 lg:mt-auto">
                     {[
-                      "Personalised class recommendations",
-                      "Health profile and progress tracking",
-                      "Direct messaging and account tools",
+                      "Personalised programmes for complex bodies",
+                      "Online and in-person yoga plus strength classes",
+                      "Supportive community without generic wellness language",
                     ].map((item) => (
                       <div
                         key={item}
@@ -185,9 +224,9 @@ export function LoginPage() {
 
                   <div className="mt-6 grid gap-3 border-t border-brand-white/12 pt-5 sm:grid-cols-3">
                     {[
-                      { value: "Live", label: "Classes and bookings in one place" },
-                      { value: "Clear", label: "No hard-sell onboarding flow" },
-                      { value: "Safe", label: "Built for complex bodies and real context" },
+                      { value: "18+", label: "Adult-only registration for insurance cover" },
+                      { value: "Live", label: "Classes, bookings, and coaching in one login" },
+                      { value: "Clear", label: "Verification before anything goes live" },
                     ].map((item) => (
                       <div key={item.label}>
                         <p className="text-brand-accent-light text-sm tracking-[0.18em] uppercase">
@@ -203,19 +242,15 @@ export function LoginPage() {
               </div>
 
               <div className="marketing-panel rounded-[2rem] px-6 py-7 md:px-8 md:py-8 lg:px-10">
-                <div className="mx-auto w-full max-w-[420px]">
+                <div className="mx-auto w-full max-w-[440px]">
               {refCode && (
                 <div className="border-brand-accent/20 bg-brand-accent/10 mb-6 flex items-start gap-3 rounded-[1.3rem] border p-4">
                   <Gift className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
                   <div>
-                    <p className="text-sm">Your free class gift will be added after sign-in.</p>
+                    <p className="text-sm">
+                      £10 credit will be applied to your account after sign-up.
+                    </p>
                   </div>
-                </div>
-              )}
-
-              {intent === "book" && !refCode && (
-                <div className="bg-secondary/50 mb-6 rounded-[1.3rem] border p-4 text-center">
-                  <p className="text-muted-foreground text-sm">Sign in to complete your booking.</p>
                 </div>
               )}
 
@@ -225,27 +260,25 @@ export function LoginPage() {
 
               <div className="mb-8">
                 <p className="text-brand-accent text-xs tracking-[0.26em] uppercase">
-                  Welcome back
+                  New here
                 </p>
-                <h2 className="mt-3 text-3xl tracking-tight md:text-4xl">
-                  Sign in to your studio
-                </h2>
+                <h2 className="mt-3 text-3xl tracking-tight md:text-4xl">Create your account</h2>
                 <p className="text-muted-foreground mt-3 leading-relaxed">
-                  Use your email or Google account to continue. If you&apos;re new, we&apos;ll set
-                  up the rest after you verify.
+                  Start with a simple setup. We collect the basics we need for insurance, booking,
+                  and safer support.
                 </p>
               </div>
               <div className="bg-bronze/60 mb-8 h-px w-16 rounded-full" />
-              {!loginMethod ? (
+              {!signupMethod ? (
                 <div className="space-y-4">
                   <Button
-                    onClick={() => setLoginMethod("passwordless")}
+                    onClick={() => setSignupMethod("email")}
                     variant="outline"
                     size="lg"
                     className="h-12 w-full justify-start px-4"
                   >
                     <Mail className="text-muted-foreground mr-3 h-5 w-5" />
-                    Continue with Email
+                    Sign up with Email
                   </Button>
 
                   <div className="relative">
@@ -258,7 +291,7 @@ export function LoginPage() {
                   </div>
 
                   <Button
-                    onClick={handleGoogleLogin}
+                    onClick={handleGoogleSignup}
                     variant="outline"
                     size="lg"
                     className="h-12 w-full justify-start px-4"
@@ -281,22 +314,25 @@ export function LoginPage() {
                         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                       />
                     </svg>
-                    Continue with Google
+                    Sign up with Google
                   </Button>
 
                   <div className="text-muted-foreground mt-6 text-center text-sm">
-                    First time here? You&apos;ll finish your profile inside the studio after
-                    sign-in.
+                    <p>
+                      Already have an account?{" "}
+                      <Link href="/login" className="text-primary hover:underline">
+                        Sign in
+                      </Link>
+                    </p>
                   </div>
                 </div>
-              ) : loginMethod === "passwordless" ? (
-                <form onSubmit={handlePasswordlessLogin} className="space-y-4">
+              ) : signupMethod === "email" ? (
+                <form onSubmit={handleEmailSignup} className="space-y-4">
                   <button
                     type="button"
                     onClick={() => {
-                      setLoginMethod(null);
+                      setSignupMethod(null);
                       setCodeSent(false);
-                      setEmail("");
                       setCode("");
                       setTurnstileToken("");
                       setError("");
@@ -309,33 +345,140 @@ export function LoginPage() {
 
                   {!codeSent ? (
                     <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="firstName">First Name</Label>
+                          <Input
+                            id="firstName"
+                            type="text"
+                            value={formData.firstName}
+                            onChange={(e) =>
+                              setFormData({ ...formData, firstName: e.target.value })
+                            }
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="lastName">Last Name</Label>
+                          <Input
+                            id="lastName"
+                            type="text"
+                            value={formData.lastName}
+                            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                            required
+                          />
+                        </div>
+                      </div>
+
                       <div className="space-y-2">
                         <Label htmlFor="email">Email Address</Label>
                         <Input
                           id="email"
                           type="email"
                           placeholder="your.email@example.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                           required
                         />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="dob">Date of Birth</Label>
+                        <Input
+                          id="dob"
+                          type="date"
+                          value={formData.dob}
+                          onChange={(e) => handleDobChange(e.target.value)}
+                          max={new Date().toISOString().split("T")[0]}
+                          required
+                          className={dobError ? "border-red-500" : ""}
+                        />
+                        {dobError ? (
+                          <p className="flex items-start gap-1.5 text-sm text-red-600">
+                            <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                            {dobError}
+                          </p>
+                        ) : (
+                          <p className="text-muted-foreground text-xs">
+                            Required for insurance. You must be 18 or over.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-start space-x-2">
+                        <Checkbox
+                          id="terms"
+                          checked={formData.agreeToTerms}
+                          onCheckedChange={(checked) =>
+                            setFormData({
+                              ...formData,
+                              agreeToTerms: checked as boolean,
+                            })
+                          }
+                          required
+                        />
+                        <label
+                          htmlFor="terms"
+                          className="text-muted-foreground text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          I agree to the{" "}
+                          <Link href="/terms" className="text-primary hover:underline">
+                            Terms & Conditions
+                          </Link>{" "}
+                          and{" "}
+                          <Link href="/privacy" className="text-primary hover:underline">
+                            Privacy Policy
+                          </Link>
+                        </label>
+                      </div>
+
+                      <div className="flex items-start space-x-2">
+                        <Checkbox
+                          id="health"
+                          checked={formData.agreeToHealth}
+                          onCheckedChange={(checked) =>
+                            setFormData({
+                              ...formData,
+                              agreeToHealth: checked as boolean,
+                            })
+                          }
+                          required
+                        />
+                        <label
+                          htmlFor="health"
+                          className="text-muted-foreground text-sm leading-relaxed peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          I confirm I have read and agree to the{" "}
+                          <Link
+                            href="/health-declaration"
+                            className="text-primary hover:underline"
+                            target="_blank"
+                          >
+                            Health & Liability Waiver
+                          </Link>
+                          , and I understand that I participate in all classes and programmes at my
+                          own risk
+                        </label>
                       </div>
 
                       <Button
                         type="submit"
                         className="w-full"
                         size="lg"
-                        disabled={isSubmitting || !turnstileToken}
+                        disabled={
+                          !formData.agreeToTerms ||
+                          !formData.agreeToHealth ||
+                          !!dobError ||
+                          isSubmitting ||
+                          !turnstileToken
+                        }
                       >
-                        {isSubmitting ? "Sending..." : "Send Verification Code"}
+                        {isSubmitting ? "Creating Account..." : "Create Account"}
                       </Button>
                       <TurnstileWidget onTokenChange={setTurnstileToken} />
 
                       <p className="text-muted-foreground text-center text-sm">
-                        We&apos;ll email you a 6-digit sign-in code.
-                      </p>
-                      <p className="text-muted-foreground text-center text-xs">
-                        New to the studio? We&apos;ll set up your profile after verification.
+                        We'll send a 6-digit verification code to confirm your account
                       </p>
                     </>
                   ) : (
@@ -347,15 +490,17 @@ export function LoginPage() {
                           type="text"
                           placeholder="000000"
                           value={code}
-                          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                          onChange={(e) => setCode(e.target.value)}
                           maxLength={6}
                           required
                         />
-                        <p className="text-muted-foreground text-sm">Code sent to {email}</p>
+                        <p className="text-muted-foreground text-sm">
+                          Code sent to {formData.email}
+                        </p>
                       </div>
 
                       <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
-                        {isSubmitting ? "Verifying..." : "Continue"}
+                        {isSubmitting ? "Verifying..." : "Verify & Complete Sign Up"}
                       </Button>
 
                       <Button
@@ -368,7 +513,7 @@ export function LoginPage() {
                         }}
                         className="w-full"
                       >
-                        Resend code
+                        Change details / resend code
                       </Button>
                     </>
                   )}
@@ -376,11 +521,10 @@ export function LoginPage() {
                   {error ? <p className="text-center text-sm text-red-600">{error}</p> : null}
                 </form>
               ) : null}
-
               <p className="text-muted-foreground mt-8 text-center text-sm">
-                Need an account?{" "}
-                <Link href="/signup" className="text-brand-accent hover:text-brand-accent/80 underline">
-                  Create one here
+                Already have an account?{" "}
+                <Link href="/login" className="text-brand-accent hover:text-brand-accent/80 underline">
+                  Sign in instead
                 </Link>
                 .
               </p>

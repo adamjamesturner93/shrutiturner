@@ -8,9 +8,9 @@ function toTimestamp(value: string | undefined) {
 
 export function selectScheduleThemedWeek(
   themedWeeks: PublicThemedWeek[],
-  now: Date = new Date()
+  now?: Date
 ): PublicThemedWeek | null {
-  const today = new Date(now);
+  const today = new Date(now ?? Date.now());
   today.setHours(0, 0, 0, 0);
   const nowTime = today.getTime();
 

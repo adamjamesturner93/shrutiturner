@@ -5,10 +5,10 @@ import { getClassDefinitionBySlug, getClassDefinitions } from "@/lib/content";
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { id } = await params;
-  const cls = await getClassDefinitionBySlug(id);
+  const { slug } = await params;
+  const cls = await getClassDefinitionBySlug(slug);
 
   if (!cls) {
     return { title: "Class Not Found" };
@@ -17,13 +17,16 @@ export async function generateMetadata({
   return {
     title: cls.seoTitle || cls.name,
     description: cls.seoDescription || cls.shortDescription,
+    alternates: {
+      canonical: `/classes/${cls.slug}`,
+    },
   };
 }
 
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
   const [classDetail, allClasses] = await Promise.all([
-    getClassDefinitionBySlug(id),
+    getClassDefinitionBySlug(slug),
     getClassDefinitions(),
   ]);
 

@@ -5,6 +5,7 @@ import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import Link from "next/link";
 import { Clock, Video, Calendar, ArrowRight, Users, Globe } from "lucide-react";
+import { MarketingSection, SectionHeading } from "@/components/marketing/sections";
 import { getTypeColor } from "@/lib/classes/type-color";
 import { BookClassButton } from "../components/booking-modal";
 import { useI18n } from "../lib/use-i18n";
@@ -50,69 +51,93 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
 
   return (
     <Layout>
-      {/* Hero */}
-      <section className="bg-brand-dark text-brand-white py-20 md:py-24">
-        <div className="container mx-auto max-w-4xl px-4 text-center">
-          <h1 className="mb-6 text-4xl md:text-5xl">Class Schedule</h1>
-          <p className="text-brand-accent-light mb-8 text-xl leading-relaxed">
-            Live online classes every week. Designed for real bodies and long-term joint health.
-          </p>
-          <div className="flex flex-col justify-center gap-4 sm:flex-row">
-            <Link href="/pricing">
-              <Button
-                size="lg"
-                className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
-              >
-                View Pricing
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href="/classes">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-brand-accent-light text-brand-accent-light hover:bg-brand-accent-light/10 bg-transparent"
-              >
-                Explore Classes
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Schedule Info Bar */}
-      <section className="bg-secondary/30 border-b">
-        <div className="container mx-auto px-4 py-6">
-          <div className="text-muted-foreground mb-4 flex justify-center text-sm">
-            <span>Schedule</span>
-          </div>
-          <div className="text-muted-foreground flex flex-wrap justify-center gap-6 text-sm">
-            <div className="flex items-center gap-2">
-              <Video className="text-primary h-4 w-4" />
-              <span>All classes live online</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Calendar className="text-primary h-4 w-4" />
-              <span>Flare-friendly membership and booking options</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="text-primary h-4 w-4" />
-              <span>Times shown in {tzAbbr}</span>
-            </div>
-            {londonOffset && (
-              <div className="flex items-center gap-2">
-                <Globe className="text-primary h-4 w-4" />
-                <span>{londonOffset}</span>
+      <section className="marketing-grid overflow-hidden px-4 py-12 text-brand-white md:py-16">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid items-center gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:gap-10">
+            <div>
+              <p className="text-brand-accent-light text-xs tracking-[0.3em] uppercase">
+                Weekly Schedule
+              </p>
+              <h1 className="mt-4 text-4xl leading-[1.08] tracking-[-0.03em] md:text-5xl">
+                Weekly class times that make it easier to find the right session.
+              </h1>
+              <p className="text-brand-white/80 mt-5 max-w-2xl text-lg leading-relaxed md:text-[1.35rem]">
+                Live online classes every week, designed for real bodies, fluctuating energy, and
+                long-term joint health.
+              </p>
+              <div className="mt-6 flex flex-col gap-4 sm:flex-row">
+                <Link href="/pricing">
+                  <Button
+                    size="lg"
+                    className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
+                  >
+                    View Pricing
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/classes">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="border-brand-accent-light text-brand-accent-light hover:bg-brand-accent-light/10 bg-transparent"
+                  >
+                    Explore Classes
+                  </Button>
+                </Link>
               </div>
-            )}
+            </div>
+
+            <div className="marketing-panel rounded-[2rem] p-6 md:p-7">
+              <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">Before you book</p>
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-[1.35rem] border border-brand-dark/10 bg-background px-4 py-4">
+                  <div className="flex items-center gap-2 text-sm text-foreground">
+                    <Video className="text-primary h-4 w-4" />
+                    <span>All classes are live online</span>
+                  </div>
+                  <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                    Join from home with live cueing and real-time adaptation.
+                  </p>
+                </div>
+                <div className="rounded-[1.35rem] border border-brand-dark/10 bg-background px-4 py-4">
+                  <div className="flex items-center gap-2 text-sm text-foreground">
+                    <Calendar className="text-primary h-4 w-4" />
+                    <span>Flexible attendance</span>
+                  </div>
+                  <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                    Membership and credit options are both flare-friendly.
+                  </p>
+                </div>
+                <div className="rounded-[1.35rem] border border-brand-dark/10 bg-background px-4 py-4">
+                  <div className="flex items-center gap-2 text-sm text-foreground">
+                    <Clock className="text-primary h-4 w-4" />
+                    <span>Times shown in {tzAbbr}</span>
+                  </div>
+                  <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                    Book from your timezone, then drop into the matching class detail if needed.
+                  </p>
+                </div>
+                {londonOffset ? (
+                  <div className="rounded-[1.35rem] border border-brand-dark/10 bg-background px-4 py-4">
+                    <div className="flex items-center gap-2 text-sm text-foreground">
+                      <Globe className="text-primary h-4 w-4" />
+                      <span>{londonOffset}</span>
+                    </div>
+                    <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                      London remains the anchor timezone for the live timetable.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {themedWeek ? (
-        <section className="py-6">
+        <section className="section-wash py-5">
           <div className="container mx-auto max-w-6xl px-4">
-            <div className="bg-brand-accent/5 border-brand-accent/20 flex flex-col gap-6 rounded-xl border p-6 md:flex-row md:items-center md:justify-between">
+            <div className="bg-brand-accent/5 border-brand-accent/20 flex flex-col gap-6 rounded-[1.6rem] border p-6 md:flex-row md:items-center md:justify-between">
               <div className="flex items-start gap-4">
                 <div className="bg-brand-accent/10 text-brand-accent flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg">
                   <Calendar className="h-5 w-5" />
@@ -140,17 +165,29 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
       ) : null}
 
       {/* Weekly Schedule */}
-      <section className="py-16 md:py-20">
+      <section className="section-wash py-12 md:py-16">
         <div className="container mx-auto max-w-6xl px-4">
           <div className="space-y-12">
             {renderedScheduleData.length === 0 ? (
-              <div className="text-muted-foreground rounded-lg border p-6 text-center text-sm">
-                No upcoming classes in the next 7 days.
+              <div className="marketing-panel rounded-[1.75rem] p-7 text-center">
+                <p className="text-muted-foreground text-sm">
+                  No upcoming classes in the next 7 days.
+                </p>
+                <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
+                  <Button asChild variant="outline">
+                    <Link href="/classes">Explore Classes</Link>
+                  </Button>
+                  <Button asChild>
+                    <Link href="/pricing">View Pricing</Link>
+                  </Button>
+                </div>
               </div>
             ) : null}
             {renderedScheduleData.map((daySchedule) => (
               <div key={daySchedule.day}>
-                <h2 className="mb-6 border-b pb-3 text-2xl md:text-3xl">{daySchedule.day}</h2>
+                <h2 className="mb-6 border-b border-brand-dark/10 pb-3 text-2xl md:text-3xl">
+                  {daySchedule.day}
+                </h2>
                 <div className="space-y-6">
                   {daySchedule.classes.map((classItem, idx) => (
                     <div
@@ -158,7 +195,7 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
                         classItem.sessionId ||
                         `${classItem.slug}-${classItem.day}-${classItem.time}-${idx}`
                       }
-                      className="bg-background rounded-lg border p-6 transition-shadow hover:shadow-md"
+                      className="marketing-panel rounded-[1.65rem] p-6 transition-shadow"
                     >
                       <div className="grid items-start gap-6 md:grid-cols-[auto_1fr_auto]">
                         {/* Time */}
@@ -183,8 +220,8 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
                             <Link
                               href={
                                 classItem.sessionId
-                                  ? `/schedule/${classItem.slug}?session=${encodeURIComponent(classItem.sessionId)}`
-                                  : `/schedule/${classItem.slug}`
+                                  ? `/classes/${classItem.slug}?session=${encodeURIComponent(classItem.sessionId)}`
+                                  : `/classes/${classItem.slug}`
                               }
                               className="hover:text-primary transition-colors"
                             >
@@ -221,8 +258,8 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
                           <Link
                             href={
                               classItem.sessionId
-                                ? `/schedule/${classItem.slug}?session=${encodeURIComponent(classItem.sessionId)}`
-                                : `/schedule/${classItem.slug}`
+                                ? `/classes/${classItem.slug}?session=${encodeURIComponent(classItem.sessionId)}`
+                                : `/classes/${classItem.slug}`
                             }
                           >
                             <Button variant="ghost" size="sm" className="w-full md:w-auto">
@@ -241,14 +278,18 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
       </section>
 
       {/* Class Types Legend */}
-      <section className="bg-secondary/20 py-16 md:py-20">
-        <div className="container mx-auto max-w-5xl px-4">
-          <h2 className="mb-12 text-center text-3xl">Class Types</h2>
+      <MarketingSection className="section-divider" compact>
+        <SectionHeading
+          eyebrow="Class Types"
+          title="Choose the rhythm that matches your body."
+          description="Each class type lives inside the same adaptive teaching model, but the emphasis changes depending on what support you need."
+          align="center"
+        />
 
-          <div className="grid gap-8 md:grid-cols-3">
+          <div className="mt-10 grid gap-6 md:grid-cols-3">
             <Link
               href="/classes#yoga"
-              className="bg-background space-y-3 rounded-lg border p-6 transition-shadow hover:shadow-md"
+              className="bg-background space-y-3 rounded-[1.5rem] border border-brand-dark/10 p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)] transition-shadow hover:shadow-md"
             >
               <div className="bg-brand-accent/20 flex h-12 w-12 items-center justify-center rounded-lg">
                 <Badge className={getTypeColor("Yoga")}>Yoga</Badge>
@@ -263,7 +304,7 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
 
             <Link
               href="/classes#strength"
-              className="bg-background space-y-3 rounded-lg border p-6 transition-shadow hover:shadow-md"
+              className="bg-background space-y-3 rounded-[1.5rem] border border-brand-dark/10 p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)] transition-shadow hover:shadow-md"
             >
               <div className="bg-brand-plum/15 flex h-12 w-12 items-center justify-center rounded-lg">
                 <Badge className={getTypeColor("Strength")}>Strength</Badge>
@@ -275,7 +316,7 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
               </p>
             </Link>
 
-            <div className="bg-background space-y-3 rounded-lg border p-6">
+            <div className="bg-background space-y-3 rounded-[1.5rem] border border-brand-dark/10 p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
               <div className="bg-brand-rose/15 flex h-12 w-12 items-center justify-center rounded-lg">
                 <Badge className={getTypeColor("Cardio")}>Cardio</Badge>
               </div>
@@ -287,15 +328,16 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
               </p>
             </div>
           </div>
-        </div>
-      </section>
+      </MarketingSection>
 
-      {/* Important Information */}
-      <section className="py-16 md:py-20">
-        <div className="container mx-auto max-w-4xl px-4">
-          <h2 className="mb-12 text-center text-3xl">Important Information</h2>
+      <MarketingSection className="section-wash" compact contentClassName="max-w-5xl">
+        <SectionHeading
+          eyebrow="Important Information"
+          title="What to know before you join."
+          align="center"
+        />
 
-          <div className="space-y-6">
+          <div className="mt-10 grid gap-5 md:grid-cols-2">
             <div className="border-primary border-l-4 py-2 pl-6">
               <h3 className="mb-2 text-lg">All levels welcome</h3>
               <p className="text-muted-foreground leading-relaxed">
@@ -340,26 +382,24 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
               </p>
             </div>
           </div>
-        </div>
-      </section>
+      </MarketingSection>
 
-      {/* Pricing CTA */}
-      <section className="bg-brand-accent text-brand-white py-20 md:py-24">
+      <section className="bg-brand-accent text-brand-white py-14 md:py-18">
         <div className="container mx-auto max-w-3xl space-y-8 px-4 text-center">
           <h2 className="text-3xl md:text-4xl">Ready to Join?</h2>
           <div className="grid gap-6 text-left md:grid-cols-3">
             <div className="bg-brand-white/10 rounded-lg p-6">
-              <p className="mb-2 text-sm opacity-75">Single Class</p>
+              <p className="text-brand-white/90 mb-2 text-sm">Single Class</p>
               <p className="mb-2 text-3xl">£9</p>
               <p className="text-sm opacity-90">pay as you go</p>
             </div>
             <div className="bg-brand-white/10 rounded-lg p-6">
-              <p className="mb-2 text-sm opacity-75">10-Class Pack</p>
+              <p className="text-brand-white/90 mb-2 text-sm">10-Class Pack</p>
               <p className="mb-2 text-3xl">£70</p>
               <p className="text-sm opacity-90">£7 per class</p>
             </div>
             <div className="bg-brand-white/10 rounded-lg p-6">
-              <p className="mb-2 text-sm opacity-75">Unlimited classes</p>
+              <p className="text-brand-white/90 mb-2 text-sm">Unlimited classes</p>
               <p className="mb-2 text-3xl">£29</p>
               <p className="text-sm opacity-90">per month</p>
             </div>

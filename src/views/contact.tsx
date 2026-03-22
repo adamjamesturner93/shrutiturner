@@ -332,7 +332,10 @@ export function ContactPage() {
                 </div>
                 <p className="text-muted-foreground text-sm">
                   You can also email me directly at{" "}
-                  <a href="mailto:hello@shrutiturner.com" className="text-primary hover:underline">
+                  <a
+                    href="mailto:hello@shrutiturner.com"
+                    className="text-primary font-medium underline decoration-2 underline-offset-3"
+                  >
                     hello@shrutiturner.com
                   </a>
                 </p>

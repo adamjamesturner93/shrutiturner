@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { RetreatsPage } from "@/views/retreats";
 import { buildPageMetadata } from "@/lib/content/metadata";
 import { getFaqItemsFor } from "@/lib/content";
@@ -9,6 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Page() {
+  await connection();
   const [retreats, faqs] = await Promise.all([
     listOperationalRetreats(),
     getFaqItemsFor("retreats"),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef } from "react";
+import { cn } from "@/components/ui/utils";
 
 declare global {
   interface Window {
@@ -13,11 +14,16 @@ declare global {
 }
 
 interface TurnstileWidgetProps {
+  className?: string;
   onTokenChange: (token: string) => void;
   theme?: "light" | "dark" | "auto";
 }
 
-export function TurnstileWidget({ onTokenChange, theme = "auto" }: TurnstileWidgetProps) {
+export function TurnstileWidget({
+  className,
+  onTokenChange,
+  theme = "auto",
+}: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA";
@@ -34,7 +40,10 @@ export function TurnstileWidget({ onTokenChange, theme = "auto" }: TurnstileWidg
     return (
       <div
         data-testid="turnstile-bypass"
-        className="text-muted-foreground min-h-[65px] rounded border border-dashed px-3 py-4 text-xs"
+        className={cn(
+          "text-muted-foreground min-h-[65px] rounded border border-dashed px-3 py-4 text-xs",
+          className
+        )}
       >
         Verification ready
       </div>

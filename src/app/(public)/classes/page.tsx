@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { ClassesHubPage } from "@/views/classes-hub";
 import { buildPageMetadata } from "@/lib/content/metadata";
 import { getClassDefinitions } from "@/lib/content";
@@ -28,6 +29,7 @@ function sortClasses(items: ClassDefinitionContent[]) {
 }
 
 export default async function Page() {
+  await connection();
   const [classDefinitions, themedWeeks] = await Promise.all([
     getClassDefinitions(),
     listPublicThemedWeeks(),

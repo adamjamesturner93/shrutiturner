@@ -19,6 +19,7 @@ import {
   Youtube,
 } from "lucide-react";
 import { Layout } from "@/components/layout";
+import { MarketingSection, SectionHeading } from "@/components/marketing/sections";
 import { SEO } from "@/components/seo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -111,212 +112,227 @@ export function SubscribePage() {
         canonicalUrl="https://shrutiturner.com/subscribe"
       />
 
-      <div className="bg-background min-h-[85vh] px-4 py-12 md:py-16">
-        <div className="mx-auto w-full max-w-md space-y-10">
-          <div className="space-y-4 text-center">
-            <div className="relative inline-block">
-              <div className="border-background relative z-10 mx-auto h-24 w-24 overflow-hidden rounded-full border-4 shadow-lg md:h-28 md:w-28">
-                <ImageWithFallback
-                  src="https://images.unsplash.com/photo-1655249481446-25d575f1c054?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbiUyMHBvcnRyYWl0JTIwaGVhZHNob3R8ZW58MXx8fHwxNzcxNDc0MjI2fDA&ixlib=rb-4.1.0&q=80&w=1080"
-                  alt="Shruti Turner profile"
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <div className="bg-brand-accent-light/20 absolute inset-0 z-0 scale-125 rounded-full blur-xl" />
-            </div>
-
-            <div className="space-y-1">
-              <h1 className="text-foreground text-2xl tracking-tight md:text-3xl">Shruti Turner</h1>
-              <p className="text-brand-accent-muted font-medium">
-                PhD Biomechanics • Adaptive Coach
+      <section className="marketing-grid text-brand-white overflow-hidden px-4 py-10 md:py-14">
+        <div className="container mx-auto max-w-7xl">
+          <div className="grid items-center gap-8 lg:grid-cols-[0.94fr_1.06fr] lg:gap-12">
+            <div>
+              <p className="text-brand-accent-light text-xs tracking-[0.3em] uppercase">
+                Newsletter + Free Guide
               </p>
-            </div>
+              <h1 className="mt-4 max-w-4xl text-4xl leading-[1.04] tracking-[-0.03em] md:text-[clamp(3rem,4.8vw,4.95rem)]">
+                Build more strength with advice that understands fluctuating bodies.
+              </h1>
+              <p className="text-brand-white/80 mt-5 max-w-2xl text-lg leading-relaxed md:text-[1.2rem]">
+                Get a practical guide, weekly training notes, and sharper coaching ideas for chronic
+                illness, hypermobility, pain, and long-term capacity.
+              </p>
 
-            <p className="text-muted-foreground mx-auto max-w-xs text-sm md:text-base">
-              Helping people with chronic illness and hypermobility build resilient bodies without
-              burnout.
-            </p>
-
-            <div className="flex flex-wrap justify-center gap-2 pt-1">
-              <span className="bg-secondary/60 text-muted-foreground inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs">
-                <GraduationCap className="h-3.5 w-3.5" />
-                PhD Biomechanics
-              </span>
-              <span className="bg-secondary/60 text-muted-foreground inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs">
-                <Users className="h-3.5 w-3.5" />
-                2,000+ community
-              </span>
-              <span className="bg-secondary/60 text-muted-foreground inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs">
-                <Heart className="h-3.5 w-3.5" />
-                Living with PsA
-              </span>
-            </div>
-
-            <div className="flex justify-center gap-3 pt-1">
-              {SOCIAL_LINKS.map((social) => (
-                <a
-                  key={social.label}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`Follow on ${social.label}`}
-                  className="bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground flex h-10 w-10 items-center justify-center rounded-full transition-colors"
-                >
-                  <social.icon className="h-[18px] w-[18px]" />
-                </a>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-brand-dark text-brand-white relative overflow-hidden rounded-2xl shadow-xl">
-            <div className="bg-brand-accent-light/10 absolute -top-12 -right-12 h-40 w-40 rounded-full blur-3xl" />
-            <div className="bg-brand-plum/20 absolute -bottom-10 -left-10 h-32 w-32 rounded-full blur-3xl" />
-
-            <div className="relative z-10 p-6 md:p-8">
-              <div className="mb-4 flex justify-center">
-                <span className="bg-brand-accent-light/20 text-brand-accent-light border-brand-accent-light/20 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs">
-                  <Download className="h-3.5 w-3.5" />
-                  Free Guide
+              <div className="mt-5 flex flex-wrap gap-3">
+                <span className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 rounded-full border px-4 py-2 text-sm">
+                  Free guide download
+                </span>
+                <span className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 rounded-full border px-4 py-2 text-sm">
+                  Useful weekly email
+                </span>
+                <span className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 rounded-full border px-4 py-2 text-sm">
+                  Unsubscribe whenever you want
                 </span>
               </div>
 
-              <div className="mb-5 flex justify-center">
-                <div className="relative">
-                  <div className="from-brand-accent-light/30 to-brand-accent-light/10 border-brand-accent-light/20 h-48 w-36 rotate-2 rounded-lg border bg-gradient-to-br p-4 shadow-lg md:h-52 md:w-40">
-                    <div className="bg-brand-accent-light/30 mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full">
-                      <Sparkles className="text-brand-accent-light h-5 w-5" />
-                    </div>
-                    <p className="text-brand-white/90 text-center text-xs leading-snug">
-                      5 Yoga Poses
-                      <br />
-                      That Actually
-                      <br />
-                      Build Strength
-                    </p>
-                    <div className="mt-3 space-y-1">
-                      <div className="bg-brand-white/10 h-1 w-full rounded-full" />
-                      <div className="bg-brand-white/10 h-1 w-3/4 rounded-full" />
-                      <div className="bg-brand-white/10 h-1 w-5/6 rounded-full" />
-                    </div>
-                  </div>
-                  <div className="bg-brand-accent-light/5 border-brand-accent-light/10 absolute inset-0 -z-10 h-48 w-36 -rotate-3 rounded-lg border md:h-52 md:w-40" />
-                </div>
-              </div>
-
-              <div className="mb-5 space-y-2 text-center">
-                <h2 className="text-xl tracking-tight md:text-2xl">
-                  5 Yoga Poses That Actually Build Strength
-                </h2>
-                <p className="text-brand-white/70 mx-auto max-w-xs text-sm leading-relaxed">
-                  A free guide for bodies that need more than “just stretch”. Chosen specifically
-                  for chronic illness and hypermobility.
-                </p>
-              </div>
-
-              <ul className="mb-6 space-y-2.5">
-                {GUIDE_BENEFITS.map((benefit) => (
-                  <li key={benefit} className="flex items-start gap-2.5 text-sm">
-                    <div className="bg-brand-accent-light/20 mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full">
-                      <Check className="text-brand-accent-light h-3 w-3" />
-                    </div>
-                    <span className="text-brand-white/90 leading-snug">{benefit}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {!submitted ? (
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <Input
-                    type="text"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="First name"
-                    required
-                    aria-label="First name"
-                    className="bg-brand-white text-brand-dark placeholder:text-brand-dark/40 h-12 border-none text-base"
-                  />
-
-                  <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="your.email@example.com"
-                    required
-                    aria-label="Email address"
-                    className="bg-brand-white text-brand-dark placeholder:text-brand-dark/40 h-12 border-none text-base"
-                  />
-
-                  <label className="group flex cursor-pointer items-start gap-3">
-                    <input
-                      type="checkbox"
-                      required
-                      checked={consent}
-                      onChange={(e) => setConsent(e.target.checked)}
-                      className="accent-brand-accent-light mt-0.5 h-5 w-5 flex-shrink-0"
-                    />
-                    <span className="text-brand-white/80 group-hover:text-brand-white text-xs leading-snug transition-colors">
-                      I&apos;d like to receive the newsletter and occasional updates about new
-                      articles, classes, and offers. I can unsubscribe at any time.
+              <div className="mt-6 flex flex-wrap gap-3">
+                {[
+                  { icon: GraduationCap, label: "PhD Biomechanics" },
+                  { icon: Users, label: "2,000+ community" },
+                  { icon: Heart, label: "Living with PsA" },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <span
+                      key={item.label}
+                      className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm"
+                    >
+                      <Icon className="text-brand-accent-light h-4 w-4" />
+                      {item.label}
                     </span>
-                  </label>
+                  );
+                })}
+              </div>
 
-                  <TurnstileWidget onTokenChange={setTurnstileToken} />
+              <p className="text-brand-white/72 mt-6 max-w-xl text-sm leading-relaxed">
+                The first email sends the guide. After that you get practical notes on training with
+                chronic illness and fluctuating capacity. No spam, no generic wellness filler.
+              </p>
 
-                  <Button
-                    type="submit"
-                    size="lg"
-                    className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90 h-12 w-full text-base font-medium"
-                    disabled={submitting || !consent || !turnstileToken}
+              <div className="mt-5 flex gap-3">
+                {SOCIAL_LINKS.map((social) => (
+                  <a
+                    key={social.label}
+                    href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Follow on ${social.label}`}
+                    className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 hover:bg-brand-white/14 hover:text-brand-white flex h-11 w-11 items-center justify-center rounded-full border transition-colors"
                   >
-                    <Download className="mr-2 h-4 w-4" />
-                    {submitting ? "Sending..." : "Send Me the Free Guide"}
-                  </Button>
+                    <social.icon className="h-[18px] w-[18px]" />
+                  </a>
+                ))}
+              </div>
+            </div>
 
-                  <p className="text-brand-white/50 text-center text-xs">
-                    No spam. Unsubscribe anytime. Your data stays private.
-                  </p>
-                  {error ? <p className="text-center text-xs text-red-300">{error}</p> : null}
-                </form>
-              ) : (
-                <div className="animate-in fade-in zoom-in space-y-3 py-6 text-center duration-300">
-                  <div className="bg-brand-accent-light/20 mx-auto flex h-12 w-12 items-center justify-center rounded-full">
-                    <Check className="text-brand-accent-light h-6 w-6" />
+            <div className="marketing-panel rounded-[1.9rem] p-3 shadow-[0_30px_80px_rgba(0,0,0,0.18)] md:p-4">
+              <div className="grid gap-4 lg:grid-cols-[0.4fr_0.6fr]">
+                <div className="space-y-4">
+                  <div className="overflow-hidden rounded-[1.5rem]">
+                    <ImageWithFallback
+                      src="/images/shruti.jpeg"
+                      alt="Shruti Turner"
+                      className="aspect-[4/4.3] h-full w-full object-cover"
+                    />
                   </div>
-                  <div>
-                    <h3 className="text-lg">Your guide is on its way!</h3>
-                    <p className="text-brand-white/70 text-sm">
-                      Check your inbox for the guide and confirmation email.
+                  <div className="border-brand-dark/10 bg-background rounded-[1.3rem] border px-4 py-4">
+                    <p className="text-brand-accent text-xs tracking-[0.18em] uppercase">
+                      Inside the emails
+                    </p>
+                    <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                      Training decisions, symptom-aware progressions, and honest notes on how to
+                      keep building capacity without crashing.
                     </p>
                   </div>
-                  <Button
-                    variant="link"
-                    className="text-brand-accent-light hover:text-brand-accent-light/80 h-auto p-0"
-                    onClick={() => {
-                      setSubmitted(false);
-                      setEmail("");
-                      setFirstName("");
-                      setConsent(false);
-                      setTurnstileToken("");
-                    }}
-                  >
-                    Use a different email
-                  </Button>
                 </div>
-              )}
+
+                <div className="bg-brand-dark text-brand-white relative overflow-hidden rounded-[1.6rem] px-5 py-6 md:px-6">
+                  <div className="bg-brand-accent-light/10 absolute -top-10 -right-10 h-32 w-32 rounded-full blur-3xl" />
+                  <div className="relative z-10">
+                    <span className="border-brand-accent-light/20 bg-brand-accent-light/12 text-brand-accent-light inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs tracking-[0.18em] uppercase">
+                      <Download className="h-3.5 w-3.5" />
+                      Free Guide
+                    </span>
+                    <h2 className="mt-4 text-2xl leading-tight md:text-[1.9rem]">
+                      5 Yoga Poses That Actually Build Strength
+                    </h2>
+                    <p className="text-brand-white/76 mt-3 text-sm leading-relaxed md:text-base">
+                      A practical starting point for chronic illness and hypermobility, with
+                      flare-day options and explanations that make sense.
+                    </p>
+
+                    <ul className="mt-5 space-y-3">
+                      {GUIDE_BENEFITS.map((benefit) => (
+                        <li key={benefit} className="flex items-start gap-3">
+                          <div className="bg-brand-accent-light/20 mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full">
+                            <Check className="text-brand-accent-light h-3.5 w-3.5" />
+                          </div>
+                          <span className="text-brand-white/88 text-sm leading-relaxed">
+                            {benefit}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {!submitted ? (
+                      <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
+                        <Input
+                          type="text"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          placeholder="First name"
+                          required
+                          aria-label="First name"
+                          className="bg-brand-white text-brand-dark placeholder:text-brand-dark/40 h-11 border-none text-base"
+                        />
+
+                        <Input
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="your.email@example.com"
+                          required
+                          aria-label="Email address"
+                          className="bg-brand-white text-brand-dark placeholder:text-brand-dark/40 h-11 border-none text-base"
+                        />
+
+                        <label className="group flex cursor-pointer items-start gap-3">
+                          <input
+                            type="checkbox"
+                            required
+                            checked={consent}
+                            onChange={(e) => setConsent(e.target.checked)}
+                            className="accent-brand-accent-light mt-0.5 h-5 w-5 flex-shrink-0"
+                          />
+                          <span className="text-brand-white/80 group-hover:text-brand-white text-xs leading-snug transition-colors">
+                            I&apos;d like to receive the newsletter and occasional updates about new
+                            articles, classes, and offers. I can unsubscribe at any time.
+                          </span>
+                        </label>
+
+                        <TurnstileWidget onTokenChange={setTurnstileToken} />
+
+                        <Button
+                          type="submit"
+                          size="lg"
+                          className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90 h-11 w-full text-base font-medium"
+                          disabled={submitting || !consent || !turnstileToken}
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          {submitting ? "Sending..." : "Send Me the Free Guide"}
+                        </Button>
+
+                        <p className="text-brand-white/50 text-center text-xs">
+                          No spam. Unsubscribe anytime. Your data stays private.
+                        </p>
+                        {error ? <p className="text-center text-xs text-red-300">{error}</p> : null}
+                      </form>
+                    ) : (
+                      <div className="animate-in fade-in zoom-in border-brand-white/10 bg-brand-white/8 mt-6 space-y-3 rounded-[1.4rem] border p-5 text-center duration-300">
+                        <div className="bg-brand-accent-light/20 mx-auto flex h-12 w-12 items-center justify-center rounded-full">
+                          <Check className="text-brand-accent-light h-6 w-6" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg">Your guide is on its way.</h3>
+                          <p className="text-brand-white/70 text-sm">
+                            Check your inbox for the guide and confirmation email.
+                          </p>
+                        </div>
+                        <Button
+                          variant="link"
+                          className="text-brand-accent-light hover:text-brand-accent-light/80 h-auto p-0"
+                          onClick={() => {
+                            setSubmitted(false);
+                            setEmail("");
+                            setFirstName("");
+                            setConsent(false);
+                            setTurnstileToken("");
+                          }}
+                        >
+                          Use a different email
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="space-y-3">
-            <h2 className="text-muted-foreground text-center text-sm font-medium tracking-wider uppercase">
-              Latest on YouTube
-            </h2>
+      <MarketingSection className="section-wash" compact>
+        <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+          <div className="marketing-panel rounded-[1.75rem] p-7">
+            <SectionHeading
+              eyebrow="What You’ll Get"
+              title="Useful notes, not filler."
+              description="Expect practical coaching emails, new article updates, and occasional offers when something genuinely new is open."
+            />
+          </div>
+
+          <div className="grid gap-6">
             <a
               href="https://youtube.com/@shrutiturner"
               target="_blank"
               rel="noopener noreferrer"
               className="group block"
             >
-              <div className="overflow-hidden rounded-xl border shadow-sm">
+              <div className="border-brand-dark/10 bg-background overflow-hidden rounded-[1.75rem] border shadow-[0_20px_50px_rgba(46,31,51,0.06)]">
                 <div className="bg-brand-dark/5 relative aspect-video">
                   <ImageWithFallback
                     src="https://images.unsplash.com/photo-1518611012118-696072aa579a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b2dhJTIwc3RyZW5ndGglMjB0cmFpbmluZyUyMGNsYXNzfGVufDF8fHx8MTc3MTQ3NDIyNnww&ixlib=rb-4.1.0&q=80&w=800"
@@ -329,7 +345,7 @@ export function SubscribePage() {
                     </div>
                   </div>
                 </div>
-                <div className="bg-card p-4">
+                <div className="bg-card p-5">
                   <p className="text-foreground group-hover:text-primary text-sm transition-colors">
                     Training With Chronic Illness: What Actually Works
                   </p>
@@ -337,45 +353,32 @@ export function SubscribePage() {
                 </div>
               </div>
             </a>
-          </div>
 
-          <div className="space-y-3">
-            <h2 className="text-muted-foreground mb-4 text-center text-sm font-medium tracking-wider uppercase">
-              Explore More
-            </h2>
-
-            {LINKS.map((link) => (
-              <Link key={link.href} href={link.href} className="group block">
-                <div className="bg-card hover:bg-secondary/50 flex items-center rounded-xl border p-4 transition-all duration-200">
-                  <div
-                    className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${link.colorClass}`}
-                  >
-                    <link.icon className="h-5 w-5" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              {LINKS.map((link) => (
+                <Link key={link.href} href={link.href} className="group block">
+                  <div className="bg-card hover:bg-secondary/50 border-brand-dark/10 flex h-full items-start rounded-[1.4rem] border p-4 shadow-[0_18px_40px_rgba(46,31,51,0.05)] transition-all duration-200">
+                    <div
+                      className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${link.colorClass}`}
+                    >
+                      <link.icon className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1 px-4">
+                      <p className="text-foreground leading-snug font-medium transition-colors">
+                        {link.title}
+                      </p>
+                      <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                        {link.subtitle}
+                      </p>
+                    </div>
+                    <ArrowRight className="text-muted-foreground mt-1 h-5 w-5 flex-shrink-0 transition-all group-hover:translate-x-1" />
                   </div>
-                  <div className="min-w-0 flex-1 px-4">
-                    <p className="text-foreground truncate font-medium transition-colors">
-                      {link.title}
-                    </p>
-                    <p className="text-muted-foreground truncate text-xs">{link.subtitle}</p>
-                  </div>
-                  <ArrowRight className="text-muted-foreground h-5 w-5 flex-shrink-0 transition-all group-hover:translate-x-1" />
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))}
+            </div>
           </div>
-
-          <p className="text-muted-foreground pb-4 text-center text-xs">
-            Copyright Shruti Turner ·{" "}
-            <Link href="/privacy" className="hover:text-foreground underline">
-              Privacy
-            </Link>{" "}
-            ·{" "}
-            <Link href="/unsubscribe" className="hover:text-foreground underline">
-              Unsubscribe
-            </Link>
-          </p>
         </div>
-      </div>
+      </MarketingSection>
     </Layout>
   );
 }

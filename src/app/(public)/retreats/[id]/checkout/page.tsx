@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { RetreatCheckoutPage } from "@/views/retreat-checkout";
 import { getOperationalRetreatBySlug } from "@/lib/retreats/service";
 
@@ -21,6 +22,7 @@ export async function generateMetadata({
 }
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  await connection();
   const { id } = await params;
   const retreat = await getOperationalRetreatBySlug(id);
   return <RetreatCheckoutPage retreat={retreat} />;

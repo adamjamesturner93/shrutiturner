@@ -408,6 +408,76 @@
    Apply via class="prose" on a wrapper element.
    ───────────────────────────────────────────── */
 @layer components {
+  .marketing-grid {
+    position: relative;
+    background:
+      radial-gradient(circle at top right, rgba(181, 196, 155, 0.18), transparent 28%),
+      radial-gradient(circle at 10% 25%, rgba(212, 149, 106, 0.18), transparent 30%),
+      linear-gradient(160deg, rgba(46, 31, 51, 1) 0%, rgba(86, 52, 74, 0.98) 48%, rgba(46, 31, 51, 1) 100%);
+  }
+
+  .marketing-grid::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(250, 250, 248, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(250, 250, 248, 0.04) 1px, transparent 1px);
+    background-size: 36px 36px;
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent 88%);
+    pointer-events: none;
+  }
+
+  .marketing-panel {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(46, 31, 51, 0.08);
+    background:
+      radial-gradient(circle at top, rgba(181, 196, 155, 0.22), transparent 40%),
+      linear-gradient(180deg, rgba(250, 250, 248, 0.96), rgba(247, 244, 239, 0.96));
+    box-shadow: 0 24px 60px rgba(46, 31, 51, 0.08);
+  }
+
+  .marketing-panel::after {
+    content: "";
+    position: absolute;
+    inset: auto -12% -35% auto;
+    width: 18rem;
+    height: 18rem;
+    border-radius: 9999px;
+    background: rgba(181, 196, 155, 0.16);
+    filter: blur(30px);
+    pointer-events: none;
+  }
+
+  .section-wash {
+    background:
+      linear-gradient(180deg, rgba(247, 244, 239, 0.78) 0%, rgba(250, 250, 248, 0.96) 100%),
+      radial-gradient(circle at top left, rgba(181, 196, 155, 0.16), transparent 28%);
+  }
+
+  .section-divider {
+    position: relative;
+  }
+
+  .section-divider::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: min(72rem, calc(100% - 2rem));
+    height: 1px;
+    transform: translateX(-50%);
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(46, 31, 51, 0.08) 14%,
+      rgba(46, 31, 51, 0.12) 50%,
+      rgba(46, 31, 51, 0.08) 86%,
+      transparent 100%
+    );
+  }
+
   .prose {
     line-height: 1.8;
     color: var(--foreground);
