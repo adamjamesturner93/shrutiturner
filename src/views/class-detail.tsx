@@ -159,9 +159,7 @@ export function ClassDetailPage({
       ? "border-brand-accent-light/45 bg-brand-white/8 text-brand-white"
       : classDetail.type === "HIIT"
         ? "border-brand-copper/55 bg-brand-white/8 text-brand-white"
-        : classDetail.type === "Cardio"
-          ? "border-brand-rose/55 bg-brand-white/8 text-brand-white"
-          : "border-brand-white/30 bg-brand-white/8 text-brand-white";
+        : "border-brand-white/30 bg-brand-white/8 text-brand-white";
 
   const instructorName = sessionInstructor?.name || classDetail.instructor;
   const instructorBio =

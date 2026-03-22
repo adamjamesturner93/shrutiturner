@@ -1,5 +1,5 @@
 export function buildSmallGroupTemplateHref(templateSlug: string) {
-  return `/classes/small-group/${templateSlug}`;
+  return `/classes/small-groups/${templateSlug}`;
 }
 
 export function buildSmallGroupTemplateCheckoutHref(

@@ -44,12 +44,16 @@ export function GiftRedeemPage({
     return (
       <Layout>
         <SEO title="Gift Not Found" noIndex />
-        <div className="container mx-auto max-w-3xl px-4 py-24 text-center">
-          <h1 className="text-3xl">Gift code not found</h1>
-          <p className="text-muted-foreground mt-4">
-            This gift code is invalid or no longer available.
-          </p>
-        </div>
+        <section className="section-wash min-h-[calc(100dvh-4rem)] px-4 py-10 md:py-14">
+          <div className="container mx-auto flex min-h-[calc(100dvh-12rem)] max-w-3xl items-center">
+            <div className="marketing-panel w-full rounded-[2rem] px-6 py-10 text-center md:px-10">
+              <h1 className="text-3xl md:text-4xl">Gift code not found</h1>
+              <p className="text-muted-foreground mt-4">
+                This gift code is invalid or no longer available.
+              </p>
+            </div>
+          </div>
+        </section>
       </Layout>
     );
   }
@@ -58,12 +62,16 @@ export function GiftRedeemPage({
     return (
       <Layout>
         <SEO title="Gift Expired" noIndex />
-        <div className="container mx-auto max-w-3xl px-4 py-24 text-center">
-          <h1 className="text-3xl">This gift has expired</h1>
-          <p className="text-muted-foreground mt-4">
-            Please contact Shruti if you need help with this gift purchase.
-          </p>
-        </div>
+        <section className="section-wash min-h-[calc(100dvh-4rem)] px-4 py-10 md:py-14">
+          <div className="container mx-auto flex min-h-[calc(100dvh-12rem)] max-w-3xl items-center">
+            <div className="marketing-panel w-full rounded-[2rem] px-6 py-10 text-center md:px-10">
+              <h1 className="text-3xl md:text-4xl">This gift has expired</h1>
+              <p className="text-muted-foreground mt-4">
+                Please contact Shruti if you need help with this gift purchase.
+              </p>
+            </div>
+          </div>
+        </section>
       </Layout>
     );
   }
@@ -72,12 +80,16 @@ export function GiftRedeemPage({
     return (
       <Layout>
         <SEO title="Gift Pending Payment" noIndex />
-        <div className="container mx-auto max-w-3xl px-4 py-24 text-center">
-          <h1 className="text-3xl">This gift is not ready yet</h1>
-          <p className="text-muted-foreground mt-4">
-            The purchase has not completed yet, so the gift cannot be redeemed.
-          </p>
-        </div>
+        <section className="section-wash min-h-[calc(100dvh-4rem)] px-4 py-10 md:py-14">
+          <div className="container mx-auto flex min-h-[calc(100dvh-12rem)] max-w-3xl items-center">
+            <div className="marketing-panel w-full rounded-[2rem] px-6 py-10 text-center md:px-10">
+              <h1 className="text-3xl md:text-4xl">This gift is not ready yet</h1>
+              <p className="text-muted-foreground mt-4">
+                The purchase has not completed yet, so the gift cannot be redeemed.
+              </p>
+            </div>
+          </div>
+        </section>
       </Layout>
     );
   }
@@ -117,24 +129,53 @@ export function GiftRedeemPage({
     <Layout>
       <SEO title={`Redeem ${gift.productTitle}`} noIndex />
 
-      <section className="bg-brand-dark py-16 text-white">
-        <div className="container mx-auto max-w-5xl px-4">
-          <div className="bg-brand-accent-light/15 text-brand-accent-light inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm">
-            <Gift className="h-4 w-4" />
-            Gift redemption
+      <section className="marketing-grid overflow-hidden px-4 py-10 text-brand-white md:py-14">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid gap-8 lg:grid-cols-[1fr_0.92fr] lg:items-center lg:gap-10">
+            <div>
+              <div className="text-brand-accent-light inline-flex items-center gap-2 rounded-full border border-brand-white/10 bg-brand-white/8 px-4 py-2 text-sm">
+                <Gift className="h-4 w-4" />
+                Gift redemption
+              </div>
+              <h1 className="mt-6 text-4xl leading-tight md:text-5xl">{gift.productTitle}</h1>
+              <p className="mt-4 max-w-2xl text-lg leading-relaxed text-brand-white/80">
+                {gift.purchaserName} has sent this to you. Redeem it here so the place or retreat
+                details are linked to your account instead of staying with the purchaser.
+              </p>
+            </div>
+
+            <div className="overflow-hidden rounded-[2rem] border border-brand-white/10 bg-brand-white/8 p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+              <div className="rounded-[1.45rem] bg-brand-white/8 p-6">
+                <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
+                  What happens here
+                </p>
+                <div className="mt-5 space-y-3">
+                  {[
+                    "Sign in first if the gift is not yet attached to your account.",
+                    gift.type === "retreat"
+                      ? "Complete your own health and access details securely as the attendee."
+                      : "Claim the reserved programme place into your own account.",
+                    "No payment is taken during redemption.",
+                  ].map((item) => (
+                    <div
+                      key={item}
+                      className="rounded-[1.2rem] border border-brand-white/10 bg-brand-white/8 px-4 py-4 text-sm leading-relaxed text-brand-white/84"
+                    >
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
-          <h1 className="mt-6 text-4xl md:text-5xl">{gift.productTitle}</h1>
-          <p className="text-brand-accent-light mt-4 max-w-2xl text-lg">
-            {gift.purchaserName} has sent this to you.
-          </p>
         </div>
       </section>
 
-      <section className="py-16">
+      <section className="section-wash px-4 py-10 md:py-14">
         <div className="container mx-auto grid max-w-6xl gap-8 px-4 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="space-y-6">
             {gift.recipientMessage ? (
-              <div className="bg-secondary/20 rounded-[1.5rem] border p-6">
+              <div className="marketing-panel rounded-[1.5rem] p-6">
                 <p className="text-brand-accent text-sm tracking-[0.16em] uppercase">Message</p>
                 <p className="text-muted-foreground mt-3 leading-relaxed">
                   {gift.recipientMessage}
@@ -169,7 +210,7 @@ export function GiftRedeemPage({
                 </div>
               </div>
             ) : !user ? (
-              <div className="rounded-[1.5rem] border p-6">
+              <div className="marketing-panel rounded-[1.5rem] p-6">
                 <h2 className="text-2xl">Sign in to redeem</h2>
                 <p className="text-muted-foreground mt-3 max-w-xl leading-relaxed">
                   The gift is reserved. Sign in first, then you can finish the redemption details
@@ -190,7 +231,7 @@ export function GiftRedeemPage({
                   </div>
                 ) : null}
 
-                <div className="rounded-[1.5rem] border p-6">
+                <div className="marketing-panel rounded-[1.5rem] p-6">
                   <h2 className="text-2xl">Your details</h2>
                   <div className="mt-6 grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
@@ -241,7 +282,7 @@ export function GiftRedeemPage({
 
                 {gift.type === "retreat" ? (
                   <>
-                    <div className="rounded-[1.5rem] border p-6">
+                    <div className="marketing-panel rounded-[1.5rem] p-6">
                       <h2 className="text-2xl">Retreat details</h2>
                       <div className="mt-6 grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
@@ -328,7 +369,7 @@ export function GiftRedeemPage({
                     </div>
 
                     {needsSecondGuest ? (
-                      <div className="rounded-[1.5rem] border p-6">
+                      <div className="marketing-panel rounded-[1.5rem] p-6">
                         <h2 className="text-2xl">Second guest details</h2>
                         <div className="mt-6 grid gap-4 md:grid-cols-2">
                           <div className="space-y-2">
@@ -402,7 +443,7 @@ export function GiftRedeemPage({
           </div>
 
           <aside>
-            <div className="sticky top-24 rounded-[1.5rem] border p-6 shadow-sm">
+            <div className="marketing-panel sticky top-24 rounded-[1.75rem] p-6 shadow-sm">
               <p className="text-brand-accent text-sm tracking-[0.16em] uppercase">Gift code</p>
               <p className="mt-2 font-mono text-lg">{gift.code}</p>
               <h2 className="mt-5 text-2xl">{gift.productTitle}</h2>

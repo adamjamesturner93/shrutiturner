@@ -61,7 +61,7 @@ export function ClassesSmallGroupDetailPage({
       <SEO
         title={`${programme.title} - Small Group Programme - Shruti Turner`}
         description={programme.shortSummary}
-        canonicalUrl={`https://shrutiturner.com/classes/small-group/${programme.slug}`}
+        canonicalUrl={`https://shrutiturner.com/classes/small-groups/${programme.slug}`}
       />
 
       <section className="marketing-grid text-brand-white overflow-hidden px-4 py-12 md:py-14">

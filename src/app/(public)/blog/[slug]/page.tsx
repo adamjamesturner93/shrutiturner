@@ -5,10 +5,10 @@ import { getBlogPostBySlug, getBlogPosts } from "@/lib/content";
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { id } = await params;
-  const post = await getBlogPostBySlug(id);
+  const { slug } = await params;
+  const post = await getBlogPostBySlug(slug);
 
   if (!post) {
     return { title: "Post Not Found" };
@@ -20,8 +20,8 @@ export async function generateMetadata({
   };
 }
 
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const [post, posts] = await Promise.all([getBlogPostBySlug(id), getBlogPosts()]);
+export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const [post, posts] = await Promise.all([getBlogPostBySlug(slug), getBlogPosts()]);
   return <BlogPostPage post={post} posts={posts} />;
 }

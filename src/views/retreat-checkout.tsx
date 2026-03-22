@@ -152,13 +152,17 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
     return (
       <Layout>
         <SEO title="Retreat Checkout" noIndex />
-        <div className="container mx-auto px-4 py-24 text-center">
-          <h1 className="text-3xl">Retreat not found</h1>
-          <p className="text-muted-foreground mt-4">This retreat is no longer available.</p>
-          <Button asChild className="mt-6">
-            <Link href="/retreats">View retreats</Link>
-          </Button>
-        </div>
+        <section className="section-wash min-h-[calc(100dvh-4rem)] px-4 py-10 md:py-14">
+          <div className="container mx-auto flex min-h-[calc(100dvh-12rem)] max-w-3xl items-center">
+            <div className="marketing-panel w-full rounded-[2rem] px-6 py-10 text-center md:px-10">
+              <h1 className="text-3xl md:text-4xl">Retreat not found</h1>
+              <p className="text-muted-foreground mt-4">This retreat is no longer available.</p>
+              <Button asChild className="mt-6">
+                <Link href="/retreats">View retreats</Link>
+              </Button>
+            </div>
+          </div>
+        </section>
       </Layout>
     );
   }
@@ -308,8 +312,8 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
         noIndex
       />
 
-      <section className="bg-brand-dark py-14 text-white md:py-18">
-        <div className="container mx-auto max-w-6xl px-4">
+      <section className="marketing-grid overflow-hidden px-4 py-10 text-brand-white md:py-14">
+        <div className="container mx-auto max-w-6xl">
           <Link
             href={`/retreats/${retreat.slug}`}
             className="text-brand-accent-light inline-flex items-center gap-2 text-sm hover:underline"
@@ -318,28 +322,43 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
             Back to retreat details
           </Link>
 
-          <div className="mt-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_0.9fr] lg:items-center lg:gap-10">
             <div>
-              <h1 className="text-4xl md:text-5xl">
+              <h1 className="text-4xl leading-tight md:text-5xl">
                 {purchaseMode === "gift" ? "Gift This Retreat" : "Complete Your Retreat Booking"}
               </h1>
-              <p className="text-brand-accent-light mt-3 max-w-2xl text-lg">
+              <p className="mt-4 max-w-2xl text-lg leading-relaxed text-brand-white/80">
                 {retreat.title} · {retreat.location}
               </p>
             </div>
-            {selectedRoom ? (
-              <div className="rounded-full border border-white/15 px-4 py-2 text-sm">
-                {purchaseMode === "gift"
-                  ? `${formatMoney(totalPricePence, retreat.currency)} due today`
-                  : `${formatMoney(depositAmountPence, retreat.currency)} deposit today`}
+
+            <div className="overflow-hidden rounded-[2rem] border border-brand-white/10 bg-brand-white/8 p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+              <div className="rounded-[1.45rem] bg-brand-white/8 p-6">
+                <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
+                  Selected pricing
+                </p>
+                <div className="mt-4 space-y-2 text-sm text-brand-white/84">
+                  {selectedRoom ? (
+                    <>
+                      <p>
+                        {purchaseMode === "gift"
+                          ? `${formatMoney(totalPricePence, retreat.currency)} due today`
+                          : `${formatMoney(depositAmountPence, retreat.currency)} deposit today`}
+                      </p>
+                      <p>{selectedRoom.label}</p>
+                    </>
+                  ) : (
+                    <p>Select a date and room to confirm the amount due.</p>
+                  )}
+                </div>
               </div>
-            ) : null}
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="py-16">
-        <div className="container mx-auto grid max-w-6xl gap-8 px-4 lg:grid-cols-[1.05fr_0.95fr]">
+      <section className="section-wash px-4 py-10 md:py-14">
+        <div className="container mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="space-y-6">
             {checkoutState === "success" ? (
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
@@ -359,7 +378,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
               </div>
             ) : null}
 
-            <div className="rounded-[1.5rem] border p-6">
+            <div className="rounded-[1.5rem] border border-brand-dark/10 bg-background p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
               <div className="flex flex-wrap gap-3">
                 <Button
                   type="button"
@@ -379,7 +398,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="rounded-[1.5rem] border p-6">
+              <div className="marketing-panel rounded-[1.5rem] p-6">
                 <h2 className="text-2xl">1. Choose your date</h2>
                 <div className="mt-6 grid gap-4">
                   {retreat.dates.map((date) => {
@@ -411,7 +430,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                 </div>
               </div>
 
-              <div className="rounded-[1.5rem] border p-6">
+              <div className="marketing-panel rounded-[1.5rem] p-6">
                 <h2 className="text-2xl">2. Choose your room</h2>
                 {selectedDate ? (
                   <div className="mt-6 grid gap-4">
@@ -475,7 +494,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                 ) : null}
               </div>
 
-              <div className="rounded-[1.5rem] border p-6">
+              <div className="marketing-panel rounded-[1.5rem] p-6">
                 <h2 className="text-2xl">3. Purchaser details</h2>
                 <div className="mt-6 grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
@@ -526,7 +545,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
 
               {purchaseMode === "self" ? (
                 <>
-                  <div className="rounded-[1.5rem] border p-6">
+                  <div className="marketing-panel rounded-[1.5rem] p-6">
                     <div className="flex items-start gap-3 rounded-xl border p-4">
                       <Checkbox
                         id="bookingForAnotherAttendee"
@@ -601,7 +620,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                     ) : null}
                   </div>
 
-                  <div className="rounded-[1.5rem] border p-6">
+                  <div className="marketing-panel rounded-[1.5rem] p-6">
                     <h2 className="text-2xl">5. Health, access, and emergency details</h2>
                     <div className="mt-6 grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">

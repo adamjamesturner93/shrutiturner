@@ -1,13 +1,39 @@
 "use client";
 
-import { Layout } from "../components/layout";
-import { SEO } from "../components/seo";
-import { Button } from "../components/ui/button";
 import Link from "next/link";
 import { ArrowRight, Check, Smartphone } from "lucide-react";
+import { Layout } from "@/components/layout";
+import {
+  EditorialHero,
+  JourneySection,
+  MarketingSection,
+  ProofBand,
+  SectionHeading,
+} from "@/components/marketing/sections";
+import { SEO } from "@/components/seo";
+import { Button } from "@/components/ui/button";
 import { coachingTiers, personalProgrammeJourney } from "@/data/marketing";
 
 const independentTier = coachingTiers.find((tier) => tier.id === "independent-plan");
+
+const independentPlanProof = [
+  {
+    label: "Format",
+    detail: "Programming lives in Everfit so your workouts, habits, and notes stay in one place.",
+  },
+  {
+    label: "Support",
+    detail: "This is lower-touch than coaching, but it is still tailored and reviewed around your feedback.",
+  },
+  {
+    label: "Best Fit",
+    detail: "Good for people who want expert structure without needing live calls every week.",
+  },
+  {
+    label: "Pacing",
+    detail: "Programming is designed for good days, average days, and flare days from the outset.",
+  },
+] as const;
 
 export function CoachingPersonalProgrammePage() {
   if (!independentTier) return null;
@@ -20,116 +46,165 @@ export function CoachingPersonalProgrammePage() {
         canonicalUrl="https://shrutiturner.com/coaching/personal-programme"
       />
 
-      <section className="bg-brand-dark text-brand-white py-20 md:py-28">
-        <div className="container mx-auto max-w-4xl px-4 text-center">
-          <p className="text-brand-accent-light mb-4 text-sm tracking-[0.2em] uppercase">
-            Coaching
-          </p>
-          <h1 className="mb-6 text-4xl leading-tight md:text-6xl">{independentTier.name}</h1>
-          <p className="text-brand-accent-light mx-auto mb-8 max-w-2xl text-xl leading-relaxed md:text-2xl">
-            Expert programming delivered through Everfit for people who want a lower-friction way to
-            train with more confidence and less guesswork.
-          </p>
-          <div className="border-brand-white/20 text-brand-white/80 inline-flex rounded-full border px-4 py-2 text-sm">
-            {independentTier.priceLabel} · {independentTier.priceNote}
+      <EditorialHero
+        eyebrow="Coaching"
+        size="compact"
+        title={
+          <>
+            Expert programming for people who want
+            <span className="text-brand-accent-light"> structure without weekly calls.</span>
+          </>
+        }
+        description="The Independent Training Plan is the lower-friction coaching route: tailored programming, monthly review, and clearer training decisions inside Everfit."
+        primaryCta={{ href: "/pricing#coaching", label: "View Pricing" }}
+        secondaryCta={{ href: "/coaching", label: "Compare All Coaching Tiers" }}
+        stats={[
+          { value: independentTier.priceLabel, label: "Monthly investment" },
+          { value: "3+", label: "Month minimum commitment" },
+          { value: "Everfit", label: "Programme delivery platform" },
+        ]}
+        aside={
+          <div className="relative mx-auto max-w-xl">
+            <div className="overflow-hidden rounded-[2rem] border border-brand-white/10 bg-brand-white/8 p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+              <div className="rounded-[1.45rem] bg-brand-white/8 p-6">
+                <div className="bg-brand-accent-light/12 text-brand-accent-light flex h-12 w-12 items-center justify-center rounded-2xl">
+                  <Smartphone className="h-6 w-6" />
+                </div>
+                <p className="mt-5 text-xs tracking-[0.18em] uppercase text-brand-accent-light">
+                  Delivered in Everfit
+                </p>
+                <h2 className="mt-3 text-3xl leading-tight">Your plan, check-ins, and training rhythm in one place.</h2>
+                <p className="mt-4 text-sm leading-relaxed text-brand-white/82">
+                  You get personalised programming, habits, and review notes without needing to
+                  coordinate weekly live sessions.
+                </p>
+                <div className="mt-6 space-y-3">
+                  {[
+                    "Programming built around your current capacity and constraints.",
+                    "Monthly written review instead of a generic template refresh.",
+                    "A calmer route into specialist support when full coaching feels like too much.",
+                  ].map((item) => (
+                    <div
+                      key={item}
+                      className="rounded-[1.2rem] border border-brand-white/10 bg-brand-white/8 px-4 py-4 text-sm leading-relaxed text-brand-white/84"
+                    >
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        }
+      />
 
-      <section className="py-20 md:py-24">
-        <div className="container mx-auto max-w-5xl px-4">
-          <div className="grid gap-10 md:grid-cols-[1fr_0.9fr]">
-            <div>
-              <h2 className="mb-4 text-3xl md:text-4xl">What&apos;s Included</h2>
-              <p className="text-muted-foreground mb-8 leading-relaxed">
-                This tier is for clients who want specialist programming and a clear training
-                structure, without the cost or scheduling complexity of live coaching every week.
+      <ProofBand
+        title="What this route is designed to do"
+        description="It gives you specialist programming and review without adding the cost or scheduling weight of higher-touch coaching."
+        items={[...independentPlanProof]}
+      />
+
+      <MarketingSection className="section-wash">
+        <div className="grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:gap-12">
+          <div>
+            <SectionHeading
+              eyebrow="What’s Included"
+              title="A lower-touch route with real structure behind it."
+              description="This is not a template library. It is personalised programming with enough feedback to keep it moving in the right direction."
+            />
+            <div className="mt-8 grid gap-4">
+              {independentTier.features.map((feature) => (
+                <div
+                  key={feature}
+                  className="rounded-[1.5rem] border border-brand-dark/10 bg-background px-5 py-5 shadow-[0_18px_40px_rgba(46,31,51,0.05)]"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="bg-brand-accent/10 text-brand-accent flex h-9 w-9 items-center justify-center rounded-full">
+                      <Check className="h-4 w-4" />
+                    </div>
+                    <p className="text-muted-foreground leading-relaxed">{feature}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="marketing-panel rounded-[1.8rem] p-7">
+              <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">
+                Who it suits best
               </p>
-              <ul className="space-y-3">
-                {independentTier.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-3 text-sm">
-                    <Check className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
-                    <span className="text-muted-foreground">{feature}</span>
-                  </li>
-                ))}
+              <ul className="text-muted-foreground mt-5 space-y-4 text-sm leading-relaxed">
+                <li className="flex items-start gap-3">
+                  <Check className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
+                  You want better structure and fewer decisions when symptoms fluctuate.
+                </li>
+                <li className="flex items-start gap-3">
+                  <Check className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
+                  You are comfortable training independently between reviews.
+                </li>
+                <li className="flex items-start gap-3">
+                  <Check className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
+                  You do not need weekly live accountability to keep moving.
+                </li>
               </ul>
             </div>
 
-            <div className="space-y-6">
-              <div className="bg-secondary/20 rounded-xl border p-6">
-                <div className="bg-brand-accent/10 text-brand-accent mb-4 flex h-12 w-12 items-center justify-center rounded-lg">
-                  <Smartphone className="h-5 w-5" />
-                </div>
-                <h3 className="mb-2 text-2xl">Delivered in Everfit</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  Your workouts, habits, and check-ins live in Everfit so the day-to-day training
-                  experience stays simple and consistent.
-                </p>
-              </div>
-
-              <div className="bg-background rounded-xl border p-6">
-                <h3 className="mb-3 text-xl">Who this works best for</h3>
-                <ul className="text-muted-foreground list-disc space-y-2 pl-5 text-sm">
-                  <li>You are comfortable training independently between reviews.</li>
-                  <li>You want smart structure and fewer decisions on flare days.</li>
-                  <li>You do not need regular live calls or high-touch accountability.</li>
-                </ul>
-              </div>
+            <div className="rounded-[1.8rem] border border-brand-dark/10 bg-background p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+              <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">Price and note</p>
+              <h2 className="mt-4 text-3xl">{independentTier.priceLabel}</h2>
+              <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                {independentTier.priceNote}. If you later need more oversight, it is easy to move
+                into a coached tier.
+              </p>
             </div>
           </div>
         </div>
-      </section>
+      </MarketingSection>
 
-      <section className="bg-secondary/20 py-20 md:py-24">
-        <div className="container mx-auto max-w-4xl px-4">
-          <h2 className="mb-10 text-center text-3xl md:text-4xl">How It Works</h2>
-          <div className="space-y-5">
-            {personalProgrammeJourney.map((step) => (
-              <div
-                key={step.step}
-                className="bg-background flex items-start gap-5 rounded-xl border p-6"
-              >
-                <div className="bg-bronze text-brand-white flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm">
-                  {step.step}
-                </div>
-                <div>
-                  <h3 className="mb-1 text-lg">{step.title}</h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed">
-                    {step.description}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+      <MarketingSection className="section-divider">
+        <SectionHeading
+          eyebrow="How It Works"
+          title="A clean setup, then ongoing review."
+          description="The process is intentionally simple so the effort goes into the training, not the admin."
+          align="center"
+        />
+        <div className="mt-12">
+          <JourneySection
+            steps={personalProgrammeJourney.map((step) => ({
+              title: step.title,
+              description: step.description,
+            }))}
+          />
         </div>
-      </section>
+      </MarketingSection>
 
-      <section className="bg-brand-accent text-brand-white py-16 md:py-20">
-        <div className="container mx-auto max-w-3xl px-4 text-center">
-          <h2 className="mb-4 text-3xl md:text-4xl">Ready to Get Started?</h2>
-          <p className="mb-8 text-lg opacity-90">
-            Start with lower-touch support now, and move into coached support later if you need more
-            structure or accountability.
+      <section className="bg-brand-accent py-16 text-brand-white md:py-20">
+        <div className="container mx-auto max-w-4xl px-4 text-center">
+          <h2 className="text-3xl md:text-4xl">Ready to start with a lower-touch coaching route?</h2>
+          <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-brand-white/88">
+            Start here if you want specialist programming now and the option to step into more
+            support later.
           </p>
-          <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link href="/pricing#coaching">
-              <Button
-                size="lg"
-                className="bg-brand-white text-brand-accent hover:bg-brand-white/90"
-              >
+          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <Button
+              asChild
+              size="lg"
+              className="bg-brand-white text-brand-accent hover:bg-brand-white/90"
+            >
+              <Link href="/pricing#coaching">
                 View Pricing & Next Steps
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link href="/coaching">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-brand-white text-brand-white hover:bg-brand-white/10 bg-transparent"
-              >
-                Compare All Coaching Tiers
-              </Button>
-            </Link>
+                <ArrowRight className="h-5 w-5" />
+              </Link>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="border-brand-white bg-transparent text-brand-white hover:bg-brand-white/10"
+            >
+              <Link href="/coaching">Compare All Coaching Tiers</Link>
+            </Button>
           </div>
         </div>
       </section>

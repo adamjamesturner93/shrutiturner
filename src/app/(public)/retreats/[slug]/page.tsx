@@ -7,10 +7,10 @@ import { getOperationalRetreatBySlug } from "@/lib/retreats/service";
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { id } = await params;
-  const retreat = await getOperationalRetreatBySlug(id);
+  const { slug } = await params;
+  const retreat = await getOperationalRetreatBySlug(slug);
 
   if (!retreat) {
     return { title: "Retreat Not Found" };
@@ -22,10 +22,10 @@ export async function generateMetadata({
   };
 }
 
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   await connection();
-  const { id } = await params;
-  const retreat = await getOperationalRetreatBySlug(id);
+  const { slug } = await params;
+  const retreat = await getOperationalRetreatBySlug(slug);
   const allRetreats = await getRetreatsCombined();
   const otherRetreatsAtVenue = retreat
     ? allRetreats.filter((item) => {

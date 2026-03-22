@@ -4,38 +4,45 @@ import { AuthContext } from "@/context/auth-context";
 import { useI18n } from "@/lib/use-i18n";
 import { describe, expect, it } from "vitest";
 
-function captureHook(providerValue?: unknown) {
-  let captured: ReturnType<typeof useI18n> | null = null;
-
+function renderProbe(providerValue?: unknown) {
   function Probe() {
-    captured = useI18n();
-    return React.createElement("div");
+    const value = useI18n();
+
+    return React.createElement("div", {
+      "data-timezone": value.prefs.timezone,
+      "data-date-format": value.prefs.dateFormat,
+      "data-formatted-date": value.fmtDate("2026-07-15T00:30:00.000Z"),
+      "data-formatted-time": value.fmtTime("2026-07-15T14:30:00.000Z"),
+      "data-formatted-time-str": value.fmtTimeStr("18:30"),
+    });
   }
 
   const tree = providerValue
     ? React.createElement(
         AuthContext.Provider,
-        { value: providerValue },
+        { value: providerValue as React.ContextType<typeof AuthContext> },
         React.createElement(Probe)
       )
     : React.createElement(Probe);
 
-  renderToStaticMarkup(tree);
-  return captured;
+  return renderToStaticMarkup(tree);
+}
+
+function getAttr(markup: string, attr: string) {
+  const match = markup.match(new RegExp(`${attr}="([^"]+)"`));
+  return match?.[1] ?? null;
 }
 
 describe("useI18n", () => {
   it("falls back to default preferences for unauthenticated users", () => {
-    const value = captureHook();
+    const markup = renderProbe();
 
-    expect(value?.prefs).toEqual({
-      timezone: "Europe/London",
-      dateFormat: "DD/MM/YYYY",
-    });
+    expect(getAttr(markup, "data-timezone")).toBe("Europe/London");
+    expect(getAttr(markup, "data-date-format")).toBe("DD/MM/YYYY");
   });
 
   it("binds formatting helpers to the authenticated user's saved preferences", () => {
-    const value = captureHook({
+    const markup = renderProbe({
       isAuthenticated: true,
       user: {
         timezone: "America/New_York",
@@ -43,12 +50,10 @@ describe("useI18n", () => {
       },
     });
 
-    expect(value?.prefs).toEqual({
-      timezone: "America/New_York",
-      dateFormat: "MM/DD/YYYY",
-    });
-    expect(value?.fmtDate("2026-07-15T00:30:00.000Z")).toBe("July 14, 2026");
-    expect(value?.fmtTime("2026-07-15T14:30:00.000Z")).toBe("10:30 AM");
-    expect(value?.fmtTimeStr("18:30")).toBe("6:30 PM");
+    expect(getAttr(markup, "data-timezone")).toBe("America/New_York");
+    expect(getAttr(markup, "data-date-format")).toBe("MM/DD/YYYY");
+    expect(getAttr(markup, "data-formatted-date")).toBe("July 14, 2026");
+    expect(getAttr(markup, "data-formatted-time")).toBe("10:30 AM");
+    expect(getAttr(markup, "data-formatted-time-str")).toBe("6:30 PM");
   });
 });

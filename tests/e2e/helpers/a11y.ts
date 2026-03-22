@@ -34,10 +34,9 @@ const skipPathPatterns = [
   /^\/api(?:\/|$)/,
   /^\/_next(?:\/|$)/,
   /^\/gift\/redeem\//,
-  /^\/programmes\//,
   /^\/r\//,
   /^\/retreats\/balance\//,
-  /^\/classes\/small-group\/[^/]+\/checkout$/,
+  /^\/classes\/small-groups\/[^/]+\/checkout$/,
   /^\/retreats\/[^/]+\/checkout$/,
 ];
 

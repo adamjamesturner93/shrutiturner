@@ -55,12 +55,16 @@ export function RetreatBalancePage({
     return (
       <Layout>
         <SEO title="Retreat Balance Payment" noIndex />
-        <div className="container mx-auto max-w-3xl px-4 py-20 text-center">
-          <h1 className="mb-4 text-3xl">Balance link unavailable</h1>
-          <p className="text-muted-foreground">
-            This payment link is missing or has expired. Contact us if you need a new one.
-          </p>
-        </div>
+        <section className="section-wash min-h-[calc(100dvh-4rem)] px-4 py-10 md:py-14">
+          <div className="container mx-auto flex min-h-[calc(100dvh-12rem)] max-w-3xl items-center">
+            <div className="marketing-panel w-full rounded-[2rem] px-6 py-10 text-center md:px-10">
+              <h1 className="mb-4 text-3xl md:text-4xl">Balance link unavailable</h1>
+              <p className="text-muted-foreground">
+                This payment link is missing or has expired. Contact us if you need a new one.
+              </p>
+            </div>
+          </div>
+        </section>
       </Layout>
     );
   }
@@ -99,8 +103,8 @@ export function RetreatBalancePage({
     <Layout>
       <SEO title={`${initialData.retreatTitle} Balance Payment`} noIndex />
 
-      <section className="bg-brand-dark py-14 text-white">
-        <div className="container mx-auto max-w-4xl px-4">
+      <section className="marketing-grid overflow-hidden px-4 py-10 text-brand-white md:py-14">
+        <div className="container mx-auto max-w-6xl">
           <Link
             href={`/retreats/${initialData.retreatSlug}`}
             className="text-brand-accent-light mb-4 inline-flex items-center gap-2 hover:underline"
@@ -108,15 +112,31 @@ export function RetreatBalancePage({
             <ArrowLeft className="h-4 w-4" />
             Back to retreat details
           </Link>
-          <h1 className="text-4xl">Retreat Balance Payment</h1>
-          <p className="text-brand-accent-light mt-3 max-w-2xl text-lg">
-            Use this secure link to settle the remaining balance for your retreat booking.
-          </p>
+          <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_0.88fr] lg:items-center lg:gap-10">
+            <div>
+              <h1 className="text-4xl leading-tight md:text-5xl">Retreat Balance Payment</h1>
+              <p className="mt-4 max-w-2xl text-lg leading-relaxed text-brand-white/80">
+                Use this secure link to settle the remaining balance for your retreat booking.
+              </p>
+            </div>
+
+            <div className="overflow-hidden rounded-[2rem] border border-brand-white/10 bg-brand-white/8 p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+              <div className="rounded-[1.45rem] bg-brand-white/8 p-6">
+                <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
+                  Booking
+                </p>
+                <h2 className="mt-3 text-2xl">{initialData.retreatTitle}</h2>
+                <p className="mt-3 text-sm leading-relaxed text-brand-white/82">
+                  {initialData.retreatLocation} · {initialData.dateLabel}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="py-16">
-        <div className="container mx-auto grid max-w-4xl gap-8 px-4 lg:grid-cols-[1.1fr_0.9fr]">
+      <section className="section-wash px-4 py-10 md:py-14">
+        <div className="container mx-auto grid max-w-4xl gap-8 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-6">
             {checkoutState === "success" ? (
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
@@ -134,7 +154,7 @@ export function RetreatBalancePage({
               </div>
             ) : null}
 
-            <div className="rounded-2xl border p-6">
+            <div className="marketing-panel rounded-[1.75rem] p-6">
               <div className="mb-4 flex flex-wrap items-center gap-3">
                 <h2 className="text-2xl">{initialData.retreatTitle}</h2>
                 <Badge variant={isPaid ? "default" : "secondary"}>
@@ -152,7 +172,7 @@ export function RetreatBalancePage({
               </div>
             </div>
 
-            <div className="rounded-2xl border p-6">
+            <div className="rounded-[1.75rem] border border-brand-dark/10 bg-background p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
               <h3 className="mb-3 text-xl">What happens after payment</h3>
               <ul className="text-muted-foreground space-y-2 text-sm leading-relaxed">
                 <li>1. Stripe takes payment securely.</li>
@@ -166,7 +186,7 @@ export function RetreatBalancePage({
           </div>
 
           <div>
-            <div className="sticky top-24 rounded-2xl border p-6 shadow-sm">
+            <div className="marketing-panel sticky top-24 rounded-[1.75rem] p-6 shadow-sm">
               <p className="text-muted-foreground text-sm">Balance remaining</p>
               <p className="mt-2 text-4xl">
                 {formatCurrency(initialData.balanceAmountPence, initialData.currency)}

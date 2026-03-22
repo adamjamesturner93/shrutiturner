@@ -168,3 +168,13 @@ export const coachingFaqs: CoachingFaq[] = [
       "No. Move Well Membership is included with Coached Training Plan and 1:1 Coaching. The Independent Training Plan keeps classes optional so it stays lower-friction and more affordable.",
   },
 ];
+
+export const themedWeekPromos: Array<{
+  slug: string;
+  title: string;
+  shortDescription: string;
+  audience: string;
+  ctaHref: string;
+  ctaLabel: string;
+  status: "draft" | "scheduled" | "active" | "archived";
+}> = [];

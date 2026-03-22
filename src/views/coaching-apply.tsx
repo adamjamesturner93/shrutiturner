@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, CheckCircle2, Info, MessageCircle, Shield } from "lucide-react";
-import { Layout } from "../components/layout";
-import { SEO } from "../components/seo";
-import { Button } from "../components/ui/button";
-import { Checkbox } from "../components/ui/checkbox";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import { Textarea } from "../components/ui/textarea";
+import { Layout } from "@/components/layout";
+import { EditorialHero, MarketingSection, SectionHeading } from "@/components/marketing/sections";
+import { SEO } from "@/components/seo";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/auth-context";
 import {
   coachingApplicationQuestions,
@@ -167,38 +168,58 @@ export function CoachingApplyPage() {
           canonicalUrl="https://shrutiturner.com/coaching/apply"
         />
 
-        <section className="py-20 md:py-28">
-          <div className="container mx-auto max-w-3xl px-4 text-center">
-            <div className="border-brand-accent/20 bg-brand-accent/5 mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-full border">
-              <CheckCircle2 className="text-brand-accent h-9 w-9" />
-            </div>
-            <h1 className="mb-4 text-4xl md:text-5xl">Application Received</h1>
-            <p className="text-muted-foreground mx-auto max-w-2xl text-lg leading-relaxed">
-              Thanks. Your coaching application is in. We will review it personally and aim to reply
-              within 48 hours with either follow-up questions or the next best step.
-            </p>
-            <div className="bg-secondary/20 mt-10 rounded-2xl border p-6 text-left">
-              <h2 className="mb-3 text-xl">What happens next</h2>
-              <ol className="text-muted-foreground space-y-3 text-sm leading-relaxed">
-                <li>1. We review the context you shared and the support level you selected.</li>
-                <li>2. If needed, we follow up with a few clarifying questions.</li>
-                <li>
-                  3. If it looks like a fit, we outline next steps for onboarding and Everfit.
-                </li>
-              </ol>
-            </div>
-            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link href="/coaching">
-                <Button size="lg">
-                  Back to Coaching
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="/classes">
-                <Button size="lg" variant="outline">
-                  Explore Move Well Classes
-                </Button>
-              </Link>
+        <section className="section-wash min-h-[calc(100dvh-4rem)] px-4 py-10 md:py-14">
+          <div className="container mx-auto max-w-6xl">
+            <div className="grid gap-6 lg:min-h-[calc(100dvh-12rem)] lg:grid-cols-[0.98fr_1.02fr] lg:items-center">
+              <div className="marketing-grid overflow-hidden rounded-[2rem] px-6 py-8 text-brand-white md:px-8 md:py-9">
+                <div className="relative z-10">
+                  <p className="text-brand-accent-light text-xs tracking-[0.3em] uppercase">
+                    Application Received
+                  </p>
+                  <h1 className="mt-5 text-4xl leading-tight md:text-5xl">Thank you.</h1>
+                  <p className="mt-5 max-w-xl text-lg leading-relaxed text-brand-white/80">
+                    Your application is in. I will review it personally and reply with either the
+                    next step or a couple of clarifying questions.
+                  </p>
+                  <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                    {[
+                      "Reviewed manually",
+                      "Reply within 48 hours",
+                      "No automatic upsell",
+                    ].map((item) => (
+                      <div
+                        key={item}
+                        className="rounded-[1.3rem] border border-brand-white/10 bg-brand-white/8 px-4 py-4 text-sm leading-relaxed text-brand-white/84"
+                      >
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="marketing-panel rounded-[2rem] px-6 py-8 md:px-8 md:py-9">
+                <div className="bg-brand-accent/10 text-brand-accent flex h-16 w-16 items-center justify-center rounded-full">
+                  <CheckCircle2 className="h-8 w-8" />
+                </div>
+                <h2 className="mt-6 text-3xl md:text-4xl">What happens next</h2>
+                <ol className="text-muted-foreground mt-5 space-y-4 text-sm leading-relaxed">
+                  <li>1. I review the context you shared and the level of support you selected.</li>
+                  <li>2. If needed, I follow up with a few clarifying questions.</li>
+                  <li>3. If the fit looks right, I outline onboarding and Everfit setup.</li>
+                </ol>
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                  <Button asChild>
+                    <Link href="/coaching">
+                      Back to Coaching
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline">
+                    <Link href="/classes">Explore Move Well Classes</Link>
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -214,270 +235,285 @@ export function CoachingApplyPage() {
         canonicalUrl="https://shrutiturner.com/coaching/apply"
       />
 
-      <section className="bg-brand-dark text-brand-white py-20 md:py-28">
-        <div className="container mx-auto max-w-4xl px-4 text-center">
-          <p className="text-brand-accent-light mb-4 text-sm tracking-[0.2em] uppercase">
-            {highlight.eyebrow}
-          </p>
-          <h1 className="mb-6 text-4xl leading-tight md:text-6xl">{highlight.heading}</h1>
-          <p className="text-brand-accent-light mx-auto max-w-2xl text-xl leading-relaxed md:text-2xl">
-            {highlight.body}
-          </p>
-        </div>
-      </section>
-
-      <section className="py-20 md:py-24">
-        <div className="container mx-auto max-w-6xl px-4">
-          <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr]">
-            <div className="space-y-6">
-              <div className="bg-secondary/20 rounded-2xl border p-6">
-                <h2 className="mb-3 text-2xl">What this form is for</h2>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  This form is for higher-touch coaching enquiries only. If you want the
-                  lower-friction self-serve plan, use the{" "}
-                  <Link href="/coaching/personal-programme" className="text-primary underline">
-                    Independent Training Plan
-                  </Link>{" "}
-                  path instead.
-                </p>
-              </div>
-
-              {isAuthenticated ? (
-                <div className="border-brand-accent/20 bg-brand-accent/5 rounded-2xl border p-6">
-                  <div className="flex items-start gap-3">
-                    <Info className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
-                    <p className="text-sm leading-relaxed">
-                      Signed in as <strong>{user?.email}</strong>. We have prefilled the basics to
-                      keep this simple.
-                    </p>
-                  </div>
-                </div>
-              ) : null}
-
-              {memberNotice ? (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
-                  <p className="text-sm leading-relaxed text-emerald-900">{memberNotice}</p>
-                </div>
-              ) : null}
-
-              {coachingClientNotice ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
-                  <p className="text-sm leading-relaxed text-amber-900">{coachingClientNotice}</p>
-                </div>
-              ) : null}
-
-              <div className="bg-background rounded-2xl border p-6">
-                <h3 className="mb-3 text-xl">What this support includes</h3>
-                <ul className="text-muted-foreground space-y-3 text-sm leading-relaxed">
-                  {highlight.bullets.map((bullet) => (
-                    <li key={bullet} className="flex items-start gap-2">
-                      <CheckCircle2 className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
-                      <span>{bullet}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="bg-background rounded-2xl border p-6">
-                <h3 className="mb-3 text-xl">What happens next</h3>
-                <ol className="text-muted-foreground space-y-3 text-sm leading-relaxed">
-                  <li>1. Shruti reviews your application personally.</li>
-                  <li>2. We reply within 48 hours with the next best step.</li>
-                  <li>3. If it feels like a fit, we move into onboarding and Everfit setup.</li>
-                </ol>
-              </div>
-            </div>
-
-            <form
-              className="bg-background space-y-8 rounded-[2rem] border p-8 shadow-sm"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void submitApplication();
-              }}
-            >
-              <div className="space-y-3">
-                <h2 className="text-2xl">Support level</h2>
-                <p className="text-muted-foreground text-sm">
-                  Choose the option that feels closest. You do not need to get it perfect.
-                </p>
-                <div className="grid gap-3">
-                  {coachingApplicationTierOptions.map((option) => (
-                    <label
-                      key={option.value}
-                      className={`cursor-pointer rounded-2xl border p-4 transition-colors ${
-                        selectedTier === option.value
-                          ? "border-brand-accent bg-brand-accent/5"
-                          : "border-border hover:bg-secondary/30"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="tier"
-                        value={option.value}
-                        checked={selectedTier === option.value}
-                        onChange={() => setSelectedTier(option.value)}
-                        className="sr-only"
-                      />
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-base">{option.title}</p>
-                          <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                            {option.description}
-                          </p>
-                        </div>
-                        <span
-                          className={`mt-1 h-4 w-4 rounded-full border ${
-                            selectedTier === option.value
-                              ? "border-brand-accent bg-brand-accent"
-                              : "border-muted-foreground/40"
-                          }`}
-                        />
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid gap-5 rounded-2xl border p-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name *</Label>
-                  <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-5 rounded-2xl border p-6">
-                <div>
-                  <h3 className="text-xl">Application details</h3>
-                  <p className="text-muted-foreground mt-2 text-sm">
-                    Tell us what you need from training, what feels complex right now, and what kind
-                    of support would help.
-                  </p>
-                </div>
-                {visibleQuestions.map((question) => (
-                  <div key={question.id} className="space-y-2">
-                    <Label htmlFor={question.id}>
-                      {question.label}
-                      {question.required ? " *" : ""}
-                    </Label>
-                    {question.type === "select" ? (
-                      <select
-                        id={question.id}
-                        value={answers[question.id] || ""}
-                        onChange={(e) =>
-                          setAnswers((prev) => ({ ...prev, [question.id]: e.target.value }))
-                        }
-                        className="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-11 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-                        required={question.required}
-                      >
-                        <option value="">Select an option</option>
-                        {question.options?.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <Textarea
-                        id={question.id}
-                        rows={question.id === "anythingElse" ? 4 : 5}
-                        placeholder={question.placeholder}
-                        value={answers[question.id] || ""}
-                        onChange={(e) =>
-                          setAnswers((prev) => ({ ...prev, [question.id]: e.target.value }))
-                        }
-                        required={question.required}
-                      />
-                    )}
-                    {question.helpText ? (
-                      <p className="text-muted-foreground text-xs">{question.helpText}</p>
-                    ) : null}
+      <EditorialHero
+        eyebrow={highlight.eyebrow}
+        size="compact"
+        title={highlight.heading}
+        description={highlight.body}
+        primaryCta={{ href: "#application-form", label: "Open Application" }}
+        secondaryCta={{ href: "/coaching", label: "Back to Coaching" }}
+        metrics={[
+          {
+            label: "Good For",
+            detail: "People who need more nuance, more review, or help choosing the right support level.",
+          },
+          {
+            label: "Response",
+            detail: "Applications are reviewed manually and usually answered within 48 hours.",
+          },
+          {
+            label: "Tone",
+            detail: "Low pressure, clear recommendations, and no pushing you into more support than you need.",
+          },
+        ]}
+        aside={
+          <div className="mx-auto max-w-xl overflow-hidden rounded-[2rem] border border-brand-white/10 bg-brand-white/8 p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+            <div className="rounded-[1.45rem] bg-brand-white/8 p-6">
+              <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
+                This support includes
+              </p>
+              <div className="mt-5 space-y-3">
+                {highlight.bullets.map((bullet) => (
+                  <div
+                    key={bullet}
+                    className="rounded-[1.2rem] border border-brand-white/10 bg-brand-white/8 px-4 py-4 text-sm leading-relaxed text-brand-white/84"
+                  >
+                    {bullet}
                   </div>
                 ))}
               </div>
-
-              <div className="space-y-4 rounded-2xl border p-5">
-                <div className="flex items-start space-x-3">
-                  <Checkbox
-                    id="coaching-agreement"
-                    checked={agreedToCoachingAgreement}
-                    onCheckedChange={(checked) => setAgreedToCoachingAgreement(checked === true)}
-                  />
-                  <label
-                    htmlFor="coaching-agreement"
-                    className="cursor-pointer text-sm leading-relaxed"
-                  >
-                    I have read and agree to the{" "}
-                    <Link
-                      href="/coaching-agreement"
-                      className="text-primary underline"
-                      target="_blank"
-                    >
-                      Coaching Agreement
-                    </Link>
-                    . I also understand this application sits alongside the{" "}
-                    <Link href="/terms" className="text-primary underline" target="_blank">
-                      Terms & Conditions
-                    </Link>
-                    ,{" "}
-                    <Link
-                      href="/health-declaration"
-                      className="text-primary underline"
-                      target="_blank"
-                    >
-                      Health & Liability Waiver
-                    </Link>
-                    , and{" "}
-                    <Link href="/privacy" className="text-primary underline" target="_blank">
-                      Privacy Policy
-                    </Link>
-                    .
-                  </label>
-                </div>
-                <p className="text-muted-foreground text-xs leading-relaxed">
-                  This application is reviewed manually. It does not place you into a paid coaching
-                  tier automatically.
-                </p>
-              </div>
-
-              <Button
-                type="submit"
-                size="lg"
-                className="w-full"
-                disabled={!requiredComplete || isSubmitting}
-              >
-                <MessageCircle className="mr-2 h-5 w-5" />
-                {isSubmitting ? "Submitting..." : "Submit Application"}
-              </Button>
-
-              {error ? <p className="text-sm text-red-600">{error}</p> : null}
-
-              <div className="text-muted-foreground flex items-start gap-2 text-sm leading-relaxed">
-                <Shield className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                <p>
-                  We aim to respond within 48 hours. If the Independent Training Plan is the better
-                  fit, we will say so clearly rather than upselling you into more support than you
-                  need.
-                </p>
-              </div>
-            </form>
+            </div>
           </div>
+        }
+      />
+
+      <MarketingSection id="application-form" className="section-wash">
+        <div className="grid gap-8 lg:grid-cols-[0.96fr_1.04fr] lg:gap-10">
+          <div className="space-y-6">
+            <div className="marketing-panel rounded-[1.85rem] p-6 md:p-7">
+              <SectionHeading
+                eyebrow="Before You Apply"
+                title="Use this form when you want more than a self-serve plan."
+                description="If the Independent Training Plan is likely the better fit, I will say so clearly rather than nudging you into higher-touch support."
+              />
+            </div>
+
+            <div className="rounded-[1.75rem] border border-brand-dark/10 bg-background p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+              <h2 className="text-2xl">What this application is for</h2>
+              <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
+                This form is for higher-touch coaching enquiries only. If you want the lower-friction
+                self-serve plan, use the{" "}
+                <Link href="/coaching/personal-programme" className="text-primary underline">
+                  Independent Training Plan
+                </Link>{" "}
+                route instead.
+              </p>
+            </div>
+
+            {isAuthenticated ? (
+              <div className="rounded-[1.75rem] border border-brand-accent/20 bg-brand-accent/5 p-6">
+                <div className="flex items-start gap-3">
+                  <Info className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
+                  <p className="text-sm leading-relaxed">
+                    Signed in as <strong>{user?.email}</strong>. I have prefilled the basics to keep
+                    this simpler.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            {memberNotice ? (
+              <div className="rounded-[1.75rem] border border-emerald-200 bg-emerald-50 p-6">
+                <p className="text-sm leading-relaxed text-emerald-900">{memberNotice}</p>
+              </div>
+            ) : null}
+
+            {coachingClientNotice ? (
+              <div className="rounded-[1.75rem] border border-amber-200 bg-amber-50 p-6">
+                <p className="text-sm leading-relaxed text-amber-900">{coachingClientNotice}</p>
+              </div>
+            ) : null}
+
+            <div className="rounded-[1.75rem] border border-brand-dark/10 bg-background p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+              <h2 className="text-2xl">What happens next</h2>
+              <ol className="text-muted-foreground mt-5 space-y-3 text-sm leading-relaxed">
+                <li>1. I review your application personally.</li>
+                <li>2. I reply within 48 hours with the next best step.</li>
+                <li>3. If it feels like a fit, we move into onboarding and Everfit setup.</li>
+              </ol>
+            </div>
+          </div>
+
+          <form
+            className="marketing-panel space-y-8 rounded-[2rem] p-6 shadow-[0_24px_60px_rgba(46,31,51,0.08)] md:p-8"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submitApplication();
+            }}
+          >
+            <div className="space-y-4">
+              <SectionHeading
+                eyebrow="Application"
+                title="Tell me what kind of support you need."
+                description="Choose the closest fit. You do not need to get it perfect."
+              />
+              <div className="grid gap-3">
+                {coachingApplicationTierOptions.map((option) => (
+                  <label
+                    key={option.value}
+                    className={`cursor-pointer rounded-[1.5rem] border p-4 transition-colors ${
+                      selectedTier === option.value
+                        ? "border-brand-accent bg-brand-accent/5"
+                        : "border-border hover:bg-secondary/30"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="tier"
+                      value={option.value}
+                      checked={selectedTier === option.value}
+                      onChange={() => setSelectedTier(option.value)}
+                      className="sr-only"
+                    />
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-base">{option.title}</p>
+                        <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                          {option.description}
+                        </p>
+                      </div>
+                      <span
+                        className={`mt-1 h-4 w-4 rounded-full border ${
+                          selectedTier === option.value
+                            ? "border-brand-accent bg-brand-accent"
+                            : "border-muted-foreground/40"
+                        }`}
+                      />
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-5 rounded-[1.75rem] border border-brand-dark/10 bg-background p-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="name">Name *</Label>
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-5 rounded-[1.75rem] border border-brand-dark/10 bg-background p-6">
+              <div>
+                <h3 className="text-xl">Application details</h3>
+                <p className="text-muted-foreground mt-2 text-sm">
+                  Tell me what you need from training, what feels complex right now, and what kind
+                  of support would help.
+                </p>
+              </div>
+              {visibleQuestions.map((question) => (
+                <div key={question.id} className="space-y-2">
+                  <Label htmlFor={question.id}>
+                    {question.label}
+                    {question.required ? " *" : ""}
+                  </Label>
+                  {question.type === "select" ? (
+                    <select
+                      id={question.id}
+                      value={answers[question.id] || ""}
+                      onChange={(e) =>
+                        setAnswers((prev) => ({ ...prev, [question.id]: e.target.value }))
+                      }
+                      className="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-11 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                      required={question.required}
+                    >
+                      <option value="">Select an option</option>
+                      {question.options?.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Textarea
+                      id={question.id}
+                      rows={question.id === "anythingElse" ? 4 : 5}
+                      placeholder={question.placeholder}
+                      value={answers[question.id] || ""}
+                      onChange={(e) =>
+                        setAnswers((prev) => ({ ...prev, [question.id]: e.target.value }))
+                      }
+                      required={question.required}
+                    />
+                  )}
+                  {question.helpText ? (
+                    <p className="text-muted-foreground text-xs">{question.helpText}</p>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-4 rounded-[1.75rem] border border-brand-dark/10 bg-background p-5">
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="coaching-agreement"
+                  checked={agreedToCoachingAgreement}
+                  onCheckedChange={(checked) => setAgreedToCoachingAgreement(checked === true)}
+                />
+                <label
+                  htmlFor="coaching-agreement"
+                  className="cursor-pointer text-sm leading-relaxed"
+                >
+                  I have read and agree to the{" "}
+                  <Link href="/coaching-agreement" className="text-primary underline" target="_blank">
+                    Coaching Agreement
+                  </Link>
+                  . I also understand this application sits alongside the{" "}
+                  <Link href="/terms" className="text-primary underline" target="_blank">
+                    Terms & Conditions
+                  </Link>
+                  ,{" "}
+                  <Link href="/health-declaration" className="text-primary underline" target="_blank">
+                    Health & Liability Waiver
+                  </Link>
+                  , and{" "}
+                  <Link href="/privacy" className="text-primary underline" target="_blank">
+                    Privacy Policy
+                  </Link>
+                  .
+                </label>
+              </div>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                This application is reviewed manually. It does not place you into a paid coaching
+                tier automatically.
+              </p>
+            </div>
+
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full"
+              disabled={!requiredComplete || isSubmitting}
+            >
+              <MessageCircle className="h-5 w-5" />
+              {isSubmitting ? "Submitting..." : "Submit Application"}
+            </Button>
+
+            {error ? (
+              <div className="rounded-[1.3rem] border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                {error}
+              </div>
+            ) : null}
+
+            <div className="text-muted-foreground flex items-start gap-2 text-sm leading-relaxed">
+              <Shield className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <p>
+                I aim to respond within 48 hours. If the Independent Training Plan is the better fit,
+                I will say so clearly rather than upselling you into more support than you need.
+              </p>
+            </div>
+          </form>
         </div>
-      </section>
+      </MarketingSection>
     </Layout>
   );
 }

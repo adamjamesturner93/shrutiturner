@@ -1,23 +1,41 @@
 "use client";
 
-import { Layout } from "../components/layout";
-import { SEO } from "../components/seo";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Textarea } from "../components/ui/textarea";
-import { Label } from "../components/ui/label";
+import Link from "next/link";
+import { useState } from "react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Heart,
+  Mail,
+  MessageCircle,
+  Sparkles,
+  User,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+import { Layout } from "@/components/layout";
+import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
+import {
+  EditorialHero,
+  MarketingSection,
+  PathCards,
+  ProofBand,
+  SectionHeading,
+} from "@/components/marketing/sections";
+import { SEO } from "@/components/seo";
+import { TurnstileWidget } from "@/components/turnstile-widget";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../components/ui/select";
-import Link from "next/link";
-import { useState } from "react";
-import { CheckCircle2, ArrowRight, Mail, MessageCircle } from "lucide-react";
-import { ImageWithFallback } from "../components/figma/ImageWithFallback";
-import { TurnstileWidget } from "@/components/turnstile-widget";
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { servicePathCards } from "@/data/public-refresh";
 
 const INTEREST_OPTIONS = [
   { value: "group-classes", label: "Move Well Classes (yoga, strength, cardio)" },
@@ -37,6 +55,28 @@ const HOW_FOUND_OPTIONS = [
   { value: "blog", label: "Blog article" },
   { value: "other", label: "Other" },
 ];
+
+const serviceIcons: Record<(typeof servicePathCards)[number]["icon"], LucideIcon> = {
+  heart: Heart,
+  users: Users,
+  user: User,
+  sparkles: Sparkles,
+};
+
+const contactExpectations = [
+  {
+    label: "Reply Window",
+    detail: "I read enquiries myself and usually reply within 2 working days.",
+  },
+  {
+    label: "No Pitch",
+    detail: "This is a conversation, not a funnel. If another route fits better, I will say so.",
+  },
+  {
+    label: "Useful Detail",
+    detail: "Accessibility, symptoms, uncertainty, and past bad experiences are all relevant context.",
+  },
+] as const;
 
 export function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
@@ -94,52 +134,83 @@ export function ContactPage() {
           description="Your enquiry has been submitted."
           noIndex
         />
-        <section className="flex min-h-[70vh] items-center py-20 md:py-28">
-          <div className="container mx-auto max-w-lg space-y-6 px-4 text-center">
-            <div className="space-y-6">
-              <div className="border-brand-accent/20 mx-auto h-20 w-20 overflow-hidden rounded-full border-2">
-                <ImageWithFallback
-                  src="https://images.unsplash.com/photo-1675186914580-94356f7c012c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3YXJtJTIwcHJvZmVzc2lvbmFsJTIwd29tYW4lMjBzbWlsaW5nJTIwcG9ydHJhaXQlMjBuYXR1cmFsJTIwbGlnaHR8ZW58MXx8fHwxNzczMDAzOTU3fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-                  alt="Shruti Turner"
-                  className="h-full w-full object-cover"
-                />
+
+        <section className="section-wash min-h-[calc(100dvh-4rem)] px-4 py-10 md:py-14">
+          <div className="container mx-auto max-w-6xl">
+            <div className="grid gap-6 lg:min-h-[calc(100dvh-12rem)] lg:grid-cols-[0.96fr_1.04fr] lg:items-center">
+              <div className="marketing-grid overflow-hidden rounded-[2rem] px-6 py-8 text-brand-white md:px-8 md:py-9">
+                <div className="relative z-10">
+                  <p className="text-brand-accent-light text-xs tracking-[0.3em] uppercase">
+                    Message Received
+                  </p>
+                  <h1 className="mt-5 text-4xl leading-tight md:text-5xl">
+                    Thank you, {formData.firstName || "there"}.
+                  </h1>
+                  <p className="mt-5 max-w-xl text-lg leading-relaxed text-brand-white/80">
+                    I read every enquiry personally. If this is about coaching, I may come back
+                    with a couple of clarifying questions before suggesting the best next step.
+                  </p>
+
+                  <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                    {[
+                      "Reply within 2 working days",
+                      "No pressure or hard sell",
+                      "Accessibility questions welcome",
+                    ].map((item) => (
+                      <div
+                        key={item}
+                        className="rounded-[1.3rem] border border-brand-white/10 bg-brand-white/8 px-4 py-4 text-sm leading-relaxed text-brand-white/84"
+                      >
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <div className="bg-brand-accent/10 mx-auto flex h-16 w-16 items-center justify-center rounded-full">
-                <CheckCircle2 className="text-brand-accent h-8 w-8" />
-              </div>
-              <div className="space-y-3">
-                <h1 className="text-3xl">Thank you, {formData.firstName || "there"}.</h1>
-                <p className="text-muted-foreground leading-relaxed">
-                  I read every enquiry personally and I'll get back to you within 2 working days. If
-                  your enquiry is about 1:1 training, I may ask a few follow-up questions about your
-                  conditions and goals before suggesting next steps.
-                </p>
-              </div>
-              <blockquote className="text-muted-foreground border-brand-accent/30 mx-auto max-w-sm border-l-2 pl-4 text-left text-sm italic">
-                "I know reaching out can feel like a big step, especially when you've had
-                experiences where your body wasn't understood. There's no wrong question here."
-                <span className="text-brand-accent mt-1 block text-xs not-italic">— Shruti</span>
-              </blockquote>
-              <div className="border-brand-accent/20 bg-brand-accent/5 space-y-3 rounded-lg border p-5 text-center">
-                <p className="text-sm">While you wait, why not try a class?</p>
-                <Link href="/login">
-                  <Button className="bg-brand-accent text-brand-white hover:bg-brand-accent/90">
-                    Start Your 14-Day Free Trial
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-                <p className="text-muted-foreground text-xs">No card required. Cancel anytime.</p>
-              </div>
-              <div className="flex flex-col justify-center gap-4 pt-2 sm:flex-row">
-                <Link href="/classes">
-                  <Button variant="outline">
-                    Explore Move Well Classes
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-                <Link href="/blog">
-                  <Button variant="outline">Read the Blog</Button>
-                </Link>
+
+              <div className="marketing-panel rounded-[2rem] px-6 py-8 md:px-8 md:py-9">
+                <div className="mx-auto max-w-2xl">
+                  <div className="bg-brand-accent/10 text-brand-accent flex h-16 w-16 items-center justify-center rounded-full">
+                    <CheckCircle2 className="h-8 w-8" />
+                  </div>
+                  <h2 className="mt-6 text-3xl md:text-4xl">While you wait</h2>
+                  <p className="text-muted-foreground mt-4 text-lg leading-relaxed">
+                    If you want to keep exploring, these are the most useful next pages.
+                  </p>
+
+                  <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                    {servicePathCards.slice(0, 4).map((card) => {
+                      const Icon = serviceIcons[card.icon];
+                      return (
+                        <Link
+                          key={card.href}
+                          href={card.href}
+                          className="rounded-[1.5rem] border border-brand-dark/10 bg-background p-5 transition-transform duration-300 hover:-translate-y-1"
+                        >
+                          <div className="bg-brand-accent/10 text-brand-accent flex h-11 w-11 items-center justify-center rounded-2xl">
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <h3 className="mt-4 text-xl">{card.title}</h3>
+                          <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                            {card.detail}
+                          </p>
+                        </Link>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                    <Button asChild>
+                      <Link href="/classes">
+                        Explore Move Well Classes
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                      <Link href="/blog">Read the Blog</Link>
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -157,211 +228,300 @@ export function ContactPage() {
         canonicalUrl="https://shrutiturner.com/contact"
       />
 
-      {/* Hero */}
-      <section className="bg-brand-dark text-brand-white py-16 md:py-20">
-        <div className="container mx-auto max-w-4xl px-4 text-center">
-          <h1 className="mb-4 text-4xl md:text-5xl">Get in Touch</h1>
-          <p className="text-brand-accent-light text-xl leading-relaxed">
-            Whether you have a specific question or want to explore how I can help, I'd love to hear
-            from you. No pressure, no hard sell.
-          </p>
-        </div>
-      </section>
-
-      <section className="py-16 md:py-20">
-        <div className="container mx-auto max-w-5xl px-4">
-          <div className="grid gap-12 md:grid-cols-5">
-            {/* Form */}
-            <div className="md:col-span-3">
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First name *</Label>
-                    <Input
-                      id="firstName"
-                      value={formData.firstName}
-                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last name *</Label>
-                    <Input
-                      id="lastName"
-                      value={formData.lastName}
-                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email address *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="interest">What are you interested in? *</Label>
-                  <Select
-                    value={formData.interest}
-                    onValueChange={(v) => setFormData({ ...formData, interest: v })}
-                  >
-                    <SelectTrigger id="interest">
-                      <SelectValue placeholder="Select an option" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {INTEREST_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="conditions">Any conditions or context you'd like to share?</Label>
-                  <p className="text-muted-foreground text-xs">
-                    Optional. This helps me understand your situation before we chat. E.g. "I have
-                    RA" or "recovering from knee surgery".
+      <EditorialHero
+        eyebrow="Contact"
+        size="compact"
+        title={
+          <>
+            Start with a question,
+            <span className="text-brand-accent-light"> not a sales call.</span>
+          </>
+        }
+        description="If you want help choosing between classes, coaching, programmes, or retreats, tell me what feels unclear. You do not need to know the right service name before you reach out."
+        primaryCta={{ href: "#contact-form", label: "Open Enquiry Form" }}
+        secondaryCta={{ href: "/pricing", label: "View Pricing First" }}
+        metrics={[
+          {
+            label: "Best For",
+            detail: "Service questions, access needs, coaching fit, retreat suitability, or general context.",
+          },
+          {
+            label: "Tone",
+            detail: "Direct, low-pressure, and grounded in what your body actually needs.",
+          },
+          {
+            label: "Reply",
+            detail: "Usually within 2 working days, with follow-up only if more detail is useful.",
+          },
+        ]}
+        aside={
+          <div className="relative mx-auto max-w-xl">
+            <div className="overflow-hidden rounded-[2rem] border border-brand-white/10 bg-brand-white/8 p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+              <div className="aspect-[4/4.55] overflow-hidden rounded-[1.45rem]">
+                <ImageWithFallback
+                  src="/images/shruti.jpeg"
+                  alt="Shruti Turner"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <div className="rounded-[1.15rem] bg-brand-white/10 p-4 backdrop-blur-sm">
+                  <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
+                    Expect
                   </p>
-                  <Input
-                    id="conditions"
-                    placeholder="e.g. Psoriatic arthritis, chronic fatigue"
-                    value={formData.conditions}
-                    onChange={(e) => setFormData({ ...formData, conditions: e.target.value })}
-                  />
+                  <p className="mt-2 text-sm leading-relaxed text-brand-white/84">
+                    Clarity on fit, pricing, and the next best route if you are still deciding.
+                  </p>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="howFound">How did you find me?</Label>
-                  <Select
-                    value={formData.howFound}
-                    onValueChange={(v) => setFormData({ ...formData, howFound: v })}
-                  >
-                    <SelectTrigger id="howFound">
-                      <SelectValue placeholder="Select..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {HOW_FOUND_OPTIONS.filter((o) => o.value).map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="message">Your message *</Label>
-                  <Textarea
-                    id="message"
-                    rows={5}
-                    placeholder="Tell me a bit about what you're looking for..."
-                    value={formData.message}
-                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <TurnstileWidget onTokenChange={setTurnstileToken} />
-                </div>
-
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="w-full"
-                  disabled={!formData.interest || !turnstileToken || submitting}
-                >
-                  {submitting ? "Sending..." : "Send Enquiry"}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-
-                {error ? <p className="text-sm text-red-600">{error}</p> : null}
-
-                <p className="text-muted-foreground text-center text-xs">
-                  Your information is kept private and never shared. I typically reply within 2
-                  working days.
-                </p>
-              </form>
-            </div>
-
-            {/* Sidebar */}
-            <div className="space-y-8 md:col-span-2">
-              <div className="bg-secondary/30 space-y-4 rounded-lg p-6">
-                <div className="flex items-center gap-2">
-                  <MessageCircle className="text-primary h-5 w-5" />
-                  <h3 className="text-lg">What to expect</h3>
-                </div>
-                <ul className="text-muted-foreground space-y-3 text-sm">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="text-primary mt-0.5 h-4 w-4 flex-shrink-0" />
-                    <span>I'll reply within 2 working days</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="text-primary mt-0.5 h-4 w-4 flex-shrink-0" />
-                    <span>
-                      For 1:1 enquiries, I may ask follow-up questions about your conditions before
-                      recommending a plan
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="text-primary mt-0.5 h-4 w-4 flex-shrink-0" />
-                    <span>No obligation, no sales pitch</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="text-primary mt-0.5 h-4 w-4 flex-shrink-0" />
-                    <span>
-                      If I'm not the right fit, I'll try to point you in the right direction
-                    </span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="bg-secondary/30 space-y-3 rounded-lg p-6">
-                <div className="flex items-center gap-2">
-                  <Mail className="text-primary h-5 w-5" />
-                  <h3 className="text-lg">Prefer email?</h3>
-                </div>
-                <p className="text-muted-foreground text-sm">
-                  You can also email me directly at{" "}
-                  <a
-                    href="mailto:hello@shrutiturner.com"
-                    className="text-primary font-medium underline decoration-2 underline-offset-3"
-                  >
-                    hello@shrutiturner.com
-                  </a>
-                </p>
-              </div>
-
-              <div className="border-t pt-6">
-                <h3 className="mb-3 text-lg">Not sure what you need?</h3>
-                <p className="text-muted-foreground mb-4 text-sm">
-                  These pages might help you decide:
-                </p>
-                <div className="space-y-2">
-                  <Link href="/classes" className="text-primary block text-sm hover:underline">
-                    Explore class types &rarr;
-                  </Link>
-                  <Link href="/pricing" className="text-primary block text-sm hover:underline">
-                    View full pricing &rarr;
-                  </Link>
-                  <Link href="/about" className="text-primary block text-sm hover:underline">
-                    About my approach &rarr;
-                  </Link>
+                <div className="rounded-[1.15rem] bg-brand-accent-light/12 p-4 backdrop-blur-sm">
+                  <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
+                    Safe to mention
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-brand-white/84">
+                    Symptoms, uncertainty, access needs, old injury stories, or bad past advice.
+                  </p>
                 </div>
               </div>
             </div>
           </div>
+        }
+      />
+
+      <ProofBand
+        title="What happens when you reach out"
+        description="The point of the contact page is to reduce friction, not create it. You should leave with a clearer route, even if that route is not the highest-touch option."
+        items={[...contactExpectations]}
+      />
+
+      <MarketingSection id="contact-form" className="section-wash">
+        <div className="grid gap-8 lg:grid-cols-[1.04fr_0.96fr] lg:gap-10">
+          <div className="marketing-panel rounded-[2rem] p-6 shadow-[0_24px_60px_rgba(46,31,51,0.08)] md:p-8">
+            <SectionHeading
+              eyebrow="Enquiry Form"
+              title="Tell me what you need help with."
+              description="The more context you can share, the easier it is for me to point you toward the right next step."
+            />
+
+            <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First name *</Label>
+                  <Input
+                    id="firstName"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    required
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last name *</Label>
+                  <Input
+                    id="lastName"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    required
+                    className="h-11"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email address *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required
+                  className="h-11"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="interest">What are you interested in? *</Label>
+                <Select
+                  value={formData.interest}
+                  onValueChange={(value) => setFormData({ ...formData, interest: value })}
+                >
+                  <SelectTrigger id="interest" className="h-11">
+                    <SelectValue placeholder="Select an option" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INTEREST_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="conditions">Any conditions or context you want me to know?</Label>
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  Optional. For example: psoriatic arthritis, longer-term fatigue, hypermobility,
+                  recovery from surgery, or uncertainty about what is safe right now.
+                </p>
+                <Input
+                  id="conditions"
+                  placeholder="Share anything useful before we talk"
+                  value={formData.conditions}
+                  onChange={(e) => setFormData({ ...formData, conditions: e.target.value })}
+                  className="h-11"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="howFound">How did you find me?</Label>
+                <Select
+                  value={formData.howFound}
+                  onValueChange={(value) => setFormData({ ...formData, howFound: value })}
+                >
+                  <SelectTrigger id="howFound" className="h-11">
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HOW_FOUND_OPTIONS.filter((option) => option.value).map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="message">Your message *</Label>
+                <Textarea
+                  id="message"
+                  rows={6}
+                  placeholder="Tell me a bit about what you are looking for, what feels difficult right now, and what would be useful help."
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-3">
+                <TurnstileWidget onTokenChange={setTurnstileToken} />
+              </div>
+
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full"
+                disabled={!formData.interest || !turnstileToken || submitting}
+              >
+                {submitting ? "Sending..." : "Send Enquiry"}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+
+              {error ? (
+                <div className="rounded-[1.3rem] border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  {error}
+                </div>
+              ) : null}
+
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Your information stays private and is only used to reply to this enquiry.
+              </p>
+            </form>
+          </div>
+
+          <div className="space-y-6">
+            <div className="marketing-panel rounded-[1.75rem] p-6 md:p-7">
+              <div className="flex items-start gap-3">
+                <div className="bg-brand-accent/10 text-brand-accent flex h-11 w-11 items-center justify-center rounded-2xl">
+                  <MessageCircle className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-2xl">What to expect</h2>
+                  <ul className="text-muted-foreground mt-5 space-y-4 text-sm leading-relaxed">
+                    <li className="flex items-start gap-3">
+                      <CheckCircle2 className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
+                      I reply personally rather than handing this to a generic inbox.
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <CheckCircle2 className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
+                      If you are asking about coaching, I may follow up before recommending a tier.
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <CheckCircle2 className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
+                      If another route fits better, I will point you there directly.
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[1.75rem] border border-brand-dark/10 bg-background p-6 shadow-[0_18px_40px_rgba(46,31,51,0.06)]">
+              <div className="flex items-start gap-3">
+                <div className="bg-brand-accent/10 text-brand-accent flex h-11 w-11 items-center justify-center rounded-2xl">
+                  <Mail className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-2xl">Prefer email?</h2>
+                  <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
+                    You can email{" "}
+                    <a
+                      href="mailto:hello@shrutiturner.com"
+                      className="text-primary font-medium underline decoration-2 underline-offset-3"
+                    >
+                      hello@shrutiturner.com
+                    </a>{" "}
+                    directly if that is easier.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[1.75rem] border border-brand-dark/10 bg-brand-warm/60 p-6 shadow-[0_18px_40px_rgba(46,31,51,0.06)]">
+              <h2 className="text-2xl">Not sure what you need yet?</h2>
+              <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
+                These pages usually help people narrow the question before they reach out.
+              </p>
+              <div className="mt-5 grid gap-3">
+                <Button asChild variant="outline" className="justify-between">
+                  <Link href="/classes">
+                    Explore Move Well Classes
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="justify-between">
+                  <Link href="/coaching">
+                    Compare Coaching Options
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="justify-between">
+                  <Link href="/about">
+                    Read About My Approach
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
-      </section>
+      </MarketingSection>
+
+      <MarketingSection className="section-divider">
+        <SectionHeading
+          eyebrow="Ways To Work Together"
+          title="If you are still deciding, start with the route that looks closest."
+          description="These are the main entry points most people compare before they contact me."
+          align="center"
+        />
+        <div className="mt-12">
+          <PathCards
+            items={servicePathCards.map((card) => ({
+              ...card,
+              icon: serviceIcons[card.icon],
+            }))}
+          />
+        </div>
+      </MarketingSection>
     </Layout>
   );
 }

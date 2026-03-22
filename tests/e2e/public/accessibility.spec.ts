@@ -8,7 +8,7 @@ import {
 
 test.setTimeout(5 * 60_000);
 
-test("public pages have no WCAG 2.2 AA axe-core violations", async ({ page, baseURL }) => {
+test("public pages have no WCAG 2.2 AA axe-core violations @a11y", async ({ page, baseURL }) => {
   if (!baseURL) {
     throw new Error("Playwright baseURL is required for accessibility audits.");
   }
