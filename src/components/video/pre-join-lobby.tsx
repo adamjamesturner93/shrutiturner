@@ -68,7 +68,7 @@ export function PreJoinLobby({
             <div className="mt-2 flex items-center justify-center gap-2">
               <Badge className="border-brand-accent/30 bg-brand-accent/20 text-brand-accent-light">
                 <EyeOff className="mr-1 h-3 w-3" />
-                Starts in focus mode
+                Starts in community mode
               </Badge>
             </div>
           )}
@@ -86,28 +86,34 @@ export function PreJoinLobby({
             {/* Quick controls */}
             <div className="flex items-center justify-center gap-3">
               <button
+                type="button"
                 onClick={() => setIsMuted(!isMuted)}
                 className={`rounded-full p-3 transition-colors ${
                   isMuted
                     ? "bg-red-500/20 text-red-400"
                     : "bg-white/10 text-white hover:bg-white/15"
                 }`}
+                aria-label={isMuted ? "Turn microphone on" : "Turn microphone off"}
               >
                 {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
               </button>
               <button
+                type="button"
                 onClick={() => setIsCameraOn(!isCameraOn)}
                 className={`rounded-full p-3 transition-colors ${
                   !isCameraOn
                     ? "bg-red-500/20 text-red-400"
                     : "bg-white/10 text-white hover:bg-white/15"
                 }`}
+                aria-label={isCameraOn ? "Turn camera off" : "Turn camera on"}
               >
                 {isCameraOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
               </button>
               <button
+                type="button"
                 onClick={() => setShowDeviceSelector(true)}
                 className="rounded-full bg-white/10 p-3 text-white transition-colors hover:bg-white/15"
+                aria-label="Choose microphone, camera, and speaker devices"
               >
                 <Settings className="h-5 w-5" />
               </button>
@@ -142,7 +148,7 @@ export function PreJoinLobby({
                 <span className="text-white/80">
                   {mode === "live-class"
                     ? "Focus (instructor only)"
-                    : "Focus to start, instructor can enable community"}
+                    : "Community to start, instructor can switch to focus"}
                 </span>
               </div>
               {mode !== "live-class" && (
@@ -163,8 +169,9 @@ export function PreJoinLobby({
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
               <button
+                type="button"
                 onClick={onBack}
-                className="w-full py-2 text-sm text-white/40 transition-colors hover:text-white/60"
+                className="w-full py-2 text-sm text-white/70 transition-colors hover:text-white"
               >
                 Go back
               </button>

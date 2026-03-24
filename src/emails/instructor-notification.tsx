@@ -3,13 +3,14 @@ import { EmailLayout } from "./components/email-layout";
 import { colors, headingStyle, bodyTextStyle, buttonStyle, dividerStyle } from "./styles";
 
 interface InstructorNotificationEmailProps {
-  type?: "first-signup" | "last-cancel";
+  type?: "first-signup" | "last-cancel" | "no-attendance-cancelled";
   className?: string;
   classTime?: string;
   classDate?: string;
   attendeeCount?: number;
   attendeeName?: string;
   rosterUrl?: string;
+  emptyClassCutoffLabel?: string;
 }
 
 export default function InstructorNotificationEmail({
@@ -20,12 +21,20 @@ export default function InstructorNotificationEmail({
   attendeeCount = 1,
   attendeeName = "Student",
   rosterUrl = "https://shrutiturner.com/admin/dashboard",
+  emptyClassCutoffLabel = "3 hours",
 }: InstructorNotificationEmailProps) {
   const isFirstSignup = type === "first-signup";
+  const isNoAttendanceCancelled = type === "no-attendance-cancelled";
 
   return (
     <EmailLayout
-      preview={isFirstSignup ? `New booking: ${className}` : `Class empty: ${className}`}
+      preview={
+        isFirstSignup
+          ? `New booking: ${className}`
+          : isNoAttendanceCancelled
+            ? `Class cancelled: ${className}`
+            : `Class empty: ${className}`
+      }
     >
       <Text
         style={{
@@ -35,13 +44,19 @@ export default function InstructorNotificationEmail({
           marginBottom: "24px",
         }}
       >
-        {isFirstSignup ? "New student signed up" : "Class empty alert"}
+        {isFirstSignup
+          ? "New student signed up"
+          : isNoAttendanceCancelled
+            ? "Class cancelled due to no attendees"
+            : "Class empty alert"}
       </Text>
 
       <Text style={bodyTextStyle}>
         {isFirstSignup
           ? `${attendeeName} just booked into ${className}.`
-          : `The last attendee (${attendeeName}) cancelled ${className}.`}
+          : isNoAttendanceCancelled
+            ? `${className} had no attendees at the ${emptyClassCutoffLabel} cutoff, so it has been cancelled.`
+            : `The last attendee (${attendeeName}) cancelled ${className}.`}
       </Text>
 
       <Section

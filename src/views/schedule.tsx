@@ -27,7 +27,7 @@ type ApiScheduleDay = {
     dateLabel?: string;
     spotsRemaining?: number;
     bookedCount?: number;
-    status?: "scheduled" | "live" | "completed" | "cancelled";
+    status?: "draft" | "scheduled" | "live" | "completed" | "cancelled";
     isBookedByCurrentUser?: boolean;
     waitlistPosition?: number | null;
   }>;
@@ -51,7 +51,7 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
 
   return (
     <Layout>
-      <section className="marketing-grid overflow-hidden px-4 py-12 text-brand-white md:py-16">
+      <section className="marketing-grid text-brand-white overflow-hidden px-4 py-12 md:py-16">
         <div className="container mx-auto max-w-6xl">
           <div className="grid items-center gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:gap-10">
             <div>
@@ -88,10 +88,12 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
             </div>
 
             <div className="marketing-panel rounded-[2rem] p-6 md:p-7">
-              <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">Before you book</p>
+              <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">
+                Before you book
+              </p>
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-[1.35rem] border border-brand-dark/10 bg-background px-4 py-4">
-                  <div className="flex items-center gap-2 text-sm text-foreground">
+                <div className="border-brand-dark/10 bg-background rounded-[1.35rem] border px-4 py-4">
+                  <div className="text-foreground flex items-center gap-2 text-sm">
                     <Video className="text-primary h-4 w-4" />
                     <span>All classes are live online</span>
                   </div>
@@ -99,8 +101,8 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
                     Join from home with live cueing and real-time adaptation.
                   </p>
                 </div>
-                <div className="rounded-[1.35rem] border border-brand-dark/10 bg-background px-4 py-4">
-                  <div className="flex items-center gap-2 text-sm text-foreground">
+                <div className="border-brand-dark/10 bg-background rounded-[1.35rem] border px-4 py-4">
+                  <div className="text-foreground flex items-center gap-2 text-sm">
                     <Calendar className="text-primary h-4 w-4" />
                     <span>Flexible attendance</span>
                   </div>
@@ -108,8 +110,8 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
                     Membership and credit options are both flare-friendly.
                   </p>
                 </div>
-                <div className="rounded-[1.35rem] border border-brand-dark/10 bg-background px-4 py-4">
-                  <div className="flex items-center gap-2 text-sm text-foreground">
+                <div className="border-brand-dark/10 bg-background rounded-[1.35rem] border px-4 py-4">
+                  <div className="text-foreground flex items-center gap-2 text-sm">
                     <Clock className="text-primary h-4 w-4" />
                     <span>Times shown in {tzAbbr}</span>
                   </div>
@@ -118,8 +120,8 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
                   </p>
                 </div>
                 {londonOffset ? (
-                  <div className="rounded-[1.35rem] border border-brand-dark/10 bg-background px-4 py-4">
-                    <div className="flex items-center gap-2 text-sm text-foreground">
+                  <div className="border-brand-dark/10 bg-background rounded-[1.35rem] border px-4 py-4">
+                    <div className="text-foreground flex items-center gap-2 text-sm">
                       <Globe className="text-primary h-4 w-4" />
                       <span>{londonOffset}</span>
                     </div>
@@ -185,7 +187,7 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
             ) : null}
             {renderedScheduleData.map((daySchedule) => (
               <div key={daySchedule.day}>
-                <h2 className="mb-6 border-b border-brand-dark/10 pb-3 text-2xl md:text-3xl">
+                <h2 className="border-brand-dark/10 mb-6 border-b pb-3 text-2xl md:text-3xl">
                   {daySchedule.day}
                 </h2>
                 <div className="space-y-6">
@@ -286,48 +288,48 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
           align="center"
         />
 
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            <Link
-              href="/classes#yoga"
-              className="bg-background space-y-3 rounded-[1.5rem] border border-brand-dark/10 p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)] transition-shadow hover:shadow-md"
-            >
-              <div className="bg-brand-accent/20 flex h-12 w-12 items-center justify-center rounded-lg">
-                <Badge className={getTypeColor("Yoga")}>Yoga</Badge>
-              </div>
-              <h3 className="text-lg">Adaptive Yoga</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Rehabilitation-informed yoga prioritising stability, nervous system regulation, and
-                joint safety. Not mainstream yoga with modifications — a fundamentally different
-                approach.
-              </p>
-            </Link>
-
-            <Link
-              href="/classes#strength"
-              className="bg-background space-y-3 rounded-[1.5rem] border border-brand-dark/10 p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)] transition-shadow hover:shadow-md"
-            >
-              <div className="bg-brand-plum/15 flex h-12 w-12 items-center justify-center rounded-lg">
-                <Badge className={getTypeColor("Strength")}>Strength</Badge>
-              </div>
-              <h3 className="text-lg">Strength Classes</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Evidence-based strength work adapted for chronic conditions. Progressive resistance
-                training designed to build capacity without aggravating symptoms.
-              </p>
-            </Link>
-
-            <div className="bg-background space-y-3 rounded-[1.5rem] border border-brand-dark/10 p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
-              <div className="bg-brand-rose/15 flex h-12 w-12 items-center justify-center rounded-lg">
-                <Badge className={getTypeColor("Cardio")}>Cardio</Badge>
-              </div>
-              <h3 className="text-lg">Conditioning Support</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Conditioning sessions sit within the wider strength pathway, with adapted intervals
-                and work-to-rest ratios designed for people managing fatigue and post-exertional
-                symptoms.
-              </p>
+        <div className="mt-10 grid gap-6 md:grid-cols-3">
+          <Link
+            href="/classes#yoga"
+            className="bg-background border-brand-dark/10 space-y-3 rounded-[1.5rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)] transition-shadow hover:shadow-md"
+          >
+            <div className="bg-brand-accent/20 flex h-12 w-12 items-center justify-center rounded-lg">
+              <Badge className={getTypeColor("Yoga")}>Yoga</Badge>
             </div>
+            <h3 className="text-lg">Adaptive Yoga</h3>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Rehabilitation-informed yoga prioritising stability, nervous system regulation, and
+              joint safety. Not mainstream yoga with modifications — a fundamentally different
+              approach.
+            </p>
+          </Link>
+
+          <Link
+            href="/classes#strength"
+            className="bg-background border-brand-dark/10 space-y-3 rounded-[1.5rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)] transition-shadow hover:shadow-md"
+          >
+            <div className="bg-brand-plum/15 flex h-12 w-12 items-center justify-center rounded-lg">
+              <Badge className={getTypeColor("Strength")}>Strength</Badge>
+            </div>
+            <h3 className="text-lg">Strength Classes</h3>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Evidence-based strength work adapted for chronic conditions. Progressive resistance
+              training designed to build capacity without aggravating symptoms.
+            </p>
+          </Link>
+
+          <div className="bg-background border-brand-dark/10 space-y-3 rounded-[1.5rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+            <div className="bg-brand-rose/15 flex h-12 w-12 items-center justify-center rounded-lg">
+              <Badge className={getTypeColor("Cardio")}>Cardio</Badge>
+            </div>
+            <h3 className="text-lg">Conditioning Support</h3>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Conditioning sessions sit within the wider strength pathway, with adapted intervals
+              and work-to-rest ratios designed for people managing fatigue and post-exertional
+              symptoms.
+            </p>
           </div>
+        </div>
       </MarketingSection>
 
       <MarketingSection className="section-wash" compact contentClassName="max-w-5xl">
@@ -337,51 +339,51 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
           align="center"
         />
 
-          <div className="mt-10 grid gap-5 md:grid-cols-2">
-            <div className="border-primary border-l-4 py-2 pl-6">
-              <h3 className="mb-2 text-lg">All levels welcome</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Every class is adapted in real-time to suit your current capacity. Modifications and
-                progressions are provided throughout.
-              </p>
-            </div>
-
-            <div className="border-primary border-l-4 py-2 pl-6">
-              <h3 className="mb-2 text-lg">Cancellation policy</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Members can cancel or miss any class with no penalty. Credit pack users: cancel at
-                least 4 hours before class to get your credit back.
-              </p>
-            </div>
-
-            <div className="border-primary border-l-4 py-2 pl-6">
-              <h3 className="mb-2 text-lg">Equipment needed</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                <strong>Yoga classes:</strong> Yoga mat (or comfortable surface), optional
-                blocks/cushions for support.
-                <br />
-                <strong>Strength classes:</strong> Light dumbbells or household items (water
-                bottles, cans), resistance band (optional), chair for support.
-              </p>
-            </div>
-
-            <div className="border-primary border-l-4 py-2 pl-6">
-              <h3 className="mb-2 text-lg">Class size</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                All classes are capped to ensure everyone gets individual attention and
-                modifications. If a class is full, you can join the waitlist or choose another live
-                session that week.
-              </p>
-            </div>
-
-            <div className="border-primary border-l-4 py-2 pl-6">
-              <h3 className="mb-2 text-lg">Schedule changes</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Occasionally classes may be rescheduled or cancelled (illness, etc.). You'll receive
-                email notification at least 24 hours in advance when possible.
-              </p>
-            </div>
+        <div className="mt-10 grid gap-5 md:grid-cols-2">
+          <div className="border-primary border-l-4 py-2 pl-6">
+            <h3 className="mb-2 text-lg">All levels welcome</h3>
+            <p className="text-muted-foreground leading-relaxed">
+              Every class is adapted in real-time to suit your current capacity. Modifications and
+              progressions are provided throughout.
+            </p>
           </div>
+
+          <div className="border-primary border-l-4 py-2 pl-6">
+            <h3 className="mb-2 text-lg">Cancellation policy</h3>
+            <p className="text-muted-foreground leading-relaxed">
+              You can cancel your place any time before class starts. If nobody is booked in 3 hours
+              before the start time, the class is cancelled automatically and everyone is notified.
+            </p>
+          </div>
+
+          <div className="border-primary border-l-4 py-2 pl-6">
+            <h3 className="mb-2 text-lg">Equipment needed</h3>
+            <p className="text-muted-foreground leading-relaxed">
+              <strong>Yoga classes:</strong> Yoga mat (or comfortable surface), optional
+              blocks/cushions for support.
+              <br />
+              <strong>Strength classes:</strong> Light dumbbells or household items (water bottles,
+              cans), resistance band (optional), chair for support.
+            </p>
+          </div>
+
+          <div className="border-primary border-l-4 py-2 pl-6">
+            <h3 className="mb-2 text-lg">Class size</h3>
+            <p className="text-muted-foreground leading-relaxed">
+              All classes are capped to ensure everyone gets individual attention and modifications.
+              If a class is full, you can join the waitlist or choose another live session that
+              week.
+            </p>
+          </div>
+
+          <div className="border-primary border-l-4 py-2 pl-6">
+            <h3 className="mb-2 text-lg">Schedule changes</h3>
+            <p className="text-muted-foreground leading-relaxed">
+              Occasionally classes may be rescheduled or cancelled (illness, etc.). You'll receive
+              email notification at least 24 hours in advance when possible.
+            </p>
+          </div>
+        </div>
       </MarketingSection>
 
       <section className="bg-brand-accent text-brand-white py-14 md:py-18">

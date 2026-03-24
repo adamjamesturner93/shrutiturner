@@ -6,13 +6,14 @@ import {
   Prisma,
 } from "@prisma/client";
 import { db } from "@/lib/db";
-
-function getLateJoinCutoff(startsAtUtc: Date) {
-  return new Date(startsAtUtc.getTime() + 5 * 60_000);
-}
+import {
+  getClassOperationalSettings,
+  getJoinWindowOpensAt,
+  getLateJoinCutoffAt,
+} from "@/lib/classes/settings-service";
 
 export async function getSessionAccessContext(sessionId: string, userId: string) {
-  const [session, user] = await Promise.all([
+  const [session, user, settings] = await Promise.all([
     db.classSession.findUnique({
       where: { id: sessionId },
       include: {
@@ -34,6 +35,7 @@ export async function getSessionAccessContext(sessionId: string, userId: string)
         email: true,
       },
     }),
+    getClassOperationalSettings(),
   ]);
 
   if (!session || !user) {
@@ -54,7 +56,8 @@ export async function getSessionAccessContext(sessionId: string, userId: string)
     isInstructor,
     isModerator: isAdmin || isInstructor,
     displayName,
-    lateJoinCutoffAt: getLateJoinCutoff(session.startsAtUtc),
+    joinWindowOpensAt: getJoinWindowOpensAt(session.startsAtUtc, settings),
+    lateJoinCutoffAt: getLateJoinCutoffAt(session.startsAtUtc, settings),
   };
 }
 
@@ -89,6 +92,9 @@ export async function getRoomTokenAccess(sessionId: string, userId: string) {
   }
 
   const now = new Date();
+  if (now < access.joinWindowOpensAt) {
+    throw new Error("EARLY_JOIN_WINDOW");
+  }
   const hasPreviouslyJoined = Boolean(booking.firstJoinedAt);
   if (now > access.lateJoinCutoffAt && !hasPreviouslyJoined) {
     throw new Error("LATE_JOIN_CUTOFF");
@@ -214,16 +220,6 @@ export async function setManualAttendanceStatus(params: {
       attendanceMarkedAt: new Date(),
       attendanceMarkedByUserId: params.markedByUserId,
       attendanceSource: AttendanceSource.manual,
-    },
-  });
-}
-
-export async function setCommunityMode(params: { sessionId: string; enabled: boolean }) {
-  return db.classSession.update({
-    where: { id: params.sessionId },
-    data: {
-      communityModeEnabled: params.enabled,
-      communityModeUpdatedAt: new Date(),
     },
   });
 }

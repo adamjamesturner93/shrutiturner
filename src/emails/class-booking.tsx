@@ -19,6 +19,7 @@ interface ClassBookingEmailProps {
   classLocation?: string;
   instructorNote?: string;
   manageBookingUrl?: string;
+  creditRefundWindowLabel?: string;
 }
 
 export default function ClassBookingEmail({
@@ -30,6 +31,7 @@ export default function ClassBookingEmail({
   classLocation = "Online via Zoom",
   instructorNote = "No special equipment needed for this session — just a mat and yourself. We'll be working on building capacity through slow, intentional movement.",
   manageBookingUrl = "https://shrutiturner.com/account/bookings",
+  creditRefundWindowLabel = "3 hours",
 }: ClassBookingEmailProps) {
   return (
     <EmailLayout preview={`Booking confirmed: ${className} on ${classDate}`}>
@@ -149,8 +151,8 @@ export default function ClassBookingEmail({
       <Hr style={dividerStyle} />
 
       <Text style={mutedTextStyle}>
-        Need to cancel? You can do so up to 2 hours before the class starts from your account
-        dashboard.
+        Need to cancel? You can do so up to {creditRefundWindowLabel} before the class starts from
+        your account dashboard.
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>

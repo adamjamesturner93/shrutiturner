@@ -53,10 +53,17 @@ enum CreditEntryType {
 }
 
 enum ClassSessionStatus {
+  draft
   scheduled
   live
   completed
   cancelled
+}
+
+enum ClassRoomSetupStatus {
+  pending
+  ready
+  failed
 }
 
 enum ClassBookingStatus {
@@ -289,6 +296,8 @@ model User {
   createdCreditAdjustments CreditLedgerEntry[]      @relation("CreditAdjustmentsBy")
   instructedClassSessions ClassSession[]            @relation("SessionInstructor")
   cancelledClassSessions ClassSession[]             @relation("SessionCancelledBy")
+  classTimetableRules    ClassTimetableRule[]       @relation("ClassTimetableInstructor")
+  createdClassTimetableRules ClassTimetableRule[]   @relation("ClassTimetableCreatedBy")
   classBookings          ClassBooking[]
   classWaitlistEntries   ClassWaitlistEntry[]
   emailEvents            EmailEvent[]
@@ -523,9 +532,52 @@ model UserNotificationPreference {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model ClassTimetableRule {
+  id                      String   @id @default(cuid())
+  classDefinitionSlug     String
+  weekday                 Int
+  startsAtLocal           String
+  durationMinutes         Int
+  timezone                String   @default("Europe/London")
+  defaultCapacity         Int
+  instructorUserId        String
+  instructorProfileEntryId String?
+  startsOn                DateTime
+  endsOn                  DateTime?
+  active                  Boolean  @default(true)
+  notes                   String?
+  createdByUserId         String
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  instructor User @relation("ClassTimetableInstructor", fields: [instructorUserId], references: [id], onDelete: Restrict)
+  createdBy  User @relation("ClassTimetableCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  exclusions ClassTimetableExclusion[]
+  sessions   ClassSession[]
+
+  @@index([active, weekday, startsOn])
+  @@index([instructorUserId, active])
+}
+
+model ClassTimetableExclusion {
+  id              String   @id @default(cuid())
+  timetableRuleId String
+  localDate       DateTime
+  reason          String?
+  createdAt       DateTime @default(now())
+
+  timetableRule ClassTimetableRule @relation(fields: [timetableRuleId], references: [id], onDelete: Cascade)
+
+  @@unique([timetableRuleId, localDate])
+  @@index([localDate])
+}
+
 model ClassSession {
   id                 String             @id @default(cuid())
   classDefinitionSlug String
+  timetableRuleId    String?
+  localDate          DateTime?
+  generationKey      String?            @unique
   titleSnapshot      String
   typeSnapshot       String
   durationMinutes    Int
@@ -540,6 +592,8 @@ model ClassSession {
   instructorProfileEntryId String?
   instructorNameSnapshot String?
   instructorBioSnapshot String?
+  roomSetupStatus    ClassRoomSetupStatus @default(pending)
+  roomSetupError     String?
   dailyRoomName      String?
   dailyRoomUrl       String?
   communityModeEnabled Boolean         @default(false)
@@ -547,9 +601,13 @@ model ClassSession {
   cancelledAt        DateTime?
   cancelledByUserId  String?
   cancelReason       String?
+  reminderProcessedAt DateTime?
+  autoCancelledForNoAttendanceAt DateTime?
+  firstSignupInstructorEmailSentAt DateTime?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
+  timetableRule ClassTimetableRule? @relation(fields: [timetableRuleId], references: [id], onDelete: SetNull)
   instructor   User                 @relation("SessionInstructor", fields: [instructorUserId], references: [id], onDelete: Restrict)
   cancelledBy  User?                @relation("SessionCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
   bookings     ClassBooking[]
@@ -560,6 +618,8 @@ model ClassSession {
   @@index([classDefinitionSlug, startsAtUtc])
   @@index([startsAtUtc, status])
   @@index([instructorUserId, startsAtUtc])
+  @@index([timetableRuleId, startsAtUtc])
+  @@index([roomSetupStatus, startsAtUtc])
 }
 
 model ClassBooking {
@@ -739,6 +799,16 @@ model PromotionCodeMirror {
   updatedAt             DateTime @updatedAt
 
   @@index([active, code])
+}
+
+model ClassOperationalSettings {
+  id                            String   @id @default("default")
+  preJoinWindowMinutes          Int      @default(10)
+  lateJoinCutoffMinutes         Int      @default(5)
+  creditRefundWindowMinutes     Int      @default(180)
+  emptyClassAutoCancelWindowMinutes Int  @default(180)
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
 }
 
 model NewsletterSubscriber {

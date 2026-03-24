@@ -8,10 +8,12 @@ import {
   loadSavedDeviceSettings,
   saveDeviceSettings,
   stopMediaStream,
+  type SavedDeviceSettings,
 } from "@/lib/daily/client";
 
 interface DeviceSelectorProps {
   onClose: () => void;
+  onApply?: (settings: SavedDeviceSettings) => Promise<void> | void;
 }
 
 interface DeviceOption {
@@ -26,7 +28,7 @@ function toDeviceLabel(kind: "camera" | "microphone" | "speaker", label: string,
   return `Speaker ${index + 1}`;
 }
 
-export function DeviceSelector({ onClose }: DeviceSelectorProps) {
+export function DeviceSelector({ onClose, onApply }: DeviceSelectorProps) {
   const initialSettings = useMemo(() => loadSavedDeviceSettings(), []);
   const [selectedCamera, setSelectedCamera] = useState(initialSettings.cameraId);
   const [selectedMic, setSelectedMic] = useState(initialSettings.micId);
@@ -38,6 +40,8 @@ export function DeviceSelector({ onClose }: DeviceSelectorProps) {
   const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
   const [micLevel, setMicLevel] = useState(0);
   const [testingSpeaker, setTestingSpeaker] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
+  const [applyError, setApplyError] = useState("");
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const displayMicLevel = previewStream?.getAudioTracks().length ? micLevel : 0;
 
@@ -122,10 +126,11 @@ export function DeviceSelector({ onClose }: DeviceSelectorProps) {
   }, [selectedCamera, selectedMic, selectedSpeaker]);
 
   useEffect(() => {
-    attachTrack(videoRef.current, previewStream?.getVideoTracks()[0] || null, true);
+    const videoElement = videoRef.current;
+    attachTrack(videoElement, previewStream?.getVideoTracks()[0] || null, true);
     return () => {
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
+      if (videoElement) {
+        videoElement.srcObject = null;
       }
     };
   }, [previewStream]);
@@ -167,13 +172,30 @@ export function DeviceSelector({ onClose }: DeviceSelectorProps) {
     return () => stopMediaStream(previewStream);
   }, [previewStream]);
 
-  const handleDone = () => {
-    saveDeviceSettings({
+  const handleDone = async () => {
+    const nextSettings = {
       cameraId: selectedCamera,
       micId: selectedMic,
       speakerId: selectedSpeaker,
-    });
-    onClose();
+    };
+
+    saveDeviceSettings(nextSettings);
+    setApplyError("");
+
+    if (!onApply) {
+      onClose();
+      return;
+    }
+
+    setIsApplying(true);
+    try {
+      await onApply(nextSettings);
+      onClose();
+    } catch (error) {
+      setApplyError(error instanceof Error ? error.message : "Unable to apply device changes");
+    } finally {
+      setIsApplying(false);
+    }
   };
 
   const handleSpeakerTest = async () => {
@@ -296,14 +318,21 @@ export function DeviceSelector({ onClose }: DeviceSelectorProps) {
               devices.
             </div>
           ) : null}
+
+          {applyError ? (
+            <div className="rounded-lg border border-red-400/20 bg-red-500/10 p-3 text-xs text-red-100">
+              {applyError}
+            </div>
+          ) : null}
         </div>
 
         <div className="flex-shrink-0 border-t border-white/10 p-4">
           <Button
-            onClick={handleDone}
+            onClick={() => void handleDone()}
+            disabled={isApplying}
             className="bg-brand-accent hover:bg-brand-accent/90 w-full text-white"
           >
-            Done
+            {isApplying ? "Applying..." : "Done"}
           </Button>
         </div>
       </div>

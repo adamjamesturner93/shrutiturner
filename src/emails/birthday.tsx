@@ -1,14 +1,6 @@
 import { Section, Text, Link, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
-import {
-  colors,
-  fonts,
-  headingStyle,
-  bodyTextStyle,
-  buttonStyle,
-  dividerStyle,
-  mutedTextStyle,
-} from "./styles";
+import { colors, fonts, bodyTextStyle, buttonStyle, dividerStyle, mutedTextStyle } from "./styles";
 
 interface BirthdayEmailProps {
   firstName?: string;

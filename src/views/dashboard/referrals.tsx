@@ -5,7 +5,7 @@ import { useAuth } from "../../context/auth-context";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { useEffect, useState } from "react";
-import { Gift, Copy, Check, Users, CreditCard, ArrowRight, Wallet } from "lucide-react";
+import { Gift, Copy, Check, Users, ArrowRight, Wallet } from "lucide-react";
 import Link from "next/link";
 import type { ReferralSummaryDto } from "@/lib/api/types";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
@@ -141,8 +141,16 @@ export function DashboardReferrals() {
       {/* Stats */}
       <AppMetricGrid className="mb-8 lg:grid-cols-3">
         <AppMetricCard label="Friends joined" value={referralCount} detail="completed referrals" />
-        <AppMetricCard label="Total earned" value={`£${referralEarned}`} detail="lifetime referral earnings" />
-        <AppMetricCard label="Current balance" value={`£${referralBalance}`} detail="ready for your next purchase" />
+        <AppMetricCard
+          label="Total earned"
+          value={`£${referralEarned}`}
+          detail="lifetime referral earnings"
+        />
+        <AppMetricCard
+          label="Current balance"
+          value={`£${referralBalance}`}
+          detail="ready for your next purchase"
+        />
       </AppMetricGrid>
 
       {/* Where balance will be applied */}

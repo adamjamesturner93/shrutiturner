@@ -1,6 +1,9 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import {
+  AttendanceSource,
+  BookingEntitlementType,
   ClassBookingStatus,
+  ClassRoomSetupStatus,
   ClassSessionStatus,
   ClassWaitlistStatus,
   MembershipPlan,
@@ -57,6 +60,63 @@ function classesPerWeek(plan: MembershipPlan) {
 
 function datePlus(days: number) {
   return new Date(Date.now() + days * 86400000);
+}
+
+function atUtcTime(date: Date, hours: number, minutes = 0) {
+  const value = new Date(date);
+  value.setUTCHours(hours, minutes, 0, 0);
+  return value;
+}
+
+async function upsertSeededClassScenarioUser(params: {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+}) {
+  const user = await prisma.user.upsert({
+    where: { email: params.email },
+    update: {
+      firstName: params.firstName,
+      lastName: params.lastName,
+      name: `${params.firstName} ${params.lastName}`,
+      role: params.role,
+      timezone: "Europe/London",
+      dateFormat: "DD/MM/YYYY",
+      isOnboarded: true,
+    },
+    create: {
+      id: params.id,
+      email: params.email,
+      firstName: params.firstName,
+      lastName: params.lastName,
+      name: `${params.firstName} ${params.lastName}`,
+      role: params.role,
+      timezone: "Europe/London",
+      dateFormat: "DD/MM/YYYY",
+      isOnboarded: true,
+    },
+  });
+
+  await prisma.userNotificationPreference.upsert({
+    where: { userId: user.id },
+    update: {
+      classReminders: true,
+      scheduleUpdates: true,
+      programAnnouncements: true,
+      marketingEmails: false,
+    },
+    create: {
+      userId: user.id,
+      classReminders: true,
+      scheduleUpdates: true,
+      programAnnouncements: true,
+      marketingEmails: false,
+    },
+  });
+
+  return user;
 }
 
 async function upsertUser(index: number) {
@@ -402,6 +462,540 @@ async function seedClassSessions(userIds: string[]) {
   });
 }
 
+async function seedDeterministicClassScenarios() {
+  const instructor = await upsertSeededClassScenarioUser({
+    id: "seed_class_instructor",
+    email: "seed.classes.instructor@example.com",
+    firstName: "Shruti",
+    lastName: "Turner",
+    role: UserRole.admin,
+  });
+  const unlimitedMember = await upsertSeededClassScenarioUser({
+    id: "seed_class_member_unlimited",
+    email: "seed.classes.member.unlimited@example.com",
+    firstName: "Uma",
+    lastName: "Member",
+    role: UserRole.student,
+  });
+  const limitedMember = await upsertSeededClassScenarioUser({
+    id: "seed_class_member_limited",
+    email: "seed.classes.member.limited@example.com",
+    firstName: "Liam",
+    lastName: "Member",
+    role: UserRole.student,
+  });
+  const creditMember = await upsertSeededClassScenarioUser({
+    id: "seed_class_member_credit",
+    email: "seed.classes.member.credit@example.com",
+    firstName: "Cora",
+    lastName: "Credit",
+    role: UserRole.student,
+  });
+
+  await prisma.membershipSubscription.upsert({
+    where: { id: "seed_class_membership_unlimited" },
+    update: {
+      userId: unlimitedMember.id,
+      plan: MembershipPlan.movewell,
+      status: MembershipStatus.active,
+      pricePence: 2900,
+      currency: "GBP",
+      classesPerWeek: 99,
+      classesUsedThisWeek: 1,
+      startsAt: datePlus(-30),
+      renewsAt: datePlus(14),
+      endsAt: null,
+      cancelAtPeriodEnd: false,
+    },
+    create: {
+      id: "seed_class_membership_unlimited",
+      userId: unlimitedMember.id,
+      plan: MembershipPlan.movewell,
+      status: MembershipStatus.active,
+      pricePence: 2900,
+      currency: "GBP",
+      classesPerWeek: 99,
+      classesUsedThisWeek: 1,
+      startsAt: datePlus(-30),
+      renewsAt: datePlus(14),
+      cancelAtPeriodEnd: false,
+    },
+  });
+
+  await prisma.membershipSubscription.upsert({
+    where: { id: "seed_class_membership_limited" },
+    update: {
+      userId: limitedMember.id,
+      plan: MembershipPlan.movewell,
+      status: MembershipStatus.active,
+      pricePence: 2900,
+      currency: "GBP",
+      classesPerWeek: 2,
+      classesUsedThisWeek: 1,
+      startsAt: datePlus(-30),
+      renewsAt: datePlus(14),
+      endsAt: null,
+      cancelAtPeriodEnd: false,
+    },
+    create: {
+      id: "seed_class_membership_limited",
+      userId: limitedMember.id,
+      plan: MembershipPlan.movewell,
+      status: MembershipStatus.active,
+      pricePence: 2900,
+      currency: "GBP",
+      classesPerWeek: 2,
+      classesUsedThisWeek: 1,
+      startsAt: datePlus(-30),
+      renewsAt: datePlus(14),
+      cancelAtPeriodEnd: false,
+    },
+  });
+
+  await prisma.creditLedgerEntry.upsert({
+    where: { id: "seed_class_credit_bundle" },
+    update: {
+      userId: creditMember.id,
+      amount: 6,
+      type: "purchase",
+      description: "Seed class credit bundle",
+      sourceRef: "seed:class-credit-bundle",
+      expiresAt: datePlus(45),
+    },
+    create: {
+      id: "seed_class_credit_bundle",
+      userId: creditMember.id,
+      amount: 6,
+      type: "purchase",
+      description: "Seed class credit bundle",
+      sourceRef: "seed:class-credit-bundle",
+      expiresAt: datePlus(45),
+    },
+  });
+
+  const timetableSessionDate = atUtcTime(datePlus(2), 18, 0);
+  const timetableSessionLocalDate = timetableSessionDate.toISOString().slice(0, 10);
+  const exclusionDate = atUtcTime(datePlus(9), 18, 0).toISOString().slice(0, 10);
+
+  await prisma.classTimetableRule.upsert({
+    where: { id: "seed_timetable_rule_strength" },
+    update: {
+      classDefinitionSlug: "strength-foundations",
+      weekday: timetableSessionDate.getUTCDay(),
+      startsAtLocal: "18:00",
+      durationMinutes: 45,
+      timezone: "Europe/London",
+      defaultCapacity: 10,
+      instructorUserId: instructor.id,
+      startsOn: new Date(`${timetableSessionLocalDate}T00:00:00.000Z`),
+      endsOn: null,
+      active: true,
+      notes: "Seeded recurring timetable rule for automated tests.",
+      createdByUserId: instructor.id,
+    },
+    create: {
+      id: "seed_timetable_rule_strength",
+      classDefinitionSlug: "strength-foundations",
+      weekday: timetableSessionDate.getUTCDay(),
+      startsAtLocal: "18:00",
+      durationMinutes: 45,
+      timezone: "Europe/London",
+      defaultCapacity: 10,
+      instructorUserId: instructor.id,
+      startsOn: new Date(`${timetableSessionLocalDate}T00:00:00.000Z`),
+      active: true,
+      notes: "Seeded recurring timetable rule for automated tests.",
+      createdByUserId: instructor.id,
+    },
+  });
+
+  await prisma.classTimetableExclusion.upsert({
+    where: { id: "seed_timetable_exclusion_strength" },
+    update: {
+      timetableRuleId: "seed_timetable_rule_strength",
+      localDate: new Date(`${exclusionDate}T00:00:00.000Z`),
+      reason: "Seeded exclusion date",
+    },
+    create: {
+      id: "seed_timetable_exclusion_strength",
+      timetableRuleId: "seed_timetable_rule_strength",
+      localDate: new Date(`${exclusionDate}T00:00:00.000Z`),
+      reason: "Seeded exclusion date",
+    },
+  });
+
+  const sessions = [
+    {
+      id: "seed_class_timetable_booked",
+      classDefinitionSlug: "strength-foundations",
+      titleSnapshot: "Seeded Timetable Strength",
+      typeSnapshot: "Strength",
+      levelSnapshot: "Beginner",
+      durationMinutes: 45,
+      startsAtUtc: timetableSessionDate,
+      capacity: 10,
+      status: ClassSessionStatus.scheduled,
+      timetableRuleId: "seed_timetable_rule_strength",
+      localDate: timetableSessionLocalDate,
+      generationKey: `seed_timetable_rule_strength:${timetableSessionLocalDate}`,
+    },
+    {
+      id: "seed_class_future_available",
+      classDefinitionSlug: "adaptive-yoga-flow",
+      titleSnapshot: "Seeded Future Yoga Flow",
+      typeSnapshot: "Yoga",
+      levelSnapshot: "All levels",
+      durationMinutes: 60,
+      startsAtUtc: atUtcTime(datePlus(3), 9, 30),
+      capacity: 12,
+      status: ClassSessionStatus.scheduled,
+      timetableRuleId: null,
+      localDate: atUtcTime(datePlus(3), 0, 0).toISOString().slice(0, 10),
+      generationKey: null,
+    },
+    {
+      id: "seed_class_three_hour_with_attendees",
+      classDefinitionSlug: "chair-based-strength",
+      titleSnapshot: "Seeded Three Hour Reminder",
+      typeSnapshot: "Strength",
+      levelSnapshot: "Adaptive",
+      durationMinutes: 45,
+      startsAtUtc: new Date(Date.now() + 2.5 * 60 * 60 * 1000),
+      capacity: 8,
+      status: ClassSessionStatus.scheduled,
+      timetableRuleId: null,
+      localDate: new Date(Date.now() + 2.5 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      generationKey: null,
+    },
+    {
+      id: "seed_class_three_hour_zero",
+      classDefinitionSlug: "adaptive-yoga-flow",
+      titleSnapshot: "Seeded Auto Cancel Empty Class",
+      typeSnapshot: "Yoga",
+      levelSnapshot: "All levels",
+      durationMinutes: 60,
+      startsAtUtc: new Date(Date.now() + 2.75 * 60 * 60 * 1000),
+      capacity: 8,
+      status: ClassSessionStatus.scheduled,
+      timetableRuleId: null,
+      localDate: new Date(Date.now() + 2.75 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      generationKey: null,
+    },
+    {
+      id: "seed_class_last_cancel_window",
+      classDefinitionSlug: "strength-foundations",
+      titleSnapshot: "Seeded Last Cancel Strength",
+      typeSnapshot: "Strength",
+      levelSnapshot: "Beginner",
+      durationMinutes: 45,
+      startsAtUtc: new Date(Date.now() + 2.25 * 60 * 60 * 1000),
+      capacity: 6,
+      status: ClassSessionStatus.scheduled,
+      timetableRuleId: null,
+      localDate: new Date(Date.now() + 2.25 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      generationKey: null,
+    },
+    {
+      id: "seed_class_full_waitlist",
+      classDefinitionSlug: "adaptive-yoga-flow",
+      titleSnapshot: "Seeded Full Waitlist Flow",
+      typeSnapshot: "Yoga",
+      levelSnapshot: "All levels",
+      durationMinutes: 60,
+      startsAtUtc: atUtcTime(datePlus(4), 11, 0),
+      capacity: 2,
+      status: ClassSessionStatus.scheduled,
+      timetableRuleId: null,
+      localDate: atUtcTime(datePlus(4), 0, 0).toISOString().slice(0, 10),
+      generationKey: null,
+    },
+    {
+      id: "seed_class_completed_attendance",
+      classDefinitionSlug: "chair-based-strength",
+      titleSnapshot: "Seeded Completed Attendance Class",
+      typeSnapshot: "Strength",
+      levelSnapshot: "Adaptive",
+      durationMinutes: 45,
+      startsAtUtc: atUtcTime(datePlus(-1), 17, 0),
+      capacity: 8,
+      status: ClassSessionStatus.completed,
+      timetableRuleId: null,
+      localDate: atUtcTime(datePlus(-1), 0, 0).toISOString().slice(0, 10),
+      generationKey: null,
+    },
+  ] as const;
+
+  for (const session of sessions) {
+    const endsAtUtc = new Date(session.startsAtUtc.getTime() + session.durationMinutes * 60_000);
+
+    await prisma.classSession.upsert({
+      where: { id: session.id },
+      update: {
+        classDefinitionSlug: session.classDefinitionSlug,
+        timetableRuleId: session.timetableRuleId,
+        localDate: new Date(`${session.localDate}T00:00:00.000Z`),
+        generationKey: session.generationKey,
+        titleSnapshot: session.titleSnapshot,
+        typeSnapshot: session.typeSnapshot,
+        levelSnapshot: session.levelSnapshot,
+        durationMinutes: session.durationMinutes,
+        startsAtUtc: session.startsAtUtc,
+        endsAtUtc,
+        timezone: "Europe/London",
+        capacity: session.capacity,
+        status: session.status,
+        instructorUserId: instructor.id,
+        instructorNameSnapshot: instructor.name,
+        roomSetupStatus: ClassRoomSetupStatus.ready,
+        roomSetupError: null,
+        dailyRoomName: `seed-room-${session.id}`,
+        dailyRoomUrl: `https://example.daily.co/${session.id}`,
+        reminderProcessedAt: null,
+        autoCancelledForNoAttendanceAt: null,
+        cancelReason: null,
+      },
+      create: {
+        id: session.id,
+        classDefinitionSlug: session.classDefinitionSlug,
+        timetableRuleId: session.timetableRuleId,
+        localDate: new Date(`${session.localDate}T00:00:00.000Z`),
+        generationKey: session.generationKey,
+        titleSnapshot: session.titleSnapshot,
+        typeSnapshot: session.typeSnapshot,
+        levelSnapshot: session.levelSnapshot,
+        durationMinutes: session.durationMinutes,
+        startsAtUtc: session.startsAtUtc,
+        endsAtUtc,
+        timezone: "Europe/London",
+        capacity: session.capacity,
+        status: session.status,
+        instructorUserId: instructor.id,
+        instructorNameSnapshot: instructor.name,
+        roomSetupStatus: ClassRoomSetupStatus.ready,
+        dailyRoomName: `seed-room-${session.id}`,
+        dailyRoomUrl: `https://example.daily.co/${session.id}`,
+      },
+    });
+  }
+
+  await prisma.classBooking.upsert({
+    where: {
+      sessionId_userId: {
+        sessionId: "seed_class_timetable_booked",
+        userId: unlimitedMember.id,
+      },
+    },
+    update: {
+      status: ClassBookingStatus.booked,
+      entitlementType: BookingEntitlementType.membership,
+      cancelledAt: null,
+    },
+    create: {
+      sessionId: "seed_class_timetable_booked",
+      userId: unlimitedMember.id,
+      status: ClassBookingStatus.booked,
+      entitlementType: BookingEntitlementType.membership,
+    },
+  });
+
+  await prisma.classBooking.upsert({
+    where: {
+      sessionId_userId: {
+        sessionId: "seed_class_three_hour_with_attendees",
+        userId: limitedMember.id,
+      },
+    },
+    update: {
+      status: ClassBookingStatus.booked,
+      entitlementType: BookingEntitlementType.membership,
+      cancelledAt: null,
+    },
+    create: {
+      sessionId: "seed_class_three_hour_with_attendees",
+      userId: limitedMember.id,
+      status: ClassBookingStatus.booked,
+      entitlementType: BookingEntitlementType.membership,
+    },
+  });
+
+  await prisma.classBooking.upsert({
+    where: {
+      sessionId_userId: {
+        sessionId: "seed_class_last_cancel_window",
+        userId: unlimitedMember.id,
+      },
+    },
+    update: {
+      status: ClassBookingStatus.booked,
+      entitlementType: BookingEntitlementType.membership,
+      cancelledAt: null,
+    },
+    create: {
+      sessionId: "seed_class_last_cancel_window",
+      userId: unlimitedMember.id,
+      status: ClassBookingStatus.booked,
+      entitlementType: BookingEntitlementType.membership,
+    },
+  });
+
+  await prisma.classBooking.upsert({
+    where: {
+      sessionId_userId: {
+        sessionId: "seed_class_full_waitlist",
+        userId: unlimitedMember.id,
+      },
+    },
+    update: {
+      status: ClassBookingStatus.booked,
+      entitlementType: BookingEntitlementType.membership,
+      cancelledAt: null,
+    },
+    create: {
+      sessionId: "seed_class_full_waitlist",
+      userId: unlimitedMember.id,
+      status: ClassBookingStatus.booked,
+      entitlementType: BookingEntitlementType.membership,
+    },
+  });
+
+  await prisma.classBooking.upsert({
+    where: {
+      sessionId_userId: {
+        sessionId: "seed_class_full_waitlist",
+        userId: limitedMember.id,
+      },
+    },
+    update: {
+      status: ClassBookingStatus.booked,
+      entitlementType: BookingEntitlementType.membership,
+      cancelledAt: null,
+    },
+    create: {
+      sessionId: "seed_class_full_waitlist",
+      userId: limitedMember.id,
+      status: ClassBookingStatus.booked,
+      entitlementType: BookingEntitlementType.membership,
+    },
+  });
+
+  await prisma.classWaitlistEntry.upsert({
+    where: {
+      sessionId_userId: {
+        sessionId: "seed_class_full_waitlist",
+        userId: creditMember.id,
+      },
+    },
+    update: {
+      status: ClassWaitlistStatus.waiting,
+      position: 1,
+      promotedAt: null,
+    },
+    create: {
+      sessionId: "seed_class_full_waitlist",
+      userId: creditMember.id,
+      status: ClassWaitlistStatus.waiting,
+      position: 1,
+    },
+  });
+
+  await prisma.classBooking.upsert({
+    where: {
+      sessionId_userId: {
+        sessionId: "seed_class_completed_attendance",
+        userId: unlimitedMember.id,
+      },
+    },
+    update: {
+      status: ClassBookingStatus.booked,
+      entitlementType: BookingEntitlementType.membership,
+      firstJoinedAt: atUtcTime(datePlus(-1), 17, 2),
+      lastJoinedAt: atUtcTime(datePlus(-1), 17, 35),
+      lastLeftAt: atUtcTime(datePlus(-1), 17, 44),
+      joinCount: 2,
+      attendanceMarkedAt: atUtcTime(datePlus(-1), 17, 44),
+      attendanceSource: AttendanceSource.daily,
+      cancelledAt: null,
+    },
+    create: {
+      sessionId: "seed_class_completed_attendance",
+      userId: unlimitedMember.id,
+      status: ClassBookingStatus.booked,
+      entitlementType: BookingEntitlementType.membership,
+      firstJoinedAt: atUtcTime(datePlus(-1), 17, 2),
+      lastJoinedAt: atUtcTime(datePlus(-1), 17, 35),
+      lastLeftAt: atUtcTime(datePlus(-1), 17, 44),
+      joinCount: 2,
+      attendanceMarkedAt: atUtcTime(datePlus(-1), 17, 44),
+      attendanceSource: AttendanceSource.daily,
+    },
+  });
+
+  await prisma.classBooking.upsert({
+    where: {
+      sessionId_userId: {
+        sessionId: "seed_class_completed_attendance",
+        userId: creditMember.id,
+      },
+    },
+    update: {
+      status: ClassBookingStatus.booked,
+      entitlementType: BookingEntitlementType.credit,
+      firstJoinedAt: null,
+      lastJoinedAt: null,
+      lastLeftAt: null,
+      joinCount: 0,
+      attendanceMarkedAt: null,
+      attendanceSource: null,
+      cancelledAt: null,
+    },
+    create: {
+      sessionId: "seed_class_completed_attendance",
+      userId: creditMember.id,
+      status: ClassBookingStatus.booked,
+      entitlementType: BookingEntitlementType.credit,
+    },
+  });
+
+  await prisma.classAttendanceEvent.deleteMany({
+    where: {
+      sessionId: "seed_class_completed_attendance",
+    },
+  });
+
+  const attendedBooking = await prisma.classBooking.findUniqueOrThrow({
+    where: {
+      sessionId_userId: {
+        sessionId: "seed_class_completed_attendance",
+        userId: unlimitedMember.id,
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  await prisma.classAttendanceEvent.createMany({
+    data: [
+      {
+        sessionId: "seed_class_completed_attendance",
+        bookingId: attendedBooking.id,
+        userId: unlimitedMember.id,
+        dailyParticipantId: "seed-daily-attendee",
+        type: "joined",
+        occurredAt: atUtcTime(datePlus(-1), 17, 2),
+      },
+      {
+        sessionId: "seed_class_completed_attendance",
+        bookingId: attendedBooking.id,
+        userId: unlimitedMember.id,
+        dailyParticipantId: "seed-daily-attendee",
+        type: "left",
+        occurredAt: atUtcTime(datePlus(-1), 17, 44),
+      },
+    ],
+  });
+}
+
 async function seedThemedWeeks() {
   const themedWeeks = [
     {
@@ -462,10 +1056,11 @@ async function main() {
 
   await seedReferrals(users);
   await seedClassSessions(users.map((u) => u.id));
+  await seedDeterministicClassScenarios();
   await seedThemedWeeks();
 
   console.log(
-    "Seeded billing dataset: 25 members with membership, credit, referral, health, class sessions, and themed weeks."
+    "Seeded billing dataset: 25 members plus deterministic class timetable, cutoff, waitlist, attendance, and themed-week scenarios."
   );
 }
 

@@ -1,12 +1,32 @@
 "use client";
 
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import {
+  Calendar,
+  CheckCircle,
+  ChevronRight,
+  Clock,
+  Play,
+  RefreshCw,
+  Repeat,
+  XCircle,
+} from "lucide-react";
 import { AdminLayout } from "../../components/admin-layout";
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Calendar, Clock, Users, Play, CheckCircle, XCircle, ChevronRight } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
 import {
   ScheduleClassModal,
   type ScheduleClassData,
@@ -14,11 +34,13 @@ import {
   type InstructorOption,
   type InstructorProfileOption,
 } from "../../components/admin/schedule-class-modal";
-import type { AdminClassSessionDto } from "@/lib/classes/types";
+import type { AdminClassSessionDto, ClassTimetableRuleDto } from "@/lib/classes/types";
 import { getTypeColor } from "@/lib/classes/type-color";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
+import { groupAdminSessionsByWeek } from "@/lib/classes/admin-week-groups";
 
 const STATUS_ICON: Record<string, typeof Play> = {
+  draft: Clock,
   scheduled: Clock,
   live: Play,
   completed: CheckCircle,
@@ -29,102 +51,117 @@ const STATUS_BADGE: Record<
   string,
   { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
 > = {
+  draft: { label: "Draft", variant: "outline" },
   scheduled: { label: "Scheduled", variant: "secondary" },
   live: { label: "Live", variant: "default" },
   completed: { label: "Completed", variant: "outline" },
   cancelled: { label: "Cancelled", variant: "destructive" },
 };
 
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 export function AdminClasses() {
   const [sessions, setSessions] = useState<AdminClassSessionDto[]>([]);
+  const [timetables, setTimetables] = useState<ClassTimetableRuleDto[]>([]);
   const [templates, setTemplates] = useState<ClassTemplateOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [publishingAll, setPublishingAll] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [instructors, setInstructors] = useState<InstructorOption[]>([]);
   const [instructorProfiles, setInstructorProfiles] = useState<InstructorProfileOption[]>([]);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackError, setFeedbackError] = useState("");
+  const [cancellingWeekStart, setCancellingWeekStart] = useState<string | null>(null);
+  const [endingRule, setEndingRule] = useState<ClassTimetableRuleDto | null>(null);
+  const [endingMode, setEndingMode] = useState<"immediate" | "last-class-date">("immediate");
+  const [endingLastClassDate, setEndingLastClassDate] = useState("");
+  const [endingTimetable, setEndingTimetable] = useState(false);
+  const [endingError, setEndingError] = useState("");
+
+  const refreshData = async () => {
+    const [sessionResponse, templateResponse, timetableResponse] = await Promise.all([
+      fetch("/api/admin/classes/sessions", { cache: "no-store" }),
+      fetch("/api/content/classes", { cache: "no-store" }),
+      fetch("/api/admin/classes/timetables", { cache: "no-store" }),
+    ]);
+    const [instructorResponse, profileResponse] = await Promise.all([
+      fetch("/api/admin/members?role=instructor", { cache: "no-store" }),
+      fetch("/api/admin/instructors/profiles", { cache: "no-store" }),
+    ]);
+
+    if (sessionResponse.ok) {
+      setSessions((await sessionResponse.json()) as AdminClassSessionDto[]);
+    }
+    if (timetableResponse.ok) {
+      setTimetables((await timetableResponse.json()) as ClassTimetableRuleDto[]);
+    }
+    if (templateResponse.ok) {
+      const payload = (await templateResponse.json()) as {
+        items: Array<{
+          slug: string;
+          name: string;
+          type: string;
+          day?: string;
+          time: string;
+          duration: string;
+          level: string;
+          maxSpaces: number;
+        }>;
+      };
+      setTemplates(
+        payload.items.map((item) => ({
+          slug: item.slug,
+          name: item.name,
+          type: item.type,
+          defaultDay: item.day,
+          defaultTime: item.time,
+          duration: item.duration,
+          level: item.level,
+          maxSpaces: item.maxSpaces,
+        }))
+      );
+    }
+    if (instructorResponse.ok) {
+      const payload = (await instructorResponse.json()) as Array<{
+        id: string;
+        firstName: string;
+        lastName: string;
+        instructorProfileEntryId?: string | null;
+      }>;
+      setInstructors(
+        payload.map((row) => ({
+          id: row.id,
+          name: `${row.firstName} ${row.lastName}`.trim() || row.id,
+          instructorProfileEntryId: row.instructorProfileEntryId || null,
+        }))
+      );
+    }
+    if (profileResponse.ok) {
+      const payload = (await profileResponse.json()) as Array<{
+        id: string;
+        name: string;
+        headline?: string;
+        bio?: string;
+      }>;
+      setInstructorProfiles(
+        payload.map((row) => ({
+          id: row.id,
+          name: row.name,
+          headline: row.headline || "",
+          bio: row.bio || "",
+        }))
+      );
+    }
+  };
 
   useEffect(() => {
     let active = true;
     void (async () => {
       setLoading(true);
       try {
-        const [sessionResponse, templateResponse] = await Promise.all([
-          fetch("/api/admin/classes/sessions", { cache: "no-store" }),
-          fetch("/api/content/classes", { cache: "no-store" }),
-        ]);
-        const [instructorResponse, profileResponse] = await Promise.all([
-          fetch("/api/admin/members?role=instructor", { cache: "no-store" }),
-          fetch("/api/admin/instructors/profiles", { cache: "no-store" }),
-        ]);
-        if (sessionResponse.ok) {
-          const payload = (await sessionResponse.json()) as AdminClassSessionDto[];
-          if (active) setSessions(payload);
-        }
-        if (templateResponse.ok) {
-          const payload = (await templateResponse.json()) as {
-            items: Array<{
-              slug: string;
-              name: string;
-              type: string;
-              day?: string;
-              time: string;
-              duration: string;
-              level: string;
-              maxSpaces: number;
-            }>;
-          };
-          if (active) {
-            setTemplates(
-              payload.items.map((item) => ({
-                slug: item.slug,
-                name: item.name,
-                type: item.type,
-                defaultDay: item.day,
-                defaultTime: item.time,
-                duration: item.duration,
-                level: item.level,
-                maxSpaces: item.maxSpaces,
-              }))
-            );
-          }
-        }
-        if (instructorResponse.ok) {
-          const payload = (await instructorResponse.json()) as Array<{
-            id: string;
-            firstName: string;
-            lastName: string;
-            instructorProfileEntryId?: string | null;
-          }>;
-          if (active) {
-            setInstructors(
-              payload.map((row) => ({
-                id: row.id,
-                name: `${row.firstName} ${row.lastName}`.trim() || row.id,
-                instructorProfileEntryId: row.instructorProfileEntryId || null,
-              }))
-            );
-          }
-        }
-        if (profileResponse.ok) {
-          const payload = (await profileResponse.json()) as Array<{
-            id: string;
-            name: string;
-            headline?: string;
-            bio?: string;
-          }>;
-          if (active) {
-            setInstructorProfiles(
-              payload.map((row) => ({
-                id: row.id,
-                name: row.name,
-                headline: row.headline || "",
-                bio: row.bio || "",
-              }))
-            );
-          }
-        }
+        await refreshData();
       } finally {
         if (active) setLoading(false);
       }
@@ -134,45 +171,214 @@ export function AdminClasses() {
     };
   }, []);
 
-  const filtered = sessions.filter((c) => {
-    const matchesStatus = statusFilter === "all" || c.status === statusFilter;
-    const matchesType = typeFilter === "all" || c.type.toLowerCase() === typeFilter;
+  const filtered = sessions.filter((session) => {
+    const matchesStatus = statusFilter === "all" || session.status === statusFilter;
+    const matchesType = typeFilter === "all" || session.type.toLowerCase() === typeFilter;
     return matchesStatus && matchesType;
   });
+  const groupedWeeks = groupAdminSessionsByWeek(filtered);
 
-  const scheduled = sessions.filter((c) => c.status === "scheduled");
-  const completed = sessions.filter((c) => c.status === "completed");
-
-  // Total attendance rate from completed
-  const totalBooked = completed.reduce((s, c) => s + c.bookedCount, 0);
-  const totalAttended = completed.reduce((s, c) => s + c.bookedCount, 0);
+  const draftSessions = sessions.filter((session) => session.status === "draft");
+  const scheduled = sessions.filter((session) => session.status === "scheduled");
+  const completed = sessions.filter((session) => session.status === "completed");
+  const totalBooked = completed.reduce(
+    (sum, session) => sum + session.attendedCount + session.noShowCount + session.bookedCount,
+    0
+  );
+  const totalAttended = completed.reduce((sum, session) => sum + session.attendedCount, 0);
   const attendanceRate = totalBooked > 0 ? Math.round((totalAttended / totalBooked) * 100) : 0;
 
-  const handleSchedule = async (
-    data: ScheduleClassData & { repeatWeeks?: number; weekdays?: number[] }
-  ) => {
-    const template = templates.find((cls) => cls.slug === data.classTemplateSlug);
-    if (!template) return;
-    const payload = {
-      classDefinitionSlug: data.classTemplateSlug,
-      startDate: data.date,
-      timeLocal: data.time,
-      durationMinutes: parseInt(template.duration, 10) || 60,
-      capacity: data.maxSpaces,
-      repeatWeeks: data.repeatWeeks || 1,
-      weekdays: data.weekdays || [new Date(`${data.date}T00:00:00`).getDay()],
-      instructorUserId: data.instructorUserId,
-      instructorProfileEntryId: data.instructorProfileEntryId,
-      notes: data.notes,
-    };
-    const response = await fetch("/api/admin/classes/sessions/bulk", {
+  const handleCreateTimetable = async (data: ScheduleClassData) => {
+    setFeedbackError("");
+    const template = templates.find((row) => row.slug === data.classTemplateSlug);
+    if (!template) {
+      throw new Error("Class template not found.");
+    }
+
+    const createResponse = await fetch("/api/admin/classes/timetables", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        classDefinitionSlug: data.classTemplateSlug,
+        weekday: new Date(`${data.date}T00:00:00`).getDay(),
+        startsAtLocal: data.time,
+        durationMinutes: parseInt(template.duration, 10) || 60,
+        defaultCapacity: data.maxSpaces,
+        instructorUserId: data.instructorUserId,
+        instructorProfileEntryId: data.instructorProfileEntryId,
+        startsOn: data.date,
+        notes: data.notes,
+      }),
     });
-    if (response.ok) {
-      const refreshed = await fetch("/api/admin/classes/sessions", { cache: "no-store" });
-      if (refreshed.ok) setSessions((await refreshed.json()) as AdminClassSessionDto[]);
+
+    if (!createResponse.ok) {
+      const payload = (await createResponse.json().catch(() => null)) as {
+        message?: string;
+      } | null;
+      throw new Error(payload?.message || "Failed to create timetable slot.");
+    }
+
+    const created = (await createResponse.json()) as {
+      draftCreatedCount?: number;
+      draftSkippedExistingCount?: number;
+    };
+    await refreshData();
+    setFeedbackMessage(
+      `Timetable slot saved. ${created.draftCreatedCount || 0} draft session${created.draftCreatedCount === 1 ? "" : "s"} created${
+        created.draftSkippedExistingCount
+          ? `, ${created.draftSkippedExistingCount} already existed`
+          : ""
+      }.`
+    );
+  };
+
+  const handlePublishAll = async () => {
+    setPublishingAll(true);
+    setFeedbackError("");
+    try {
+      const response = await fetch("/api/admin/classes/timetables/publish-all", { method: "POST" });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(payload?.message || "Failed to publish upcoming classes.");
+      }
+      await refreshData();
+      setFeedbackMessage("Published the next 8 weeks of active timetable sessions.");
+    } catch (error) {
+      setFeedbackError(
+        error instanceof Error ? error.message : "Failed to publish upcoming classes."
+      );
+    } finally {
+      setPublishingAll(false);
+    }
+  };
+
+  const toggleRule = async (rule: ClassTimetableRuleDto) => {
+    await fetch(`/api/admin/classes/timetables/${rule.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active: !rule.active }),
+    });
+    await refreshData();
+  };
+
+  const publishRule = async (ruleId: string) => {
+    setFeedbackError("");
+    const response = await fetch(`/api/admin/classes/timetables/${ruleId}/publish`, {
+      method: "POST",
+    });
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      setFeedbackError(payload?.message || "Failed to publish this timetable rule.");
+      return;
+    }
+    await refreshData();
+    setFeedbackMessage("Published the next 8 weeks for this timetable rule.");
+  };
+
+  const openEndRuleDialog = (rule: ClassTimetableRuleDto) => {
+    setEndingRule(rule);
+    setEndingMode("immediate");
+    setEndingLastClassDate(rule.endsOn || rule.nextSessionDate || rule.startsOn);
+    setEndingError("");
+  };
+
+  const resetEndRuleDialog = () => {
+    setEndingRule(null);
+    setEndingMode("immediate");
+    setEndingLastClassDate("");
+    setEndingError("");
+  };
+
+  const closeEndRuleDialog = () => {
+    if (endingTimetable) {
+      return;
+    }
+    resetEndRuleDialog();
+  };
+
+  const handleEndRule = async () => {
+    if (!endingRule) {
+      return;
+    }
+
+    if (endingMode === "last-class-date" && !endingLastClassDate) {
+      setEndingError("Choose the final class date to keep on the timetable.");
+      return;
+    }
+
+    setEndingTimetable(true);
+    setEndingError("");
+    setFeedbackError("");
+
+    try {
+      const response = await fetch(`/api/admin/classes/timetables/${endingRule.id}/end`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: endingMode,
+          lastClassDate: endingMode === "last-class-date" ? endingLastClassDate : undefined,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        message?: string;
+        cancelledCount?: number;
+        lastClassDate?: string;
+        mode?: string;
+      } | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to update this recurring class.");
+      }
+
+      await refreshData();
+      setFeedbackMessage(
+        endingMode === "immediate"
+          ? `Recurring class removed from the timetable. Cancelled ${payload?.cancelledCount || 0} future draft or scheduled sessions.`
+          : `Recurring class now ends after ${payload?.lastClassDate || endingLastClassDate}. Cancelled ${payload?.cancelledCount || 0} later sessions.`
+      );
+      resetEndRuleDialog();
+    } catch (error) {
+      setEndingError(
+        error instanceof Error ? error.message : "Failed to update this recurring class."
+      );
+    } finally {
+      setEndingTimetable(false);
+    }
+  };
+
+  const handleCancelWeek = async (weekStart: string) => {
+    setCancellingWeekStart(weekStart);
+    setFeedbackError("");
+    try {
+      const response = await fetch("/api/admin/classes/sessions/cancel-week", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          weekStart,
+          reason: "Cancelled from the weekly admin overview.",
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as {
+        message?: string;
+        cancelledCount?: number;
+        skippedCount?: number;
+        weekStart?: string;
+      } | null;
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to cancel this week of classes.");
+      }
+
+      await refreshData();
+      setFeedbackMessage(
+        `Week of ${payload?.weekStart || weekStart}: cancelled ${payload?.cancelledCount || 0} classes, skipped ${payload?.skippedCount || 0}.`
+      );
+    } catch (error) {
+      setFeedbackError(
+        error instanceof Error ? error.message : "Failed to cancel this week of classes."
+      );
+    } finally {
+      setCancellingWeekStart(null);
     }
   };
 
@@ -182,18 +388,39 @@ export function AdminClasses() {
         <AppPageHeader
           eyebrow="Operations"
           title="Class Management"
-          description={`${scheduled.length} upcoming · ${completed.length} completed this period`}
-          meta={loading ? "Loading latest sessions..." : undefined}
+          description={`${timetables.length} timetable rules · ${draftSessions.length} draft sessions · ${scheduled.length} scheduled sessions`}
+          meta={loading ? "Loading latest classes..." : undefined}
           actions={
-            <Button
-              onClick={() => setShowScheduleModal(true)}
-              className="bg-brand-accent hover:bg-brand-accent/90"
-            >
-              <Calendar className="mr-2 h-4 w-4" />
-              Schedule Class
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={() => void handlePublishAll()}
+                disabled={publishingAll}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Publish Next 8 Weeks
+              </Button>
+              <Button
+                onClick={() => setShowScheduleModal(true)}
+                className="bg-brand-accent hover:bg-brand-accent/90"
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                Add Timetable Slot
+              </Button>
+            </div>
           }
         />
+
+        {feedbackMessage ? (
+          <Card>
+            <CardContent className="py-4 text-sm">{feedbackMessage}</CardContent>
+          </Card>
+        ) : null}
+        {feedbackError ? (
+          <Card className="border-red-200">
+            <CardContent className="py-4 text-sm text-red-700">{feedbackError}</CardContent>
+          </Card>
+        ) : null}
 
         <ScheduleClassModal
           open={showScheduleModal}
@@ -201,23 +428,83 @@ export function AdminClasses() {
           templates={templates}
           instructors={instructors}
           instructorProfiles={instructorProfiles}
-          onSchedule={handleSchedule}
+          onSchedule={handleCreateTimetable}
         />
 
-        {/* Quick stats */}
-        <AppMetricGrid className="lg:grid-cols-3">
-          <AppMetricCard label="Upcoming classes" value={scheduled.length} detail="still to teach" />
+        <AppMetricGrid className="lg:grid-cols-4">
+          <AppMetricCard label="Timetable rules" value={timetables.length} detail="weekly slots" />
+          <AppMetricCard
+            label="Draft classes"
+            value={draftSessions.length}
+            detail="private sessions"
+          />
           <AppMetricCard
             label="Upcoming bookings"
-            value={scheduled.reduce((s, c) => s + c.bookedCount, 0)}
-            detail="across scheduled sessions"
+            value={scheduled.reduce((sum, session) => sum + session.bookedCount, 0)}
+            detail="across published sessions"
           />
-          <AppMetricCard label="Attendance rate" value={`${attendanceRate}%`} detail="completed sessions" />
+          <AppMetricCard
+            label="Attendance rate"
+            value={`${attendanceRate}%`}
+            detail="completed sessions"
+          />
         </AppMetricGrid>
 
-        {/* Filters */}
+        <Card>
+          <CardContent className="space-y-3 py-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm">Weekly timetable</p>
+                <p className="text-muted-foreground text-sm">
+                  These rules repeat every week. Saving a slot creates private draft sessions;
+                  publishing makes the next 8 weeks visible and bookable.
+                </p>
+              </div>
+            </div>
+            {timetables.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-6 text-center">
+                <Repeat className="text-muted-foreground mx-auto mb-3 h-8 w-8" />
+                <p className="text-muted-foreground">
+                  No timetable slots yet. Add your first weekly class slot to generate draft
+                  sessions.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {timetables.map((rule) => (
+                  <TimetableRow
+                    key={rule.id}
+                    rule={rule}
+                    onToggle={() => void toggleRule(rule)}
+                    onPublish={() => void publishRule(rule.id)}
+                    onEnd={() => openEndRuleDialog(rule)}
+                  />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <EndTimetableDialog
+          open={Boolean(endingRule)}
+          rule={endingRule}
+          mode={endingMode}
+          lastClassDate={endingLastClassDate}
+          submitting={endingTimetable}
+          error={endingError}
+          onOpenChange={(open) => {
+            if (!open) {
+              closeEndRuleDialog();
+            }
+          }}
+          onModeChange={setEndingMode}
+          onLastClassDateChange={setEndingLastClassDate}
+          onConfirm={() => void handleEndRule()}
+        />
+
         <div className="flex flex-wrap gap-3">
           <select
+            aria-label="Filter classes by status"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="border-border bg-background rounded-md border px-3 py-2 text-sm"
@@ -227,8 +514,10 @@ export function AdminClasses() {
             <option value="live">Live</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
+            <option value="draft">Draft</option>
           </select>
           <select
+            aria-label="Filter classes by type"
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
             className="border-border bg-background rounded-md border px-3 py-2 text-sm"
@@ -240,12 +529,40 @@ export function AdminClasses() {
           </select>
         </div>
 
-        {/* Class list */}
-        <div className="space-y-3">
-          {filtered.map((cls) => (
-            <ClassRow key={cls.id} classInstance={cls} />
+        <div className="space-y-5">
+          {groupedWeeks.map((group) => (
+            <div key={group.weekStart} className="space-y-3">
+              <div className="border-border/70 bg-secondary/20 flex flex-col gap-3 rounded-2xl border px-4 py-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-sm">{group.label}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {group.sessions.length} class{group.sessions.length === 1 ? "" : "es"} in this
+                    week
+                    {group.cancelEligibleCount > 0
+                      ? ` · ${group.cancelEligibleCount} can be cancelled together`
+                      : " · No future draft or scheduled classes left to cancel"}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={
+                    group.cancelEligibleCount === 0 || cancellingWeekStart === group.weekStart
+                  }
+                  onClick={() => void handleCancelWeek(group.weekStart)}
+                >
+                  {cancellingWeekStart === group.weekStart ? "Cancelling..." : "Cancel This Week"}
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {group.sessions.map((session) => (
+                  <ClassRow key={session.id} classInstance={session} />
+                ))}
+              </div>
+            </div>
           ))}
-          {filtered.length === 0 && (
+          {groupedWeeks.length === 0 && (
             <Card>
               <CardContent className="py-12 text-center">
                 <Calendar className="text-muted-foreground mx-auto mb-3 h-8 w-8" />
@@ -256,6 +573,161 @@ export function AdminClasses() {
         </div>
       </div>
     </AdminLayout>
+  );
+}
+
+function TimetableRow({
+  rule,
+  onToggle,
+  onPublish,
+  onEnd,
+}: {
+  rule: ClassTimetableRuleDto;
+  onToggle: () => void;
+  onPublish: () => void;
+  onEnd: () => void;
+}) {
+  return (
+    <Card className="border-border/70">
+      <CardContent className="flex flex-col gap-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm">{rule.className}</p>
+            <Badge className={getTypeColor(rule.classType as "Yoga" | "Strength" | "HIIT")}>
+              {rule.classType}
+            </Badge>
+            <Badge variant={rule.active ? "secondary" : "outline"}>
+              {rule.active ? "Active" : "Paused"}
+            </Badge>
+          </div>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {WEEKDAY_LABELS[rule.weekday]} at {rule.startsAtLocal} · {rule.durationMinutes} min ·{" "}
+            {rule.defaultCapacity} spaces
+          </p>
+          <p className="text-muted-foreground text-xs">
+            Starts {rule.startsOn}
+            {rule.endsOn ? ` · Ends ${rule.endsOn}` : " · Repeats weekly"}
+            {rule.nextSessionDate ? ` · Next generated class ${rule.nextSessionDate}` : ""}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={onPublish}>
+            <RefreshCw className="mr-2 h-3.5 w-3.5" />
+            Publish
+          </Button>
+          <Button variant="outline" size="sm" onClick={onEnd}>
+            End recurring
+          </Button>
+          <Button variant="outline" size="sm" onClick={onToggle}>
+            {rule.active ? "Pause" : "Activate"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function EndTimetableDialog({
+  open,
+  rule,
+  mode,
+  lastClassDate,
+  submitting,
+  error,
+  onOpenChange,
+  onModeChange,
+  onLastClassDateChange,
+  onConfirm,
+}: {
+  open: boolean;
+  rule: ClassTimetableRuleDto | null;
+  mode: "immediate" | "last-class-date";
+  lastClassDate: string;
+  submitting: boolean;
+  error: string;
+  onOpenChange: (open: boolean) => void;
+  onModeChange: (mode: "immediate" | "last-class-date") => void;
+  onLastClassDateChange: (value: string) => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>End recurring class</DialogTitle>
+          <DialogDescription>
+            {rule
+              ? `Update ${rule.className} so it stops appearing in the weekly timetable.`
+              : "Update this recurring class."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <RadioGroup
+            value={mode}
+            onValueChange={(value) => {
+              if (value === "immediate" || value === "last-class-date") {
+                onModeChange(value);
+              }
+            }}
+            className="space-y-3"
+          >
+            <label className="border-border/70 flex cursor-pointer items-start gap-3 rounded-xl border p-4">
+              <RadioGroupItem value="immediate" id="end-timetable-immediately" className="mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-sm">Remove immediately</p>
+                <p className="text-muted-foreground text-sm">
+                  Stop this recurring class now and cancel all future draft and scheduled sessions
+                  generated from it.
+                </p>
+              </div>
+            </label>
+
+            <label className="border-border/70 flex cursor-pointer items-start gap-3 rounded-xl border p-4">
+              <RadioGroupItem
+                value="last-class-date"
+                id="end-timetable-last-date"
+                className="mt-0.5"
+              />
+              <div className="w-full space-y-3">
+                <div className="space-y-1">
+                  <p className="text-sm">Choose the final class date</p>
+                  <p className="text-muted-foreground text-sm">
+                    Keep the timetable up to the selected date, then remove later sessions.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="end-timetable-last-class-date">Last class date</Label>
+                  <Input
+                    id="end-timetable-last-class-date"
+                    type="date"
+                    value={lastClassDate}
+                    onChange={(event) => onLastClassDateChange(event.target.value)}
+                    disabled={mode !== "last-class-date" || submitting}
+                  />
+                </div>
+              </div>
+            </label>
+          </RadioGroup>
+
+          {error ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button onClick={onConfirm} disabled={submitting}>
+            {submitting ? "Saving..." : "Update recurring class"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -275,13 +747,18 @@ function ClassRow({ classInstance }: { classInstance: AdminClassSessionDto }) {
     year: "numeric",
   });
   const time = startsAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  const threeHourOutcomeLabel =
+    classInstance.threeHourOutcome === "reminded"
+      ? "3-hour reminders sent"
+      : classInstance.threeHourOutcome === "cancelled_no_attendance"
+        ? "Auto-cancelled for no attendance"
+        : null;
 
   return (
     <Link href={`/admin/classes/${classInstance.id}`}>
       <Card className="hover:border-brand-accent/30 cursor-pointer transition-colors">
         <CardContent className="py-4">
           <div className="flex items-center gap-4">
-            {/* Status icon */}
             <div
               className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${
                 classInstance.status === "live"
@@ -292,19 +769,33 @@ function ClassRow({ classInstance }: { classInstance: AdminClassSessionDto }) {
               <StatusIcon className="h-5 w-5" />
             </div>
 
-            {/* Info */}
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm">{classInstance.title}</p>
                 <Badge className={typeColor}>{classInstance.type}</Badge>
                 <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
+                {classInstance.roomSetupStatus && classInstance.status !== "draft" ? (
+                  <Badge
+                    variant={classInstance.roomSetupStatus === "failed" ? "destructive" : "outline"}
+                  >
+                    Daily {classInstance.roomSetupStatus}
+                  </Badge>
+                ) : null}
               </div>
               <p className="text-muted-foreground mt-1 text-xs">
                 {day} {date} · {time} · {classInstance.durationMinutes} min
               </p>
+              {threeHourOutcomeLabel ? (
+                <p className="text-muted-foreground mt-1 text-xs">{threeHourOutcomeLabel}</p>
+              ) : null}
+              {classInstance.roomSetupError ? (
+                <p className="mt-1 text-xs text-red-600">{classInstance.roomSetupError}</p>
+              ) : null}
+              {classInstance.cancelReason ? (
+                <p className="text-muted-foreground mt-1 text-xs">{classInstance.cancelReason}</p>
+              ) : null}
             </div>
 
-            {/* Capacity bar */}
             <div className="hidden w-32 md:block">
               <div className="mb-1 flex justify-between text-xs">
                 <span>
@@ -326,7 +817,6 @@ function ClassRow({ classInstance }: { classInstance: AdminClassSessionDto }) {
               </div>
             </div>
 
-            {/* Action hint */}
             {classInstance.status === "scheduled" && (
               <Button variant="outline" size="sm" className="hidden sm:flex">
                 <Play className="mr-1 h-3 w-3" /> Start

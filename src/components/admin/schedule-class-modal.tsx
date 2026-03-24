@@ -20,7 +20,7 @@ interface ScheduleClassModalProps {
   templates: ClassTemplateOption[];
   instructors?: InstructorOption[];
   instructorProfiles?: InstructorProfileOption[];
-  onSchedule?: (data: ScheduleClassData) => void;
+  onSchedule?: (data: ScheduleClassData) => Promise<void>;
 }
 
 export interface ScheduleClassData {
@@ -72,17 +72,32 @@ export function ScheduleClassModal({
   const [time, setTime] = useState("");
   const [maxSpaces, setMaxSpaces] = useState<number>(0);
   const [notes, setNotes] = useState("");
-  const [repeatWeeks, setRepeatWeeks] = useState(1);
   const [instructorUserId, setInstructorUserId] = useState("");
   const [instructorProfileEntryId, setInstructorProfileEntryId] = useState("");
   const [step, setStep] = useState<1 | 2>(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const template = templates.find((c) => c.slug === selectedTemplate);
   const selectedProfile = instructorProfiles.find((p) => p.id === instructorProfileEntryId);
 
+  const resetForm = () => {
+    setStep(1);
+    setSelectedTemplate("");
+    setDate("");
+    setTime("");
+    setMaxSpaces(0);
+    setNotes("");
+    setInstructorUserId("");
+    setInstructorProfileEntryId("");
+    setSubmitError("");
+    setIsSubmitting(false);
+  };
+
   const handleSelectTemplate = (slug: string) => {
     const tmpl = templates.find((c) => c.slug === slug);
     setSelectedTemplate(slug);
+    setSubmitError("");
     if (tmpl) {
       setTime(tmpl.defaultTime);
       setMaxSpaces(tmpl.maxSpaces);
@@ -90,61 +105,63 @@ export function ScheduleClassModal({
     setStep(2);
   };
 
-  const handleSchedule = () => {
+  const handleSchedule = async () => {
     if (!selectedTemplate || !date || !time) return;
-    onSchedule?.({
-      classTemplateSlug: selectedTemplate,
-      date,
-      time,
-      maxSpaces,
-      notes,
-      instructorUserId: instructorUserId || undefined,
-      instructorProfileEntryId: instructorProfileEntryId || undefined,
-      repeatWeeks,
-      weekdays: [new Date(`${date}T00:00:00`).getDay()],
-    });
-    // Reset
-    setSelectedTemplate("");
-    setDate("");
-    setTime("");
-    setMaxSpaces(0);
-    setNotes("");
-    setRepeatWeeks(1);
-    setInstructorUserId("");
-    setInstructorProfileEntryId("");
-    setStep(1);
-    onOpenChange(false);
+    setIsSubmitting(true);
+    setSubmitError("");
+    try {
+      await onSchedule?.({
+        classTemplateSlug: selectedTemplate,
+        date,
+        time,
+        maxSpaces,
+        notes,
+        instructorUserId: instructorUserId || undefined,
+        instructorProfileEntryId: instructorProfileEntryId || undefined,
+        weekdays: [new Date(`${date}T00:00:00`).getDay()],
+      });
+      resetForm();
+      onOpenChange(false);
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "Unable to save this timetable slot right now."
+      );
+      setIsSubmitting(false);
+    }
   };
 
   const handleBack = () => {
+    if (isSubmitting) return;
     setStep(1);
     setSelectedTemplate("");
+    setSubmitError("");
   };
 
   const handleClose = () => {
-    setStep(1);
-    setSelectedTemplate("");
-    setDate("");
-    setTime("");
-    setMaxSpaces(0);
-    setNotes("");
-    setRepeatWeeks(1);
-    setInstructorUserId("");
-    setInstructorProfileEntryId("");
+    if (isSubmitting) return;
+    resetForm();
     onOpenChange(false);
   };
 
+  const handleDialogChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      handleClose();
+      return;
+    }
+    onOpenChange(true);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={handleDialogChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {step === 1 ? "Schedule a Class" : `Schedule: ${template?.name}`}
+            {step === 1 ? "Add Weekly Timetable Slot" : `Weekly Slot: ${template?.name}`}
           </DialogTitle>
           <DialogDescription>
             {step === 1
-              ? "Select a class template from Contentful, then set the date and time."
-              : "Set the date, time, and capacity for this class instance."}
+              ? "Select a class template from Contentful, then define the weekly slot that should repeat."
+              : "Set the first date, weekly time, and capacity for this recurring class slot. Saving creates private draft weeks that can be edited before publishing."}
           </DialogDescription>
         </DialogHeader>
 
@@ -155,13 +172,16 @@ export function ScheduleClassModal({
               <Info className="h-3.5 w-3.5 flex-shrink-0" />
               <span>
                 Class descriptions, equipment lists, and SEO content are managed in Contentful. Here
-                you schedule when a class runs.
+                you create the weekly timetable slot and the next 8 weeks of draft sessions for
+                admin review.
               </span>
             </div>
             {templates.map((cls) => (
               <button
+                type="button"
                 key={cls.slug}
                 onClick={() => handleSelectTemplate(cls.slug)}
+                disabled={isSubmitting}
                 className="border-border hover:bg-secondary/30 hover:border-brand-accent/30 w-full rounded-lg border p-3 text-left transition-colors"
               >
                 <div className="flex items-center justify-between">
@@ -201,7 +221,7 @@ export function ScheduleClassModal({
             <div className="space-y-2">
               <Label htmlFor="class-date" className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                Date
+                First class date
               </Label>
               <Input
                 id="class-date"
@@ -216,7 +236,7 @@ export function ScheduleClassModal({
             <div className="space-y-2">
               <Label htmlFor="class-time" className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                Time
+                Weekly time
               </Label>
               <Input
                 id="class-time"
@@ -306,38 +326,34 @@ export function ScheduleClassModal({
               ) : null}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="repeat-weeks">Repeat for weeks</Label>
-              <Input
-                id="repeat-weeks"
-                type="number"
-                min={1}
-                max={52}
-                value={repeatWeeks}
-                onChange={(e) =>
-                  setRepeatWeeks(Math.max(1, Math.min(52, parseInt(e.target.value) || 1)))
-                }
-              />
-              <p className="text-muted-foreground text-xs">
-                Creates one session per week from the selected start date.
-              </p>
-            </div>
+            <p className="text-muted-foreground text-xs">
+              Saving creates a repeating weekly timetable slot and the next 8 weeks of draft
+              sessions. Admin can edit those drafts before publishing them to the public schedule.
+            </p>
+            {submitError ? (
+              <div
+                role="alert"
+                className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+              >
+                {submitError}
+              </div>
+            ) : null}
           </div>
         )}
 
         <DialogFooter>
           {step === 2 && (
-            <Button variant="ghost" onClick={handleBack}>
+            <Button variant="ghost" onClick={handleBack} disabled={isSubmitting}>
               Back
             </Button>
           )}
           {step === 2 && (
             <Button
-              onClick={handleSchedule}
-              disabled={!date || !time || !maxSpaces}
+              onClick={() => void handleSchedule()}
+              disabled={!date || !time || !maxSpaces || isSubmitting}
               className="bg-brand-accent hover:bg-brand-accent/90"
             >
-              Schedule Class
+              {isSubmitting ? "Saving Draft Weeks..." : "Save Timetable Slot"}
             </Button>
           )}
         </DialogFooter>

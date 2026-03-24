@@ -13,7 +13,12 @@ export async function GET() {
     if (user.role === "admin") {
       await ensureInstructorMembership(user.id);
     } else {
-      await syncMembershipFromStripe(user.id);
+      await syncMembershipFromStripe(user.id).catch((error) => {
+        console.warn("[membership] Stripe sync skipped; serving cached membership state instead", {
+          userId: user.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
     }
     const state = await getMembershipState(user.id);
     return NextResponse.json(state);

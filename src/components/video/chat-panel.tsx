@@ -1,56 +1,21 @@
-import { useI18n } from "../../lib/use-i18n";
 import { useState, useRef, useEffect } from "react";
 import { X, Send } from "lucide-react";
-import type { RoomMode } from "./video-room";
-
-interface ChatPanelProps {
-  mode: RoomMode;
-  participantName: string;
-  onClose: () => void;
-}
-
-interface ChatMessage {
+export interface ChatMessage {
   id: string;
+  userId?: string;
   sender: string;
   text: string;
   time: string;
   isLocal: boolean;
 }
 
-const MOCK_MESSAGES: ChatMessage[] = [
-  {
-    id: "m1",
-    sender: "Shruti",
-    text: "Welcome everyone! We'll get started in a moment. Make sure you have your equipment ready.",
-    time: "09:58",
-    isLocal: false,
-  },
-  {
-    id: "m2",
-    sender: "Sarah",
-    text: "Good morning! Ready to go.",
-    time: "09:59",
-    isLocal: false,
-  },
-  {
-    id: "m3",
-    sender: "James",
-    text: "Morning all. Feeling good today.",
-    time: "09:59",
-    isLocal: false,
-  },
-  {
-    id: "m4",
-    sender: "Shruti",
-    text: "Lovely to see you all. Remember, listen to your body today — scale as you need to.",
-    time: "10:00",
-    isLocal: false,
-  },
-];
+interface ChatPanelProps {
+  messages: ChatMessage[];
+  onClose: () => void;
+  onSendMessage: (text: string) => void;
+}
 
-export function ChatPanel({ participantName, onClose }: ChatPanelProps) {
-  const { fmtTime } = useI18n();
-  const [messages, setMessages] = useState<ChatMessage[]>(MOCK_MESSAGES);
+export function ChatPanel({ messages, onClose, onSendMessage }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -60,14 +25,7 @@ export function ChatPanel({ participantName, onClose }: ChatPanelProps) {
 
   const handleSend = () => {
     if (!input.trim()) return;
-    const newMsg: ChatMessage = {
-      id: `m${Date.now()}`,
-      sender: participantName,
-      text: input.trim(),
-      time: fmtTime(new Date()),
-      isLocal: true,
-    };
-    setMessages((prev) => [...prev, newMsg]);
+    onSendMessage(input.trim());
     setInput("");
   };
 

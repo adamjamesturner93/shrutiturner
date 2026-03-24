@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api/auth-user";
-import { getSessionAccessContext, setCommunityMode } from "@/lib/classes/attendance-service";
+import { getSessionAccessContext } from "@/lib/classes/attendance-service";
+import { updateSessionCommunityMode } from "@/lib/classes/live-room-service";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -20,10 +21,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       return NextResponse.json({ message: "Invalid community mode value" }, { status: 400 });
     }
 
-    const session = await setCommunityMode({ sessionId: id, enabled: body.enabled });
+    const result = await updateSessionCommunityMode({ sessionId: id, enabled: body.enabled });
     return NextResponse.json({
-      communityModeEnabled: session.communityModeEnabled,
-      communityModeUpdatedAt: session.communityModeUpdatedAt?.toISOString() || null,
+      communityModeEnabled: result.session.communityModeEnabled,
+      communityModeUpdatedAt: result.session.communityModeUpdatedAt?.toISOString() || null,
+      dailySyncStatus: result.dailySyncStatus,
+      dailySyncError: result.dailySyncError || null,
     });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {

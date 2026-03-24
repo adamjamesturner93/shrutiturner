@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AlertCircle, ArrowLeft, Calendar, Clock, Heart } from "lucide-react";
 import { DashboardLayout } from "../../components/dashboard-layout";
 import { Button } from "../../components/ui/button";
@@ -11,11 +11,10 @@ import { VideoRoom, type RoomMode } from "../../components/video/video-room";
 import { SEO } from "../../components/seo";
 import { useAuth } from "../../context/auth-context";
 import type { ClassSessionDetailDto, ClassSessionListItemDto } from "@/lib/api/types";
+import { getClassSessionRoomMode } from "@/lib/classes/room-mode";
 import type { ClassDefinitionContent } from "@/lib/content";
 
 type Stage = "too-early" | "access-denied" | "late-denied" | "pre-join" | "live" | "post-class";
-
-const PRE_JOIN_WINDOW_MINUTES = 24 * 60;
 
 function getNextClassDatetime(day: string, time: string): Date {
   const dayMap: Record<string, number> = {
@@ -101,6 +100,7 @@ export function DashboardClassJoin({
           ...payload[0],
           notes: "",
           cancelReason: null,
+          instructorUserId: "",
           bookings: [],
           waitlist: [],
         });
@@ -120,9 +120,11 @@ export function DashboardClassJoin({
       ? getNextClassDatetime(cls.day, cls.time)
       : null;
 
-  const roomOpensAt = classDatetime
-    ? new Date(classDatetime.getTime() - PRE_JOIN_WINDOW_MINUTES * 60_000)
-    : null;
+  const roomOpensAt = activeSession?.joinWindowOpensAt
+    ? new Date(activeSession.joinWindowOpensAt)
+    : classDatetime
+      ? new Date(classDatetime.getTime() - 10 * 60_000)
+      : null;
   const isTooEarly = roomOpensAt ? Date.now() < roomOpensAt.getTime() : false;
   const lateJoinCutoffAt = activeSession?.lateJoinCutoffAt
     ? new Date(activeSession.lateJoinCutoffAt)
@@ -148,8 +150,10 @@ export function DashboardClassJoin({
     return "pre-join";
   }, [activeSession, cls, isLateDenied, isTooEarly, loadingSession, searchParams]);
 
-  const roomMode: RoomMode =
-    cls?.type === "HIIT" || (cls?.maxSpaces || 0) <= 8 ? "small-group" : "live-class";
+  const roomMode: RoomMode = getClassSessionRoomMode({
+    classType: activeSession?.type || cls?.type || "",
+    capacity: activeSession?.capacity || cls?.maxSpaces || 0,
+  });
   const isLiveStageRequested = searchParams.get("stage") === "live";
 
   if (loadingSession) {
@@ -181,23 +185,13 @@ export function DashboardClassJoin({
     return (
       <DashboardLayout title="Not Yet Open">
         <SEO title={`${cls.name} - Not Yet Open - Shruti Turner`} noIndex />
-        <div className="mx-auto max-w-md space-y-6 py-20 text-center">
-          <div className="bg-brand-accent/10 mx-auto flex h-16 w-16 items-center justify-center rounded-full">
-            <Clock className="text-brand-accent h-8 w-8" />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-brand-dark text-2xl">You&apos;re a bit early</h1>
-            <p className="text-muted-foreground leading-relaxed">
-              The virtual studio for <span className="text-brand-dark">{cls.name}</span> opens 24
-              hours before class starts.
-            </p>
-          </div>
-          <div className="space-y-3 pt-2">
-            <Link href={`/dashboard/classes/${cls.slug}`}>
-              <Button variant="outline">Class Details</Button>
-            </Link>
-          </div>
-        </div>
+        <JoinGateState
+          icon={<Clock className="text-brand-accent h-8 w-8" />}
+          title="The studio opens shortly"
+          body={`You can join ${cls.name} ${activeSession?.preJoinWindowMinutes || 10} minutes before class starts. Use this time to settle in and come back when the room opens.`}
+          primaryHref={`/dashboard/classes/${cls.slug}`}
+          primaryLabel="Back to Class Details"
+        />
       </DashboardLayout>
     );
   }
@@ -205,24 +199,13 @@ export function DashboardClassJoin({
   if (stage === "late-denied") {
     return (
       <DashboardLayout title="Warm-up Complete">
-        <div className="mx-auto max-w-md space-y-6 py-20 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10">
-            <AlertCircle className="h-8 w-8 text-amber-500" />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-brand-dark text-2xl">Warm-up has finished</h1>
-            <p className="text-muted-foreground">
-              New joins close 5 minutes after class starts so nobody misses the warm-up. You&apos;ll
-              be able to join on time for the next session.
-            </p>
-          </div>
-          <Link href="/dashboard/schedule">
-            <Button variant="outline">
-              <Calendar className="mr-2 h-4 w-4" />
-              Back to Schedule
-            </Button>
-          </Link>
-        </div>
+        <JoinGateState
+          icon={<AlertCircle className="h-8 w-8 text-amber-500" />}
+          title="Warm-up has finished"
+          body={`New joins close ${activeSession?.lateJoinCutoffMinutes || 5} minutes after class starts so nobody misses the warm-up. You’ll be able to join on time for the next session.`}
+          primaryHref="/dashboard/schedule"
+          primaryLabel="Back to Schedule"
+        />
       </DashboardLayout>
     );
   }
@@ -255,9 +238,12 @@ export function DashboardClassJoin({
           mode={roomMode}
           isInstructor={false}
           className={cls.name}
-          classTime={cls.time}
-          classDuration={cls.duration}
-          registeredCount={activeSession.bookedCount || cls.maxSpaces}
+          classTime={new Date(activeSession.startsAtUtc).toLocaleTimeString("en-GB", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+          classDuration={`${activeSession.durationMinutes} min`}
+          registeredCount={activeSession.bookedCount || activeSession.capacity || cls.maxSpaces}
           initialMuted={initialMuted}
           initialCameraOn={initialCameraOn}
           initialCommunityMode={activeSession.communityModeEnabled}
@@ -325,13 +311,20 @@ export function DashboardClassJoin({
         ) : null}
         <PreJoinLobby
           className={cls.name}
-          classTime={cls.time}
-          classDuration={cls.duration}
-          classLevel={cls.level}
-          instructor={cls.instructor}
+          classTime={
+            activeSession
+              ? new Date(activeSession.startsAtUtc).toLocaleTimeString("en-GB", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : cls.time
+          }
+          classDuration={activeSession ? `${activeSession.durationMinutes} min` : cls.duration}
+          classLevel={activeSession?.level || cls.level}
+          instructor={activeSession?.instructorName || cls.instructor}
           equipment={cls.equipment}
-          registeredCount={activeSession?.bookedCount || cls.maxSpaces}
-          maxSpaces={cls.maxSpaces}
+          registeredCount={activeSession?.bookedCount || activeSession?.capacity || cls.maxSpaces}
+          maxSpaces={activeSession?.capacity || cls.maxSpaces}
           mode={roomMode}
           onJoin={({ isMuted, isCameraOn }) => {
             setInitialMuted(isMuted);
@@ -398,6 +391,50 @@ export function DashboardClassJoin({
             <Calendar className="mr-2 h-4 w-4" />
             Back to Schedule
           </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function JoinGateState({
+  icon,
+  title,
+  body,
+  primaryHref,
+  primaryLabel,
+}: {
+  icon: ReactNode;
+  title: string;
+  body: string;
+  primaryHref: string;
+  primaryLabel: string;
+}) {
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-16">
+      <div className="border-brand-dark/10 bg-background overflow-hidden rounded-[1.75rem] border shadow-sm">
+        <div className="bg-[radial-gradient(circle_at_top_left,_rgba(228,180,92,0.18),_transparent_45%),linear-gradient(135deg,_rgba(13,51,52,0.06),_rgba(13,51,52,0))] px-8 py-10">
+          <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
+            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-white/80 shadow-sm">
+              {icon}
+            </div>
+            <p className="text-brand-accent text-xs tracking-[0.22em] uppercase">Live Class</p>
+            <h1 className="text-brand-dark mt-3 text-3xl tracking-[-0.02em] md:text-4xl">
+              {title}
+            </h1>
+            <p className="text-muted-foreground mt-4 max-w-xl text-base leading-relaxed">{body}</p>
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
+              <Link href={primaryHref}>
+                <Button variant="outline">{primaryLabel}</Button>
+              </Link>
+              <Link href="/dashboard/schedule">
+                <Button>
+                  <Calendar className="mr-2 h-4 w-4" />
+                  View Schedule
+                </Button>
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>

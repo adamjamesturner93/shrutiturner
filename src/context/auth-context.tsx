@@ -622,7 +622,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setEnrolledProgramIds([]);
       setRecordingWatches([]);
       setAttendanceHistory([]);
-      void loadMembershipState();
       return;
     }
 
@@ -703,7 +702,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionUserName,
   ]);
 
-  const login = useCallback((_email: string) => {
+  const login = useCallback((email: string) => {
+    void email;
     // Legacy no-op kept for compatibility while remaining views migrate to Auth.js APIs.
   }, []);
 

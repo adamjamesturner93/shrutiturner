@@ -39,6 +39,11 @@ export async function sendPostmarkReactEmail(input: {
   replyTo?: string;
   messageStream?: string;
   metadata?: Record<string, string>;
+  attachments?: Array<{
+    name: string;
+    content: string;
+    contentType: string;
+  }>;
 }) {
   const client = getPostmarkClient();
   const html = await render(input.react);
@@ -52,5 +57,11 @@ export async function sendPostmarkReactEmail(input: {
     ReplyTo: input.replyTo,
     MessageStream: input.messageStream || getPostmarkStream(),
     Metadata: input.metadata,
+    Attachments: input.attachments?.map((attachment) => ({
+      Name: attachment.name,
+      Content: attachment.content,
+      ContentType: attachment.contentType,
+      ContentID: attachment.name,
+    })),
   });
 }

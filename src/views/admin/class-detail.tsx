@@ -7,20 +7,13 @@ import { AdminLayout } from "../../components/admin-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import {
-  ArrowLeft,
-  Calendar,
-  CheckCircle,
-  Clock,
-  UserCheck,
-  UserX,
-  Users,
-  Video,
-  XCircle,
-} from "lucide-react";
+import { Input } from "../../components/ui/input";
+import { Textarea } from "../../components/ui/textarea";
+import { ArrowLeft, Calendar, Clock, UserCheck, UserX, Users, Video, XCircle } from "lucide-react";
 import { ClassHealthSummary, HealthBadges } from "../../components/admin/health-badges";
 import type { ClassSessionDetailDto } from "@/lib/api/types";
 import { VideoRoom, type RoomMode } from "../../components/video/video-room";
+import { getClassSessionRoomMode } from "@/lib/classes/room-mode";
 
 export function AdminClassDetail() {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +23,17 @@ export function AdminClassDetail() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [showVideoRoom, setShowVideoRoom] = useState(false);
+  const [instructors, setInstructors] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedInstructorId, setSelectedInstructorId] = useState("");
+  const [capacityInput, setCapacityInput] = useState("0");
+  const [notesInput, setNotesInput] = useState("");
+
+  const applySession = (payload: ClassSessionDetailDto) => {
+    setSession(payload);
+    setSelectedInstructorId(payload.instructorUserId);
+    setCapacityInput(String(payload.capacity));
+    setNotesInput(payload.notes || "");
+  };
 
   useEffect(() => {
     let active = true;
@@ -37,10 +41,26 @@ export function AdminClassDetail() {
       setLoading(true);
       setError("");
       try {
-        const response = await fetch(`/api/admin/classes/sessions/${id}`, { cache: "no-store" });
+        const [response, instructorsResponse] = await Promise.all([
+          fetch(`/api/admin/classes/sessions/${id}`, { cache: "no-store" }),
+          fetch("/api/admin/members?role=instructor", { cache: "no-store" }),
+        ]);
         if (!response.ok) throw new Error("Failed to load class session");
         const payload = (await response.json()) as ClassSessionDetailDto;
-        if (active) setSession(payload);
+        if (active) applySession(payload);
+        if (active && instructorsResponse.ok) {
+          const instructorPayload = (await instructorsResponse.json()) as Array<{
+            id: string;
+            firstName: string;
+            lastName: string;
+          }>;
+          setInstructors(
+            instructorPayload.map((instructor) => ({
+              id: instructor.id,
+              name: `${instructor.firstName} ${instructor.lastName}`.trim() || instructor.id,
+            }))
+          );
+        }
       } catch (e) {
         if (active) setError(e instanceof Error ? e.message : "Failed to load class session");
       } finally {
@@ -70,17 +90,19 @@ export function AdminClassDetail() {
     session?.bookings.filter((booking) => booking.status === "attended").length || 0;
   const noShowCount =
     session?.bookings.filter((booking) => booking.status === "no_show").length || 0;
-  const roomMode: RoomMode =
-    session?.type === "HIIT" || (session?.capacity || 0) <= 8 ? "small-group" : "live-class";
+  const roomMode: RoomMode = getClassSessionRoomMode({
+    classType: session?.type || "",
+    capacity: session?.capacity || 0,
+  });
 
   const refresh = async () => {
     const response = await fetch(`/api/admin/classes/sessions/${id}`, { cache: "no-store" });
     if (response.ok) {
-      setSession((await response.json()) as ClassSessionDetailDto);
+      applySession((await response.json()) as ClassSessionDetailDto);
     }
   };
 
-  const patchStatus = async (status: "scheduled" | "live" | "completed") => {
+  const patchStatus = async (status: "draft" | "scheduled" | "live" | "completed") => {
     if (!session) return;
     setSaving(true);
     try {
@@ -132,6 +154,48 @@ export function AdminClassDetail() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
+      await refresh();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const retryRoomSetup = async () => {
+    if (!session) return;
+    setSaving(true);
+    try {
+      const response = await fetch(`/api/admin/classes/sessions/${session.id}/room-setup`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        setError("Failed to retry Daily room setup.");
+        return;
+      }
+      setSession((await response.json()) as ClassSessionDetailDto);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveSessionDetails = async () => {
+    if (!session) return;
+    setSaving(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/admin/classes/sessions/${session.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instructorUserId: selectedInstructorId,
+          capacity: Number(capacityInput),
+          notes: notesInput,
+        }),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+        setError(payload?.message || "Failed to save class changes.");
+        return;
+      }
       await refresh();
     } finally {
       setSaving(false);
@@ -201,7 +265,15 @@ export function AdminClassDetail() {
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-brand-dark text-2xl">{session.title}</h1>
               <Badge variant="outline">{session.type}</Badge>
-              <Badge variant={session.status === "cancelled" ? "destructive" : "secondary"}>
+              <Badge
+                variant={
+                  session.status === "cancelled"
+                    ? "destructive"
+                    : session.status === "draft"
+                      ? "outline"
+                      : "secondary"
+                }
+              >
                 {session.status}
               </Badge>
             </div>
@@ -223,7 +295,7 @@ export function AdminClassDetail() {
 
           <div className="flex flex-wrap gap-2">
             <Button
-              disabled={saving || session.status === "live"}
+              disabled={saving || session.status === "live" || session.status === "draft"}
               onClick={async () => {
                 await patchStatus("live");
                 setShowVideoRoom(true);
@@ -272,6 +344,48 @@ export function AdminClassDetail() {
           </Card>
         ) : null}
 
+        {session.status === "draft" ? (
+          <Card className="border-brand-accent/30">
+            <CardContent className="pt-6">
+              <p className="text-sm">This is a draft session.</p>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Draft sessions stay private until you publish them from the timetable view.
+              </p>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {session.roomSetupError ? (
+          <Card className="border-red-200">
+            <CardContent className="flex flex-col gap-3 pt-6 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm text-red-700">Daily room setup failed</p>
+                <p className="text-muted-foreground text-sm">{session.roomSetupError}</p>
+              </div>
+              <Button variant="outline" disabled={saving} onClick={() => void retryRoomSetup()}>
+                Retry Room Setup
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {session.threeHourOutcome !== "pending" || session.cancelReason ? (
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm">Session operations</p>
+              <div className="text-muted-foreground mt-2 space-y-1 text-sm">
+                {session.threeHourOutcome === "reminded" ? (
+                  <p>3-hour reminders were sent to booked attendees.</p>
+                ) : null}
+                {session.threeHourOutcome === "cancelled_no_attendance" ? (
+                  <p>Auto-cancelled for no attendance at the 3-hour cutoff.</p>
+                ) : null}
+                {session.cancelReason ? <p>Cancellation reason: {session.cancelReason}</p> : null}
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="pt-6 text-center">
@@ -314,6 +428,64 @@ export function AdminClassDetail() {
             </CardContent>
           </Card>
         ) : null}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Session Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label htmlFor="session-instructor" className="text-sm">
+                  Instructor
+                </label>
+                <select
+                  id="session-instructor"
+                  value={selectedInstructorId}
+                  onChange={(event) => setSelectedInstructorId(event.target.value)}
+                  className="border-border bg-background w-full rounded-md border px-3 py-2 text-sm"
+                  disabled={saving}
+                >
+                  {instructors.map((instructor) => (
+                    <option key={instructor.id} value={instructor.id}>
+                      {instructor.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="session-capacity" className="text-sm">
+                  Capacity
+                </label>
+                <Input
+                  id="session-capacity"
+                  type="number"
+                  min={1}
+                  value={capacityInput}
+                  onChange={(event) => setCapacityInput(event.target.value)}
+                  disabled={saving}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="session-notes" className="text-sm">
+                Notes
+              </label>
+              <Textarea
+                id="session-notes"
+                value={notesInput}
+                onChange={(event) => setNotesInput(event.target.value)}
+                disabled={saving}
+                rows={4}
+              />
+            </div>
+            <div className="flex justify-end">
+              <Button variant="outline" disabled={saving} onClick={() => void saveSessionDetails()}>
+                Save Session Details
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         <ClassHealthSummary attendees={bookedAttendees} />
 

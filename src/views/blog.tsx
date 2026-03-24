@@ -26,7 +26,7 @@ interface BlogPageProps {
 }
 
 export function BlogPage({ posts }: BlogPageProps) {
-  const blogData = posts ?? [];
+  const blogData = useMemo(() => posts ?? [], [posts]);
   const [sortBy, setSortBy] = useState<string>("newest");
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -69,7 +69,7 @@ export function BlogPage({ posts }: BlogPageProps) {
 
   return (
     <Layout>
-      <section className="marketing-grid overflow-hidden px-4 py-12 text-brand-white md:py-16">
+      <section className="marketing-grid text-brand-white overflow-hidden px-4 py-12 md:py-16">
         <div className="container mx-auto max-w-6xl">
           <div className="grid items-center gap-8 lg:grid-cols-[0.95fr_1.05fr]">
             <div>
@@ -98,7 +98,7 @@ export function BlogPage({ posts }: BlogPageProps) {
                 ].map((item) => (
                   <div
                     key={item}
-                    className="rounded-[1.35rem] border border-brand-dark/10 bg-background px-4 py-4 text-sm leading-relaxed text-muted-foreground"
+                    className="border-brand-dark/10 bg-background text-muted-foreground rounded-[1.35rem] border px-4 py-4 text-sm leading-relaxed"
                   >
                     {item}
                   </div>
@@ -113,51 +113,51 @@ export function BlogPage({ posts }: BlogPageProps) {
         <div className="container mx-auto max-w-6xl px-4">
           <div className="marketing-panel mb-10 rounded-[1.75rem] p-5 md:p-6">
             <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={selectedTag === "all" ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleSetTag("all")}
-              >
-                All Articles
-              </Button>
-              {allTags.map((tag) => (
+              <div className="flex flex-wrap gap-2">
                 <Button
-                  key={tag}
-                  variant={selectedTag === tag ? "default" : "outline"}
+                  variant={selectedTag === "all" ? "default" : "outline"}
                   size="sm"
-                  onClick={() => handleSetTag(tag)}
+                  onClick={() => handleSetTag("all")}
                 >
-                  {tag}
+                  All Articles
                 </Button>
-              ))}
-            </div>
+                {allTags.map((tag) => (
+                  <Button
+                    key={tag}
+                    variant={selectedTag === tag ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handleSetTag(tag)}
+                  >
+                    {tag}
+                  </Button>
+                ))}
+              </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground text-sm">Sort by:</span>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger
-                  id="blog-sort"
-                  aria-label="Sort blog posts by"
-                  className="w-[150px]"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="newest">Newest</SelectItem>
-                  <SelectItem value="oldest">Oldest</SelectItem>
-                  <SelectItem value="a-z">A-Z</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground text-sm">Sort by:</span>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger
+                    id="blog-sort"
+                    aria-label="Sort blog posts by"
+                    className="w-[150px]"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest</SelectItem>
+                    <SelectItem value="oldest">Oldest</SelectItem>
+                    <SelectItem value="a-z">A-Z</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
           </div>
 
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {filteredAndSortedPosts.map((post) => (
               <article
                 key={post.id}
-                className="bg-card group overflow-hidden rounded-[1.75rem] border border-brand-dark/10 shadow-[0_20px_50px_rgba(46,31,51,0.06)] transition-shadow hover:shadow-lg"
+                className="bg-card group border-brand-dark/10 overflow-hidden rounded-[1.75rem] border shadow-[0_20px_50px_rgba(46,31,51,0.06)] transition-shadow hover:shadow-lg"
               >
                 <Link href={`/blog/${post.id}`} className="block overflow-hidden">
                   <ImageWithFallback

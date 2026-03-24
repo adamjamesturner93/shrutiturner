@@ -8,7 +8,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { DashboardSkeleton } from "../../components/dashboard-skeleton";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Calendar, Users, Activity, AlertCircle, ArrowRight } from "lucide-react";
+import { AlertCircle, ArrowRight } from "lucide-react";
 import type { AdminDashboardSummaryDto } from "@/lib/api/types";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 
@@ -72,10 +72,26 @@ export function AdminDashboard({ initialData }: { initialData?: AdminDashboardSu
         />
 
         <AppMetricGrid>
-          <AppMetricCard label="Today's classes" value={summary.today.sessions} detail="scheduled sessions" />
-          <AppMetricCard label="Booked / capacity" value={`${summary.today.booked}/${summary.today.capacity}`} detail="current occupancy" />
-          <AppMetricCard label="Live now" value={summary.today.liveNow} detail="sessions in progress" />
-          <AppMetricCard label="Upcoming" value={summary.upcoming.length} detail="next scheduled sessions" />
+          <AppMetricCard
+            label="Today's classes"
+            value={summary.today.sessions}
+            detail="scheduled sessions"
+          />
+          <AppMetricCard
+            label="Booked / capacity"
+            value={`${summary.today.booked}/${summary.today.capacity}`}
+            detail="current occupancy"
+          />
+          <AppMetricCard
+            label="Live now"
+            value={summary.today.liveNow}
+            detail="sessions in progress"
+          />
+          <AppMetricCard
+            label="Upcoming"
+            value={summary.upcoming.length}
+            detail="next scheduled sessions"
+          />
         </AppMetricGrid>
 
         {summary.nearFull.length > 0 ? (

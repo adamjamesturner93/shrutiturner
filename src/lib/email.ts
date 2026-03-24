@@ -6,6 +6,8 @@ import PurchaseConfirmationEmail from "../emails/purchase-confirmation";
 import InstructorNotificationEmail from "../emails/instructor-notification";
 import ClassCancellationEmail from "../emails/class-cancellation";
 import NewsletterEmail from "../emails/newsletter";
+import { sendPostmarkReactEmail } from "@/lib/postmark/client";
+import { getClassOperationalSettings } from "@/lib/classes/settings-service";
 import {
   type I18nPreferences,
   ADMIN_PREFS,
@@ -19,17 +21,29 @@ import {
 // Do not expose your API key in the frontend bundle.
 const POSTMARK_API_KEY = process.env.POSTMARK_API_KEY || "POSTMARK_API_TEST";
 void POSTMARK_API_KEY;
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-/**
- * Helper to generate a simple ICS string for calendar invites.
- */
-function generateICS(
-  eventName: string,
-  startTime: Date,
-  durationMinutes: number,
-  description: string
-) {
+function toMinutesLabel(minutes: number) {
+  if (minutes % 60 === 0) {
+    const hours = minutes / 60;
+    return `${hours} hour${hours === 1 ? "" : "s"}`;
+  }
+  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+}
+
+export function buildCalendarInvite(params: {
+  eventName: string;
+  startTime: Date;
+  durationMinutes: number;
+  description: string;
+  method?: "REQUEST" | "CANCEL";
+  location?: string;
+}) {
+  const { eventName, startTime, durationMinutes, description } = params;
   const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
+  const method = params.method || "REQUEST";
+  const location = params.location || "Online (Daily.co)";
 
   const formatDate = (date: Date) => date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
 
@@ -37,7 +51,7 @@ function generateICS(
 VERSION:2.0
 PRODID:-//Shruti Turner Coaching//EN
 CALSCALE:GREGORIAN
-METHOD:REQUEST
+METHOD:${method}
 BEGIN:VEVENT
 UID:${Date.now()}@shrutiturner.com
 DTSTAMP:${formatDate(new Date())}
@@ -45,7 +59,7 @@ DTSTART:${formatDate(startTime)}
 DTEND:${formatDate(endTime)}
 SUMMARY:${eventName}
 DESCRIPTION:${description}
-LOCATION:Online (Daily.co)
+LOCATION:${location}
 STATUS:CONFIRMED
 END:VEVENT
 END:VCALENDAR`.trim();
@@ -75,45 +89,47 @@ export async function sendBookingConfirmation(
   userPrefs: I18nPreferences = DEFAULT_PREFS
 ) {
   try {
+    const settings = await getClassOperationalSettings();
     // Format date & time using the user's saved preferences
     const formattedDate = formatDate(classDateObj, userPrefs);
     const formattedTime = formatTime(classDateObj, userPrefs);
 
-    await render(
-      ClassBookingEmail({
-        firstName,
-        className,
-        classDate: formattedDate,
-        classTime: formattedTime,
-        classDuration: `${durationMinutes} minutes`,
-        classLocation: "Online (Daily.co)",
-        manageBookingUrl: "https://shrutiturner.com/dashboard/schedule",
-      })
-    );
-
-    generateICS(
-      className,
-      classDateObj,
+    const invite = buildCalendarInvite({
+      eventName: className,
+      startTime: classDateObj,
       durationMinutes,
-      `Join link: https://shrutiturner.com/dashboard/class-join`
-    );
+      description: `Join link: ${APP_URL}/dashboard/schedule`,
+      method: "REQUEST",
+    });
+    const react = ClassBookingEmail({
+      firstName,
+      className,
+      classDate: formattedDate,
+      classTime: formattedTime,
+      classDuration: `${durationMinutes} minutes`,
+      classLocation: "Online (Daily.co)",
+      manageBookingUrl: `${APP_URL}/dashboard/schedule`,
+      creditRefundWindowLabel: toMinutesLabel(settings.creditRefundWindowMinutes),
+    });
 
-    // In a real backend with Postmark:
-    // await client.sendEmail({
-    //   "From": SENDER_EMAIL,
-    //   "To": email,
-    //   "Subject": `Booking Confirmed: ${className}`,
-    //   "HtmlBody": html,
-    //   "Attachments": [{
-    //     "Name": "invite.ics",
-    //     "Content": Buffer.from(icsContent).toString('base64'),
-    //     "ContentType": "text/calendar"
-    //   }]
-    // });
-
-    console.log(
-      `[Mock Email Service] Sending Booking Confirmation to ${email} with ICS attachment`
-    );
+    await sendPostmarkReactEmail({
+      to: email,
+      subject: `Booking confirmed: ${className}`,
+      react,
+      textBody: `Hi ${firstName},\n\nYour booking is confirmed for ${className} on ${formattedDate} at ${formattedTime}.\n\nManage your booking: ${APP_URL}/dashboard/schedule`,
+      tag: "class-booking-confirmation",
+      metadata: {
+        className,
+        emailType: "class-booking-confirmation",
+      },
+      attachments: [
+        {
+          name: "invite.ics",
+          content: Buffer.from(invite).toString("base64"),
+          contentType: "text/calendar",
+        },
+      ],
+    });
     return { success: true };
   } catch (error) {
     console.error("Failed to send booking confirmation", error);
@@ -128,18 +144,34 @@ export async function sendClassReminder(
   classTime: string,
   joinLink: string,
   /** User's saved i18n preferences */
-  userPrefs: I18nPreferences = DEFAULT_PREFS
+  userPrefs: I18nPreferences = DEFAULT_PREFS,
+  options?: {
+    preJoinWindowMinutes?: number;
+  }
 ) {
   try {
-    await render(
-      ClassReminderEmail({
-        firstName,
+    const preJoinWindowMinutes =
+      options?.preJoinWindowMinutes ?? (await getClassOperationalSettings()).preJoinWindowMinutes;
+    const formattedTime = formatTimeString(classTime, userPrefs);
+    const react = ClassReminderEmail({
+      firstName,
+      className,
+      classTime: formattedTime,
+      joinLink: joinLink || `${APP_URL}/dashboard/schedule`,
+      preJoinWindowLabel: toMinutesLabel(preJoinWindowMinutes),
+    });
+
+    await sendPostmarkReactEmail({
+      to: email,
+      subject: `Reminder: ${className} starts soon`,
+      react,
+      textBody: `Hi ${firstName},\n\nThis is a reminder that ${className} begins at ${formattedTime}.\n\nJoin class: ${joinLink || `${APP_URL}/dashboard/schedule`}`,
+      tag: "class-reminder",
+      metadata: {
         className,
-        classTime: formatTimeString(classTime, userPrefs),
-        joinLink: joinLink || "https://shrutiturner.com/dashboard/schedule",
-      })
-    );
-    console.log(`[Mock Email Service] Sending Class Reminder to ${email}`);
+        emailType: "class-reminder",
+      },
+    });
     return { success: true };
   } catch (error) {
     console.error("Failed to send class reminder", error);
@@ -177,29 +209,73 @@ export async function sendPurchaseConfirmation(
 
 export async function sendInstructorNotification(
   instructorEmail: string,
-  type: "first-signup" | "last-cancel",
+  type: "first-signup" | "last-cancel" | "no-attendance-cancelled",
   className: string,
   classDate: string,
   classTime: string,
   attendeeName: string,
-  attendeeCount: number
+  attendeeCount: number,
+  startsAt?: Date,
+  durationMinutes = 60
 ) {
   try {
-    // Instructor emails always use UK formatting
-    await render(
-      InstructorNotificationEmail({
-        type,
+    const settings = await getClassOperationalSettings();
+    const formattedDate = startsAt
+      ? formatDate(startsAt, ADMIN_PREFS)
+      : formatDate(classDate, ADMIN_PREFS);
+    const formattedTime = startsAt
+      ? formatTime(startsAt, ADMIN_PREFS)
+      : classTime.includes("T")
+        ? formatTime(new Date(classTime), ADMIN_PREFS)
+        : formatTimeString(classTime, ADMIN_PREFS);
+
+    const invite =
+      type === "first-signup" && startsAt
+        ? buildCalendarInvite({
+            eventName: className,
+            startTime: startsAt,
+            durationMinutes,
+            description: `View the roster in admin: ${APP_URL}/admin/classes`,
+            method: "REQUEST",
+          })
+        : null;
+    const react = InstructorNotificationEmail({
+      type,
+      className,
+      classDate: formattedDate,
+      classTime: formattedTime,
+      attendeeName,
+      attendeeCount,
+      rosterUrl: `${APP_URL}/admin/classes`,
+      emptyClassCutoffLabel: toMinutesLabel(settings.emptyClassAutoCancelWindowMinutes),
+    });
+
+    await sendPostmarkReactEmail({
+      to: instructorEmail,
+      subject:
+        type === "first-signup"
+          ? `New booking: ${className}`
+          : type === "no-attendance-cancelled"
+            ? `Class cancelled: ${className}`
+            : `Class empty: ${className}`,
+      react,
+      textBody: `${className}\nDate: ${formattedDate}\nTime: ${formattedTime}\nAttendees: ${attendeeCount}\nRoster: ${APP_URL}/admin/classes`,
+      tag: `instructor-${type}`,
+      metadata: {
         className,
-        classDate: formatDate(classDate, ADMIN_PREFS),
-        classTime: formatTimeString(classTime, ADMIN_PREFS),
-        attendeeName,
-        attendeeCount,
-        rosterUrl: "https://shrutiturner.com/admin/dashboard",
-      })
-    );
-    console.log(
-      `[Mock Email Service] Sending Instructor Notification (${type}) to ${instructorEmail}`
-    );
+        emailType: `instructor-${type}`,
+      },
+      attachments:
+        invite && type === "first-signup"
+          ? [
+              {
+                name: "class-invite.ics",
+                content: Buffer.from(invite).toString("base64"),
+                contentType: "text/calendar",
+              },
+            ]
+          : undefined,
+    });
     return { success: true };
   } catch (error) {
     console.error("Failed to send instructor notification", error);
@@ -218,23 +294,42 @@ export async function sendClassCancellation(
   userPrefs: I18nPreferences = DEFAULT_PREFS
 ) {
   try {
-    await render(
-      ClassCancellationEmail({
-        firstName,
+    const invite = buildCalendarInvite({
+      eventName: className,
+      startTime: new Date(classDate),
+      durationMinutes: 60,
+      description: "This calendar event has been cancelled.",
+      method: "CANCEL",
+    });
+    const react = ClassCancellationEmail({
+      firstName,
+      className,
+      classDate: formatDate(classDate, userPrefs),
+      classTime: formatTimeString(classTime, userPrefs),
+      cancellationReason: isInstructorInitiated
+        ? "This class has been cancelled by your instructor."
+        : "This class booking was cancelled.",
+      alternativeClassUrl: `${APP_URL}/schedule`,
+    });
+
+    await sendPostmarkReactEmail({
+      to: email,
+      subject: `Class cancelled: ${className}`,
+      react,
+      textBody: `Hi ${firstName},\n\n${className} on ${formatDate(classDate, userPrefs)} at ${formatTimeString(classTime, userPrefs)} has been cancelled.\n\nView available classes: ${APP_URL}/schedule`,
+      tag: "class-cancellation",
+      metadata: {
         className,
-        classDate: formatDate(classDate, userPrefs),
-        classTime: formatTimeString(classTime, userPrefs),
-        cancellationReason: isInstructorInitiated
-          ? "This class has been cancelled by your instructor."
-          : "This class booking was cancelled.",
-        alternativeClassUrl: "https://shrutiturner.com/schedule",
-      })
-    );
-
-    // NOTE: To cancel a calendar event, you typically send an ICS with METHOD:CANCEL
-    // The implementation would look similar to sendBookingConfirmation but with modified ICS headers.
-
-    console.log(`[Mock Email Service] Sending Class Cancellation to ${email}`);
+        emailType: "class-cancellation",
+      },
+      attachments: [
+        {
+          name: "class-cancel.ics",
+          content: Buffer.from(invite).toString("base64"),
+          contentType: "text/calendar",
+        },
+      ],
+    });
     return { success: true };
   } catch (error) {
     console.error("Failed to send class cancellation", error);

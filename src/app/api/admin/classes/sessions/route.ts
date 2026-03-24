@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     const status: ClassSessionStatus | "all" =
       statusParam === "all"
         ? "all"
-        : ["scheduled", "live", "completed", "cancelled"].includes(statusParam)
+        : ["draft", "scheduled", "live", "completed", "cancelled"].includes(statusParam)
           ? (statusParam as ClassSessionStatus)
           : "all";
 

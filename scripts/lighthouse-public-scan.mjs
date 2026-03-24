@@ -226,7 +226,16 @@ async function main() {
     routesDiscovered: discovery.resolved,
     skippedRoutes: discovery.skipped,
     failures,
-    results: results.map(({ report, ...rest }) => rest),
+    results: results.map((item) => ({
+      url: item.url,
+      preset: item.preset,
+      accessibility: item.accessibility,
+      seo: item.seo,
+      fetchTime: item.fetchTime,
+      finalDisplayedUrl: item.finalDisplayedUrl,
+      failingAudits: item.failingAudits,
+      runnerError: item.runnerError,
+    })),
   };
 
   await fs.writeFile(path.join(outputDir, "summary.json"), JSON.stringify(summary, null, 2));

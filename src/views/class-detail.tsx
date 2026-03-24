@@ -171,21 +171,25 @@ export function ClassDetailPage({
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() || "")
     .join("");
+  const selectedSession =
+    upcomingSessions.find((session) => session.id === (selectedSessionId || nextSessionId || "")) ||
+    null;
+  const selectedSessionStartsAt = selectedSession ? new Date(selectedSession.startsAtUtc) : null;
 
   return (
     <Layout>
-      <section className="bg-brand-dark py-14 text-brand-white md:py-18">
+      <section className="bg-brand-dark text-brand-white py-14 md:py-18">
         <div className="container mx-auto max-w-6xl px-4">
           <nav aria-label="Breadcrumb" className="mb-8">
-            <ol className="flex flex-wrap items-center gap-2 text-sm text-brand-white/60">
+            <ol className="text-brand-white/60 flex flex-wrap items-center gap-2 text-sm">
               <li>
-                <Link href="/" className="transition-colors hover:text-brand-accent-light">
+                <Link href="/" className="hover:text-brand-accent-light transition-colors">
                   Home
                 </Link>
               </li>
               <li>/</li>
               <li>
-                <Link href="/classes" className="transition-colors hover:text-brand-accent-light">
+                <Link href="/classes" className="hover:text-brand-accent-light transition-colors">
                   Classes
                 </Link>
               </li>
@@ -207,24 +211,39 @@ export function ClassDetailPage({
           <h1 className="max-w-4xl text-4xl leading-tight md:text-5xl lg:text-6xl">
             {classDetail.name}
           </h1>
-          <p className="mt-6 max-w-3xl text-xl leading-relaxed text-brand-white/88 md:text-2xl">
+          <p className="text-brand-white/88 mt-6 max-w-3xl text-xl leading-relaxed md:text-2xl">
             {classDetail.shortDescription}
           </p>
 
-          <div className="mt-7 flex flex-wrap gap-5 text-brand-accent-light">
+          <div className="text-brand-accent-light mt-7 flex flex-wrap gap-5">
             <div className="flex items-center gap-2 text-sm md:text-base">
               <Calendar className="h-5 w-5" />
-              <span>{classDetail.day}s</span>
+              <span>
+                {selectedSessionStartsAt
+                  ? selectedSessionStartsAt.toLocaleDateString("en-GB", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "short",
+                    })
+                  : `${classDetail.day}s`}
+              </span>
             </div>
             <div className="flex items-center gap-2 text-sm md:text-base">
               <Clock className="h-5 w-5" />
               <span>
-                {fmtTimeStr(classDetail.time)} · {classDetail.duration}
+                {selectedSessionStartsAt
+                  ? selectedSessionStartsAt.toLocaleTimeString("en-GB", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : fmtTimeStr(classDetail.time)}{" "}
+                ·{" "}
+                {selectedSession ? `${selectedSession.durationMinutes} min` : classDetail.duration}
               </span>
             </div>
             <div className="flex items-center gap-2 text-sm md:text-base">
               <Users className="h-5 w-5" />
-              <span>Max {classDetail.maxSpaces} people</span>
+              <span>Max {selectedSession?.capacity || classDetail.maxSpaces} people</span>
             </div>
           </div>
 
@@ -242,7 +261,7 @@ export function ClassDetailPage({
               asChild
               size="lg"
               variant="outline"
-              className="border-brand-accent-light bg-transparent text-brand-accent-light hover:bg-brand-accent-light/10"
+              className="border-brand-accent-light text-brand-accent-light hover:bg-brand-accent-light/10 bg-transparent"
             >
               <Link href="/schedule">Full Schedule</Link>
             </Button>
@@ -264,7 +283,7 @@ export function ClassDetailPage({
               </section>
 
               <section className="grid gap-8 md:grid-cols-2">
-                <div className="rounded-[1.75rem] border border-brand-dark/10 bg-background p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+                <div className="border-brand-dark/10 bg-background rounded-[1.75rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
                   <div className="mb-6 flex items-center gap-3">
                     <div className="bg-primary/10 text-primary flex h-10 w-10 items-center justify-center rounded-lg">
                       <Target className="h-5 w-5" />
@@ -281,7 +300,7 @@ export function ClassDetailPage({
                   </ul>
                 </div>
 
-                <div className="rounded-[1.75rem] border border-brand-dark/10 bg-background p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+                <div className="border-brand-dark/10 bg-background rounded-[1.75rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
                   <div className="mb-6 flex items-center gap-3">
                     <div className="bg-primary/10 text-primary flex h-10 w-10 items-center justify-center rounded-lg">
                       <Users className="h-5 w-5" />
@@ -305,7 +324,7 @@ export function ClassDetailPage({
                   {classDetail.benefits.map((benefit) => (
                     <div
                       key={benefit}
-                      className="rounded-[1.5rem] border border-brand-dark/10 bg-background p-6 shadow-[0_16px_36px_rgba(46,31,51,0.05)]"
+                      className="border-brand-dark/10 bg-background rounded-[1.5rem] border p-6 shadow-[0_16px_36px_rgba(46,31,51,0.05)]"
                     >
                       <div className="flex items-start gap-3">
                         <CheckCircle className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
@@ -323,11 +342,11 @@ export function ClassDetailPage({
                   </div>
                   <h2 className="text-3xl md:text-4xl">Equipment Needed</h2>
                 </div>
-                <div className="rounded-[1.75rem] border border-brand-dark/10 bg-background p-8 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+                <div className="border-brand-dark/10 bg-background rounded-[1.75rem] border p-8 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
                   <ul className="space-y-3">
                     {classDetail.equipment.map((item) => (
                       <li key={item} className="flex items-start gap-3">
-                        <span className="mt-0.5 text-brand-accent">-</span>
+                        <span className="text-brand-accent mt-0.5">-</span>
                         <span className="text-muted-foreground">{item}</span>
                       </li>
                     ))}
@@ -341,10 +360,12 @@ export function ClassDetailPage({
 
               <section>
                 <h2 className="text-3xl md:text-4xl">Your Instructor</h2>
-                <div className="mt-8 rounded-[1.75rem] border border-brand-dark/10 bg-background p-8 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+                <div className="border-brand-dark/10 bg-background mt-8 rounded-[1.75rem] border p-8 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
                   <div className="flex flex-col items-start gap-6 sm:flex-row">
                     <div className="bg-brand-accent/10 flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-full">
-                      <span className="text-brand-accent text-xl">{instructorInitials || "ST"}</span>
+                      <span className="text-brand-accent text-xl">
+                        {instructorInitials || "ST"}
+                      </span>
                     </div>
                     <div>
                       <h3 className="text-2xl">{instructorName}</h3>
@@ -371,7 +392,7 @@ export function ClassDetailPage({
                       <Link
                         key={relClass.slug}
                         href={`/classes/${relClass.slug}`}
-                        className="group rounded-[1.55rem] border border-brand-dark/10 bg-background p-6 shadow-[0_16px_36px_rgba(46,31,51,0.05)] transition-transform duration-300 hover:-translate-y-1"
+                        className="group border-brand-dark/10 bg-background rounded-[1.55rem] border p-6 shadow-[0_16px_36px_rgba(46,31,51,0.05)] transition-transform duration-300 hover:-translate-y-1"
                       >
                         <div className="flex items-center justify-between gap-3">
                           <Badge variant="outline" className={getTypeColor(relClass.type)}>
@@ -379,7 +400,7 @@ export function ClassDetailPage({
                           </Badge>
                           <span className="text-muted-foreground text-sm">{relClass.level}</span>
                         </div>
-                        <h3 className="mt-4 text-xl transition-colors group-hover:text-primary">
+                        <h3 className="group-hover:text-primary mt-4 text-xl transition-colors">
                           {relClass.name}
                         </h3>
                         <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
@@ -403,8 +424,8 @@ export function ClassDetailPage({
             </div>
 
             <aside className="space-y-6 xl:sticky xl:top-28 xl:self-start">
-              <div className="overflow-hidden rounded-[1.75rem] border border-brand-dark/10 bg-background shadow-[0_20px_50px_rgba(46,31,51,0.08)]">
-                <div className="border-b border-brand-dark/10 px-6 py-5">
+              <div className="border-brand-dark/10 bg-background overflow-hidden rounded-[1.75rem] border shadow-[0_20px_50px_rgba(46,31,51,0.08)]">
+                <div className="border-brand-dark/10 border-b px-6 py-5">
                   <div className="flex items-start gap-3">
                     <div className="bg-primary/10 text-primary flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg">
                       <Calendar className="h-5 w-5" />
@@ -412,7 +433,8 @@ export function ClassDetailPage({
                     <div>
                       <h2 className="text-2xl">Upcoming Sessions</h2>
                       <p className="text-muted-foreground mt-1 text-sm">
-                        Every {classDetail.day} at {fmtTimeStr(classDetail.time)} · {classDetail.duration}
+                        Every {classDetail.day} at {fmtTimeStr(classDetail.time)} ·{" "}
+                        {classDetail.duration}
                       </p>
                     </div>
                   </div>
@@ -421,21 +443,20 @@ export function ClassDetailPage({
                 {upcomingSessions.length > 0 ? (
                   <div>
                     {upcomingSessions.map((session, index) => {
-                      const { month, dayNumber, weekday, dateLabel, timeLabel } = getSessionDateParts(
-                        session.startsAtUtc
-                      );
+                      const { month, dayNumber, weekday, dateLabel, timeLabel } =
+                        getSessionDateParts(session.startsAtUtc);
 
                       return (
                         <div
                           key={session.id}
-                          className="border-b border-brand-dark/10 px-6 py-5 last:border-b-0"
+                          className="border-brand-dark/10 border-b px-6 py-5 last:border-b-0"
                         >
                           <div className="flex gap-4">
                             <div className="bg-secondary flex h-[60px] w-11 flex-shrink-0 flex-col items-center justify-center rounded-lg text-center">
                               <span className="text-muted-foreground text-[10px] tracking-[0.2em] uppercase">
                                 {month}
                               </span>
-                              <span className="text-2xl text-foreground">{dayNumber}</span>
+                              <span className="text-foreground text-2xl">{dayNumber}</span>
                               <span className="text-muted-foreground text-[10px] tracking-[0.2em] uppercase">
                                 {weekday}
                               </span>
@@ -444,7 +465,7 @@ export function ClassDetailPage({
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-sm">{timeLabel} GMT</span>
                                 {index === 0 ? (
-                                  <span className="rounded-full bg-brand-accent/10 px-2 py-0.5 text-[11px] font-medium text-brand-accent">
+                                  <span className="bg-brand-accent/10 text-brand-accent rounded-full px-2 py-0.5 text-[11px] font-medium">
                                     Next
                                   </span>
                                 ) : null}
@@ -470,12 +491,12 @@ export function ClassDetailPage({
                     })}
                   </div>
                 ) : (
-                  <div className="px-6 py-6 text-sm text-muted-foreground">
+                  <div className="text-muted-foreground px-6 py-6 text-sm">
                     Upcoming sessions will appear here when the booking feed is available.
                   </div>
                 )}
 
-                <div className="border-t border-brand-dark/10 bg-secondary/20 px-6 py-5">
+                <div className="border-brand-dark/10 bg-secondary/20 border-t px-6 py-5">
                   <p className="text-muted-foreground text-xs leading-relaxed">
                     Members: no penalties for cancellation or no-shows. Credit users: cancel 4+
                     hours before class to keep your credit.
@@ -483,7 +504,7 @@ export function ClassDetailPage({
                 </div>
               </div>
 
-              <div className="rounded-[1.5rem] border border-brand-dark/10 bg-background p-5 shadow-[0_18px_40px_rgba(46,31,51,0.06)]">
+              <div className="border-brand-dark/10 bg-background rounded-[1.5rem] border p-5 shadow-[0_18px_40px_rgba(46,31,51,0.06)]">
                 <div className="grid gap-3">
                   <Button asChild variant="outline" className="justify-start">
                     <Link href="/schedule">
@@ -504,10 +525,10 @@ export function ClassDetailPage({
         </div>
       </section>
 
-      <section className="bg-brand-accent py-16 text-brand-white md:py-20">
+      <section className="bg-brand-accent text-brand-white py-16 md:py-20">
         <div className="container mx-auto max-w-4xl px-4 text-center">
           <h2 className="text-3xl md:text-4xl">Ready to Try {classDetail.name}?</h2>
-          <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-brand-white/88">
+          <p className="text-brand-white/88 mx-auto mt-5 max-w-2xl text-lg leading-relaxed">
             Drop in from £9, or join the Move Well Membership for regular support and easier weekly
             practice.
           </p>
@@ -523,7 +544,7 @@ export function ClassDetailPage({
               asChild
               size="lg"
               variant="outline"
-              className="border-brand-white bg-transparent text-brand-white hover:bg-brand-white/10"
+              className="border-brand-white text-brand-white hover:bg-brand-white/10 bg-transparent"
             >
               <Link href="/schedule">Full Schedule</Link>
             </Button>

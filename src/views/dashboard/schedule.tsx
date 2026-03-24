@@ -40,7 +40,7 @@ type ScheduleClassItem = {
   dateLabel?: string;
   spotsRemaining?: number;
   bookedCount?: number;
-  status?: "scheduled" | "live" | "completed" | "cancelled";
+  status?: "draft" | "scheduled" | "live" | "completed" | "cancelled";
   isBookedByCurrentUser?: boolean;
   waitlistPosition?: number | null;
 };
@@ -165,7 +165,9 @@ export function DashboardSchedule({
               <Clock className="text-primary h-3.5 w-3.5" />
               Times shown in {tzAbbr}
             </span>
-            {londonOffset ? <span className="text-muted-foreground/70">({londonOffset})</span> : null}
+            {londonOffset ? (
+              <span className="text-muted-foreground/70">({londonOffset})</span>
+            ) : null}
           </>
         }
         className="mb-8"

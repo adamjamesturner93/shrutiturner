@@ -354,506 +354,523 @@ export function AccountPage() {
         />
       </AppMetricGrid>
 
-      {onboardingState && !onboardingState.isComplete ? (
-        <div className="bg-background mb-8 flex flex-col gap-4 rounded-lg border p-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline">Onboarding</Badge>
-              <span className="text-muted-foreground text-sm">
-                {onboardingState.missingSteps.length} step
-                {onboardingState.missingSteps.length === 1 ? "" : "s"} remaining
-              </span>
-            </div>
-            <p className="text-sm leading-relaxed">
-              Finish the remaining setup steps so your studio account, legal agreements, and health
-              profile stay complete.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {onboardingState.missingSteps.map((step) => (
-                <Badge key={step} variant="secondary">
-                  {ONBOARDING_STEP_LABELS[step]}
-                </Badge>
-              ))}
-            </div>
-          </div>
-          <Link href="/dashboard?onboarding=true">
-            <Button>
-              Continue onboarding
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
-      ) : null}
-
-      <div className="mb-8 flex gap-1 overflow-x-auto border-b">
-        {TABS.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`relative px-4 py-2.5 text-sm whitespace-nowrap transition-colors ${
-                activeTab === tab.key
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </span>
-              {activeTab === tab.key ? (
-                <span className="bg-primary absolute right-0 bottom-0 left-0 h-0.5" />
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="max-w-2xl">
-        {activeTab === "profile" ? (
-          <div className="space-y-8">
-            <div className="bg-background space-y-5 rounded-lg border p-6">
-              <div className="mb-2 flex items-center gap-3">
-                <User className="text-primary h-5 w-5" />
-                <h2 className="text-xl">Personal Details</h2>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input
-                    id="firstName"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input
-                    id="lastName"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                  />
-                </div>
-              </div>
-
+      {!loading ? (
+        <>
+          {onboardingState && !onboardingState.isComplete ? (
+            <div className="bg-background mb-8 flex flex-col gap-4 rounded-lg border p-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} readOnly disabled />
-                <p className="text-muted-foreground text-xs">
-                  Your sign-in email is fixed here because it is linked to billing and account
-                  records.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="dob">Date of Birth</Label>
-                <Input
-                  id="dob"
-                  type="date"
-                  value={dob}
-                  onChange={(e) => handleDobChange(e.target.value)}
-                  max={new Date().toISOString().split("T")[0]}
-                  className={dobError ? "border-red-500" : ""}
-                />
-                {dobError ? (
-                  <p className="flex items-start gap-1.5 text-sm text-red-600">
-                    <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                    {dobError}
-                  </p>
-                ) : (
-                  <p className="text-muted-foreground text-xs">
-                    Required for insurance purposes. You must be 18 or over.
-                  </p>
-                )}
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="gender">
-                    Gender <span className="text-muted-foreground text-xs">(optional)</span>
-                  </Label>
-                  <Select value={gender} onValueChange={setGender}>
-                    <SelectTrigger id="gender">
-                      <SelectValue placeholder="Not answered" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {GENDER_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ethnicity">
-                    Ethnicity <span className="text-muted-foreground text-xs">(optional)</span>
-                  </Label>
-                  <Select value={ethnicity} onValueChange={setEthnicity}>
-                    <SelectTrigger id="ethnicity">
-                      <SelectValue placeholder="Not answered" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ETHNICITY_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Button onClick={handleProfileSave} disabled={!!dobError}>
-                  Save Profile
-                </Button>
-                {profileSaved ? (
-                  <span className="text-brand-accent flex items-center gap-1 text-sm">
-                    <Check className="h-4 w-4" />
-                    Saved
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">Onboarding</Badge>
+                  <span className="text-muted-foreground text-sm">
+                    {onboardingState.missingSteps.length} step
+                    {onboardingState.missingSteps.length === 1 ? "" : "s"} remaining
                   </span>
-                ) : null}
+                </div>
+                <p className="text-sm leading-relaxed">
+                  Finish the remaining setup steps so your studio account, legal agreements, and
+                  health profile stay complete.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {onboardingState.missingSteps.map((step) => (
+                    <Badge key={step} variant="secondary">
+                      {ONBOARDING_STEP_LABELS[step]}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-            </div>
-
-            <div className="bg-background space-y-4 rounded-lg border p-6">
-              <div className="mb-2 flex items-center gap-3">
-                <HeartPulse className="text-primary h-5 w-5" />
-                <h2 className="text-xl">Health Profile</h2>
-              </div>
-              <p className="text-muted-foreground text-sm">
-                Keep your health conditions up to date so sessions can be adapted for your body.
-              </p>
-              <Link href="/dashboard/health">
-                <Button variant="outline">View & Edit Health Profile</Button>
+              <Link href="/dashboard?onboarding=true">
+                <Button>
+                  Continue onboarding
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
               </Link>
             </div>
+          ) : null}
 
-            <section
-              className="bg-background space-y-4 rounded-lg border p-6"
-              aria-labelledby="privacy-legal-heading"
-            >
-              <div className="mb-2 flex items-center gap-3">
-                <Shield className="text-primary h-5 w-5" />
-                <h2 id="privacy-legal-heading" className="text-xl">
-                  Privacy & Legal
-                </h2>
-              </div>
-
-              {!hasAgreedToTerms || !hasAgreedToHealth ? (
-                <div
-                  className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4"
-                  data-testid="legal-pending-panel"
+          <div className="mb-8 flex gap-1 overflow-x-auto border-b">
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`relative px-4 py-2.5 text-sm whitespace-nowrap transition-colors ${
+                    activeTab === tab.key
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
                 >
-                  <p className="text-sm text-amber-800">
-                    You still need to accept required agreements.
+                  <span className="flex items-center gap-2">
+                    <Icon className="h-4 w-4" />
+                    {tab.label}
+                  </span>
+                  {activeTab === tab.key ? (
+                    <span className="bg-primary absolute right-0 bottom-0 left-0 h-0.5" />
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="max-w-2xl">
+            {activeTab === "profile" ? (
+              <div className="space-y-8">
+                <div className="bg-background space-y-5 rounded-lg border p-6">
+                  <div className="mb-2 flex items-center gap-3">
+                    <User className="text-primary h-5 w-5" />
+                    <h2 className="text-xl">Personal Details</h2>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First Name</Label>
+                      <Input
+                        id="firstName"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" value={email} readOnly disabled />
+                    <p className="text-muted-foreground text-xs">
+                      Your sign-in email is fixed here because it is linked to billing and account
+                      records.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="dob">Date of Birth</Label>
+                    <Input
+                      id="dob"
+                      type="date"
+                      value={dob}
+                      onChange={(e) => handleDobChange(e.target.value)}
+                      max={new Date().toISOString().split("T")[0]}
+                      className={dobError ? "border-red-500" : ""}
+                    />
+                    {dobError ? (
+                      <p className="flex items-start gap-1.5 text-sm text-red-600">
+                        <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                        {dobError}
+                      </p>
+                    ) : (
+                      <p className="text-muted-foreground text-xs">
+                        Required for insurance purposes. You must be 18 or over.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="gender">
+                        Gender <span className="text-muted-foreground text-xs">(optional)</span>
+                      </Label>
+                      <Select value={gender} onValueChange={setGender}>
+                        <SelectTrigger id="gender">
+                          <SelectValue placeholder="Not answered" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {GENDER_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ethnicity">
+                        Ethnicity <span className="text-muted-foreground text-xs">(optional)</span>
+                      </Label>
+                      <Select value={ethnicity} onValueChange={setEthnicity}>
+                        <SelectTrigger id="ethnicity">
+                          <SelectValue placeholder="Not answered" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ETHNICITY_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Button onClick={handleProfileSave} disabled={!!dobError}>
+                      Save Profile
+                    </Button>
+                    {profileSaved ? (
+                      <span className="text-brand-accent flex items-center gap-1 text-sm">
+                        <Check className="h-4 w-4" />
+                        Saved
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="bg-background space-y-4 rounded-lg border p-6">
+                  <div className="mb-2 flex items-center gap-3">
+                    <HeartPulse className="text-primary h-5 w-5" />
+                    <h2 className="text-xl">Health Profile</h2>
+                  </div>
+                  <p className="text-muted-foreground text-sm">
+                    Keep your health conditions up to date so sessions can be adapted for your body.
                   </p>
-                  {legalError ? <p className="text-sm text-red-600">{legalError}</p> : null}
-                  {!hasAgreedToTerms ? (
-                    <label
-                      className="flex items-start gap-3 rounded-lg border border-amber-200 bg-white p-3"
-                      data-testid="accept-terms-checkbox"
+                  <Link href="/dashboard/health">
+                    <Button variant="outline">View & Edit Health Profile</Button>
+                  </Link>
+                </div>
+
+                <section
+                  className="bg-background space-y-4 rounded-lg border p-6"
+                  aria-labelledby="privacy-legal-heading"
+                >
+                  <div className="mb-2 flex items-center gap-3">
+                    <Shield className="text-primary h-5 w-5" />
+                    <h2 id="privacy-legal-heading" className="text-xl">
+                      Privacy & Legal
+                    </h2>
+                  </div>
+
+                  {!hasAgreedToTerms || !hasAgreedToHealth ? (
+                    <div
+                      className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4"
+                      data-testid="legal-pending-panel"
                     >
-                      <input
-                        type="checkbox"
-                        className="accent-brand-accent mt-0.5"
-                        disabled={legalSaving !== null}
-                        onChange={async (e) => {
-                          if (!e.target.checked) return;
-                          await handleLegalAcceptance("terms");
-                        }}
-                      />
-                      <span className="text-sm leading-relaxed">
-                        I agree to the{" "}
-                        <Link href="/terms" className="text-primary underline" target="_blank">
-                          Terms & Conditions
-                        </Link>{" "}
-                        and{" "}
-                        <Link href="/privacy" className="text-primary underline" target="_blank">
-                          Privacy Policy
-                        </Link>
-                      </span>
-                    </label>
-                  ) : null}
-                  {!hasAgreedToHealth ? (
-                    <label
-                      className="flex items-start gap-3 rounded-lg border border-amber-200 bg-white p-3"
-                      data-testid="accept-health-checkbox"
-                    >
-                      <input
-                        type="checkbox"
-                        className="accent-brand-accent mt-0.5"
-                        disabled={legalSaving !== null}
-                        onChange={async (e) => {
-                          if (!e.target.checked) return;
-                          await handleLegalAcceptance("health");
-                        }}
-                      />
-                      <span className="text-sm leading-relaxed">
-                        I agree to the{" "}
-                        <Link
-                          href="/health-declaration"
-                          className="text-primary underline"
-                          target="_blank"
+                      <p className="text-sm text-amber-800">
+                        You still need to accept required agreements.
+                      </p>
+                      {legalError ? <p className="text-sm text-red-600">{legalError}</p> : null}
+                      {!hasAgreedToTerms ? (
+                        <label
+                          className="flex items-start gap-3 rounded-lg border border-amber-200 bg-white p-3"
+                          data-testid="accept-terms-checkbox"
                         >
-                          Health & Liability Waiver
-                        </Link>
-                      </span>
-                    </label>
-                  ) : null}
+                          <input
+                            type="checkbox"
+                            className="accent-brand-accent mt-0.5"
+                            disabled={legalSaving !== null}
+                            onChange={async (e) => {
+                              if (!e.target.checked) return;
+                              await handleLegalAcceptance("terms");
+                            }}
+                          />
+                          <span className="text-sm leading-relaxed">
+                            I agree to the{" "}
+                            <Link href="/terms" className="text-primary underline" target="_blank">
+                              Terms & Conditions
+                            </Link>{" "}
+                            and{" "}
+                            <Link
+                              href="/privacy"
+                              className="text-primary underline"
+                              target="_blank"
+                            >
+                              Privacy Policy
+                            </Link>
+                          </span>
+                        </label>
+                      ) : null}
+                      {!hasAgreedToHealth ? (
+                        <label
+                          className="flex items-start gap-3 rounded-lg border border-amber-200 bg-white p-3"
+                          data-testid="accept-health-checkbox"
+                        >
+                          <input
+                            type="checkbox"
+                            className="accent-brand-accent mt-0.5"
+                            disabled={legalSaving !== null}
+                            onChange={async (e) => {
+                              if (!e.target.checked) return;
+                              await handleLegalAcceptance("health");
+                            }}
+                          />
+                          <span className="text-sm leading-relaxed">
+                            I agree to the{" "}
+                            <Link
+                              href="/health-declaration"
+                              className="text-primary underline"
+                              target="_blank"
+                            >
+                              Health & Liability Waiver
+                            </Link>
+                          </span>
+                        </label>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="border-brand-accent/20 bg-brand-accent/5 space-y-2 rounded-lg border p-4">
+                      <div className="text-brand-accent flex items-center gap-2 text-sm">
+                        <Check className="h-4 w-4" />
+                        Terms accepted{" "}
+                        {termsAgreedAt
+                          ? `(${new Date(termsAgreedAt).toLocaleDateString("en-GB")})`
+                          : ""}
+                      </div>
+                      <div className="text-brand-accent flex items-center gap-2 text-sm">
+                        <Check className="h-4 w-4" />
+                        Health & Liability Waiver accepted{" "}
+                        {healthAgreedAt
+                          ? `(${new Date(healthAgreedAt).toLocaleDateString("en-GB")})`
+                          : ""}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2 text-sm">
+                    <Link href="/terms" className="text-primary block hover:underline">
+                      Terms & Conditions
+                    </Link>
+                    <Link href="/privacy" className="text-primary block hover:underline">
+                      Privacy Policy
+                    </Link>
+                    <Link href="/health-declaration" className="text-primary block hover:underline">
+                      Health & Liability Waiver
+                    </Link>
+                  </div>
+                </section>
+              </div>
+            ) : null}
+
+            {activeTab === "preferences" ? (
+              <div className="bg-background space-y-5 rounded-lg border p-6">
+                <div className="mb-2 flex items-center gap-3">
+                  <Globe className="text-primary h-5 w-5" />
+                  <h2 className="text-xl">Regional Preferences</h2>
                 </div>
-              ) : (
-                <div className="border-brand-accent/20 bg-brand-accent/5 space-y-2 rounded-lg border p-4">
-                  <div className="text-brand-accent flex items-center gap-2 text-sm">
-                    <Check className="h-4 w-4" />
-                    Terms accepted{" "}
-                    {termsAgreedAt
-                      ? `(${new Date(termsAgreedAt).toLocaleDateString("en-GB")})`
-                      : ""}
-                  </div>
-                  <div className="text-brand-accent flex items-center gap-2 text-sm">
-                    <Check className="h-4 w-4" />
-                    Health & Liability Waiver accepted{" "}
-                    {healthAgreedAt
-                      ? `(${new Date(healthAgreedAt).toLocaleDateString("en-GB")})`
-                      : ""}
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2 text-sm">
-                <Link href="/terms" className="text-primary block hover:underline">
-                  Terms & Conditions
-                </Link>
-                <Link href="/privacy" className="text-primary block hover:underline">
-                  Privacy Policy
-                </Link>
-                <Link href="/health-declaration" className="text-primary block hover:underline">
-                  Health & Liability Waiver
-                </Link>
-              </div>
-            </section>
-          </div>
-        ) : null}
-
-        {activeTab === "preferences" ? (
-          <div className="bg-background space-y-5 rounded-lg border p-6">
-            <div className="mb-2 flex items-center gap-3">
-              <Globe className="text-primary h-5 w-5" />
-              <h2 className="text-xl">Regional Preferences</h2>
-            </div>
-            <p className="text-muted-foreground text-sm">
-              These settings control how dates and times appear in schedule and reminders.
-            </p>
-            <div className="space-y-2">
-              <Label htmlFor="timezone">Timezone</Label>
-              <Select value={timezone} onValueChange={setTimezone}>
-                <SelectTrigger id="timezone">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {getTimezoneOptions().map((tz) => (
-                    <SelectItem key={tz.value} value={tz.value}>
-                      {tz.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="dateFormat">Date Format</Label>
-              <Select value={dateFormat} onValueChange={setDateFormat}>
-                <SelectTrigger id="dateFormat">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DATE_FORMAT_OPTIONS.map((fmt) => (
-                    <SelectItem key={fmt.value} value={fmt.value}>
-                      {fmt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="bg-secondary/30 space-y-2 rounded-lg border p-4">
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="text-primary h-4 w-4" />
-                <span className="text-muted-foreground">Preview:</span>
-              </div>
-              <div className="space-y-1 text-sm">
-                <p>
-                  <span className="text-muted-foreground">Today's date: </span>
-                  {currentDatePreview}
+                <p className="text-muted-foreground text-sm">
+                  These settings control how dates and times appear in schedule and reminders.
                 </p>
-                <p>
-                  <span className="text-muted-foreground">Current time: </span>
-                  {currentTimePreview}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button onClick={handlePrefsSave}>Save Preferences</Button>
-              {prefsSaved ? (
-                <span className="text-brand-accent flex items-center gap-1 text-sm">
-                  <Check className="h-4 w-4" />
-                  Saved
-                </span>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-
-        {activeTab === "activity" ? (
-          <div className="bg-background space-y-4 rounded-lg border p-6">
-            <div className="mb-2 flex items-center gap-3">
-              <History className="text-primary h-5 w-5" />
-              <h2 className="text-xl">Recent Activity</h2>
-            </div>
-            {!activity ? (
-              <p className="text-muted-foreground text-sm">No activity available yet.</p>
-            ) : (
-              <>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-lg border p-3">
-                    <p className="text-muted-foreground text-xs">Upcoming classes</p>
-                    <p className="text-xl">{activity.upcomingClasses.length}</p>
-                  </div>
-                  <div className="rounded-lg border p-3">
-                    <p className="text-muted-foreground text-xs">Booked this week</p>
-                    <p className="text-xl">{activity.attendance.thisWeekBookedCount}</p>
-                  </div>
-                  <div className="rounded-lg border p-3">
-                    <p className="text-muted-foreground text-xs">Attended all-time</p>
-                    <p className="text-xl">{activity.attendance.attendedCount}</p>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="timezone">Timezone</Label>
+                  <Select value={timezone} onValueChange={setTimezone}>
+                    <SelectTrigger id="timezone">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getTimezoneOptions().map((tz) => (
+                        <SelectItem key={tz.value} value={tz.value}>
+                          {tz.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  {activity.upcomingClasses.length === 0 ? (
-                    <p className="text-muted-foreground py-3 text-sm">
-                      No upcoming class activity.
-                    </p>
-                  ) : (
-                    activity.upcomingClasses.slice(0, 10).map((item) => (
-                      <div
-                        key={item.bookingId}
-                        className="flex items-center justify-between rounded-lg border p-3"
-                      >
-                        <div>
-                          <p className="text-sm">{item.className}</p>
-                          <p className="text-muted-foreground text-xs">
-                            {new Date(item.startsAtUtc).toLocaleString("en-GB")}
-                          </p>
-                        </div>
-                        <Badge variant="outline">{item.entitlementType}</Badge>
-                      </div>
-                    ))
-                  )}
+                  <Label htmlFor="dateFormat">Date Format</Label>
+                  <Select value={dateFormat} onValueChange={setDateFormat}>
+                    <SelectTrigger id="dateFormat">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DATE_FORMAT_OPTIONS.map((fmt) => (
+                        <SelectItem key={fmt.value} value={fmt.value}>
+                          {fmt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </>
-            )}
-          </div>
-        ) : null}
-
-        {activeTab === "notifications" ? (
-          <div className="space-y-8">
-            <div className="bg-background space-y-4 rounded-lg border p-6">
-              <div className="mb-2 flex items-center gap-3">
-                <Bell className="text-primary h-5 w-5" />
-                <h2 className="text-xl">Class Notifications</h2>
-              </div>
-              <div className="space-y-3">
-                <label className="flex items-center justify-between py-2">
-                  <span className="text-sm">Class reminders (2 hours before)</span>
-                  <input
-                    type="checkbox"
-                    checked={notifications.classReminders}
-                    onChange={(e) =>
-                      setNotifications((prev) => ({ ...prev, classReminders: e.target.checked }))
-                    }
-                    className="accent-brand-accent"
-                  />
-                </label>
-                <label className="flex items-center justify-between py-2">
-                  <span className="text-sm">New class schedule updates</span>
-                  <input
-                    type="checkbox"
-                    checked={notifications.scheduleUpdates}
-                    onChange={(e) =>
-                      setNotifications((prev) => ({ ...prev, scheduleUpdates: e.target.checked }))
-                    }
-                    className="accent-brand-accent"
-                  />
-                </label>
-                <label className="flex items-center justify-between py-2">
-                  <span className="text-sm">Programme announcements</span>
-                  <input
-                    type="checkbox"
-                    checked={notifications.programAnnouncements}
-                    onChange={(e) =>
-                      setNotifications((prev) => ({
-                        ...prev,
-                        programAnnouncements: e.target.checked,
-                      }))
-                    }
-                    className="accent-brand-accent"
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="bg-background space-y-4 rounded-lg border p-6">
-              <div className="mb-2 flex items-center gap-3">
-                <Mail className="text-primary h-5 w-5" />
-                <h2 className="text-xl">Email Subscriptions</h2>
-              </div>
-              <div className="space-y-3">
-                <label className="flex items-center justify-between py-2">
-                  <div>
-                    <span className="text-sm">Newsletter & Updates</span>
-                    <p className="text-muted-foreground text-xs">
-                      Articles, class updates, and training insights
+                <div className="bg-secondary/30 space-y-2 rounded-lg border p-4">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="text-primary h-4 w-4" />
+                    <span className="text-muted-foreground">Preview:</span>
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <p>
+                      <span className="text-muted-foreground">Today's date: </span>
+                      {currentDatePreview}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Current time: </span>
+                      {currentTimePreview}
                     </p>
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={notifications.marketingEmails}
-                    onChange={(e) =>
-                      setNotifications((prev) => ({ ...prev, marketingEmails: e.target.checked }))
-                    }
-                    className="accent-brand-accent"
-                  />
-                </label>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button onClick={handlePrefsSave}>Save Preferences</Button>
+                  {prefsSaved ? (
+                    <span className="text-brand-accent flex items-center gap-1 text-sm">
+                      <Check className="h-4 w-4" />
+                      Saved
+                    </span>
+                  ) : null}
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Button variant="outline" onClick={handleNotificationsSave}>
-                  Update Preferences
-                </Button>
-                {notificationsSaved ? (
-                  <span className="text-brand-accent flex items-center gap-1 text-sm">
-                    <Check className="h-4 w-4" />
-                    Saved
-                  </span>
-                ) : null}
+            ) : null}
+
+            {activeTab === "activity" ? (
+              <div className="bg-background space-y-4 rounded-lg border p-6">
+                <div className="mb-2 flex items-center gap-3">
+                  <History className="text-primary h-5 w-5" />
+                  <h2 className="text-xl">Recent Activity</h2>
+                </div>
+                {!activity ? (
+                  <p className="text-muted-foreground text-sm">No activity available yet.</p>
+                ) : (
+                  <>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-lg border p-3">
+                        <p className="text-muted-foreground text-xs">Upcoming classes</p>
+                        <p className="text-xl">{activity.upcomingClasses.length}</p>
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <p className="text-muted-foreground text-xs">Booked this week</p>
+                        <p className="text-xl">{activity.attendance.thisWeekBookedCount}</p>
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <p className="text-muted-foreground text-xs">Attended all-time</p>
+                        <p className="text-xl">{activity.attendance.attendedCount}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {activity.upcomingClasses.length === 0 ? (
+                        <p className="text-muted-foreground py-3 text-sm">
+                          No upcoming class activity.
+                        </p>
+                      ) : (
+                        activity.upcomingClasses.slice(0, 10).map((item) => (
+                          <div
+                            key={item.bookingId}
+                            className="flex items-center justify-between rounded-lg border p-3"
+                          >
+                            <div>
+                              <p className="text-sm">{item.className}</p>
+                              <p className="text-muted-foreground text-xs">
+                                {new Date(item.startsAtUtc).toLocaleString("en-GB")}
+                              </p>
+                            </div>
+                            <Badge variant="outline">{item.entitlementType}</Badge>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
+            ) : null}
+
+            {activeTab === "notifications" ? (
+              <div className="space-y-8">
+                <div className="bg-background space-y-4 rounded-lg border p-6">
+                  <div className="mb-2 flex items-center gap-3">
+                    <Bell className="text-primary h-5 w-5" />
+                    <h2 className="text-xl">Class Notifications</h2>
+                  </div>
+                  <div className="space-y-3">
+                    <label className="flex items-center justify-between py-2">
+                      <span className="text-sm">Class reminders (2 hours before)</span>
+                      <input
+                        type="checkbox"
+                        checked={notifications.classReminders}
+                        onChange={(e) =>
+                          setNotifications((prev) => ({
+                            ...prev,
+                            classReminders: e.target.checked,
+                          }))
+                        }
+                        className="accent-brand-accent"
+                      />
+                    </label>
+                    <label className="flex items-center justify-between py-2">
+                      <span className="text-sm">New class schedule updates</span>
+                      <input
+                        type="checkbox"
+                        checked={notifications.scheduleUpdates}
+                        onChange={(e) =>
+                          setNotifications((prev) => ({
+                            ...prev,
+                            scheduleUpdates: e.target.checked,
+                          }))
+                        }
+                        className="accent-brand-accent"
+                      />
+                    </label>
+                    <label className="flex items-center justify-between py-2">
+                      <span className="text-sm">Programme announcements</span>
+                      <input
+                        type="checkbox"
+                        checked={notifications.programAnnouncements}
+                        onChange={(e) =>
+                          setNotifications((prev) => ({
+                            ...prev,
+                            programAnnouncements: e.target.checked,
+                          }))
+                        }
+                        className="accent-brand-accent"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="bg-background space-y-4 rounded-lg border p-6">
+                  <div className="mb-2 flex items-center gap-3">
+                    <Mail className="text-primary h-5 w-5" />
+                    <h2 className="text-xl">Email Subscriptions</h2>
+                  </div>
+                  <div className="space-y-3">
+                    <label className="flex items-center justify-between py-2">
+                      <div>
+                        <span className="text-sm">Newsletter & Updates</span>
+                        <p className="text-muted-foreground text-xs">
+                          Articles, class updates, and training insights
+                        </p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={notifications.marketingEmails}
+                        onChange={(e) =>
+                          setNotifications((prev) => ({
+                            ...prev,
+                            marketingEmails: e.target.checked,
+                          }))
+                        }
+                        className="accent-brand-accent"
+                      />
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Button variant="outline" onClick={handleNotificationsSave}>
+                      Update Preferences
+                    </Button>
+                    {notificationsSaved ? (
+                      <span className="text-brand-accent flex items-center gap-1 text-sm">
+                        <Check className="h-4 w-4" />
+                        Saved
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="bg-background mt-8 rounded-lg border p-6">
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  await logout();
+                }}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out
+              </Button>
             </div>
           </div>
-        ) : null}
-
-        <div className="bg-background mt-8 rounded-lg border p-6">
-          <Button
-            variant="outline"
-            onClick={async () => {
-              await logout();
-            }}
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
-          </Button>
-        </div>
-      </div>
+        </>
+      ) : null}
     </DashboardLayout>
   );
 }

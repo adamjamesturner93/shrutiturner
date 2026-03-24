@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api/auth-user";
 import { getSessionAccessContext, getRoomTokenAccess } from "@/lib/classes/attendance-service";
+import {
+  buildSessionParticipantPermissions,
+  getEffectiveSessionCommunityMode,
+} from "@/lib/classes/live-room-service";
 import { createMeetingToken, isDailyConfigured } from "@/lib/daily/service";
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
@@ -26,13 +30,26 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
       userName: access.userName,
       isOwner: access.isOwner,
       expiresAt: new Date(new Date(contextData.session.endsAtUtc).getTime() + 2 * 60 * 60 * 1000),
+      permissions: buildSessionParticipantPermissions({
+        typeSnapshot: contextData.session.typeSnapshot,
+        capacity: contextData.session.capacity,
+        communityModeEnabled: contextData.session.communityModeEnabled,
+        communityModeUpdatedAt: contextData.session.communityModeUpdatedAt,
+        isModerator: access.isOwner,
+        moderatorUserIds: [contextData.session.instructorUserId],
+      }).permissions,
     });
 
     return NextResponse.json({
       token,
       roomUrl: access.roomUrl,
       isOwner: access.isOwner,
-      communityModeEnabled: contextData.session.communityModeEnabled,
+      communityModeEnabled: getEffectiveSessionCommunityMode({
+        typeSnapshot: contextData.session.typeSnapshot,
+        capacity: contextData.session.capacity,
+        communityModeEnabled: contextData.session.communityModeEnabled,
+        communityModeUpdatedAt: contextData.session.communityModeUpdatedAt,
+      }),
       lateJoinCutoffAt: access.lateJoinCutoffAt.toISOString(),
       hasPreviouslyJoinedCurrentUser: access.hasPreviouslyJoined,
     });
@@ -45,6 +62,9 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     }
     if (error instanceof Error && error.message === "FORBIDDEN") {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+    }
+    if (error instanceof Error && error.message === "EARLY_JOIN_WINDOW") {
+      return NextResponse.json({ message: "The live room is not open yet." }, { status: 403 });
     }
     if (error instanceof Error && error.message === "LATE_JOIN_CUTOFF") {
       return NextResponse.json(

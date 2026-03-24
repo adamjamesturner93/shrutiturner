@@ -94,11 +94,16 @@ export function DashboardClassDetail({
   }
 
   const booked = !loadingSession && Boolean(session?.isBookedByCurrentUser);
+  const resolvedStartsAt = session ? new Date(session.startsAtUtc) : null;
+  const resolvedType = session?.type || cls.type;
+  const resolvedLevel = session?.level || cls.level;
+  const resolvedCapacity = session?.capacity || cls.maxSpaces;
+  const resolvedInstructorName = session?.instructorName || cls.instructor;
 
   const typeIcon =
-    cls.type === "Yoga" ? (
+    resolvedType === "Yoga" ? (
       <Heart className="h-5 w-5" />
-    ) : cls.type === "HIIT" ? (
+    ) : resolvedType === "HIIT" ? (
       <Zap className="h-5 w-5" />
     ) : (
       <Dumbbell className="h-5 w-5" />
@@ -123,11 +128,11 @@ export function DashboardClassDetail({
           {/* Header */}
           <div>
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className={getTypeColor(cls.type)}>
+              <Badge variant="outline" className={getTypeColor(resolvedType)}>
                 {typeIcon}
-                <span className="ml-1">{cls.type}</span>
+                <span className="ml-1">{resolvedType}</span>
               </Badge>
-              <Badge variant="outline">{cls.level}</Badge>
+              <Badge variant="outline">{resolvedLevel}</Badge>
               {booked && (
                 <Badge className="bg-brand-accent text-brand-white gap-1">
                   <CheckCircle className="h-3 w-3" />
@@ -148,7 +153,15 @@ export function DashboardClassDetail({
           <div className="flex flex-wrap gap-6 text-sm">
             <div className="text-muted-foreground flex items-center gap-2">
               <Calendar className="text-primary h-4 w-4" />
-              <span>{cls.day}s</span>
+              <span>
+                {resolvedStartsAt
+                  ? resolvedStartsAt.toLocaleDateString("en-GB", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "short",
+                    })
+                  : `${cls.day}s`}
+              </span>
             </div>
             <div className="text-muted-foreground flex items-center gap-2">
               <Clock className="text-primary h-4 w-4" />
@@ -164,7 +177,7 @@ export function DashboardClassDetail({
             </div>
             <div className="text-muted-foreground flex items-center gap-2">
               <Users className="text-primary h-4 w-4" />
-              <span>Max {cls.maxSpaces} people</span>
+              <span>Max {resolvedCapacity} people</span>
             </div>
             <div className="text-muted-foreground flex items-center gap-2">
               <Video className="text-primary h-4 w-4" />
@@ -186,7 +199,7 @@ export function DashboardClassDetail({
             <div>
               <h2 className="mb-4 text-xl">Your Instructor</h2>
               <div className="bg-secondary/20 rounded-lg p-5">
-                <p>{session?.instructorName || cls.instructor}</p>
+                <p>{resolvedInstructorName}</p>
                 {session?.instructorBio ? (
                   <p className="text-muted-foreground mt-2 text-sm">{session.instructorBio}</p>
                 ) : null}

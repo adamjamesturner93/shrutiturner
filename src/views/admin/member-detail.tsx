@@ -24,10 +24,8 @@ import {
   Calendar,
   CreditCard,
   Gift,
-  Tag,
   Bookmark,
   Bell,
-  BookOpen,
   Edit3,
   Save,
   HeartPulse,
@@ -70,6 +68,24 @@ export function AdminMemberDetail() {
   const [messageBody, setMessageBody] = useState("");
   const [messageSending, setMessageSending] = useState(false);
 
+  const applyMemberState = (data: AdminMemberDetailDto) => {
+    setMember(data);
+    setNotes(data.notes || "");
+    setIsInstructor(Boolean(data.isInstructor));
+    setInstructorProfileEntryId(data.instructorProfileEntryId || "");
+    setIsCoachingClient(Boolean(data.isCoachingClient));
+    setCreditBalance(data.creditBalance || 0);
+    setCreditHistory(
+      (data.creditHistory || []).map((entry) => ({
+        date: entry.date,
+        action: entry.amount >= 0 ? "add" : "remove",
+        amount: Math.abs(entry.amount),
+        reason: entry.reason,
+        by: entry.by,
+      }))
+    );
+  };
+
   useEffect(() => {
     let active = true;
     const load = async () => {
@@ -80,21 +96,7 @@ export function AdminMemberDetail() {
         if (!res.ok) throw new Error("Failed to load member.");
         const data = (await res.json()) as AdminMemberDetailDto;
         if (!active || !data) return;
-        setMember(data);
-        setNotes(data.notes || "");
-        setIsInstructor(Boolean(data.isInstructor));
-        setInstructorProfileEntryId(data.instructorProfileEntryId || "");
-        setIsCoachingClient(Boolean(data.isCoachingClient));
-        setCreditBalance(data.creditBalance || 0);
-        setCreditHistory(
-          (data.creditHistory || []).map((entry) => ({
-            date: entry.date,
-            action: entry.amount >= 0 ? "add" : "remove",
-            amount: Math.abs(entry.amount),
-            reason: entry.reason,
-            by: entry.by,
-          }))
-        );
+        applyMemberState(data);
       } catch (error) {
         if (active) setLoadError(error instanceof Error ? error.message : "Failed to load member.");
       } finally {
@@ -153,19 +155,14 @@ export function AdminMemberDetail() {
     cancelled: "bg-red-50 text-red-700 border-red-200",
   };
 
-  const handleRoleToggle = (role: "instructor" | "coaching", newValue: boolean) => {
+  const handleRoleToggle = async (role: "instructor" | "coaching", newValue: boolean) => {
+    if (!member) return;
     if (role === "instructor") {
       if (newValue && !instructorProfileEntryId) {
         toast.error("Select an instructor profile before enabling instructor access.");
         return;
       }
-      setIsInstructor(newValue);
-      toast.success(
-        newValue
-          ? `${member.firstName} is now an Instructor`
-          : `Instructor role removed from ${member.firstName}`
-      );
-      void fetch(`/api/admin/members/${member.id}`, {
+      const response = await fetch(`/api/admin/members/${member.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -173,18 +170,32 @@ export function AdminMemberDetail() {
           instructorProfileEntryId: newValue ? instructorProfileEntryId : null,
         }),
       });
+      if (!response.ok) {
+        toast.error("Failed to update instructor role.");
+        return;
+      }
+      applyMemberState((await response.json()) as AdminMemberDetailDto);
+      toast.success(
+        newValue
+          ? `${member.firstName} is now an Instructor`
+          : `Instructor role removed from ${member.firstName}`
+      );
     } else {
-      setIsCoachingClient(newValue);
+      const response = await fetch(`/api/admin/members/${member.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isCoachingClient: newValue }),
+      });
+      if (!response.ok) {
+        toast.error("Failed to update coaching role.");
+        return;
+      }
+      applyMemberState((await response.json()) as AdminMemberDetailDto);
       toast.success(
         newValue
           ? `${member.firstName} is now a Coaching Client`
           : `Coaching Client role removed from ${member.firstName}`
       );
-      void fetch(`/api/admin/members/${member.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isCoachingClient: newValue }),
-      });
     }
   };
 
@@ -217,22 +228,39 @@ export function AdminMemberDetail() {
       }
       const updated = (await res.json()) as typeof member;
       if (!updated) return;
-      setCreditBalance(updated.creditBalance || 0);
-      setCreditHistory(
-        (updated.creditHistory || []).map((entry) => ({
-          date: entry.date,
-          action: entry.amount >= 0 ? "add" : "remove",
-          amount: Math.abs(entry.amount),
-          reason: entry.reason,
-          by: entry.by,
-        }))
-      );
+      applyMemberState(updated);
       toast.success(
         `${creditAction === "add" ? "Added" : "Removed"} ${amount} credit${amount !== 1 ? "s" : ""}`
       );
       setCreditAmount("");
       setCreditReason("");
     })();
+  };
+
+  const handleSendMessage = async () => {
+    if (!member) return;
+    setMessageSending(true);
+    try {
+      const response = await fetch(`/api/admin/members/${member.id}/email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: messageSubject,
+          message: messageBody,
+        }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as { message?: string };
+      if (!response.ok) {
+        toast.error(payload.message || "Failed to send email.");
+        return;
+      }
+      setShowMessageForm(false);
+      setMessageSubject("");
+      setMessageBody("");
+      toast.success(`Email sent to ${member.firstName}`);
+    } finally {
+      setMessageSending(false);
+    }
   };
 
   return (
@@ -288,12 +316,6 @@ export function AdminMemberDetail() {
                   Coaching Client
                 </Badge>
               )}
-              {member.tags.map((tag) => (
-                <Badge key={tag} variant="outline" className="text-xs">
-                  <Tag className="mr-1 h-3 w-3" />
-                  {tag}
-                </Badge>
-              ))}
             </div>
             {/* Actions */}
             <div className="mt-3">
@@ -349,20 +371,7 @@ export function AdminMemberDetail() {
                 <Button
                   disabled={!messageSubject.trim() || !messageBody.trim() || messageSending}
                   className="bg-brand-accent hover:bg-brand-accent/90 text-white"
-                  onClick={() => {
-                    setMessageSending(true);
-                    console.log("Sending email to:", member.email, {
-                      subject: messageSubject,
-                      body: messageBody,
-                    });
-                    setTimeout(() => {
-                      setMessageSending(false);
-                      setShowMessageForm(false);
-                      setMessageSubject("");
-                      setMessageBody("");
-                      toast.success(`Email sent to ${member.firstName}`);
-                    }, 1000);
-                  }}
+                  onClick={() => void handleSendMessage()}
                 >
                   {messageSending ? (
                     <>
@@ -443,7 +452,7 @@ export function AdminMemberDetail() {
                 <Switch
                   id="role-instructor"
                   checked={isInstructor}
-                  onCheckedChange={(checked) => handleRoleToggle("instructor", checked)}
+                  onCheckedChange={(checked) => void handleRoleToggle("instructor", checked)}
                   className="data-[state=checked]:bg-brand-accent mt-0.5"
                 />
                 <label htmlFor="role-instructor" className="flex-1 cursor-pointer">
@@ -467,14 +476,21 @@ export function AdminMemberDetail() {
                   onValueChange={(value) => {
                     setInstructorProfileEntryId(value);
                     if (isInstructor) {
-                      void fetch(`/api/admin/members/${member.id}`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          isInstructor: true,
-                          instructorProfileEntryId: value,
-                        }),
-                      });
+                      void (async () => {
+                        const response = await fetch(`/api/admin/members/${member.id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            isInstructor: true,
+                            instructorProfileEntryId: value,
+                          }),
+                        });
+                        if (!response.ok) {
+                          toast.error("Failed to update instructor profile.");
+                          return;
+                        }
+                        applyMemberState((await response.json()) as AdminMemberDetailDto);
+                      })();
                     }
                   }}
                 >
@@ -497,7 +513,7 @@ export function AdminMemberDetail() {
                 <Switch
                   id="role-coaching"
                   checked={isCoachingClient}
-                  onCheckedChange={(checked) => handleRoleToggle("coaching", checked)}
+                  onCheckedChange={(checked) => void handleRoleToggle("coaching", checked)}
                   className="data-[state=checked]:bg-brand-accent mt-0.5"
                 />
                 <label htmlFor="role-coaching" className="flex-1 cursor-pointer">
@@ -682,6 +698,7 @@ export function AdminMemberDetail() {
                       toast.error("Failed to save notes.");
                       return;
                     }
+                    applyMemberState((await response.json()) as AdminMemberDetailDto);
                     toast.success("Notes saved.");
                   }
                   setEditingNotes(!editingNotes);
@@ -724,7 +741,7 @@ export function AdminMemberDetail() {
                 <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
                   <div className="flex items-center gap-3">
                     <Bell className="text-brand-accent h-4 w-4" />
-                    <span className="text-sm">Newsletter</span>
+                    <span className="text-sm">Newsletter subscriber</span>
                   </div>
                   <Badge variant={member.newsletterSubscribed ? "default" : "outline"}>
                     {member.newsletterSubscribed ? "Subscribed" : "Not subscribed"}
@@ -732,11 +749,38 @@ export function AdminMemberDetail() {
                 </div>
                 <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
                   <div className="flex items-center gap-3">
-                    <BookOpen className="text-brand-accent h-4 w-4" />
-                    <span className="text-sm">Blog notifications</span>
+                    <Mail className="text-brand-accent h-4 w-4" />
+                    <span className="text-sm">Marketing emails</span>
                   </div>
-                  <Badge variant={member.blogSubscribed ? "default" : "outline"}>
-                    {member.blogSubscribed ? "Subscribed" : "Not subscribed"}
+                  <Badge variant={member.marketingEmails ? "default" : "outline"}>
+                    {member.marketingEmails ? "Enabled" : "Disabled"}
+                  </Badge>
+                </div>
+                <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
+                  <div className="flex items-center gap-3">
+                    <Bell className="text-brand-accent h-4 w-4" />
+                    <span className="text-sm">Class reminders</span>
+                  </div>
+                  <Badge variant={member.classReminders ? "default" : "outline"}>
+                    {member.classReminders ? "Enabled" : "Disabled"}
+                  </Badge>
+                </div>
+                <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
+                  <div className="flex items-center gap-3">
+                    <Bell className="text-brand-accent h-4 w-4" />
+                    <span className="text-sm">Schedule updates</span>
+                  </div>
+                  <Badge variant={member.scheduleUpdates ? "default" : "outline"}>
+                    {member.scheduleUpdates ? "Enabled" : "Disabled"}
+                  </Badge>
+                </div>
+                <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
+                  <div className="flex items-center gap-3">
+                    <Bell className="text-brand-accent h-4 w-4" />
+                    <span className="text-sm">Programme announcements</span>
+                  </div>
+                  <Badge variant={member.programAnnouncements ? "default" : "outline"}>
+                    {member.programAnnouncements ? "Enabled" : "Disabled"}
                   </Badge>
                 </div>
               </div>
@@ -754,11 +798,13 @@ export function AdminMemberDetail() {
               <div className="border-border/50 flex items-center justify-between border-b py-2">
                 <span className="text-muted-foreground text-sm">Last class attended</span>
                 <span className="text-sm">
-                  {new Date(member.lastClassDate).toLocaleDateString("en-GB", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
+                  {member.lastClassDate
+                    ? new Date(member.lastClassDate).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : "No completed classes yet"}
                 </span>
               </div>
               <div className="border-border/50 flex items-center justify-between border-b py-2">
@@ -777,7 +823,7 @@ export function AdminMemberDetail() {
               </div>
               <div className="flex items-center justify-between py-2">
                 <span className="text-muted-foreground text-sm">Referral earnings (lifetime)</span>
-                <span className="text-sm">£{member.referralsCount * 10}</span>
+                <span className="text-sm">£{member.referralBalance}</span>
               </div>
             </div>
           </CardContent>

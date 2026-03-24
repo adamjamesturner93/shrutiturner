@@ -362,7 +362,7 @@ export type AdminDashboardSummaryDto = {
     durationMinutes: number;
     bookedCount: number;
     capacity: number;
-    status: "scheduled" | "live" | "completed" | "cancelled";
+    status: "draft" | "scheduled" | "live" | "completed" | "cancelled";
   }>;
   nearFull: Array<{
     id: string;
@@ -377,6 +377,77 @@ export type AdminDashboardSummaryDto = {
     booked: number;
     attended: number;
   }>;
+};
+
+export type ClassSessionListItemDto = {
+  id: string;
+  classDefinitionSlug: string;
+  title: string;
+  type: string;
+  level: string;
+  localDate: string | null;
+  startsAtUtc: string;
+  endsAtUtc: string;
+  timezone: string;
+  durationMinutes: number;
+  capacity: number;
+  status: "draft" | "scheduled" | "live" | "completed" | "cancelled";
+  instructorProfileEntryId: string | null;
+  instructorName: string | null;
+  instructorBio: string | null;
+  instructorAvatarUrl: string | null;
+  spotsRemaining: number;
+  bookedCount: number;
+  waitlistCount: number;
+  dailyRoomUrl: string | null;
+  roomSetupStatus?: "pending" | "ready" | "failed";
+  roomSetupError?: string | null;
+  communityModeEnabled: boolean;
+  threeHourOutcome?: "pending" | "reminded" | "cancelled_no_attendance";
+  joinWindowOpensAt: string;
+  preJoinWindowMinutes: number;
+  lateJoinCutoffMinutes: number;
+  lateJoinCutoffAt: string;
+  isBookedByCurrentUser: boolean;
+  myBookingStatus: "booked" | "cancelled" | "attended" | "no_show" | null;
+  hasPreviouslyJoinedCurrentUser: boolean;
+  waitlistPosition: number | null;
+};
+
+export type ClassBookingDto = {
+  id: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  status: "booked" | "cancelled" | "attended" | "no_show";
+  bookedAt: string;
+  firstJoinedAt: string | null;
+  lastJoinedAt: string | null;
+  lastLeftAt: string | null;
+  joinCount: number;
+  attendanceSource: "daily" | "manual" | null;
+  healthConditions: string[];
+  attendedClassesCount: number;
+};
+
+export type ClassWaitlistDto = {
+  id: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  status: "waiting" | "promoted" | "removed";
+  position: number;
+  createdAt: string;
+};
+
+export type ClassSessionDetailDto = ClassSessionListItemDto & {
+  notes: string;
+  cancelReason: string | null;
+  instructorUserId: string;
+  bookings: ClassBookingDto[];
+  waitlist: ClassWaitlistDto[];
 };
 
 export type AdminSubscriberDto = {
@@ -432,6 +503,13 @@ export type AdminBusinessMetricDto = {
   dataFreshnessIso: string | null;
 };
 
+export type ClassOperationalSettingsDto = {
+  preJoinWindowMinutes: number;
+  lateJoinCutoffMinutes: number;
+  creditRefundWindowMinutes: number;
+  emptyClassAutoCancelWindowMinutes: number;
+};
+
 export type AdminMemberListItemDto = {
   id: string;
   firstName: string;
@@ -447,11 +525,13 @@ export type AdminMemberListItemDto = {
   referralsCount: number;
   referralBalance: number;
   totalBookings: number;
-  lastClassDate: string;
+  lastClassDate: string | null;
   notes: string;
-  tags: string[];
   newsletterSubscribed: boolean;
-  blogSubscribed: boolean;
+  marketingEmails: boolean;
+  classReminders: boolean;
+  scheduleUpdates: boolean;
+  programAnnouncements: boolean;
   isInstructor: boolean;
   instructorProfileEntryId?: string | null;
   instructorProfileName?: string | null;
@@ -487,65 +567,6 @@ export type AdminMemberDetailDto = AdminMemberListItemDto & {
     by: string;
   }>;
   healthProfile: AdminHealthProfileDto | null;
-};
-
-export type ClassSessionListItemDto = {
-  id: string;
-  classDefinitionSlug: string;
-  title: string;
-  type: string;
-  level: string;
-  startsAtUtc: string;
-  endsAtUtc: string;
-  timezone: string;
-  durationMinutes: number;
-  capacity: number;
-  status: "scheduled" | "live" | "completed" | "cancelled";
-  instructorProfileEntryId: string | null;
-  instructorName: string | null;
-  instructorBio: string | null;
-  instructorAvatarUrl: string | null;
-  spotsRemaining: number;
-  bookedCount: number;
-  waitlistCount: number;
-  dailyRoomUrl: string | null;
-  communityModeEnabled: boolean;
-  lateJoinCutoffAt: string;
-  isBookedByCurrentUser: boolean;
-  myBookingStatus: "booked" | "cancelled" | "attended" | "no_show" | null;
-  hasPreviouslyJoinedCurrentUser: boolean;
-  waitlistPosition: number | null;
-};
-
-export type ClassSessionDetailDto = ClassSessionListItemDto & {
-  notes: string;
-  cancelReason: string | null;
-  bookings: Array<{
-    id: string;
-    userId: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    status: "booked" | "cancelled" | "attended" | "no_show";
-    bookedAt: string;
-    firstJoinedAt: string | null;
-    lastJoinedAt: string | null;
-    lastLeftAt: string | null;
-    joinCount: number;
-    attendanceSource: "daily" | "manual" | null;
-    healthConditions: string[];
-    attendedClassesCount: number;
-  }>;
-  waitlist: Array<{
-    id: string;
-    userId: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    status: "waiting" | "promoted" | "removed";
-    position: number;
-    createdAt: string;
-  }>;
 };
 
 export type BookSessionResultDto =

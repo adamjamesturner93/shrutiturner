@@ -1,6 +1,6 @@
-import { Section, Text, Link, Img, Hr } from "@react-email/components";
+import { Section, Text, Img, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
-import { colors, fonts, headingStyle, bodyTextStyle, mutedTextStyle, dividerStyle } from "./styles";
+import { colors, fonts, bodyTextStyle, dividerStyle } from "./styles";
 
 interface NewsletterEmailProps {
   firstName?: string;

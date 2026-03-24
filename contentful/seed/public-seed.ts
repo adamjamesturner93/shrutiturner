@@ -283,7 +283,15 @@ export const AUTHOR_PROFILE_SEED = {
 
 export const LEGAL_DOCUMENT_SEED = {
   contentType: "legalDocument",
-  entries: LEGAL_DOCUMENTS.map(({ id: _id, ...document }) => document),
+  entries: LEGAL_DOCUMENTS.map((document) => ({
+    slug: document.slug,
+    title: document.title,
+    version: document.version,
+    effectiveDate: document.effectiveDate,
+    body: document.body,
+    seoTitle: document.seoTitle,
+    seoDescription: document.seoDescription,
+  })),
 };
 
 export const FAQ_SEED = {

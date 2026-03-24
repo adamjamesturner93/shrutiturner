@@ -1,4 +1,4 @@
-import { MembershipStatus, UserRole } from "@prisma/client";
+import { ClassBookingStatus, MembershipStatus, UserRole } from "@prisma/client";
 import { db } from "@/lib/db";
 import { adjustCredits, getCreditBalance } from "@/lib/credits/credit-service";
 import { getReferralBalancePence } from "@/lib/referrals/referral-discount-service";
@@ -92,6 +92,85 @@ function toAdminHealthProfile(
   };
 }
 
+type NotificationSnapshot = {
+  newsletterSubscribed: boolean;
+  marketingEmails: boolean;
+  classReminders: boolean;
+  scheduleUpdates: boolean;
+  programAnnouncements: boolean;
+};
+
+function toNotificationSnapshot(input: {
+  notificationPreference: {
+    marketingEmails: boolean;
+    classReminders: boolean;
+    scheduleUpdates: boolean;
+    programAnnouncements: boolean;
+  } | null;
+  newsletterSubscriber: {
+    status: "subscribed" | "unsubscribed";
+  } | null;
+}): NotificationSnapshot {
+  const marketingEmails = input.notificationPreference?.marketingEmails ?? true;
+
+  return {
+    newsletterSubscribed:
+      input.newsletterSubscriber?.status === "subscribed" ||
+      (!input.newsletterSubscriber && marketingEmails),
+    marketingEmails,
+    classReminders: input.notificationPreference?.classReminders ?? true,
+    scheduleUpdates: input.notificationPreference?.scheduleUpdates ?? true,
+    programAnnouncements: input.notificationPreference?.programAnnouncements ?? true,
+  };
+}
+
+async function getBookingMetrics(userIds: string[]) {
+  if (userIds.length === 0) {
+    return new Map<string, { totalBookings: number; lastClassDate: Date | null }>();
+  }
+
+  const bookings = await db.classBooking.findMany({
+    where: {
+      userId: { in: userIds },
+    },
+    select: {
+      userId: true,
+      status: true,
+      session: {
+        select: {
+          startsAtUtc: true,
+        },
+      },
+    },
+  });
+
+  const now = Date.now();
+  const metrics = new Map<string, { totalBookings: number; lastClassDate: Date | null }>();
+
+  for (const userId of userIds) {
+    metrics.set(userId, { totalBookings: 0, lastClassDate: null });
+  }
+
+  for (const booking of bookings) {
+    const current = metrics.get(booking.userId) || { totalBookings: 0, lastClassDate: null };
+    current.totalBookings += 1;
+    const sessionStartsAt = booking.session.startsAtUtc;
+    const isActiveOrHistorical =
+      booking.status !== ClassBookingStatus.cancelled && sessionStartsAt.getTime() <= now;
+
+    if (
+      isActiveOrHistorical &&
+      (!current.lastClassDate || sessionStartsAt.getTime() > current.lastClassDate.getTime())
+    ) {
+      current.lastClassDate = sessionStartsAt;
+    }
+
+    metrics.set(booking.userId, current);
+  }
+
+  return metrics;
+}
+
 export async function listAdminMembers(filters: {
   search?: string;
   status?: string;
@@ -127,6 +206,19 @@ export async function listAdminMembers(filters: {
         take: 1,
         select: { createdAt: true },
       },
+      notificationPreference: {
+        select: {
+          marketingEmails: true,
+          classReminders: true,
+          scheduleUpdates: true,
+          programAnnouncements: true,
+        },
+      },
+      newsletterSubscriber: {
+        select: {
+          status: true,
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -140,16 +232,22 @@ export async function listAdminMembers(filters: {
   );
   const profiles = await getInstructorProfilesByIds(profileIds);
   const profileNameById = new Map(profiles.map((p) => [p.id, p.name]));
+  const bookingMetrics = await getBookingMetrics(users.map((user) => user.id));
 
   const rows = await Promise.all(
     users.map(async (user) => {
       const membership = user.membershipSubscriptions[0] || null;
       const creditBalance = await getCreditBalance(user.id);
       const referralBalancePence = await getReferralBalancePence(user.id);
+      const metrics = bookingMetrics.get(user.id) || { totalBookings: 0, lastClassDate: null };
+      const notification = toNotificationSnapshot({
+        notificationPreference: user.notificationPreference,
+        newsletterSubscriber: user.newsletterSubscriber,
+      });
       const risk = toRiskStatus({
         status: membership?.status || null,
         membershipPlan: membership?.plan || null,
-        lastClassDate: user.creditLedgerEntries[0]?.createdAt || null,
+        lastClassDate: metrics.lastClassDate,
         creditBalance,
       });
 
@@ -175,12 +273,10 @@ export async function listAdminMembers(filters: {
         referralCode: user.referralCode || "",
         referralsCount: user.referralEventsCreated.length,
         referralBalance: Math.floor(referralBalancePence / 100),
-        totalBookings: 0,
-        lastClassDate: user.creditLedgerEntries[0]?.createdAt.toISOString().slice(0, 10) || "",
+        totalBookings: metrics.totalBookings,
+        lastClassDate: metrics.lastClassDate?.toISOString().slice(0, 10) || null,
         notes: user.adminNotes || "",
-        tags: [],
-        newsletterSubscribed: true,
-        blogSubscribed: true,
+        ...notification,
         isInstructor: user.role === UserRole.admin,
         instructorProfileEntryId: user.instructorProfileEntryId || null,
         instructorProfileName: user.instructorProfileEntryId
@@ -226,6 +322,19 @@ export async function getAdminMemberDetail(userId: string) {
         where: { status: "rewarded" },
         select: { id: true },
       },
+      notificationPreference: {
+        select: {
+          marketingEmails: true,
+          classReminders: true,
+          scheduleUpdates: true,
+          programAnnouncements: true,
+        },
+      },
+      newsletterSubscriber: {
+        select: {
+          status: true,
+        },
+      },
       healthProfile: {
         include: {
           selections: true,
@@ -239,9 +348,17 @@ export async function getAdminMemberDetail(userId: string) {
   const membership = user.membershipSubscriptions[0] || null;
   const creditBalance = await getCreditBalance(user.id);
   const referralBalancePence = await getReferralBalancePence(user.id);
+  const metrics = (await getBookingMetrics([user.id])).get(user.id) || {
+    totalBookings: 0,
+    lastClassDate: null,
+  };
   const profile = user.instructorProfileEntryId
     ? (await getInstructorProfilesByIds([user.instructorProfileEntryId]))[0]
     : null;
+  const notification = toNotificationSnapshot({
+    notificationPreference: user.notificationPreference,
+    newsletterSubscriber: user.newsletterSubscriber,
+  });
 
   return {
     id: user.id,
@@ -265,12 +382,10 @@ export async function getAdminMemberDetail(userId: string) {
     referralCode: user.referralCode || "",
     referralsCount: user.referralEventsCreated.length,
     referralBalance: Math.floor(referralBalancePence / 100),
-    totalBookings: 0,
-    lastClassDate: user.creditLedgerEntries[0]?.createdAt.toISOString().slice(0, 10) || "",
+    totalBookings: metrics.totalBookings,
+    lastClassDate: metrics.lastClassDate?.toISOString().slice(0, 10) || null,
     notes: user.adminNotes || "",
-    tags: [],
-    newsletterSubscribed: true,
-    blogSubscribed: true,
+    ...notification,
     isInstructor: user.role === UserRole.admin,
     instructorProfileEntryId: user.instructorProfileEntryId || null,
     instructorProfileName: profile?.name || null,

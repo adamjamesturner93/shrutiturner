@@ -33,15 +33,22 @@ export type DailyCallObject = {
   sendAppMessage?: (message: Record<string, unknown>, to?: string | "*") => Promise<void> | void;
 };
 
+type DailyCreateCallObjectOptions = {
+  allowMultipleCallInstances?: boolean;
+};
+
 declare global {
   interface Window {
     DailyIframe?: {
-      createCallObject: () => DailyCallObject;
+      createCallObject: (properties?: DailyCreateCallObjectOptions) => DailyCallObject;
     };
   }
 }
 
 let dailyScriptPromise: Promise<void> | null = null;
+let activeCallObject: DailyCallObject | null = null;
+let callLifecyclePromise: Promise<void> = Promise.resolve();
+const releasingCallObjects = new WeakSet<DailyCallObject>();
 
 export function loadSavedDeviceSettings(): SavedDeviceSettings {
   if (typeof window === "undefined") {
@@ -141,6 +148,52 @@ export async function loadDailyIframe() {
   }
 
   return window.DailyIframe;
+}
+
+async function releaseCallObjectInternally(callObject: DailyCallObject) {
+  if (releasingCallObjects.has(callObject)) {
+    return;
+  }
+
+  releasingCallObjects.add(callObject);
+  try {
+    await callObject.leave().catch(() => undefined);
+  } finally {
+    callObject.destroy();
+    if (activeCallObject === callObject) {
+      activeCallObject = null;
+    }
+  }
+}
+
+export async function createManagedCallObject(properties?: DailyCreateCallObjectOptions) {
+  const daily = await loadDailyIframe();
+
+  if (activeCallObject) {
+    const previousCallObject = activeCallObject;
+    activeCallObject = null;
+    callLifecyclePromise = callLifecyclePromise.then(() =>
+      releaseCallObjectInternally(previousCallObject)
+    );
+  }
+
+  await callLifecyclePromise;
+  const callObject = daily.createCallObject(properties);
+  activeCallObject = callObject;
+  return callObject;
+}
+
+export function releaseManagedCallObject(callObject: DailyCallObject | null) {
+  if (!callObject) {
+    return callLifecyclePromise;
+  }
+
+  if (activeCallObject === callObject) {
+    activeCallObject = null;
+  }
+
+  callLifecyclePromise = callLifecyclePromise.then(() => releaseCallObjectInternally(callObject));
+  return callLifecyclePromise;
 }
 
 export function attachTrack(

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Bell, Filter, RefreshCcw, Search, Users } from "lucide-react";
+import { Filter, RefreshCcw, Search } from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -156,7 +156,9 @@ export function AdminNewsletter() {
           actions={
             <Button
               variant="outline"
-              onClick={() => void Promise.all([refreshSummary(), refreshSubscribers(filter, search)])}
+              onClick={() =>
+                void Promise.all([refreshSummary(), refreshSubscribers(filter, search)])
+              }
             >
               <RefreshCcw className="mr-2 h-4 w-4" />
               Refresh
@@ -168,10 +170,26 @@ export function AdminNewsletter() {
 
         {summary ? (
           <AppMetricGrid>
-            <AppMetricCard label="Total subscribers" value={summary.totalSubscribers} detail="all marketing contacts" />
-            <AppMetricCard label="Subscribed" value={summary.subscribed} detail="currently opted in" />
-            <AppMetricCard label="Unsubscribed" value={summary.unsubscribed} detail="currently opted out" />
-            <AppMetricCard label="Unsubs 30d" value={summary.unsubscribes30d} detail="recent audience loss" />
+            <AppMetricCard
+              label="Total subscribers"
+              value={summary.totalSubscribers}
+              detail="all marketing contacts"
+            />
+            <AppMetricCard
+              label="Subscribed"
+              value={summary.subscribed}
+              detail="currently opted in"
+            />
+            <AppMetricCard
+              label="Unsubscribed"
+              value={summary.unsubscribed}
+              detail="currently opted out"
+            />
+            <AppMetricCard
+              label="Unsubs 30d"
+              value={summary.unsubscribes30d}
+              detail="recent audience loss"
+            />
           </AppMetricGrid>
         ) : null}
 

@@ -15,18 +15,21 @@ import {
   VolumeX,
 } from "lucide-react";
 import { Badge } from "../ui/badge";
-import { ChatPanel } from "./chat-panel";
+import { ChatPanel, type ChatMessage } from "./chat-panel";
 import { DeviceSelector } from "./device-selector";
 import { useAuth } from "../../context/auth-context";
 import {
   attachTrack,
-  loadDailyIframe,
+  createManagedCallObject,
   loadSavedDeviceSettings,
+  releaseManagedCallObject,
+  type SavedDeviceSettings,
   type DailyCallObject,
   type DailyParticipant,
 } from "@/lib/daily/client";
+import type { RoomMode as SharedRoomMode } from "@/lib/classes/room-mode";
 
-export type RoomMode = "live-class" | "small-group" | "retreat";
+export type RoomMode = SharedRoomMode;
 
 type VideoRoomProps = {
   sessionId?: string;
@@ -56,6 +59,25 @@ type ParticipantTileModel = {
   videoTrack: MediaStreamTrack | null;
 };
 
+const MAX_ROOM_JOIN_RETRIES = 3;
+const ROOM_JOIN_RETRY_DELAYS_MS = [1500, 3000, 5000];
+
+function getRoomJoinErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return "Unable to join the live room";
+}
+
+function isRetryableRoomJoinError(message: string) {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("not ready yet") ||
+    normalized.includes("room is not available yet") ||
+    normalized.includes("please try later")
+  );
+}
+
 export function VideoRoom({
   sessionId,
   mode,
@@ -82,26 +104,149 @@ export function VideoRoom({
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
   const [showChat, setShowChat] = useState(mode !== "live-class");
   const [communityMode, setCommunityMode] = useState(initialCommunityMode);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isEnding, setIsEnding] = useState(false);
   const [statusText, setStatusText] = useState("Connecting to the live room...");
+  const [joinAttempt, setJoinAttempt] = useState(0);
+  const [isAutoRetrying, setIsAutoRetrying] = useState(false);
+  const [canRetryJoin, setCanRetryJoin] = useState(false);
   const hasRecordedJoinRef = useRef(false);
+  const currentUserIdRef = useRef(user?.id || "");
+  const currentUserNameRef = useRef("");
+  const onLeaveRef = useRef(onLeave);
+
+  useEffect(() => {
+    currentUserIdRef.current = user?.id || "";
+  }, [user?.id]);
+
+  useEffect(() => {
+    onLeaveRef.current = onLeave;
+  }, [onLeave]);
 
   const currentUserName =
     [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() || user?.email || "You";
 
-  const mapParticipants = useCallback(
-    (nextCallObject: DailyCallObject) => {
-      const nextParticipants = Object.values(nextCallObject.participants() || {}).map(
-        (participant) => toParticipantModel(participant, user?.id || "")
-      );
-      setParticipants(nextParticipants);
+  useEffect(() => {
+    currentUserNameRef.current = currentUserName;
+  }, [currentUserName]);
+
+  const appendChatMessage = useCallback((message: ChatMessage) => {
+    setChatMessages((previous) =>
+      previous.some((item) => item.id === message.id) ? previous : [...previous, message]
+    );
+  }, []);
+
+  const mapParticipants = useCallback((nextCallObject: DailyCallObject) => {
+    const nextParticipants = Object.values(nextCallObject.participants() || {}).map((participant) =>
+      toParticipantModel(participant)
+    );
+    setParticipants(nextParticipants);
+  }, []);
+
+  const applyDeviceSettings = useCallback(
+    async (settings: SavedDeviceSettings) => {
+      if (!callObject) return;
+
+      if (callObject.setInputDevicesAsync) {
+        await callObject.setInputDevicesAsync({
+          audioSource: settings.micId || undefined,
+          videoSource: settings.cameraId || undefined,
+        });
+      }
+
+      if (callObject.setOutputDeviceAsync && settings.speakerId) {
+        await callObject.setOutputDeviceAsync(settings.speakerId);
+      }
     },
-    [user?.id]
+    [callObject]
   );
+
+  const sendChatMessage = useCallback(
+    async (text: string) => {
+      if (!callObject?.sendAppMessage || mode === "live-class") return;
+
+      const timestamp = new Date();
+      const message: ChatMessage = {
+        id: `chat-${timestamp.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
+        userId: user?.id,
+        sender: currentUserName,
+        text,
+        time: timestamp.toLocaleTimeString("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        isLocal: true,
+      };
+
+      appendChatMessage(message);
+      await callObject.sendAppMessage(
+        {
+          type: "chat-message",
+          message,
+        },
+        "*"
+      );
+    },
+    [appendChatMessage, callObject, currentUserName, mode, user?.id]
+  );
+
+  const localParticipant = participants.find((participant) => participant.isLocal);
+  const instructorParticipant =
+    participants.find((participant) => participant.isInstructor) || localParticipant || null;
+  const otherParticipants = participants.filter(
+    (participant) => !participant.isInstructor && !participant.isLocal
+  );
+  const joinedCount = Math.max(1, participants.length);
+
+  const leaveRoom = useCallback(
+    async (
+      targetCallObject: DailyCallObject | null,
+      suppressCallback = false,
+      reason: "left" | "ended" | "removed" = "left"
+    ) => {
+      if (!targetCallObject) {
+        if (!suppressCallback) onLeaveRef.current(reason);
+        return;
+      }
+
+      if (hasRecordedJoinRef.current) {
+        const localParticipant = Object.values(targetCallObject.participants() || {}).find(
+          (participant) => Boolean(participant.local)
+        );
+        await fetch(`/api/classes/sessions/${sessionId}/attendance`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "left",
+            dailyParticipantId: localParticipant?.session_id || null,
+          }),
+        }).catch(() => undefined);
+        hasRecordedJoinRef.current = false;
+      }
+
+      await releaseManagedCallObject(targetCallObject);
+      setCallObject(null);
+      setIsReady(false);
+
+      if (!suppressCallback) {
+        onLeaveRef.current(reason);
+      }
+    },
+    [sessionId]
+  );
+
+  useEffect(() => {
+    setJoinAttempt(0);
+    setRoomError("");
+    setCanRetryJoin(false);
+    setIsAutoRetrying(false);
+    setStatusText("Connecting to the live room...");
+  }, [sessionId]);
 
   useEffect(() => {
     let cancelled = false;
     let nextCallObject: DailyCallObject | null = null;
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
 
     if (!sessionId) {
       setRoomError("This live room is not configured yet.");
@@ -125,8 +270,7 @@ export function VideoRoom({
           throw new Error(payload.message || "Unable to join the live room");
         }
 
-        const daily = await loadDailyIframe();
-        nextCallObject = daily.createCallObject();
+        nextCallObject = await createManagedCallObject();
 
         const syncParticipants = () => mapParticipants(nextCallObject!);
         const handleRoomMessage = (event?: unknown) => {
@@ -138,7 +282,7 @@ export function VideoRoom({
           }
 
           if (payloadData.type === "moderation") {
-            if (payloadData.targetUserId !== user?.id) return;
+            if (payloadData.targetUserId !== currentUserIdRef.current) return;
 
             if (payloadData.action === "mute") {
               setIsMuted(true);
@@ -154,6 +298,17 @@ export function VideoRoom({
           if (payloadData.type === "room-ended") {
             setStatusText("Class has ended.");
             void leaveRoom(nextCallObject, false, "ended");
+          }
+
+          if (payloadData.type === "chat-message") {
+            const message = payloadData.message as ChatMessage | undefined;
+            if (!message || typeof message.id !== "string" || typeof message.text !== "string") {
+              return;
+            }
+            appendChatMessage({
+              ...message,
+              isLocal: message.userId === currentUserIdRef.current,
+            });
           }
         };
 
@@ -178,80 +333,84 @@ export function VideoRoom({
         await nextCallObject.join({
           url: payload.roomUrl,
           token: payload.token,
-          userName: currentUserName,
+          userName: currentUserNameRef.current || "You",
           startAudioOff: initialMuted,
           startVideoOff: !initialCameraOn,
         });
 
         if (cancelled) {
-          await nextCallObject.leave().catch(() => undefined);
-          nextCallObject.destroy();
+          await releaseManagedCallObject(nextCallObject);
           return;
         }
 
         hasRecordedJoinRef.current = true;
+        const localParticipant = Object.values(nextCallObject.participants() || {}).find(
+          (participant) => Boolean(participant.local)
+        );
         await fetch(`/api/classes/sessions/${sessionId}/attendance`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: "joined" }),
+          body: JSON.stringify({
+            type: "joined",
+            dailyParticipantId: localParticipant?.session_id || null,
+          }),
         }).catch(() => undefined);
 
         mapParticipants(nextCallObject);
         setCommunityMode(Boolean(payload.communityModeEnabled));
         setCallObject(nextCallObject);
         setIsReady(true);
+        setRoomError("");
+        setCanRetryJoin(false);
+        setIsAutoRetrying(false);
         setStatusText("Live now");
       } catch (error) {
         if (cancelled) return;
-        setRoomError(error instanceof Error ? error.message : "Unable to join the live room");
+        if (nextCallObject) {
+          await releaseManagedCallObject(nextCallObject);
+          nextCallObject = null;
+        }
+
+        const message = getRoomJoinErrorMessage(error);
+        const retryable = isRetryableRoomJoinError(message);
+
+        if (retryable && joinAttempt < MAX_ROOM_JOIN_RETRIES) {
+          const delay =
+            ROOM_JOIN_RETRY_DELAYS_MS[joinAttempt] || ROOM_JOIN_RETRY_DELAYS_MS.at(-1) || 3000;
+          setStatusText("The studio is still opening. Retrying shortly...");
+          setRoomError("");
+          setCanRetryJoin(true);
+          setIsAutoRetrying(true);
+          retryTimeout = setTimeout(() => {
+            if (!cancelled) {
+              setJoinAttempt((attempt) => attempt + 1);
+            }
+          }, delay);
+          return;
+        }
+
+        setIsAutoRetrying(false);
+        setCanRetryJoin(retryable);
+        setRoomError(message);
       }
     })();
 
     return () => {
       cancelled = true;
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
       void leaveRoom(nextCallObject, true, "left");
     };
-  }, [currentUserName, initialCameraOn, initialMuted, mapParticipants, sessionId, user?.id]);
-
-  const localParticipant = participants.find((participant) => participant.isLocal);
-  const instructorParticipant =
-    participants.find((participant) => participant.isInstructor) || localParticipant || null;
-  const otherParticipants = participants.filter(
-    (participant) => !participant.isInstructor && !participant.isLocal
-  );
-  const joinedCount = Math.max(1, participants.length);
-
-  const leaveRoom = useCallback(
-    async (
-      targetCallObject = callObject,
-      suppressCallback = false,
-      reason: "left" | "ended" | "removed" = "left"
-    ) => {
-      if (!targetCallObject) {
-        if (!suppressCallback) onLeave(reason);
-        return;
-      }
-
-      if (hasRecordedJoinRef.current) {
-        await fetch(`/api/classes/sessions/${sessionId}/attendance`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: "left" }),
-        }).catch(() => undefined);
-        hasRecordedJoinRef.current = false;
-      }
-
-      await targetCallObject.leave().catch(() => undefined);
-      targetCallObject.destroy();
-      setCallObject(null);
-      setIsReady(false);
-
-      if (!suppressCallback) {
-        onLeave(reason);
-      }
-    },
-    [callObject, onLeave, sessionId]
-  );
+  }, [
+    appendChatMessage,
+    initialCameraOn,
+    initialMuted,
+    joinAttempt,
+    leaveRoom,
+    mapParticipants,
+    sessionId,
+  ]);
 
   const toggleLocalAudio = async () => {
     if (!callObject) return;
@@ -290,8 +449,19 @@ export function VideoRoom({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ enabled: nextValue }),
     });
-    if (!response.ok) return;
+    const payload = (await response.json().catch(() => null)) as {
+      dailySyncStatus?: string;
+      message?: string;
+    } | null;
+    if (!response.ok) {
+      setStatusText(payload?.message || "Unable to update community mode right now.");
+      return;
+    }
+
     setCommunityMode(nextValue);
+    if (payload?.dailySyncStatus === "failed") {
+      setStatusText("Mode updated, but some participant permissions may need a retry.");
+    }
     await callObject?.sendAppMessage?.({ type: "community-mode", enabled: nextValue }, "*");
   };
 
@@ -313,9 +483,29 @@ export function VideoRoom({
         <div className="bg-video-panel max-w-sm space-y-4 rounded-xl border border-white/10 p-6 text-center">
           <h2 className="text-xl">Unable to enter room</h2>
           <p className="text-sm text-white/60">{roomError}</p>
-          <button onClick={() => onLeave("left")} className="text-sm text-white/70 underline">
-            Go back
-          </button>
+          <div className="flex flex-col gap-3">
+            {canRetryJoin ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setRoomError("");
+                  setStatusText("Retrying connection...");
+                  setIsAutoRetrying(false);
+                  setJoinAttempt((attempt) => attempt + 1);
+                }}
+                className="rounded-md border border-white/15 px-4 py-2 text-sm text-white transition-colors hover:bg-white/10"
+              >
+                Retry
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => onLeaveRef.current("left")}
+              className="text-sm text-white/70 underline"
+            >
+              Go back
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -372,9 +562,28 @@ export function VideoRoom({
 
       <div className="flex flex-1 overflow-hidden">
         <div className="flex flex-1 flex-col gap-3 overflow-hidden p-3">
+          {isReady ? (
+            <div className="bg-video-panel flex items-center justify-between rounded-lg border border-white/5 px-3 py-2 text-xs text-white/70">
+              <span>
+                {communityMode
+                  ? "Community mode is on. Participants can see one another."
+                  : "Focus mode is on. Only the instructor can see participant video, and you can still turn your camera off."}
+              </span>
+              <Badge
+                className={
+                  communityMode ? "bg-brand-accent text-white" : "bg-white/10 text-white/70"
+                }
+              >
+                {communityMode ? "Community" : "Focus"}
+              </Badge>
+            </div>
+          ) : null}
+
           {!isReady ? (
             <div className="bg-video-panel flex flex-1 items-center justify-center rounded-lg border border-white/5 text-sm text-white/60">
-              {statusText}
+              {isAutoRetrying
+                ? `${statusText} Attempt ${joinAttempt + 1} of ${MAX_ROOM_JOIN_RETRIES + 1}.`
+                : statusText}
             </div>
           ) : isInstructor ? (
             <InstructorView
@@ -410,9 +619,9 @@ export function VideoRoom({
 
         {showChat ? (
           <ChatPanel
-            mode={mode}
-            participantName={isInstructor ? currentUserName : "You"}
+            messages={chatMessages}
             onClose={() => setShowChat(false)}
+            onSendMessage={(text) => void sendChatMessage(text)}
           />
         ) : null}
       </div>
@@ -469,7 +678,12 @@ export function VideoRoom({
         ) : null}
       </footer>
 
-      {showDeviceSelector ? <DeviceSelector onClose={() => setShowDeviceSelector(false)} /> : null}
+      {showDeviceSelector ? (
+        <DeviceSelector
+          onClose={() => setShowDeviceSelector(false)}
+          onApply={applyDeviceSettings}
+        />
+      ) : null}
     </div>
   );
 }
@@ -635,10 +849,11 @@ function ParticipantTile({
   };
 
   useEffect(() => {
-    attachTrack(videoRef.current, participant?.videoTrack || null, isLocal);
+    const videoElement = videoRef.current;
+    attachTrack(videoElement, participant?.videoTrack || null, isLocal);
     return () => {
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
+      if (videoElement) {
+        videoElement.srcObject = null;
       }
     };
   }, [isLocal, participant?.videoTrack]);
@@ -696,10 +911,11 @@ function ParticipantAudio({ participant }: { participant: ParticipantTileModel }
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    attachTrack(audioRef.current, participant.audioTrack, false);
+    const audioElement = audioRef.current;
+    attachTrack(audioElement, participant.audioTrack, false);
     return () => {
-      if (audioRef.current) {
-        audioRef.current.srcObject = null;
+      if (audioElement) {
+        audioElement.srcObject = null;
       }
     };
   }, [participant.audioTrack]);
@@ -707,10 +923,7 @@ function ParticipantAudio({ participant }: { participant: ParticipantTileModel }
   return <audio ref={audioRef} autoPlay playsInline />;
 }
 
-function toParticipantModel(
-  participant: DailyParticipant,
-  _currentUserId: string
-): ParticipantTileModel {
+function toParticipantModel(participant: DailyParticipant): ParticipantTileModel {
   const name = participant.user_name || (participant.local ? "You" : "Participant");
   return {
     id: participant.session_id,

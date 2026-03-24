@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Calendar, Clock3, Users } from "lucide-react";
+import { ArrowLeft, Calendar, Users } from "lucide-react";
 import { AdminLayout } from "../../components/admin-layout";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";

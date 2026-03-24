@@ -37,7 +37,12 @@ export async function preparePasswordlessCode(email: string, code = "123456") {
   return code;
 }
 
-export async function loginWithEmail(page: Page, email: string, code = "123456") {
+export async function loginWithEmail(
+  page: Page,
+  email: string,
+  code = "123456",
+  expectedUrl: RegExp = /\/dashboard(?:\?|$)/
+) {
   await page.goto("/login");
   await page.getByRole("button", { name: "Continue with Email" }).click();
   await page.getByLabel("Email Address").fill(email);
@@ -64,7 +69,7 @@ export async function loginWithEmail(page: Page, email: string, code = "123456")
   await page.getByLabel("Verification Code").fill(issuedCode);
   await page.getByRole("button", { name: "Continue" }).click();
 
-  await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15_000 });
+  await page.waitForURL(expectedUrl, { timeout: 15_000 });
   await expect
     .poll(
       async () => {
@@ -72,9 +77,7 @@ export async function loginWithEmail(page: Page, email: string, code = "123456")
           return fetch("/api/auth/session", {
             credentials: "same-origin",
           }).then((response) => response.json().catch(() => null));
-        })) as
-          | { user?: { email?: string | null } | null }
-          | null;
+        })) as { user?: { email?: string | null } | null } | null;
         return payload?.user?.email || null;
       },
       { timeout: 15_000 }

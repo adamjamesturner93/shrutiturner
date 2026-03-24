@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowRight, Check, Gift } from "lucide-react";
+import { ArrowRight, Gift } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { EditorialHero, ProofBand } from "@/components/marketing/sections";
 import { SEO } from "@/components/seo";
@@ -65,8 +65,8 @@ export function ReferralLandingPage() {
           },
         ]}
         aside={
-          <div className="mx-auto max-w-xl overflow-hidden rounded-[2rem] border border-brand-white/10 bg-brand-white/8 p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
-            <div className="rounded-[1.45rem] bg-brand-white/8 p-6">
+          <div className="border-brand-white/10 bg-brand-white/8 mx-auto max-w-xl overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+            <div className="bg-brand-white/8 rounded-[1.45rem] p-6">
               <div className="bg-brand-accent-light/12 text-brand-accent-light flex h-12 w-12 items-center justify-center rounded-2xl">
                 <Gift className="h-6 w-6" />
               </div>
@@ -79,7 +79,7 @@ export function ReferralLandingPage() {
                 ].map((item) => (
                   <div
                     key={item}
-                    className="rounded-[1.2rem] border border-brand-white/10 bg-brand-white/8 px-4 py-4 text-sm leading-relaxed text-brand-white/84"
+                    className="border-brand-white/10 bg-brand-white/8 text-brand-white/84 rounded-[1.2rem] border px-4 py-4 text-sm leading-relaxed"
                   >
                     {item}
                   </div>
@@ -96,10 +96,10 @@ export function ReferralLandingPage() {
         items={[...referralProof]}
       />
 
-      <section className="bg-brand-accent py-16 text-brand-white md:py-20">
+      <section className="bg-brand-accent text-brand-white py-16 md:py-20">
         <div className="container mx-auto max-w-3xl px-4 text-center">
           <h2 className="text-3xl md:text-4xl">Ready to claim the class?</h2>
-          <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-brand-white/88">
+          <p className="text-brand-white/88 mx-auto mt-5 max-w-2xl text-lg leading-relaxed">
             Sign in through this link and the free class credit will be added to your account.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
@@ -117,12 +117,12 @@ export function ReferralLandingPage() {
               asChild
               size="lg"
               variant="outline"
-              className="border-brand-white bg-transparent text-brand-white hover:bg-brand-white/10"
+              className="border-brand-white text-brand-white hover:bg-brand-white/10 bg-transparent"
             >
               <Link href="/classes">View the Class Types</Link>
             </Button>
           </div>
-          <p className="mt-6 text-xs text-brand-white/70">
+          <p className="text-brand-white/70 mt-6 text-xs">
             By signing up you agree to the{" "}
             <Link href="/terms" className="underline">
               Terms

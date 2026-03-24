@@ -1,5 +1,6 @@
 import {
   ClassBookingStatus,
+  ClassRoomSetupStatus,
   ClassSessionStatus,
   ClassWaitlistStatus,
   Prisma,
@@ -11,6 +12,17 @@ import {
   getInstructorProfilesByIds,
 } from "@/lib/content";
 import { finalizeSessionNoShows } from "@/lib/classes/attendance-service";
+import {
+  getClassSessionRoomMode,
+  getDefaultCommunityModeForRoomMode,
+  resolveSessionCommunityMode,
+} from "@/lib/classes/room-mode";
+import {
+  getClassOperationalSettings,
+  getJoinWindowOpensAt,
+  getLateJoinCutoffAt,
+  type ClassOperationalSettingsDto,
+} from "@/lib/classes/settings-service";
 import { createSessionRoom, isDailyConfigured } from "@/lib/daily/service";
 import { HEALTH_CATEGORIES } from "@/data/health-profile-data";
 import type {
@@ -77,6 +89,53 @@ function getWaitlistCount(session: { waitlist: Array<{ status: ClassWaitlistStat
   return session.waitlist.filter((w) => w.status === ClassWaitlistStatus.waiting).length;
 }
 
+async function resolveSessionInstructorSnapshot(params: {
+  classDefinitionSlug: string;
+  instructorUserId: string;
+  instructorProfileEntryId?: string | null;
+}) {
+  const [classDef, instructorUser] = await Promise.all([
+    getClassDefinitionBySlug(params.classDefinitionSlug),
+    db.user.findUnique({
+      where: { id: params.instructorUserId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        name: true,
+        instructorProfileEntryId: true,
+      },
+    }),
+  ]);
+
+  if (!classDef) {
+    throw new Error("CLASS_DEFINITION_NOT_FOUND");
+  }
+  if (!instructorUser) {
+    throw new Error("INSTRUCTOR_NOT_FOUND");
+  }
+
+  const resolvedProfileEntryId =
+    params.instructorProfileEntryId ||
+    instructorUser.instructorProfileEntryId ||
+    classDef.defaultInstructorProfileEntryId ||
+    null;
+  const resolvedProfile = resolvedProfileEntryId
+    ? (await getInstructorProfilesByIds([resolvedProfileEntryId]))[0]
+    : undefined;
+
+  return {
+    instructorUser,
+    resolvedProfileEntryId,
+    instructorNameSnapshot:
+      resolvedProfile?.name ||
+      [instructorUser.firstName, instructorUser.lastName].filter(Boolean).join(" ").trim() ||
+      instructorUser.name ||
+      null,
+    instructorBioSnapshot: resolvedProfile?.bio || null,
+  };
+}
+
 function toSessionListItem(
   session: Prisma.ClassSessionGetPayload<{
     include: {
@@ -85,7 +144,8 @@ function toSessionListItem(
     };
   }>,
   currentUserId?: string,
-  instructorProfile?: { name?: string; bio?: string; avatarImageUrl?: string }
+  instructorProfile?: { name?: string; bio?: string; avatarImageUrl?: string },
+  settings?: ClassOperationalSettingsDto
 ): ClassSessionListItemDto {
   const bookedCount = getBookedCount(session);
   const waitlistCount = getWaitlistCount(session);
@@ -100,12 +160,20 @@ function toSessionListItem(
       )
     : null;
 
+  const operationalSettings = settings || {
+    preJoinWindowMinutes: 10,
+    lateJoinCutoffMinutes: 5,
+    creditRefundWindowMinutes: 180,
+    emptyClassAutoCancelWindowMinutes: 180,
+  };
+
   return {
     id: session.id,
     classDefinitionSlug: session.classDefinitionSlug,
     title: session.titleSnapshot,
     type: session.typeSnapshot,
     level: session.levelSnapshot,
+    localDate: session.localDate?.toISOString().slice(0, 10) || null,
     startsAtUtc: session.startsAtUtc.toISOString(),
     endsAtUtc: session.endsAtUtc.toISOString(),
     timezone: session.timezone,
@@ -120,8 +188,23 @@ function toSessionListItem(
     bookedCount,
     waitlistCount,
     dailyRoomUrl: session.dailyRoomUrl,
-    communityModeEnabled: session.communityModeEnabled,
-    lateJoinCutoffAt: new Date(session.startsAtUtc.getTime() + 5 * 60_000).toISOString(),
+    roomSetupStatus: session.roomSetupStatus,
+    roomSetupError: session.roomSetupError || null,
+    communityModeEnabled: resolveSessionCommunityMode({
+      classType: session.typeSnapshot,
+      capacity: session.capacity,
+      communityModeEnabled: session.communityModeEnabled,
+      communityModeUpdatedAt: session.communityModeUpdatedAt,
+    }),
+    threeHourOutcome: session.autoCancelledForNoAttendanceAt
+      ? "cancelled_no_attendance"
+      : session.reminderProcessedAt
+        ? "reminded"
+        : "pending",
+    joinWindowOpensAt: getJoinWindowOpensAt(session.startsAtUtc, operationalSettings).toISOString(),
+    preJoinWindowMinutes: operationalSettings.preJoinWindowMinutes,
+    lateJoinCutoffMinutes: operationalSettings.lateJoinCutoffMinutes,
+    lateJoinCutoffAt: getLateJoinCutoffAt(session.startsAtUtc, operationalSettings).toISOString(),
     isBookedByCurrentUser: Boolean(myBooking && myBooking.status === ClassBookingStatus.booked),
     myBookingStatus: myBooking?.status ?? null,
     hasPreviouslyJoinedCurrentUser: Boolean(myBooking?.firstJoinedAt),
@@ -137,6 +220,7 @@ export async function listClassSessions(params: {
   slug?: string;
   statusIn?: ClassSessionStatus[];
 }) {
+  const settings = await getClassOperationalSettings();
   const sessions = await db.classSession.findMany({
     where: {
       startsAtUtc: {
@@ -184,7 +268,8 @@ export async function listClassSessions(params: {
       params.currentUserId,
       session.instructorProfileEntryId
         ? profileById.get(session.instructorProfileEntryId)
-        : undefined
+        : undefined,
+      settings
     )
   );
 }
@@ -193,6 +278,7 @@ export async function getClassSessionDetail(
   sessionId: string,
   currentUserId?: string
 ): Promise<ClassSessionDetailDto | null> {
+  const settings = await getClassOperationalSettings();
   const session = await db.classSession.findUnique({
     where: { id: sessionId },
     include: {
@@ -273,13 +359,15 @@ export async function getClassSessionDetail(
       })),
     },
     currentUserId,
-    profile
+    profile,
+    settings
   );
 
   return {
     ...base,
     notes: session.notes || "",
     cancelReason: session.cancelReason,
+    instructorUserId: session.instructorUserId,
     bookings: session.bookings.map((booking) => ({
       id: booking.id,
       userId: booking.userId,
@@ -355,34 +443,12 @@ export async function bulkCreateClassSessions(
   const dateStrings = buildWeeklyDates(input.startDate, input.repeatWeeks, days);
 
   const instructorUserId = input.instructorUserId || fallbackInstructorUserId;
-  const instructorUser = await db.user.findUnique({
-    where: { id: instructorUserId },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      name: true,
-      instructorProfileEntryId: true,
-    },
-  });
-  if (!instructorUser) {
-    throw new Error("INSTRUCTOR_NOT_FOUND");
-  }
-
-  const resolvedProfileEntryId =
-    input.instructorProfileEntryId ||
-    instructorUser.instructorProfileEntryId ||
-    classDef.defaultInstructorProfileEntryId ||
-    null;
-  const resolvedProfile = resolvedProfileEntryId
-    ? (await getInstructorProfilesByIds([resolvedProfileEntryId]))[0]
-    : undefined;
-  const instructorNameSnapshot =
-    resolvedProfile?.name ||
-    [instructorUser.firstName, instructorUser.lastName].filter(Boolean).join(" ").trim() ||
-    instructorUser.name ||
-    null;
-  const instructorBioSnapshot = resolvedProfile?.bio || null;
+  const { instructorUser, resolvedProfileEntryId, instructorNameSnapshot, instructorBioSnapshot } =
+    await resolveSessionInstructorSnapshot({
+      classDefinitionSlug: classDef.slug,
+      instructorUserId,
+      instructorProfileEntryId: input.instructorProfileEntryId || null,
+    });
 
   const created = await db.$transaction(async (tx) => {
     const records: Array<{ id: string }> = [];
@@ -390,10 +456,15 @@ export async function bulkCreateClassSessions(
     for (const dateString of dateStrings) {
       const startsAtUtc = toUtcFromLocalDateTime(dateString, input.timeLocal, "Europe/London");
       const endsAtUtc = new Date(startsAtUtc.getTime() + input.durationMinutes * 60_000);
+      const roomMode = getClassSessionRoomMode({
+        classType: classDef.type,
+        capacity: input.capacity,
+      });
 
       const session = await tx.classSession.create({
         data: {
           classDefinitionSlug: classDef.slug,
+          localDate: new Date(`${dateString}T00:00:00.000Z`),
           titleSnapshot: classDef.name,
           typeSnapshot: classDef.type,
           durationMinutes: input.durationMinutes,
@@ -408,6 +479,8 @@ export async function bulkCreateClassSessions(
           instructorProfileEntryId: resolvedProfileEntryId,
           instructorNameSnapshot,
           instructorBioSnapshot,
+          roomSetupStatus: ClassRoomSetupStatus.pending,
+          communityModeEnabled: getDefaultCommunityModeForRoomMode(roomMode),
         },
         select: { id: true, startsAtUtc: true, endsAtUtc: true },
       });
@@ -428,22 +501,76 @@ export async function bulkCreateClassSessions(
   // Daily room creation intentionally happens after DB create to avoid long DB transactions.
   // Failures are bubbled up and can be retried from admin UI.
   for (const createdSession of created) {
-    const session = await db.classSession.findUnique({ where: { id: createdSession.id } });
-    if (!session) continue;
-    const room = await createSessionRoom(session.id, session.startsAtUtc, session.endsAtUtc);
-    await db.classSession.update({
-      where: { id: session.id },
-      data: {
-        dailyRoomName: room.roomName,
-        dailyRoomUrl: room.roomUrl,
-      },
-    });
+    await setUpSessionRoom(createdSession.id);
   }
 
   return {
     createdSessionIds: created.map((c) => c.id),
     dailyConfigured: true,
   };
+}
+
+export async function setUpSessionRoom(sessionId: string) {
+  const session = await db.classSession.findUnique({
+    where: { id: sessionId },
+    select: {
+      id: true,
+      startsAtUtc: true,
+      endsAtUtc: true,
+      status: true,
+    },
+  });
+  if (!session) {
+    throw new Error("SESSION_NOT_FOUND");
+  }
+
+  if (session.status === ClassSessionStatus.draft) {
+    await db.classSession.update({
+      where: { id: sessionId },
+      data: {
+        dailyRoomName: null,
+        dailyRoomUrl: null,
+        roomSetupStatus: ClassRoomSetupStatus.pending,
+        roomSetupError: null,
+      },
+    });
+    return { status: "pending" as const };
+  }
+
+  if (!isDailyConfigured()) {
+    await db.classSession.update({
+      where: { id: sessionId },
+      data: {
+        roomSetupStatus: ClassRoomSetupStatus.pending,
+        roomSetupError: "Daily is not configured",
+      },
+    });
+    return { status: "pending" as const };
+  }
+
+  try {
+    const room = await createSessionRoom(session.id, session.startsAtUtc, session.endsAtUtc);
+    await db.classSession.update({
+      where: { id: session.id },
+      data: {
+        dailyRoomName: room.roomName,
+        dailyRoomUrl: room.roomUrl,
+        roomSetupStatus: ClassRoomSetupStatus.ready,
+        roomSetupError: null,
+      },
+    });
+    return { status: "ready" as const };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to create Daily room";
+    await db.classSession.update({
+      where: { id: session.id },
+      data: {
+        roomSetupStatus: ClassRoomSetupStatus.failed,
+        roomSetupError: message,
+      },
+    });
+    return { status: "failed" as const, message };
+  }
 }
 
 export async function updateClassSession(
@@ -454,8 +581,36 @@ export async function updateClassSession(
     capacity?: number;
     status?: ClassSessionStatus;
     notes?: string;
+    instructorUserId?: string;
+    instructorProfileEntryId?: string | null;
   }
 ) {
+  const existing = await db.classSession.findUnique({
+    where: { id: sessionId },
+    select: {
+      classDefinitionSlug: true,
+      instructorUserId: true,
+      instructorProfileEntryId: true,
+    },
+  });
+  if (!existing) {
+    throw new Error("SESSION_NOT_FOUND");
+  }
+
+  const nextInstructorUserId = updates.instructorUserId ?? existing.instructorUserId;
+  const shouldRefreshInstructorSnapshot =
+    updates.instructorUserId !== undefined || updates.instructorProfileEntryId !== undefined;
+  const nextInstructorSnapshot = shouldRefreshInstructorSnapshot
+    ? await resolveSessionInstructorSnapshot({
+        classDefinitionSlug: existing.classDefinitionSlug,
+        instructorUserId: nextInstructorUserId,
+        instructorProfileEntryId:
+          updates.instructorProfileEntryId !== undefined
+            ? updates.instructorProfileEntryId
+            : existing.instructorProfileEntryId,
+      })
+    : null;
+
   const updated = await db.classSession.update({
     where: { id: sessionId },
     data: {
@@ -464,6 +619,13 @@ export async function updateClassSession(
       capacity: updates.capacity,
       status: updates.status,
       notes: updates.notes,
+      instructorUserId: updates.instructorUserId,
+      instructorProfileEntryId:
+        updates.instructorProfileEntryId !== undefined
+          ? updates.instructorProfileEntryId
+          : undefined,
+      instructorNameSnapshot: nextInstructorSnapshot?.instructorNameSnapshot,
+      instructorBioSnapshot: nextInstructorSnapshot?.instructorBioSnapshot,
     },
   });
 
@@ -489,6 +651,7 @@ export async function listAdminClassSessions(params: {
       params.status && params.status !== "all"
         ? [params.status]
         : [
+            ClassSessionStatus.draft,
             ClassSessionStatus.scheduled,
             ClassSessionStatus.live,
             ClassSessionStatus.completed,
@@ -499,14 +662,39 @@ export async function listAdminClassSessions(params: {
 
   const notesById = await db.classSession.findMany({
     where: { id: { in: rows.map((r) => r.id) } },
-    select: { id: true, notes: true },
+    select: {
+      id: true,
+      notes: true,
+      cancelReason: true,
+      bookings: {
+        select: {
+          status: true,
+        },
+      },
+    },
   });
 
   const noteMap = new Map(notesById.map((row) => [row.id, row.notes || ""]));
+  const cancelReasonMap = new Map(notesById.map((row) => [row.id, row.cancelReason || null]));
+  const attendanceCountMap = new Map(
+    notesById.map((row) => [
+      row.id,
+      {
+        attendedCount: row.bookings.filter(
+          (booking) => booking.status === ClassBookingStatus.attended
+        ).length,
+        noShowCount: row.bookings.filter((booking) => booking.status === ClassBookingStatus.no_show)
+          .length,
+      },
+    ])
+  );
 
   return rows.map((row) => ({
     ...row,
     notes: noteMap.get(row.id) || "",
+    cancelReason: cancelReasonMap.get(row.id) || null,
+    attendedCount: attendanceCountMap.get(row.id)?.attendedCount || 0,
+    noShowCount: attendanceCountMap.get(row.id)?.noShowCount || 0,
   }));
 }
 
@@ -571,6 +759,7 @@ export async function getScheduleGroupedByDay(params?: {
       maxSpaces: session.capacity,
       shortDescription: classBySlug.get(session.classDefinitionSlug)?.shortDescription || "",
       spotsRemaining: session.spotsRemaining,
+      bookedCount: session.bookedCount,
       status: session.status,
       isBookedByCurrentUser: session.isBookedByCurrentUser,
       waitlistPosition: session.waitlistPosition,

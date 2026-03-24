@@ -1,4 +1,23 @@
 const DEFAULT_DAILY_BASE = "https://api.daily.co/v1";
+const PRE_JOIN_WINDOW_SECONDS = 24 * 60 * 60;
+
+export type DailyMediaPermission =
+  | boolean
+  | Array<"video" | "audio" | "screenVideo" | "screenAudio">;
+export type DailyAdminPermission = boolean | Array<"participants" | "streaming" | "transcription">;
+
+export type DailyCanReceivePermissions = {
+  base?: DailyMediaPermission;
+  byUserId?: Record<string, DailyMediaPermission>;
+  byParticipantId?: Record<string, DailyMediaPermission>;
+};
+
+export type DailyParticipantPermissions = {
+  hasPresence?: boolean;
+  canSend?: DailyMediaPermission;
+  canReceive?: DailyCanReceivePermissions;
+  canAdmin?: DailyAdminPermission;
+};
 
 function getDailyConfig() {
   const apiKey = process.env.DAILY_API_KEY;
@@ -27,7 +46,7 @@ export async function createSessionRoom(sessionId: string, startsAtUtc: Date, en
 
   const roomName = `class-${sessionId}`;
   const exp = Math.floor(endsAtUtc.getTime() / 1000) + 2 * 60 * 60;
-  const nbf = Math.floor(startsAtUtc.getTime() / 1000) - 15 * 60;
+  const nbf = Math.floor(startsAtUtc.getTime() / 1000) - PRE_JOIN_WINDOW_SECONDS;
 
   const response = await fetch(`${baseUrl}/rooms`, {
     method: "POST",
@@ -76,6 +95,7 @@ export async function createMeetingToken(params: {
   userName: string;
   isOwner: boolean;
   expiresAt?: Date;
+  permissions?: DailyParticipantPermissions;
 }) {
   const { baseUrl } = getDailyConfig();
   const exp = Math.floor((params.expiresAt?.getTime() || Date.now() + 4 * 60 * 60 * 1000) / 1000);
@@ -90,6 +110,7 @@ export async function createMeetingToken(params: {
         user_name: params.userName,
         user_id: params.userId,
         exp,
+        permissions: params.permissions,
       },
     }),
   });
@@ -105,6 +126,28 @@ export async function createMeetingToken(params: {
   }
 
   return payload.token;
+}
+
+export async function updateRoomPermissions(params: {
+  roomName: string;
+  data: Record<string, DailyParticipantPermissions>;
+}) {
+  const { baseUrl } = getDailyConfig();
+
+  const response = await fetch(`${baseUrl}/rooms/${params.roomName}/update-permissions`, {
+    method: "POST",
+    headers: getDailyHeaders(),
+    body: JSON.stringify({
+      data: params.data,
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`DAILY_UPDATE_PERMISSIONS_FAILED:${response.status}:${text}`);
+  }
+
+  return response.json().catch(() => null);
 }
 
 export function verifyDailyWebhookAuthorization(headers: Headers) {

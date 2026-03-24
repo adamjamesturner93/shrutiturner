@@ -17,6 +17,7 @@ export type ScheduleClassItemDto = {
   maxSpaces: number;
   shortDescription: string;
   spotsRemaining: number;
+  bookedCount: number;
   status: ClassSessionStatus;
   isBookedByCurrentUser: boolean;
   waitlistPosition: number | null;
@@ -33,6 +34,7 @@ export type ClassSessionListItemDto = {
   title: string;
   type: string;
   level: string;
+  localDate: string | null;
   startsAtUtc: string;
   endsAtUtc: string;
   timezone: string;
@@ -47,7 +49,13 @@ export type ClassSessionListItemDto = {
   bookedCount: number;
   waitlistCount: number;
   dailyRoomUrl: string | null;
+  roomSetupStatus?: "pending" | "ready" | "failed";
+  roomSetupError?: string | null;
   communityModeEnabled: boolean;
+  threeHourOutcome?: "pending" | "reminded" | "cancelled_no_attendance";
+  joinWindowOpensAt: string;
+  preJoinWindowMinutes: number;
+  lateJoinCutoffMinutes: number;
   lateJoinCutoffAt: string;
   isBookedByCurrentUser: boolean;
   myBookingStatus: ClassBookingStatus | null;
@@ -86,6 +94,7 @@ export type ClassWaitlistDto = {
 export type ClassSessionDetailDto = ClassSessionListItemDto & {
   notes: string;
   cancelReason: string | null;
+  instructorUserId: string;
   bookings: ClassBookingDto[];
   waitlist: ClassWaitlistDto[];
 };
@@ -120,4 +129,61 @@ export type BulkCreateSessionsInput = {
 
 export type AdminClassSessionDto = ClassSessionListItemDto & {
   notes: string;
+  cancelReason?: string | null;
+  attendedCount: number;
+  noShowCount: number;
+};
+
+export type ClassTimetableRuleDto = {
+  id: string;
+  classDefinitionSlug: string;
+  className: string;
+  classType: string;
+  weekday: number;
+  startsAtLocal: string;
+  durationMinutes: number;
+  timezone: string;
+  defaultCapacity: number;
+  instructorUserId: string;
+  instructorProfileEntryId: string | null;
+  instructorName: string | null;
+  startsOn: string;
+  endsOn: string | null;
+  active: boolean;
+  notes: string;
+  exclusionDates: string[];
+  nextSessionDate: string | null;
+  generatedSessionCount: number;
+};
+
+export type ClassTimetableRuleInput = {
+  classDefinitionSlug: string;
+  weekday: number;
+  startsAtLocal: string;
+  durationMinutes: number;
+  timezone?: string;
+  defaultCapacity: number;
+  instructorUserId: string;
+  instructorProfileEntryId?: string;
+  startsOn: string;
+  endsOn?: string;
+  active?: boolean;
+  notes?: string;
+  exclusionDates?: string[];
+};
+
+export type DraftTimetableResultDto = {
+  createdSessionIds: string[];
+  createdCount: number;
+  skippedExistingCount: number;
+};
+
+export type PublishTimetableResultDto = {
+  draftCreatedSessionIds: string[];
+  publishedSessionIds: string[];
+  draftCreatedCount: number;
+  publishedCount: number;
+  skippedExistingCount: number;
+  failedRoomSetupCount: number;
+  dailyConfigured: boolean;
 };

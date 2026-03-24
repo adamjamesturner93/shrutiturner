@@ -14,6 +14,7 @@ interface ClassReminderEmailProps {
   className?: string;
   classTime?: string;
   joinLink?: string;
+  preJoinWindowLabel?: string;
 }
 
 export default function ClassReminderEmail({
@@ -21,6 +22,7 @@ export default function ClassReminderEmail({
   className = "Slow Flow Yoga",
   classTime = "10:00 AM",
   joinLink = "https://shrutiturner.com/dashboard/schedule",
+  preJoinWindowLabel = "10 minutes",
 }: ClassReminderEmailProps) {
   return (
     <EmailLayout preview={`Reminder: ${className} starts soon`}>
@@ -55,7 +57,7 @@ export default function ClassReminderEmail({
       </Section>
 
       <Hr style={dividerStyle} />
-      <Text style={mutedTextStyle}>The studio opens around 10 minutes before class.</Text>
+      <Text style={mutedTextStyle}>The studio opens around {preJoinWindowLabel} before class.</Text>
     </EmailLayout>
   );
 }

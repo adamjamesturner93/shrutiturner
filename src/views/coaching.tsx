@@ -5,7 +5,6 @@ import {
   ArrowRight,
   Check,
   ClipboardList,
-  Crown,
   GraduationCap,
   MessageCircle,
   Shield,

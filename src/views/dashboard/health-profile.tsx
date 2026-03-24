@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { DashboardLayout } from "../../components/dashboard-layout";
 import { HealthProfileEditor } from "../../components/health-profile-editor";
 import { Badge } from "../../components/ui/badge";
-import { Calendar, Pencil, Activity } from "lucide-react";
+import { Calendar, Pencil } from "lucide-react";
 import { AppEmptyState, AppPageHeader } from "@/components/app-surface";
 import {
   EMPTY_HEALTH_PROFILE,

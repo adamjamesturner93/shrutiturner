@@ -202,7 +202,6 @@ export async function createCreditCheckoutSession(
     cancelPath?: string;
   }
 ) {
-  const config = CREDIT_BUNDLE_CONFIG[bundleSize];
   const catalog = await getActiveCatalogItem(bundleToCatalogKey(bundleSize));
   assertPriceConfigured(catalog.stripePriceId, `CATALOG_PRICE_CREDITS_${bundleSize}`);
 

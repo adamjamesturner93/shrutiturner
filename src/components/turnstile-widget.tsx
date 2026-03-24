@@ -36,21 +36,9 @@ export function TurnstileWidget({
     onTokenChange("e2e-turnstile-token");
   }, [isE2ETestMode, onTokenChange]);
 
-  if (isE2ETestMode) {
-    return (
-      <div
-        data-testid="turnstile-bypass"
-        className={cn(
-          "text-muted-foreground min-h-[65px] rounded border border-dashed px-3 py-4 text-xs",
-          className
-        )}
-      >
-        Verification ready
-      </div>
-    );
-  }
-
   useEffect(() => {
+    if (isE2ETestMode) return;
+
     let cancelled = false;
     let attempts = 0;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -83,7 +71,21 @@ export function TurnstileWidget({
         window.turnstile.remove(widgetIdRef.current);
       }
     };
-  }, [containerId, onTokenChange, siteKey, theme]);
+  }, [containerId, isE2ETestMode, onTokenChange, siteKey, theme]);
+
+  if (isE2ETestMode) {
+    return (
+      <div
+        data-testid="turnstile-bypass"
+        className={cn(
+          "text-muted-foreground min-h-[65px] rounded border border-dashed px-3 py-4 text-xs",
+          className
+        )}
+      >
+        Verification ready
+      </div>
+    );
+  }
 
   return <div id={containerId} ref={containerRef} className="min-h-[65px]" />;
 }

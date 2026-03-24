@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DashboardLayout } from "../../components/dashboard-layout";
 import { DashboardSkeleton } from "../../components/dashboard-skeleton";
 import { HealthProfileEditor } from "../../components/health-profile-editor";
-import { Card, CardContent } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
@@ -68,6 +67,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
   const [profileDob, setProfileDob] = useState("");
   const [profileError, setProfileError] = useState("");
   const [profileSubmitting, setProfileSubmitting] = useState(false);
+  const onboardingFieldsInitialized = useRef(false);
 
   useEffect(() => {
     if (initialData) return;
@@ -92,9 +92,19 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
   }, [initialData]);
 
   useEffect(() => {
-    if (!isOnboarding || isAdmin || !user) return;
+    if (!isOnboarding || isAdmin || !user) {
+      onboardingFieldsInitialized.current = false;
+      return;
+    }
 
     setShowOnboarding(true);
+    setProfileError("");
+    setOnboardingStep(resolveOnboardingStep(user.onboarding.nextStep));
+
+    if (onboardingFieldsInitialized.current) {
+      return;
+    }
+
     setProfileFirstName(user.firstName || "");
     setProfileLastName(user.lastName || "");
     setProfileDob(user.dob || "");
@@ -102,14 +112,14 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
     setHeardAboutDetail(user.heardAboutDetail || "");
     setLegalTerms(Boolean(user.hasAgreedToTerms));
     setLegalHealth(Boolean(user.hasAgreedToHealth));
-    setProfileError("");
-    setOnboardingStep(resolveOnboardingStep(user.onboarding.nextStep));
+    onboardingFieldsInitialized.current = true;
   }, [isOnboarding, isAdmin, user]);
 
   const finishOnboarding = async () => {
     await completeOnboarding();
     setShowOnboarding(false);
     setOnboardingStep("welcome");
+    onboardingFieldsInitialized.current = false;
     const params = new URLSearchParams(searchParams.toString());
     params.delete("onboarding");
     const query = params.toString();
@@ -319,7 +329,9 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                   onClick={async () => {
                     await acceptTermsAndHealth(true, true);
                     const account = await refreshAccountProfile();
-                    setOnboardingStep(resolveOnboardingStep(account?.profile?.onboarding?.nextStep));
+                    setOnboardingStep(
+                      resolveOnboardingStep(account?.profile?.onboarding?.nextStep)
+                    );
                   }}
                 >
                   Accept & Continue
@@ -411,7 +423,9 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                   onClick={async () => {
                     await saveOnboardingSource(heardAboutSource, heardAboutDetail);
                     const account = await refreshAccountProfile();
-                    setOnboardingStep(resolveOnboardingStep(account?.profile?.onboarding?.nextStep));
+                    setOnboardingStep(
+                      resolveOnboardingStep(account?.profile?.onboarding?.nextStep)
+                    );
                   }}
                 >
                   {user?.onboarding.missingSteps.includes("health")
@@ -450,7 +464,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
               {getGreeting()}, {user?.firstName || "there"}.
             </>
           }
-          description="Here&apos;s your training overview for this week."
+          description="Here's your training overview for this week."
           meta={
             summary.membership ? (
               <Badge className="bg-brand-accent text-brand-white">Membership active</Badge>

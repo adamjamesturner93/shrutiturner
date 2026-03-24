@@ -39,10 +39,10 @@ function getAtRiskStatus(m: AdminMember): "high" | "medium" | "credits-expiring"
   const today = new Date();
   const twoWeeksAgo = new Date(today.getTime() - 14 * 86400000);
   const fourWeeksAgo = new Date(today.getTime() - 28 * 86400000);
-  const lastClass = new Date(m.lastClassDate);
+  const lastClass = m.lastClassDate ? new Date(m.lastClassDate) : null;
   if (m.status !== "active") return null;
-  if (lastClass < fourWeeksAgo && m.membershipPlan) return "high";
-  if (lastClass < twoWeeksAgo) return "medium";
+  if (lastClass && lastClass < fourWeeksAgo && m.membershipPlan) return "high";
+  if (lastClass && lastClass < twoWeeksAgo) return "medium";
   if (!m.membershipPlan && m.creditBalance > 0 && m.creditBalance <= 2) return "credits-expiring";
   return null;
 }
@@ -97,8 +97,7 @@ export function AdminMembers() {
       const matchesSearch =
         search === "" ||
         `${m.firstName} ${m.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
-        m.email.toLowerCase().includes(search.toLowerCase()) ||
-        m.tags.some((t) => t.toLowerCase().includes(search.toLowerCase()));
+        m.email.toLowerCase().includes(search.toLowerCase());
       const matchesStatus =
         statusFilter === "all" ||
         (statusFilter === "lapsed"
@@ -142,10 +141,22 @@ export function AdminMembers() {
         {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
 
         <AppMetricGrid className="lg:grid-cols-4">
-          <AppMetricCard label="Active" value={statusCounts.active} detail="currently active members" />
+          <AppMetricCard
+            label="Active"
+            value={statusCounts.active}
+            detail="currently active members"
+          />
           <AppMetricCard label="Paused" value={statusCounts.paused} detail="temporarily paused" />
-          <AppMetricCard label="Lapsed" value={statusCounts.expired + statusCounts.cancelled} detail="cancelled or expired" />
-          <AppMetricCard label="At risk" value={atRiskCounts.total} detail="members needing follow-up" />
+          <AppMetricCard
+            label="Lapsed"
+            value={statusCounts.expired + statusCounts.cancelled}
+            detail="cancelled or expired"
+          />
+          <AppMetricCard
+            label="At risk"
+            value={atRiskCounts.total}
+            detail="members needing follow-up"
+          />
         </AppMetricGrid>
 
         {/* Stat pills */}
@@ -214,7 +225,7 @@ export function AdminMembers() {
               <div className="relative flex-1">
                 <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                 <Input
-                  placeholder="Search name, email, or tag..."
+                  placeholder="Search name or email..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-10"
@@ -222,6 +233,7 @@ export function AdminMembers() {
               </div>
               <div className="flex gap-2">
                 <select
+                  aria-label="Filter members by status"
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="border-border bg-background rounded-md border px-3 py-2 text-sm"
@@ -235,6 +247,7 @@ export function AdminMembers() {
                   <option value="cancelled">Cancelled</option>
                 </select>
                 <select
+                  aria-label="Filter members by plan"
                   value={planFilter}
                   onChange={(e) => setPlanFilter(e.target.value)}
                   className="border-border bg-background rounded-md border px-3 py-2 text-sm"
@@ -245,6 +258,7 @@ export function AdminMembers() {
                   <option value="none">Pay as you Go</option>
                 </select>
                 <select
+                  aria-label="Filter members by role"
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value)}
                   className="border-border bg-background rounded-md border px-3 py-2 text-sm"
@@ -254,6 +268,7 @@ export function AdminMembers() {
                   <option value="coaching">Coaching clients</option>
                 </select>
                 <select
+                  aria-label="Filter members by risk"
                   value={riskFilter}
                   onChange={(e) => setRiskFilter(e.target.value)}
                   className="border-border bg-background rounded-md border px-3 py-2 text-sm"
@@ -367,18 +382,6 @@ function MemberRow({ member }: { member: AdminMember }) {
                 <p className="text-brand-dark">{member.referralsCount}</p>
                 <p className="text-xs">referrals</p>
               </div>
-            </div>
-
-            {/* Tags (desktop) */}
-            <div className="hidden flex-shrink-0 items-center gap-1 lg:flex">
-              {member.tags.slice(0, 2).map((tag) => (
-                <Badge key={tag} variant="outline" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
-              {member.tags.length > 2 && (
-                <span className="text-muted-foreground text-xs">+{member.tags.length - 2}</span>
-              )}
             </div>
 
             <ChevronRight className="text-muted-foreground h-4 w-4 flex-shrink-0" />

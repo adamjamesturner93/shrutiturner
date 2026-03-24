@@ -53,6 +53,10 @@ function getCacheTags(contentType?: string): string[] {
   return base;
 }
 
+function getContentfulRequestTimeoutMs() {
+  return Math.max(1000, Number(process.env.CONTENTFUL_REQUEST_TIMEOUT_MS || "4000"));
+}
+
 async function cdaFetch<T>(
   path: string,
   query: Record<string, string | number | boolean | undefined> = {}
@@ -66,12 +70,15 @@ async function cdaFetch<T>(
   const url = `https://cdn.contentful.com/spaces/${cfg.spaceId}/environments/${cfg.environment}${path}${qs ? `?${qs}` : ""}`;
 
   let res: Response;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), getContentfulRequestTimeoutMs());
   try {
     res = await fetch(url, {
       headers: {
         Authorization: `Bearer ${cfg.deliveryToken}`,
         "Content-Type": "application/json",
       },
+      signal: controller.signal,
       next: {
         revalidate: 60,
         tags: getCacheTags(typeof query.content_type === "string" ? query.content_type : undefined),
@@ -79,6 +86,8 @@ async function cdaFetch<T>(
     });
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
 
   if (!res.ok) {

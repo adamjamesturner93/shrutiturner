@@ -2,7 +2,6 @@ import Stripe from "stripe";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-type MembershipPlanKey = "movewell";
 type CreditBundleKey = "1" | "3" | "10";
 
 type SeedItem = {

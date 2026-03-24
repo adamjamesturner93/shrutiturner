@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { MessageCircle, Reply, Trash2, CornerDownRight, AlertTriangle } from "lucide-react";
 import { AuthContext } from "../context/auth-context";
@@ -36,7 +36,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
 
-  const loadComments = async () => {
+  const loadComments = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -49,11 +49,11 @@ export function BlogComments({ postId }: BlogCommentsProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [postId]);
 
   useEffect(() => {
     void loadComments();
-  }, [postId]);
+  }, [loadComments]);
 
   const commentCount = useMemo(
     () => comments.reduce((count, comment) => count + 1 + (comment.replies?.length || 0), 0),

@@ -1,15 +1,12 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
 
-const {
-  getClassDefinitionBySlugMock,
-  getInstructorProfilesByIdsMock,
-  isDailyConfiguredMock,
-} = vi.hoisted(() => ({
-  getClassDefinitionBySlugMock: vi.fn(),
-  getInstructorProfilesByIdsMock: vi.fn().mockResolvedValue([]),
-  isDailyConfiguredMock: vi.fn().mockReturnValue(false),
-}));
+const { getClassDefinitionBySlugMock, getInstructorProfilesByIdsMock, isDailyConfiguredMock } =
+  vi.hoisted(() => ({
+    getClassDefinitionBySlugMock: vi.fn(),
+    getInstructorProfilesByIdsMock: vi.fn().mockResolvedValue([]),
+    isDailyConfiguredMock: vi.fn().mockReturnValue(false),
+  }));
 
 vi.mock("@/lib/content", () => ({
   getClassDefinitionBySlug: getClassDefinitionBySlugMock,
@@ -30,7 +27,7 @@ async function cleanupSessionRows() {
   await db.classSession.deleteMany({
     where: {
       classDefinitionSlug: {
-        startsWith: "integration-",
+        startsWith: "integration-weekend-yoga-flow",
       },
     },
   });

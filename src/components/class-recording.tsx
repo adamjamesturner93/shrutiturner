@@ -4,7 +4,7 @@ import { Badge } from "./ui/badge";
 import { useAuth } from "../context/auth-context";
 import { useI18n } from "../lib/use-i18n";
 import Link from "next/link";
-import { Play, Clock, AlertCircle, CheckCircle, Lock, Info, ShoppingCart } from "lucide-react";
+import { Play, CheckCircle, Lock, Info, ShoppingCart } from "lucide-react";
 
 /* ──────────── Types ──────────── */
 
@@ -180,7 +180,7 @@ export function RecordingCard({ recording, isProgrammeRecording = false }: Recor
     hasWatchedRecording,
     membershipClassesRemaining,
   } = useAuth();
-  const { fmtDate, fmtTimeStr } = useI18n();
+  const { fmtDate } = useI18n();
   const [isPlaying, setIsPlaying] = useState(false);
   const [showCreditWarning, setShowCreditWarning] = useState(false);
 
@@ -332,8 +332,7 @@ interface ClassRecordingsSectionProps {
 }
 
 export function ClassRecordingsSection({ classSlug }: ClassRecordingsSectionProps) {
-  const { hasAccess, isMember, isProgramOnly, isUnlimited, isCapped } = useRecordingAccess();
-  const { membership } = useAuth();
+  const { hasAccess, isUnlimited, isCapped } = useRecordingAccess();
 
   const recordings = MOCK_RECORDINGS.filter((r) => r.classSlug === classSlug);
 
@@ -389,8 +388,8 @@ export function ClassRecordingsSection({ classSlug }: ClassRecordingsSectionProp
 /* ──────────── Recordings list for dashboard ──────────── */
 
 export function RecordingsLibrary() {
-  const { hasAccess, isMember, isUnlimited, isCapped, isProgramOnly } = useRecordingAccess();
-  const { membership, membershipClassesRemaining, enrolledProgramIds } = useAuth();
+  const { hasAccess, isUnlimited, isCapped, isProgramOnly } = useRecordingAccess();
+  const { membership, membershipClassesRemaining } = useAuth();
   const recordings = MOCK_RECORDINGS;
 
   if (!hasAccess) {

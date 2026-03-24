@@ -65,7 +65,7 @@ export function LocalMediaPreview({
     return () => {
       active = false;
     };
-  }, [cameraEnabled, micEnabled, settings.cameraId, settings.micId]);
+  }, [cameraEnabled, micEnabled, settings]);
 
   useEffect(() => {
     if (cameraEnabled || micEnabled || !stream) return;
@@ -73,10 +73,11 @@ export function LocalMediaPreview({
   }, [cameraEnabled, micEnabled, stream]);
 
   useEffect(() => {
-    attachTrack(videoRef.current, activeStream?.getVideoTracks()[0] || null, true);
+    const element = videoRef.current;
+    attachTrack(element, activeStream?.getVideoTracks()[0] || null, true);
     return () => {
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
+      if (element) {
+        element.srcObject = null;
       }
     };
   }, [activeStream]);
@@ -93,7 +94,7 @@ export function LocalMediaPreview({
   if (!hasVideo) {
     return (
       <div className={`bg-video-panel flex items-center justify-center ${className}`.trim()}>
-        <div className="space-y-2 text-center text-white/40">
+        <div className="space-y-2 text-center text-white/70">
           {cameraEnabled ? (
             <VideoOff className="mx-auto h-10 w-10" />
           ) : (
