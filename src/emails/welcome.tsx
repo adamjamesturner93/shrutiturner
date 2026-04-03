@@ -38,6 +38,7 @@ export default function WelcomeEmail({
     <EmailLayout
       preview={`Welcome, ${firstName} — your free guide is ready`}
       unsubscribeUrl={unsubscribeUrl}
+      category="marketing"
     >
       <Text
         style={{

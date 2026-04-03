@@ -7,7 +7,7 @@ describe("deriveOnboardingState", () => {
       isComplete: false,
       checklistComplete: false,
       nextStep: "profile",
-      missingSteps: ["profile", "legal", "source", "health"],
+      missingSteps: ["profile", "legal", "source"],
     });
   });
 
@@ -21,6 +21,7 @@ describe("deriveOnboardingState", () => {
         hasAgreedToHealth: true,
         heardAboutSource: "google",
         hasHealthProfile: true,
+        healthDeclarationStatus: "incomplete",
         hasConsentedToHealthData: true,
       })
     ).toEqual({
@@ -31,7 +32,7 @@ describe("deriveOnboardingState", () => {
     });
   });
 
-  it("keeps the health step incomplete when the health data consent is stale", () => {
+  it("does not block onboarding when the health data consent is stale", () => {
     expect(
       deriveOnboardingState({
         firstName: "Jamie",
@@ -46,9 +47,9 @@ describe("deriveOnboardingState", () => {
       })
     ).toEqual({
       isComplete: false,
-      checklistComplete: false,
-      nextStep: "health",
-      missingSteps: ["health"],
+      checklistComplete: true,
+      nextStep: "welcome",
+      missingSteps: [],
     });
   });
 

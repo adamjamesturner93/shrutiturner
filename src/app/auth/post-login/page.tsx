@@ -4,10 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { claimReferralCode } from "@/lib/referrals/referral-service";
 import { sanitizeRedirectPath } from "@/lib/navigation/safe-redirect";
-import {
-  createCreditCheckoutSession,
-  createMembershipCheckoutSession,
-} from "@/lib/billing/billing-service";
+import { createCreditCheckoutSession } from "@/lib/billing/billing-service";
 
 interface PostLoginPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -44,11 +41,6 @@ async function resolvePricingCheckout(
 ) {
   const kind = first(params.kind);
 
-  if (kind === "membership") {
-    const interval = first(params.interval) === "annual" ? "annual" : "monthly";
-    return createMembershipCheckoutSession(userId, "movewell", interval, undefined, "movewell");
-  }
-
   if (kind === "credits") {
     const bundleValue = first(params.bundle);
     const bundle =
@@ -80,6 +72,10 @@ async function PostLoginRedirect({ searchParams }: PostLoginPageProps) {
   }
 
   if (intent === "pricing-checkout") {
+    if (first(params.kind) === "membership") {
+      const interval = first(params.interval) === "annual" ? "annual" : "monthly";
+      redirect(`/dashboard/membership?subscribe=1&interval=${interval}&source=pricing`);
+    }
     try {
       const checkout = await resolvePricingCheckout(session.user.id, params);
       if (checkout?.checkoutUrl) {

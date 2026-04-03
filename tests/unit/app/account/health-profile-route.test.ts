@@ -4,6 +4,7 @@ const connectionMock = vi.fn();
 const requireSessionUserMock = vi.fn();
 const getHealthProfileMock = vi.fn();
 const upsertHealthProfileMock = vi.fn();
+const confirmHealthProfileMock = vi.fn();
 
 vi.mock("next/server", async () => {
   const actual = await vi.importActual<typeof import("next/server")>("next/server");
@@ -18,6 +19,7 @@ vi.mock("@/lib/api/auth-user", () => ({
 }));
 
 vi.mock("@/lib/health/health-service", () => ({
+  confirmHealthProfile: confirmHealthProfileMock,
   getHealthProfile: getHealthProfileMock,
   upsertHealthProfile: upsertHealthProfileMock,
 }));
@@ -37,8 +39,36 @@ describe("GET /api/me/health-profile", () => {
     vi.clearAllMocks();
     connectionMock.mockResolvedValue(undefined);
     requireSessionUserMock.mockResolvedValue({ id: "user_123" });
-    getHealthProfileMock.mockResolvedValue({ conditions: {}, details: {}, additionalNotes: "" });
-    upsertHealthProfileMock.mockResolvedValue({ conditions: {}, details: {}, additionalNotes: "" });
+    getHealthProfileMock.mockResolvedValue({
+      declarationStatus: "incomplete",
+      conditions: {},
+      details: {},
+      tracksFlareCheckIns: false,
+      additionalNotes: "",
+      lastConfirmedAt: "",
+      lastUpdated: "",
+      needsReview: false,
+    });
+    upsertHealthProfileMock.mockResolvedValue({
+      declarationStatus: "none_declared",
+      conditions: {},
+      details: {},
+      tracksFlareCheckIns: false,
+      additionalNotes: "",
+      lastConfirmedAt: "2026-03-29",
+      lastUpdated: "2026-03-29",
+      needsReview: false,
+    });
+    confirmHealthProfileMock.mockResolvedValue({
+      declarationStatus: "none_declared",
+      conditions: {},
+      details: {},
+      tracksFlareCheckIns: false,
+      additionalNotes: "",
+      lastConfirmedAt: "2026-03-29",
+      lastUpdated: "2026-03-29",
+      needsReview: false,
+    });
   });
 
   it("returns the current user's saved health profile", async () => {
@@ -62,7 +92,16 @@ describe("PUT /api/me/health-profile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     requireSessionUserMock.mockResolvedValue({ id: "user_123" });
-    upsertHealthProfileMock.mockResolvedValue({ conditions: {}, details: {}, additionalNotes: "" });
+    upsertHealthProfileMock.mockResolvedValue({
+      declarationStatus: "context_declared",
+      conditions: { fatigue: true },
+      details: { fatigue: "Worse in mornings" },
+      tracksFlareCheckIns: true,
+      additionalNotes: "Prefers slower warmups",
+      lastConfirmedAt: "2026-03-29",
+      lastUpdated: "2026-03-29",
+      needsReview: false,
+    });
   });
 
   it("saves the health profile for the current user", async () => {
@@ -78,11 +117,62 @@ describe("PUT /api/me/health-profile", () => {
     expect(upsertHealthProfileMock).toHaveBeenCalledWith(
       "user_123",
       {
+        declarationStatus: undefined,
         conditions: { fatigue: true },
         details: { fatigue: "Worse in mornings" },
+        tracksFlareCheckIns: undefined,
         additionalNotes: "Prefers slower warmups",
       },
       "user_123"
     );
+  });
+
+  it("passes explicit declaration state and flare tracking when provided", async () => {
+    const response = await route.PUT(
+      createPutRequest({
+        declarationStatus: "context_declared",
+        conditions: { fatigue: true },
+        details: { fatigue: "Worse in mornings" },
+        tracksFlareCheckIns: true,
+        additionalNotes: "Prefers slower warmups",
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(upsertHealthProfileMock).toHaveBeenCalledWith(
+      "user_123",
+      {
+        declarationStatus: "context_declared",
+        conditions: { fatigue: true },
+        details: { fatigue: "Worse in mornings" },
+        tracksFlareCheckIns: true,
+        additionalNotes: "Prefers slower warmups",
+      },
+      "user_123"
+    );
+  });
+});
+
+describe("POST /api/me/health-profile", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    requireSessionUserMock.mockResolvedValue({ id: "user_123" });
+    confirmHealthProfileMock.mockResolvedValue({
+      declarationStatus: "none_declared",
+      conditions: {},
+      details: {},
+      tracksFlareCheckIns: false,
+      additionalNotes: "",
+      lastConfirmedAt: "2026-03-29",
+      lastUpdated: "2026-03-01",
+      needsReview: false,
+    });
+  });
+
+  it("confirms the current declaration without changing the profile content", async () => {
+    const response = await route.POST();
+
+    expect(response.status).toBe(200);
+    expect(confirmHealthProfileMock).toHaveBeenCalledWith("user_123", "user_123");
   });
 });

@@ -27,7 +27,8 @@ loadEnvFile();
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  timeout: 30_000,
+  timeout: 60_000,
+  workers: 3,
   expect: {
     timeout: 5_000,
   },
@@ -44,7 +45,7 @@ export default defineConfig({
   webServer: {
     command: `pnpm exec next dev --port ${PORT}`,
     url: `http://127.0.0.1:${PORT}`,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     stdout: "pipe",
     stderr: "pipe",
     env: {

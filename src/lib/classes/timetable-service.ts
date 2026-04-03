@@ -10,7 +10,7 @@ import {
   getDefaultCommunityModeForRoomMode,
 } from "@/lib/classes/room-mode";
 import { cancelClassSession } from "@/lib/classes/booking-service";
-import { setUpSessionRoom, toUtcFromLocalDateTime } from "@/lib/classes/session-service";
+import { toUtcFromLocalDateTime } from "@/lib/classes/session-service";
 import type {
   ClassTimetableRuleDto,
   ClassTimetableRuleInput,
@@ -19,7 +19,8 @@ import type {
 } from "@/lib/classes/types";
 
 const DEFAULT_TIMEZONE = "Europe/London";
-const DEFAULT_HORIZON_WEEKS = 8;
+const DEFAULT_DRAFT_HORIZON_WEEKS = 8;
+const DEFAULT_PUBLISH_HORIZON_WEEKS = 4;
 
 function toDateOnlyUtc(dateString: string) {
   return new Date(`${dateString}T00:00:00.000Z`);
@@ -31,6 +32,10 @@ function toDateOnlyString(date: Date) {
 
 function getDateRangeEnd(from: Date, horizonWeeks: number) {
   return new Date(from.getTime() + horizonWeeks * 7 * 86_400_000);
+}
+
+function getDateRangeEndString(fromDate: string, horizonWeeks: number) {
+  return toDateOnlyString(getDateRangeEnd(toDateOnlyUtc(fromDate), horizonWeeks));
 }
 
 function getSessionGenerationKey(ruleId: string, localDate: string) {
@@ -60,6 +65,76 @@ function shiftDateOnlyString(dateString: string, days: number) {
   return toDateOnlyString(date);
 }
 
+function clampDateStringToMinimum(...values: Array<string | null | undefined>) {
+  return values
+    .filter((value): value is string => typeof value === "string" && value.length > 0)
+    .sort()[0];
+}
+
+function getRuleLocalToday(now = new Date(), timezone = DEFAULT_TIMEZONE) {
+  return formatDateInTimezone(now, timezone);
+}
+
+function assertDateToken(value: string, code: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new Error(code);
+  }
+}
+
+function getDraftGenerationLimitDate(now = new Date(), timezone = DEFAULT_TIMEZONE) {
+  return getDateRangeEndString(getRuleLocalToday(now, timezone), DEFAULT_DRAFT_HORIZON_WEEKS);
+}
+
+function getPublishLimitDate(now = new Date(), timezone = DEFAULT_TIMEZONE) {
+  return getDateRangeEndString(getRuleLocalToday(now, timezone), DEFAULT_PUBLISH_HORIZON_WEEKS);
+}
+
+function validateGenerateUntilDate(
+  generateUntil: string,
+  now = new Date(),
+  timezone = DEFAULT_TIMEZONE
+) {
+  assertDateToken(generateUntil, "INVALID_GENERATE_UNTIL");
+  const localToday = getRuleLocalToday(now, timezone);
+  const maxGenerateUntil = getDraftGenerationLimitDate(now, timezone);
+
+  if (generateUntil < localToday) {
+    throw new Error("GENERATE_UNTIL_IN_PAST");
+  }
+  if (generateUntil > maxGenerateUntil) {
+    throw new Error("GENERATE_UNTIL_EXCEEDS_PLANNING_WINDOW");
+  }
+
+  return {
+    localToday,
+    maxGenerateUntil,
+  };
+}
+
+function validatePublishWeekStart(
+  weekStart: string,
+  now = new Date(),
+  timezone = DEFAULT_TIMEZONE
+) {
+  assertDateToken(weekStart, "INVALID_WEEK_START");
+  const localToday = getRuleLocalToday(now, timezone);
+  const weekEndExclusive = shiftDateOnlyString(weekStart, 7);
+  const publishLimitDate = getPublishLimitDate(now, timezone);
+
+  if (weekEndExclusive <= localToday) {
+    throw new Error("PUBLISH_WEEK_IN_PAST");
+  }
+  if (weekStart > publishLimitDate) {
+    throw new Error("PUBLISH_WEEK_OUT_OF_RANGE");
+  }
+
+  return {
+    localToday,
+    publishLimitDate,
+    weekEndExclusive,
+  };
+}
+
 function assertWeekday(weekday: number) {
   if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) {
     throw new Error("INVALID_WEEKDAY");
@@ -86,15 +161,20 @@ function buildGenerationDates(params: {
   weekday: number;
   exclusions: Set<string>;
   fromDate: string;
-  horizonWeeks: number;
+  untilDate?: string | null;
+  horizonWeeks?: number;
 }) {
   const windowStart = params.fromDate > params.startsOn ? params.fromDate : params.startsOn;
-  const windowEnd = params.endsOn
-    ? params.endsOn <
-      toDateOnlyString(getDateRangeEnd(toDateOnlyUtc(params.fromDate), params.horizonWeeks))
-      ? params.endsOn
-      : toDateOnlyString(getDateRangeEnd(toDateOnlyUtc(params.fromDate), params.horizonWeeks))
-    : toDateOnlyString(getDateRangeEnd(toDateOnlyUtc(params.fromDate), params.horizonWeeks));
+  const horizonEnd =
+    params.untilDate ||
+    toDateOnlyString(
+      getDateRangeEnd(toDateOnlyUtc(params.fromDate), params.horizonWeeks || DEFAULT_DRAFT_HORIZON_WEEKS)
+    );
+  const windowEnd = clampDateStringToMinimum(params.endsOn || null, horizonEnd) || horizonEnd;
+
+  if (windowEnd < windowStart) {
+    return [];
+  }
 
   const dates: string[] = [];
   const cursor = toDateOnlyUtc(windowStart);
@@ -307,7 +387,12 @@ async function createMissingSessionsForRule(
       exclusions: true;
     };
   }>,
-  options?: { fromDate?: Date; horizonWeeks?: number; status?: ClassSessionStatus }
+  options?: {
+    fromDate?: Date;
+    untilDate?: string;
+    horizonWeeks?: number;
+    status?: ClassSessionStatus;
+  }
 ) {
   const { classDef, resolvedProfileEntryId, instructorNameSnapshot, instructorBioSnapshot } =
     await resolveRuleSnapshot(rule);
@@ -321,7 +406,8 @@ async function createMissingSessionsForRule(
     weekday: rule.weekday,
     exclusions: new Set(rule.exclusions.map((row) => toDateOnlyString(row.localDate))),
     fromDate,
-    horizonWeeks: options?.horizonWeeks || DEFAULT_HORIZON_WEEKS,
+    untilDate: options?.untilDate,
+    horizonWeeks: options?.horizonWeeks || DEFAULT_DRAFT_HORIZON_WEEKS,
   });
 
   const generationKeys = candidateDates.map((localDate) =>
@@ -399,7 +485,7 @@ async function createMissingSessionsForRule(
 
 export async function generateDraftSessionsForTimetableRule(
   timetableRuleId: string,
-  options?: { fromDate?: Date; horizonWeeks?: number }
+  options?: { fromDate?: Date; untilDate?: string; horizonWeeks?: number }
 ): Promise<DraftTimetableResultDto> {
   const rule = await db.classTimetableRule.findUnique({
     where: { id: timetableRuleId },
@@ -415,6 +501,7 @@ export async function generateDraftSessionsForTimetableRule(
 
   const result = await createMissingSessionsForRule(rule, {
     fromDate: options?.fromDate,
+    untilDate: options?.untilDate,
     horizonWeeks: options?.horizonWeeks,
     status: ClassSessionStatus.draft,
   });
@@ -629,7 +716,7 @@ export async function endClassTimetableRule(params: {
 
 export async function publishClassTimetableRule(
   timetableRuleId: string,
-  options?: { fromDate?: Date; horizonWeeks?: number }
+  options?: { fromDate?: Date; untilDate?: string; horizonWeeks?: number }
 ): Promise<PublishTimetableResultDto> {
   const rule = await db.classTimetableRule.findUnique({
     where: { id: timetableRuleId },
@@ -645,6 +732,7 @@ export async function publishClassTimetableRule(
 
   const draftResult = await createMissingSessionsForRule(rule, {
     fromDate: options?.fromDate,
+    untilDate: options?.untilDate,
     horizonWeeks: options?.horizonWeeks,
     status: ClassSessionStatus.draft,
   });
@@ -676,29 +764,57 @@ export async function publishClassTimetableRule(
     });
   }
 
-  let failedRoomSetupCount = 0;
-  for (const sessionId of draftSessions.map((session) => session.id)) {
-    const result = await setUpSessionRoom(sessionId);
-    if (result.status === "failed") {
-      failedRoomSetupCount += 1;
-    }
-  }
-
   return {
     draftCreatedSessionIds: draftResult.createdSessionIds,
     publishedSessionIds: draftSessions.map((session) => session.id),
     draftCreatedCount: draftResult.createdSessionIds.length,
     publishedCount: draftSessions.length,
     skippedExistingCount: draftResult.skippedExistingCount,
-    failedRoomSetupCount,
-    dailyConfigured: draftSessions.length > 0 ? failedRoomSetupCount < draftSessions.length : true,
+    failedRoomSetupCount: 0,
+    dailyConfigured: true,
+  };
+}
+
+export async function generateDraftSessionsForActiveClassTimetables(params: {
+  generateUntil: string;
+  fromDate?: Date;
+}) {
+  const now = params.fromDate || new Date();
+  validateGenerateUntilDate(params.generateUntil, now);
+
+  const activeRules = await db.classTimetableRule.findMany({
+    where: { active: true },
+    select: { id: true },
+  });
+
+  const results: Array<{ timetableRuleId: string; result: DraftTimetableResultDto }> = [];
+  for (const rule of activeRules) {
+    results.push({
+      timetableRuleId: rule.id,
+      result: await generateDraftSessionsForTimetableRule(rule.id, {
+        fromDate: now,
+        untilDate: params.generateUntil,
+      }),
+    });
+  }
+
+  return {
+    generateUntil: params.generateUntil,
+    timetableCount: activeRules.length,
+    createdCount: results.reduce((sum, row) => sum + row.result.createdCount, 0),
+    skippedExistingCount: results.reduce((sum, row) => sum + row.result.skippedExistingCount, 0),
+    results,
   };
 }
 
 export async function publishActiveClassTimetables(options?: {
   fromDate?: Date;
+  untilDate?: string;
   horizonWeeks?: number;
 }) {
+  const now = options?.fromDate || new Date();
+  const publishUntil = options?.untilDate || getPublishLimitDate(now);
+
   const activeRules = await db.classTimetableRule.findMany({
     where: { active: true },
     select: { id: true },
@@ -708,8 +824,57 @@ export async function publishActiveClassTimetables(options?: {
   for (const rule of activeRules) {
     results.push({
       timetableRuleId: rule.id,
-      result: await publishClassTimetableRule(rule.id, options),
+      result: await publishClassTimetableRule(rule.id, {
+        fromDate: now,
+        untilDate: publishUntil,
+        horizonWeeks: options?.horizonWeeks,
+      }),
     });
   }
-  return results;
+
+  return {
+    publishUntil,
+    timetableCount: activeRules.length,
+    publishedCount: results.reduce((sum, row) => sum + row.result.publishedCount, 0),
+    createdDraftCount: results.reduce((sum, row) => sum + row.result.draftCreatedCount, 0),
+    results,
+  };
+}
+
+export async function publishActiveClassTimetablesForWeek(params: {
+  weekStart: string;
+  fromDate?: Date;
+}) {
+  const now = params.fromDate || new Date();
+  const { localToday, publishLimitDate } = validatePublishWeekStart(params.weekStart, now);
+  const weekUntil = clampDateStringToMinimum(
+    shiftDateOnlyString(params.weekStart, 6),
+    publishLimitDate
+  ) || shiftDateOnlyString(params.weekStart, 6);
+  const publishFrom = params.weekStart > localToday ? params.weekStart : localToday;
+
+  const activeRules = await db.classTimetableRule.findMany({
+    where: { active: true },
+    select: { id: true },
+  });
+
+  const results: Array<{ timetableRuleId: string; result: PublishTimetableResultDto }> = [];
+  for (const rule of activeRules) {
+    results.push({
+      timetableRuleId: rule.id,
+      result: await publishClassTimetableRule(rule.id, {
+        fromDate: toDateOnlyUtc(publishFrom),
+        untilDate: weekUntil,
+      }),
+    });
+  }
+
+  return {
+    weekStart: params.weekStart,
+    publishUntil: weekUntil,
+    timetableCount: activeRules.length,
+    publishedCount: results.reduce((sum, row) => sum + row.result.publishedCount, 0),
+    createdDraftCount: results.reduce((sum, row) => sum + row.result.draftCreatedCount, 0),
+    results,
+  };
 }

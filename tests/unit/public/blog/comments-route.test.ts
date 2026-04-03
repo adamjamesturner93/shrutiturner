@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const isKnownBlogPostSlugMock = vi.fn();
 const requireSessionUserMock = vi.fn();
 const createBlogCommentMock = vi.fn();
 const isRateLimitedMock = vi.fn();
+
+vi.mock("@/lib/blog/post-validation", () => ({
+  isKnownBlogPostSlug: isKnownBlogPostSlugMock,
+}));
 
 vi.mock("@/lib/api/auth-user", () => ({
   requireSessionUser: requireSessionUserMock,
@@ -29,6 +34,7 @@ function createRequest(body?: Record<string, unknown>) {
 describe("POST /api/blog/[slug]/comments", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    isKnownBlogPostSlugMock.mockResolvedValue(true);
     requireSessionUserMock.mockResolvedValue({ id: "user_123" });
     isRateLimitedMock.mockReturnValue(false);
     createBlogCommentMock.mockResolvedValue({
@@ -48,6 +54,22 @@ describe("POST /api/blog/[slug]/comments", () => {
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toEqual({ message: "Unauthorized" });
+  });
+
+  it("returns 404 for an unknown blog post slug", async () => {
+    isKnownBlogPostSlugMock.mockResolvedValue(false);
+
+    const response = await route.POST(createRequest({ content: "Hello there" }), {
+      params: Promise.resolve({ slug: "missing-post" }),
+    });
+
+    expect(response.status).toBe(404);
+    expect(requireSessionUserMock).not.toHaveBeenCalled();
+    expect(isRateLimitedMock).not.toHaveBeenCalled();
+    expect(createBlogCommentMock).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toEqual({
+      message: "Blog post not found.",
+    });
   });
 
   it("rate limits repeated comment creation", async () => {

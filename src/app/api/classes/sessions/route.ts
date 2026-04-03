@@ -5,15 +5,15 @@ import { getScheduleGroupedByDay, listClassSessions } from "@/lib/classes/sessio
 
 type ParsedQuery =
   | {
-      success: true;
-      data: {
-        from?: string;
-        to?: string;
-        type?: string;
-        slug?: string;
-        groupByDay?: "true" | "false";
-      };
-    }
+    success: true;
+    data: {
+      from?: string;
+      to?: string;
+      type?: string;
+      slug?: string;
+      groupByDay?: "true" | "false";
+    };
+  }
   | { success: false };
 
 function parseQuery(searchParams: URLSearchParams): ParsedQuery {
@@ -61,10 +61,13 @@ function parseQuery(searchParams: URLSearchParams): ParsedQuery {
 
 export async function GET(request: Request) {
   try {
+    console.log("Enter request")
     const url = new URL(request.url);
+    console.log({ url: request.url })
     const session = await auth();
     const currentUserId = session?.user?.id || undefined;
     const parsed = parseQuery(url.searchParams);
+    console.log({ parsed, currentUserId })
 
     if (!parsed.success) {
       return NextResponse.json({ message: "Invalid query parameters" }, { status: 400 });

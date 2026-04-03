@@ -102,6 +102,14 @@ Move Well Membership terms, pricing, billing interval, and included benefits are
 
 Memberships renew automatically unless cancelled in accordance with the published cancellation rules.
 
+Before a membership checkout is completed, we provide subscription-specific pre-contract information covering price, renewal timing, reminder notices, cancellation method, and cooling-off rights.
+
+If you enter a membership online, you can also cancel it online from your membership dashboard.
+
+We send separate reminder and end-of-contract notices for memberships, including reminders before the free trial ends, before annual renewals, and periodic reminders for rolling monthly memberships.
+
+Memberships include statutory cooling-off rights where required by consumer law, including an initial cooling-off period after signup and further renewal cooling-off rights after trial conversion and annual renewals.
+
 Membership benefits are personal to the named account holder and cannot be transferred unless we expressly agree otherwise.
 
 9. Credit packs
@@ -486,7 +494,13 @@ Different services operate differently, so the specific product page and booking
 
 Memberships renew automatically until cancelled.
 
-If you cancel, your access usually continues until the end of the paid billing period unless stated otherwise in the product flow. Refunds are not generally given for partial membership periods that have already started, except where consumer law requires otherwise.
+You can cancel a membership online from your membership dashboard.
+
+If you cancel outside a statutory cooling-off period, your access usually continues until the end of the paid billing period unless stated otherwise in the product flow.
+
+If you cancel during an applicable statutory cooling-off period, we will process any refund required by consumer law. Where the law allows for a pro-rata deduction for services already supplied during a renewal cooling-off period, that deduction may be applied.
+
+We also send written cancellation acknowledgements and end-of-contract notices for memberships on a durable medium.
 
 3. Credit packs and class bookings
 

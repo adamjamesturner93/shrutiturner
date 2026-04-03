@@ -7,16 +7,19 @@ import {
   MembershipPlan,
   MembershipStatus,
 } from "@prisma/client";
+import { CURRENT_HEALTH_DATA_CONSENT_VERSION } from "@/data/legal-documents";
 import { db } from "@/lib/db";
 
 const {
   sendBookingConfirmationMock,
   sendClassCancellationMock,
+  sendClassUnbookingMock,
   sendClassReminderMock,
   sendInstructorNotificationMock,
 } = vi.hoisted(() => ({
   sendBookingConfirmationMock: vi.fn().mockResolvedValue({ success: true }),
   sendClassCancellationMock: vi.fn().mockResolvedValue({ success: true }),
+  sendClassUnbookingMock: vi.fn().mockResolvedValue({ success: true }),
   sendClassReminderMock: vi.fn().mockResolvedValue({ success: true }),
   sendInstructorNotificationMock: vi.fn().mockResolvedValue({ success: true }),
 }));
@@ -24,6 +27,7 @@ const {
 vi.mock("@/lib/email", () => ({
   sendBookingConfirmation: sendBookingConfirmationMock,
   sendClassCancellation: sendClassCancellationMock,
+  sendClassUnbooking: sendClassUnbookingMock,
   sendClassReminder: sendClassReminderMock,
   sendInstructorNotification: sendInstructorNotificationMock,
 }));
@@ -116,6 +120,9 @@ async function createUser(label: string, firstName: string, role: "admin" | "stu
       timezone: "Europe/London",
       dateFormat: "DD/MM/YYYY",
       isOnboarded: true,
+      hasConsentedToHealthData: true,
+      acceptedHealthDataConsentVersion: CURRENT_HEALTH_DATA_CONSENT_VERSION,
+      healthDataConsentedAt: new Date(),
     },
   });
 
@@ -126,6 +133,13 @@ async function createUser(label: string, firstName: string, role: "admin" | "stu
       scheduleUpdates: true,
       programAnnouncements: true,
       marketingEmails: false,
+    },
+  });
+
+  await db.healthProfile.create({
+    data: {
+      userId: user.id,
+      declarationStatus: "none_declared",
     },
   });
 
@@ -145,6 +159,8 @@ describe("three-hour cutoff booking flows", () => {
   it("emails the instructor on first signup for a previously empty class", async () => {
     const instructor = await createUser("instructor", "Shruti", "admin");
     const member = await createUser("member", "Ava");
+    const startsAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    const endsAt = new Date(startsAt.getTime() + 45 * 60 * 1000);
 
     await db.membershipSubscription.create({
       data: {
@@ -168,8 +184,8 @@ describe("three-hour cutoff booking flows", () => {
         typeSnapshot: "Strength",
         levelSnapshot: "Adaptive",
         durationMinutes: 45,
-        startsAtUtc: new Date("2026-03-24T18:00:00.000Z"),
-        endsAtUtc: new Date("2026-03-24T18:45:00.000Z"),
+        startsAtUtc: startsAt,
+        endsAtUtc: endsAt,
         timezone: "Europe/London",
         capacity: 10,
         status: ClassSessionStatus.scheduled,

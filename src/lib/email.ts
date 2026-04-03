@@ -5,6 +5,8 @@ import ClassReminderEmail from "../emails/class-reminder";
 import PurchaseConfirmationEmail from "../emails/purchase-confirmation";
 import InstructorNotificationEmail from "../emails/instructor-notification";
 import ClassCancellationEmail from "../emails/class-cancellation";
+import ClassUnbookingEmail from "../emails/class-unbooking";
+import SubscriptionNoticeEmail from "../emails/subscription-notice";
 import NewsletterEmail from "../emails/newsletter";
 import { sendPostmarkReactEmail } from "@/lib/postmark/client";
 import { getClassOperationalSettings } from "@/lib/classes/settings-service";
@@ -115,6 +117,7 @@ export async function sendBookingConfirmation(
     await sendPostmarkReactEmail({
       to: email,
       subject: `Booking confirmed: ${className}`,
+      category: "transactional",
       react,
       textBody: `Hi ${firstName},\n\nYour booking is confirmed for ${className} on ${formattedDate} at ${formattedTime}.\n\nManage your booking: ${APP_URL}/dashboard/schedule`,
       tag: "class-booking-confirmation",
@@ -164,6 +167,7 @@ export async function sendClassReminder(
     await sendPostmarkReactEmail({
       to: email,
       subject: `Reminder: ${className} starts soon`,
+      category: "transactional",
       react,
       textBody: `Hi ${firstName},\n\nThis is a reminder that ${className} begins at ${formattedTime}.\n\nJoin class: ${joinLink || `${APP_URL}/dashboard/schedule`}`,
       tag: "class-reminder",
@@ -203,6 +207,55 @@ export async function sendPurchaseConfirmation(
     return { success: true };
   } catch (error) {
     console.error("Failed to send purchase confirmation", error);
+    return { success: false, error };
+  }
+}
+
+export async function sendSubscriptionNoticeEmail(params: {
+  email: string;
+  firstName: string;
+  subject: string;
+  preview: string;
+  title: string;
+  paragraphs: string[];
+  tag: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  footnote?: string;
+  metadata?: Record<string, string>;
+}) {
+  try {
+    const react = SubscriptionNoticeEmail({
+      preview: params.preview,
+      title: params.title,
+      firstName: params.firstName,
+      paragraphs: params.paragraphs,
+      ctaLabel: params.ctaLabel,
+      ctaUrl: params.ctaUrl,
+      footnote: params.footnote,
+    });
+
+    await sendPostmarkReactEmail({
+      to: params.email,
+      subject: params.subject,
+      category: "transactional",
+      react,
+      textBody: [`Hi ${params.firstName},`, "", ...params.paragraphs]
+        .concat(
+          params.ctaLabel && params.ctaUrl ? ["", `${params.ctaLabel}: ${params.ctaUrl}`] : [],
+          params.footnote ? ["", params.footnote] : []
+        )
+        .join("\n"),
+      tag: params.tag,
+      metadata: {
+        emailType: params.tag,
+        ...(params.metadata || {}),
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send subscription notice email", error);
     return { success: false, error };
   }
 }
@@ -258,6 +311,7 @@ export async function sendInstructorNotification(
           : type === "no-attendance-cancelled"
             ? `Class cancelled: ${className}`
             : `Class empty: ${className}`,
+      category: "transactional",
       react,
       textBody: `${className}\nDate: ${formattedDate}\nTime: ${formattedTime}\nAttendees: ${attendeeCount}\nRoster: ${APP_URL}/admin/classes`,
       tag: `instructor-${type}`,
@@ -291,21 +345,25 @@ export async function sendClassCancellation(
   classTime: string,
   isInstructorInitiated: boolean,
   /** User's saved i18n preferences */
-  userPrefs: I18nPreferences = DEFAULT_PREFS
+  userPrefs: I18nPreferences = DEFAULT_PREFS,
+  startsAt: Date = new Date(classDate),
+  durationMinutes = 60
 ) {
   try {
     const invite = buildCalendarInvite({
       eventName: className,
-      startTime: new Date(classDate),
-      durationMinutes: 60,
+      startTime: startsAt,
+      durationMinutes,
       description: "This calendar event has been cancelled.",
       method: "CANCEL",
     });
+    const formattedDate = formatDate(startsAt, userPrefs);
+    const formattedTime = formatTime(startsAt, userPrefs);
     const react = ClassCancellationEmail({
       firstName,
       className,
-      classDate: formatDate(classDate, userPrefs),
-      classTime: formatTimeString(classTime, userPrefs),
+      classDate: formattedDate,
+      classTime: formattedTime,
       cancellationReason: isInstructorInitiated
         ? "This class has been cancelled by your instructor."
         : "This class booking was cancelled.",
@@ -315,8 +373,9 @@ export async function sendClassCancellation(
     await sendPostmarkReactEmail({
       to: email,
       subject: `Class cancelled: ${className}`,
+      category: "transactional",
       react,
-      textBody: `Hi ${firstName},\n\n${className} on ${formatDate(classDate, userPrefs)} at ${formatTimeString(classTime, userPrefs)} has been cancelled.\n\nView available classes: ${APP_URL}/schedule`,
+      textBody: `Hi ${firstName},\n\n${className} on ${formattedDate} at ${formattedTime} has been cancelled.\n\nView available classes: ${APP_URL}/schedule`,
       tag: "class-cancellation",
       metadata: {
         className,
@@ -333,6 +392,61 @@ export async function sendClassCancellation(
     return { success: true };
   } catch (error) {
     console.error("Failed to send class cancellation", error);
+    return { success: false, error };
+  }
+}
+
+export async function sendClassUnbooking(
+  email: string,
+  firstName: string,
+  className: string,
+  classDate: string,
+  classTime: string,
+  classDateObj: Date = new Date(),
+  durationMinutes = 60,
+  userPrefs: I18nPreferences = DEFAULT_PREFS
+) {
+  try {
+    const formattedDate = formatDate(classDateObj, userPrefs);
+    const formattedTime = formatTime(classDateObj, userPrefs);
+    const invite = buildCalendarInvite({
+      eventName: className,
+      startTime: classDateObj,
+      durationMinutes,
+      description: "This calendar booking has been cancelled.",
+      method: "CANCEL",
+    });
+    const react = ClassUnbookingEmail({
+      firstName,
+      className,
+      classDate: formattedDate,
+      classTime: formattedTime || formatTimeString(classTime, userPrefs),
+      rebookUrl: `${APP_URL}/dashboard/schedule`,
+    });
+
+    await sendPostmarkReactEmail({
+      to: email,
+      subject: `Booking cancelled: ${className}`,
+      category: "transactional",
+      react,
+      textBody: `Hi ${firstName},\n\nYour booking for ${className} on ${formattedDate} at ${formattedTime} has been cancelled.\n\nBrowse upcoming classes: ${APP_URL}/dashboard/schedule`,
+      tag: "class-unbooking",
+      metadata: {
+        className,
+        emailType: "class-unbooking",
+        classDate,
+      },
+      attachments: [
+        {
+          name: "class-unbook.ics",
+          content: Buffer.from(invite).toString("base64"),
+          contentType: "text/calendar",
+        },
+      ],
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send class unbooking confirmation", error);
     return { success: false, error };
   }
 }

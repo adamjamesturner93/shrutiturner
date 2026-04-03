@@ -9,6 +9,7 @@ import { Button } from "../components/ui/button";
 import {
   EditorialHero,
   MarketingSection,
+  PreFooterCtaSection,
   ProofBand,
   SectionHeading,
 } from "@/components/marketing/sections";
@@ -347,21 +348,11 @@ export function ClassesSmallGroupsPage({ programmes = [] }: ClassesSmallGroupsPa
         )}
       </MarketingSection>
 
-      <MarketingSection className="bg-brand-accent text-brand-white">
-        <div className="grid gap-8 lg:grid-cols-[0.88fr_1.12fr] lg:items-center">
-          <div>
-            <p className="text-brand-white text-xs tracking-[0.2em] uppercase">
-              Early notice
-            </p>
-            <h2 className="mt-4 text-3xl leading-tight md:text-5xl">
-              Join the list if you want first notice when the next cohort opens.
-            </h2>
-            <p className="text-brand-white/84 mt-5 max-w-2xl text-lg leading-relaxed">
-              New programme blocks often fill quietly from the waitlist first. The newsletter is the
-              easiest way to hear about new dates before they disappear into the wider feed.
-            </p>
-          </div>
-
+      <PreFooterCtaSection
+        eyebrow="Early notice"
+        title="Join the list if you want first notice when the next cohort opens."
+        description="New programme blocks often fill quietly from the waitlist first. The newsletter is the easiest way to hear about new dates before they disappear into the wider feed."
+        aside={
           <div className="bg-background text-foreground rounded-[1.8rem] p-7 shadow-[0_22px_55px_rgba(37,24,47,0.12)]">
             <p className="text-brand-accent text-xs tracking-[0.18em] uppercase">
               Join the waitlist
@@ -374,8 +365,8 @@ export function ClassesSmallGroupsPage({ programmes = [] }: ClassesSmallGroupsPa
               <NewsletterInline />
             </div>
           </div>
-        </div>
-      </MarketingSection>
+        }
+      />
     </Layout>
   );
 }

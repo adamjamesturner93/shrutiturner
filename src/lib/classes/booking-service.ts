@@ -10,6 +10,7 @@ import { db } from "@/lib/db";
 import {
   sendBookingConfirmation,
   sendClassCancellation,
+  sendClassUnbooking,
   sendClassReminder,
   sendInstructorNotification,
 } from "@/lib/email";
@@ -25,6 +26,8 @@ import {
   isInsideEmptyClassAutoCancelWindow,
   shouldRefundCreditForCancellation,
 } from "@/lib/classes/settings-service";
+import { setUpSessionRoom, tearDownSessionRoom } from "@/lib/classes/session-service";
+import { getHealthAccessState } from "@/lib/health/health-service";
 const DATE_FORMAT_PREFERENCES: DateFormatPreference[] = ["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"];
 
 function toDateFormatPreference(value: string | null | undefined): DateFormatPreference {
@@ -248,6 +251,19 @@ async function notifyInstructorOfFirstSignup(sessionId: string, attendeeUserId: 
   );
 }
 
+async function handleFirstBookedAttendee(sessionId: string, attendeeUserId: string) {
+  const results = await Promise.allSettled([
+    setUpSessionRoom(sessionId),
+    notifyInstructorOfFirstSignup(sessionId, attendeeUserId),
+  ]);
+
+  for (const result of results) {
+    if (result.status === "rejected") {
+      console.error("Failed to process first booked attendee side effects", result.reason);
+    }
+  }
+}
+
 async function autoCancelClassSessionForNoAttendance(sessionId: string, now = new Date()) {
   const session = await db.classSession.findUnique({
     where: { id: sessionId },
@@ -321,6 +337,14 @@ async function autoCancelClassSessionForNoAttendance(sessionId: string, now = ne
       session.startsAtUtc,
       session.durationMinutes
     );
+  }
+
+  const roomTeardown = await tearDownSessionRoom(sessionId).catch((error) => ({
+    status: "failed" as const,
+    message: error instanceof Error ? error.message : "Failed to close Daily room",
+  }));
+  if (roomTeardown.status === "failed") {
+    console.error("Failed to tear down Daily room for auto-cancelled session", roomTeardown.message);
   }
 
   return { alreadyCancelled: false, removedWaitlist: session.waitlist.length };
@@ -420,7 +444,7 @@ async function promoteFirstWaitlisted(sessionId: string) {
   }
 
   if (bookedCountBeforePromotion === 0) {
-    await notifyInstructorOfFirstSignup(sessionId, waiting.userId);
+    await handleFirstBookedAttendee(sessionId, waiting.userId);
   }
 
   return promotedBooking;
@@ -430,6 +454,11 @@ export async function bookClassSession(
   sessionId: string,
   userId: string
 ): Promise<BookSessionResultDto> {
+  const healthAccess = await getHealthAccessState(userId);
+  if (!healthAccess.isComplete) {
+    throw new Error("HEALTH_DECLARATION_REQUIRED");
+  }
+
   const session = await db.classSession.findUnique({
     where: { id: sessionId },
     include: {
@@ -537,7 +566,7 @@ export async function bookClassSession(
     }
 
     if (activeBookings === 0) {
-      await notifyInstructorOfFirstSignup(sessionId, userId);
+      await handleFirstBookedAttendee(sessionId, userId);
     }
 
     return {
@@ -612,7 +641,12 @@ async function cancelBookingForUser(
   const now = new Date();
   const session = await db.classSession.findUnique({
     where: { id: sessionId },
-    select: { startsAtUtc: true, status: true },
+    select: {
+      startsAtUtc: true,
+      status: true,
+      titleSnapshot: true,
+      durationMinutes: true,
+    },
   });
 
   let refundedCredit = false;
@@ -680,6 +714,35 @@ async function cancelBookingForUser(
     !isInsideEmptyClassAutoCancelWindow(session.startsAtUtc, settings, now)
   ) {
     promoted = await promoteFirstWaitlisted(sessionId);
+  }
+
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: {
+      email: true,
+      firstName: true,
+      name: true,
+      timezone: true,
+      dateFormat: true,
+    },
+  });
+
+  if (user?.email && session) {
+    await Promise.allSettled([
+      sendClassUnbooking(
+        user.email,
+        user.firstName || user.name || "there",
+        session.titleSnapshot,
+        session.startsAtUtc.toISOString().slice(0, 10),
+        session.startsAtUtc.toISOString().slice(11, 16),
+        session.startsAtUtc,
+        session.durationMinutes,
+        {
+          timezone: user.timezone || "Europe/London",
+          dateFormat: toDateFormatPreference(user.dateFormat),
+        }
+      ),
+    ]);
   }
 
   return {
@@ -760,6 +823,14 @@ export async function cancelClassSession(
     waitlistCount: session.waitlist.length,
   });
 
+  const roomTeardown = await tearDownSessionRoom(sessionId).catch((error) => ({
+    status: "failed" as const,
+    message: error instanceof Error ? error.message : "Failed to close Daily room",
+  }));
+  if (roomTeardown.status === "failed") {
+    console.error("Failed to tear down Daily room for cancelled session", roomTeardown.message);
+  }
+
   const users = await db.user.findMany({
     where: {
       id: {
@@ -771,18 +842,33 @@ export async function cancelClassSession(
         ),
       },
     },
+    select: {
+      email: true,
+      firstName: true,
+      name: true,
+      timezone: true,
+      dateFormat: true,
+    },
   });
 
-  for (const user of users) {
-    void sendClassCancellation(
-      user.email,
-      user.firstName || user.name || "there",
-      session.titleSnapshot,
-      session.startsAtUtc.toISOString().slice(0, 10),
-      session.startsAtUtc.toISOString().slice(11, 16),
-      true
-    );
-  }
+  await Promise.allSettled(
+    users.map((user) =>
+      sendClassCancellation(
+        user.email,
+        user.firstName || user.name || "there",
+        session.titleSnapshot,
+        session.startsAtUtc.toISOString().slice(0, 10),
+        session.startsAtUtc.toISOString().slice(11, 16),
+        true,
+        {
+          timezone: user.timezone || "Europe/London",
+          dateFormat: toDateFormatPreference(user.dateFormat),
+        },
+        session.startsAtUtc,
+        session.durationMinutes
+      )
+    )
+  );
 
   return {
     alreadyCancelled: false,

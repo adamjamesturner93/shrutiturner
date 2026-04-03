@@ -18,6 +18,7 @@ import {
   EditorialHero,
   JourneySection,
   MarketingSection,
+  PreFooterCtaSection,
   ProofBand,
   SectionHeading,
   StorySplit,
@@ -385,43 +386,25 @@ export function CoachingPage() {
         </div>
       </MarketingSection>
 
-      <MarketingSection className="bg-brand-dark text-brand-white">
-        <div className="grid gap-8 md:grid-cols-[1.02fr_0.98fr] md:items-center">
-          <div>
-            <p className="text-brand-accent-light text-xs tracking-[0.2em] uppercase">Next step</p>
-            <h2 className="mt-4 text-3xl leading-tight md:text-5xl">
-              If you want coaching that respects complexity, start the conversation.
-            </h2>
-            <p className="text-brand-white/80 mt-5 max-w-2xl text-lg leading-relaxed">
-              The right tier depends on how much support, review, and strategic input your body and
-              life currently need.
-            </p>
-          </div>
-          <div className="flex flex-col gap-4 sm:flex-row md:justify-end">
-            <Button
-              asChild
-              size="lg"
-              className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
-            >
-              <Link href="/coaching/apply">
-                <Sparkles className="h-4 w-4" />
-                Apply for coaching
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="border-brand-white/20 bg-brand-white/6 text-brand-white hover:bg-brand-white/10"
-            >
-              <Link href="/contact">
-                <ArrowRight className="h-4 w-4" />
-                Ask a question
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </MarketingSection>
+      <PreFooterCtaSection
+        eyebrow="Next step"
+        title="If you want coaching that respects complexity, start the conversation."
+        description="The right tier depends on how much support, review, and strategic input your body and life currently need."
+        actions={[
+          {
+            href: "/coaching/apply",
+            label: "Apply for coaching",
+            icon: Sparkles,
+            iconPosition: "start",
+          },
+          {
+            href: "/contact",
+            label: "Ask a question",
+            icon: ArrowRight,
+            variant: "secondary",
+          },
+        ]}
+      />
     </Layout>
   );
 }

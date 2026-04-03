@@ -9,12 +9,31 @@ import { Button } from "../../components/ui/button";
 import { PreJoinLobby } from "../../components/video/pre-join-lobby";
 import { VideoRoom, type RoomMode } from "../../components/video/video-room";
 import { SEO } from "../../components/seo";
-import { useAuth } from "../../context/auth-context";
-import type { ClassSessionDetailDto, ClassSessionListItemDto } from "@/lib/api/types";
+import { useAuth } from "@/context/auth-context";
+import type {
+  ClassSessionDetailDto,
+  ClassSessionListItemDto,
+  PostClassFeelingDto,
+  SessionFeedbackRequestDto,
+} from "@/lib/api/types";
 import { getClassSessionRoomMode } from "@/lib/classes/room-mode";
 import type { ClassDefinitionContent } from "@/lib/content";
 
-type Stage = "too-early" | "access-denied" | "late-denied" | "pre-join" | "live" | "post-class";
+type Stage =
+  | "too-early"
+  | "access-denied"
+  | "late-denied"
+  | "pre-join"
+  | "live"
+  | "post-class";
+const NEXT_WEEK_FALLBACK_HREF = "/dashboard/schedule?wk=1";
+const FEELING_OPTIONS: Array<{ value: PostClassFeelingDto; label: string }> = [
+  { value: "great", label: "Great" },
+  { value: "good", label: "Good" },
+  { value: "okay", label: "Okay" },
+  { value: "tough", label: "Tough" },
+  { value: "too-much", label: "Too much" },
+];
 
 function getNextClassDatetime(day: string, time: string): Date {
   const dayMap: Record<string, number> = {
@@ -46,7 +65,7 @@ export function DashboardClassJoin({
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { submitPostClassFeedback } = useAuth();
+  const { user } = useAuth();
   const cls = classDetail && classDetail.slug === id ? classDetail : undefined;
   const sessionId = searchParams.get("sessionId");
   const [activeSession, setActiveSession] = useState<ClassSessionDetailDto | null>(null);
@@ -55,8 +74,11 @@ export function DashboardClassJoin({
   const [initialCameraOn, setInitialCameraOn] = useState(true);
   const [preClassEnergy, setPreClassEnergy] = useState<number | null>(null);
   const [preClassFlare, setPreClassFlare] = useState(false);
-  const [postClassFeeling, setPostClassFeeling] = useState<string | null>(null);
+  const [postClassFeeling, setPostClassFeeling] = useState<PostClassFeelingDto | null>(null);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [feedbackError, setFeedbackError] = useState("");
+  const [isSubmittingFeeling, setIsSubmittingFeeling] = useState(false);
+  const [nextBookingHref, setNextBookingHref] = useState(NEXT_WEEK_FALLBACK_HREF);
   const liveHref = useMemo(() => {
     const params = new URLSearchParams();
     if (sessionId) params.set("sessionId", sessionId);
@@ -154,7 +176,70 @@ export function DashboardClassJoin({
     classType: activeSession?.type || cls?.type || "",
     capacity: activeSession?.capacity || cls?.maxSpaces || 0,
   });
+  const checkInMode =
+    activeSession?.currentUserCheckInMode ||
+    (user?.healthDeclarationStatus === "context_declared" && user.tracksFlareCheckIns
+      ? "energy_and_flare"
+      : "energy_only");
   const isLiveStageRequested = searchParams.get("stage") === "live";
+
+  useEffect(() => {
+    if (stage !== "post-class" || !cls?.slug) return;
+
+    let active = true;
+
+    void (async () => {
+      try {
+        const response = await fetch(
+          `/api/classes/sessions?slug=${encodeURIComponent(cls.slug)}`,
+          {
+            cache: "no-store",
+          }
+        );
+        if (!response.ok) return;
+        const payload = (await response.json()) as ClassSessionListItemDto[];
+        if (!active) return;
+        const nextSession = payload.find((item) => item.id !== activeSession?.id);
+        setNextBookingHref(
+          nextSession
+            ? `/dashboard/classes/${cls.slug}?sessionId=${encodeURIComponent(nextSession.id)}`
+            : NEXT_WEEK_FALLBACK_HREF
+        );
+      } catch {
+        if (active) setNextBookingHref(NEXT_WEEK_FALLBACK_HREF);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [activeSession?.id, cls?.slug, stage]);
+
+  const submitSessionFeedback = async (input: SessionFeedbackRequestDto) => {
+    if (!activeSession) return;
+
+    const response = await fetch(`/api/classes/sessions/${activeSession.id}/feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => ({}))) as { message?: string };
+      throw new Error(payload.message || "Failed to save feedback.");
+    }
+  };
+
+  const handlePreClassSelection = (energyLevel: 1 | 2 | 3 | 4 | 5) => {
+    setPreClassEnergy(energyLevel);
+    void submitSessionFeedback({
+      stage: "pre",
+      energyLevel,
+      flareToday: checkInMode === "energy_and_flare" ? preClassFlare : false,
+    }).catch(() => {
+      // Check-in should never block entry to the room.
+    });
+  };
 
   if (loadingSession) {
     return (
@@ -229,6 +314,25 @@ export function DashboardClassJoin({
     );
   }
 
+  if (
+    user &&
+    (user.healthDeclarationStatus === "incomplete" ||
+      !user.hasConsentedToHealthData ||
+      user.needsHealthDataConsentRefresh)
+  ) {
+    return (
+      <DashboardLayout title="Health Declaration Required">
+        <JoinGateState
+          icon={<AlertCircle className="h-8 w-8 text-amber-500" />}
+          title="Complete your health declaration first"
+          body="Before you join class, update your health declaration so Shruti has the right context for safe adaptations."
+          primaryHref="/dashboard/health"
+          primaryLabel="Complete Health Declaration"
+        />
+      </DashboardLayout>
+    );
+  }
+
   if (isLiveStageRequested && activeSession) {
     return (
       <>
@@ -282,7 +386,7 @@ export function DashboardClassJoin({
                   {[1, 2, 3, 4, 5].map((level) => (
                     <button
                       key={level}
-                      onClick={() => setPreClassEnergy(level)}
+                      onClick={() => handlePreClassSelection(level as 1 | 2 | 3 | 4 | 5)}
                       className="border-border hover:border-brand-accent flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm transition-colors"
                     >
                       {level}
@@ -290,18 +394,22 @@ export function DashboardClassJoin({
                   ))}
                 </div>
               </div>
+              {checkInMode === "energy_and_flare" ? (
+                <button
+                  onClick={() => setPreClassFlare((value) => !value)}
+                  className={`w-full rounded-lg border py-2 text-sm transition-colors ${
+                    preClassFlare
+                      ? "border-amber-300 bg-amber-50 text-amber-700"
+                      : "border-border text-muted-foreground hover:border-amber-200"
+                  }`}
+                >
+                  {preClassFlare
+                    ? "Flare or symptom spike today"
+                    : "Any flare or symptom spike today?"}
+                </button>
+              ) : null}
               <button
-                onClick={() => setPreClassFlare((value) => !value)}
-                className={`w-full rounded-lg border py-2 text-sm transition-colors ${
-                  preClassFlare
-                    ? "border-amber-300 bg-amber-50 text-amber-700"
-                    : "border-border text-muted-foreground hover:border-amber-200"
-                }`}
-              >
-                {preClassFlare ? "Flare day" : "Experiencing a flare?"}
-              </button>
-              <button
-                onClick={() => setPreClassEnergy(3)}
+                onClick={() => handlePreClassSelection(3)}
                 className="text-muted-foreground hover:text-foreground w-full text-center text-xs transition-colors"
               >
                 Skip check-in
@@ -337,14 +445,6 @@ export function DashboardClassJoin({
     );
   }
 
-  const FEELING_OPTIONS = [
-    { value: "great", label: "Great" },
-    { value: "good", label: "Good" },
-    { value: "okay", label: "Okay" },
-    { value: "tough", label: "Tough" },
-    { value: "too-much", label: "Too much" },
-  ];
-
   return (
     <div className="bg-video-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4">
       <SEO title={`${cls.name} - Session Ended - Shruti Turner`} noIndex />
@@ -367,10 +467,24 @@ export function DashboardClassJoin({
             {FEELING_OPTIONS.map((option) => (
               <button
                 key={option.value}
-                onClick={() => {
+                disabled={isSubmittingFeeling}
+                onClick={async () => {
                   setPostClassFeeling(option.value);
-                  submitPostClassFeedback(`att_${Date.now()}`, { feeling: option.value as never });
-                  setFeedbackSubmitted(true);
+                  setFeedbackError("");
+                  setIsSubmittingFeeling(true);
+                  try {
+                    await submitSessionFeedback({
+                      stage: "post",
+                      feeling: option.value,
+                    });
+                    setFeedbackSubmitted(true);
+                  } catch (error) {
+                    setFeedbackError(
+                      error instanceof Error ? error.message : "Failed to save feedback."
+                    );
+                  } finally {
+                    setIsSubmittingFeeling(false);
+                  }
                 }}
                 className={`rounded-lg border px-3 py-2 text-xs transition-colors ${
                   postClassFeeling === option.value
@@ -383,10 +497,25 @@ export function DashboardClassJoin({
             ))}
           </div>
         ) : null}
+        {feedbackError ? <p className="text-sm text-red-300">{feedbackError}</p> : null}
         <div className="space-y-3">
+          {feedbackSubmitted ? (
+            <Button
+              onClick={() => router.push(nextBookingHref)}
+              className="bg-brand-accent hover:bg-brand-accent/90 w-full text-white"
+            >
+              <Calendar className="mr-2 h-4 w-4" />
+              Book next week
+            </Button>
+          ) : null}
           <Button
             onClick={() => router.push("/dashboard/schedule")}
-            className="bg-brand-accent hover:bg-brand-accent/90 w-full text-white"
+            variant={feedbackSubmitted ? "outline" : "default"}
+            className={
+              feedbackSubmitted
+                ? "w-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                : "bg-brand-accent hover:bg-brand-accent/90 w-full text-white"
+            }
           >
             <Calendar className="mr-2 h-4 w-4" />
             Back to Schedule

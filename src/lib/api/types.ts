@@ -18,11 +18,17 @@ export type ReferralSummaryDto = {
   history: ReferralHistoryItemDto[];
 };
 
+export type HealthDeclarationStatusDto = "incomplete" | "none_declared" | "context_declared";
+
 export type HealthProfileDto = {
+  declarationStatus: HealthDeclarationStatusDto;
   conditions: Record<string, boolean>;
   details: Record<string, string>;
+  tracksFlareCheckIns: boolean;
   additionalNotes: string;
+  lastConfirmedAt: string;
   lastUpdated: string;
+  needsReview: boolean;
 };
 
 export type NotificationPreferencesDto = {
@@ -42,6 +48,10 @@ export type AccountProfileDto = {
   email: string;
   isCoachingClient: boolean;
   hasHealthProfile: boolean;
+  healthDeclarationStatus: HealthDeclarationStatusDto;
+  healthDeclarationLastConfirmedAt: string;
+  healthDeclarationNeedsReview: boolean;
+  tracksFlareCheckIns: boolean;
   dob: string | null;
   gender: string | null;
   ethnicity: string | null;
@@ -72,6 +82,41 @@ export type AccountDto = {
   profile: AccountProfileDto;
   notifications: NotificationPreferencesDto;
   referral: ReferralSummaryDto;
+};
+
+export type PostClassFeelingDto = "great" | "good" | "okay" | "tough" | "too-much";
+
+export type AccountActivityItemDto = {
+  bookingId: string;
+  sessionId: string;
+  classSlug: string;
+  className: string;
+  classType: string;
+  startsAtUtc: string;
+  flareToday: boolean;
+  postClassFeeling: PostClassFeelingDto | null;
+};
+
+export type AccountActivityDto = {
+  attendedCount: number;
+  totalCount: number;
+  items: AccountActivityItemDto[];
+};
+
+export type SessionFeedbackRequestDto =
+  | {
+      stage: "pre";
+      energyLevel: 1 | 2 | 3 | 4 | 5;
+      flareToday?: boolean;
+    }
+  | {
+      stage: "post";
+      feeling: PostClassFeelingDto;
+    };
+
+export type SessionFeedbackResponseDto = {
+  bookingId: string;
+  stage: "pre" | "post";
 };
 
 export type OnboardingStateDto = {
@@ -259,6 +304,16 @@ export type MembershipStateDto = {
     cancelAtPeriodEnd: boolean;
     accessActive: boolean;
     endsAt: string | null;
+    compliance: {
+      disclosureVersion: string | null;
+      disclosureAcceptedAt: string | null;
+      inInitialCoolingOff: boolean;
+      inRenewalCoolingOff: boolean;
+      trialEndsAt: string | null;
+      initialCoolingOffEndsAt: string | null;
+      renewalCoolingOffEndsAt: string | null;
+      renewalCoolingOffKind: "trial_conversion" | "annual_renewal" | null;
+    };
   } | null;
   credits: {
     balance: number;
@@ -272,6 +327,23 @@ export type MembershipStateDto = {
   referral: {
     balancePence: number;
   };
+  complianceHistory: Array<{
+    id: string;
+    kind:
+      | "disclosure_acknowledged"
+      | "trial_reminder"
+      | "monthly_reminder"
+      | "annual_renewal_reminder"
+      | "renewal_cooling_off_notice"
+      | "end_of_contract_notice"
+      | "membership_cancelled"
+      | "cooling_off_cancellation"
+      | "refund_issued";
+    status: string;
+    channel: string;
+    summary: string;
+    eventAt: string;
+  }>;
 };
 
 export type CreditCheckoutResponseDto = {
@@ -321,6 +393,9 @@ export type BillingHistoryItemDto = {
 
 export type DashboardSummaryDto = {
   hasHealthProfile: boolean;
+  healthDeclarationStatus: HealthDeclarationStatusDto;
+  healthDeclarationLastConfirmedAt: string;
+  healthDeclarationNeedsReview: boolean;
   upcomingClasses: Array<{
     bookingId: string;
     sessionId: string;
@@ -408,10 +483,12 @@ export type ClassSessionListItemDto = {
   preJoinWindowMinutes: number;
   lateJoinCutoffMinutes: number;
   lateJoinCutoffAt: string;
+  emptyClassAutoCancelWindowMinutes: number;
   isBookedByCurrentUser: boolean;
   myBookingStatus: "booked" | "cancelled" | "attended" | "no_show" | null;
   hasPreviouslyJoinedCurrentUser: boolean;
   waitlistPosition: number | null;
+  currentUserCheckInMode?: "energy_only" | "energy_and_flare";
 };
 
 export type ClassBookingDto = {
@@ -429,6 +506,9 @@ export type ClassBookingDto = {
   attendanceSource: "daily" | "manual" | null;
   healthConditions: string[];
   attendedClassesCount: number;
+  preClassEnergyLevel: 1 | 2 | 3 | 4 | 5 | null;
+  preClassFlareToday: boolean;
+  preClassSubmittedAt: string | null;
 };
 
 export type ClassWaitlistDto = {

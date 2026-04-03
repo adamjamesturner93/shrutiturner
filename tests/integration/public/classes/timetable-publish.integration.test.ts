@@ -29,7 +29,9 @@ vi.mock("@/lib/daily/service", () => ({
 
 import {
   createClassTimetableRule,
+  generateDraftSessionsForActiveClassTimetables,
   generateDraftSessionsForTimetableRule,
+  publishActiveClassTimetablesForWeek,
   publishClassTimetableRule,
 } from "@/lib/classes/timetable-service";
 
@@ -110,7 +112,7 @@ describe("draft and publish timetable sessions", () => {
     await cleanupRows();
   });
 
-  it("creates draft sessions first, then publishes them with Daily room state", async () => {
+  it("creates draft sessions first, then publishes them without creating Daily rooms", async () => {
     const admin = await db.user.create({
       data: {
         email: createUserEmail("admin"),
@@ -194,7 +196,7 @@ describe("draft and publish timetable sessions", () => {
     expect(firstPublish.publishedCount).toBe(3);
     expect(firstPublish.skippedExistingCount).toBe(3);
     expect(firstPublish.failedRoomSetupCount).toBe(0);
-    expect(createSessionRoomMock).toHaveBeenCalledTimes(3);
+    expect(createSessionRoomMock).not.toHaveBeenCalled();
 
     const publishedSessions = await db.classSession.findMany({
       where: {
@@ -211,13 +213,9 @@ describe("draft and publish timetable sessions", () => {
     });
 
     expect(
-      publishedSessions.every((session) => session.roomSetupStatus === ClassRoomSetupStatus.ready)
+      publishedSessions.every((session) => session.roomSetupStatus === ClassRoomSetupStatus.pending)
     ).toBe(true);
-    expect(
-      publishedSessions.every((session) =>
-        session.dailyRoomUrl?.startsWith("https://daily.example/")
-      )
-    ).toBe(true);
+    expect(publishedSessions.every((session) => session.dailyRoomUrl === null)).toBe(true);
     expect(
       publishedSessions.every((session) => session.status === ClassSessionStatus.scheduled)
     ).toBe(true);
@@ -230,5 +228,76 @@ describe("draft and publish timetable sessions", () => {
     expect(secondPublish.draftCreatedCount).toBe(0);
     expect(secondPublish.publishedCount).toBe(0);
     expect(secondPublish.skippedExistingCount).toBe(3);
+  });
+
+  it("can generate drafts to a chosen date across active rules and publish one week at a time", async () => {
+    const admin = await db.user.create({
+      data: {
+        email: createUserEmail("admin-week"),
+        firstName: "Admin",
+        lastName: "User",
+      },
+    });
+    const instructor = await db.user.create({
+      data: {
+        email: createUserEmail("instructor-week"),
+        firstName: "Shruti",
+        lastName: "Turner",
+        instructorProfileEntryId: "cf-instructor-1",
+      },
+    });
+
+    await createClassTimetableRule(
+      {
+        classDefinitionSlug: "integration-timetable-strength",
+        weekday: 1,
+        startsAtLocal: "18:30",
+        durationMinutes: 45,
+        defaultCapacity: 12,
+        instructorUserId: instructor.id,
+        startsOn: "2026-03-02",
+      },
+      admin.id
+    );
+
+    const draftResult = await generateDraftSessionsForActiveClassTimetables({
+      generateUntil: "2026-03-23",
+      fromDate: new Date("2026-03-01T00:00:00.000Z"),
+    });
+
+    expect(draftResult.createdCount).toBe(4);
+
+    const publishWeekResult = await publishActiveClassTimetablesForWeek({
+      weekStart: "2026-03-16",
+      fromDate: new Date("2026-03-01T00:00:00.000Z"),
+    });
+
+    expect(publishWeekResult.publishedCount).toBe(1);
+    expect(publishWeekResult.createdDraftCount).toBe(0);
+
+    const sessions = await db.classSession.findMany({
+      where: {
+        classDefinitionSlug: "integration-timetable-strength",
+      },
+      orderBy: {
+        startsAtUtc: "asc",
+      },
+      select: {
+        localDate: true,
+        status: true,
+      },
+    });
+
+    expect(
+      sessions.map((session) => ({
+        localDate: session.localDate?.toISOString().slice(0, 10),
+        status: session.status,
+      }))
+    ).toEqual([
+      { localDate: "2026-03-02", status: ClassSessionStatus.draft },
+      { localDate: "2026-03-09", status: ClassSessionStatus.draft },
+      { localDate: "2026-03-16", status: ClassSessionStatus.scheduled },
+      { localDate: "2026-03-23", status: ClassSessionStatus.draft },
+    ]);
   });
 });

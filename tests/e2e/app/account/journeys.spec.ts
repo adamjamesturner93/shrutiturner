@@ -84,7 +84,7 @@ test("health profile can be updated from the signed-in health page and persists 
   await page.goto("/dashboard/health");
 
   await expect(page.getByRole("heading", { name: "Health Profile" })).toBeVisible();
-  await page.getByRole("button", { name: "Add your conditions" }).click();
+  await page.getByRole("button", { name: "Complete declaration" }).click();
   await page.getByRole("button", { name: "Physical Health" }).click();
   await page.getByLabel("Autoimmune condition").check();
   await page

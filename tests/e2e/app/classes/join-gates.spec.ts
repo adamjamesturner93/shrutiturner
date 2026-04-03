@@ -22,6 +22,12 @@ async function seedMemberWithSession(email: string, startsAt: Date) {
     },
   });
 
+  await db.healthProfile.create({
+    data: {
+      userId: user.id,
+    },
+  });
+
   const instructor = await db.user.create({
     data: {
       email: makeE2eAuthEmail(`join-gates-instructor-${startsAt.getTime()}`),

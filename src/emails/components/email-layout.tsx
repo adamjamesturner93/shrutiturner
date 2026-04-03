@@ -8,6 +8,7 @@ import {
   Text,
   Link,
   Hr,
+  Img,
 } from "@react-email/components";
 import { colors, fonts, containerStyle, footerTextStyle, dividerStyle } from "../styles";
 
@@ -18,6 +19,7 @@ interface EmailLayoutProps {
   instagramUrl?: string;
   contactUrl?: string;
   unsubscribeUrl?: string;
+  category?: "marketing" | "transactional";
 }
 
 export function EmailLayout({
@@ -27,6 +29,7 @@ export function EmailLayout({
   instagramUrl = "https://instagram.com/shrutiturner",
   contactUrl = "https://shrutiturner.com/contact",
   unsubscribeUrl = "https://shrutiturner.com/unsubscribe",
+  category = "transactional",
 }: EmailLayoutProps) {
   return (
     <Html>
@@ -57,6 +60,16 @@ export function EmailLayout({
               textAlign: "center" as const,
             }}
           >
+            <Img
+              src={`${websiteUrl}/apple-icon`}
+              alt="Shruti Turner icon"
+              width="40"
+              height="40"
+              style={{
+                display: "block",
+                margin: "0 auto 14px",
+              }}
+            />
             <Text
               style={{
                 fontFamily: fonts.heading,
@@ -125,20 +138,25 @@ export function EmailLayout({
                 Get in Touch
               </Link>
             </Text>
-            <Text
-              style={{
-                ...footerTextStyle,
-                fontSize: "12px",
-                color: "#a0a098",
-                marginTop: "16px",
-              }}
-            >
-              {"You're receiving this because you signed up at shrutiturner.com."}
-              <br />
-              <Link href={unsubscribeUrl} style={{ color: "#a0a098", textDecoration: "underline" }}>
-                Unsubscribe
-              </Link>
-            </Text>
+            {category === "marketing" ? (
+              <Text
+                style={{
+                  ...footerTextStyle,
+                  fontSize: "12px",
+                  color: "#a0a098",
+                  marginTop: "16px",
+                }}
+              >
+                {"You're receiving this because you signed up at shrutiturner.com."}
+                <br />
+                <Link
+                  href={unsubscribeUrl}
+                  style={{ color: "#a0a098", textDecoration: "underline" }}
+                >
+                  Unsubscribe
+                </Link>
+              </Text>
+            ) : null}
           </Section>
         </Container>
       </Body>

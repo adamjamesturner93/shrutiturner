@@ -2,6 +2,7 @@ import { ClassBookingStatus } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getMembershipState } from "@/lib/membership/membership-service";
 import type { DashboardSummaryDto } from "@/lib/api/types";
+import { needsHealthDeclarationReview } from "@/lib/health/health-service";
 
 export async function getDashboardSummary(userId: string): Promise<DashboardSummaryDto> {
   const now = new Date();
@@ -55,7 +56,10 @@ export async function getDashboardSummary(userId: string): Promise<DashboardSumm
     }),
     db.healthProfile.findUnique({
       where: { userId },
-      select: { id: true },
+      select: {
+        declarationStatus: true,
+        lastConfirmedAt: true,
+      },
     }),
   ]);
 
@@ -83,6 +87,9 @@ export async function getDashboardSummary(userId: string): Promise<DashboardSumm
 
   return {
     hasHealthProfile: Boolean(healthProfile),
+    healthDeclarationStatus: healthProfile?.declarationStatus ?? "incomplete",
+    healthDeclarationLastConfirmedAt: healthProfile?.lastConfirmedAt.toISOString() ?? "",
+    healthDeclarationNeedsReview: needsHealthDeclarationReview(healthProfile?.lastConfirmedAt),
     upcomingClasses: upcomingBookings.map((booking) => ({
       bookingId: booking.id,
       sessionId: booking.sessionId,

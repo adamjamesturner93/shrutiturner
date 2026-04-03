@@ -1,17 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { ArrowRight, Check, Smartphone } from "lucide-react";
 import { Layout } from "@/components/layout";
 import {
   EditorialHero,
   JourneySection,
   MarketingSection,
+  PreFooterCtaSection,
   ProofBand,
   SectionHeading,
 } from "@/components/marketing/sections";
 import { SEO } from "@/components/seo";
-import { Button } from "@/components/ui/button";
 import { coachingTiers, personalProgrammeJourney } from "@/data/marketing";
 
 const independentTier = coachingTiers.find((tier) => tier.id === "independent-plan");
@@ -179,35 +178,23 @@ export function CoachingPersonalProgrammePage() {
         </div>
       </MarketingSection>
 
-      <section className="bg-brand-accent py-16 text-brand-white md:py-20">
-        <div className="container mx-auto max-w-4xl px-4 text-center">
-          <h2 className="text-3xl md:text-4xl">Ready to start with a lower-touch coaching route?</h2>
-          <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-brand-white/88">
-            Start here if you want specialist programming now and the option to step into more
-            support later.
-          </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Button
-              asChild
-              size="lg"
-              className="bg-brand-white text-brand-accent hover:bg-brand-white/90"
-            >
-              <Link href="/pricing#coaching">
-                View Pricing & Next Steps
-                <ArrowRight className="h-5 w-5" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="border-brand-white bg-transparent text-brand-white hover:bg-brand-white/10"
-            >
-              <Link href="/coaching">Compare All Coaching Tiers</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
+      <PreFooterCtaSection
+        layout="centered"
+        title="Ready to start with a lower-touch coaching route?"
+        description="Start here if you want specialist programming now and the option to step into more support later."
+        actions={[
+          {
+            href: "/pricing#coaching",
+            label: "View Pricing & Next Steps",
+            icon: ArrowRight,
+          },
+          {
+            href: "/coaching",
+            label: "Compare All Coaching Tiers",
+            variant: "secondary",
+          },
+        ]}
+      />
     </Layout>
   );
 }

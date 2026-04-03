@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { signIn, useSession } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Layout } from "../components/layout";
 import { SEO } from "../components/seo";
 import { Button } from "../components/ui/button";
@@ -14,14 +14,17 @@ import { TurnstileWidget } from "@/components/turnstile-widget";
 import { sanitizeRedirectPath } from "@/lib/navigation/safe-redirect";
 import { IconHorizontal, IconVertical } from "@/components/icon";
 
-export function LoginPage() {
+export function LoginPage({
+  redirectTo,
+  intent,
+  refCode,
+}: {
+  redirectTo?: string | null;
+  intent?: string | null;
+  refCode?: string | null;
+}) {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const redirectTo = searchParams.get("redirect");
-  const intent = searchParams.get("intent");
-  const refCode = searchParams.get("ref");
 
   const [loginMethod, setLoginMethod] = useState<"passwordless" | "google" | null>(null);
   const [email, setEmail] = useState("");

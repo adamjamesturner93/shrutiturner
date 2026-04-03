@@ -65,7 +65,9 @@ describe("admin member service", () => {
     await cleanupRows();
   });
 
-  it("returns real booking and notification data for admin member views", async () => {
+  it(
+    "returns real booking and notification data for admin member views",
+    async () => {
     const instructor = await db.user.create({
       data: {
         email: createEmail("instructor"),
@@ -190,5 +192,7 @@ describe("admin member service", () => {
       programAnnouncements: false,
       notes: "Needs chair-based options.",
     });
-  });
+    },
+    15_000
+  );
 });

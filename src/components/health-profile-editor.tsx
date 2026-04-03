@@ -48,6 +48,12 @@ export function HealthProfileEditor({
   }));
   const [details, setDetails] = useState<Record<string, string>>(() => ({ ...profile.details }));
   const [additionalNotes, setAdditionalNotes] = useState(profile.additionalNotes);
+  const [tracksFlareCheckIns, setTracksFlareCheckIns] = useState(
+    Boolean(profile.tracksFlareCheckIns)
+  );
+  const [nothingToDeclare, setNothingToDeclare] = useState(
+    profile.declarationStatus === "none_declared"
+  );
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() => {
     // Auto-expand categories that have selections
     const expanded = new Set<string>();
@@ -62,6 +68,15 @@ export function HealthProfileEditor({
   });
   const [saved, setSaved] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(initialConsentAccepted);
+  const selectedCount = Object.keys(conditions).filter((k) => conditions[k]).length;
+  const hasAdditionalNotes = additionalNotes.trim().length > 0;
+  const hasContext = selectedCount > 0 || hasAdditionalNotes;
+  const declarationStatus = nothingToDeclare
+    ? "none_declared"
+    : hasContext
+      ? "context_declared"
+      : "incomplete";
+  const nothingToDeclareDisabled = hasContext || tracksFlareCheckIns;
 
   const toggleCategory = (id: string) => {
     setExpandedCategories((prev) => {
@@ -88,20 +103,25 @@ export function HealthProfileEditor({
       }
       return next;
     });
+    setNothingToDeclare(false);
     setSaved(false);
   };
 
   const updateDetails = (key: string, value: string) => {
     setDetails((prev) => ({ ...prev, [key]: value }));
+    setNothingToDeclare(false);
     setSaved(false);
   };
 
   const handleSave = async () => {
     await onSave(
       {
+        declarationStatus,
         conditions,
         details,
+        tracksFlareCheckIns,
         additionalNotes,
+        lastConfirmedAt: profile.lastConfirmedAt,
         lastUpdated: new Date().toISOString().split("T")[0],
       },
       consentAccepted
@@ -109,8 +129,6 @@ export function HealthProfileEditor({
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
-
-  const selectedCount = Object.keys(conditions).filter((k) => conditions[k]).length;
 
   return (
     <div className={compact ? "space-y-4" : "space-y-6"}>
@@ -164,6 +182,9 @@ export function HealthProfileEditor({
             value={additionalNotes}
             onChange={(e) => {
               setAdditionalNotes(e.target.value);
+              if (e.target.value.trim()) {
+                setNothingToDeclare(false);
+              }
               setSaved(false);
             }}
             placeholder="e.g. I have morning stiffness for ~30 mins, I prefer not to bear weight on my wrists, my energy varies day to day..."
@@ -173,12 +194,58 @@ export function HealthProfileEditor({
         </div>
       )}
 
+      {(hasContext || tracksFlareCheckIns) && !nothingToDeclare ? (
+        <label className="bg-secondary/20 flex cursor-pointer items-start gap-3 rounded-lg border p-4 text-sm">
+          <input
+            type="checkbox"
+            checked={tracksFlareCheckIns}
+            onChange={(event) => {
+              setTracksFlareCheckIns(event.target.checked);
+              setSaved(false);
+            }}
+            className="accent-brand-accent mt-0.5 h-4 w-4"
+          />
+          <span className="text-muted-foreground leading-relaxed">
+            My symptoms can flare or change day to day and may affect class.
+          </span>
+        </label>
+      ) : null}
+
+      <label
+        className={`flex items-start gap-3 rounded-lg border p-4 text-sm ${
+          nothingToDeclareDisabled
+            ? "bg-secondary/10 text-muted-foreground cursor-not-allowed opacity-70"
+            : "bg-secondary/20 cursor-pointer"
+        }`}
+      >
+        <input
+          type="checkbox"
+          checked={nothingToDeclare}
+          disabled={nothingToDeclareDisabled}
+          onChange={(event) => {
+            const checked = event.target.checked;
+            setNothingToDeclare(checked);
+            if (checked) {
+              setConditions({});
+              setDetails({});
+              setAdditionalNotes("");
+              setTracksFlareCheckIns(false);
+            }
+            setSaved(false);
+          }}
+          className="accent-brand-accent mt-0.5 h-4 w-4"
+        />
+        <span className="leading-relaxed">Nothing relevant to share right now.</span>
+      </label>
+
       {/* Actions */}
       <div className="flex items-center justify-between pt-2">
         <p className="text-muted-foreground text-xs">
-          {selectedCount === 0
-            ? "No conditions selected"
-            : `${selectedCount} condition${selectedCount !== 1 ? "s" : ""} selected`}
+          {declarationStatus === "none_declared"
+            ? "No current health context recorded"
+            : selectedCount === 0
+              ? "No conditions selected yet"
+              : `${selectedCount} condition${selectedCount !== 1 ? "s" : ""} selected`}
         </p>
         <div className="flex items-center gap-3">
           {onSkip && (
@@ -190,7 +257,9 @@ export function HealthProfileEditor({
             onClick={() => void handleSave()}
             size="sm"
             className="bg-brand-accent hover:bg-brand-accent/90"
-            disabled={requireConsentAcknowledgement && !consentAccepted}
+            disabled={
+              (requireConsentAcknowledgement && !consentAccepted) || declarationStatus === "incomplete"
+            }
           >
             {saved ? (
               <>

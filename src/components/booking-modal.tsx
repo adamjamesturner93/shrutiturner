@@ -5,6 +5,10 @@ import { Button } from "./ui/button";
 import { useAuth, type CreditItem } from "../context/auth-context";
 import { useI18n } from "../lib/use-i18n";
 import type { PublicPricingDto } from "@/lib/api/types";
+import {
+  isSessionUnavailableForBooking,
+  resolveSessionStart,
+} from "@/lib/classes/session-bookability";
 
 type CheckoutResult = {
   checkoutUrl: string;
@@ -14,39 +18,15 @@ type CheckoutResult = {
  * Compute the next occurrence of a given day + time (HH:MM) from now.
  * Returns a Date for that upcoming slot.
  */
-function getNextClassDatetime(day: string, time: string): Date {
-  const dayMap: Record<string, number> = {
-    Sunday: 0,
-    Monday: 1,
-    Tuesday: 2,
-    Wednesday: 3,
-    Thursday: 4,
-    Friday: 5,
-    Saturday: 6,
-  };
-  const targetDay = dayMap[day] ?? 0;
-  const [hours, minutes] = time.split(":").map(Number);
-
-  const now = new Date();
-  const result = new Date(now);
-  result.setHours(hours, minutes, 0, 0);
-
-  const currentDay = now.getDay();
-  let daysUntil = targetDay - currentDay;
-  if (daysUntil < 0) daysUntil += 7;
-  // If it's the same day but the time has passed, go to next week
-  if (daysUntil === 0 && result <= now) daysUntil = 7;
-  result.setDate(result.getDate() + daysUntil);
-
-  return result;
-}
-
-/**
- * Generate an ICS calendar file content string for a class booking.
- */
-function generateICS(title: string, day: string, time: string, durationMin: number): string {
-  const nextDate = getNextClassDatetime(day, time);
-  const endDate = new Date(nextDate.getTime() + durationMin * 60 * 1000);
+function generateICS(
+  title: string,
+  day: string,
+  time: string,
+  durationMin: number,
+  startsAtUtc?: string
+): string {
+  const startDate = resolveSessionStart({ startsAtUtc, day, time }) ?? new Date();
+  const endDate = new Date(startDate.getTime() + durationMin * 60 * 1000);
 
   const fmt = (d: Date) => {
     const pad = (n: number) => String(n).padStart(2, "0");
@@ -58,7 +38,7 @@ function generateICS(title: string, day: string, time: string, durationMin: numb
     "VERSION:2.0",
     "PRODID:-//Shruti Turner//Class Booking//EN",
     "BEGIN:VEVENT",
-    `DTSTART:${fmt(nextDate)}`,
+    `DTSTART:${fmt(startDate)}`,
     `DTEND:${fmt(endDate)}`,
     `SUMMARY:${title} — Shruti Turner`,
     "DESCRIPTION:Join from your Private Studio: https://shrutiturner.com/dashboard",
@@ -70,9 +50,15 @@ function generateICS(title: string, day: string, time: string, durationMin: numb
   ].join("\r\n");
 }
 
-function downloadICS(title: string, day: string, time: string, durationStr: string) {
+function downloadICS(
+  title: string,
+  day: string,
+  time: string,
+  durationStr: string,
+  startsAtUtc?: string
+) {
   const durationMin = parseInt(durationStr) || 60;
-  const ics = generateICS(title, day, time, durationMin);
+  const ics = generateICS(title, day, time, durationMin, startsAtUtc);
   const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -92,6 +78,7 @@ interface BookingConfirmationProps {
   time: string;
   duration?: string;
   creditUsed: CreditItem;
+  startsAtUtc?: string;
   onClose: () => void;
 }
 
@@ -101,6 +88,7 @@ export function BookingConfirmation({
   time,
   duration = "60 min",
   creditUsed,
+  startsAtUtc,
   onClose,
 }: BookingConfirmationProps) {
   const { fmtTimeStr } = useI18n();
@@ -131,7 +119,7 @@ export function BookingConfirmation({
           <Button
             size="lg"
             className="w-full"
-            onClick={() => downloadICS(className, day, time, duration)}
+            onClick={() => downloadICS(className, day, time, duration, startsAtUtc)}
           >
             <Download className="mr-2 h-4 w-4" />
             Download Calendar Event (.ics)
@@ -487,10 +475,13 @@ interface BookClassButtonProps {
   className?: string;
   day?: string;
   time?: string;
+  startsAtUtc?: string;
   duration?: string;
   variant?: "default" | "outline" | "lg";
   size?: "default" | "sm" | "lg" | "icon";
   attendeeCount?: number;
+  status?: "draft" | "scheduled" | "live" | "completed" | "cancelled";
+  emptyClassAutoCancelWindowMinutes?: number;
 }
 
 export function BookClassButton({
@@ -501,12 +492,15 @@ export function BookClassButton({
   className: classNameProp,
   day: dayProp,
   time: timeProp,
+  startsAtUtc,
   duration: durationProp,
   variant = "default",
   size: sizeProp,
   attendeeCount = 5,
+  status,
+  emptyClassAutoCancelWindowMinutes,
 }: BookClassButtonProps) {
-  const { isAuthenticated, refreshMembershipState } = useAuth();
+  const { isAuthenticated, refreshMembershipState, user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -524,13 +518,15 @@ export function BookClassButton({
 
   const effectiveSessionId = sessionId || resolvedSessionId || undefined;
   const booked = bookedOverride || isBookedProp;
-
-  // Check 90-minute rule
-  const nextClass = getNextClassDatetime(day, time);
-  const now = new Date();
-  const minutesUntilStart = (nextClass.getTime() - now.getTime()) / (1000 * 60);
-  const isCancelledDueToLowEnrollment =
-    minutesUntilStart <= 90 && minutesUntilStart > 0 && attendeeCount === 0;
+  const cutoffMinutes = emptyClassAutoCancelWindowMinutes ?? 180;
+  const isCancelledDueToLowEnrollment = isSessionUnavailableForBooking({
+    attendeeCount,
+    day,
+    emptyClassAutoCancelWindowMinutes: cutoffMinutes,
+    startsAtUtc,
+    status,
+    time,
+  });
 
   const effectiveSize = sizeProp || (variant === "lg" ? "lg" : "default");
 
@@ -581,6 +577,9 @@ export function BookClassButton({
       };
 
       if (!response.ok) {
+        if (payload.message === "HEALTH_DECLARATION_REQUIRED") {
+          router.push(`/dashboard/health?returnTo=${encodeURIComponent(pathname)}`);
+        }
         if (payload.message === "BOOKING_LIMIT_REACHED" && openPurchaseModalOnLimit) {
           setShowPurchase(true);
         }
@@ -614,7 +613,7 @@ export function BookClassButton({
       await refreshMembershipState();
       return "booked" as const;
     },
-    [classSlug, effectiveSessionId, refreshMembershipState]
+    [classSlug, effectiveSessionId, pathname, refreshMembershipState, router]
   );
 
   const handleBook = () => {
@@ -623,6 +622,15 @@ export function BookClassButton({
     if (!isAuthenticated) {
       const returnUrl = encodeURIComponent(pathname);
       router.push(`/login?redirect=${returnUrl}&intent=book`);
+      return;
+    }
+
+    if (
+      user?.healthDeclarationStatus === "incomplete" ||
+      !user?.hasConsentedToHealthData ||
+      user?.needsHealthDataConsentRefresh
+    ) {
+      router.push(`/dashboard/health?returnTo=${encodeURIComponent(pathname)}`);
       return;
     }
 
@@ -728,7 +736,9 @@ export function BookClassButton({
           Class Cancelled
         </Button>
         <div className="bg-popover text-popover-foreground absolute bottom-full left-1/2 z-50 mb-2 hidden w-64 -translate-x-1/2 rounded border p-2 text-center text-xs shadow-md group-hover:block">
-          This class has been cancelled due to low enrollment (no bookings 90 mins before start).
+          {status === "cancelled" || status === "completed"
+            ? "This session is no longer available to book."
+            : `This class has been cancelled due to low enrollment (no bookings ${cutoffMinutes} mins before start).`}
         </div>
       </div>
     );
@@ -767,6 +777,7 @@ export function BookClassButton({
           time={time}
           duration={duration}
           creditUsed={confirmation.creditUsed}
+          startsAtUtc={startsAtUtc}
           onClose={() => setConfirmation(null)}
         />
       )}

@@ -5,6 +5,7 @@ import BlogPostEmail from "@/emails/blog-post";
 import NewsletterEmail from "@/emails/newsletter";
 import { db } from "@/lib/db";
 import { getEntries } from "@/lib/content/contentful-client";
+import { getPostmarkMessageStream } from "@/lib/postmark/client";
 
 type CampaignAudienceType = "newsletter" | "blog";
 type SupportedContentType = "blogPost" | "newsletterTemplate";
@@ -12,7 +13,7 @@ type SendEmailBatchResponse = Awaited<ReturnType<ServerClient["sendEmailBatch"]>
 
 const POSTMARK_FROM_EMAIL =
   process.env.POSTMARK_FROM_EMAIL || "Shruti Turner <shruti@thechronicyogini.com>";
-const POSTMARK_STREAM = process.env.POSTMARK_MESSAGE_STREAM || "outbound";
+const POSTMARK_STREAM = getPostmarkMessageStream("marketing");
 
 function chunk<T>(input: T[], size: number): T[][] {
   const out: T[][] = [];
@@ -146,6 +147,7 @@ async function runCampaign(params: {
           MessageStream: POSTMARK_STREAM,
           Tag: `contentful-${params.contentType}`,
           Metadata: {
+            emailCategory: "marketing",
             campaignId: params.campaignId,
             contentfulEntryId: params.contentfulEntryId,
             audienceType: params.audienceType,

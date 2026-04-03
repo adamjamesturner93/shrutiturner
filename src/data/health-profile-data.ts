@@ -119,21 +119,30 @@ export const HEALTH_CATEGORIES: HealthCategory[] = [
 export type HealthConditionKey = string;
 
 export interface HealthProfile {
+  declarationStatus: "incomplete" | "none_declared" | "context_declared";
   conditions: Record<string, boolean>;
   details: Record<string, string>;
+  tracksFlareCheckIns: boolean;
   additionalNotes: string;
+  lastConfirmedAt: string;
   lastUpdated: string;
+  needsReview?: boolean;
 }
 
 export const EMPTY_HEALTH_PROFILE: HealthProfile = {
+  declarationStatus: "incomplete",
   conditions: {},
   details: {},
+  tracksFlareCheckIns: false,
   additionalNotes: "",
+  lastConfirmedAt: "",
   lastUpdated: "",
+  needsReview: false,
 };
 
 // Mock data for Sarah Chen (our test user)
 export const MOCK_HEALTH_PROFILE: HealthProfile = {
+  declarationStatus: "context_declared",
   conditions: {
     shoulder_pain_injury: true,
     wrist_pain_injury: true,
@@ -144,14 +153,18 @@ export const MOCK_HEALTH_PROFILE: HealthProfile = {
     autoimmune:
       "Rheumatoid arthritis — diagnosed 2019. Currently on methotrexate. Flares affect hands and shoulders most.",
   },
+  tracksFlareCheckIns: true,
   additionalNotes:
     "Morning stiffness usually lasts 30-45 mins. Better after warm-up. Prefer not to bear weight on wrists for extended periods.",
+  lastConfirmedAt: "2026-01-15",
   lastUpdated: "2026-01-15",
+  needsReview: false,
 };
 
 // Mock health profiles keyed by member ID — used by admin views
 export const MEMBER_HEALTH_PROFILES: Record<string, HealthProfile> = {
   usr_001: {
+    declarationStatus: "context_declared",
     conditions: {
       shoulder_pain_injury: true,
       wrist_pain_injury: true,
@@ -162,11 +175,15 @@ export const MEMBER_HEALTH_PROFILES: Record<string, HealthProfile> = {
       autoimmune:
         "Rheumatoid arthritis — diagnosed 2019. Currently on methotrexate. Flares affect hands and shoulders most.",
     },
+    tracksFlareCheckIns: true,
     additionalNotes:
       "Morning stiffness usually lasts 30-45 mins. Better after warm-up. Prefer not to bear weight on wrists for extended periods.",
+    lastConfirmedAt: "2026-01-15",
     lastUpdated: "2026-01-15",
+    needsReview: false,
   },
   usr_002: {
+    declarationStatus: "context_declared",
     conditions: {
       hip_pain_injury: true,
       shoulder_pain_injury: true,
@@ -177,11 +194,15 @@ export const MEMBER_HEALTH_PROFILES: Record<string, HealthProfile> = {
       physical_other:
         "hEDS (hypermobile Ehlers-Danlos syndrome) — diagnosed 2020. Joint instability throughout, worst in shoulders and hips.",
     },
+    tracksFlareCheckIns: true,
     additionalNotes:
       "Proprioception is poor — benefits from mirror/visual feedback. Needs slower tempo for complex movements.",
+    lastConfirmedAt: "2026-02-01",
     lastUpdated: "2026-02-01",
+    needsReview: false,
   },
   usr_003: {
+    declarationStatus: "context_declared",
     conditions: {
       back_pain_injury: true,
       knee_pain_injury: true,
@@ -192,31 +213,42 @@ export const MEMBER_HEALTH_PROFILES: Record<string, HealthProfile> = {
     details: {
       autoimmune: "Psoriatic arthritis — mainly affects knees and lower back. On biologics.",
     },
+    tracksFlareCheckIns: true,
     additionalNotes:
       "Energy very variable. Some days can do full session, others need to scale right back. Appreciates check-ins.",
+    lastConfirmedAt: "2026-02-10",
     lastUpdated: "2026-02-10",
+    needsReview: false,
   },
   usr_004: {
+    declarationStatus: "context_declared",
     conditions: {
       asthma: true,
       anxiety: true,
       ptsd: true,
     },
+    tracksFlareCheckIns: false,
     details: {},
     additionalNotes:
       "Prefers not to close eyes during relaxation. Needs advance notice of any physical adjustments.",
+    lastConfirmedAt: "2025-12-20",
     lastUpdated: "2025-12-20",
+    needsReview: false,
   },
   usr_005: {
+    declarationStatus: "context_declared",
     conditions: {
       pregnant: true,
       back_pain_injury: true,
       low_blood_pressure: true,
     },
+    tracksFlareCheckIns: false,
     details: {},
     additionalNotes:
       "Currently 28 weeks. Avoiding supine positions. Has been training with Shruti for 8 months pre-pregnancy.",
+    lastConfirmedAt: "2026-02-15",
     lastUpdated: "2026-02-15",
+    needsReview: false,
   },
 };
 

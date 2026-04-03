@@ -16,6 +16,7 @@ import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 import {
   EditorialHero,
   MarketingSection,
+  PreFooterCtaSection,
   ProofBand,
   SectionHeading,
   StorySplit,
@@ -367,45 +368,26 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
         </MarketingSection>
       ) : null}
 
-      <MarketingSection className="bg-brand-dark text-brand-white">
-        <div className="grid gap-8 md:grid-cols-[1.05fr_0.95fr] md:items-center">
-          <div>
-            <p className="text-brand-accent-light text-xs tracking-[0.2em] uppercase">
-              Ready to join
-            </p>
-            <h2 className="mt-4 text-3xl leading-tight md:text-5xl">
-              Start with the timetable. Then choose the rhythm that feels sustainable.
-            </h2>
-            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-brand-white/80">
-              Membership is ideal if you want weekly consistency. Credit packs are there if you
-              need more flexibility.
-            </p>
-          </div>
-          <div className="flex flex-col gap-4 sm:flex-row md:justify-end">
-            <Button
-              asChild
-              size="lg"
-              className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
-            >
-              <Link href="/schedule">
-                <Calendar className="h-4 w-4" />
-                View schedule
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="border-brand-white/20 bg-brand-white/5 text-brand-white hover:bg-brand-white/10"
-            >
-              <Link href="/pricing">
-                <Video className="h-4 w-4" />
-                Compare pricing
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </MarketingSection>
+      <PreFooterCtaSection
+        eyebrow="Ready to join"
+        title="Start with the timetable. Then choose the rhythm that feels sustainable."
+        description="Membership is ideal if you want weekly consistency. Credit packs are there if you need more flexibility."
+        actions={[
+          {
+            href: "/schedule",
+            label: "View schedule",
+            icon: Calendar,
+            iconPosition: "start",
+          },
+          {
+            href: "/pricing",
+            label: "Compare pricing",
+            icon: Video,
+            iconPosition: "start",
+            variant: "secondary",
+          },
+        ]}
+      />
     </Layout>
   );
 }

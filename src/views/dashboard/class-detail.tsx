@@ -13,6 +13,7 @@ import {
   Calendar,
   Users,
   ArrowLeft,
+  AlertCircle,
   CheckCircle,
   Heart,
   Dumbbell,
@@ -23,6 +24,10 @@ import { getTypeColor } from "@/lib/classes/type-color";
 import { useEffect, useState } from "react";
 import type { ClassSessionDetailDto } from "@/lib/api/types";
 import type { ClassDefinitionContent } from "@/lib/content";
+import {
+  getBookingEntitlementText,
+  isSessionUnavailableForBooking,
+} from "@/lib/classes/session-bookability";
 
 export function DashboardClassDetail({
   classDetail,
@@ -34,9 +39,12 @@ export function DashboardClassDetail({
   const cls = classDetail && classDetail.slug === slug ? classDetail : null;
   const [session, setSession] = useState<ClassSessionDetailDto | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
-  const { fmtTimeStr } = useI18n();
+  const [cancellingBooking, setCancellingBooking] = useState(false);
+  const [cancelError, setCancelError] = useState("");
+  const { fmtDate, fmtTime, fmtTimeStr } = useI18n();
   const sessionId = searchParams.get("sessionId");
-  const { refreshMembershipState } = useAuth();
+  const { membership, membershipClassesRemaining, refreshMembershipState, totalCredits } =
+    useAuth();
   const weekOffsetParam = searchParams.get("wk");
   const backToScheduleHref = weekOffsetParam
     ? `/dashboard/schedule?wk=${encodeURIComponent(weekOffsetParam)}`
@@ -48,6 +56,9 @@ export function DashboardClassDetail({
     void (async () => {
       if (active) setLoadingSession(true);
       try {
+        if (active) {
+          setCancelError("");
+        }
         if (sessionId) {
           const response = await fetch(`/api/classes/sessions/${sessionId}`, { cache: "no-store" });
           if (response.ok) {
@@ -99,6 +110,26 @@ export function DashboardClassDetail({
   const resolvedLevel = session?.level || cls.level;
   const resolvedCapacity = session?.capacity || cls.maxSpaces;
   const resolvedInstructorName = session?.instructorName || cls.instructor;
+  const resolvedScheduleDay = resolvedStartsAt
+    ? fmtDate(resolvedStartsAt, { weekday: "long", day: "numeric", month: "short" })
+    : `${cls.day}s`;
+  const resolvedScheduleTime = resolvedStartsAt ? fmtTime(resolvedStartsAt) : fmtTimeStr(cls.time);
+  const resolvedDuration = session ? `${session.durationMinutes} min` : cls.duration;
+  const isSessionUnavailable = !loadingSession
+    ? isSessionUnavailableForBooking({
+        attendeeCount: session?.bookedCount,
+        day: cls.day,
+        emptyClassAutoCancelWindowMinutes: session?.emptyClassAutoCancelWindowMinutes,
+        startsAtUtc: session?.startsAtUtc,
+        status: session?.status,
+        time: cls.time,
+      })
+    : false;
+  const bookingEntitlement = getBookingEntitlementText({
+    hasMembership: Boolean(membership),
+    membershipClassesRemaining,
+    totalCredits,
+  });
 
   const typeIcon =
     resolvedType === "Yoga" ? (
@@ -153,26 +184,12 @@ export function DashboardClassDetail({
           <div className="flex flex-wrap gap-6 text-sm">
             <div className="text-muted-foreground flex items-center gap-2">
               <Calendar className="text-primary h-4 w-4" />
-              <span>
-                {resolvedStartsAt
-                  ? resolvedStartsAt.toLocaleDateString("en-GB", {
-                      weekday: "long",
-                      day: "numeric",
-                      month: "short",
-                    })
-                  : `${cls.day}s`}
-              </span>
+              <span>{resolvedScheduleDay}</span>
             </div>
             <div className="text-muted-foreground flex items-center gap-2">
               <Clock className="text-primary h-4 w-4" />
               <span>
-                {session
-                  ? new Date(session.startsAtUtc).toLocaleTimeString("en-GB", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
-                  : fmtTimeStr(cls.time)}{" "}
-                · {session ? `${session.durationMinutes} min` : cls.duration}
+                {resolvedScheduleTime} · {resolvedDuration}
               </span>
             </div>
             <div className="text-muted-foreground flex items-center gap-2">
@@ -267,6 +284,37 @@ export function DashboardClassDetail({
                   Loading...
                 </Button>
               </>
+            ) : isSessionUnavailable ? (
+              <>
+                <div className="space-y-3 text-center">
+                  <div className="bg-secondary/60 mx-auto flex h-14 w-14 items-center justify-center rounded-full">
+                    <AlertCircle className="text-primary h-7 w-7" />
+                  </div>
+                  <h3 className="text-xl">Class Cancelled</h3>
+                  <p className="text-muted-foreground text-sm">
+                    {resolvedScheduleDay} at {resolvedScheduleTime} · {resolvedDuration}
+                  </p>
+                  <p className="text-muted-foreground text-sm">
+                    {session?.status === "cancelled"
+                      ? session.cancelReason || "This session is no longer available to book."
+                      : "This session closed because nobody booked before the class cutoff."}
+                  </p>
+                </div>
+
+                <BookClassButton
+                  sessionId={session?.id}
+                  classSlug={cls.slug}
+                  className={cls.name}
+                  day={cls.day}
+                  startsAtUtc={session?.startsAtUtc}
+                  time={cls.time}
+                  duration={resolvedDuration}
+                  variant="lg"
+                  attendeeCount={session?.bookedCount}
+                  status={session?.status}
+                  emptyClassAutoCancelWindowMinutes={session?.emptyClassAutoCancelWindowMinutes}
+                />
+              </>
             ) : booked ? (
               <>
                 <div className="space-y-3 text-center">
@@ -275,14 +323,15 @@ export function DashboardClassDetail({
                   </div>
                   <h3 className="text-xl">You're Booked</h3>
                   <p className="text-muted-foreground text-sm">
-                    {session
-                      ? `${new Date(session.startsAtUtc).toLocaleDateString("en-GB")} at ${new Date(session.startsAtUtc).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
+                    {resolvedStartsAt
+                      ? `${fmtDate(resolvedStartsAt)} at ${fmtTime(resolvedStartsAt)}`
                       : `${cls.day} at ${fmtTimeStr(cls.time)}`}
                   </p>
                 </div>
 
-                <div className="space-y-3">
+                <div className="flex flex-col gap-4">
                   <Link
+                    className="block"
                     href={
                       session?.id
                         ? `/dashboard/classes/${cls.slug}/join?sessionId=${encodeURIComponent(session.id)}`
@@ -297,26 +346,46 @@ export function DashboardClassDetail({
 
                   <Button
                     variant="destructive"
-                    size="sm"
+                    size="lg"
                     className="w-full"
+                    disabled={cancellingBooking}
                     onClick={() =>
                       void (async () => {
-                        if (session?.id) {
-                          await fetch(`/api/classes/sessions/${session.id}/booking`, {
+                        if (!session?.id) {
+                          return;
+                        }
+
+                        setCancellingBooking(true);
+                        setCancelError("");
+                        try {
+                          const response = await fetch(`/api/classes/sessions/${session.id}/booking`, {
                             method: "DELETE",
                           });
+                          if (!response.ok) {
+                            const payload = (await response.json().catch(() => null)) as {
+                              message?: string;
+                            } | null;
+                            throw new Error(payload?.message || "Failed to cancel booking.");
+                          }
                           setSession((prev) =>
                             prev ? { ...prev, isBookedByCurrentUser: false } : prev
                           );
                           await refreshMembershipState();
-                          return;
+                        } catch (error) {
+                          setCancelError(
+                            error instanceof Error ? error.message : "Failed to cancel booking."
+                          );
+                        } finally {
+                          setCancellingBooking(false);
                         }
-                        // session booking is required; no local booking fallback
                       })()
                     }
                   >
-                    Cancel Booking
+                    {cancellingBooking ? "Cancelling..." : "Cancel Booking"}
                   </Button>
+                  {cancelError ? (
+                    <p className="text-center text-sm text-red-600">{cancelError}</p>
+                  ) : null}
                 </div>
               </>
             ) : (
@@ -324,7 +393,7 @@ export function DashboardClassDetail({
                 <div className="space-y-2 text-center">
                   <h3 className="text-xl">Book This Class</h3>
                   <p className="text-muted-foreground text-sm">
-                    {cls.day} at {fmtTimeStr(cls.time)} · {cls.duration}
+                    {resolvedScheduleDay} at {resolvedScheduleTime} · {resolvedDuration}
                   </p>
                 </div>
                 <BookClassButton
@@ -332,13 +401,15 @@ export function DashboardClassDetail({
                   classSlug={cls.slug}
                   className={cls.name}
                   day={cls.day}
+                  startsAtUtc={session?.startsAtUtc}
                   time={cls.time}
+                  duration={resolvedDuration}
                   variant="lg"
                   attendeeCount={session?.bookedCount}
+                  status={session?.status}
+                  emptyClassAutoCancelWindowMinutes={session?.emptyClassAutoCancelWindowMinutes}
                 />
-                <p className="text-muted-foreground text-center text-xs">
-                  Drop-in £12 · Bundles from £9/class
-                </p>
+                <p className="text-muted-foreground text-center text-xs">{bookingEntitlement}</p>
               </>
             )}
 

@@ -5,10 +5,20 @@ import {
   Prisma,
 } from "@prisma/client";
 import type Stripe from "stripe";
+import type { MembershipStateDto } from "@/lib/api/types";
 import { db } from "@/lib/db";
 import { getStripeClient } from "@/lib/billing/stripe-client";
 import { CREDIT_BUNDLE_CONFIG, MEMBERSHIP_CONFIG } from "@/lib/billing/price-map";
 import { getActiveCatalogItem } from "@/lib/billing/catalog-service";
+import {
+  calculateProratedRefundAmount,
+  getInitialComplianceWindow,
+  getMembershipComplianceStatus,
+  getSubscriptionComplianceHistory,
+  issueMembershipRefund,
+  recordSubscriptionComplianceEvent,
+  sendMembershipCancellationNotice,
+} from "@/lib/billing/subscription-compliance";
 import { getCreditBalance, getCreditSummary } from "@/lib/credits/credit-service";
 import { getReferralBalancePence } from "@/lib/referrals/referral-discount-service";
 
@@ -194,12 +204,19 @@ export async function syncMembershipFromStripe(userId: string) {
   });
 }
 
-export async function getMembershipState(userId: string) {
-  const [subscription, creditBalance, creditSummary, referralBalancePence] = await Promise.all([
+export async function getMembershipState(userId: string): Promise<MembershipStateDto> {
+  const [
+    subscription,
+    creditBalance,
+    creditSummary,
+    referralBalancePence,
+    complianceHistory,
+  ] = await Promise.all([
     getLatestMembership(userId),
     getCreditBalance(userId),
     getCreditSummary(userId),
     getReferralBalancePence(userId),
+    getSubscriptionComplianceHistory(userId),
   ]);
 
   const membership = subscription
@@ -223,6 +240,20 @@ export async function getMembershipState(userId: string) {
         pricePence: subscription.pricePence,
         cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
         accessActive: isAccessActiveStatus(subscription.status),
+        compliance: {
+          disclosureVersion: subscription.disclosureVersion || null,
+          disclosureAcceptedAt: subscription.disclosureAcceptedAt
+            ? subscription.disclosureAcceptedAt.toISOString()
+            : null,
+          ...getMembershipComplianceStatus({
+            membership: {
+              trialEndsAt: subscription.trialEndsAt,
+              initialCoolingOffEndsAt: subscription.initialCoolingOffEndsAt,
+              renewalCoolingOffEndsAt: subscription.renewalCoolingOffEndsAt,
+              renewalCoolingOffKind: subscription.renewalCoolingOffKind,
+            },
+          }),
+        },
       }
     : null;
 
@@ -235,6 +266,7 @@ export async function getMembershipState(userId: string) {
     referral: {
       balancePence: referralBalancePence,
     },
+    complianceHistory,
   };
 }
 
@@ -284,6 +316,9 @@ export async function startOrSwitchMembership({
   stripeSubscriptionId,
   stripePriceId,
   nextPeriodEnd,
+  disclosureVersion,
+  disclosureAcceptedAt,
+  startedAt,
 }: {
   userId: string;
   plan: Exclude<MembershipPlan, "instructor">;
@@ -291,14 +326,20 @@ export async function startOrSwitchMembership({
   stripeSubscriptionId?: string;
   stripePriceId?: string;
   nextPeriodEnd?: Date;
+  disclosureVersion?: string;
+  disclosureAcceptedAt?: Date;
+  startedAt?: Date;
 }) {
   const config = MEMBERSHIP_CONFIG[plan];
   const catalogKey =
     billingInterval === "annual" ? "membership_movewell_annual" : "membership_movewell_monthly";
   const catalog = await getActiveCatalogItem(catalogKey);
   const existing = await getCurrentMembership(userId);
+  const contractStart = startedAt || new Date();
   const fallbackPricePence =
     billingInterval === "annual" ? config.annualPricePence : config.monthlyPricePence;
+  const complianceWindow =
+    disclosureAcceptedAt || disclosureVersion ? getInitialComplianceWindow(contractStart) : null;
 
   const data: Prisma.MembershipSubscriptionUncheckedCreateInput = {
     userId,
@@ -309,13 +350,17 @@ export async function startOrSwitchMembership({
     currency: "GBP",
     classesPerWeek: config.classesPerWeek,
     classesUsedThisWeek: 0,
-    startsAt: new Date(),
+    startsAt: contractStart,
     renewsAt:
-      nextPeriodEnd || new Date(Date.now() + (billingInterval === "annual" ? 365 : 30) * 86400000),
+      nextPeriodEnd || new Date(contractStart.getTime() + (billingInterval === "annual" ? 365 : 30) * 86400000),
     cancelAtPeriodEnd: false,
     stripeSubscriptionId,
     stripePriceId,
     stripeCurrentPeriodEnd: nextPeriodEnd,
+    disclosureVersion,
+    disclosureAcceptedAt,
+    trialEndsAt: complianceWindow?.trialEndsAt,
+    initialCoolingOffEndsAt: complianceWindow?.initialCoolingOffEndsAt,
   };
 
   if (existing) {
@@ -333,6 +378,90 @@ export async function startOrSwitchMembership({
 export async function cancelMembership(userId: string) {
   const current = await getLatestMembership(userId);
   if (!current) return null;
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { email: true, firstName: true, name: true },
+  });
+  const now = new Date();
+  const compliance = getMembershipComplianceStatus({
+    membership: {
+      trialEndsAt: current.trialEndsAt,
+      initialCoolingOffEndsAt: current.initialCoolingOffEndsAt,
+      renewalCoolingOffEndsAt: current.renewalCoolingOffEndsAt,
+      renewalCoolingOffKind: current.renewalCoolingOffKind,
+    },
+    now,
+  });
+
+  if (compliance.inInitialCoolingOff || compliance.inRenewalCoolingOff) {
+    if (current.stripeSubscriptionId) {
+      const stripe = getStripeClient();
+      await stripe.subscriptions.cancel(current.stripeSubscriptionId);
+    }
+
+    let refundAmountPence = 0;
+    if (
+      compliance.inRenewalCoolingOff &&
+      current.latestInvoiceAmountPence &&
+      current.renewalCoolingOffStartedAt &&
+      current.renewsAt
+    ) {
+      refundAmountPence = calculateProratedRefundAmount({
+        paidAmountPence: current.latestInvoiceAmountPence,
+        periodStart: current.renewalCoolingOffStartedAt,
+        periodEnd: current.renewsAt,
+        cancelledAt: now,
+      });
+      if (refundAmountPence > 0) {
+        await issueMembershipRefund({
+          membershipId: current.id,
+          userId,
+          amountPence: refundAmountPence,
+          reason: "Renewal cooling-off cancellation",
+        });
+      }
+    }
+
+    const cancelled = await db.membershipSubscription.update({
+      where: { id: current.id },
+      data: {
+        status: MembershipStatus.cancelled,
+        cancelAtPeriodEnd: false,
+        endsAt: now,
+        renewsAt: null,
+        renewalCoolingOffStartedAt: null,
+        renewalCoolingOffEndsAt: null,
+      },
+    });
+
+    await recordSubscriptionComplianceEvent({
+      userId,
+      membershipId: current.id,
+      kind: "cooling_off_cancellation",
+      status: "processed",
+      summary: compliance.inInitialCoolingOff
+        ? "Membership cancelled during the initial cooling-off period."
+        : "Membership cancelled during the renewal cooling-off period.",
+      metadataJson: {
+        refundAmountPence,
+      },
+      eventAt: now,
+    });
+
+    if (user?.email) {
+      await sendMembershipCancellationNotice({
+        membershipId: current.id,
+        userId,
+        email: user.email,
+        firstName: user.firstName || user.name || "there",
+        endsAt: now,
+        immediate: true,
+        refundAmountPence,
+      });
+    }
+
+    return cancelled;
+  }
 
   if (current.stripeSubscriptionId) {
     const stripe = getStripeClient();
@@ -343,16 +472,35 @@ export async function cancelMembership(userId: string) {
     const resolved = await resolvePlanFromStripePriceId(priceId);
     if (!resolved) throw new Error("UNKNOWN_MEMBERSHIP_PRICE");
 
-    return upsertMembershipFromStripeSubscription({
+    const updated = await upsertMembershipFromStripeSubscription({
       userId,
       subscription,
       billingInterval: resolved.billingInterval,
       plan: resolved.plan,
       priceId,
     });
+    await recordSubscriptionComplianceEvent({
+      userId,
+      membershipId: current.id,
+      kind: "membership_cancelled",
+      status: "processed",
+      summary: `Membership scheduled to end on ${updated.endsAt?.toISOString().slice(0, 10) || "the current period end"}.`,
+      eventAt: now,
+    });
+    if (user?.email) {
+      await sendMembershipCancellationNotice({
+        membershipId: current.id,
+        userId,
+        email: user.email,
+        firstName: user.firstName || user.name || "there",
+        endsAt: updated.endsAt,
+        immediate: false,
+      });
+    }
+    return updated;
   }
 
-  return db.membershipSubscription.update({
+  const updated = await db.membershipSubscription.update({
     where: { id: current.id },
     data: {
       cancelAtPeriodEnd: true,
@@ -363,6 +511,25 @@ export async function cancelMembership(userId: string) {
       endsAt: current.renewsAt || null,
     },
   });
+  await recordSubscriptionComplianceEvent({
+    userId,
+    membershipId: current.id,
+    kind: "membership_cancelled",
+    status: "processed",
+    summary: `Membership scheduled to end on ${updated.endsAt?.toISOString().slice(0, 10) || "the current period end"}.`,
+    eventAt: now,
+  });
+  if (user?.email) {
+    await sendMembershipCancellationNotice({
+      membershipId: current.id,
+      userId,
+      email: user.email,
+      firstName: user.firstName || user.name || "there",
+      endsAt: updated.endsAt,
+      immediate: false,
+    });
+  }
+  return updated;
 }
 
 export async function resumeMembershipCancellation(userId: string) {

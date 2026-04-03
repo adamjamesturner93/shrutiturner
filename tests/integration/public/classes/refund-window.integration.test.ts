@@ -1,16 +1,19 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { ClassBookingStatus, ClassSessionStatus, CreditEntryType } from "@prisma/client";
+import { CURRENT_HEALTH_DATA_CONSENT_VERSION } from "@/data/legal-documents";
 import { db } from "@/lib/db";
 import { addCredits, getCreditBalance } from "@/lib/credits/credit-service";
 
 const {
   sendBookingConfirmationMock,
   sendClassCancellationMock,
+  sendClassUnbookingMock,
   sendClassReminderMock,
   sendInstructorNotificationMock,
 } = vi.hoisted(() => ({
   sendBookingConfirmationMock: vi.fn().mockResolvedValue({ success: true }),
   sendClassCancellationMock: vi.fn().mockResolvedValue({ success: true }),
+  sendClassUnbookingMock: vi.fn().mockResolvedValue({ success: true }),
   sendClassReminderMock: vi.fn().mockResolvedValue({ success: true }),
   sendInstructorNotificationMock: vi.fn().mockResolvedValue({ success: true }),
 }));
@@ -18,6 +21,7 @@ const {
 vi.mock("@/lib/email", () => ({
   sendBookingConfirmation: sendBookingConfirmationMock,
   sendClassCancellation: sendClassCancellationMock,
+  sendClassUnbooking: sendClassUnbookingMock,
   sendClassReminder: sendClassReminderMock,
   sendInstructorNotification: sendInstructorNotificationMock,
 }));
@@ -96,6 +100,9 @@ async function createUser(label: string, firstName: string) {
       timezone: "Europe/London",
       dateFormat: "DD/MM/YYYY",
       isOnboarded: true,
+      hasConsentedToHealthData: true,
+      acceptedHealthDataConsentVersion: CURRENT_HEALTH_DATA_CONSENT_VERSION,
+      healthDataConsentedAt: new Date(),
     },
   });
 
@@ -106,6 +113,13 @@ async function createUser(label: string, firstName: string) {
       scheduleUpdates: true,
       programAnnouncements: true,
       marketingEmails: false,
+    },
+  });
+
+  await db.healthProfile.create({
+    data: {
+      userId: user.id,
+      declarationStatus: "none_declared",
     },
   });
 
@@ -170,6 +184,7 @@ describe("class booking refund window", () => {
 
     expect(result.refundedCredit).toBe(true);
     expect(await getCreditBalance(member.id)).toBe(1);
+    expect(sendClassUnbookingMock).toHaveBeenCalledTimes(1);
   });
 
   it("does not refund a credit when the member cancels inside the configured refund window", async () => {
@@ -204,6 +219,7 @@ describe("class booking refund window", () => {
 
     expect(result.refundedCredit).toBe(false);
     expect(await getCreditBalance(member.id)).toBe(0);
+    expect(sendClassUnbookingMock).toHaveBeenCalledTimes(1);
 
     const booking = await db.classBooking.findFirstOrThrow({
       where: {

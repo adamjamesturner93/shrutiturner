@@ -9,7 +9,11 @@ import {
   useRef,
 } from "react";
 import { signOut as nextAuthSignOut, useSession } from "next-auth/react";
-import type { MembershipStateDto, OnboardingStateDto } from "@/lib/api/types";
+import type {
+  HealthDeclarationStatusDto,
+  MembershipStateDto,
+  OnboardingStateDto,
+} from "@/lib/api/types";
 import {
   CURRENT_HEALTH_DATA_CONSENT_VERSION,
   CURRENT_HEALTH_WAIVER_VERSION,
@@ -101,6 +105,10 @@ export interface UserProfile {
   joinedDate: string;
   isOnboarded: boolean;
   hasHealthProfile: boolean;
+  healthDeclarationStatus: HealthDeclarationStatusDto;
+  healthDeclarationLastConfirmedAt: string;
+  healthDeclarationNeedsReview: boolean;
+  tracksFlareCheckIns: boolean;
   dob: string | null;
   gender: string | null;
   ethnicity: string | null;
@@ -236,6 +244,10 @@ type AccountAndReferralResponse = {
     lastName?: string | null;
     isCoachingClient?: boolean;
     hasHealthProfile?: boolean;
+    healthDeclarationStatus?: HealthDeclarationStatusDto;
+    healthDeclarationLastConfirmedAt?: string;
+    healthDeclarationNeedsReview?: boolean;
+    tracksFlareCheckIns?: boolean;
     dob?: string | null;
     gender?: string | null;
     ethnicity?: string | null;
@@ -294,6 +306,10 @@ const MOCK_ADMIN_USER: UserProfile = {
   joinedDate: "2024-01-01",
   isOnboarded: true,
   hasHealthProfile: true,
+  healthDeclarationStatus: "context_declared",
+  healthDeclarationLastConfirmedAt: "",
+  healthDeclarationNeedsReview: false,
+  tracksFlareCheckIns: false,
   dob: "1978-03-22",
   gender: "Female",
   ethnicity: "White",
@@ -542,6 +558,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               dateFormat: data.profile?.dateFormat || prev.dateFormat,
               isOnboarded: data.profile?.isOnboarded ?? prev.isOnboarded,
               hasHealthProfile: data.profile?.hasHealthProfile ?? prev.hasHealthProfile,
+              healthDeclarationStatus:
+                data.profile?.healthDeclarationStatus ?? prev.healthDeclarationStatus,
+              healthDeclarationLastConfirmedAt:
+                data.profile?.healthDeclarationLastConfirmedAt ??
+                prev.healthDeclarationLastConfirmedAt,
+              healthDeclarationNeedsReview:
+                data.profile?.healthDeclarationNeedsReview ?? prev.healthDeclarationNeedsReview,
+              tracksFlareCheckIns:
+                data.profile?.tracksFlareCheckIns ?? prev.tracksFlareCheckIns,
               hasAgreedToTerms: data.profile?.hasAgreedToTerms ?? prev.hasAgreedToTerms,
               hasAgreedToHealth: data.profile?.hasAgreedToHealth ?? prev.hasAgreedToHealth,
               termsAgreedAt: data.profile?.termsAgreedAt ?? prev.termsAgreedAt,
@@ -636,6 +661,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         joinedDate: "",
         isOnboarded: false,
         hasHealthProfile: false,
+        healthDeclarationStatus: "incomplete",
+        healthDeclarationLastConfirmedAt: "",
+        healthDeclarationNeedsReview: false,
+        tracksFlareCheckIns: false,
         dob: null,
         gender: null,
         ethnicity: null,

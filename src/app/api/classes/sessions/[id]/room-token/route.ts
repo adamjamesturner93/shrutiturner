@@ -5,7 +5,9 @@ import {
   buildSessionParticipantPermissions,
   getEffectiveSessionCommunityMode,
 } from "@/lib/classes/live-room-service";
+import { setUpSessionRoom } from "@/lib/classes/session-service";
 import { createMeetingToken, isDailyConfigured } from "@/lib/daily/service";
+import { getHealthAccessState } from "@/lib/health/health-service";
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -14,15 +16,25 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     }
 
     const sessionUser = await requireSessionUser();
+    const healthAccess = await getHealthAccessState(sessionUser.id);
+    if (!healthAccess.isComplete) {
+      return NextResponse.json(
+        { message: "Complete your health declaration before joining class." },
+        { status: 403 }
+      );
+    }
     const { id } = await context.params;
-    const [access, contextData] = await Promise.all([
-      getRoomTokenAccess(id, sessionUser.id),
-      getSessionAccessContext(id, sessionUser.id),
-    ]);
+    const contextData = await getSessionAccessContext(id, sessionUser.id);
 
     if (!contextData) {
       return NextResponse.json({ message: "Session not found" }, { status: 404 });
     }
+
+    if (!contextData.session.dailyRoomName || !contextData.session.dailyRoomUrl) {
+      await setUpSessionRoom(id);
+    }
+
+    const access = await getRoomTokenAccess(id, sessionUser.id);
 
     const token = await createMeetingToken({
       roomName: access.roomName,

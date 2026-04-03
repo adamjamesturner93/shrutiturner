@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api/auth-user";
 import { createBlogComment } from "@/lib/blog/engagement-service";
+import { isKnownBlogPostSlug } from "@/lib/blog/post-validation";
 import { isRateLimited } from "@/lib/rate-limit";
 
 type CommentBody = {
@@ -10,6 +11,11 @@ type CommentBody = {
 
 export async function POST(request: Request, context: { params: Promise<{ slug: string }> }) {
   try {
+    const { slug } = await context.params;
+    if (!(await isKnownBlogPostSlug(slug))) {
+      return NextResponse.json({ message: "Blog post not found." }, { status: 404 });
+    }
+
     const user = await requireSessionUser();
     if (
       isRateLimited({ scope: "blog-comments", key: user.id, windowMs: 10 * 60 * 1000, max: 12 })
@@ -19,7 +25,6 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
         { status: 429 }
       );
     }
-    const { slug } = await context.params;
     const body = (await request.json().catch(() => null)) as CommentBody | null;
     if (!body) {
       return NextResponse.json({ message: "Invalid request body." }, { status: 400 });

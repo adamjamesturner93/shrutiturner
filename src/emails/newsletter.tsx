@@ -26,7 +26,7 @@ export default function NewsletterEmail({
   ];
 
   return (
-    <EmailLayout preview={subject}>
+    <EmailLayout preview={subject} category="marketing">
       {/* Subject as serif heading */}
       <Text
         style={{

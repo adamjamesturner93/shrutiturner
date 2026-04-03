@@ -43,6 +43,18 @@ enum MembershipStatus {
   past_due
 }
 
+enum SubscriptionComplianceEventKind {
+  disclosure_acknowledged
+  trial_reminder
+  monthly_reminder
+  annual_renewal_reminder
+  renewal_cooling_off_notice
+  end_of_contract_notice
+  membership_cancelled
+  cooling_off_cancellation
+  refund_issued
+}
+
 enum CreditEntryType {
   purchase
   booking_use
@@ -93,6 +105,19 @@ enum AttendanceSource {
 enum ClassAttendanceEventType {
   joined
   left
+}
+
+enum PostClassFeeling {
+  great
+  good
+  okay
+  tough
+  too_much
+}
+
+enum HealthDeclarationStatus {
+  none_declared
+  context_declared
 }
 
 enum ClassSessionEventType {
@@ -288,6 +313,7 @@ model User {
   referralEventsReceived ReferralEvent[]             @relation("ReferredEvents")
   referralLedgerEntries  ReferralLedgerEntry[]
   membershipSubscriptions MembershipSubscription[]
+  subscriptionComplianceEvents SubscriptionComplianceEvent[]
   creditLedgerEntries    CreditLedgerEntry[]
   billingEvents          BillingEvent[]             @relation("UserBillingEvents")
   healthProfileRevisions HealthProfileRevision[]
@@ -414,6 +440,16 @@ model MembershipSubscription {
   renewsAt               DateTime?
   endsAt                 DateTime?
   cancelAtPeriodEnd      Boolean          @default(false)
+  disclosureVersion      String?
+  disclosureAcceptedAt   DateTime?
+  trialEndsAt            DateTime?
+  initialCoolingOffEndsAt DateTime?
+  renewalCoolingOffStartedAt DateTime?
+  renewalCoolingOffEndsAt DateTime?
+  renewalCoolingOffKind  String?
+  latestInvoiceId        String?
+  latestInvoiceAmountPence Int?
+  latestInvoicePaidAt    DateTime?
   stripeSubscriptionId   String?          @unique
   stripePriceId          String?
   stripeCurrentPeriodEnd DateTime?
@@ -421,9 +457,30 @@ model MembershipSubscription {
   updatedAt              DateTime         @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  complianceEvents SubscriptionComplianceEvent[]
 
   @@index([userId, status])
   @@index([stripeSubscriptionId])
+}
+
+model SubscriptionComplianceEvent {
+  id             String                          @id @default(cuid())
+  userId         String
+  membershipId   String?
+  kind           SubscriptionComplianceEventKind
+  status         String
+  channel        String                          @default("app")
+  summary        String
+  metadataJson   Json?
+  eventAt        DateTime                        @default(now())
+  createdAt      DateTime                        @default(now())
+
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  membership MembershipSubscription? @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+
+  @@index([userId, eventAt])
+  @@index([membershipId, eventAt])
+  @@index([kind, eventAt])
 }
 
 model CreditLedgerEntry {
@@ -481,12 +538,15 @@ model BillingMetricDaily {
 }
 
 model HealthProfile {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  additionalNotes String   @default("")
-  lastUpdatedAt   DateTime @default(now())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                  String                  @id @default(cuid())
+  userId              String                  @unique
+  declarationStatus   HealthDeclarationStatus @default(none_declared)
+  tracksFlareCheckIns Boolean                 @default(false)
+  additionalNotes     String                  @default("")
+  lastConfirmedAt     DateTime                @default(now())
+  lastUpdatedAt       DateTime                @default(now())
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
 
   user       User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   selections HealthConditionSelection[]
@@ -637,6 +697,11 @@ model ClassBooking {
   attendanceMarkedAt DateTime?
   attendanceMarkedByUserId String?
   attendanceSource AttendanceSource?
+  preClassEnergyLevel Int?
+  preClassFlareToday Boolean?
+  preClassSubmittedAt DateTime?
+  postClassFeeling PostClassFeeling?
+  postClassSubmittedAt DateTime?
   cancelledAt DateTime?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt

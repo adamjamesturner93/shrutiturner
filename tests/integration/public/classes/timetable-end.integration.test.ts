@@ -7,6 +7,7 @@ const {
   getClassDefinitionsMock,
   getInstructorProfilesByIdsMock,
   sendClassCancellationMock,
+  sendClassUnbookingMock,
   isDailyConfiguredMock,
   createSessionRoomMock,
 } = vi.hoisted(() => ({
@@ -14,6 +15,7 @@ const {
   getClassDefinitionsMock: vi.fn(),
   getInstructorProfilesByIdsMock: vi.fn(),
   sendClassCancellationMock: vi.fn(),
+  sendClassUnbookingMock: vi.fn(),
   isDailyConfiguredMock: vi.fn(),
   createSessionRoomMock: vi.fn(),
 }));
@@ -26,6 +28,7 @@ vi.mock("@/lib/content", () => ({
 
 vi.mock("@/lib/email", () => ({
   sendClassCancellation: sendClassCancellationMock,
+  sendClassUnbooking: sendClassUnbookingMock,
   sendBookingConfirmation: vi.fn(),
   sendClassReminder: vi.fn(),
   sendInstructorNotification: vi.fn(),
@@ -45,13 +48,14 @@ import {
   publishClassTimetableRule,
 } from "@/lib/classes/timetable-service";
 
-const USER_PREFIX = "integration-timetable-end-";
+const USER_PREFIX = "integration-recurring-end-";
+const CLASS_SLUG = "integration-recurring-end-strength";
 
 async function cleanupRows() {
   await db.classSession.deleteMany({
     where: {
       classDefinitionSlug: {
-        startsWith: "integration-timetable-end-",
+        startsWith: "integration-recurring-end-",
       },
     },
   });
@@ -59,7 +63,7 @@ async function cleanupRows() {
     where: {
       timetableRule: {
         classDefinitionSlug: {
-          startsWith: "integration-timetable-end-",
+          startsWith: "integration-recurring-end-",
         },
       },
     },
@@ -67,7 +71,7 @@ async function cleanupRows() {
   await db.classTimetableRule.deleteMany({
     where: {
       classDefinitionSlug: {
-        startsWith: "integration-timetable-end-",
+        startsWith: "integration-recurring-end-",
       },
     },
   });
@@ -90,7 +94,7 @@ describe("end class timetable rule", () => {
     await cleanupRows();
 
     getClassDefinitionBySlugMock.mockResolvedValue({
-      slug: "integration-timetable-end-strength",
+      slug: CLASS_SLUG,
       name: "Integration Timetable End Strength",
       type: "Strength",
       level: "Adaptive",
@@ -98,7 +102,7 @@ describe("end class timetable rule", () => {
     });
     getClassDefinitionsMock.mockResolvedValue([
       {
-        slug: "integration-timetable-end-strength",
+        slug: CLASS_SLUG,
         name: "Integration Timetable End Strength",
         type: "Strength",
       },
@@ -141,7 +145,7 @@ describe("end class timetable rule", () => {
 
     const rule = await createClassTimetableRule(
       {
-        classDefinitionSlug: "integration-timetable-end-strength",
+        classDefinitionSlug: CLASS_SLUG,
         weekday: 1,
         startsAtLocal: "18:30",
         durationMinutes: 45,
@@ -219,7 +223,7 @@ describe("end class timetable rule", () => {
 
     const rule = await createClassTimetableRule(
       {
-        classDefinitionSlug: "integration-timetable-end-strength",
+        classDefinitionSlug: CLASS_SLUG,
         weekday: 1,
         startsAtLocal: "18:30",
         durationMinutes: 45,

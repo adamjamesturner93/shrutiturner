@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { loginWithEmail } from "../../helpers/auth";
+import { seedBlogUser } from "../../helpers/blog";
 
 test("blog tag filtering updates the URL and survives refresh", async ({ page }) => {
   await page.goto("/blog");
@@ -91,7 +93,10 @@ test("blog post shows the logged-out comment prompt", async ({ page }) => {
 
   await page.goto("/blog/strength-training-chronic-illness");
 
-  const discussion = page.locator("section").filter({ hasText: "Discussion" });
+  const discussion = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Discussion" }) })
+    .first();
   await expect(discussion.getByRole("link", { name: "Log in" })).toBeVisible();
   await expect(discussion.getByText("to add a comment or reply.")).toBeVisible();
 });
@@ -111,4 +116,30 @@ test("related articles navigate to the linked post", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Programming Strength Training Around Flares and Bad Days" })
   ).toBeVisible();
+});
+
+test("authenticated readers can post a comment and a reply", async ({ page }) => {
+  const { email } = await seedBlogUser("discussion");
+  const commentText = `Helpful comment ${Date.now()}`;
+  const replyText = `Helpful reply ${Date.now()}`;
+
+  await loginWithEmail(page, email);
+  await page.goto("/blog/strength-training-chronic-illness");
+
+  await page.getByPlaceholder("Add your thoughts...").fill(commentText);
+  await page.getByRole("button", { name: "Post comment" }).click();
+
+  const discussion = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Discussion" }) })
+    .first();
+  const topLevelComment = discussion.locator("div.group").filter({ hasText: commentText }).first();
+  await expect(topLevelComment).toBeVisible();
+  await topLevelComment.getByRole("button", { name: "Reply" }).click();
+
+  await topLevelComment.getByPlaceholder("Write your reply...").fill(replyText);
+  await topLevelComment.getByRole("button", { name: "Reply" }).last().click();
+
+  await expect(discussion.getByText(commentText)).toBeVisible();
+  await expect(topLevelComment.getByText(replyText)).toBeVisible();
 });

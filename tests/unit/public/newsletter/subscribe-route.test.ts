@@ -179,8 +179,10 @@ describe("POST /api/newsletter/subscribe", () => {
     expect(sendEmailMock.mock.calls[0]?.[0]).toMatchObject({
       To: "reader@example.com",
       Subject: "Welcome",
+      MessageStream: "outbound",
       Tag: "newsletter-signup",
       Metadata: expect.objectContaining({
+        emailCategory: "marketing",
         source: "subscribe",
         consent: "true",
         marketingOptIn: "true",

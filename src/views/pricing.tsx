@@ -16,6 +16,7 @@ import { Layout } from "@/components/layout";
 import {
   EditorialHero,
   MarketingSection,
+  PreFooterCtaSection,
   ProofBand,
   SectionHeading,
 } from "@/components/marketing/sections";
@@ -90,30 +91,36 @@ export function PricingPage({ faqs }: PricingPageProps) {
   );
 
   const buildAuthenticatedPurchaseHref = (intent: PricingCheckoutIntent) => {
-    const params = new URLSearchParams({ intent: "pricing-checkout", kind: intent.kind });
-
     if (intent.kind === "membership") {
-      params.set("interval", intent.interval);
+      const params = new URLSearchParams({
+        subscribe: "1",
+        interval: intent.interval,
+        source: "pricing",
+      });
+      return `/dashboard/membership?${params.toString()}`;
     } else {
+      const params = new URLSearchParams({ intent: "pricing-checkout", kind: intent.kind });
       params.set("bundle", String(intent.bundle));
+      return `/auth/post-login?${params.toString()}`;
     }
-
-    return `/auth/post-login?${params.toString()}`;
   };
 
   const buildAnonymousPurchaseHref = (intent: PricingCheckoutIntent) => {
-    const postLoginParams = new URLSearchParams({
-      intent: "pricing-checkout",
-      kind: intent.kind,
-    });
-
     if (intent.kind === "membership") {
-      postLoginParams.set("interval", intent.interval);
+      const redirectParams = new URLSearchParams({
+        subscribe: "1",
+        interval: intent.interval,
+        source: "pricing",
+      });
+      return `/login?redirect=${encodeURIComponent(`/dashboard/membership?${redirectParams.toString()}`)}`;
     } else {
+      const postLoginParams = new URLSearchParams({
+        intent: "pricing-checkout",
+        kind: intent.kind,
+      });
       postLoginParams.set("bundle", String(intent.bundle));
+      return `/login?redirect=${encodeURIComponent(`/auth/post-login?${postLoginParams.toString()}`)}`;
     }
-
-    return `/login?redirect=${encodeURIComponent(`/auth/post-login?${postLoginParams.toString()}`)}`;
   };
 
   const getPurchaseHref = (intent: PricingCheckoutIntent) =>
@@ -335,6 +342,26 @@ export function PricingPage({ faqs }: PricingPageProps) {
             Founding members remain at £25/month
           </span>
         </div>
+
+        <div className="mt-8 rounded-[1.6rem] border border-brand-dark/10 bg-background p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+          <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">
+            Key subscription information
+          </p>
+          <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+            {[
+              `The membership renews automatically until you cancel.`,
+              `A ${trialDays}-day free trial applies before the first paid term.`,
+              `You can cancel online from your membership dashboard.`,
+              `You have an initial 14-day cooling-off right after signup, plus a further 14-day cooling-off right after trial conversion and annual renewals.`,
+              `Separate reminder notices are sent before the trial ends, before annual renewals, and every 6 months for rolling monthly memberships.`,
+            ].map((item) => (
+              <li key={item} className="flex items-start gap-3">
+                <Check className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </MarketingSection>
 
       <MarketingSection className="section-divider">
@@ -468,40 +495,23 @@ export function PricingPage({ faqs }: PricingPageProps) {
         </div>
       </MarketingSection>
 
-      <MarketingSection className="bg-brand-dark text-brand-white">
-        <div className="grid gap-8 md:grid-cols-[1fr_auto] md:items-center">
-          <div>
-            <p className="text-brand-accent-light text-xs tracking-[0.2em] uppercase">Ready</p>
-            <h2 className="mt-4 text-3xl leading-tight md:text-5xl">
-              Pick the option that makes showing up easier, not harder.
-            </h2>
-            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-brand-white/80">
-              The right choice depends less on motivation and more on the rhythm your body and life
-              can genuinely support.
-            </p>
-          </div>
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <Button
-              asChild
-              size="lg"
-              className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
-            >
-              <Link href="/schedule">
-                View schedule
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="border-brand-white/20 bg-brand-white/6 text-brand-white hover:bg-brand-white/10"
-            >
-              <Link href="/contact">Ask a question</Link>
-            </Button>
-          </div>
-        </div>
-      </MarketingSection>
+      <PreFooterCtaSection
+        eyebrow="Ready"
+        title="Pick the option that makes showing up easier, not harder."
+        description="The right choice depends less on motivation and more on the rhythm your body and life can genuinely support."
+        actions={[
+          {
+            href: "/schedule",
+            label: "View schedule",
+            icon: ArrowRight,
+          },
+          {
+            href: "/contact",
+            label: "Ask a question",
+            variant: "secondary",
+          },
+        ]}
+      />
     </Layout>
   );
 }

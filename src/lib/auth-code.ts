@@ -3,6 +3,7 @@ import { render } from "@react-email/render";
 import { ServerClient } from "postmark";
 import AuthCodeEmail from "@/emails/auth-code";
 import { db } from "@/lib/db";
+import { getPostmarkMessageStream } from "@/lib/postmark/client";
 
 export function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
@@ -53,7 +54,10 @@ export async function sendAuthCodeEmail(email: string, code: string, expiryMinut
     Subject: "Your login code",
     HtmlBody: html,
     TextBody: text,
-    MessageStream: "outbound",
+    MessageStream: getPostmarkMessageStream("transactional"),
     Tag: "auth-code",
+    Metadata: {
+      emailCategory: "transactional",
+    },
   });
 }

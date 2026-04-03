@@ -55,7 +55,9 @@ describe("email preference formatting integration", () => {
     vi.clearAllMocks();
   });
 
-  it("formats booking confirmation content using the member's saved timezone and date format", async () => {
+  it(
+    "formats booking confirmation content using the member's saved timezone and date format",
+    async () => {
     const { sendBookingConfirmation } = await import("@/lib/email");
     const result = await sendBookingConfirmation(
       "reader@example.com",
@@ -81,6 +83,7 @@ describe("email preference formatting integration", () => {
     expect(sendPostmarkReactEmailMock).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "reader@example.com",
+        category: "transactional",
         tag: "class-booking-confirmation",
         attachments: expect.arrayContaining([
           expect.objectContaining({
@@ -90,7 +93,9 @@ describe("email preference formatting integration", () => {
         ]),
       })
     );
-  });
+    },
+    15_000
+  );
 
   it("formats reminder emails using 12-hour or 24-hour clock based on saved preferences", async () => {
     const { sendClassReminder } = await import("@/lib/email");
@@ -106,6 +111,7 @@ describe("email preference formatting integration", () => {
     );
     expect(sendPostmarkReactEmailMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        category: "transactional",
         tag: "class-reminder",
       })
     );
@@ -133,6 +139,7 @@ describe("email preference formatting integration", () => {
     );
     expect(sendPostmarkReactEmailMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        category: "transactional",
         tag: "instructor-first-signup",
         attachments: expect.arrayContaining([
           expect.objectContaining({

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const connectionMock = vi.fn();
+const isKnownBlogPostSlugMock = vi.fn();
 const authMock = vi.fn();
 const getCookieMock = vi.fn();
 const cookiesMock = vi.fn();
@@ -18,6 +19,10 @@ vi.mock("next/headers", () => ({
   cookies: cookiesMock,
 }));
 
+vi.mock("@/lib/blog/post-validation", () => ({
+  isKnownBlogPostSlug: isKnownBlogPostSlugMock,
+}));
+
 vi.mock("@/lib/auth", () => ({
   auth: authMock,
 }));
@@ -32,6 +37,7 @@ describe("GET /api/blog/[slug]/engagement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     connectionMock.mockResolvedValue(undefined);
+    isKnownBlogPostSlugMock.mockResolvedValue(true);
     authMock.mockResolvedValue({ user: { id: "user_123" } });
     getCookieMock.mockReturnValue({ value: "anon-token" });
     cookiesMock.mockResolvedValue({ get: getCookieMock });
@@ -57,6 +63,24 @@ describe("GET /api/blog/[slug]/engagement", () => {
       postSlug: "test-post",
       currentUserId: "user_123",
       anonymousToken: "anon-token",
+    });
+  });
+
+  it("returns 404 for an unknown blog post slug", async () => {
+    isKnownBlogPostSlugMock.mockResolvedValue(false);
+
+    const response = await route.GET(
+      new Request("http://localhost/api/blog/missing-post/engagement"),
+      {
+        params: Promise.resolve({ slug: "missing-post" }),
+      }
+    );
+
+    expect(response.status).toBe(404);
+    expect(authMock).not.toHaveBeenCalled();
+    expect(getBlogEngagementMock).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toEqual({
+      message: "Blog post not found.",
     });
   });
 

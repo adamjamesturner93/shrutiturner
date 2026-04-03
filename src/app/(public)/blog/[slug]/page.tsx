@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { BlogPostPage } from "@/views/blog-post";
 import { getBlogPostBySlug, getBlogPosts } from "@/lib/content";
 
@@ -23,5 +24,7 @@ export async function generateMetadata({
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const [post, posts] = await Promise.all([getBlogPostBySlug(slug), getBlogPosts()]);
+  if (!post) notFound();
+
   return <BlogPostPage post={post} posts={posts} />;
 }

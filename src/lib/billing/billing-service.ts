@@ -16,6 +16,9 @@ import {
 } from "@/lib/billing/price-map";
 import { getActiveCatalogItem, resolvePromotionCodeDiscount } from "@/lib/billing/catalog-service";
 import {
+  sendRenewalCoolingOffNotice,
+} from "@/lib/billing/subscription-compliance";
+import {
   computeReferralDiscountPence,
   consumeReferralDiscount,
 } from "@/lib/referrals/referral-discount-service";
@@ -36,6 +39,10 @@ function startOfUtcDay(date: Date) {
 function endOfUtcDay(date: Date) {
   const start = startOfUtcDay(date);
   return new Date(start.getTime() + 86400000);
+}
+
+function addDays(date: Date, days: number) {
+  return new Date(date.getTime() + days * 86400000);
 }
 
 function extractPaidAmountPence(payloadJson: Prisma.JsonValue, type: string) {
@@ -269,6 +276,8 @@ export async function createMembershipCheckoutSession(
   options?: {
     successPath?: string;
     cancelPath?: string;
+    disclosureVersion?: string;
+    disclosureAcceptedAt?: Date;
   }
 ) {
   const catalog = await getActiveCatalogItem(planToCatalogKey(plan, billingInterval));
@@ -289,6 +298,7 @@ export async function createMembershipCheckoutSession(
   const coupon =
     chosen.source === "referral" ? await createOneTimeCouponIfNeeded(chosen.amountPence) : null;
   const stripe = getStripeClient();
+  const disclosureAcceptedAtIso = options?.disclosureAcceptedAt?.toISOString();
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
@@ -314,6 +324,8 @@ export async function createMembershipCheckoutSession(
       referralDiscountPence: chosen.source === "referral" ? String(chosen.amountPence) : "0",
       promoCode: chosen.source === "promo" ? promoDiscount?.code || "" : "",
       discountSource: chosen.source,
+      disclosureVersion: options?.disclosureVersion || "",
+      disclosureAcceptedAt: disclosureAcceptedAtIso || "",
     },
   });
 
@@ -449,6 +461,11 @@ async function processCheckoutCompleted(event: Stripe.Event, session: Stripe.Che
       stripeSubscriptionId: subscription.id,
       stripePriceId,
       nextPeriodEnd: unixToDate(getStripeSubscriptionPeriodEnd(subscription)),
+      disclosureVersion: session.metadata?.disclosureVersion || undefined,
+      disclosureAcceptedAt: session.metadata?.disclosureAcceptedAt
+        ? new Date(session.metadata.disclosureAcceptedAt)
+        : undefined,
+      startedAt: session.created ? new Date(session.created * 1000) : new Date(),
     });
 
     if (discountPence > 0) {
@@ -488,6 +505,17 @@ async function processInvoicePaid(event: Stripe.Event, invoice: Stripe.Invoice) 
   });
   if (!user) return;
 
+  const existingMembership = await db.membershipSubscription.findFirst({
+    where: { userId: user.id },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      trialEndsAt: true,
+      latestInvoicePaidAt: true,
+      billingInterval: true,
+    },
+  });
+
   const subscriptionId = getInvoiceSubscriptionId(invoice);
   if (!subscriptionId) return;
 
@@ -498,7 +526,7 @@ async function processInvoicePaid(event: Stripe.Event, invoice: Stripe.Invoice) 
   const resolvedPlan = await resolvePlanFromStripePriceId(stripePriceId);
   if (!resolvedPlan) return;
 
-  await startOrSwitchMembership({
+  const updatedMembership = await startOrSwitchMembership({
     userId: user.id,
     plan: resolvedPlan.plan,
     billingInterval: resolvedPlan.billingInterval,
@@ -506,6 +534,73 @@ async function processInvoicePaid(event: Stripe.Event, invoice: Stripe.Invoice) 
     stripePriceId: stripePriceId || undefined,
     nextPeriodEnd: unixToDate(line?.period?.end),
   });
+
+  const invoicePaidAt = new Date();
+  const shouldOpenRenewalCoolingOff =
+    Boolean(existingMembership?.trialEndsAt && !existingMembership.latestInvoicePaidAt) ||
+    resolvedPlan.billingInterval === "annual";
+
+  const membershipWithCoolingOff = shouldOpenRenewalCoolingOff
+    ? await db.membershipSubscription.update({
+        where: { id: updatedMembership.id },
+        data: {
+          latestInvoiceId: invoice.id,
+          latestInvoiceAmountPence: invoice.amount_paid || 0,
+          latestInvoicePaidAt: invoicePaidAt,
+          renewalCoolingOffStartedAt: invoicePaidAt,
+          renewalCoolingOffEndsAt: addDays(invoicePaidAt, 14),
+          renewalCoolingOffKind:
+            existingMembership?.trialEndsAt && !existingMembership.latestInvoicePaidAt
+              ? "trial_conversion"
+              : "annual_renewal",
+        },
+        include: {
+          user: {
+            select: {
+              email: true,
+              firstName: true,
+              name: true,
+            },
+          },
+        },
+      })
+    : await db.membershipSubscription.update({
+        where: { id: updatedMembership.id },
+        data: {
+          latestInvoiceId: invoice.id,
+          latestInvoiceAmountPence: invoice.amount_paid || 0,
+          latestInvoicePaidAt: invoicePaidAt,
+        },
+        include: {
+          user: {
+            select: {
+              email: true,
+              firstName: true,
+              name: true,
+            },
+          },
+        },
+      });
+
+  if (
+    shouldOpenRenewalCoolingOff &&
+    membershipWithCoolingOff.user.email &&
+    membershipWithCoolingOff.renewalCoolingOffEndsAt
+  ) {
+    await sendRenewalCoolingOffNotice({
+      membershipId: membershipWithCoolingOff.id,
+      userId: user.id,
+      email: membershipWithCoolingOff.user.email,
+      firstName:
+        membershipWithCoolingOff.user.firstName || membershipWithCoolingOff.user.name || "there",
+      renewalKind:
+        membershipWithCoolingOff.renewalCoolingOffKind === "trial_conversion"
+          ? "trial_conversion"
+          : "annual_renewal",
+      renewalDate: invoicePaidAt,
+      coolingOffEndsAt: membershipWithCoolingOff.renewalCoolingOffEndsAt,
+    });
+  }
 
   const metadataDiscount = Number(invoice.metadata?.referralDiscountPence || "0") || 0;
   if (metadataDiscount > 0) {

@@ -23,8 +23,9 @@ import {
   getLateJoinCutoffAt,
   type ClassOperationalSettingsDto,
 } from "@/lib/classes/settings-service";
-import { createSessionRoom, isDailyConfigured } from "@/lib/daily/service";
+import { createSessionRoom, deleteSessionRoom, isDailyConfigured } from "@/lib/daily/service";
 import { HEALTH_CATEGORIES } from "@/data/health-profile-data";
+import { getHealthCheckInMode } from "@/lib/health/health-service";
 import type {
   AdminClassSessionDto,
   BulkCreateSessionsInput,
@@ -145,7 +146,8 @@ function toSessionListItem(
   }>,
   currentUserId?: string,
   instructorProfile?: { name?: string; bio?: string; avatarImageUrl?: string },
-  settings?: ClassOperationalSettingsDto
+  settings?: ClassOperationalSettingsDto,
+  currentUserCheckInMode?: "energy_only" | "energy_and_flare"
 ): ClassSessionListItemDto {
   const bookedCount = getBookedCount(session);
   const waitlistCount = getWaitlistCount(session);
@@ -205,10 +207,12 @@ function toSessionListItem(
     preJoinWindowMinutes: operationalSettings.preJoinWindowMinutes,
     lateJoinCutoffMinutes: operationalSettings.lateJoinCutoffMinutes,
     lateJoinCutoffAt: getLateJoinCutoffAt(session.startsAtUtc, operationalSettings).toISOString(),
+    emptyClassAutoCancelWindowMinutes: operationalSettings.emptyClassAutoCancelWindowMinutes,
     isBookedByCurrentUser: Boolean(myBooking && myBooking.status === ClassBookingStatus.booked),
     myBookingStatus: myBooking?.status ?? null,
     hasPreviouslyJoinedCurrentUser: Boolean(myBooking?.firstJoinedAt),
     waitlistPosition: myWaitlist?.position ?? null,
+    currentUserCheckInMode,
   };
 }
 
@@ -261,6 +265,19 @@ export async function listClassSessions(params: {
   );
   const profiles = await getInstructorProfilesByIds(profileIds);
   const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
+  const currentUserHealthProfile = params.currentUserId
+    ? await db.healthProfile.findUnique({
+        where: { userId: params.currentUserId },
+        select: {
+          declarationStatus: true,
+          tracksFlareCheckIns: true,
+        },
+      })
+    : null;
+  const currentUserCheckInMode = getHealthCheckInMode({
+    declarationStatus: currentUserHealthProfile?.declarationStatus ?? "incomplete",
+    tracksFlareCheckIns: currentUserHealthProfile?.tracksFlareCheckIns ?? false,
+  });
 
   return sessions.map((session) =>
     toSessionListItem(
@@ -269,7 +286,8 @@ export async function listClassSessions(params: {
       session.instructorProfileEntryId
         ? profileById.get(session.instructorProfileEntryId)
         : undefined,
-      settings
+      settings,
+      currentUserCheckInMode
     )
   );
 }
@@ -343,6 +361,19 @@ export async function getClassSessionDetail(
   const profile = session.instructorProfileEntryId
     ? (await getInstructorProfilesByIds([session.instructorProfileEntryId]))[0]
     : undefined;
+  const currentUserHealthProfile = currentUserId
+    ? await db.healthProfile.findUnique({
+        where: { userId: currentUserId },
+        select: {
+          declarationStatus: true,
+          tracksFlareCheckIns: true,
+        },
+      })
+    : null;
+  const currentUserCheckInMode = getHealthCheckInMode({
+    declarationStatus: currentUserHealthProfile?.declarationStatus ?? "incomplete",
+    tracksFlareCheckIns: currentUserHealthProfile?.tracksFlareCheckIns ?? false,
+  });
 
   const base = toSessionListItem(
     {
@@ -360,7 +391,8 @@ export async function getClassSessionDetail(
     },
     currentUserId,
     profile,
-    settings
+    settings,
+    currentUserCheckInMode
   );
 
   return {
@@ -385,6 +417,9 @@ export async function getClassSessionDetail(
         toHealthConditionLabel(selection.conditionKey, selection.detail)
       ),
       attendedClassesCount: attendanceByUserId.get(booking.userId) || 0,
+      preClassEnergyLevel: booking.preClassEnergyLevel as 1 | 2 | 3 | 4 | 5 | null,
+      preClassFlareToday: Boolean(booking.preClassFlareToday),
+      preClassSubmittedAt: booking.preClassSubmittedAt?.toISOString() || null,
     })),
     waitlist: session.waitlist.map((entry) => ({
       id: entry.id,
@@ -491,22 +526,9 @@ export async function bulkCreateClassSessions(
     return records;
   });
 
-  if (!isDailyConfigured()) {
-    return {
-      createdSessionIds: created.map((c) => c.id),
-      dailyConfigured: false,
-    };
-  }
-
-  // Daily room creation intentionally happens after DB create to avoid long DB transactions.
-  // Failures are bubbled up and can be retried from admin UI.
-  for (const createdSession of created) {
-    await setUpSessionRoom(createdSession.id);
-  }
-
   return {
     createdSessionIds: created.map((c) => c.id),
-    dailyConfigured: true,
+    dailyConfigured: isDailyConfigured(),
   };
 }
 
@@ -518,13 +540,55 @@ export async function setUpSessionRoom(sessionId: string) {
       startsAtUtc: true,
       endsAtUtc: true,
       status: true,
+      dailyRoomName: true,
+      dailyRoomUrl: true,
+      roomSetupStatus: true,
+      bookings: {
+        where: {
+          status: {
+            in: [
+              ClassBookingStatus.booked,
+              ClassBookingStatus.attended,
+              ClassBookingStatus.no_show,
+            ],
+          },
+        },
+        select: {
+          id: true,
+        },
+      },
     },
   });
   if (!session) {
     throw new Error("SESSION_NOT_FOUND");
   }
 
-  if (session.status === ClassSessionStatus.draft) {
+  if (
+    session.status === ClassSessionStatus.draft ||
+    session.status === ClassSessionStatus.cancelled ||
+    session.status === ClassSessionStatus.completed
+  ) {
+    await db.classSession.update({
+      where: { id: sessionId },
+      data: {
+        dailyRoomName: null,
+        dailyRoomUrl: null,
+        roomSetupStatus: ClassRoomSetupStatus.pending,
+        roomSetupError: null,
+      },
+    });
+    return { status: "pending" as const };
+  }
+
+  if (
+    session.dailyRoomName &&
+    session.dailyRoomUrl &&
+    session.roomSetupStatus === ClassRoomSetupStatus.ready
+  ) {
+    return { status: "ready" as const };
+  }
+
+  if (session.bookings.length === 0) {
     await db.classSession.update({
       where: { id: sessionId },
       data: {
@@ -564,6 +628,61 @@ export async function setUpSessionRoom(sessionId: string) {
     const message = error instanceof Error ? error.message : "Failed to create Daily room";
     await db.classSession.update({
       where: { id: session.id },
+      data: {
+        roomSetupStatus: ClassRoomSetupStatus.failed,
+        roomSetupError: message,
+      },
+    });
+    return { status: "failed" as const, message };
+  }
+}
+
+export async function tearDownSessionRoom(sessionId: string) {
+  const session = await db.classSession.findUnique({
+    where: { id: sessionId },
+    select: {
+      id: true,
+      dailyRoomName: true,
+    },
+  });
+
+  if (!session) {
+    throw new Error("SESSION_NOT_FOUND");
+  }
+
+  if (!session.dailyRoomName) {
+    await db.classSession.update({
+      where: { id: sessionId },
+      data: {
+        dailyRoomName: null,
+        dailyRoomUrl: null,
+        roomSetupStatus: ClassRoomSetupStatus.pending,
+        roomSetupError: null,
+      },
+    });
+    return { status: "skipped" as const };
+  }
+
+  try {
+    if (isDailyConfigured()) {
+      await deleteSessionRoom(session.dailyRoomName);
+    }
+
+    await db.classSession.update({
+      where: { id: sessionId },
+      data: {
+        dailyRoomName: null,
+        dailyRoomUrl: null,
+        roomSetupStatus: ClassRoomSetupStatus.pending,
+        roomSetupError: null,
+      },
+    });
+
+    return { status: "removed" as const };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to close Daily room";
+    await db.classSession.update({
+      where: { id: sessionId },
       data: {
         roomSetupStatus: ClassRoomSetupStatus.failed,
         roomSetupError: message,
@@ -750,6 +869,7 @@ export async function getScheduleGroupedByDay(params?: {
       type: session.type,
       day: weekday,
       dateLabel,
+      startsAtUtc: session.startsAtUtc,
       time: formatterTime.format(starts),
       duration: `${session.durationMinutes} min`,
       level: session.level,
@@ -761,6 +881,7 @@ export async function getScheduleGroupedByDay(params?: {
       spotsRemaining: session.spotsRemaining,
       bookedCount: session.bookedCount,
       status: session.status,
+      emptyClassAutoCancelWindowMinutes: session.emptyClassAutoCancelWindowMinutes,
       isBookedByCurrentUser: session.isBookedByCurrentUser,
       waitlistPosition: session.waitlistPosition,
     };

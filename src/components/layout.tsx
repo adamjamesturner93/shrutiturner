@@ -4,20 +4,25 @@ import { ScrollToTop } from "./scroll-to-top";
 import { NewsletterPopup } from "./newsletter";
 import { ReactNode, useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/context/auth-context";
 
 interface LayoutProps {
   children: ReactNode;
 }
 
-const NO_POPUP_PATHS = ["/login", "/dashboard", "/unsubscribe", "/subscribe"];
+const NO_POPUP_PATHS = ["/blog", "/login", "/dashboard", "/unsubscribe", "/subscribe"];
 
 export function Layout({ children }: LayoutProps) {
   const [showPopup, setShowPopup] = useState(false);
   const pathname = usePathname();
+  const { isAuthenticated } = useAuth();
+  const canShowPopup =
+    !isAuthenticated && !NO_POPUP_PATHS.some((pathPrefix) => pathname.startsWith(pathPrefix));
 
   useEffect(() => {
-    // Don't show on auth/dashboard pages
-    if (NO_POPUP_PATHS.some((p) => pathname.startsWith(p))) return;
+    if (!canShowPopup) {
+      return;
+    }
 
     // Only show once per session
     if (sessionStorage.getItem("newsletter_shown")) return;
@@ -63,7 +68,7 @@ export function Layout({ children }: LayoutProps) {
       resizeObserver?.disconnect();
       clearTimeout(timer);
     };
-  }, [pathname]);
+  }, [canShowPopup]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -79,7 +84,7 @@ export function Layout({ children }: LayoutProps) {
         {children}
       </main>
       <Footer />
-      <NewsletterPopup isOpen={showPopup} onClose={() => setShowPopup(false)} />
+      <NewsletterPopup isOpen={canShowPopup && showPopup} onClose={() => setShowPopup(false)} />
     </div>
   );
 }

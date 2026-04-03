@@ -56,6 +56,16 @@ function createMembershipState(options?: {
       pricePence: 2900,
       cancelAtPeriodEnd: options?.cancelAtPeriodEnd ?? false,
       accessActive: active,
+      compliance: {
+        disclosureVersion: "2026-04-03",
+        disclosureAcceptedAt: "2026-04-03T10:00:00.000Z",
+        inInitialCoolingOff: false,
+        inRenewalCoolingOff: false,
+        trialEndsAt: "2026-04-17",
+        initialCoolingOffEndsAt: "2026-04-17",
+        renewalCoolingOffEndsAt: null,
+        renewalCoolingOffKind: null,
+      },
     },
     credits: {
       balance: credits,
@@ -74,6 +84,7 @@ function createMembershipState(options?: {
     referral: {
       balancePence: 1000,
     },
+    complianceHistory: [],
   };
 }
 
@@ -196,6 +207,7 @@ test("membership checkout starts from the purchase state", async ({ page, baseUR
         membership: null,
         credits: { balance: 0, summary: [] },
         referral: { balancePence: 0 },
+        complianceHistory: [],
       },
     });
   });
@@ -217,6 +229,8 @@ test("membership checkout starts from the purchase state", async ({ page, baseUR
   await page.goto("/dashboard/membership");
 
   await page.getByRole("button", { name: /Start Monthly/i }).click();
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Acknowledge and continue" }).click();
   await expect(page).toHaveURL(/\/dashboard\/membership\?checkout=success$/);
 });
 
@@ -230,6 +244,7 @@ test("credit checkout starts from the purchase state", async ({ page, baseURL })
         membership: null,
         credits: { balance: 0, summary: [] },
         referral: { balancePence: 0 },
+        complianceHistory: [],
       },
     });
   });

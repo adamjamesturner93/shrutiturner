@@ -5,7 +5,11 @@ import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import Link from "next/link";
 import { Clock, Video, Calendar, ArrowRight, Users, Globe } from "lucide-react";
-import { MarketingSection, SectionHeading } from "@/components/marketing/sections";
+import {
+  MarketingSection,
+  PreFooterCtaSection,
+  SectionHeading,
+} from "@/components/marketing/sections";
 import { getTypeColor } from "@/lib/classes/type-color";
 import { BookClassButton } from "../components/booking-modal";
 import { useI18n } from "../lib/use-i18n";
@@ -386,47 +390,39 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
         </div>
       </MarketingSection>
 
-      <section className="bg-brand-accent text-brand-white py-14 md:py-18">
-        <div className="container mx-auto max-w-3xl space-y-8 px-4 text-center">
-          <h2 className="text-3xl md:text-4xl">Ready to Join?</h2>
-          <div className="grid gap-6 text-left md:grid-cols-3">
-            <div className="bg-brand-white/10 rounded-lg p-6">
-              <p className="text-brand-white/90 mb-2 text-sm">Single Class</p>
-              <p className="mb-2 text-3xl">£9</p>
-              <p className="text-sm opacity-90">pay as you go</p>
-            </div>
-            <div className="bg-brand-white/10 rounded-lg p-6">
-              <p className="text-brand-white/90 mb-2 text-sm">10-Class Pack</p>
-              <p className="mb-2 text-3xl">£70</p>
-              <p className="text-sm opacity-90">£7 per class</p>
-            </div>
-            <div className="bg-brand-white/10 rounded-lg p-6">
-              <p className="text-brand-white/90 mb-2 text-sm">Unlimited classes</p>
-              <p className="mb-2 text-3xl">£29</p>
-              <p className="text-sm opacity-90">per month</p>
-            </div>
+      <PreFooterCtaSection
+        layout="centered"
+        title="Ready to Join?"
+        actions={[
+          {
+            href: "/pricing",
+            label: "View Full Pricing",
+          },
+          {
+            href: "/classes",
+            label: "Explore Move Well Classes",
+            variant: "secondary",
+          },
+        ]}
+      >
+        <div className="grid gap-6 text-left md:grid-cols-3">
+          <div className="bg-brand-white/10 rounded-lg p-6">
+            <p className="text-brand-white/90 mb-2 text-sm">Single Class</p>
+            <p className="mb-2 text-3xl">£9</p>
+            <p className="text-sm opacity-90">pay as you go</p>
           </div>
-          <div className="flex flex-col justify-center gap-4 pt-4 sm:flex-row">
-            <Link href="/pricing">
-              <Button
-                size="lg"
-                className="bg-brand-white text-brand-accent hover:bg-brand-white/90"
-              >
-                View Full Pricing
-              </Button>
-            </Link>
-            <Link href="/classes">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-brand-white text-brand-white hover:bg-brand-white/10 bg-transparent"
-              >
-                Explore Move Well Classes
-              </Button>
-            </Link>
+          <div className="bg-brand-white/10 rounded-lg p-6">
+            <p className="text-brand-white/90 mb-2 text-sm">10-Class Pack</p>
+            <p className="mb-2 text-3xl">£70</p>
+            <p className="text-sm opacity-90">£7 per class</p>
+          </div>
+          <div className="bg-brand-white/10 rounded-lg p-6">
+            <p className="text-brand-white/90 mb-2 text-sm">Unlimited classes</p>
+            <p className="mb-2 text-3xl">£29</p>
+            <p className="text-sm opacity-90">per month</p>
           </div>
         </div>
-      </section>
+      </PreFooterCtaSection>
     </Layout>
   );
 }

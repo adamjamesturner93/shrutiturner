@@ -18,6 +18,7 @@ export type OnboardingStateInput = {
   hasAgreedToHealth?: boolean;
   heardAboutSource?: string | null;
   hasHealthProfile?: boolean;
+  healthDeclarationStatus?: "incomplete" | "none_declared" | "context_declared";
   hasConsentedToHealthData?: boolean;
   needsHealthDataConsentRefresh?: boolean;
 };
@@ -36,12 +37,6 @@ export function deriveOnboardingState(input: OnboardingStateInput): OnboardingSt
   if (!hasLegal) missingSteps.push("legal");
 
   if (!hasText(input.heardAboutSource)) missingSteps.push("source");
-
-  const hasHealthStep =
-    Boolean(input.hasHealthProfile) &&
-    Boolean(input.hasConsentedToHealthData) &&
-    !Boolean(input.needsHealthDataConsentRefresh);
-  if (!hasHealthStep) missingSteps.push("health");
 
   const checklistComplete = missingSteps.length === 0;
   const isComplete = checklistComplete && Boolean(input.isOnboarded);

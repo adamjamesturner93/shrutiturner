@@ -30,6 +30,11 @@ import { useAuth } from "@/context/auth-context";
 import type { DashboardSummaryDto, OnboardingStateDto } from "@/lib/api/types";
 import { EMPTY_HEALTH_PROFILE, type HealthProfile } from "@/data/health-profile-data";
 import { getGreeting } from "@/components/greeting";
+import {
+  getDashboardAccessCard,
+  shouldPromptForHealthProfile,
+  shouldPromptForHealthReview,
+} from "@/views/dashboard/dashboard-view-model";
 
 type OnboardingStep = Exclude<OnboardingStateDto["nextStep"], "complete">;
 
@@ -67,6 +72,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
   const [profileDob, setProfileDob] = useState("");
   const [profileError, setProfileError] = useState("");
   const [profileSubmitting, setProfileSubmitting] = useState(false);
+  const [healthActionPending, setHealthActionPending] = useState(false);
   const onboardingFieldsInitialized = useRef(false);
 
   useEffect(() => {
@@ -99,7 +105,11 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
 
     setShowOnboarding(true);
     setProfileError("");
-    setOnboardingStep(resolveOnboardingStep(user.onboarding.nextStep));
+    setOnboardingStep(
+      user.onboarding.nextStep === "welcome" && user.healthDeclarationStatus === "incomplete"
+        ? "health"
+        : resolveOnboardingStep(user.onboarding.nextStep)
+    );
 
     if (onboardingFieldsInitialized.current) {
       return;
@@ -166,11 +176,52 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
     if (!response.ok) {
       throw new Error("Could not save health profile.");
     }
+    const savedProfile = (await response.json()) as HealthProfile;
     if (consentAccepted && !user?.hasConsentedToHealthData) {
       await acceptHealthDataConsent();
     }
     const account = await refreshAccountProfile();
     setOnboardingStep(resolveOnboardingStep(account?.profile?.onboarding?.nextStep));
+    setSummary((prev) =>
+      prev
+        ? {
+            ...prev,
+            hasHealthProfile: true,
+            healthDeclarationStatus: savedProfile.declarationStatus,
+            healthDeclarationLastConfirmedAt: savedProfile.lastConfirmedAt,
+            healthDeclarationNeedsReview: false,
+          }
+        : prev
+    );
+  };
+
+  const handleHealthConfirm = async () => {
+    setHealthActionPending(true);
+    try {
+      const response = await fetch("/api/me/health-profile", { method: "POST" });
+      if (!response.ok) {
+        throw new Error("Could not confirm health declaration.");
+      }
+      const payload = (await response.json()) as HealthProfile;
+      setSummary((prev) =>
+        prev
+          ? {
+              ...prev,
+              healthDeclarationLastConfirmedAt: payload.lastConfirmedAt,
+              healthDeclarationNeedsReview: false,
+            }
+          : prev
+      );
+      await refreshAccountProfile();
+    } catch (confirmError) {
+      setError(
+        confirmError instanceof Error
+          ? confirmError.message
+          : "Could not confirm health declaration."
+      );
+    } finally {
+      setHealthActionPending(false);
+    }
   };
 
   if (loading) {
@@ -193,6 +244,15 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
 
   const totalCredits = summary.credits.balance;
   const referralBalance = Math.floor(summary.referral.balancePence / 100);
+  const accessCard = getDashboardAccessCard(summary.membership, totalCredits);
+  const shouldShowHealthPrompt = shouldPromptForHealthProfile(
+    summary.healthDeclarationStatus,
+    user?.hasConsentedToHealthData,
+    user?.needsHealthDataConsentRefresh
+  );
+  const shouldShowHealthReviewPrompt = shouldPromptForHealthReview(
+    summary.healthDeclarationNeedsReview
+  );
 
   const entitlementLabel = (value: "membership" | "credit" | "manual") => {
     if (value === "membership") return "Membership";
@@ -424,11 +484,13 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                     await saveOnboardingSource(heardAboutSource, heardAboutDetail);
                     const account = await refreshAccountProfile();
                     setOnboardingStep(
-                      resolveOnboardingStep(account?.profile?.onboarding?.nextStep)
+                      account?.profile?.healthDeclarationStatus === "incomplete"
+                        ? "health"
+                        : resolveOnboardingStep(account?.profile?.onboarding?.nextStep)
                     );
                   }}
                 >
-                  {user?.onboarding.missingSteps.includes("health")
+                  {user?.healthDeclarationStatus === "incomplete"
                     ? "Next: Tell Us About Your Body"
                     : "Continue"}
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -449,6 +511,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                   onSave={handleHealthSave}
                   compact
                   initialConsentAccepted={Boolean(user?.hasConsentedToHealthData)}
+                  onSkip={() => void finishOnboarding()}
                 />
               </div>
             ) : null}
@@ -466,13 +529,52 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
           }
           description="Here's your training overview for this week."
           meta={
-            summary.membership ? (
-              <Badge className="bg-brand-accent text-brand-white">Membership active</Badge>
-            ) : (
-              <Badge variant="outline">{totalCredits} credits ready to use</Badge>
-            )
+            <Badge className="border-white/15 bg-white/10 text-[rgba(250,250,248,0.96)] shadow-none">
+              {accessCard.statusBadgeLabel}
+            </Badge>
           }
         />
+
+        {shouldShowHealthPrompt ? (
+          <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm text-amber-900">
+                Complete your health declaration before you book or join classes.
+              </p>
+              <p className="mt-1 text-xs text-amber-800">
+                You can tell Shruti about relevant context, or confirm that there is nothing
+                relevant to share right now.
+              </p>
+            </div>
+            <Link href="/dashboard/health">
+              <Button variant="outline">Complete health declaration</Button>
+            </Link>
+          </div>
+        ) : null}
+
+        {!shouldShowHealthPrompt && shouldShowHealthReviewPrompt ? (
+          <div className="flex flex-col gap-3 rounded-lg border border-sky-200 bg-sky-50 p-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm text-sky-900">Please review your health declaration.</p>
+              <p className="mt-1 text-xs text-sky-800">
+                Confirm nothing has changed, or update it with any new injuries, flare patterns,
+                or recovery changes.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                disabled={healthActionPending}
+                onClick={() => void handleHealthConfirm()}
+              >
+                {healthActionPending ? "Confirming..." : "Nothing has changed"}
+              </Button>
+              <Link href="/dashboard/health">
+                <Button>Update declaration</Button>
+              </Link>
+            </div>
+          </div>
+        ) : null}
 
         {referralBalance > 0 ? (
           <div className="border-brand-accent/20 bg-brand-accent/5 flex items-start gap-3 rounded-lg border p-4">
@@ -503,15 +605,9 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
             detail="this week"
           />
           <AppMetricCard
-            label={summary.membership ? "Membership" : "Class credits"}
-            value={summary.membership ? "Active" : totalCredits}
-            detail={
-              summary.membership
-                ? "all live classes included"
-                : totalCredits === 1
-                  ? "1 credit available"
-                  : `${totalCredits} credits available`
-            }
+            label={accessCard.label}
+            value={accessCard.value}
+            detail={accessCard.detail}
           />
           <AppMetricCard
             label="Referral balance"
@@ -548,9 +644,11 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>
-                  <Link href="/dashboard/health">
-                    <Button variant="outline">Complete Health Profile</Button>
-                  </Link>
+                  {shouldShowHealthPrompt ? (
+                    <Link href="/dashboard/health">
+                      <Button variant="outline">Complete Health Profile</Button>
+                    </Link>
+                  ) : null}
                 </div>
               }
             />

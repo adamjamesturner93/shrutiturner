@@ -6,6 +6,7 @@ import WelcomeEmail from "@/emails/welcome";
 import { getClientIp, verifyTurnstileToken } from "@/lib/turnstile";
 import { db } from "@/lib/db";
 import { subscribeMarketingEmail } from "@/lib/newsletter/subscriber-service";
+import { getPostmarkMessageStream } from "@/lib/postmark/client";
 
 type SignupRequestBody = {
   email?: unknown;
@@ -192,9 +193,10 @@ export async function POST(req: Request) {
       Subject: subject,
       HtmlBody: htmlBody,
       TextBody: compliantTextBody,
-      MessageStream: "outbound",
+      MessageStream: getPostmarkMessageStream("marketing"),
       Tag: "newsletter-signup",
       Metadata: {
+        emailCategory: "marketing",
         source,
         consent: "true",
         marketingOptIn: "true",

@@ -14,8 +14,9 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
+  Dumbbell,
   User,
   Mail,
   Shield,
@@ -29,9 +30,17 @@ import {
   History,
   Settings,
   ArrowRight,
+  PersonStanding,
+  Zap,
 } from "lucide-react";
 import { getTimezoneOptions } from "../lib/date-i18n";
-import type { AccountDto, DashboardSummaryDto, OnboardingStateDto } from "@/lib/api/types";
+import type {
+  AccountActivityDto,
+  AccountDto,
+  DashboardSummaryDto,
+  OnboardingStateDto,
+  PostClassFeelingDto,
+} from "@/lib/api/types";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 
 const UNANSWERED_VALUE = "__unanswered__";
@@ -112,38 +121,93 @@ function fromSelectValue(value: string) {
   return value === UNANSWERED_VALUE ? null : value;
 }
 
-export function AccountPage() {
+function formatActivityDateTime(startsAtUtc: string) {
+  const startsAt = new Date(startsAtUtc);
+  return `${startsAt.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })} · ${startsAt.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+}
+
+function getFeelingBadge(feeling: PostClassFeelingDto) {
+  switch (feeling) {
+    case "great":
+      return { label: "great", className: "bg-brand-accent/10 text-brand-accent" };
+    case "good":
+      return { label: "good", className: "bg-blue-50 text-blue-700" };
+    case "okay":
+      return { label: "okay", className: "bg-secondary text-muted-foreground" };
+    case "tough":
+      return { label: "tough", className: "bg-amber-50 text-amber-700" };
+    case "too-much":
+      return { label: "too much", className: "bg-red-50 text-red-700" };
+  }
+}
+
+function getActivityTypeIcon(classType: string) {
+  const normalized = classType.toLowerCase();
+  if (normalized.includes("yoga")) {
+    return <HeartPulse className="text-brand-accent h-4 w-4" />;
+  }
+  if (normalized.includes("toning") || normalized.includes("mobility")) {
+    return <PersonStanding className="h-4 w-4 text-sky-700" />;
+  }
+  if (normalized.includes("hiit")) {
+    return <Zap className="h-4 w-4 text-rose-700" />;
+  }
+  return <Dumbbell className="h-4 w-4 text-amber-700" />;
+}
+
+export function AccountPage({
+  initialAccount,
+  initialDashboardSummary,
+  initialActivity,
+}: {
+  initialAccount: AccountDto;
+  initialDashboardSummary: DashboardSummaryDto;
+  initialActivity: AccountActivityDto;
+}) {
   const { logout, acceptTermsAndHealth, refreshAccountProfile } = useAuth();
 
   const [activeTab, setActiveTab] = useState<AccountTab>("profile");
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [dob, setDob] = useState("");
-  const [gender, setGender] = useState("");
-  const [ethnicity, setEthnicity] = useState("");
-  const [timezone, setTimezone] = useState("Europe/London");
-  const [dateFormat, setDateFormat] = useState("DD/MM/YYYY");
+  const [firstName, setFirstName] = useState(initialAccount.profile.firstName || "");
+  const [lastName, setLastName] = useState(initialAccount.profile.lastName || "");
+  const [email, setEmail] = useState(initialAccount.profile.email || "");
+  const [dob, setDob] = useState(initialAccount.profile.dob || "");
+  const [gender, setGender] = useState(toSelectValue(initialAccount.profile.gender));
+  const [ethnicity, setEthnicity] = useState(toSelectValue(initialAccount.profile.ethnicity));
+  const [timezone, setTimezone] = useState(initialAccount.profile.timezone || "Europe/London");
+  const [dateFormat, setDateFormat] = useState(initialAccount.profile.dateFormat || "DD/MM/YYYY");
   const [notifications, setNotifications] = useState({
-    classReminders: true,
-    scheduleUpdates: true,
-    programAnnouncements: true,
-    marketingEmails: true,
+    classReminders: initialAccount.notifications.classReminders,
+    scheduleUpdates: initialAccount.notifications.scheduleUpdates,
+    programAnnouncements: initialAccount.notifications.programAnnouncements,
+    marketingEmails: initialAccount.notifications.marketingEmails,
   });
 
-  const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
-  const [hasAgreedToHealth, setHasAgreedToHealth] = useState(false);
-  const [termsAgreedAt, setTermsAgreedAt] = useState<string | null>(null);
-  const [healthAgreedAt, setHealthAgreedAt] = useState<string | null>(null);
+  const [hasAgreedToTerms, setHasAgreedToTerms] = useState(initialAccount.profile.hasAgreedToTerms);
+  const [hasAgreedToHealth, setHasAgreedToHealth] = useState(
+    initialAccount.profile.hasAgreedToHealth
+  );
+  const [termsAgreedAt, setTermsAgreedAt] = useState<string | null>(
+    initialAccount.profile.termsAgreedAt
+  );
+  const [healthAgreedAt, setHealthAgreedAt] = useState<string | null>(
+    initialAccount.profile.healthAgreedAt
+  );
 
-  const [activity, setActivity] = useState<DashboardSummaryDto | null>(null);
-  const [onboardingState, setOnboardingState] = useState<OnboardingStateDto | null>(null);
+  const [onboardingState, setOnboardingState] = useState<OnboardingStateDto | null>(
+    initialAccount.profile.onboarding
+  );
 
   const [profileSaved, setProfileSaved] = useState(false);
   const [prefsSaved, setPrefsSaved] = useState(false);
   const [notificationsSaved, setNotificationsSaved] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [legalSaving, setLegalSaving] = useState<"terms" | "health" | null>(null);
 
   const [dobError, setDobError] = useState("");
@@ -179,38 +243,6 @@ export function AccountPage() {
     applyAccountData(data);
     return data;
   };
-
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const [accountRes, activityRes] = await Promise.all([
-          fetch("/api/me", { cache: "no-store" }),
-          fetch("/api/me/dashboard", { cache: "no-store" }),
-        ]);
-
-        if (!accountRes.ok) throw new Error("Failed to load account.");
-        const data = (await accountRes.json()) as AccountDto;
-        if (!active) return;
-        applyAccountData(data);
-
-        if (activityRes.ok) {
-          const activityData = (await activityRes.json()) as DashboardSummaryDto;
-          if (active) setActivity(activityData);
-        }
-      } catch (e) {
-        if (active) setError(e instanceof Error ? e.message : "Failed to load account.");
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-    void load();
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const handleDobChange = (value: string) => {
     setDob(value);
@@ -329,18 +361,17 @@ export function AccountPage() {
         description="Manage your profile, preferences, and notifications."
         className="mb-6"
       />
-      {loading ? <p className="text-muted-foreground mb-6 text-sm">Loading account...</p> : null}
       {error ? <p className="mb-6 text-sm text-red-600">{error}</p> : null}
 
       <AppMetricGrid className="mb-8 lg:grid-cols-3">
         <AppMetricCard
           label="Upcoming classes"
-          value={activity?.upcomingClasses.length ?? 0}
+          value={initialDashboardSummary.upcomingClasses.length}
           detail="booked sessions"
         />
         <AppMetricCard
           label="Credits"
-          value={activity?.credits.balance ?? 0}
+          value={initialDashboardSummary.credits.balance}
           detail="available on your account"
         />
         <AppMetricCard
@@ -353,10 +384,8 @@ export function AccountPage() {
           }
         />
       </AppMetricGrid>
-
-      {!loading ? (
-        <>
-          {onboardingState && !onboardingState.isComplete ? (
+      <>
+        {onboardingState && !onboardingState.isComplete ? (
             <div className="bg-background mb-8 flex flex-col gap-4 rounded-lg border p-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
@@ -385,9 +414,9 @@ export function AccountPage() {
                 </Button>
               </Link>
             </div>
-          ) : null}
+        ) : null}
 
-          <div className="mb-8 flex gap-1 overflow-x-auto border-b">
+        <div className="mb-8 flex gap-1 overflow-x-auto border-b">
             {TABS.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -410,9 +439,9 @@ export function AccountPage() {
                 </button>
               );
             })}
-          </div>
+        </div>
 
-          <div className="max-w-2xl">
+        <div className="max-w-2xl">
             {activeTab === "profile" ? (
               <div className="space-y-8">
                 <div className="bg-background space-y-5 rounded-lg border p-6">
@@ -718,46 +747,64 @@ export function AccountPage() {
                   <History className="text-primary h-5 w-5" />
                   <h2 className="text-xl">Recent Activity</h2>
                 </div>
-                {!activity ? (
-                  <p className="text-muted-foreground text-sm">No activity available yet.</p>
+                {initialActivity.items.length === 0 ? (
+                  <div className="space-y-4 py-4 text-center">
+                    <p className="text-muted-foreground text-sm">
+                      No attended classes yet. Book your first class to start building your history
+                      here.
+                    </p>
+                    <Link href="/dashboard/schedule">
+                      <Button variant="outline">Browse Schedule</Button>
+                    </Link>
+                  </div>
                 ) : (
                   <>
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-lg border p-3">
-                        <p className="text-muted-foreground text-xs">Upcoming classes</p>
-                        <p className="text-xl">{activity.upcomingClasses.length}</p>
-                      </div>
-                      <div className="rounded-lg border p-3">
-                        <p className="text-muted-foreground text-xs">Booked this week</p>
-                        <p className="text-xl">{activity.attendance.thisWeekBookedCount}</p>
-                      </div>
-                      <div className="rounded-lg border p-3">
-                        <p className="text-muted-foreground text-xs">Attended all-time</p>
-                        <p className="text-xl">{activity.attendance.attendedCount}</p>
-                      </div>
+                    <div className="text-muted-foreground flex items-center justify-between text-sm">
+                      <p>Latest attended classes and how they felt afterwards.</p>
+                      <p>{initialActivity.attendedCount} total attended</p>
                     </div>
-                    <div className="space-y-2">
-                      {activity.upcomingClasses.length === 0 ? (
-                        <p className="text-muted-foreground py-3 text-sm">
-                          No upcoming class activity.
-                        </p>
-                      ) : (
-                        activity.upcomingClasses.slice(0, 10).map((item) => (
-                          <div
-                            key={item.bookingId}
-                            className="flex items-center justify-between rounded-lg border p-3"
-                          >
+                    <div className="divide-y rounded-lg border">
+                      {initialActivity.items.map((item) => (
+                        <div
+                          key={item.bookingId}
+                          className="flex items-center justify-between gap-4 px-4 py-3"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="bg-secondary flex h-9 w-9 items-center justify-center rounded-lg">
+                              {getActivityTypeIcon(item.classType)}
+                            </div>
                             <div>
                               <p className="text-sm">{item.className}</p>
                               <p className="text-muted-foreground text-xs">
-                                {new Date(item.startsAtUtc).toLocaleString("en-GB")}
+                                {formatActivityDateTime(item.startsAtUtc)}
                               </p>
                             </div>
-                            <Badge variant="outline">{item.entitlementType}</Badge>
                           </div>
-                        ))
-                      )}
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            {item.flareToday ? (
+                              <span className="rounded-md bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
+                                Flare day
+                              </span>
+                            ) : null}
+                            {item.postClassFeeling ? (
+                              <span
+                                className={`rounded-md px-2 py-0.5 text-xs ${
+                                  getFeelingBadge(item.postClassFeeling).className
+                                }`}
+                              >
+                                {getFeelingBadge(item.postClassFeeling).label}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      ))}
                     </div>
+                    {initialActivity.totalCount > initialActivity.items.length ? (
+                      <p className="text-muted-foreground text-center text-xs">
+                        Showing {initialActivity.items.length} of {initialActivity.totalCount}{" "}
+                        attended classes
+                      </p>
+                    ) : null}
                   </>
                 )}
               </div>
@@ -868,9 +915,8 @@ export function AccountPage() {
                 Sign Out
               </Button>
             </div>
-          </div>
-        </>
-      ) : null}
+        </div>
+      </>
     </DashboardLayout>
   );
 }

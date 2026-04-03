@@ -81,3 +81,67 @@ test("partially completed onboarding resumes at the next required step", async (
 
   await expect(page.getByRole("heading", { name: "Welcome, Jamie." })).toBeVisible();
 });
+
+test("first-time login can finish onboarding with nothing relevant to share right now", async ({
+  page,
+}) => {
+  const email = makeE2eAuthEmail("onboarding-nothing-to-declare");
+
+  await loginWithEmail(page, email);
+
+  await page.getByLabel("First name").fill("Avery");
+  await page.getByLabel("Last name").fill("Clear");
+  await page.getByLabel("Date of birth").fill("1986-05-12");
+  await page.getByRole("button", { name: "Save & Continue" }).click();
+
+  await page.getByRole("checkbox", { name: /Terms & Conditions/i }).check();
+  await page.getByRole("checkbox", { name: /Health & Liability Waiver/i }).check();
+  await page.getByRole("button", { name: "Accept & Continue" }).click();
+
+  await page.getByRole("radio", { name: "Friend or family" }).check();
+  await page.getByRole("button", { name: "Next: Tell Us About Your Body" }).click();
+
+  await expect(page.getByRole("heading", { name: "Your Health Profile" })).toBeVisible();
+  await page.getByRole("checkbox", { name: "Nothing relevant to share right now." }).check();
+  await page
+    .getByRole("checkbox", {
+      name: /I agree to Shruti Turner using the health information/i,
+    })
+    .check();
+  await page.getByRole("button", { name: "Continue" }).click();
+
+  await expect(page.getByRole("heading", { name: "Welcome, Avery." })).toBeVisible();
+  await page.getByRole("button", { name: "Enter Studio" }).click();
+
+  await page.goto("/dashboard/health");
+  await expect(page.getByText("Nothing relevant is recorded right now.")).toBeVisible();
+});
+
+test("skipping health during onboarding lands on the dashboard with a health declaration prompt", async ({
+  page,
+}) => {
+  const email = makeE2eAuthEmail("onboarding-skip-health");
+
+  await loginWithEmail(page, email);
+
+  await page.getByLabel("First name").fill("Riley");
+  await page.getByLabel("Last name").fill("Skipped");
+  await page.getByLabel("Date of birth").fill("1988-09-21");
+  await page.getByRole("button", { name: "Save & Continue" }).click();
+
+  await page.getByRole("checkbox", { name: /Terms & Conditions/i }).check();
+  await page.getByRole("checkbox", { name: /Health & Liability Waiver/i }).check();
+  await page.getByRole("button", { name: "Accept & Continue" }).click();
+
+  await page.getByRole("radio", { name: "Google search" }).check();
+  await page.getByRole("button", { name: "Next: Tell Us About Your Body" }).click();
+
+  await expect(page.getByRole("heading", { name: "Your Health Profile" })).toBeVisible();
+  await page.getByRole("button", { name: "Skip for now" }).click();
+
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(
+    page.getByText("Complete your health declaration before you book or join classes.")
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Complete health declaration" })).toBeVisible();
+});

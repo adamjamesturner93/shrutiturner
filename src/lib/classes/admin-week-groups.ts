@@ -5,6 +5,7 @@ export type AdminClassWeekGroup = {
   weekEndExclusive: string;
   label: string;
   cancelEligibleCount: number;
+  publishEligibleCount: number;
   sessions: AdminClassSessionDto[];
 };
 
@@ -61,11 +62,19 @@ export function canCancelSessionInWeekGroup(
   );
 }
 
+export function canPublishSessionInWeekGroup(
+  session: Pick<AdminClassSessionDto, "status" | "startsAtUtc">,
+  now = new Date()
+) {
+  return new Date(session.startsAtUtc) > now && session.status === "draft";
+}
+
 export function groupAdminSessionsByWeek(
   sessions: AdminClassSessionDto[],
   now = new Date()
 ): AdminClassWeekGroup[] {
   const grouped = new Map<string, AdminClassWeekGroup>();
+  const todayIso = toIsoDate(now);
 
   for (const session of sessions) {
     const weekStart = getWeekStartIso(getSessionLocalDate(session));
@@ -76,6 +85,7 @@ export function groupAdminSessionsByWeek(
         weekEndExclusive: getWeekEndExclusiveIso(weekStart),
         label: formatWeekLabel(weekStart),
         cancelEligibleCount: canCancelSessionInWeekGroup(session, now) ? 1 : 0,
+        publishEligibleCount: canPublishSessionInWeekGroup(session, now) ? 1 : 0,
         sessions: [session],
       });
       continue;
@@ -85,9 +95,13 @@ export function groupAdminSessionsByWeek(
     if (canCancelSessionInWeekGroup(session, now)) {
       existing.cancelEligibleCount += 1;
     }
+    if (canPublishSessionInWeekGroup(session, now)) {
+      existing.publishEligibleCount += 1;
+    }
   }
 
   return Array.from(grouped.values())
+    .filter((group) => group.weekEndExclusive > todayIso)
     .sort((a, b) => a.weekStart.localeCompare(b.weekStart))
     .map((group) => ({
       ...group,

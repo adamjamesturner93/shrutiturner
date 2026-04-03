@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   ArrowRight,
   Award,
@@ -16,13 +15,13 @@ import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 import {
   EditorialHero,
   MarketingSection,
+  PreFooterCtaSection,
   ProofBand,
   PullQuote,
   SectionHeading,
   StorySplit,
 } from "@/components/marketing/sections";
 import { SEO } from "@/components/seo";
-import { Button } from "@/components/ui/button";
 import { publicProofItems } from "@/data/public-refresh";
 
 export function AboutPage() {
@@ -254,46 +253,24 @@ export function AboutPage() {
         </div>
       </MarketingSection>
 
-      <MarketingSection className="bg-brand-dark text-brand-white">
-        <div className="grid gap-8 md:grid-cols-[1fr_auto] md:items-center">
-          <div>
-            <p className="text-brand-accent-light text-xs tracking-[0.2em] uppercase">
-              Work together
-            </p>
-            <h2 className="mt-4 text-3xl leading-tight md:text-5xl">
-              If you want coaching that feels thoughtful, direct, and technically grounded, start
-              here.
-            </h2>
-            <p className="text-brand-white/80 mt-5 max-w-2xl text-lg leading-relaxed">
-              Classes, coaching, and retreats all come from the same core belief: complex bodies
-              deserve more intelligent movement support than they usually receive.
-            </p>
-          </div>
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <Button
-              asChild
-              size="lg"
-              className="bg-brand-white text-brand-dark hover:bg-brand-white/92"
-            >
-              <Link href="/contact">
-                <MessageCircle className="h-4 w-4" />
-                Get in touch
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="border-brand-white/20 bg-brand-white/6 text-brand-white hover:bg-brand-white/10"
-            >
-              <Link href="/coaching">
-                Explore coaching
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </MarketingSection>
+      <PreFooterCtaSection
+        eyebrow="Work together"
+        title="If you want coaching that feels thoughtful, direct, and technically grounded, start here."
+        description="Classes, coaching, and retreats all come from the same core belief: complex bodies deserve more intelligent movement support than they usually receive."
+        actions={[
+          {
+            href: "/contact",
+            label: "Get in touch",
+            icon: MessageCircle,
+            iconPosition: "start",
+          },
+          {
+            href: "/coaching",
+            label: "Explore coaching",
+            icon: ArrowRight,
+          },
+        ]}
+      />
 
       <script
         type="application/ld+json"

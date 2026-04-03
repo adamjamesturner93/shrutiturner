@@ -33,7 +33,10 @@ const staticRoutes = [
 const skipPathPatterns = [
   /^\/api(?:\/|$)/,
   /^\/_next(?:\/|$)/,
+  /^\/apple-icon(?:\/|$)/,
   /^\/gift\/redeem\//,
+  /^\/icon(?:\/|$)/,
+  /^\/favicon\.ico$/,
   /^\/r\//,
   /^\/retreats\/balance\//,
   /^\/classes\/small-groups\/[^/]+\/checkout$/,

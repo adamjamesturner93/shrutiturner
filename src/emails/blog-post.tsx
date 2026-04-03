@@ -32,7 +32,7 @@ export default function BlogPostEmail({
   blogUrl = "https://shrutiturner.com/blog",
 }: BlogPostEmailProps) {
   return (
-    <EmailLayout preview={`New on the blog: ${postTitle}`}>
+    <EmailLayout preview={`New on the blog: ${postTitle}`} category="marketing">
       <Text style={{ ...bodyTextStyle, marginBottom: "24px" }}>Hi {firstName},</Text>
 
       <Text style={bodyTextStyle}>

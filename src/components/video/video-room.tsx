@@ -18,6 +18,7 @@ import { Badge } from "../ui/badge";
 import { ChatPanel, type ChatMessage } from "./chat-panel";
 import { DeviceSelector } from "./device-selector";
 import { useAuth } from "../../context/auth-context";
+import type { ClassSessionDetailDto } from "@/lib/api/types";
 import {
   attachTrack,
   createManagedCallObject,
@@ -57,6 +58,14 @@ type ParticipantTileModel = {
   isCameraOn: boolean;
   audioTrack: MediaStreamTrack | null;
   videoTrack: MediaStreamTrack | null;
+};
+
+type InstructorConsideration = {
+  bookingId: string;
+  name: string;
+  healthConditions: string[];
+  preClassEnergyLevel: 1 | 2 | 3 | 4 | 5 | null;
+  preClassFlareToday: boolean;
 };
 
 const MAX_ROOM_JOIN_RETRIES = 3;
@@ -110,6 +119,7 @@ export function VideoRoom({
   const [joinAttempt, setJoinAttempt] = useState(0);
   const [isAutoRetrying, setIsAutoRetrying] = useState(false);
   const [canRetryJoin, setCanRetryJoin] = useState(false);
+  const [instructorConsiderations, setInstructorConsiderations] = useState<InstructorConsideration[]>([]);
   const hasRecordedJoinRef = useRef(false);
   const currentUserIdRef = useRef(user?.id || "");
   const currentUserNameRef = useRef("");
@@ -242,6 +252,56 @@ export function VideoRoom({
     setIsAutoRetrying(false);
     setStatusText("Connecting to the live room...");
   }, [sessionId]);
+
+  useEffect(() => {
+    if (!isInstructor || !sessionId) {
+      setInstructorConsiderations([]);
+      return;
+    }
+
+    let active = true;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const loadConsiderations = async () => {
+      try {
+        const response = await fetch(`/api/admin/classes/sessions/${sessionId}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          return;
+        }
+        const payload = (await response.json()) as ClassSessionDetailDto;
+        if (!active) return;
+        setInstructorConsiderations(
+          payload.bookings
+            .filter(
+              (booking) =>
+                booking.status === "booked" &&
+                (booking.preClassFlareToday || booking.healthConditions.length > 0)
+            )
+            .map((booking) => ({
+              bookingId: booking.id,
+              name: `${booking.firstName} ${booking.lastName}`.trim() || booking.email,
+              healthConditions: booking.healthConditions,
+              preClassEnergyLevel: booking.preClassEnergyLevel,
+              preClassFlareToday: booking.preClassFlareToday,
+            }))
+        );
+      } catch {
+        // Keep the live room available even if summary refresh fails.
+      }
+    };
+
+    void loadConsiderations();
+    intervalId = setInterval(() => {
+      void loadConsiderations();
+    }, 15_000);
+
+    return () => {
+      active = false;
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isInstructor, sessionId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -590,6 +650,7 @@ export function VideoRoom({
               instructor={localParticipant || instructorParticipant}
               participants={otherParticipants}
               communityMode={communityMode}
+              considerations={instructorConsiderations}
               onMute={(userId) => void broadcastModeration("mute", userId)}
               onRemove={(userId) => void broadcastModeration("remove", userId)}
             />
@@ -723,12 +784,14 @@ function InstructorView({
   instructor,
   participants,
   communityMode,
+  considerations,
   onMute,
   onRemove,
 }: {
   instructor: ParticipantTileModel | null;
   participants: ParticipantTileModel[];
   communityMode: boolean;
+  considerations: InstructorConsideration[];
   onMute: (userId: string) => void;
   onRemove: (userId: string) => void;
 }) {
@@ -774,6 +837,34 @@ function InstructorView({
           {communityMode ? "Community mode enabled" : "Focus mode enabled"}
         </Badge>
       </div>
+      {considerations.length > 0 ? (
+        <div className="bg-video-panel/80 col-span-full rounded-lg border border-amber-300/20 p-3 text-xs text-white/80">
+          <p className="mb-2 text-white">Today's considerations</p>
+          <div className="space-y-2">
+            {considerations.map((consideration) => (
+              <div
+                key={consideration.bookingId}
+                className="rounded-md border border-white/10 bg-white/5 px-3 py-2"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span>{consideration.name}</span>
+                  {consideration.preClassFlareToday ? (
+                    <Badge className="bg-amber-500/20 text-amber-200">Flare today</Badge>
+                  ) : null}
+                  {consideration.preClassEnergyLevel ? (
+                    <Badge className="bg-white/10 text-white/80">
+                      Energy {consideration.preClassEnergyLevel}/5
+                    </Badge>
+                  ) : null}
+                </div>
+                {consideration.healthConditions.length > 0 ? (
+                  <p className="mt-1 text-white/60">{consideration.healthConditions.join(", ")}</p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

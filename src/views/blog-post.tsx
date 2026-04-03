@@ -16,31 +16,12 @@ import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { formatAuthorList, getPostAuthors, getRelatedPosts } from "@/lib/blog/view-model";
 
 interface BlogPostPageProps {
-  post: BlogPostContent | null;
+  post: BlogPostContent;
   posts: BlogPostContent[];
 }
 
 export function BlogPostPage({ post, posts }: BlogPostPageProps) {
   const { fmtDate } = useI18n();
-
-  if (!post) {
-    return (
-      <Layout>
-        <div className="container mx-auto px-4 py-20 text-center">
-          <h1 className="mb-4 text-4xl">Post Not Found</h1>
-          <p className="text-muted-foreground mb-8">
-            The blog post you&apos;re looking for doesn&apos;t exist.
-          </p>
-          <Link href="/blog">
-            <Button>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Blog
-            </Button>
-          </Link>
-        </div>
-      </Layout>
-    );
-  }
 
   const relatedPosts = getRelatedPosts(post, posts);
   const authors = getPostAuthors(post);

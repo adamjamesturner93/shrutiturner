@@ -4,9 +4,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowRight, Gift } from "lucide-react";
 import { Layout } from "@/components/layout";
-import { EditorialHero, ProofBand } from "@/components/marketing/sections";
+import { EditorialHero, PreFooterCtaSection, ProofBand } from "@/components/marketing/sections";
 import { SEO } from "@/components/seo";
-import { Button } from "@/components/ui/button";
 
 const referralProof = [
   {
@@ -96,45 +95,35 @@ export function ReferralLandingPage() {
         items={[...referralProof]}
       />
 
-      <section className="bg-brand-accent text-brand-white py-16 md:py-20">
-        <div className="container mx-auto max-w-3xl px-4 text-center">
-          <h2 className="text-3xl md:text-4xl">Ready to claim the class?</h2>
-          <p className="text-brand-white/88 mx-auto mt-5 max-w-2xl text-lg leading-relaxed">
-            Sign in through this link and the free class credit will be added to your account.
-          </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Button
-              asChild
-              size="lg"
-              className="bg-brand-white text-brand-accent hover:bg-brand-white/90"
-            >
-              <Link href={`/login?ref=${code}`}>
-                Claim Your Free Class
-                <ArrowRight className="h-5 w-5" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="border-brand-white text-brand-white hover:bg-brand-white/10 bg-transparent"
-            >
-              <Link href="/classes">View the Class Types</Link>
-            </Button>
-          </div>
-          <p className="text-brand-white/70 mt-6 text-xs">
-            By signing up you agree to the{" "}
-            <Link href="/terms" className="underline">
-              Terms
-            </Link>{" "}
-            and{" "}
+      <PreFooterCtaSection
+        layout="centered"
+        title="Ready to claim the class?"
+        description="Sign in through this link and the free class credit will be added to your account."
+        actions={[
+          {
+            href: `/login?ref=${code}`,
+            label: "Claim Your Free Class",
+            icon: ArrowRight,
+          },
+          {
+            href: "/classes",
+            label: "View the Class Types",
+            variant: "secondary",
+          },
+        ]}
+      >
+        <p className="text-brand-white/70 text-xs">
+          By signing up you agree to the{" "}
+          <Link href="/terms" className="underline">
+            Terms
+          </Link>{" "}
+          and{" "}
             <Link href="/privacy" className="underline">
               Privacy Policy
             </Link>
-            .
-          </p>
-        </div>
-      </section>
+          .
+        </p>
+      </PreFooterCtaSection>
     </Layout>
   );
 }

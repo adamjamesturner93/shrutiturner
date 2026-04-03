@@ -1,6 +1,7 @@
 "use client";
 
 import { Layout } from "../components/layout";
+import { PreFooterCtaSection } from "../components/marketing/sections";
 import { SEO } from "../components/seo";
 import { Button } from "../components/ui/button";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
@@ -321,37 +322,25 @@ export function ClassesYogaPage({
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="bg-[#4B5B32] py-20 text-[#FAFAF8] md:py-24">
-        <div className="container mx-auto max-w-3xl space-y-8 px-4 text-center">
-          <h2 className="text-3xl leading-tight md:text-4xl">
-            Ready to Experience Yoga That Works With Your Body?
-          </h2>
-          <p className="text-lg leading-relaxed opacity-90">
-            Join live classes or catch the replays. All levels welcome, all bodies respected.
-          </p>
-          <p className="mb-4 text-sm opacity-70">
-            Single class £9 · 3-pack £24 · Membership from £29/month
-          </p>
-          <div className="flex flex-col justify-center gap-4 sm:flex-row">
-            <Link href="/schedule">
-              <Button size="lg" className="bg-[#FAFAF8] text-[#4B5B32] hover:bg-[#FAFAF8]/90">
-                View Schedule
-                <Calendar className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link href="/pricing">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-[#FAFAF8] bg-transparent text-[#FAFAF8] hover:bg-[#FAFAF8]/10"
-              >
-                View Pricing
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+      <PreFooterCtaSection
+        layout="centered"
+        title="Ready to Experience Yoga That Works With Your Body?"
+        description="Join live classes or catch the replays. All levels welcome, all bodies respected."
+        actions={[
+          {
+            href: "/schedule",
+            label: "View Schedule",
+            icon: Calendar,
+          },
+          {
+            href: "/pricing",
+            label: "View Pricing",
+            variant: "secondary",
+          },
+        ]}
+      >
+        <p className="text-sm opacity-70">Single class £9 · 3-pack £24 · Membership from £29/month</p>
+      </PreFooterCtaSection>
     </Layout>
   );
 }

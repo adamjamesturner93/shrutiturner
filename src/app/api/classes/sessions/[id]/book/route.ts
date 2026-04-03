@@ -19,6 +19,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
         "SESSION_NOT_BOOKABLE",
         "SESSION_STARTED",
         "BOOKING_LIMIT_REACHED",
+        "HEALTH_DECLARATION_REQUIRED",
       ].includes(error.message)
     ) {
       return NextResponse.json({ message: error.message }, { status: 400 });

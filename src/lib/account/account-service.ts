@@ -8,6 +8,8 @@ import {
 import { linkPendingRecordsForUser } from "@/lib/link-pending-records";
 import { syncMarketingPreferenceForUser } from "@/lib/newsletter/subscriber-service";
 import { deriveOnboardingState } from "@/lib/account/onboarding-service";
+import { needsHealthDeclarationReview } from "@/lib/health/health-service";
+import type { HealthDeclarationStatusDto } from "@/lib/api/types";
 
 const DATE_FORMATS = new Set(["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"]);
 
@@ -86,6 +88,33 @@ function mapLegalAcceptance<T extends LegalAcceptanceShape>(user: T) {
   };
 }
 
+function mapNotificationPreferences<T extends { updatedAt: Date }>(
+  preferences: T
+): Omit<T, "updatedAt"> & { updatedAt: string } {
+  return {
+    ...preferences,
+    updatedAt: preferences.updatedAt.toISOString(),
+  };
+}
+
+function mapHealthDeclaration(profile: {
+  declarationStatus: "none_declared" | "context_declared";
+  lastConfirmedAt: Date;
+  tracksFlareCheckIns: boolean;
+} | null) {
+  const healthDeclarationStatus: HealthDeclarationStatusDto =
+    profile?.declarationStatus ?? "incomplete";
+  const healthDeclarationLastConfirmedAt = profile?.lastConfirmedAt.toISOString() ?? "";
+
+  return {
+    hasHealthProfile: healthDeclarationStatus !== "incomplete",
+    healthDeclarationStatus,
+    healthDeclarationLastConfirmedAt,
+    healthDeclarationNeedsReview: needsHealthDeclarationReview(profile?.lastConfirmedAt),
+    tracksFlareCheckIns: profile?.tracksFlareCheckIns ?? false,
+  };
+}
+
 export async function getAccount(userId: string, siteUrl: string) {
   const accountUser = await db.user.findUnique({
     where: { id: userId },
@@ -130,13 +159,18 @@ export async function getAccount(userId: string, siteUrl: string) {
 
   const healthProfile = await db.healthProfile.findUnique({
     where: { userId },
-    select: { id: true },
+    select: {
+      declarationStatus: true,
+      lastConfirmedAt: true,
+      tracksFlareCheckIns: true,
+    },
   });
+  const healthDeclaration = mapHealthDeclaration(healthProfile);
 
   return {
     profile: {
       ...user,
-      hasHealthProfile: Boolean(healthProfile),
+      ...healthDeclaration,
       dob: user.dob ? user.dob.toISOString().slice(0, 10) : null,
       ...mapLegalAcceptance(user),
       onboarding: deriveOnboardingState({
@@ -147,14 +181,15 @@ export async function getAccount(userId: string, siteUrl: string) {
         hasAgreedToTerms: user.acceptedTermsVersion === CURRENT_TERMS_VERSION,
         hasAgreedToHealth: user.acceptedHealthWaiverVersion === CURRENT_HEALTH_WAIVER_VERSION,
         heardAboutSource: user.heardAboutSource,
-        hasHealthProfile: Boolean(healthProfile),
+        hasHealthProfile: healthDeclaration.hasHealthProfile,
+        healthDeclarationStatus: healthDeclaration.healthDeclarationStatus,
         hasConsentedToHealthData:
           user.acceptedHealthDataConsentVersion === CURRENT_HEALTH_DATA_CONSENT_VERSION,
         needsHealthDataConsentRefresh:
           user.acceptedHealthDataConsentVersion !== CURRENT_HEALTH_DATA_CONSENT_VERSION,
       }),
     },
-    notifications,
+    notifications: mapNotificationPreferences(notifications),
     referral,
   };
 }
@@ -318,12 +353,17 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
 
   const healthProfile = await db.healthProfile.findUnique({
     where: { userId },
-    select: { id: true },
+    select: {
+      declarationStatus: true,
+      lastConfirmedAt: true,
+      tracksFlareCheckIns: true,
+    },
   });
+  const healthDeclaration = mapHealthDeclaration(healthProfile);
 
   return {
     ...updated,
-    hasHealthProfile: Boolean(healthProfile),
+    ...healthDeclaration,
     dob: updated.dob ? updated.dob.toISOString().slice(0, 10) : null,
     ...mapLegalAcceptance(updated),
     onboarding: deriveOnboardingState({
@@ -335,7 +375,8 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
       hasAgreedToHealth:
         updated.acceptedHealthWaiverVersion === CURRENT_HEALTH_WAIVER_VERSION,
       heardAboutSource: updated.heardAboutSource,
-      hasHealthProfile: Boolean(healthProfile),
+      hasHealthProfile: healthDeclaration.hasHealthProfile,
+      healthDeclarationStatus: healthDeclaration.healthDeclarationStatus,
       hasConsentedToHealthData:
         updated.acceptedHealthDataConsentVersion === CURRENT_HEALTH_DATA_CONSENT_VERSION,
       needsHealthDataConsentRefresh:
@@ -345,7 +386,8 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
 }
 
 export async function getNotificationPreferences(userId: string) {
-  return getOrCreateNotificationPreferences(userId);
+  const preferences = await getOrCreateNotificationPreferences(userId);
+  return mapNotificationPreferences(preferences);
 }
 
 export async function updateNotificationPreferences(
@@ -373,5 +415,5 @@ export async function updateNotificationPreferences(
     await syncMarketingPreferenceForUser(userId, data.marketingEmails);
   }
 
-  return updated;
+  return mapNotificationPreferences(updated);
 }

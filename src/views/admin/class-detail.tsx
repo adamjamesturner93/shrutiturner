@@ -7,6 +7,14 @@ import { AdminLayout } from "../../components/admin-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Textarea } from "../../components/ui/textarea";
 import { ArrowLeft, Calendar, Clock, UserCheck, UserX, Users, Video, XCircle } from "lucide-react";
@@ -23,6 +31,7 @@ export function AdminClassDetail() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [showVideoRoom, setShowVideoRoom] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [instructors, setInstructors] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedInstructorId, setSelectedInstructorId] = useState("");
   const [capacityInput, setCapacityInput] = useState("0");
@@ -295,7 +304,12 @@ export function AdminClassDetail() {
 
           <div className="flex flex-wrap gap-2">
             <Button
-              disabled={saving || session.status === "live" || session.status === "draft"}
+              disabled={
+                saving ||
+                session.status === "live" ||
+                session.status === "draft" ||
+                session.bookedCount === 0
+              }
               onClick={async () => {
                 await patchStatus("live");
                 setShowVideoRoom(true);
@@ -313,12 +327,54 @@ export function AdminClassDetail() {
             <Button
               disabled={saving || session.status === "cancelled"}
               variant="destructive"
-              onClick={() => void cancelClass()}
+              onClick={() => setShowCancelDialog(true)}
             >
               <XCircle className="mr-2 h-4 w-4" /> Cancel Class
             </Button>
           </div>
         </div>
+
+        <Dialog
+          open={showCancelDialog}
+          onOpenChange={(open) => {
+            if (!saving) {
+              setShowCancelDialog(open);
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Cancel this class?</DialogTitle>
+              <DialogDescription>
+                This will cancel the session, email all booked participants, and close any Daily
+                room already created for it.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              Use this only when the class should no longer run. The change cannot be undone from
+              the roster screen.
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowCancelDialog(false)}
+                disabled={saving}
+              >
+                Keep Class
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  await cancelClass();
+                  setShowCancelDialog(false);
+                }}
+                disabled={saving}
+              >
+                {saving ? "Cancelling..." : "Confirm Cancellation"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {session.status === "live" ? (
           <Card className="border-brand-accent">
@@ -365,6 +421,20 @@ export function AdminClassDetail() {
               <Button variant="outline" disabled={saving} onClick={() => void retryRoomSetup()}>
                 Retry Room Setup
               </Button>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {!session.dailyRoomUrl &&
+        session.roomSetupStatus === "pending" &&
+        session.status !== "draft" &&
+        session.status !== "cancelled" ? (
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm">Daily room pending</p>
+              <p className="text-muted-foreground mt-1 text-sm">
+                The room will be created when the first attendee books this class.
+              </p>
             </CardContent>
           </Card>
         ) : null}
@@ -511,6 +581,14 @@ export function AdminClassDetail() {
                           ? `${booking.attendedClassesCount} class${booking.attendedClassesCount === 1 ? "" : "es"} attended`
                           : "First class"}
                       </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        {booking.preClassFlareToday ? (
+                          <Badge className="bg-amber-100 text-amber-900">Flare today</Badge>
+                        ) : null}
+                        {booking.preClassEnergyLevel ? (
+                          <Badge variant="outline">Energy {booking.preClassEnergyLevel}/5</Badge>
+                        ) : null}
+                      </div>
                       <div className="mt-2">
                         <HealthBadges labels={booking.healthConditions} max={5} />
                       </div>

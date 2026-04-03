@@ -374,6 +374,138 @@ export function PathCards({ items }: PathCardsProps) {
   );
 }
 
+interface PreFooterCtaAction {
+  href: string;
+  label: string;
+  icon?: LucideIcon;
+  iconPosition?: "start" | "end";
+  variant?: "primary" | "secondary";
+}
+
+interface PreFooterCtaSectionProps {
+  title: ReactNode;
+  description?: ReactNode;
+  eyebrow?: string;
+  actions?: PreFooterCtaAction[];
+  aside?: ReactNode;
+  children?: ReactNode;
+  id?: string;
+  className?: string;
+  compact?: boolean;
+  layout?: "split" | "centered";
+}
+
+function PreFooterCtaActions({
+  actions,
+  centered = false,
+}: {
+  actions: PreFooterCtaAction[];
+  centered?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-4 sm:flex-row",
+        centered ? "justify-center" : "md:justify-end"
+      )}
+    >
+      {actions.map((action) => {
+        const Icon = action.icon;
+        const isPrimary = action.variant !== "secondary";
+
+        return (
+          <Button
+            key={`${action.href}-${action.label}`}
+            asChild
+            size="lg"
+            variant={isPrimary ? "default" : "outline"}
+            className={
+              isPrimary
+                ? "bg-brand-white text-brand-accent hover:bg-brand-white/90"
+                : "border-brand-white/20 bg-brand-white/8 text-brand-white hover:bg-brand-white/12"
+            }
+          >
+            <Link href={action.href}>
+              {Icon && action.iconPosition === "start" ? <Icon className="h-4 w-4" /> : null}
+              {action.label}
+              {Icon && action.iconPosition !== "start" ? <Icon className="h-4 w-4" /> : null}
+            </Link>
+          </Button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function PreFooterCtaSection({
+  title,
+  description,
+  eyebrow,
+  actions = [],
+  aside,
+  children,
+  id,
+  className,
+  compact = false,
+  layout = "split",
+}: PreFooterCtaSectionProps) {
+  const centered = layout === "centered";
+
+  return (
+    <MarketingSection
+      id={id}
+      compact={compact}
+      className={cn("bg-brand-accent text-brand-white", className)}
+    >
+      {centered ? (
+        <div className="mx-auto max-w-4xl space-y-8 text-center">
+          {eyebrow ? (
+            <p className="text-brand-accent-light text-xs tracking-[0.2em] uppercase">{eyebrow}</p>
+          ) : null}
+          <div>
+            <h2 className="text-3xl leading-tight md:text-5xl">{title}</h2>
+            {description ? (
+              <p className="text-brand-white/84 mx-auto mt-5 max-w-2xl text-lg leading-relaxed">
+                {description}
+              </p>
+            ) : null}
+          </div>
+          {children}
+          {actions.length > 0 ? <PreFooterCtaActions actions={actions} centered /> : null}
+        </div>
+      ) : (
+        <div
+          className={cn(
+            "grid gap-8 md:items-center",
+            aside ? "lg:grid-cols-[0.95fr_1.05fr] lg:items-start" : "md:grid-cols-[1fr_auto]"
+          )}
+        >
+          <div>
+            {eyebrow ? (
+              <p className="text-brand-accent-light text-xs tracking-[0.2em] uppercase">
+                {eyebrow}
+              </p>
+            ) : null}
+            <h2 className="mt-4 text-3xl leading-tight md:text-5xl">{title}</h2>
+            {description ? (
+              <p className="text-brand-white/84 mt-5 max-w-2xl text-lg leading-relaxed">
+                {description}
+              </p>
+            ) : null}
+            {children ? <div className="mt-8">{children}</div> : null}
+            {aside && actions.length > 0 ? (
+              <div className="mt-8">
+                <PreFooterCtaActions actions={actions} />
+              </div>
+            ) : null}
+          </div>
+          {aside ? aside : actions.length > 0 ? <PreFooterCtaActions actions={actions} /> : null}
+        </div>
+      )}
+    </MarketingSection>
+  );
+}
+
 interface JourneyStep {
   title: string;
   description: string;

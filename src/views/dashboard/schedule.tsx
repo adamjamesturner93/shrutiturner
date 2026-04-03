@@ -5,9 +5,7 @@ import { BookClassButton } from "../../components/booking-modal";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import Link from "next/link";
-import { useState } from "react";
-import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   Clock,
   Users,
@@ -21,7 +19,8 @@ import {
 } from "lucide-react";
 import { getTypeColor } from "@/lib/classes/type-color";
 import { useI18n } from "../../lib/use-i18n";
-import { AppPageHeader } from "@/components/app-surface";
+import { AppEmptyState, AppPageHeader } from "@/components/app-surface";
+import { getScheduleEmptyState } from "@/views/dashboard/dashboard-view-model";
 
 const TYPE_FILTERS = ["All", "Yoga", "Strength", "HIIT"];
 const LEVEL_FILTERS = ["All Levels", "Beginner", "Intermediate", "Adaptive", "Specialised"];
@@ -31,6 +30,7 @@ type ScheduleClassItem = {
   name: string;
   type: string;
   day: string;
+  startsAtUtc?: string;
   time: string;
   duration: string;
   level: string;
@@ -41,6 +41,7 @@ type ScheduleClassItem = {
   spotsRemaining?: number;
   bookedCount?: number;
   status?: "draft" | "scheduled" | "live" | "completed" | "cancelled";
+  emptyClassAutoCancelWindowMinutes?: number;
   isBookedByCurrentUser?: boolean;
   waitlistPosition?: number | null;
 };
@@ -94,9 +95,9 @@ export function DashboardSchedule({
   initialSchedule = [],
   initialWeekOffset = 0,
 }: DashboardScheduleProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const [scheduleData, setScheduleData] = useState<ScheduleDay[]>(initialSchedule);
+  const [loadedWeekOffset, setLoadedWeekOffset] = useState(initialWeekOffset);
+  const [isWeekLoading, setIsWeekLoading] = useState(false);
   const [typeFilter, setTypeFilter] = useState("All");
   const [levelFilter, setLevelFilter] = useState("All Levels");
   const [weekOffset, setWeekOffset] = useState(
@@ -105,6 +106,7 @@ export function DashboardSchedule({
   const { fmtTimeStr, tzAbbr, londonOffset } = useI18n();
   const { start, end } = getScheduleWindow(weekOffset);
   const weekRangeLabel = formatWeekRange(start, end);
+  const hasActiveFilters = typeFilter !== "All" || levelFilter !== "All Levels";
 
   const filterClasses = (classes: ScheduleClassItem[]) => {
     return classes.filter((cls) => {
@@ -122,10 +124,11 @@ export function DashboardSchedule({
 
   useEffect(() => {
     const initialMatches = weekOffset === initialWeekOffset;
-    if (initialMatches && initialSchedule.length > 0) return;
+    if (initialMatches) return;
     const { start: fetchStart, end: fetchEnd } = getScheduleWindow(weekOffset);
     let active = true;
     void (async () => {
+      if (active) setIsWeekLoading(true);
       try {
         const response = await fetch(
           `/api/classes/sessions?groupByDay=true&from=${encodeURIComponent(fetchStart.toISOString())}&to=${encodeURIComponent(fetchEnd.toISOString())}`,
@@ -133,10 +136,14 @@ export function DashboardSchedule({
         );
         if (!response.ok) return;
         const payload = (await response.json()) as ScheduleDay[];
-        if (active && payload.length > 0) setScheduleData(payload);
-        if (active && payload.length === 0) setScheduleData([]);
+        if (active) {
+          setScheduleData(payload);
+          setLoadedWeekOffset(weekOffset);
+        }
       } catch {
         // keep fallback data
+      } finally {
+        if (active) setIsWeekLoading(false);
       }
     })();
     return () => {
@@ -146,12 +153,27 @@ export function DashboardSchedule({
 
   useEffect(() => {
     const target = weekOffset > 0 ? `/dashboard/schedule?wk=${weekOffset}` : "/dashboard/schedule";
-    const current = searchParams.get("wk");
-    if ((weekOffset === 0 && !current) || (weekOffset > 0 && current === String(weekOffset))) {
-      return;
-    }
-    router.replace(target);
-  }, [router, searchParams, weekOffset]);
+    window.history.replaceState(null, "", target);
+  }, [weekOffset]);
+
+  const totalClasses = scheduleData.reduce((count, daySchedule) => count + daySchedule.classes.length, 0);
+  const filteredDaySchedules = scheduleData
+    .map((daySchedule) => ({
+      day: daySchedule.day,
+      classes: filterClasses(daySchedule.classes),
+    }))
+    .filter((daySchedule) => daySchedule.classes.length > 0);
+  const filteredClasses = filteredDaySchedules.reduce(
+    (count, daySchedule) => count + daySchedule.classes.length,
+    0
+  );
+  const emptyState = getScheduleEmptyState({
+    totalClasses,
+    filteredClasses,
+    hasActiveFilters,
+    weekOffset,
+  });
+  const showEmptyState = filteredClasses === 0 && (!isWeekLoading || loadedWeekOffset === weekOffset);
 
   return (
     <DashboardLayout title="Schedule - Private Studio">
@@ -162,11 +184,11 @@ export function DashboardSchedule({
         meta={
           <>
             <span className="flex items-center gap-1.5">
-              <Clock className="text-primary h-3.5 w-3.5" />
+              <Clock className="h-3.5 w-3.5" />
               Times shown in {tzAbbr}
             </span>
             {londonOffset ? (
-              <span className="text-muted-foreground/70">({londonOffset})</span>
+              <span className="text-[rgba(250,250,248,0.8)]">({londonOffset})</span>
             ) : null}
           </>
         }
@@ -177,20 +199,30 @@ export function DashboardSchedule({
         {/* Filters */}
         <div className="mb-8 space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-muted-foreground text-sm">
-              {weekOffset === 0 ? `This week: ${weekRangeLabel}` : weekRangeLabel}
-            </p>
+            <div className="space-y-1">
+              <p className="text-muted-foreground text-sm">
+                {weekOffset === 0 ? `This week: ${weekRangeLabel}` : weekRangeLabel}
+              </p>
+              {isWeekLoading && loadedWeekOffset !== weekOffset ? (
+                <p className="text-muted-foreground text-xs">Updating the schedule...</p>
+              ) : null}
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                disabled={weekOffset === 0}
+                disabled={weekOffset === 0 || isWeekLoading}
                 onClick={() => setWeekOffset((prev) => Math.max(0, prev - 1))}
               >
                 <ChevronLeft className="h-4 w-4" />
                 Previous
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setWeekOffset((prev) => prev + 1)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isWeekLoading}
+                onClick={() => setWeekOffset((prev) => prev + 1)}
+              >
                 Next
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -228,15 +260,42 @@ export function DashboardSchedule({
 
         {/* Schedule by day */}
         <div className="space-y-10">
-          {scheduleData.map((daySchedule) => {
-            const filtered = filterClasses(daySchedule.classes);
-            if (filtered.length === 0) return null;
+          {showEmptyState ? (
+            <AppEmptyState
+              title={emptyState.title}
+              description={emptyState.description}
+              action={
+                <div className="flex flex-col justify-center gap-3 sm:flex-row">
+                  {emptyState.kind === "clear_filters" ? (
+                    <Button
+                      onClick={() => {
+                        setTypeFilter("All");
+                        setLevelFilter("All Levels");
+                      }}
+                    >
+                      Clear filters
+                    </Button>
+                  ) : null}
+                  {emptyState.kind === "week_complete" ? (
+                    <Button onClick={() => setWeekOffset((prev) => prev + 1)}>
+                      View next week
+                    </Button>
+                  ) : null}
+                  {emptyState.kind === "future_week_empty" ? (
+                    <Button variant="outline" onClick={() => setWeekOffset(0)}>
+                      Back to this week
+                    </Button>
+                  ) : null}
+                </div>
+              }
+            />
+          ) : null}
 
-            return (
-              <div key={daySchedule.day}>
+          {filteredDaySchedules.map((daySchedule) => (
+            <div key={daySchedule.day}>
                 <h2 className="mb-4 border-b pb-2 text-2xl">{daySchedule.day}</h2>
                 <div className="space-y-4">
-                  {filtered.map((cls, idx) => {
+                  {daySchedule.classes.map((cls, idx) => {
                     const booked = Boolean(cls.isBookedByCurrentUser);
                     return (
                       <div
@@ -317,8 +376,13 @@ export function DashboardSchedule({
                                 classSlug={cls.slug}
                                 className={cls.name}
                                 day={cls.day}
+                                startsAtUtc={cls.startsAtUtc}
                                 time={cls.time}
                                 attendeeCount={cls.bookedCount ?? 0}
+                                status={cls.status}
+                                emptyClassAutoCancelWindowMinutes={
+                                  cls.emptyClassAutoCancelWindowMinutes
+                                }
                               />
                             )}
                           </div>
@@ -327,9 +391,8 @@ export function DashboardSchedule({
                     );
                   })}
                 </div>
-              </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </>
     </DashboardLayout>

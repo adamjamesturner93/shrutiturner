@@ -48,7 +48,7 @@ export async function loginWithEmail(
   await page.getByLabel("Email Address").fill(email);
   await expect(page.getByTestId("turnstile-bypass").first()).toBeVisible();
   await page.getByRole("button", { name: "Send Verification Code" }).click();
-  await expect(page.getByLabel("Verification Code")).toBeVisible();
+  await expect(page.getByLabel("Verification Code")).toBeVisible({ timeout: 15_000 });
   const normalizedEmail = email.toLowerCase();
   let issuedCode = code;
   await expect

@@ -26,7 +26,10 @@ export default function WinBackEmail({
   blogUrl = "https://shrutiturner.com/blog",
 }: WinBackEmailProps) {
   return (
-    <EmailLayout preview={`${firstName}, your practice is here when you're ready`}>
+    <EmailLayout
+      preview={`${firstName}, your practice is here when you're ready`}
+      category="marketing"
+    >
       <Text
         style={{
           ...headingStyle,

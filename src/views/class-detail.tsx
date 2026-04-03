@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { BookClassButton } from "@/components/booking-modal";
+import { PreFooterCtaSection } from "@/components/marketing/sections";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getTypeColor } from "@/lib/classes/type-color";
@@ -525,32 +526,22 @@ export function ClassDetailPage({
         </div>
       </section>
 
-      <section className="bg-brand-accent text-brand-white py-16 md:py-20">
-        <div className="container mx-auto max-w-4xl px-4 text-center">
-          <h2 className="text-3xl md:text-4xl">Ready to Try {classDetail.name}?</h2>
-          <p className="text-brand-white/88 mx-auto mt-5 max-w-2xl text-lg leading-relaxed">
-            Drop in from £9, or join the Move Well Membership for regular support and easier weekly
-            practice.
-          </p>
-          <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
-            <Button
-              asChild
-              size="lg"
-              className="bg-brand-white text-brand-accent hover:bg-brand-white/90"
-            >
-              <Link href="/pricing">View Pricing & Book</Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="border-brand-white text-brand-white hover:bg-brand-white/10 bg-transparent"
-            >
-              <Link href="/schedule">Full Schedule</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
+      <PreFooterCtaSection
+        layout="centered"
+        title={`Ready to Try ${classDetail.name}?`}
+        description="Drop in from £9, or join the Move Well Membership for regular support and easier weekly practice."
+        actions={[
+          {
+            href: "/pricing",
+            label: "View Pricing & Book",
+          },
+          {
+            href: "/schedule",
+            label: "Full Schedule",
+            variant: "secondary",
+          },
+        ]}
+      />
 
       <script
         type="application/ld+json"

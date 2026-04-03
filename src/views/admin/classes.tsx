@@ -37,7 +37,10 @@ import {
 import type { AdminClassSessionDto, ClassTimetableRuleDto } from "@/lib/classes/types";
 import { getTypeColor } from "@/lib/classes/type-color";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
-import { groupAdminSessionsByWeek } from "@/lib/classes/admin-week-groups";
+import {
+  getWeekEndExclusiveIso,
+  groupAdminSessionsByWeek,
+} from "@/lib/classes/admin-week-groups";
 
 const STATUS_ICON: Record<string, typeof Play> = {
   draft: Clock,
@@ -59,13 +62,35 @@ const STATUS_BADGE: Record<
 };
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DRAFT_PLANNING_DAYS = 8 * 7;
+const LIVE_PUBLISH_DAYS = 4 * 7;
+
+function formatInputDate(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function addDays(base: Date, days: number) {
+  const next = new Date(base);
+  next.setDate(next.getDate() + days);
+  return next;
+}
 
 export function AdminClasses() {
+  const todayInput = formatInputDate(new Date());
+  const maxGenerateUntilDate = formatInputDate(addDays(new Date(), DRAFT_PLANNING_DAYS));
+  const maxPublishWeekStart = formatInputDate(addDays(new Date(), LIVE_PUBLISH_DAYS));
   const [sessions, setSessions] = useState<AdminClassSessionDto[]>([]);
   const [timetables, setTimetables] = useState<ClassTimetableRuleDto[]>([]);
   const [templates, setTemplates] = useState<ClassTemplateOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [publishingAll, setPublishingAll] = useState(false);
+  const [publishingWeekStart, setPublishingWeekStart] = useState<string | null>(null);
+  const [showGenerateDraftsDialog, setShowGenerateDraftsDialog] = useState(false);
+  const [generateUntilDate, setGenerateUntilDate] = useState(maxGenerateUntilDate);
+  const [generatingDrafts, setGeneratingDrafts] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -242,13 +267,76 @@ export function AdminClasses() {
         throw new Error(payload?.message || "Failed to publish upcoming classes.");
       }
       await refreshData();
-      setFeedbackMessage("Published the next 8 weeks of active timetable sessions.");
+      setFeedbackMessage("Made the next 4 weeks of active timetable sessions live.");
     } catch (error) {
       setFeedbackError(
         error instanceof Error ? error.message : "Failed to publish upcoming classes."
       );
     } finally {
       setPublishingAll(false);
+    }
+  };
+
+  const handleGenerateDrafts = async () => {
+    setGeneratingDrafts(true);
+    setFeedbackError("");
+    try {
+      const response = await fetch("/api/admin/classes/timetables/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ generateUntil: generateUntilDate }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        message?: string;
+        createdCount?: number;
+        skippedExistingCount?: number;
+        generateUntil?: string;
+      } | null;
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to generate draft sessions.");
+      }
+
+      await refreshData();
+      setFeedbackMessage(
+        `Generated drafts through ${payload?.generateUntil || generateUntilDate}. Created ${payload?.createdCount || 0} sessions, skipped ${payload?.skippedExistingCount || 0} existing sessions.`
+      );
+      setShowGenerateDraftsDialog(false);
+    } catch (error) {
+      setFeedbackError(
+        error instanceof Error ? error.message : "Failed to generate draft sessions."
+      );
+    } finally {
+      setGeneratingDrafts(false);
+    }
+  };
+
+  const handlePublishWeek = async (weekStart: string) => {
+    setPublishingWeekStart(weekStart);
+    setFeedbackError("");
+    try {
+      const response = await fetch("/api/admin/classes/timetables/publish-week", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weekStart }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        message?: string;
+        weekStart?: string;
+        publishedCount?: number;
+        createdDraftCount?: number;
+      } | null;
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to publish this week.");
+      }
+
+      await refreshData();
+      setFeedbackMessage(
+        `Week of ${payload?.weekStart || weekStart} is now live. Published ${payload?.publishedCount || 0} sessions and created ${payload?.createdDraftCount || 0} drafts on demand.`
+      );
+    } catch (error) {
+      setFeedbackError(error instanceof Error ? error.message : "Failed to publish this week.");
+    } finally {
+      setPublishingWeekStart(null);
     }
   };
 
@@ -259,20 +347,6 @@ export function AdminClasses() {
       body: JSON.stringify({ active: !rule.active }),
     });
     await refreshData();
-  };
-
-  const publishRule = async (ruleId: string) => {
-    setFeedbackError("");
-    const response = await fetch(`/api/admin/classes/timetables/${ruleId}/publish`, {
-      method: "POST",
-    });
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-      setFeedbackError(payload?.message || "Failed to publish this timetable rule.");
-      return;
-    }
-    await refreshData();
-    setFeedbackMessage("Published the next 8 weeks for this timetable rule.");
   };
 
   const openEndRuleDialog = (rule: ClassTimetableRuleDto) => {
@@ -394,11 +468,22 @@ export function AdminClasses() {
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
+                onClick={() => {
+                  setGenerateUntilDate(maxGenerateUntilDate);
+                  setShowGenerateDraftsDialog(true);
+                }}
+                disabled={generatingDrafts}
+              >
+                <Repeat className="mr-2 h-4 w-4" />
+                Generate Drafts
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => void handlePublishAll()}
                 disabled={publishingAll}
               >
                 <RefreshCw className="mr-2 h-4 w-4" />
-                Publish Next 8 Weeks
+                Make Next 4 Weeks Live
               </Button>
               <Button
                 onClick={() => setShowScheduleModal(true)}
@@ -431,6 +516,54 @@ export function AdminClasses() {
           onSchedule={handleCreateTimetable}
         />
 
+        <Dialog
+          open={showGenerateDraftsDialog}
+          onOpenChange={(open) => {
+            if (!generatingDrafts) {
+              setShowGenerateDraftsDialog(open);
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Generate draft sessions</DialogTitle>
+              <DialogDescription>
+                Create missing private draft sessions for active timetable rules up to the selected
+                date. Instructors can plan up to 8 weeks ahead.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3 py-2">
+              <Label htmlFor="generate-until-date">Generate drafts until</Label>
+              <Input
+                id="generate-until-date"
+                type="date"
+                value={generateUntilDate}
+                min={todayInput}
+                max={maxGenerateUntilDate}
+                onChange={(event) => setGenerateUntilDate(event.target.value)}
+                disabled={generatingDrafts}
+              />
+              <p className="text-muted-foreground text-sm">
+                Latest allowed date: {maxGenerateUntilDate}
+              </p>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowGenerateDraftsDialog(false)}
+                disabled={generatingDrafts}
+              >
+                Cancel
+              </Button>
+              <Button onClick={() => void handleGenerateDrafts()} disabled={generatingDrafts}>
+                {generatingDrafts ? "Generating..." : "Generate Drafts"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <AppMetricGrid className="lg:grid-cols-4">
           <AppMetricCard label="Timetable rules" value={timetables.length} detail="weekly slots" />
           <AppMetricCard
@@ -456,8 +589,9 @@ export function AdminClasses() {
               <div>
                 <p className="text-sm">Weekly timetable</p>
                 <p className="text-muted-foreground text-sm">
-                  These rules repeat every week. Saving a slot creates private draft sessions;
-                  publishing makes the next 8 weeks visible and bookable.
+                  These rules repeat every week. Saving a slot creates private draft sessions.
+                  Generate drafts up to a chosen date, then make weeks live when they should become
+                  visible and bookable.
                 </p>
               </div>
             </div>
@@ -476,7 +610,6 @@ export function AdminClasses() {
                     key={rule.id}
                     rule={rule}
                     onToggle={() => void toggleRule(rule)}
-                    onPublish={() => void publishRule(rule.id)}
                     onEnd={() => openEndRuleDialog(rule)}
                   />
                 ))}
@@ -541,18 +674,36 @@ export function AdminClasses() {
                     {group.cancelEligibleCount > 0
                       ? ` · ${group.cancelEligibleCount} can be cancelled together`
                       : " · No future draft or scheduled classes left to cancel"}
+                    {group.publishEligibleCount > 0
+                      ? ` · ${group.publishEligibleCount} draft class${group.publishEligibleCount === 1 ? "" : "es"} can be made live`
+                      : ""}
                   </p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={
-                    group.cancelEligibleCount === 0 || cancellingWeekStart === group.weekStart
-                  }
-                  onClick={() => void handleCancelWeek(group.weekStart)}
-                >
-                  {cancellingWeekStart === group.weekStart ? "Cancelling..." : "Cancel This Week"}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      group.publishEligibleCount === 0 ||
+                      publishingWeekStart === group.weekStart ||
+                      group.weekStart > maxPublishWeekStart ||
+                      getWeekEndExclusiveIso(group.weekStart) <= todayInput
+                    }
+                    onClick={() => void handlePublishWeek(group.weekStart)}
+                  >
+                    {publishingWeekStart === group.weekStart ? "Publishing..." : "Publish This Week"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      group.cancelEligibleCount === 0 || cancellingWeekStart === group.weekStart
+                    }
+                    onClick={() => void handleCancelWeek(group.weekStart)}
+                  >
+                    {cancellingWeekStart === group.weekStart ? "Cancelling..." : "Cancel This Week"}
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -566,7 +717,9 @@ export function AdminClasses() {
             <Card>
               <CardContent className="py-12 text-center">
                 <Calendar className="text-muted-foreground mx-auto mb-3 h-8 w-8" />
-                <p className="text-muted-foreground">No classes match your filters.</p>
+                <p className="text-muted-foreground">
+                  No current or upcoming classes match your filters.
+                </p>
               </CardContent>
             </Card>
           )}
@@ -579,12 +732,10 @@ export function AdminClasses() {
 function TimetableRow({
   rule,
   onToggle,
-  onPublish,
   onEnd,
 }: {
   rule: ClassTimetableRuleDto;
   onToggle: () => void;
-  onPublish: () => void;
   onEnd: () => void;
 }) {
   return (
@@ -612,10 +763,6 @@ function TimetableRow({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={onPublish}>
-            <RefreshCw className="mr-2 h-3.5 w-3.5" />
-            Publish
-          </Button>
           <Button variant="outline" size="sm" onClick={onEnd}>
             End recurring
           </Button>

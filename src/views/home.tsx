@@ -22,6 +22,7 @@ import {
   JourneySection,
   MarketingSection,
   PathCards,
+  PreFooterCtaSection,
   ProofBand,
   PullQuote,
   SectionHeading,
@@ -426,36 +427,11 @@ export function HomePage() {
         </div>
       </MarketingSection>
 
-      <MarketingSection className="bg-brand-warm">
-        <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
-          <div>
-            <SectionHeading
-              eyebrow="Stay In The Loop"
-              title="Get thoughtful emails, not generic motivation."
-              description={signupCopy.hookText}
-            />
-            <div className="mt-8 space-y-5">
-              <div className="flex items-start gap-3">
-                <GraduationCap className="text-brand-accent mt-1 h-5 w-5" />
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  Expect nuance on movement, pacing, chronic illness, and strength training.
-                </p>
-              </div>
-              <div className="flex items-start gap-3">
-                <Shield className="text-brand-accent mt-1 h-5 w-5" />
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  No spam, no hustle language, and no pressure to become a different person.
-                </p>
-              </div>
-              <div className="flex items-start gap-3">
-                <CalendarDays className="text-brand-accent mt-1 h-5 w-5" />
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  Useful when you want to keep learning before joining classes or coaching.
-                </p>
-              </div>
-            </div>
-          </div>
-
+      <PreFooterCtaSection
+        eyebrow="Stay In The Loop"
+        title="Get thoughtful emails, not generic motivation."
+        description={signupCopy.hookText}
+        aside={
           <div className="marketing-panel rounded-[2rem] p-7 md:p-8">
             {!newsletterSubmitted ? (
               <form onSubmit={handleNewsletterSubmit} className="space-y-4">
@@ -506,8 +482,29 @@ export function HomePage() {
               </div>
             )}
           </div>
+        }
+      >
+        <div className="space-y-5">
+          <div className="flex items-start gap-3">
+            <GraduationCap className="text-brand-accent-light mt-1 h-5 w-5" />
+            <p className="text-brand-white/84 text-sm leading-relaxed">
+              Expect nuance on movement, pacing, chronic illness, and strength training.
+            </p>
+          </div>
+          <div className="flex items-start gap-3">
+            <Shield className="text-brand-accent-light mt-1 h-5 w-5" />
+            <p className="text-brand-white/84 text-sm leading-relaxed">
+              No spam, no hustle language, and no pressure to become a different person.
+            </p>
+          </div>
+          <div className="flex items-start gap-3">
+            <CalendarDays className="text-brand-accent-light mt-1 h-5 w-5" />
+            <p className="text-brand-white/84 text-sm leading-relaxed">
+              Useful when you want to keep learning before joining classes or coaching.
+            </p>
+          </div>
         </div>
-      </MarketingSection>
+      </PreFooterCtaSection>
     </Layout>
   );
 }

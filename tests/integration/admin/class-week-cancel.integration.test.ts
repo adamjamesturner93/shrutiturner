@@ -5,11 +5,13 @@ import { db } from "@/lib/db";
 const {
   sendBookingConfirmationMock,
   sendClassCancellationMock,
+  sendClassUnbookingMock,
   sendClassReminderMock,
   sendInstructorNotificationMock,
 } = vi.hoisted(() => ({
   sendBookingConfirmationMock: vi.fn().mockResolvedValue({ success: true }),
   sendClassCancellationMock: vi.fn().mockResolvedValue({ success: true }),
+  sendClassUnbookingMock: vi.fn().mockResolvedValue({ success: true }),
   sendClassReminderMock: vi.fn().mockResolvedValue({ success: true }),
   sendInstructorNotificationMock: vi.fn().mockResolvedValue({ success: true }),
 }));
@@ -17,6 +19,7 @@ const {
 vi.mock("@/lib/email", () => ({
   sendBookingConfirmation: sendBookingConfirmationMock,
   sendClassCancellation: sendClassCancellationMock,
+  sendClassUnbooking: sendClassUnbookingMock,
   sendClassReminder: sendClassReminderMock,
   sendInstructorNotification: sendInstructorNotificationMock,
 }));

@@ -5,7 +5,12 @@ import { ArrowLeft, ArrowRight, Check, Gift, Wrench } from "lucide-react";
 import { Layout } from "../components/layout";
 import { SEO } from "../components/seo";
 import { Button } from "../components/ui/button";
-import { MarketingSection, ProofBand, SectionHeading } from "@/components/marketing/sections";
+import {
+  MarketingSection,
+  PreFooterCtaSection,
+  ProofBand,
+  SectionHeading,
+} from "@/components/marketing/sections";
 import type { PublicSmallGroupTemplateDetail } from "@/lib/small-groups/service";
 
 function formatDate(value: string | null) {
@@ -395,44 +400,27 @@ export function ClassesSmallGroupDetailPage({
         </MarketingSection>
       ) : null}
 
-      <MarketingSection className="bg-brand-accent text-brand-white">
-        <div className="grid gap-8 md:grid-cols-[1fr_auto] md:items-center">
-          <div>
-            <p className="text-brand-accent-light text-xs tracking-[0.2em] uppercase">Next step</p>
-            <h2 className="mt-4 text-3xl leading-tight md:text-5xl">
-              If you want a tighter training container without jumping straight into 1:1 coaching,
-              this is the place to start.
-            </h2>
-            <p className="text-brand-white/84 mt-5 max-w-2xl text-lg leading-relaxed">
-              Pick the next intake if one is open, or browse the other programme blocks if you want
-              to compare the focus first.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-4 sm:flex-row md:justify-end">
-            {nextJoinableRun ? (
-              <Button
-                asChild
-                size="lg"
-                className="bg-brand-white text-brand-accent hover:bg-brand-white/90"
-              >
-                <Link href={nextJoinableRun.checkoutHref}>
-                  Join next intake
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            ) : null}
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="border-brand-white/20 bg-brand-white/8 text-brand-white hover:bg-brand-white/12"
-            >
-              <Link href="/classes/small-groups">Explore all programmes</Link>
-            </Button>
-          </div>
-        </div>
-      </MarketingSection>
+      <PreFooterCtaSection
+        eyebrow="Next step"
+        title="If you want a tighter training container without jumping straight into 1:1 coaching, this is the place to start."
+        description="Pick the next intake if one is open, or browse the other programme blocks if you want to compare the focus first."
+        actions={[
+          ...(nextJoinableRun
+            ? [
+                {
+                  href: nextJoinableRun.checkoutHref,
+                  label: "Join next intake",
+                  icon: ArrowRight,
+                },
+              ]
+            : []),
+          {
+            href: "/classes/small-groups",
+            label: "Explore all programmes",
+            variant: "secondary" as const,
+          },
+        ]}
+      />
     </Layout>
   );
 }

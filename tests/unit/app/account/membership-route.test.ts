@@ -35,6 +35,7 @@ describe("GET /api/me/membership", () => {
       membership: null,
       credits: { balance: 2, summary: [] },
       referral: { balancePence: 0 },
+      complianceHistory: [],
     });
   });
 
@@ -50,6 +51,7 @@ describe("GET /api/me/membership", () => {
       membership: null,
       credits: { balance: 2, summary: [] },
       referral: { balancePence: 0 },
+      complianceHistory: [],
     });
   });
 

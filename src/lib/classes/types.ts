@@ -8,6 +8,7 @@ export type ScheduleClassItemDto = {
   type: string;
   day: string;
   dateLabel: string;
+  startsAtUtc: string;
   time: string;
   duration: string;
   level: string;
@@ -19,6 +20,7 @@ export type ScheduleClassItemDto = {
   spotsRemaining: number;
   bookedCount: number;
   status: ClassSessionStatus;
+  emptyClassAutoCancelWindowMinutes: number;
   isBookedByCurrentUser: boolean;
   waitlistPosition: number | null;
 };
@@ -57,10 +59,12 @@ export type ClassSessionListItemDto = {
   preJoinWindowMinutes: number;
   lateJoinCutoffMinutes: number;
   lateJoinCutoffAt: string;
+  emptyClassAutoCancelWindowMinutes: number;
   isBookedByCurrentUser: boolean;
   myBookingStatus: ClassBookingStatus | null;
   hasPreviouslyJoinedCurrentUser: boolean;
   waitlistPosition: number | null;
+  currentUserCheckInMode?: "energy_only" | "energy_and_flare";
 };
 
 export type ClassBookingDto = {
@@ -78,6 +82,9 @@ export type ClassBookingDto = {
   attendanceSource: "daily" | "manual" | null;
   healthConditions: string[];
   attendedClassesCount: number;
+  preClassEnergyLevel: 1 | 2 | 3 | 4 | 5 | null;
+  preClassFlareToday: boolean;
+  preClassSubmittedAt: string | null;
 };
 
 export type ClassWaitlistDto = {

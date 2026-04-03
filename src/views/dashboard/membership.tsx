@@ -3,8 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { DashboardLayout } from "../../components/dashboard-layout";
+import { MembershipPageSkeleton } from "../../components/dashboard-skeleton";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   CreditCard,
   Gift,
@@ -20,6 +29,10 @@ import {
 } from "lucide-react";
 import type { BillingHistoryItemDto, MembershipStateDto, PublicPricingDto } from "@/lib/api/types";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
+import {
+  buildMembershipDisclosure,
+  SUBSCRIPTION_DISCLOSURE_VERSION,
+} from "@/lib/billing/subscription-disclosure";
 
 type CheckoutResult = {
   checkoutUrl: string;
@@ -49,19 +62,26 @@ function formatBillingHistoryStatus(status: BillingHistoryItemDto["status"]) {
 export function MembershipPage({
   initialState,
   initialHistory,
+  initialPricing,
 }: {
   initialState?: MembershipStateDto | null;
   initialHistory?: BillingHistoryItemDto[];
+  initialPricing?: PublicPricingDto | null;
 }) {
   const searchParams = useSearchParams();
+  const hasServerData =
+    initialState !== undefined && initialHistory !== undefined && initialPricing !== undefined;
   const [state, setState] = useState<MembershipStateDto | null>(initialState || null);
   const [history, setHistory] = useState<BillingHistoryItemDto[]>(initialHistory || []);
-  const [loading, setLoading] = useState(!initialState);
+  const [loading, setLoading] = useState(!hasServerData);
   const [working, setWorking] = useState(false);
   const [portalWorking, setPortalWorking] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
+  const [showDisclosure, setShowDisclosure] = useState(false);
+  const [pendingInterval, setPendingInterval] = useState<"monthly" | "annual" | null>(null);
+  const [disclosureAccepted, setDisclosureAccepted] = useState(false);
   const [error, setError] = useState("");
-  const [pricing, setPricing] = useState<PublicPricingDto | null>(null);
+  const [pricing, setPricing] = useState<PublicPricingDto | null>(initialPricing || null);
   const membership = state?.membership || null;
   const hasActiveMembership = Boolean(membership?.accessActive);
   const checkoutState = searchParams.get("checkout");
@@ -77,6 +97,7 @@ export function MembershipPage({
   const credits10Price = pricing?.credits[10] ?? 70;
   const creditsExpiryDays = pricing?.creditsExpiryDays ?? 90;
   const preferredInterval = searchParams.get("interval") === "annual" ? "annual" : "monthly";
+  const disclosureRequested = searchParams.get("subscribe") === "1";
 
   const creditExpiryInfo = useMemo(() => {
     const summary = state?.credits.summary || [];
@@ -117,30 +138,48 @@ export function MembershipPage({
   useEffect(() => {
     let active = true;
     void (async () => {
-      setLoading(true);
       setError("");
+      if (!hasServerData) setLoading(true);
       try {
         await load();
       } catch (e) {
         if (active) setError(e instanceof Error ? e.message : "Failed to load membership.");
       } finally {
-        if (active) setLoading(false);
+        if (active && !hasServerData) setLoading(false);
       }
     })();
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [hasServerData]);
+
+  useEffect(() => {
+    if (!disclosureRequested || hasActiveMembership) return;
+    setPendingInterval(preferredInterval);
+    setShowDisclosure(true);
+  }, [disclosureRequested, hasActiveMembership, preferredInterval]);
 
   const startMembershipCheckout = async (billingInterval: "monthly" | "annual") => {
+    setPendingInterval(billingInterval);
+    setDisclosureAccepted(false);
+    setShowDisclosure(true);
+  };
+
+  const continueToMembershipCheckout = async () => {
+    if (!pendingInterval) return;
     setWorking(true);
     setError("");
     try {
       const res = await fetch("/api/me/membership/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: "movewell", billingInterval }),
+        body: JSON.stringify({
+          plan: "movewell",
+          billingInterval: pendingInterval,
+          disclosureAccepted: true,
+          disclosureVersion: SUBSCRIPTION_DISCLOSURE_VERSION,
+        }),
       });
       if (!res.ok) throw new Error("Failed to start membership checkout.");
       const payload = (await res.json()) as CheckoutResult;
@@ -230,6 +269,8 @@ export function MembershipPage({
   const membershipDetail = membership
     ? membership.cancelAtPeriodEnd && membership.endsAt
       ? `Ends ${membership.endsAt}`
+      : membership.compliance.trialEndsAt && membership.status === "active"
+        ? `Trial ends ${membership.compliance.trialEndsAt}`
       : membership.accessActive
         ? `Renews ${membership.renewalDate || "-"}`
         : membership.endsAt
@@ -237,10 +278,15 @@ export function MembershipPage({
           : formatMembershipStatus(membership.status)
     : "Choose monthly, annual, or credits";
 
+  const disclosure = useMemo(
+    () => buildMembershipDisclosure(pendingInterval || preferredInterval),
+    [pendingInterval, preferredInterval]
+  );
+
   if (loading) {
     return (
       <DashboardLayout title="Membership & Credits - Private Studio">
-        <p className="text-muted-foreground">Loading membership...</p>
+        <MembershipPageSkeleton />
       </DashboardLayout>
     );
   }
@@ -364,6 +410,31 @@ export function MembershipPage({
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                 Your membership is scheduled to end on {membership.endsAt}. You can keep using the
                 studio until then, or resume renewal before that date.
+              </div>
+            ) : null}
+
+            {membership.compliance.trialEndsAt && !membership.cancelAtPeriodEnd ? (
+              <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+                Your free trial is active and is due to end on {membership.compliance.trialEndsAt}.
+                If you do not cancel before then, the paid subscription starts automatically.
+              </div>
+            ) : null}
+
+            {membership.compliance.inInitialCoolingOff &&
+            membership.compliance.initialCoolingOffEndsAt ? (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                Your initial 14-day cooling-off window is open until{" "}
+                {membership.compliance.initialCoolingOffEndsAt}. If you cancel before then, your
+                subscription ends immediately.
+              </div>
+            ) : null}
+
+            {membership.compliance.inRenewalCoolingOff &&
+            membership.compliance.renewalCoolingOffEndsAt ? (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                Your renewal cooling-off window is open until{" "}
+                {membership.compliance.renewalCoolingOffEndsAt}. If you cancel before then, we will
+                process any refund required under consumer law.
               </div>
             ) : null}
 
@@ -545,6 +616,10 @@ export function MembershipPage({
           <p className="text-muted-foreground mt-4 text-center text-xs">
             Every membership begins with {trialDays} days on us. Card details are collected now,
             first charge after trial unless cancelled.
+          </p>
+          <p className="text-muted-foreground mt-2 text-center text-xs">
+            Before checkout you will be shown the key subscription terms separately and must
+            acknowledge them explicitly.
           </p>
           <p className="text-muted-foreground mt-3 text-center text-xs leading-relaxed">
             By continuing to checkout, you agree to the{" "}
@@ -786,6 +861,56 @@ export function MembershipPage({
         </div>
       )}
 
+      <div className="bg-background mb-8 rounded-lg border p-6">
+        <h2 className="mb-4 text-xl">Subscription Notices</h2>
+        {membership ? (
+          <div className="mb-5 space-y-2 text-sm">
+            <p className="text-muted-foreground">
+              Disclosure version: {membership.compliance.disclosureVersion || "Not recorded yet"}
+            </p>
+            {membership.compliance.disclosureAcceptedAt ? (
+              <p className="text-muted-foreground">
+                Disclosure acknowledged on {membership.compliance.disclosureAcceptedAt.slice(0, 10)}
+              </p>
+            ) : null}
+            {membership.compliance.trialEndsAt ? (
+              <p className="text-muted-foreground">
+                Trial end: {membership.compliance.trialEndsAt}
+              </p>
+            ) : null}
+            {membership.compliance.renewalCoolingOffEndsAt ? (
+              <p className="text-muted-foreground">
+                Renewal cooling-off ends: {membership.compliance.renewalCoolingOffEndsAt}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="text-muted-foreground mb-5 text-sm">
+            Subscription notices and acknowledgements will appear here after you start a membership.
+          </p>
+        )}
+
+        <div className="space-y-3 text-sm">
+          {state.complianceHistory.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No subscription notices recorded yet.</p>
+          ) : (
+            state.complianceHistory.map((item) => (
+              <div
+                key={item.id}
+                className="flex flex-col gap-1 border-b py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <p className="text-foreground">{item.summary}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {item.eventAt.slice(0, 10)} · {item.channel} · {item.status}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
       <div className="bg-background rounded-lg border p-6">
         <h2 className="mb-4 text-xl">Billing History</h2>
         <div className="space-y-3 text-sm">
@@ -809,6 +934,89 @@ export function MembershipPage({
           )}
         </div>
       </div>
+
+      <Dialog open={showDisclosure} onOpenChange={setShowDisclosure}>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Review subscription terms before checkout</DialogTitle>
+            <DialogDescription>
+              This summary is shown separately so the automatic renewal, reminder, cancellation, and
+              cooling-off terms are clear before you enter the contract.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5">
+            <div className="rounded-lg border bg-slate-50 p-4">
+              <p className="text-brand-accent text-xs tracking-[0.18em] uppercase">
+                Key pre-contract information
+              </p>
+              <ul className="mt-3 space-y-2 text-sm leading-relaxed">
+                {disclosure.keyItems.map((item) => (
+                  <li key={item} className="flex gap-2">
+                    <Check className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="rounded-lg border p-4">
+              <p className="text-brand-accent text-xs tracking-[0.18em] uppercase">
+                Full subscription information
+              </p>
+              <ul className="mt-3 space-y-2 text-sm leading-relaxed">
+                {disclosure.fullItems.map((item) => (
+                  <li key={item} className="flex gap-2">
+                    <Check className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <label className="flex items-start gap-3 text-sm leading-relaxed">
+              <input
+                type="checkbox"
+                checked={disclosureAccepted}
+                onChange={(event) => setDisclosureAccepted(event.target.checked)}
+                className="accent-brand-accent mt-1 h-4 w-4"
+              />
+              <span>{disclosure.acknowledgementLabel}</span>
+            </label>
+
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              Version {disclosure.version}. You can also review the{" "}
+              <a href="/terms" className="text-primary underline">
+                Terms & Conditions
+              </a>{" "}
+              and{" "}
+              <a href="/refund-policy" className="text-primary underline">
+                Refund & Cancellation Policy
+              </a>
+              .
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowDisclosure(false);
+                setPendingInterval(null);
+              }}
+              disabled={working}
+            >
+              Not now
+            </Button>
+            <Button
+              onClick={() => void continueToMembershipCheckout()}
+              disabled={working || !disclosureAccepted}
+            >
+              {working ? "Opening checkout..." : "Acknowledge and continue"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

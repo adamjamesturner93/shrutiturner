@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { CreditEntryType, ReferralEventStatus, ReferralLedgerType } from "@prisma/client";
 import { db } from "@/lib/db";
 import { CREDITS_EXPIRY_DAYS } from "@/lib/billing/price-map";
@@ -30,7 +30,7 @@ function fallbackCode(): string {
 }
 
 function deterministicCodeFromUserId(userId: string): string {
-  return `REF${Buffer.from(userId).toString("hex").slice(0, 10).toUpperCase()}`;
+  return `REF${createHash("sha256").update(userId).digest("hex").slice(0, 10).toUpperCase()}`;
 }
 
 export async function ensureReferralCodeForUser(userId: string): Promise<string> {

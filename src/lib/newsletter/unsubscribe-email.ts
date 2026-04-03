@@ -1,4 +1,5 @@
 import { ServerClient } from "postmark";
+import { getPostmarkMessageStream } from "@/lib/postmark/client";
 
 export async function sendMarketingUnsubscribeRequestEmail(input: {
   email: string;
@@ -36,7 +37,10 @@ export async function sendMarketingUnsubscribeRequestEmail(input: {
     Subject: "Confirm your unsubscribe request",
     HtmlBody: htmlBody,
     TextBody: textBody,
-    MessageStream: "outbound",
+    MessageStream: getPostmarkMessageStream("transactional"),
     Tag: "newsletter-unsubscribe-request",
+    Metadata: {
+      emailCategory: "transactional",
+    },
   });
 }

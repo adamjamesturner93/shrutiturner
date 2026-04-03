@@ -7,6 +7,7 @@ import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 import {
   EditorialHero,
   MarketingSection,
+  PreFooterCtaSection,
   ProofBand,
   SectionHeading,
   StorySplit,
@@ -333,30 +334,18 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
         </div>
       </MarketingSection>
 
-      <MarketingSection className="bg-brand-accent text-brand-white">
-        <div className="grid gap-8 md:grid-cols-[1fr_auto] md:items-center">
-          <div>
-            <p className="text-brand-white/90 text-xs tracking-[0.2em] uppercase">Questions</p>
-            <h2 className="mt-4 text-3xl leading-tight md:text-5xl">
-              If you are unsure whether a retreat is suitable for your body, ask.
-            </h2>
-            <p className="text-brand-white/80 mt-5 max-w-2xl text-lg leading-relaxed">
-              It is better to have a thoughtful conversation first than force a decision in a space
-              that is meant to feel supportive.
-            </p>
-          </div>
-          <Button
-            asChild
-            size="lg"
-            className="bg-brand-white text-brand-accent hover:bg-brand-white/90"
-          >
-            <Link href="/contact">
-              Send an enquiry
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
-      </MarketingSection>
+      <PreFooterCtaSection
+        eyebrow="Questions"
+        title="If you are unsure whether a retreat is suitable for your body, ask."
+        description="It is better to have a thoughtful conversation first than force a decision in a space that is meant to feel supportive."
+        actions={[
+          {
+            href: "/contact",
+            label: "Send an enquiry",
+            icon: ArrowRight,
+          },
+        ]}
+      />
 
       <script
         type="application/ld+json"

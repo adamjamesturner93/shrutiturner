@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api/auth-user";
 import { createMembershipCheckoutSession } from "@/lib/billing/billing-service";
+import { SUBSCRIPTION_DISCLOSURE_VERSION } from "@/lib/billing/subscription-disclosure";
+import {
+  recordSubscriptionComplianceEvent,
+} from "@/lib/billing/subscription-compliance";
 import { sanitizeRedirectPath } from "@/lib/navigation/safe-redirect";
 
 export async function POST(request: Request) {
@@ -12,6 +16,8 @@ export async function POST(request: Request) {
       promotionCode?: string;
       successPath?: string;
       cancelPath?: string;
+      disclosureVersion?: string;
+      disclosureAccepted?: boolean;
     };
     const requestedPlan = typeof body.plan === "string" ? body.plan : "movewell";
     const billingInterval =
@@ -27,6 +33,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Invalid membership plan." }, { status: 400 });
     }
 
+    if (body.disclosureAccepted !== true) {
+      return NextResponse.json(
+        { message: "Subscription terms must be acknowledged before checkout." },
+        { status: 400 }
+      );
+    }
+
+    if (body.disclosureVersion !== SUBSCRIPTION_DISCLOSURE_VERSION) {
+      return NextResponse.json(
+        { message: "Subscription disclosure is out of date. Refresh and review it again." },
+        { status: 409 }
+      );
+    }
+
+    const disclosureAcceptedAt = new Date();
+    await recordSubscriptionComplianceEvent({
+      userId: user.id,
+      kind: "disclosure_acknowledged",
+      status: "recorded",
+      summary: `Subscription disclosure ${body.disclosureVersion} accepted for ${billingInterval} Move Well Membership checkout.`,
+      metadataJson: {
+        disclosureVersion: body.disclosureVersion,
+        billingInterval,
+      },
+      eventAt: disclosureAcceptedAt,
+    });
+
     const result = await createMembershipCheckoutSession(
       user.id,
       "movewell",
@@ -36,6 +69,8 @@ export async function POST(request: Request) {
       {
         successPath: sanitizeRedirectPath(body.successPath),
         cancelPath: sanitizeRedirectPath(body.cancelPath),
+        disclosureVersion: body.disclosureVersion,
+        disclosureAcceptedAt,
       }
     );
     return NextResponse.json(result);

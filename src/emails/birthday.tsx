@@ -16,7 +16,10 @@ export default function BirthdayEmail({
   scheduleUrl = "https://shrutiturner.com/schedule",
 }: BirthdayEmailProps) {
   return (
-    <EmailLayout preview={`Happy birthday, ${firstName} — a small gift from me to you`}>
+    <EmailLayout
+      preview={`Happy birthday, ${firstName} — a small gift from me to you`}
+      category="marketing"
+    >
       {/* Birthday hero section */}
       <Section
         style={{

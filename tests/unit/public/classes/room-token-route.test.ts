@@ -7,6 +7,8 @@ const createMeetingTokenMock = vi.fn();
 const isDailyConfiguredMock = vi.fn();
 const buildSessionParticipantPermissionsMock = vi.fn();
 const getEffectiveSessionCommunityModeMock = vi.fn();
+const setUpSessionRoomMock = vi.fn();
+const getHealthAccessStateMock = vi.fn();
 
 vi.mock("@/lib/api/auth-user", () => ({
   requireSessionUser: requireSessionUserMock,
@@ -25,6 +27,14 @@ vi.mock("@/lib/daily/service", () => ({
 vi.mock("@/lib/classes/live-room-service", () => ({
   buildSessionParticipantPermissions: buildSessionParticipantPermissionsMock,
   getEffectiveSessionCommunityMode: getEffectiveSessionCommunityModeMock,
+}));
+
+vi.mock("@/lib/classes/session-service", () => ({
+  setUpSessionRoom: setUpSessionRoomMock,
+}));
+
+vi.mock("@/lib/health/health-service", () => ({
+  getHealthAccessState: getHealthAccessStateMock,
 }));
 
 const route = await import("@/app/api/classes/sessions/[id]/room-token/route");
@@ -47,6 +57,20 @@ describe("POST /api/classes/sessions/[id]/room-token", () => {
     buildSessionParticipantPermissionsMock.mockReturnValue({ permissions: { canSend: true } });
     getEffectiveSessionCommunityModeMock.mockReturnValue(false);
     createMeetingTokenMock.mockResolvedValue("token_123");
+    getHealthAccessStateMock.mockResolvedValue({ isComplete: true });
+  });
+
+  it("blocks room access until the health declaration is complete", async () => {
+    getHealthAccessStateMock.mockResolvedValue({ isComplete: false });
+
+    const response = await route.POST(new Request("http://localhost"), {
+      params: Promise.resolve({ id: "session_123" }),
+    });
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      message: "Complete your health declaration before joining class.",
+    });
   });
 
   it("returns a dedicated early-join denial", async () => {
