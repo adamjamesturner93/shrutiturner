@@ -1,10 +1,15 @@
+import { AcceptanceType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api/auth-user";
 import { createMembershipCheckoutSession } from "@/lib/billing/billing-service";
+import { assertNoUserCheckoutDisputeHold } from "@/lib/billing/dispute-service";
 import { SUBSCRIPTION_DISCLOSURE_VERSION } from "@/lib/billing/subscription-disclosure";
+import { recordSubscriptionComplianceEvent } from "@/lib/billing/subscription-compliance";
 import {
-  recordSubscriptionComplianceEvent,
-} from "@/lib/billing/subscription-compliance";
+  assertCurrentAcceptances,
+  isAcceptanceRequiredError,
+  recordAcceptanceEvent,
+} from "@/lib/legal/acceptance-service";
 import { sanitizeRedirectPath } from "@/lib/navigation/safe-redirect";
 
 export async function POST(request: Request) {
@@ -33,6 +38,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Invalid membership plan." }, { status: 400 });
     }
 
+    await assertNoUserCheckoutDisputeHold(user.id);
+
+    const acceptanceStates = await assertCurrentAcceptances(user.id, [
+      { type: AcceptanceType.terms, surface: "membership_checkout" },
+      { type: AcceptanceType.health_waiver, surface: "membership_checkout" },
+    ]);
+
     if (body.disclosureAccepted !== true) {
       return NextResponse.json(
         { message: "Subscription terms must be acknowledged before checkout." },
@@ -48,6 +60,16 @@ export async function POST(request: Request) {
     }
 
     const disclosureAcceptedAt = new Date();
+    const immediateStartEvent = await recordAcceptanceEvent({
+      userId: user.id,
+      actorUserId: user.id,
+      type: AcceptanceType.immediate_start,
+      surface: "membership_checkout",
+      metadataJson: {
+        disclosureVersion: body.disclosureVersion,
+        billingInterval,
+      },
+    });
     await recordSubscriptionComplianceEvent({
       userId: user.id,
       kind: "disclosure_acknowledged",
@@ -56,6 +78,7 @@ export async function POST(request: Request) {
       metadataJson: {
         disclosureVersion: body.disclosureVersion,
         billingInterval,
+        immediateStartAcceptanceEventId: immediateStartEvent.id,
       },
       eventAt: disclosureAcceptedAt,
     });
@@ -71,6 +94,16 @@ export async function POST(request: Request) {
         cancelPath: sanitizeRedirectPath(body.cancelPath),
         disclosureVersion: body.disclosureVersion,
         disclosureAcceptedAt,
+        complianceSnapshot: {
+          acceptanceStates: acceptanceStates.map((state) => ({
+            type: state.type,
+            policyVersionId: state.policyVersionId,
+            acceptanceEventId: state.acceptanceEventId,
+            version: state.currentVersion,
+            surface: state.surface,
+          })),
+          immediateStartAcceptanceEventId: immediateStartEvent.id,
+        },
       }
     );
     return NextResponse.json(result);
@@ -85,6 +118,18 @@ export async function POST(request: Request) {
       if (error.message === "STRIPE_NOT_CONFIGURED") {
         return NextResponse.json({ message: "Stripe is not configured." }, { status: 501 });
       }
+      if (error.message === "DISPUTE_HOLD") {
+        return NextResponse.json(
+          {
+            message:
+              "Checkout is temporarily blocked while an open payment dispute is under review.",
+          },
+          { status: 409 }
+        );
+      }
+    }
+    if (isAcceptanceRequiredError(error)) {
+      return NextResponse.json(error.details, { status: 409 });
     }
     console.error("POST /api/me/membership/checkout failed", error);
     return NextResponse.json({ message: "Failed to create checkout session" }, { status: 500 });

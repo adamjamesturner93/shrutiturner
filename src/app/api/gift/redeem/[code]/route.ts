@@ -78,6 +78,15 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
         { status: 400 }
       );
     }
+    if (error instanceof Error && error.message === "DISPUTE_HOLD") {
+      return NextResponse.json(
+        {
+          message:
+            "This gift is temporarily blocked while an open payment dispute is under review.",
+        },
+        { status: 409 }
+      );
+    }
     console.error("POST /api/gift/redeem/[code] failed", error);
     return NextResponse.json({ message: "Failed to redeem gift." }, { status: 500 });
   }

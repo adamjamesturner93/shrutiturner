@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import {
   createOrActivateCatalogPrice,
   type BillingCatalogKey,
@@ -15,7 +15,7 @@ const validKeys = new Set([
 
 export async function POST(request: Request) {
   try {
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const body = (await request.json().catch(() => ({}))) as {
       key?: string;
       unitAmountPence?: number;

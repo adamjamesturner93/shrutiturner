@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { cancelClassSession } from "@/lib/classes/booking-service";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const adminUser = await requireAdminUser();
+    const adminUser = await requireStaffAdminUser();
     const { id } = await context.params;
     const body = (await request.json().catch(() => ({}))) as { reason?: string };
 

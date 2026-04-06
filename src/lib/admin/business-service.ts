@@ -30,13 +30,13 @@ export async function getAdminBusinessSummary(): Promise<AdminBusinessSummary> {
     latestBillingEvent,
     latestEmailEvent,
   ] = await Promise.all([
-    db.user.count({ where: { role: UserRole.student } }),
+    db.user.count({ where: { role: { in: [UserRole.student, UserRole.member] } } }),
     db.membershipSubscription.count({
       where: { status: { in: [MembershipStatus.active, MembershipStatus.past_due] } },
     }),
     db.user.count({
       where: {
-        role: UserRole.student,
+        role: { in: [UserRole.student, UserRole.member] },
         createdAt: { gte: startOfMonth },
       },
     }),

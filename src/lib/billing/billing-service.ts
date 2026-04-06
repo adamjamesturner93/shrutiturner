@@ -16,8 +16,10 @@ import {
 } from "@/lib/billing/price-map";
 import { getActiveCatalogItem, resolvePromotionCodeDiscount } from "@/lib/billing/catalog-service";
 import {
+  sendMembershipCheckoutConfirmationNotice,
   sendRenewalCoolingOffNotice,
 } from "@/lib/billing/subscription-compliance";
+import { processStripeDisputeEvent } from "@/lib/billing/dispute-service";
 import {
   computeReferralDiscountPence,
   consumeReferralDiscount,
@@ -278,6 +280,7 @@ export async function createMembershipCheckoutSession(
     cancelPath?: string;
     disclosureVersion?: string;
     disclosureAcceptedAt?: Date;
+    complianceSnapshot?: Record<string, unknown>;
   }
 ) {
   const catalog = await getActiveCatalogItem(planToCatalogKey(plan, billingInterval));
@@ -326,6 +329,9 @@ export async function createMembershipCheckoutSession(
       discountSource: chosen.source,
       disclosureVersion: options?.disclosureVersion || "",
       disclosureAcceptedAt: disclosureAcceptedAtIso || "",
+      complianceSnapshotJson: options?.complianceSnapshot
+        ? JSON.stringify(options.complianceSnapshot)
+        : "",
     },
   });
 
@@ -454,7 +460,7 @@ async function processCheckoutCompleted(event: Stripe.Event, session: Stripe.Che
       session.metadata?.billingInterval === "annual" ? "annual" : "monthly";
     const billingInterval = resolved?.billingInterval || billingIntervalFromMeta;
 
-    await startOrSwitchMembership({
+    const membership = await startOrSwitchMembership({
       userId,
       plan,
       billingInterval,
@@ -465,8 +471,34 @@ async function processCheckoutCompleted(event: Stripe.Event, session: Stripe.Che
       disclosureAcceptedAt: session.metadata?.disclosureAcceptedAt
         ? new Date(session.metadata.disclosureAcceptedAt)
         : undefined,
+      complianceSnapshotJson: session.metadata?.complianceSnapshotJson
+        ? JSON.parse(session.metadata.complianceSnapshotJson)
+        : undefined,
       startedAt: session.created ? new Date(session.created * 1000) : new Date(),
     });
+
+    const membershipUser = await db.user.findUnique({
+      where: { id: userId },
+      select: { email: true, firstName: true, name: true },
+    });
+
+    if (membershipUser?.email && membership.trialEndsAt) {
+      const immediateStartSummary =
+        typeof session.metadata?.immediateStartSummary === "string"
+          ? session.metadata.immediateStartSummary
+          : null;
+
+      await sendMembershipCheckoutConfirmationNotice({
+        membershipId: membership.id,
+        userId,
+        email: membershipUser.email,
+        firstName: membershipUser.firstName || membershipUser.name || "there",
+        billingInterval,
+        pricePence: membership.pricePence,
+        trialEndsAt: membership.trialEndsAt,
+        immediateStartSummary,
+      });
+    }
 
     if (discountPence > 0) {
       const applied = await db.referralLedgerEntry.findFirst({
@@ -768,6 +800,14 @@ async function handleStripeEvent(event: Stripe.Event) {
     await processPromotionCodeUpdated(event.data.object as Stripe.PromotionCode);
     return;
   }
+
+  if (
+    event.type === "charge.dispute.created" ||
+    event.type === "charge.dispute.updated" ||
+    event.type === "charge.dispute.closed"
+  ) {
+    await processStripeDisputeEvent(event);
+  }
 }
 
 async function resolveBillingEventUserId(event: Stripe.Event) {
@@ -791,6 +831,25 @@ async function resolveBillingEventUserId(event: Stripe.Event) {
   if (event.type.startsWith("customer.subscription.")) {
     const subscription = event.data.object as Stripe.Subscription;
     const customerId = String(subscription.customer);
+    const user = await db.user.findUnique({
+      where: { stripeCustomerId: customerId },
+      select: { id: true },
+    });
+    return user?.id || null;
+  }
+
+  if (event.type.startsWith("charge.dispute.")) {
+    const dispute = event.data.object as Stripe.Dispute & {
+      charge?: string | { customer?: string | { id?: string | null } | null } | null;
+    };
+    const charge = dispute.charge;
+    const customerId =
+      typeof charge === "string"
+        ? null
+        : typeof charge?.customer === "string"
+          ? charge.customer
+          : charge?.customer?.id || null;
+    if (!customerId) return null;
     const user = await db.user.findUnique({
       where: { stripeCustomerId: customerId },
       select: { id: true },

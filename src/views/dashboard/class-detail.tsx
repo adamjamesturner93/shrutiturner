@@ -164,6 +164,11 @@ export function DashboardClassDetail({
                 <span className="ml-1">{resolvedType}</span>
               </Badge>
               <Badge variant="outline">{resolvedLevel}</Badge>
+              {session?.isRecorded ? (
+                <Badge variant="outline" className="border-amber-300/40 text-amber-700">
+                  Recorded
+                </Badge>
+              ) : null}
               {booked && (
                 <Badge className="bg-brand-accent text-brand-white gap-1">
                   <CheckCircle className="h-3 w-3" />
@@ -201,6 +206,17 @@ export function DashboardClassDetail({
               <span>Live online</span>
             </div>
           </div>
+
+          {session?.isRecorded ? (
+            <div className="rounded-lg border border-amber-300/40 bg-amber-50/80 p-4 text-sm text-amber-900">
+              <p className="font-medium">This session is recorded.</p>
+              <p className="mt-1 text-amber-800">
+                The instructor is intentionally recorded. Participants are not intended to be
+                recorded, but incidental capture can happen if you unmute, turn on camera, or use
+                chat.
+              </p>
+            </div>
+          ) : null}
 
           {/* About */}
           <div>
@@ -358,9 +374,12 @@ export function DashboardClassDetail({
                         setCancellingBooking(true);
                         setCancelError("");
                         try {
-                          const response = await fetch(`/api/classes/sessions/${session.id}/booking`, {
-                            method: "DELETE",
-                          });
+                          const response = await fetch(
+                            `/api/classes/sessions/${session.id}/booking`,
+                            {
+                              method: "DELETE",
+                            }
+                          );
                           if (!response.ok) {
                             const payload = (await response.json().catch(() => null)) as {
                               message?: string;

@@ -1,4 +1,15 @@
+import { AcceptanceType } from "@prisma/client";
 import { db } from "@/lib/db";
+import { recordAcceptanceEvent } from "@/lib/legal/acceptance-service";
+
+export const DEFAULT_MARKETING_CONSENT_WORDING =
+  "I want to receive marketing emails, newsletter updates, and occasional offers from Shruti Turner. I can unsubscribe at any time.";
+
+type MarketingConsentInput = {
+  source?: string;
+  surface?: string;
+  wordingText?: string;
+};
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -24,6 +35,30 @@ async function ensureUserMarketingPreference(userId: string, marketingEmails: bo
   });
 }
 
+async function recordMarketingConsentIfNeeded(input: {
+  userId?: string | null;
+  shouldRecord: boolean;
+  source?: string;
+  surface?: string;
+  wordingText?: string;
+}) {
+  if (!input.userId || !input.shouldRecord) {
+    return;
+  }
+
+  await recordAcceptanceEvent({
+    userId: input.userId,
+    actorUserId: input.userId,
+    type: AcceptanceType.marketing,
+    surface: input.surface || "newsletter_signup",
+    metadataJson: {
+      source: input.source || "unknown",
+      surface: input.surface || "newsletter_signup",
+      wordingText: input.wordingText || DEFAULT_MARKETING_CONSENT_WORDING,
+    },
+  });
+}
+
 export async function ensureSubscriberLinkedToUser(userId: string, email: string) {
   const normalizedEmail = normalizeEmail(email);
   await db.newsletterSubscriber.updateMany({
@@ -36,18 +71,22 @@ export async function subscribeMarketingEmail(input: {
   email: string;
   userId?: string | null;
   source?: string;
+  surface?: string;
+  wordingText?: string;
 }) {
   const email = normalizeEmail(input.email);
   const existing = await db.newsletterSubscriber.findUnique({
     where: { email },
-    select: { id: true, token: true, userId: true },
+    select: { id: true, token: true, userId: true, status: true },
   });
+  const linkedUserId = input.userId || existing?.userId || null;
+  const shouldRecordConsent = existing?.status !== "subscribed";
 
   const subscriber = existing
     ? await db.newsletterSubscriber.update({
         where: { email },
         data: {
-          userId: input.userId || existing.userId || undefined,
+          userId: linkedUserId || undefined,
           source: input.source || undefined,
           status: "subscribed",
           subscribedAt: new Date(),
@@ -57,7 +96,7 @@ export async function subscribeMarketingEmail(input: {
     : await db.newsletterSubscriber.create({
         data: {
           email,
-          userId: input.userId || undefined,
+          userId: linkedUserId || undefined,
           source: input.source || undefined,
           status: "subscribed",
           token: createToken(),
@@ -67,6 +106,14 @@ export async function subscribeMarketingEmail(input: {
   if (subscriber.userId) {
     await ensureUserMarketingPreference(subscriber.userId, true);
   }
+
+  await recordMarketingConsentIfNeeded({
+    userId: linkedUserId,
+    shouldRecord: shouldRecordConsent,
+    source: input.source,
+    surface: input.surface,
+    wordingText: input.wordingText,
+  });
 
   return subscriber;
 }
@@ -164,7 +211,11 @@ export async function requestMarketingUnsubscribeByAddress(emailInput: string) {
   };
 }
 
-export async function syncMarketingPreferenceForUser(userId: string, marketingEmails: boolean) {
+export async function syncMarketingPreferenceForUser(
+  userId: string,
+  marketingEmails: boolean,
+  consent?: MarketingConsentInput
+) {
   const user = await db.user.findUnique({
     where: { id: userId },
     select: { email: true },
@@ -175,8 +226,9 @@ export async function syncMarketingPreferenceForUser(userId: string, marketingEm
 
   const existing = await db.newsletterSubscriber.findUnique({
     where: { email: normalizeEmail(user.email) },
-    select: { id: true, token: true },
+    select: { id: true, token: true, status: true },
   });
+  const shouldRecordConsent = marketingEmails && existing?.status !== "subscribed";
 
   if (existing) {
     await db.newsletterSubscriber.update({
@@ -187,6 +239,13 @@ export async function syncMarketingPreferenceForUser(userId: string, marketingEm
         subscribedAt: marketingEmails ? new Date() : undefined,
         unsubscribedAt: marketingEmails ? null : new Date(),
       },
+    });
+    await recordMarketingConsentIfNeeded({
+      userId,
+      shouldRecord: shouldRecordConsent,
+      source: consent?.source || "account",
+      surface: consent?.surface || "account_notifications",
+      wordingText: consent?.wordingText,
     });
     return;
   }
@@ -201,6 +260,14 @@ export async function syncMarketingPreferenceForUser(userId: string, marketingEm
       unsubscribedAt: marketingEmails ? null : new Date(),
       source: "account",
     },
+  });
+
+  await recordMarketingConsentIfNeeded({
+    userId,
+    shouldRecord: marketingEmails,
+    source: consent?.source || "account",
+    surface: consent?.surface || "account_notifications",
+    wordingText: consent?.wordingText,
   });
 }
 

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { setPromotionCodeActive } from "@/lib/billing/catalog-service";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const { id } = await context.params;
     const body = (await request.json().catch(() => ({}))) as { active?: boolean };
     if (typeof body.active !== "boolean") {

@@ -5,6 +5,7 @@ const requireSessionUserMock = vi.fn();
 const getHealthProfileMock = vi.fn();
 const upsertHealthProfileMock = vi.fn();
 const confirmHealthProfileMock = vi.fn();
+const isAcceptanceRequiredErrorMock = vi.fn();
 
 vi.mock("next/server", async () => {
   const actual = await vi.importActual<typeof import("next/server")>("next/server");
@@ -22,6 +23,10 @@ vi.mock("@/lib/health/health-service", () => ({
   confirmHealthProfile: confirmHealthProfileMock,
   getHealthProfile: getHealthProfileMock,
   upsertHealthProfile: upsertHealthProfileMock,
+}));
+
+vi.mock("@/lib/legal/acceptance-service", () => ({
+  isAcceptanceRequiredError: isAcceptanceRequiredErrorMock,
 }));
 
 const route = await import("@/app/api/me/health-profile/route");
@@ -92,6 +97,7 @@ describe("PUT /api/me/health-profile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     requireSessionUserMock.mockResolvedValue({ id: "user_123" });
+    isAcceptanceRequiredErrorMock.mockReturnValue(false);
     upsertHealthProfileMock.mockResolvedValue({
       declarationStatus: "context_declared",
       conditions: { fatigue: true },
@@ -151,12 +157,51 @@ describe("PUT /api/me/health-profile", () => {
       "user_123"
     );
   });
+
+  it("returns a structured re-acceptance response when health-data acceptance is stale", async () => {
+    const requiredAcceptances = [
+      {
+        type: "health_data",
+        surface: "health_profile",
+        currentVersion: "health-data.v2",
+        acceptedVersion: "health-data.v1",
+        policyVersionId: "policy_health_data_v2",
+        acceptanceEventId: "event_health_data_v1",
+        isCurrent: false,
+      },
+    ];
+    const acceptanceError = {
+      message: "LEGAL_ACCEPTANCE_REQUIRED",
+      details: {
+        code: "LEGAL_ACCEPTANCE_REQUIRED",
+        requiredAcceptances,
+      },
+    };
+    upsertHealthProfileMock.mockRejectedValue(acceptanceError);
+    isAcceptanceRequiredErrorMock.mockImplementation(
+      (error) => error === acceptanceError || error?.message === "LEGAL_ACCEPTANCE_REQUIRED"
+    );
+
+    const response = await route.PUT(
+      createPutRequest({
+        conditions: { fatigue: true },
+        details: { fatigue: "Worse in mornings" },
+      })
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      code: "LEGAL_ACCEPTANCE_REQUIRED",
+      requiredAcceptances,
+    });
+  });
 });
 
 describe("POST /api/me/health-profile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     requireSessionUserMock.mockResolvedValue({ id: "user_123" });
+    isAcceptanceRequiredErrorMock.mockReturnValue(false);
     confirmHealthProfileMock.mockResolvedValue({
       declarationStatus: "none_declared",
       conditions: {},

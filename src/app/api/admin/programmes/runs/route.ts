@@ -1,6 +1,6 @@
 import { SmallGroupProgrammeStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import {
   createSmallGroupRun,
   listAdminSmallGroupProgrammes,
@@ -9,7 +9,7 @@ import {
 
 export async function POST(request: Request) {
   try {
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const body = (await request.json().catch(() => null)) as {
       templateSlug?: unknown;
       startDate?: unknown;

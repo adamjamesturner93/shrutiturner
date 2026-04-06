@@ -180,7 +180,7 @@ export async function listAdminMembers(filters: {
 }) {
   const users = await db.user.findMany({
     where: {
-      role: { in: [UserRole.student, UserRole.admin] },
+      role: { in: [UserRole.student, UserRole.member, UserRole.admin, UserRole.owner_admin] },
       ...(filters.search
         ? {
             OR: [
@@ -277,7 +277,7 @@ export async function listAdminMembers(filters: {
         lastClassDate: metrics.lastClassDate?.toISOString().slice(0, 10) || null,
         notes: user.adminNotes || "",
         ...notification,
-        isInstructor: user.role === UserRole.admin,
+        isInstructor: Boolean(user.instructorProfileEntryId),
         instructorProfileEntryId: user.instructorProfileEntryId || null,
         instructorProfileName: user.instructorProfileEntryId
           ? profileNameById.get(user.instructorProfileEntryId) || null
@@ -386,7 +386,7 @@ export async function getAdminMemberDetail(userId: string) {
     lastClassDate: metrics.lastClassDate?.toISOString().slice(0, 10) || null,
     notes: user.adminNotes || "",
     ...notification,
-    isInstructor: user.role === UserRole.admin,
+    isInstructor: Boolean(user.instructorProfileEntryId),
     instructorProfileEntryId: user.instructorProfileEntryId || null,
     instructorProfileName: profile?.name || null,
     isCoachingClient: user.isCoachingClient,
@@ -413,13 +413,16 @@ export async function updateAdminMember(
   }
 ) {
   const userData: {
-    role?: UserRole;
     instructorProfileEntryId?: string | null;
     isCoachingClient?: boolean;
     adminNotes?: string;
   } = {};
   if (typeof updates.isInstructor === "boolean") {
-    userData.role = updates.isInstructor ? UserRole.admin : UserRole.student;
+    userData.instructorProfileEntryId = updates.isInstructor
+      ? updates.instructorProfileEntryId === undefined
+        ? undefined
+        : updates.instructorProfileEntryId
+      : null;
   }
   if (typeof updates.isCoachingClient === "boolean") {
     userData.isCoachingClient = updates.isCoachingClient;

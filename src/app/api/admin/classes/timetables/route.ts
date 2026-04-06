@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import {
   createClassTimetableRule,
   generateDraftSessionsForTimetableRule,
@@ -8,7 +8,7 @@ import {
 
 export async function GET() {
   try {
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const rows = await listClassTimetableRules();
     return NextResponse.json(rows);
   } catch (error) {
@@ -26,7 +26,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const adminUser = await requireAdminUser();
+    const adminUser = await requireStaffAdminUser();
     const body = (await request.json()) as {
       classDefinitionSlug?: string;
       weekday?: number;

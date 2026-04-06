@@ -11,6 +11,7 @@ import { Label } from "../components/ui/label";
 import { Mail, Gift, Check, ArrowLeft } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { TurnstileWidget } from "@/components/turnstile-widget";
+import { isOwnerAdminRole } from "@/lib/authz/roles";
 import { sanitizeRedirectPath } from "@/lib/navigation/safe-redirect";
 import { IconHorizontal, IconVertical } from "@/components/icon";
 
@@ -73,7 +74,7 @@ export function LoginPage({
       }
       const destination =
         sanitizeRedirectPath(redirectTo) ||
-        (session?.user?.role === "admin" ? "/admin" : "/dashboard");
+        (isOwnerAdminRole(session?.user?.role) ? "/admin" : "/dashboard");
       router.replace(destination);
     };
 
@@ -147,13 +148,13 @@ export function LoginPage({
         <div className="section-wash min-h-[calc(100dvh-4rem)] px-4 py-6 md:py-8">
           <div className="container mx-auto max-w-6xl">
             <div className="grid gap-6 lg:min-h-[calc(100dvh-10rem)] lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-              <div className="marketing-grid relative overflow-hidden rounded-[2rem] px-6 py-7 text-brand-white shadow-[0_30px_80px_rgba(46,31,51,0.16)] md:px-8 md:py-8 lg:min-h-[560px]">
+              <div className="marketing-grid text-brand-white relative overflow-hidden rounded-[2rem] px-6 py-7 shadow-[0_30px_80px_rgba(46,31,51,0.16)] md:px-8 md:py-8 lg:min-h-[560px]">
                 <div className="relative z-10 flex h-full flex-col">
                   <p className="text-brand-accent-light text-xs tracking-[0.3em] uppercase">
                     Private Studio
                   </p>
                   <div className="mt-5 max-w-md space-y-5">
-                    <div className="hidden [&>svg]:h-auto [&>svg]:w-52 lg:block">
+                    <div className="hidden lg:block [&>svg]:h-auto [&>svg]:w-52">
                       <IconVertical />
                     </div>
                     <div className="lg:hidden [&>svg]:h-9 [&>svg]:w-auto">
@@ -176,17 +177,17 @@ export function LoginPage({
                     ].map((item) => (
                       <div
                         key={item}
-                        className="rounded-[1.3rem] border border-brand-white/10 bg-brand-white/7 px-4 py-4 backdrop-blur-sm"
+                        className="border-brand-white/10 bg-brand-white/7 rounded-[1.3rem] border px-4 py-4 backdrop-blur-sm"
                       >
                         <div className="bg-brand-accent-light/18 text-brand-accent-light flex h-8 w-8 items-center justify-center rounded-full">
                           <Check className="h-4 w-4" />
                         </div>
-                        <p className="mt-3 text-sm leading-relaxed text-brand-white/84">{item}</p>
+                        <p className="text-brand-white/84 mt-3 text-sm leading-relaxed">{item}</p>
                       </div>
                     ))}
                   </div>
 
-                  <div className="mt-6 grid gap-3 border-t border-brand-white/12 pt-5 sm:grid-cols-3">
+                  <div className="border-brand-white/12 mt-6 grid gap-3 border-t pt-5 sm:grid-cols-3">
                     {[
                       { value: "Live", label: "Classes and bookings in one place" },
                       { value: "Clear", label: "No hard-sell onboarding flow" },
@@ -196,7 +197,7 @@ export function LoginPage({
                         <p className="text-brand-accent-light text-sm tracking-[0.18em] uppercase">
                           {item.value}
                         </p>
-                        <p className="mt-2 text-sm leading-relaxed text-brand-white/72">
+                        <p className="text-brand-white/72 mt-2 text-sm leading-relaxed">
                           {item.label}
                         </p>
                       </div>
@@ -207,186 +208,198 @@ export function LoginPage({
 
               <div className="marketing-panel rounded-[2rem] px-6 py-7 md:px-8 md:py-8 lg:px-10">
                 <div className="mx-auto w-full max-w-[420px]">
-              {refCode && (
-                <div className="border-brand-accent/20 bg-brand-accent/10 mb-6 flex items-start gap-3 rounded-[1.3rem] border p-4">
-                  <Gift className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm">Your free class gift will be added after sign-in.</p>
-                  </div>
-                </div>
-              )}
-
-              {intent === "book" && !refCode && (
-                <div className="bg-secondary/50 mb-6 rounded-[1.3rem] border p-4 text-center">
-                  <p className="text-muted-foreground text-sm">Sign in to complete your booking.</p>
-                </div>
-              )}
-
-              <div className="mb-6 lg:hidden [&>svg]:h-10 [&>svg]:w-auto">
-                <IconHorizontal />
-              </div>
-
-              <div className="mb-8">
-                <p className="text-brand-accent text-xs tracking-[0.26em] uppercase">
-                  Welcome back
-                </p>
-                <h2 className="mt-3 text-3xl tracking-tight md:text-4xl">
-                  Sign in to your studio
-                </h2>
-                <p className="text-muted-foreground mt-3 leading-relaxed">
-                  Use your email or Google account to continue. If you&apos;re new, we&apos;ll set
-                  up the rest after you verify.
-                </p>
-              </div>
-              <div className="bg-bronze/60 mb-8 h-px w-16 rounded-full" />
-              {!loginMethod ? (
-                <div className="space-y-4">
-                  <Button
-                    onClick={() => setLoginMethod("passwordless")}
-                    variant="outline"
-                    size="lg"
-                    className="h-12 w-full justify-start px-4"
-                  >
-                    <Mail className="text-muted-foreground mr-3 h-5 w-5" />
-                    Continue with Email
-                  </Button>
-
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background text-muted-foreground px-2">Or</span>
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={handleGoogleLogin}
-                    variant="outline"
-                    size="lg"
-                    className="h-12 w-full justify-start px-4"
-                  >
-                    <svg className="mr-3 h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
-                      <path
-                        fill="#4285F4"
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      />
-                      <path
-                        fill="#34A853"
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      />
-                      <path
-                        fill="#FBBC05"
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                      />
-                      <path
-                        fill="#EA4335"
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                      />
-                    </svg>
-                    Continue with Google
-                  </Button>
-
-                  <div className="text-muted-foreground mt-6 text-center text-sm">
-                    First time here? You&apos;ll finish your profile inside the studio after
-                    sign-in.
-                  </div>
-                </div>
-              ) : loginMethod === "passwordless" ? (
-                <form onSubmit={handlePasswordlessLogin} className="space-y-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLoginMethod(null);
-                      setCodeSent(false);
-                      setEmail("");
-                      setCode("");
-                      setTurnstileToken("");
-                      setError("");
-                    }}
-                    className="text-muted-foreground hover:text-foreground mb-4 flex items-center gap-1.5 text-sm transition-colors"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    Back to options
-                  </button>
-
-                  {!codeSent ? (
-                    <>
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email Address</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          placeholder="your.email@example.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
-                        />
+                  {refCode && (
+                    <div className="border-brand-accent/20 bg-brand-accent/10 mb-6 flex items-start gap-3 rounded-[1.3rem] border p-4">
+                      <Gift className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm">Your free class gift will be added after sign-in.</p>
                       </div>
-
-                      <Button
-                        type="submit"
-                        className="w-full"
-                        size="lg"
-                        disabled={isSubmitting || !turnstileToken}
-                      >
-                        {isSubmitting ? "Sending..." : "Send Verification Code"}
-                      </Button>
-                      <TurnstileWidget onTokenChange={setTurnstileToken} />
-
-                      <p className="text-muted-foreground text-center text-sm">
-                        We&apos;ll email you a 6-digit sign-in code.
-                      </p>
-                      <p className="text-muted-foreground text-center text-xs">
-                        New to the studio? We&apos;ll set up your profile after verification.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <div className="space-y-2">
-                        <Label htmlFor="code">Verification Code</Label>
-                        <Input
-                          id="code"
-                          type="text"
-                          placeholder="000000"
-                          value={code}
-                          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                          maxLength={6}
-                          required
-                        />
-                        <p className="text-muted-foreground text-sm">Code sent to {email}</p>
-                      </div>
-
-                      <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
-                        {isSubmitting ? "Verifying..." : "Continue"}
-                      </Button>
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => {
-                          setCodeSent(false);
-                          setCode("");
-                          setTurnstileToken("");
-                        }}
-                        className="w-full"
-                      >
-                        Resend code
-                      </Button>
-                    </>
+                    </div>
                   )}
 
-                  {error ? <p className="text-center text-sm text-red-600">{error}</p> : null}
-                </form>
-              ) : null}
+                  {intent === "book" && !refCode && (
+                    <div className="bg-secondary/50 mb-6 rounded-[1.3rem] border p-4 text-center">
+                      <p className="text-muted-foreground text-sm">
+                        Sign in to complete your booking.
+                      </p>
+                    </div>
+                  )}
 
-              <p className="text-muted-foreground mt-8 text-center text-sm">
-                Need an account?{" "}
-                <Link href="/signup" className="text-brand-accent hover:text-brand-accent/80 underline">
-                  Create one here
-                </Link>
-                .
-              </p>
+                  <div className="mb-6 lg:hidden [&>svg]:h-10 [&>svg]:w-auto">
+                    <IconHorizontal />
+                  </div>
+
+                  <div className="mb-8">
+                    <p className="text-brand-accent text-xs tracking-[0.26em] uppercase">
+                      Welcome back
+                    </p>
+                    <h2 className="mt-3 text-3xl tracking-tight md:text-4xl">
+                      Sign in to your studio
+                    </h2>
+                    <p className="text-muted-foreground mt-3 leading-relaxed">
+                      Use your email or Google account to continue. If you&apos;re new, we&apos;ll
+                      set up the rest after you verify.
+                    </p>
+                  </div>
+                  <div className="bg-bronze/60 mb-8 h-px w-16 rounded-full" />
+                  {!loginMethod ? (
+                    <div className="space-y-4">
+                      <Button
+                        onClick={() => setLoginMethod("passwordless")}
+                        variant="outline"
+                        size="lg"
+                        className="h-12 w-full justify-start px-4"
+                      >
+                        <Mail className="text-muted-foreground mr-3 h-5 w-5" />
+                        Continue with Email
+                      </Button>
+
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-background text-muted-foreground px-2">Or</span>
+                        </div>
+                      </div>
+
+                      <Button
+                        onClick={handleGoogleLogin}
+                        variant="outline"
+                        size="lg"
+                        className="h-12 w-full justify-start px-4"
+                      >
+                        <svg className="mr-3 h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
+                          <path
+                            fill="#4285F4"
+                            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                          />
+                          <path
+                            fill="#34A853"
+                            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                          />
+                          <path
+                            fill="#FBBC05"
+                            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                          />
+                          <path
+                            fill="#EA4335"
+                            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                          />
+                        </svg>
+                        Continue with Google
+                      </Button>
+
+                      <div className="text-muted-foreground mt-6 text-center text-sm">
+                        First time here? You&apos;ll finish your profile inside the studio after
+                        sign-in.
+                      </div>
+                    </div>
+                  ) : loginMethod === "passwordless" ? (
+                    <form onSubmit={handlePasswordlessLogin} className="space-y-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLoginMethod(null);
+                          setCodeSent(false);
+                          setEmail("");
+                          setCode("");
+                          setTurnstileToken("");
+                          setError("");
+                        }}
+                        className="text-muted-foreground hover:text-foreground mb-4 flex items-center gap-1.5 text-sm transition-colors"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to options
+                      </button>
+
+                      {!codeSent ? (
+                        <>
+                          <div className="space-y-2">
+                            <Label htmlFor="email">Email Address</Label>
+                            <Input
+                              id="email"
+                              type="email"
+                              placeholder="your.email@example.com"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              required
+                            />
+                          </div>
+
+                          <Button
+                            type="submit"
+                            className="w-full"
+                            size="lg"
+                            disabled={isSubmitting || !turnstileToken}
+                          >
+                            {isSubmitting ? "Sending..." : "Send Verification Code"}
+                          </Button>
+                          <TurnstileWidget onTokenChange={setTurnstileToken} />
+
+                          <p className="text-muted-foreground text-center text-sm">
+                            We&apos;ll email you a 6-digit sign-in code.
+                          </p>
+                          <p className="text-muted-foreground text-center text-xs">
+                            New to the studio? We&apos;ll set up your profile after verification.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <div className="space-y-2">
+                            <Label htmlFor="code">Verification Code</Label>
+                            <Input
+                              id="code"
+                              type="text"
+                              placeholder="000000"
+                              value={code}
+                              onChange={(e) =>
+                                setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                              }
+                              maxLength={6}
+                              required
+                            />
+                            <p className="text-muted-foreground text-sm">Code sent to {email}</p>
+                          </div>
+
+                          <Button
+                            type="submit"
+                            className="w-full"
+                            size="lg"
+                            disabled={isSubmitting}
+                          >
+                            {isSubmitting ? "Verifying..." : "Continue"}
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => {
+                              setCodeSent(false);
+                              setCode("");
+                              setTurnstileToken("");
+                            }}
+                            className="w-full"
+                          >
+                            Resend code
+                          </Button>
+                        </>
+                      )}
+
+                      {error ? <p className="text-center text-sm text-red-600">{error}</p> : null}
+                    </form>
+                  ) : null}
+
+                  <p className="text-muted-foreground mt-8 text-center text-sm">
+                    Need an account?{" "}
+                    <Link
+                      href="/signup"
+                      className="text-brand-accent hover:text-brand-accent/80 underline"
+                    >
+                      Create one here
+                    </Link>
+                    .
+                  </p>
                 </div>
               </div>
             </div>

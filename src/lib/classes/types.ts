@@ -54,6 +54,13 @@ export type ClassSessionListItemDto = {
   roomSetupStatus?: "pending" | "ready" | "failed";
   roomSetupError?: string | null;
   communityModeEnabled: boolean;
+  isRecorded?: boolean;
+  recordingScope?: string | null;
+  replayAvailable?: boolean;
+  replayAccessDurationDays?: number | null;
+  chatEnabled?: boolean;
+  participantMicDefaultMuted?: boolean;
+  participantCameraDefaultOff?: boolean;
   threeHourOutcome?: "pending" | "reminded" | "cancelled_no_attendance";
   joinWindowOpensAt: string;
   preJoinWindowMinutes: number;

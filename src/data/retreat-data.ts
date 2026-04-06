@@ -341,8 +341,7 @@ You'll move through adaptive yoga, learn strength training principles, connect w
           roomOption({
             id: "3a-online-pass",
             label: "Virtual Retreat Pass",
-            description:
-              "Live online access for one person, including the full weekend and replay access.",
+            description: "Live online access for one person, including the full weekend.",
             type: "virtual",
             guestsIncluded: 1,
             capacity: 20,
@@ -363,8 +362,7 @@ You'll move through adaptive yoga, learn strength training principles, connect w
           roomOption({
             id: "3b-online-pass",
             label: "Virtual Retreat Pass",
-            description:
-              "Live online access for one person, including the full weekend and replay access.",
+            description: "Live online access for one person, including the full weekend.",
             type: "virtual",
             guestsIncluded: 1,
             capacity: 20,
@@ -386,7 +384,7 @@ You'll move through adaptive yoga, learn strength training principles, connect w
       "Strength training workshop",
       "Community connection sessions",
       "Digital welcome pack with schedule and equipment list",
-      "Seven-day replay access",
+      "Live access to every included session",
       "Printable movement guides to keep",
     ],
     notIncluded: ["Physical equipment (list provided in advance)", "Food and drink"],

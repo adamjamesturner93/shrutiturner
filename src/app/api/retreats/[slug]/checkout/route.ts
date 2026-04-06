@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { isAcceptanceRequiredError } from "@/lib/legal/acceptance-service";
 import { createRetreatCheckout } from "@/lib/retreats/service";
 
 type RetreatCheckoutBody = {
@@ -99,6 +100,32 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
         error.message === "RECIPIENT_REQUIRED")
     ) {
       return NextResponse.json({ message: "That retreat date is not available." }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "RETREAT_LEGAL_ACCEPTANCE_REQUIRED") {
+      return NextResponse.json(
+        {
+          code: "GUEST_LEGAL_ACCEPTANCE_REFRESH_REQUIRED",
+          message:
+            "The retreat legal agreements have changed. Refresh and review the latest versions before continuing.",
+          requiredVersions: {
+            terms: true,
+            healthWaiver: true,
+            healthData: true,
+          },
+        },
+        { status: 409 }
+      );
+    }
+    if (isAcceptanceRequiredError(error)) {
+      return NextResponse.json(error.details, { status: 409 });
+    }
+    if (error instanceof Error && error.message === "DISPUTE_HOLD") {
+      return NextResponse.json(
+        {
+          message: "Checkout is temporarily blocked while an open payment dispute is under review.",
+        },
+        { status: 409 }
+      );
     }
     console.error("POST /api/retreats/[slug]/checkout failed", error);
     return NextResponse.json({ message: "Failed to start retreat checkout." }, { status: 500 });

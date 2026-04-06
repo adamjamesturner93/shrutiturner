@@ -1,3 +1,4 @@
+import { AcceptanceType } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getReferralSummary } from "@/lib/referrals/referral-service";
 import {
@@ -9,7 +10,11 @@ import { linkPendingRecordsForUser } from "@/lib/link-pending-records";
 import { syncMarketingPreferenceForUser } from "@/lib/newsletter/subscriber-service";
 import { deriveOnboardingState } from "@/lib/account/onboarding-service";
 import { needsHealthDeclarationReview } from "@/lib/health/health-service";
+import { recordAcceptanceEvent } from "@/lib/legal/acceptance-service";
 import type { HealthDeclarationStatusDto } from "@/lib/api/types";
+
+const ACCOUNT_MARKETING_CONSENT_WORDING =
+  "I want to receive marketing emails, newsletter updates, and occasional offers from Shruti Turner. I can unsubscribe at any time.";
 
 const DATE_FORMATS = new Set(["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"]);
 
@@ -97,11 +102,13 @@ function mapNotificationPreferences<T extends { updatedAt: Date }>(
   };
 }
 
-function mapHealthDeclaration(profile: {
-  declarationStatus: "none_declared" | "context_declared";
-  lastConfirmedAt: Date;
-  tracksFlareCheckIns: boolean;
-} | null) {
+function mapHealthDeclaration(
+  profile: {
+    declarationStatus: "none_declared" | "context_declared";
+    lastConfirmedAt: Date;
+    tracksFlareCheckIns: boolean;
+  } | null
+) {
   const healthDeclarationStatus: HealthDeclarationStatusDto =
     profile?.declarationStatus ?? "incomplete";
   const healthDeclarationLastConfirmedAt = profile?.lastConfirmedAt.toISOString() ?? "";
@@ -204,19 +211,11 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
     ethnicity?: string | null;
     timezone?: string;
     dateFormat?: string;
-    hasAgreedToTerms?: boolean;
-    hasAgreedToHealth?: boolean;
-    acceptedTermsVersion?: string;
-    acceptedHealthWaiverVersion?: string;
-    hasConsentedToHealthData?: boolean;
-    acceptedHealthDataConsentVersion?: string;
-    termsAgreedAt?: Date;
-    healthAgreedAt?: Date;
-    healthDataConsentedAt?: Date;
     heardAboutSource?: string | null;
     heardAboutDetail?: string | null;
     isOnboarded?: boolean;
   } = {};
+  const acceptancesToRecord: AcceptanceType[] = [];
 
   if (typeof input.firstName === "string") data.firstName = input.firstName.trim().slice(0, 80);
   if (typeof input.lastName === "string") data.lastName = input.lastName.trim().slice(0, 80);
@@ -284,27 +283,21 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
       input.hasAgreedToTerms === true &&
       existing.acceptedTermsVersion !== CURRENT_TERMS_VERSION
     ) {
-      data.hasAgreedToTerms = true;
-      data.termsAgreedAt = new Date();
-      data.acceptedTermsVersion = CURRENT_TERMS_VERSION;
+      acceptancesToRecord.push(AcceptanceType.terms);
     }
 
     if (
       input.hasAgreedToHealth === true &&
       existing.acceptedHealthWaiverVersion !== CURRENT_HEALTH_WAIVER_VERSION
     ) {
-      data.hasAgreedToHealth = true;
-      data.healthAgreedAt = new Date();
-      data.acceptedHealthWaiverVersion = CURRENT_HEALTH_WAIVER_VERSION;
+      acceptancesToRecord.push(AcceptanceType.health_waiver);
     }
 
     if (
       input.hasConsentedToHealthData === true &&
       existing.acceptedHealthDataConsentVersion !== CURRENT_HEALTH_DATA_CONSENT_VERSION
     ) {
-      data.hasConsentedToHealthData = true;
-      data.healthDataConsentedAt = new Date();
-      data.acceptedHealthDataConsentVersion = CURRENT_HEALTH_DATA_CONSENT_VERSION;
+      acceptancesToRecord.push(AcceptanceType.health_data);
     }
   }
 
@@ -324,9 +317,22 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
     data.isOnboarded = input.isOnboarded;
   }
 
-  const updated = await db.user.update({
+  await db.user.update({
     where: { id: userId },
     data,
+  });
+
+  for (const type of acceptancesToRecord) {
+    await recordAcceptanceEvent({
+      userId,
+      actorUserId: userId,
+      type,
+      surface: input.isOnboarded ? "account_onboarding" : "account_profile",
+    });
+  }
+
+  const updated = await db.user.findUnique({
+    where: { id: userId },
     select: {
       id: true,
       firstName: true,
@@ -351,6 +357,8 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
     },
   });
 
+  if (!updated) throw new Error("USER_NOT_FOUND");
+
   const healthProfile = await db.healthProfile.findUnique({
     where: { userId },
     select: {
@@ -372,8 +380,7 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
       dob: updated.dob,
       isOnboarded: updated.isOnboarded,
       hasAgreedToTerms: updated.acceptedTermsVersion === CURRENT_TERMS_VERSION,
-      hasAgreedToHealth:
-        updated.acceptedHealthWaiverVersion === CURRENT_HEALTH_WAIVER_VERSION,
+      hasAgreedToHealth: updated.acceptedHealthWaiverVersion === CURRENT_HEALTH_WAIVER_VERSION,
       heardAboutSource: updated.heardAboutSource,
       hasHealthProfile: healthDeclaration.hasHealthProfile,
       healthDeclarationStatus: healthDeclaration.healthDeclarationStatus,
@@ -412,7 +419,11 @@ export async function updateNotificationPreferences(
   });
 
   if (typeof data.marketingEmails === "boolean") {
-    await syncMarketingPreferenceForUser(userId, data.marketingEmails);
+    await syncMarketingPreferenceForUser(userId, data.marketingEmails, {
+      source: "account",
+      surface: "account_notifications",
+      wordingText: ACCOUNT_MARKETING_CONSENT_WORDING,
+    });
   }
 
   return mapNotificationPreferences(updated);

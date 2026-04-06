@@ -19,6 +19,15 @@ export type DailyParticipantPermissions = {
   canAdmin?: DailyAdminPermission;
 };
 
+export type DailyRecordingSession = {
+  id: string;
+  roomName: string;
+  status?: string;
+  playbackUrl?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+};
+
 function getDailyConfig() {
   const apiKey = process.env.DAILY_API_KEY;
   const baseUrl = process.env.DAILY_API_BASE || DEFAULT_DAILY_BASE;
@@ -162,4 +171,95 @@ export function verifyDailyWebhookAuthorization(headers: Headers) {
   }
 
   return authorization === `Bearer ${webhookSecret}`;
+}
+
+function normalizeDailyRecording(
+  payload: Record<string, unknown>,
+  roomName: string
+): DailyRecordingSession {
+  return {
+    id:
+      typeof payload.id === "string"
+        ? payload.id
+        : typeof payload.recordingId === "string"
+          ? payload.recordingId
+          : typeof payload.recording_id === "string"
+            ? payload.recording_id
+            : "",
+    roomName,
+    status: typeof payload.status === "string" ? payload.status : undefined,
+    playbackUrl:
+      typeof payload.playbackUrl === "string"
+        ? payload.playbackUrl
+        : typeof payload.playback_url === "string"
+          ? payload.playback_url
+          : typeof payload.url === "string"
+            ? payload.url
+            : null,
+    startedAt:
+      typeof payload.startedAt === "string"
+        ? payload.startedAt
+        : typeof payload.started_at === "string"
+          ? payload.started_at
+          : null,
+    completedAt:
+      typeof payload.completedAt === "string"
+        ? payload.completedAt
+        : typeof payload.completed_at === "string"
+          ? payload.completed_at
+          : null,
+  };
+}
+
+export async function startRoomRecording(roomName: string) {
+  const { baseUrl } = getDailyConfig();
+
+  const response = await fetch(`${baseUrl}/rooms/${roomName}/recordings/start`, {
+    method: "POST",
+    headers: getDailyHeaders(),
+    body: JSON.stringify({
+      type: "cloud",
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`DAILY_START_RECORDING_FAILED:${response.status}:${text}`);
+  }
+
+  const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  return normalizeDailyRecording(payload, roomName);
+}
+
+export async function stopRoomRecording(roomName: string) {
+  const { baseUrl } = getDailyConfig();
+
+  const response = await fetch(`${baseUrl}/rooms/${roomName}/recordings/stop`, {
+    method: "POST",
+    headers: getDailyHeaders(),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`DAILY_STOP_RECORDING_FAILED:${response.status}:${text}`);
+  }
+
+  const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  return normalizeDailyRecording(payload, roomName);
+}
+
+export async function deleteRecording(recordingId: string) {
+  const { baseUrl } = getDailyConfig();
+
+  const response = await fetch(`${baseUrl}/recordings/${recordingId}`, {
+    method: "DELETE",
+    headers: getDailyHeaders(),
+  });
+
+  if (!response.ok && response.status !== 404) {
+    const text = await response.text();
+    throw new Error(`DAILY_DELETE_RECORDING_FAILED:${response.status}:${text}`);
+  }
+
+  return { deleted: response.status !== 404 };
 }

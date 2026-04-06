@@ -1,5 +1,5 @@
 import { connection, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { listAdminBlogComments, updateAdminBlogCommentStatus } from "@/lib/blog/engagement-service";
 
 type PatchBody = {
@@ -10,7 +10,7 @@ type PatchBody = {
 export async function GET(request: Request) {
   try {
     await connection();
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const url = new URL(request.url);
     const comments = await listAdminBlogComments({
       postSlug: url.searchParams.get("postSlug") || undefined,
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const body = (await request.json().catch(() => null)) as PatchBody | null;
     if (!body || typeof body.id !== "string") {
       return NextResponse.json({ message: "Comment id is required." }, { status: 400 });

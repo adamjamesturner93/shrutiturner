@@ -36,7 +36,7 @@ async function loadEntry(contentType: SupportedContentType, entryId: string) {
 async function getAudienceEmails(audienceType: CampaignAudienceType) {
   const users = await db.user.findMany({
     where: {
-      role: UserRole.student,
+      role: { in: [UserRole.student, UserRole.member] },
       OR:
         audienceType === "blog"
           ? [

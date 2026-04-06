@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { MembershipStatus } from "@prisma/client";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { getAdminMemberDetail, updateAdminMember } from "@/lib/admin/members-service";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const { id } = await context.params;
     const member = await getAdminMemberDetail(id);
     if (!member) {
@@ -26,7 +26,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const { id } = await context.params;
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 

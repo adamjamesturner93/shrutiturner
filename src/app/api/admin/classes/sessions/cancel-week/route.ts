@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { cancelClassSessionsForWeek } from "@/lib/classes/booking-service";
 
 export async function POST(request: Request) {
   try {
-    const adminUser = await requireAdminUser();
+    const adminUser = await requireStaffAdminUser();
     const body = (await request.json().catch(() => ({}))) as {
       weekStart?: string;
       reason?: string;

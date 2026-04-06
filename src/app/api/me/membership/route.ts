@@ -1,5 +1,6 @@
 import { connection, NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api/auth-user";
+import { isOwnerAdminRole } from "@/lib/authz/roles";
 import {
   ensureInstructorMembership,
   getMembershipState,
@@ -10,7 +11,7 @@ export async function GET() {
   try {
     await connection();
     const user = await requireSessionUser();
-    if (user.role === "admin") {
+    if (isOwnerAdminRole(user.role)) {
       await ensureInstructorMembership(user.id);
     } else {
       await syncMembershipFromStripe(user.id).catch((error) => {

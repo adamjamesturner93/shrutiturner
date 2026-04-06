@@ -5,6 +5,7 @@ import {
   getHealthProfile,
   upsertHealthProfile,
 } from "@/lib/health/health-service";
+import { isAcceptanceRequiredError } from "@/lib/legal/acceptance-service";
 
 export async function GET() {
   try {
@@ -62,6 +63,9 @@ export async function PUT(request: Request) {
         { status: 400 }
       );
     }
+    if (isAcceptanceRequiredError(error)) {
+      return NextResponse.json(error.details, { status: 409 });
+    }
     console.error("PUT /api/me/health-profile failed", error);
     return NextResponse.json({ message: "Failed to save health profile" }, { status: 500 });
   }
@@ -78,6 +82,9 @@ export async function POST() {
     }
     if (error instanceof Error && error.message === "HEALTH_PROFILE_NOT_FOUND") {
       return NextResponse.json({ message: "Health profile not found" }, { status: 404 });
+    }
+    if (isAcceptanceRequiredError(error)) {
+      return NextResponse.json(error.details, { status: 409 });
     }
     console.error("POST /api/me/health-profile failed", error);
     return NextResponse.json({ message: "Failed to confirm health profile" }, { status: 500 });

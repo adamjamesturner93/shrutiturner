@@ -210,7 +210,7 @@ export function ClassesYogaPage({
           <div className="mt-12 text-center">
             <p className="text-muted-foreground mb-6">
               All classes include real-time modifications for your current capacity. Can't make it
-              live? Replays available for 7 days.
+              live? Join another scheduled session that suits your week.
             </p>
             <Link href="/schedule">
               <Button size="lg">
@@ -339,7 +339,9 @@ export function ClassesYogaPage({
           },
         ]}
       >
-        <p className="text-sm opacity-70">Single class £9 · 3-pack £24 · Membership from £29/month</p>
+        <p className="text-sm opacity-70">
+          Single class £9 · 3-pack £24 · Membership from £29/month
+        </p>
       </PreFooterCtaSection>
     </Layout>
   );

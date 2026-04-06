@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { publishActiveClassTimetables } from "@/lib/classes/timetable-service";
 
 export async function POST() {
   try {
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const results = await publishActiveClassTimetables();
     return NextResponse.json(results);
   } catch (error) {

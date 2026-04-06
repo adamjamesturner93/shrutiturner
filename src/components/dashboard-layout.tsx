@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import { useAuth } from "../context/auth-context";
 import { ScrollToTop } from "./scroll-to-top";
+import { IconOnly } from "./icon";
 import {
   LayoutDashboard,
   Calendar,
@@ -20,6 +21,7 @@ import {
   Shield,
   ArrowRight,
   Compass,
+  PlayCircle,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { SEO } from "./seo";
@@ -39,6 +41,7 @@ type LegalGuardModalProps = {
 const NAV_ITEMS = [
   { path: "/dashboard", label: "Studio Lobby", icon: LayoutDashboard, exact: true },
   { path: "/dashboard/schedule", label: "Schedule", icon: Calendar },
+  { path: "/dashboard/replays", label: "Programme Replays", icon: PlayCircle },
   { path: "/dashboard/coaching", label: "Coaching", icon: Compass },
   { path: "/dashboard/small-groups", label: "Small Group Programmes", icon: Users },
   { path: "/dashboard/retreats", label: "Retreats", icon: Mountain },
@@ -198,7 +201,9 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
       <div className="bg-secondary/20 flex min-h-screen items-center justify-center p-4">
         <div className="bg-background w-full max-w-md rounded-2xl border p-8 text-center shadow-xl">
           <div className="bg-primary/10 mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full">
-            <LayoutDashboard className="text-primary h-7 w-7 animate-pulse" />
+            <div className="animate-pulse">
+              <IconOnly className="h-8 w-auto" />
+            </div>
           </div>
           <h2 className="text-lg">Preparing your studio</h2>
           <p className="text-muted-foreground mt-2 text-sm">
@@ -253,7 +258,7 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
       <SEO title={title || "Dashboard - Shruti Turner"} description={description} noIndex />
 
       {/* Sidebar – Desktop */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-brand-white/10 bg-[linear-gradient(180deg,rgba(46,31,51,0.98),rgba(86,52,74,0.98))] text-brand-white shadow-[0_24px_80px_rgba(46,31,51,0.28)] lg:flex">
+      <aside className="border-brand-white/10 text-brand-white fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r bg-[linear-gradient(180deg,rgba(46,31,51,0.98),rgba(86,52,74,0.98))] shadow-[0_24px_80px_rgba(46,31,51,0.28)] lg:flex">
         {/* Brand */}
         <div className="border-brand-white/10 border-b p-6">
           <Link
@@ -277,7 +282,7 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
                   {user.firstName} {user.lastName}
                 </p>
                 <p className="text-brand-white/50 truncate text-xs">
-                  {membership ? membership.label : "Pay as you Go"}
+                  {membership ? membership.label : "Pay as you go"}
                 </p>
               </div>
             </div>
@@ -363,7 +368,7 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
       </aside>
 
       {/* Mobile header */}
-      <div className="fixed inset-x-0 top-0 z-40 border-b border-brand-white/10 bg-[linear-gradient(180deg,rgba(46,31,51,0.98),rgba(86,52,74,0.98))] text-brand-white shadow-[0_18px_50px_rgba(46,31,51,0.22)] lg:hidden">
+      <div className="border-brand-white/10 text-brand-white fixed inset-x-0 top-0 z-40 border-b bg-[linear-gradient(180deg,rgba(46,31,51,0.98),rgba(86,52,74,0.98))] shadow-[0_18px_50px_rgba(46,31,51,0.22)] lg:hidden">
         <div className="flex items-center justify-between px-4 py-3">
           <button onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle menu">
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -381,7 +386,7 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 flex w-72 flex-col bg-[linear-gradient(180deg,rgba(46,31,51,0.99),rgba(86,52,74,0.99))] text-brand-white shadow-[0_24px_70px_rgba(46,31,51,0.3)]">
+          <aside className="text-brand-white absolute inset-y-0 left-0 flex w-72 flex-col bg-[linear-gradient(180deg,rgba(46,31,51,0.99),rgba(86,52,74,0.99))] shadow-[0_24px_70px_rgba(46,31,51,0.3)]">
             <div className="border-brand-white/10 flex items-center justify-between border-b p-4">
               <span className="text-sm">Private Studio</span>
               <button onClick={() => setSidebarOpen(false)}>

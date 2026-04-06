@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api/auth-user";
 import { createCreditCheckoutSession } from "@/lib/billing/billing-service";
+import { assertNoUserCheckoutDisputeHold } from "@/lib/billing/dispute-service";
 import { sanitizeRedirectPath } from "@/lib/navigation/safe-redirect";
 
 export async function POST(request: Request) {
@@ -16,6 +17,8 @@ export async function POST(request: Request) {
     if (bundleSize !== 1 && bundleSize !== 3 && bundleSize !== 10) {
       return NextResponse.json({ message: "Invalid bundle size." }, { status: 400 });
     }
+
+    await assertNoUserCheckoutDisputeHold(user.id);
 
     const result = await createCreditCheckoutSession(
       user.id,
@@ -37,6 +40,15 @@ export async function POST(request: Request) {
       }
       if (error.message === "STRIPE_NOT_CONFIGURED") {
         return NextResponse.json({ message: "Stripe is not configured." }, { status: 501 });
+      }
+      if (error.message === "DISPUTE_HOLD") {
+        return NextResponse.json(
+          {
+            message:
+              "Checkout is temporarily blocked while an open payment dispute is under review.",
+          },
+          { status: 409 }
+        );
       }
     }
     console.error("POST /api/me/credits/checkout failed", error);

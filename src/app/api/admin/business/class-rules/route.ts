@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import {
   getClassOperationalSettings,
   updateClassOperationalSettings,
@@ -7,7 +7,7 @@ import {
 
 export async function GET() {
   try {
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const settings = await getClassOperationalSettings();
     return NextResponse.json(settings);
   } catch (error) {
@@ -24,7 +24,7 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const body = (await request.json().catch(() => ({}))) as {
       preJoinWindowMinutes?: number;
       lateJoinCutoffMinutes?: number;

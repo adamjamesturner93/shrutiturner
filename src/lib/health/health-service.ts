@@ -1,6 +1,10 @@
+import { AcceptanceType } from "@prisma/client";
 import { db } from "@/lib/db";
 import { HEALTH_CATEGORIES } from "@/data/health-profile-data";
-import { CURRENT_HEALTH_DATA_CONSENT_VERSION } from "@/data/legal-documents";
+import {
+  assertCurrentAcceptances,
+  getAcceptanceRequirementStates,
+} from "@/lib/legal/acceptance-service";
 
 export type HealthProfileInput = {
   declarationStatus?: "incomplete" | "none_declared" | "context_declared";
@@ -64,7 +68,8 @@ export function needsHealthDeclarationReview(
   now = new Date()
 ) {
   if (!lastConfirmedAt) return false;
-  const confirmedAt = typeof lastConfirmedAt === "string" ? new Date(lastConfirmedAt) : lastConfirmedAt;
+  const confirmedAt =
+    typeof lastConfirmedAt === "string" ? new Date(lastConfirmedAt) : lastConfirmedAt;
   return now.getTime() - confirmedAt.getTime() >= THIRTY_DAYS_MS;
 }
 
@@ -81,7 +86,6 @@ export async function getHealthAccessState(userId: string) {
   const user = await db.user.findUnique({
     where: { id: userId },
     select: {
-      acceptedHealthDataConsentVersion: true,
       healthProfile: {
         select: {
           declarationStatus: true,
@@ -99,8 +103,13 @@ export async function getHealthAccessState(userId: string) {
   const declarationStatus: HealthDeclarationStatus = user.healthProfile
     ? user.healthProfile.declarationStatus
     : "incomplete";
-  const hasCurrentHealthDataConsent =
-    user.acceptedHealthDataConsentVersion === CURRENT_HEALTH_DATA_CONSENT_VERSION;
+  const [healthDataConsentState] = await getAcceptanceRequirementStates(userId, [
+    {
+      type: AcceptanceType.health_data,
+      surface: "health_profile",
+    },
+  ]);
+  const hasCurrentHealthDataConsent = healthDataConsentState?.isCurrent ?? false;
 
   return {
     declarationStatus,
@@ -114,6 +123,15 @@ export async function getHealthAccessState(userId: string) {
       tracksFlareCheckIns: user.healthProfile?.tracksFlareCheckIns ?? false,
     }),
   };
+}
+
+export async function assertCurrentHealthDataAcceptance(userId: string, surface: string) {
+  await assertCurrentAcceptances(userId, [
+    {
+      type: AcceptanceType.health_data,
+      surface,
+    },
+  ]);
 }
 
 export async function getHealthProfile(userId: string) {
@@ -167,12 +185,20 @@ export async function upsertHealthProfile(
   input: HealthProfileInput,
   updatedByUserId: string
 ) {
+  await assertCurrentHealthDataAcceptance(userId, "health_profile");
+
   const selected = normalizeConditions(input.conditions);
   const requestedNotes = (input.additionalNotes || "").trim().slice(0, 5000);
-  const declarationStatus = resolveDeclarationStatus(input.declarationStatus, selected, requestedNotes);
+  const declarationStatus = resolveDeclarationStatus(
+    input.declarationStatus,
+    selected,
+    requestedNotes
+  );
   const additionalNotes = declarationStatus === "context_declared" ? requestedNotes : "";
   const detailsMap =
-    declarationStatus === "context_declared" ? normalizeDetails(input.details, selected) : new Map();
+    declarationStatus === "context_declared"
+      ? normalizeDetails(input.details, selected)
+      : new Map();
   const tracksFlareCheckIns =
     declarationStatus === "context_declared" ? Boolean(input.tracksFlareCheckIns) : false;
   const selectedKeys = declarationStatus === "context_declared" ? selected : new Set<string>();
@@ -244,6 +270,8 @@ export async function upsertHealthProfile(
 }
 
 export async function confirmHealthProfile(userId: string, updatedByUserId: string) {
+  await assertCurrentHealthDataAcceptance(userId, "health_profile_confirmation");
+
   const existing = await db.healthProfile.findUnique({
     where: { userId },
     include: {
@@ -296,7 +324,9 @@ export async function confirmHealthProfile(userId: string, updatedByUserId: stri
 
   return {
     declarationStatus: existing.declarationStatus,
-    conditions: Object.fromEntries(existing.selections.map((selection) => [selection.conditionKey, true])),
+    conditions: Object.fromEntries(
+      existing.selections.map((selection) => [selection.conditionKey, true])
+    ),
     details: Object.fromEntries(
       existing.selections
         .filter((selection) => Boolean(selection.detail))

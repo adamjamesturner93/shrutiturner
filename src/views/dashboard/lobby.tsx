@@ -36,6 +36,14 @@ import {
   shouldPromptForHealthReview,
 } from "@/views/dashboard/dashboard-view-model";
 
+type LegalAcceptanceResponse = {
+  message?: string;
+  code?: string;
+  requiredAcceptances?: Array<{
+    type: string;
+  }>;
+};
+
 type OnboardingStep = Exclude<OnboardingStateDto["nextStep"], "complete">;
 
 function resolveOnboardingStep(nextStep?: OnboardingStateDto["nextStep"] | null): OnboardingStep {
@@ -168,18 +176,51 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
   };
 
   const handleHealthSave = async (profile: HealthProfile, consentAccepted: boolean) => {
-    const response = await fetch("/api/me/health-profile", {
+    if (
+      consentAccepted &&
+      (!user?.hasConsentedToHealthData || user.needsHealthDataConsentRefresh)
+    ) {
+      await acceptHealthDataConsent();
+    }
+
+    let response = await fetch("/api/me/health-profile", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(profile),
     });
+
     if (!response.ok) {
-      throw new Error("Could not save health profile.");
+      const payload = (await response.json().catch(() => null)) as LegalAcceptanceResponse | null;
+      const requiresHealthDataRefresh =
+        response.status === 409 &&
+        payload?.code === "LEGAL_ACCEPTANCE_REQUIRED" &&
+        payload.requiredAcceptances?.some((item) => item.type === "health_data");
+
+      if (requiresHealthDataRefresh && consentAccepted) {
+        await acceptHealthDataConsent();
+        response = await fetch("/api/me/health-profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(profile),
+        });
+      }
     }
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as LegalAcceptanceResponse | null;
+      if (
+        response.status === 409 &&
+        payload?.code === "LEGAL_ACCEPTANCE_REQUIRED" &&
+        payload.requiredAcceptances?.some((item) => item.type === "health_data")
+      ) {
+        throw new Error(
+          "Health data consent is required before saving this profile. Tick the consent box and try again."
+        );
+      }
+      throw new Error(payload?.message || "Could not save health profile.");
+    }
+
     const savedProfile = (await response.json()) as HealthProfile;
-    if (consentAccepted && !user?.hasConsentedToHealthData) {
-      await acceptHealthDataConsent();
-    }
     const account = await refreshAccountProfile();
     setOnboardingStep(resolveOnboardingStep(account?.profile?.onboarding?.nextStep));
     setSummary((prev) =>
@@ -557,8 +598,8 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
             <div>
               <p className="text-sm text-sky-900">Please review your health declaration.</p>
               <p className="mt-1 text-xs text-sky-800">
-                Confirm nothing has changed, or update it with any new injuries, flare patterns,
-                or recovery changes.
+                Confirm nothing has changed, or update it with any new injuries, flare patterns, or
+                recovery changes.
               </p>
             </div>
             <div className="flex gap-2">

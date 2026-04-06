@@ -205,19 +205,14 @@ export async function syncMembershipFromStripe(userId: string) {
 }
 
 export async function getMembershipState(userId: string): Promise<MembershipStateDto> {
-  const [
-    subscription,
-    creditBalance,
-    creditSummary,
-    referralBalancePence,
-    complianceHistory,
-  ] = await Promise.all([
-    getLatestMembership(userId),
-    getCreditBalance(userId),
-    getCreditSummary(userId),
-    getReferralBalancePence(userId),
-    getSubscriptionComplianceHistory(userId),
-  ]);
+  const [subscription, creditBalance, creditSummary, referralBalancePence, complianceHistory] =
+    await Promise.all([
+      getLatestMembership(userId),
+      getCreditBalance(userId),
+      getCreditSummary(userId),
+      getReferralBalancePence(userId),
+      getSubscriptionComplianceHistory(userId),
+    ]);
 
   const membership = subscription
     ? {
@@ -318,6 +313,7 @@ export async function startOrSwitchMembership({
   nextPeriodEnd,
   disclosureVersion,
   disclosureAcceptedAt,
+  complianceSnapshotJson,
   startedAt,
 }: {
   userId: string;
@@ -328,6 +324,7 @@ export async function startOrSwitchMembership({
   nextPeriodEnd?: Date;
   disclosureVersion?: string;
   disclosureAcceptedAt?: Date;
+  complianceSnapshotJson?: Prisma.InputJsonValue;
   startedAt?: Date;
 }) {
   const config = MEMBERSHIP_CONFIG[plan];
@@ -352,13 +349,15 @@ export async function startOrSwitchMembership({
     classesUsedThisWeek: 0,
     startsAt: contractStart,
     renewsAt:
-      nextPeriodEnd || new Date(contractStart.getTime() + (billingInterval === "annual" ? 365 : 30) * 86400000),
+      nextPeriodEnd ||
+      new Date(contractStart.getTime() + (billingInterval === "annual" ? 365 : 30) * 86400000),
     cancelAtPeriodEnd: false,
     stripeSubscriptionId,
     stripePriceId,
     stripeCurrentPeriodEnd: nextPeriodEnd,
     disclosureVersion,
     disclosureAcceptedAt,
+    complianceSnapshotJson,
     trialEndsAt: complianceWindow?.trialEndsAt,
     initialCoolingOffEndsAt: complianceWindow?.initialCoolingOffEndsAt,
   };

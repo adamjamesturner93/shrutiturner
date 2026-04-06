@@ -1,16 +1,13 @@
 import { ClassRoomSetupStatus, ClassSessionStatus, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import {
-  getClassDefinitionBySlug,
-  getClassDefinitions,
-  getInstructorProfilesByIds,
-} from "@/lib/content";
+import { getClassDefinitions } from "@/lib/content";
 import {
   getClassSessionRoomMode,
   getDefaultCommunityModeForRoomMode,
 } from "@/lib/classes/room-mode";
 import { cancelClassSession } from "@/lib/classes/booking-service";
 import { toUtcFromLocalDateTime } from "@/lib/classes/session-service";
+import { resolveClassInstructorSnapshot } from "@/lib/instructors/effective-instructor-service";
 import type {
   ClassTimetableRuleDto,
   ClassTimetableRuleInput,
@@ -168,7 +165,10 @@ function buildGenerationDates(params: {
   const horizonEnd =
     params.untilDate ||
     toDateOnlyString(
-      getDateRangeEnd(toDateOnlyUtc(params.fromDate), params.horizonWeeks || DEFAULT_DRAFT_HORIZON_WEEKS)
+      getDateRangeEnd(
+        toDateOnlyUtc(params.fromDate),
+        params.horizonWeeks || DEFAULT_DRAFT_HORIZON_WEEKS
+      )
     );
   const windowEnd = clampDateStringToMinimum(params.endsOn || null, horizonEnd) || horizonEnd;
 
@@ -196,47 +196,14 @@ async function resolveRuleSnapshot(rule: {
   instructorUserId: string;
   instructorProfileEntryId: string | null;
 }) {
-  const [classDef, instructorUser] = await Promise.all([
-    getClassDefinitionBySlug(rule.classDefinitionSlug),
-    db.user.findUnique({
-      where: { id: rule.instructorUserId },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        name: true,
-        instructorProfileEntryId: true,
-      },
-    }),
-  ]);
-
-  if (!classDef) {
-    throw new Error("CLASS_DEFINITION_NOT_FOUND");
-  }
-  if (!instructorUser) {
-    throw new Error("INSTRUCTOR_NOT_FOUND");
-  }
-
-  const resolvedProfileEntryId =
-    rule.instructorProfileEntryId ||
-    instructorUser.instructorProfileEntryId ||
-    classDef.defaultInstructorProfileEntryId ||
-    null;
-  const resolvedProfile = resolvedProfileEntryId
-    ? (await getInstructorProfilesByIds([resolvedProfileEntryId]))[0]
-    : undefined;
-
-  const instructorNameSnapshot =
-    resolvedProfile?.name ||
-    [instructorUser.firstName, instructorUser.lastName].filter(Boolean).join(" ").trim() ||
-    instructorUser.name ||
-    null;
+  const { classDef, resolvedProfileEntryId, instructorNameSnapshot, instructorBioSnapshot } =
+    await resolveClassInstructorSnapshot(rule);
 
   return {
     classDef,
     resolvedProfileEntryId,
     instructorNameSnapshot,
-    instructorBioSnapshot: resolvedProfile?.bio || null,
+    instructorBioSnapshot,
   };
 }
 
@@ -847,10 +814,9 @@ export async function publishActiveClassTimetablesForWeek(params: {
 }) {
   const now = params.fromDate || new Date();
   const { localToday, publishLimitDate } = validatePublishWeekStart(params.weekStart, now);
-  const weekUntil = clampDateStringToMinimum(
-    shiftDateOnlyString(params.weekStart, 6),
-    publishLimitDate
-  ) || shiftDateOnlyString(params.weekStart, 6);
+  const weekUntil =
+    clampDateStringToMinimum(shiftDateOnlyString(params.weekStart, 6), publishLimitDate) ||
+    shiftDateOnlyString(params.weekStart, 6);
   const publishFrom = params.weekStart > localToday ? params.weekStart : localToday;
 
   const activeRules = await db.classTimetableRule.findMany({

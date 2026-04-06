@@ -1,3 +1,4 @@
+import { AcceptanceType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api/auth-user";
 import { getSessionAccessContext, getRoomTokenAccess } from "@/lib/classes/attendance-service";
@@ -8,6 +9,11 @@ import {
 import { setUpSessionRoom } from "@/lib/classes/session-service";
 import { createMeetingToken, isDailyConfigured } from "@/lib/daily/service";
 import { getHealthAccessState } from "@/lib/health/health-service";
+import {
+  type AcceptanceRequirement,
+  assertCurrentAcceptances,
+  isAcceptanceRequiredError,
+} from "@/lib/legal/acceptance-service";
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -29,6 +35,13 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     if (!contextData) {
       return NextResponse.json({ message: "Session not found" }, { status: 404 });
     }
+
+    const acceptanceRequirements: AcceptanceRequirement[] = [
+      { type: AcceptanceType.terms, surface: "class_join" },
+      { type: AcceptanceType.health_waiver, surface: "class_join" },
+      { type: AcceptanceType.health_data, surface: "class_join" },
+    ];
+    await assertCurrentAcceptances(sessionUser.id, acceptanceRequirements);
 
     if (!contextData.session.dailyRoomName || !contextData.session.dailyRoomUrl) {
       await setUpSessionRoom(id);
@@ -64,6 +77,9 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
       }),
       lateJoinCutoffAt: access.lateJoinCutoffAt.toISOString(),
       hasPreviouslyJoinedCurrentUser: access.hasPreviouslyJoined,
+      isRecorded: false,
+      defaultMicMuted: contextData.session.participantMicDefaultMuted,
+      defaultCameraOff: contextData.session.participantCameraDefaultOff,
     });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
@@ -90,8 +106,14 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
         { status: 409 }
       );
     }
+    if (error instanceof Error && error.message === "PARTICIPANT_BLOCKED") {
+      return NextResponse.json({ message: "You cannot re-enter this session." }, { status: 403 });
+    }
     if (error instanceof Error && error.message === "ROOM_NOT_READY") {
       return NextResponse.json({ message: "The live room is not ready yet." }, { status: 409 });
+    }
+    if (isAcceptanceRequiredError(error)) {
+      return NextResponse.json(error.details, { status: 409 });
     }
     console.error("POST /api/classes/sessions/[id]/room-token failed", error);
     return NextResponse.json({ message: "Failed to issue room token" }, { status: 500 });

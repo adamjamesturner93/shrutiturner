@@ -16,7 +16,7 @@ import { AdminLayout } from "@/components/admin-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { AdminRetreatDetailDto } from "@/lib/api/types";
+import type { AdminRetreatDetailDto, AdminRetreatEvidenceDto } from "@/lib/api/types";
 
 function formatCurrency(pence: number) {
   return new Intl.NumberFormat("en-GB", {
@@ -64,6 +64,7 @@ export function AdminRetreatDetail({
 }) {
   const { id } = useParams<{ id: string }>();
   const [retreat, setRetreat] = useState<AdminRetreatDetailDto | null>(initialData || null);
+  const [evidence, setEvidence] = useState<AdminRetreatEvidenceDto | null>(null);
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState("");
 
@@ -92,6 +93,33 @@ export function AdminRetreatDetail({
       active = false;
     };
   }, [id, initialData]);
+
+  useEffect(() => {
+    if (!id) return;
+    let active = true;
+    void (async () => {
+      try {
+        const response = await fetch(`/api/admin/retreats/${id}/evidence`, { cache: "no-store" });
+        if (response.status === 401 || response.status === 403) {
+          return;
+        }
+        if (!response.ok) {
+          throw new Error("Failed to load retreat evidence.");
+        }
+        const payload = (await response.json()) as AdminRetreatEvidenceDto;
+        if (active) {
+          setEvidence(payload);
+        }
+      } catch {
+        if (active) {
+          setEvidence(null);
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [id]);
 
   const summary = useMemo(() => {
     if (!retreat) return null;
@@ -259,6 +287,77 @@ export function AdminRetreatDetail({
               </div>
             </CardContent>
           </Card>
+
+          {evidence ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Owner-admin legal evidence</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5 text-sm">
+                <div className="space-y-3">
+                  <p className="text-muted-foreground text-xs tracking-wide uppercase">
+                    Guest bookings
+                  </p>
+                  {evidence.bookings.length === 0 ? (
+                    <p className="text-muted-foreground">No guest acceptance evidence recorded.</p>
+                  ) : (
+                    evidence.bookings.map((booking) => (
+                      <div key={booking.id} className="rounded-lg border p-3">
+                        <p className="font-medium">{booking.purchaserEmail}</p>
+                        <p className="text-muted-foreground mt-1 text-xs">
+                          Booking {booking.id} · {booking.bookingStatus} · {booking.paymentStatus}
+                        </p>
+                        <div className="mt-3 space-y-2">
+                          {booking.guestAcceptances.map((event) => (
+                            <div key={event.id} className="bg-muted/40 rounded-md px-3 py-2">
+                              <p>
+                                {event.type.replaceAll("_", " ")} · {event.version}
+                              </p>
+                              <p className="text-muted-foreground text-xs">
+                                {new Date(event.acceptedAt).toLocaleString("en-GB")} ·{" "}
+                                {event.surface}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <p className="text-muted-foreground text-xs tracking-wide uppercase">
+                    Guest gifts
+                  </p>
+                  {evidence.gifts.length === 0 ? (
+                    <p className="text-muted-foreground">No guest gift evidence recorded.</p>
+                  ) : (
+                    evidence.gifts.map((gift) => (
+                      <div key={gift.id} className="rounded-lg border p-3">
+                        <p className="font-medium">{gift.purchaserEmail}</p>
+                        <p className="text-muted-foreground mt-1 text-xs">
+                          Gift {gift.id} · {gift.status} · Recipient {gift.recipientEmail}
+                        </p>
+                        <div className="mt-3 space-y-2">
+                          {gift.guestAcceptances.map((event) => (
+                            <div key={event.id} className="bg-muted/40 rounded-md px-3 py-2">
+                              <p>
+                                {event.type.replaceAll("_", " ")} · {event.version}
+                              </p>
+                              <p className="text-muted-foreground text-xs">
+                                {new Date(event.acceptedAt).toLocaleString("en-GB")} ·{" "}
+                                {event.surface}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card>
             <CardHeader>

@@ -31,6 +31,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         { status: 400 }
       );
     }
+    if (error instanceof Error && error.message === "DISPUTE_HOLD") {
+      return NextResponse.json(
+        {
+          message:
+            "This balance payment is temporarily blocked while an open payment dispute is under review.",
+        },
+        { status: 409 }
+      );
+    }
     console.error("POST /api/retreats/bookings/[id]/balance-checkout failed", error);
     return NextResponse.json({ message: "Failed to start balance checkout." }, { status: 500 });
   }

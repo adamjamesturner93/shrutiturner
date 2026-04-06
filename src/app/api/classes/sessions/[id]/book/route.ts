@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api/auth-user";
 import { bookClassSession } from "@/lib/classes/booking-service";
+import { isAcceptanceRequiredError } from "@/lib/legal/acceptance-service";
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -23,6 +24,9 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
       ].includes(error.message)
     ) {
       return NextResponse.json({ message: error.message }, { status: 400 });
+    }
+    if (isAcceptanceRequiredError(error)) {
+      return NextResponse.json(error.details, { status: 409 });
     }
     console.error("POST /api/classes/sessions/[id]/book failed", error);
     return NextResponse.json({ message: "Failed to book class" }, { status: 500 });

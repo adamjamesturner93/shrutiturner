@@ -35,6 +35,8 @@ import {
   Minus,
   Clock,
   Send,
+  Download,
+  Trash2,
 } from "lucide-react";
 import { HealthProfileCard } from "../../components/admin/health-badges";
 import { toast } from "sonner";
@@ -67,6 +69,11 @@ export function AdminMemberDetail() {
   const [messageSubject, setMessageSubject] = useState("");
   const [messageBody, setMessageBody] = useState("");
   const [messageSending, setMessageSending] = useState(false);
+  const [privacyBusy, setPrivacyBusy] = useState<"export" | "delete" | null>(null);
+  const [deletePreview, setDeletePreview] = useState<{
+    blocked: boolean;
+    blockReason: string | null;
+  } | null>(null);
 
   const applyMemberState = (data: AdminMemberDetailDto) => {
     setMember(data);
@@ -260,6 +267,76 @@ export function AdminMemberDetail() {
       toast.success(`Email sent to ${member.firstName}`);
     } finally {
       setMessageSending(false);
+    }
+  };
+
+  const handlePrivacyExport = async () => {
+    if (!member) return;
+    setPrivacyBusy("export");
+    try {
+      const response = await fetch(`/api/admin/members/${member.id}/privacy/export`, {
+        method: "POST",
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        exportData?: unknown;
+        message?: string;
+      } | null;
+      if (!response.ok || !payload?.exportData) {
+        toast.error(payload?.message || "Failed to generate export.");
+        return;
+      }
+      const blob = new Blob([JSON.stringify(payload.exportData, null, 2)], {
+        type: "application/json;charset=utf-8",
+      });
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = href;
+      link.download = `${member.id}-export.json`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(href);
+      toast.success("User export generated.");
+    } finally {
+      setPrivacyBusy(null);
+    }
+  };
+
+  const handleDeletePreview = async () => {
+    if (!member) return;
+    const response = await fetch(`/api/admin/members/${member.id}/privacy/delete`, {
+      cache: "no-store",
+    });
+    const payload = (await response.json().catch(() => null)) as {
+      blocked?: boolean;
+      blockReason?: string | null;
+    } | null;
+    if (!response.ok || !payload) {
+      toast.error("Failed to load deletion preview.");
+      return;
+    }
+    setDeletePreview({
+      blocked: Boolean(payload.blocked),
+      blockReason: payload.blockReason || null,
+    });
+  };
+
+  const handlePrivacyDelete = async () => {
+    if (!member) return;
+    setPrivacyBusy("delete");
+    try {
+      const response = await fetch(`/api/admin/members/${member.id}/privacy/delete`, {
+        method: "POST",
+      });
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) {
+        toast.error(payload?.message || "Failed to anonymise member.");
+        return;
+      }
+      toast.success("Member anonymised.");
+      navigate("/admin/members");
+    } finally {
+      setPrivacyBusy(null);
     }
   };
 
@@ -544,6 +621,54 @@ export function AdminMemberDetail() {
             </CardHeader>
             <CardContent>
               <HealthProfileCard memberId={member.id} profile={member.healthProfile} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Shield className="text-brand-dark h-5 w-5" />
+                Privacy Tools
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground text-sm">
+                Export the member record or anonymise personal data while preserving finance,
+                dispute, audit, and evidence links through an anonymised user shell.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => void handlePrivacyExport()}
+                  disabled={privacyBusy !== null}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  {privacyBusy === "export" ? "Generating export..." : "Export user data"}
+                </Button>
+                <Button variant="outline" onClick={() => void handleDeletePreview()}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Check deletion
+                </Button>
+              </div>
+              {deletePreview ? (
+                <div className="rounded-lg border p-3 text-sm">
+                  <p>
+                    {deletePreview.blocked
+                      ? `Deletion is blocked: ${deletePreview.blockReason || "active hold"}`
+                      : "Deletion can proceed. Personal data will be anonymised and active sessions revoked."}
+                  </p>
+                  {!deletePreview.blocked ? (
+                    <Button
+                      className="mt-3"
+                      variant="destructive"
+                      onClick={() => void handlePrivacyDelete()}
+                      disabled={privacyBusy !== null}
+                    >
+                      {privacyBusy === "delete" ? "Anonymising..." : "Anonymise member"}
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
             </CardContent>
           </Card>
 

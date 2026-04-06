@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { generateDraftSessionsForActiveClassTimetables } from "@/lib/classes/timetable-service";
 
 export async function POST(request: Request) {
   try {
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const body = (await request.json().catch(() => ({}))) as {
       generateUntil?: string;
     };

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { isAcceptanceRequiredError } from "@/lib/legal/acceptance-service";
 import { createSmallGroupCheckout } from "@/lib/small-groups/service";
 
 type ProgrammeCheckoutBody = {
@@ -59,6 +60,17 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
       ].includes(error.message)
     ) {
       return NextResponse.json({ message: "That programme is not available." }, { status: 400 });
+    }
+    if (isAcceptanceRequiredError(error)) {
+      return NextResponse.json(error.details, { status: 409 });
+    }
+    if (error instanceof Error && error.message === "DISPUTE_HOLD") {
+      return NextResponse.json(
+        {
+          message: "Checkout is temporarily blocked while an open payment dispute is under review.",
+        },
+        { status: 409 }
+      );
     }
     console.error("POST /api/programmes/[slug]/checkout failed", error);
     return NextResponse.json({ message: "Failed to start programme checkout." }, { status: 500 });

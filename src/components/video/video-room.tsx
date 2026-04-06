@@ -43,6 +43,8 @@ type VideoRoomProps = {
   initialMuted?: boolean;
   initialCameraOn?: boolean;
   initialCommunityMode?: boolean;
+  isRecorded?: boolean;
+  chatEnabled?: boolean;
   onLeave: (reason: "left" | "ended" | "removed") => void;
   onEndSession?: () => Promise<void> | void;
 };
@@ -66,6 +68,16 @@ type InstructorConsideration = {
   healthConditions: string[];
   preClassEnergyLevel: 1 | 2 | 3 | 4 | 5 | null;
   preClassFlareToday: boolean;
+};
+
+type AcceptanceRequirementState = {
+  type: string;
+  surface: string;
+  currentVersion: string;
+  acceptedVersion: string | null;
+  policyVersionId: string;
+  acceptanceEventId: string | null;
+  isCurrent: boolean;
 };
 
 const MAX_ROOM_JOIN_RETRIES = 3;
@@ -98,6 +110,8 @@ export function VideoRoom({
   initialMuted = false,
   initialCameraOn = true,
   initialCommunityMode = false,
+  isRecorded = false,
+  chatEnabled = true,
   onLeave,
   onEndSession,
 }: VideoRoomProps) {
@@ -111,7 +125,7 @@ export function VideoRoom({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showSelfView, setShowSelfView] = useState(true);
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
-  const [showChat, setShowChat] = useState(mode !== "live-class");
+  const [showChat, setShowChat] = useState(mode !== "live-class" && chatEnabled);
   const [communityMode, setCommunityMode] = useState(initialCommunityMode);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isEnding, setIsEnding] = useState(false);
@@ -119,7 +133,12 @@ export function VideoRoom({
   const [joinAttempt, setJoinAttempt] = useState(0);
   const [isAutoRetrying, setIsAutoRetrying] = useState(false);
   const [canRetryJoin, setCanRetryJoin] = useState(false);
-  const [instructorConsiderations, setInstructorConsiderations] = useState<InstructorConsideration[]>([]);
+  const [instructorConsiderations, setInstructorConsiderations] = useState<
+    InstructorConsideration[]
+  >([]);
+  const [pendingAcceptances, setPendingAcceptances] = useState<AcceptanceRequirementState[]>([]);
+  const [isRecordingAcceptanceSubmitting, setIsRecordingAcceptanceSubmitting] = useState(false);
+  const [acceptanceError, setAcceptanceError] = useState("");
   const hasRecordedJoinRef = useRef(false);
   const currentUserIdRef = useRef(user?.id || "");
   const currentUserNameRef = useRef("");
@@ -173,7 +192,7 @@ export function VideoRoom({
 
   const sendChatMessage = useCallback(
     async (text: string) => {
-      if (!callObject?.sendAppMessage || mode === "live-class") return;
+      if (!callObject?.sendAppMessage || mode === "live-class" || !chatEnabled) return;
 
       const timestamp = new Date();
       const message: ChatMessage = {
@@ -197,7 +216,7 @@ export function VideoRoom({
         "*"
       );
     },
-    [appendChatMessage, callObject, currentUserName, mode, user?.id]
+    [appendChatMessage, callObject, currentUserName, chatEnabled, mode, user?.id]
   );
 
   const localParticipant = participants.find((participant) => participant.isLocal);
@@ -250,6 +269,8 @@ export function VideoRoom({
     setRoomError("");
     setCanRetryJoin(false);
     setIsAutoRetrying(false);
+    setPendingAcceptances([]);
+    setAcceptanceError("");
     setStatusText("Connecting to the live room...");
   }, [sessionId]);
 
@@ -323,12 +344,34 @@ export function VideoRoom({
           token?: string;
           roomUrl?: string;
           communityModeEnabled?: boolean;
+          defaultMicMuted?: boolean;
+          defaultCameraOff?: boolean;
+          code?: string;
+          requiredAcceptances?: AcceptanceRequirementState[];
           message?: string;
         };
+
+        if (
+          !response.ok &&
+          payload.code === "LEGAL_ACCEPTANCE_REQUIRED" &&
+          Array.isArray(payload.requiredAcceptances)
+        ) {
+          setPendingAcceptances(payload.requiredAcceptances);
+          setRoomError("");
+          setCanRetryJoin(false);
+          setIsAutoRetrying(false);
+          setStatusText("Additional acknowledgement required before you can join.");
+          return;
+        }
 
         if (!response.ok || !payload.token || !payload.roomUrl) {
           throw new Error(payload.message || "Unable to join the live room");
         }
+
+        const startAudioOff = payload.defaultMicMuted ?? initialMuted;
+        const startVideoOff = payload.defaultCameraOff ?? !initialCameraOn;
+        setIsMuted(startAudioOff);
+        setIsCameraOn(!startVideoOff);
 
         nextCallObject = await createManagedCallObject();
 
@@ -394,8 +437,8 @@ export function VideoRoom({
           url: payload.roomUrl,
           token: payload.token,
           userName: currentUserNameRef.current || "You",
-          startAudioOff: initialMuted,
-          startVideoOff: !initialCameraOn,
+          startAudioOff,
+          startVideoOff,
         });
 
         if (cancelled) {
@@ -421,6 +464,8 @@ export function VideoRoom({
         setCallObject(nextCallObject);
         setIsReady(true);
         setRoomError("");
+        setPendingAcceptances([]);
+        setAcceptanceError("");
         setCanRetryJoin(false);
         setIsAutoRetrying(false);
         setStatusText("Live now");
@@ -536,6 +581,133 @@ export function VideoRoom({
       setIsEnding(false);
     }
   };
+
+  const requiresOnlyRecordingNotice =
+    pendingAcceptances.length > 0 &&
+    pendingAcceptances.every((acceptance) => acceptance.type === "recording_notice");
+
+  const acceptRecordingNotice = async () => {
+    if (!requiresOnlyRecordingNotice) return;
+
+    setIsRecordingAcceptanceSubmitting(true);
+    setAcceptanceError("");
+
+    try {
+      await Promise.all(
+        pendingAcceptances.map((acceptance) =>
+          fetch("/api/me/acceptances", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: acceptance.type,
+              surface: acceptance.surface,
+              metadataJson: {
+                sessionId,
+                isRecorded,
+                chatEnabled,
+              },
+            }),
+          }).then(async (response) => {
+            if (!response.ok) {
+              const payload = (await response.json().catch(() => null)) as {
+                message?: string;
+              } | null;
+              throw new Error(payload?.message || "Failed to record acknowledgement.");
+            }
+          })
+        )
+      );
+      setPendingAcceptances([]);
+      setJoinAttempt((attempt) => attempt + 1);
+      setStatusText("Recording acknowledgement saved. Reconnecting...");
+    } catch (error) {
+      setAcceptanceError(
+        error instanceof Error ? error.message : "Failed to record acknowledgement."
+      );
+    } finally {
+      setIsRecordingAcceptanceSubmitting(false);
+    }
+  };
+
+  if (pendingAcceptances.length > 0) {
+    return (
+      <div className="bg-video-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4 text-white">
+        <div className="bg-video-panel max-w-lg space-y-4 rounded-xl border border-white/10 p-6">
+          <h2 className="text-xl">
+            {requiresOnlyRecordingNotice
+              ? "Recording acknowledgement required"
+              : "Update your current acceptances"}
+          </h2>
+          {requiresOnlyRecordingNotice ? (
+            <>
+              <p className="text-sm text-white/70">
+                This session is recorded. The instructor is intentionally recorded. Participants are
+                not intended to be recorded, but incidental capture may happen if you unmute, turn
+                on camera, or use chat.
+              </p>
+              <p className="text-sm text-white/70">
+                Chat: {chatEnabled ? "Enabled." : "Disabled."}
+              </p>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => void acceptRecordingNotice()}
+                  disabled={isRecordingAcceptanceSubmitting}
+                  className="rounded-md bg-white px-4 py-2 text-sm text-black transition-colors hover:bg-white/90 disabled:opacity-60"
+                >
+                  {isRecordingAcceptanceSubmitting
+                    ? "Saving acknowledgement..."
+                    : "I understand and want to join"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onLeaveRef.current("left")}
+                  className="rounded-md border border-white/15 px-4 py-2 text-sm text-white transition-colors hover:bg-white/10"
+                >
+                  Go back
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-white/70">
+                One or more required legal acceptances are out of date. Update them before joining
+                the live room.
+              </p>
+              <ul className="space-y-2 text-sm text-white/70">
+                {pendingAcceptances.map((acceptance) => (
+                  <li key={`${acceptance.type}:${acceptance.currentVersion}`}>
+                    {acceptance.type.replaceAll("_", " ")}: current version{" "}
+                    {acceptance.currentVersion}
+                  </li>
+                ))}
+              </ul>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <a
+                  href={
+                    pendingAcceptances.some((acceptance) => acceptance.type === "health_data")
+                      ? "/dashboard/health"
+                      : "/dashboard/account"
+                  }
+                  className="rounded-md bg-white px-4 py-2 text-center text-sm text-black transition-colors hover:bg-white/90"
+                >
+                  Review and update
+                </a>
+                <button
+                  type="button"
+                  onClick={() => onLeaveRef.current("left")}
+                  className="rounded-md border border-white/15 px-4 py-2 text-sm text-white transition-colors hover:bg-white/10"
+                >
+                  Go back
+                </button>
+              </div>
+            </>
+          )}
+          {acceptanceError ? <p className="text-sm text-red-300">{acceptanceError}</p> : null}
+        </div>
+      </div>
+    );
+  }
 
   if (roomError) {
     return (
@@ -678,7 +850,7 @@ export function VideoRoom({
           ) : null}
         </div>
 
-        {showChat ? (
+        {showChat && chatEnabled ? (
           <ChatPanel
             messages={chatMessages}
             onClose={() => setShowChat(false)}
@@ -714,7 +886,7 @@ export function VideoRoom({
           icon={isFullscreen ? Minimize : Maximize}
           label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
         />
-        {mode !== "live-class" ? (
+        {mode !== "live-class" && chatEnabled ? (
           <ControlButton
             active={showChat}
             onClick={() => setShowChat((value) => !value)}

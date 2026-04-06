@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { isOwnerAdminRole, isStaffAdminRole } from "@/lib/authz/roles";
 
 export async function requireSessionUser() {
   const session = await auth();
@@ -8,9 +9,17 @@ export async function requireSessionUser() {
   return session.user;
 }
 
-export async function requireAdminUser() {
+export async function requireStaffAdminUser() {
   const user = await requireSessionUser();
-  if (user.role !== "admin") {
+  if (!isStaffAdminRole(user.role)) {
+    throw new Error("FORBIDDEN");
+  }
+  return user;
+}
+
+export async function requireOwnerAdminUser() {
+  const user = await requireSessionUser();
+  if (!isOwnerAdminRole(user.role)) {
     throw new Error("FORBIDDEN");
   }
   return user;

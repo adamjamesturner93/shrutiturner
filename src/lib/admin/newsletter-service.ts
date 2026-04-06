@@ -177,6 +177,9 @@ export async function updateAdminSubscriber(
     },
   });
   if (!existing) throw new Error("NOT_FOUND");
+  if (updates.marketingEmails && existing.status !== "subscribed") {
+    throw new Error("SELF_SERVICE_OPT_IN_REQUIRED");
+  }
 
   if (existing.userId) {
     await syncMarketingPreferenceForUser(existing.userId, updates.marketingEmails);

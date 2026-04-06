@@ -26,6 +26,7 @@ import {
 import { createSessionRoom, deleteSessionRoom, isDailyConfigured } from "@/lib/daily/service";
 import { HEALTH_CATEGORIES } from "@/data/health-profile-data";
 import { getHealthCheckInMode } from "@/lib/health/health-service";
+import { resolveClassInstructorSnapshot } from "@/lib/instructors/effective-instructor-service";
 import type {
   AdminClassSessionDto,
   BulkCreateSessionsInput,
@@ -38,6 +39,7 @@ import type {
 const CONDITION_LABELS = new Map(
   HEALTH_CATEGORIES.flatMap((category) => category.items.map((item) => [item.key, item.label]))
 );
+const PUBLIC_SCHEDULE_HORIZON_DAYS = 28;
 
 function toHealthConditionLabel(conditionKey: string, detail: string | null) {
   if (detail && detail.trim().length > 0) {
@@ -90,51 +92,18 @@ function getWaitlistCount(session: { waitlist: Array<{ status: ClassWaitlistStat
   return session.waitlist.filter((w) => w.status === ClassWaitlistStatus.waiting).length;
 }
 
-async function resolveSessionInstructorSnapshot(params: {
-  classDefinitionSlug: string;
-  instructorUserId: string;
-  instructorProfileEntryId?: string | null;
-}) {
-  const [classDef, instructorUser] = await Promise.all([
-    getClassDefinitionBySlug(params.classDefinitionSlug),
-    db.user.findUnique({
-      where: { id: params.instructorUserId },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        name: true,
-        instructorProfileEntryId: true,
-      },
-    }),
-  ]);
-
-  if (!classDef) {
-    throw new Error("CLASS_DEFINITION_NOT_FOUND");
+function clampPublicScheduleEnd(
+  from: Date | undefined,
+  to: Date | undefined,
+  currentUserId?: string
+) {
+  if (currentUserId) return to;
+  const start = from || new Date();
+  const maxEnd = new Date(start.getTime() + PUBLIC_SCHEDULE_HORIZON_DAYS * 86400000);
+  if (!to || to > maxEnd) {
+    return maxEnd;
   }
-  if (!instructorUser) {
-    throw new Error("INSTRUCTOR_NOT_FOUND");
-  }
-
-  const resolvedProfileEntryId =
-    params.instructorProfileEntryId ||
-    instructorUser.instructorProfileEntryId ||
-    classDef.defaultInstructorProfileEntryId ||
-    null;
-  const resolvedProfile = resolvedProfileEntryId
-    ? (await getInstructorProfilesByIds([resolvedProfileEntryId]))[0]
-    : undefined;
-
-  return {
-    instructorUser,
-    resolvedProfileEntryId,
-    instructorNameSnapshot:
-      resolvedProfile?.name ||
-      [instructorUser.firstName, instructorUser.lastName].filter(Boolean).join(" ").trim() ||
-      instructorUser.name ||
-      null,
-    instructorBioSnapshot: resolvedProfile?.bio || null,
-  };
+  return to;
 }
 
 function toSessionListItem(
@@ -198,6 +167,13 @@ function toSessionListItem(
       communityModeEnabled: session.communityModeEnabled,
       communityModeUpdatedAt: session.communityModeUpdatedAt,
     }),
+    isRecorded: false,
+    recordingScope: null,
+    replayAvailable: false,
+    replayAccessDurationDays: null,
+    chatEnabled: session.chatEnabled,
+    participantMicDefaultMuted: session.participantMicDefaultMuted,
+    participantCameraDefaultOff: session.participantCameraDefaultOff,
     threeHourOutcome: session.autoCancelledForNoAttendanceAt
       ? "cancelled_no_attendance"
       : session.reminderProcessedAt
@@ -224,12 +200,13 @@ export async function listClassSessions(params: {
   slug?: string;
   statusIn?: ClassSessionStatus[];
 }) {
+  const clampedTo = clampPublicScheduleEnd(params.from, params.to, params.currentUserId);
   const settings = await getClassOperationalSettings();
   const sessions = await db.classSession.findMany({
     where: {
       startsAtUtc: {
         gte: params.from,
-        lte: params.to,
+        lte: clampedTo,
       },
       classDefinitionSlug: params.slug,
       typeSnapshot: params.type,
@@ -292,12 +269,73 @@ export async function listClassSessions(params: {
   );
 }
 
-export async function getClassSessionDetail(
+export type ClassSessionDetailScope = "public" | "member" | "assigned_instructor" | "owner_admin";
+
+function toAssignedInstructorHealthSummary(healthSelectionCount: number) {
+  return healthSelectionCount > 0 ? ["Relevant movement considerations shared"] : [];
+}
+
+export async function getClassSessionDetailForScope(
   sessionId: string,
-  currentUserId?: string
+  currentUserId: string | undefined,
+  scope: ClassSessionDetailScope
 ): Promise<ClassSessionDetailDto | null> {
   const settings = await getClassOperationalSettings();
   const session = await db.classSession.findUnique({
+    where: { id: sessionId },
+    include: {
+      bookings: {
+        select: {
+          userId: true,
+          status: true,
+          firstJoinedAt: true,
+        },
+        orderBy: { bookedAt: "asc" },
+      },
+      waitlist: {
+        select: {
+          userId: true,
+          status: true,
+          position: true,
+        },
+        orderBy: { position: "asc" },
+      },
+    },
+  });
+
+  if (!session) return null;
+
+  const profile = session.instructorProfileEntryId
+    ? (await getInstructorProfilesByIds([session.instructorProfileEntryId]))[0]
+    : undefined;
+  const currentUserHealthProfile = currentUserId
+    ? await db.healthProfile.findUnique({
+        where: { userId: currentUserId },
+        select: {
+          declarationStatus: true,
+          tracksFlareCheckIns: true,
+        },
+      })
+    : null;
+  const currentUserCheckInMode = getHealthCheckInMode({
+    declarationStatus: currentUserHealthProfile?.declarationStatus ?? "incomplete",
+    tracksFlareCheckIns: currentUserHealthProfile?.tracksFlareCheckIns ?? false,
+  });
+
+  const base = toSessionListItem(session, currentUserId, profile, settings, currentUserCheckInMode);
+
+  if (scope === "public" || scope === "member") {
+    return {
+      ...base,
+      notes: "",
+      cancelReason: session.cancelReason,
+      instructorUserId: "",
+      bookings: [],
+      waitlist: [],
+    };
+  }
+
+  const detailedSession = await db.classSession.findUnique({
     where: { id: sessionId },
     include: {
       bookings: {
@@ -307,7 +345,7 @@ export async function getClassSessionDetail(
               id: true,
               firstName: true,
               lastName: true,
-              email: true,
+              email: scope === "owner_admin",
               healthProfile: {
                 select: {
                   selections: {
@@ -330,7 +368,7 @@ export async function getClassSessionDetail(
               id: true,
               firstName: true,
               lastName: true,
-              email: true,
+              email: scope === "owner_admin",
             },
           },
         },
@@ -339,73 +377,39 @@ export async function getClassSessionDetail(
     },
   });
 
-  if (!session) return null;
+  if (!detailedSession) return null;
 
-  const bookingUserIds = Array.from(new Set(session.bookings.map((booking) => booking.userId)));
-  const attendanceCounts = bookingUserIds.length
-    ? await db.classBooking.groupBy({
-        by: ["userId"],
-        where: {
-          userId: { in: bookingUserIds },
-          status: ClassBookingStatus.attended,
-        },
-        _count: {
-          _all: true,
-        },
-      })
-    : [];
+  const bookingUserIds = Array.from(
+    new Set(detailedSession.bookings.map((booking) => booking.userId))
+  );
+  const attendanceCounts =
+    scope === "owner_admin" && bookingUserIds.length
+      ? await db.classBooking.groupBy({
+          by: ["userId"],
+          where: {
+            userId: { in: bookingUserIds },
+            status: ClassBookingStatus.attended,
+          },
+          _count: {
+            _all: true,
+          },
+        })
+      : [];
   const attendanceByUserId = new Map(
     attendanceCounts.map((row) => [row.userId, row._count._all || 0])
   );
 
-  const profile = session.instructorProfileEntryId
-    ? (await getInstructorProfilesByIds([session.instructorProfileEntryId]))[0]
-    : undefined;
-  const currentUserHealthProfile = currentUserId
-    ? await db.healthProfile.findUnique({
-        where: { userId: currentUserId },
-        select: {
-          declarationStatus: true,
-          tracksFlareCheckIns: true,
-        },
-      })
-    : null;
-  const currentUserCheckInMode = getHealthCheckInMode({
-    declarationStatus: currentUserHealthProfile?.declarationStatus ?? "incomplete",
-    tracksFlareCheckIns: currentUserHealthProfile?.tracksFlareCheckIns ?? false,
-  });
-
-  const base = toSessionListItem(
-    {
-      ...session,
-      bookings: session.bookings.map((b) => ({
-        userId: b.userId,
-        status: b.status,
-        firstJoinedAt: b.firstJoinedAt,
-      })),
-      waitlist: session.waitlist.map((w) => ({
-        userId: w.userId,
-        status: w.status,
-        position: w.position,
-      })),
-    },
-    currentUserId,
-    profile,
-    settings,
-    currentUserCheckInMode
-  );
-
   return {
     ...base,
-    notes: session.notes || "",
-    cancelReason: session.cancelReason,
-    instructorUserId: session.instructorUserId,
-    bookings: session.bookings.map((booking) => ({
+    notes: detailedSession.notes || "",
+    cancelReason: detailedSession.cancelReason,
+    instructorUserId: detailedSession.instructorUserId,
+    bookings: detailedSession.bookings.map((booking) => ({
       id: booking.id,
       userId: booking.userId,
       firstName: booking.user.firstName || "",
       lastName: booking.user.lastName || "",
-      email: booking.user.email,
+      email: scope === "owner_admin" ? booking.user.email || "" : "",
       status: booking.status,
       bookedAt: booking.bookedAt.toISOString(),
       firstJoinedAt: booking.firstJoinedAt?.toISOString() || null,
@@ -413,25 +417,36 @@ export async function getClassSessionDetail(
       lastLeftAt: booking.lastLeftAt?.toISOString() || null,
       joinCount: booking.joinCount,
       attendanceSource: booking.attendanceSource,
-      healthConditions: (booking.user.healthProfile?.selections || []).map((selection) =>
-        toHealthConditionLabel(selection.conditionKey, selection.detail)
-      ),
-      attendedClassesCount: attendanceByUserId.get(booking.userId) || 0,
+      healthConditions:
+        scope === "owner_admin"
+          ? (booking.user.healthProfile?.selections || []).map((selection) =>
+              toHealthConditionLabel(selection.conditionKey, selection.detail)
+            )
+          : toAssignedInstructorHealthSummary(booking.user.healthProfile?.selections.length || 0),
+      attendedClassesCount:
+        scope === "owner_admin" ? attendanceByUserId.get(booking.userId) || 0 : 0,
       preClassEnergyLevel: booking.preClassEnergyLevel as 1 | 2 | 3 | 4 | 5 | null,
       preClassFlareToday: Boolean(booking.preClassFlareToday),
       preClassSubmittedAt: booking.preClassSubmittedAt?.toISOString() || null,
     })),
-    waitlist: session.waitlist.map((entry) => ({
+    waitlist: detailedSession.waitlist.map((entry) => ({
       id: entry.id,
       userId: entry.userId,
       firstName: entry.user.firstName || "",
       lastName: entry.user.lastName || "",
-      email: entry.user.email,
+      email: scope === "owner_admin" ? entry.user.email || "" : "",
       status: entry.status,
       position: entry.position,
       createdAt: entry.createdAt.toISOString(),
     })),
   };
+}
+
+export async function getClassSessionDetail(
+  sessionId: string,
+  currentUserId?: string
+): Promise<ClassSessionDetailDto | null> {
+  return getClassSessionDetailForScope(sessionId, currentUserId, "owner_admin");
 }
 
 function buildWeeklyDates(startDate: string, repeatWeeks: number, weekdays: number[]) {
@@ -479,7 +494,7 @@ export async function bulkCreateClassSessions(
 
   const instructorUserId = input.instructorUserId || fallbackInstructorUserId;
   const { instructorUser, resolvedProfileEntryId, instructorNameSnapshot, instructorBioSnapshot } =
-    await resolveSessionInstructorSnapshot({
+    await resolveClassInstructorSnapshot({
       classDefinitionSlug: classDef.slug,
       instructorUserId,
       instructorProfileEntryId: input.instructorProfileEntryId || null,
@@ -720,7 +735,7 @@ export async function updateClassSession(
   const shouldRefreshInstructorSnapshot =
     updates.instructorUserId !== undefined || updates.instructorProfileEntryId !== undefined;
   const nextInstructorSnapshot = shouldRefreshInstructorSnapshot
-    ? await resolveSessionInstructorSnapshot({
+    ? await resolveClassInstructorSnapshot({
         classDefinitionSlug: existing.classDefinitionSlug,
         instructorUserId: nextInstructorUserId,
         instructorProfileEntryId:
@@ -823,7 +838,12 @@ export async function getScheduleGroupedByDay(params?: {
   to?: Date;
 }): Promise<ScheduleDayDto[]> {
   const from = params?.from || new Date();
-  const to = params?.to || new Date(Date.now() + 56 * 86400000);
+  const to =
+    clampPublicScheduleEnd(
+      from,
+      params?.to || new Date(Date.now() + 56 * 86400000),
+      params?.currentUserId
+    ) || new Date(Date.now() + 28 * 86400000);
   const sessions = await listClassSessions({
     currentUserId: params?.currentUserId,
     from,

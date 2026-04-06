@@ -2,6 +2,7 @@ import { GiftPurchaseStatus, RetreatBookingStatus, RetreatPaymentStatus } from "
 import type Stripe from "stripe";
 import { db } from "@/lib/db";
 import { buildAbsoluteUrl } from "@/lib/app-url";
+import { assertNoResourceDisputeHold } from "@/lib/billing/dispute-service";
 import { sendPostmarkReactEmail } from "@/lib/postmark/client";
 import GiftRedemptionEmail from "@/emails/gift-redemption";
 
@@ -227,6 +228,7 @@ export async function redeemGiftPurchase(input: {
   if (gift.status === GiftPurchaseStatus.redeemed) throw new Error("ALREADY_REDEEMED");
   if (gift.status !== GiftPurchaseStatus.purchased) throw new Error("GIFT_NOT_READY");
   if (gift.expiresAt && gift.expiresAt < new Date()) throw new Error("GIFT_EXPIRED");
+  await assertNoResourceDisputeHold("gift_purchase", gift.id);
 
   const attendeeFirstName = normalizeText(
     input.attendeeFirstName || user.firstName || gift.recipientFirstName,

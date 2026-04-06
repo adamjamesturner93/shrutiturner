@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { isOwnerAdminRole } from "@/lib/authz/roles";
 import { claimReferralCode } from "@/lib/referrals/referral-service";
 import { sanitizeRedirectPath } from "@/lib/navigation/safe-redirect";
 import { createCreditCheckoutSession } from "@/lib/billing/billing-service";
@@ -90,7 +91,7 @@ async function PostLoginRedirect({ searchParams }: PostLoginPageProps) {
     redirect(redirectParam);
   }
 
-  if (role === "admin") {
+  if (isOwnerAdminRole(role)) {
     redirect("/admin");
   }
 

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { bulkCreateClassSessions } from "@/lib/classes/session-service";
 
 export async function POST(request: Request) {
   try {
-    const adminUser = await requireAdminUser();
+    const adminUser = await requireStaffAdminUser();
     const body = (await request.json()) as {
       classDefinitionSlug?: string;
       startDate?: string;

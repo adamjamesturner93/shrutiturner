@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { ClassSessionStatus } from "@prisma/client";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { getClassSessionDetail, updateClassSession } from "@/lib/classes/session-service";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const adminUser = await requireAdminUser();
+    const adminUser = await requireStaffAdminUser();
     const { id } = await context.params;
     const detail = await getClassSessionDetail(id, adminUser.id);
     if (!detail) {
@@ -26,7 +26,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const { id } = await context.params;
     const body = (await request.json()) as {
       startsAtUtc?: string;

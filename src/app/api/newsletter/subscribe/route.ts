@@ -156,6 +156,10 @@ export async function POST(req: Request) {
     email,
     userId: existingUser?.id || null,
     source,
+    surface: `newsletter_signup_${source}`,
+    wordingText:
+      signupContent.consentText ||
+      "I want to receive marketing emails, newsletter updates, and occasional offers from Shruti Turner. I can unsubscribe at any time.",
   });
 
   const unsubscribeUrl = `${siteUrl}/unsubscribe?token=${encodeURIComponent(subscriber.token)}`;

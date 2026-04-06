@@ -19,13 +19,7 @@ import type {
 import { getClassSessionRoomMode } from "@/lib/classes/room-mode";
 import type { ClassDefinitionContent } from "@/lib/content";
 
-type Stage =
-  | "too-early"
-  | "access-denied"
-  | "late-denied"
-  | "pre-join"
-  | "live"
-  | "post-class";
+type Stage = "too-early" | "access-denied" | "late-denied" | "pre-join" | "live" | "post-class";
 const NEXT_WEEK_FALLBACK_HREF = "/dashboard/schedule?wk=1";
 const FEELING_OPTIONS: Array<{ value: PostClassFeelingDto; label: string }> = [
   { value: "great", label: "Great" },
@@ -190,12 +184,9 @@ export function DashboardClassJoin({
 
     void (async () => {
       try {
-        const response = await fetch(
-          `/api/classes/sessions?slug=${encodeURIComponent(cls.slug)}`,
-          {
-            cache: "no-store",
-          }
-        );
+        const response = await fetch(`/api/classes/sessions?slug=${encodeURIComponent(cls.slug)}`, {
+          cache: "no-store",
+        });
         if (!response.ok) return;
         const payload = (await response.json()) as ClassSessionListItemDto[];
         if (!active) return;
@@ -351,6 +342,8 @@ export function DashboardClassJoin({
           initialMuted={initialMuted}
           initialCameraOn={initialCameraOn}
           initialCommunityMode={activeSession.communityModeEnabled}
+          isRecorded={activeSession.isRecorded}
+          chatEnabled={activeSession.chatEnabled}
           onLeave={(reason) => {
             if (reason === "ended") {
               const params = new URLSearchParams();
@@ -434,6 +427,10 @@ export function DashboardClassJoin({
           registeredCount={activeSession?.bookedCount || activeSession?.capacity || cls.maxSpaces}
           maxSpaces={activeSession?.capacity || cls.maxSpaces}
           mode={roomMode}
+          defaultMicMuted={activeSession?.participantMicDefaultMuted}
+          defaultCameraOff={activeSession?.participantCameraDefaultOff}
+          isRecorded={activeSession?.isRecorded}
+          chatEnabled={activeSession?.chatEnabled}
           onJoin={({ isMuted, isCameraOn }) => {
             setInitialMuted(isMuted);
             setInitialCameraOn(isCameraOn);

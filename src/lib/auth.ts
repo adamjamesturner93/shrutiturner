@@ -5,6 +5,7 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { isOwnerAdminRole, isStaffAdminRole } from "@/lib/authz/roles";
 
 const ADMIN_EMAILS = (
   process.env.ADMIN_EMAILS || "tech@thechronicyogini.com,shruti@shrutiturner.com"
@@ -50,7 +51,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 name: profile.name,
                 email,
                 image: profile.picture,
-                role: isAdminEmail(email) ? "admin" : "student",
+                role: isAdminEmail(email) ? "owner_admin" : "member",
               };
             },
           }),
@@ -119,11 +120,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, account }) {
       if (!user.email) return true;
       const shouldBeAdmin = isAdminEmail(user.email);
-      if (shouldBeAdmin && user.role !== "admin") {
+      if (shouldBeAdmin && !isOwnerAdminRole(user.role)) {
         try {
           await db.user.update({
             where: { email: user.email },
-            data: { role: "admin" },
+            data: { role: "owner_admin" },
           });
         } catch (error) {
           console.error("[auth][signIn] failed to promote admin role", error);
@@ -145,7 +146,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user.role as UserRole) || "student";
+        token.role = (user.role as UserRole) || "member";
       }
 
       if ((!token.role || !token.id) && token.email) {
@@ -163,7 +164,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (session.user) {
         session.user.id = String(token.id || "");
-        session.user.role = (token.role as UserRole) || "student";
+        session.user.role = (token.role as UserRole) || "member";
       }
       return session;
     },
@@ -182,6 +183,6 @@ export async function requireAuth() {
 export async function requireAdmin() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "admin") redirect("/dashboard");
+  if (!isStaffAdminRole(session.user.role)) redirect("/dashboard");
   return session;
 }

@@ -39,7 +39,9 @@ type NoticeMembership = Prisma.MembershipSubscriptionGetPayload<{
     };
   };
 }>;
-type StripeInvoiceWithPaymentIntent = Awaited<ReturnType<ReturnType<typeof getStripeClient>["invoices"]["retrieve"]>> & {
+type StripeInvoiceWithPaymentIntent = Awaited<
+  ReturnType<ReturnType<typeof getStripeClient>["invoices"]["retrieve"]>
+> & {
   payment_intent?: string | { id?: string | null } | null;
 };
 
@@ -64,6 +66,40 @@ function formatMoney(pence: number) {
   return `£${(pence / 100).toFixed(2)}`;
 }
 
+export function buildMembershipCheckoutConfirmationCopy(params: {
+  billingInterval: MembershipBillingInterval;
+  pricePence: number;
+  trialEndsAt: Date;
+  immediateStartSummary?: string | null;
+}) {
+  const trialLengthDays = MEMBERSHIP_TRIAL_DAYS;
+  const billingStartDate = formatDateLabel(params.trialEndsAt) || "the end of your trial";
+  const amountAfterTrial = formatMoney(params.pricePence);
+  const cancellationMethod =
+    "Cancel online from your Membership dashboard before the trial ends to avoid the first charge.";
+  const immediateStartSummary =
+    params.immediateStartSummary ||
+    "You asked for membership access to start straight away. If you use the service during a cooling-off period, any refund rights are subject to the immediate-start terms shown at checkout.";
+
+  return {
+    subject: "Your Move Well Membership trial is active",
+    preview: `Your ${trialLengthDays}-day trial is live and billing starts on ${billingStartDate}.`,
+    title: "Membership confirmation",
+    paragraphs: [
+      `Your ${trialLengthDays}-day Move Well Membership trial is now active.`,
+      `Billing starts on ${billingStartDate}. If you do not cancel before then, ${amountAfterTrial} will be charged for your first ${params.billingInterval} term.`,
+      cancellationMethod,
+      immediateStartSummary,
+    ],
+    metadata: {
+      billingInterval: params.billingInterval,
+      trialLengthDays: String(trialLengthDays),
+      billingStartDate,
+      amountAfterTrial,
+    },
+  };
+}
+
 export function getMembershipLifecycleDates(startedAt = new Date()) {
   return {
     trialEndsAt: addDays(startedAt, MEMBERSHIP_TRIAL_DAYS),
@@ -82,7 +118,9 @@ export function isInInitialCoolingOff(
   now = new Date()
 ) {
   if (!membership?.initialCoolingOffEndsAt) return false;
-  return now <= membership.initialCoolingOffEndsAt && membership.status !== MembershipStatus.cancelled;
+  return (
+    now <= membership.initialCoolingOffEndsAt && membership.status !== MembershipStatus.cancelled
+  );
 }
 
 export function isInRenewalCoolingOff(
@@ -96,7 +134,9 @@ export function isInRenewalCoolingOff(
   now = new Date()
 ) {
   if (!membership?.renewalCoolingOffEndsAt) return false;
-  return now <= membership.renewalCoolingOffEndsAt && membership.status !== MembershipStatus.cancelled;
+  return (
+    now <= membership.renewalCoolingOffEndsAt && membership.status !== MembershipStatus.cancelled
+  );
 }
 
 export function calculateProratedRefundAmount(params: {
@@ -114,7 +154,10 @@ export function calculateProratedRefundAmount(params: {
 
   const usedMs = Math.max(0, cancelledAt.getTime() - params.periodStart.getTime());
   const unusedRatio = Math.max(0, 1 - usedMs / totalMs);
-  return Math.max(0, Math.min(params.paidAmountPence, Math.round(params.paidAmountPence * unusedRatio)));
+  return Math.max(
+    0,
+    Math.min(params.paidAmountPence, Math.round(params.paidAmountPence * unusedRatio))
+  );
 }
 
 export async function recordSubscriptionComplianceEvent(params: {
@@ -215,7 +258,9 @@ export async function sendMembershipCancellationNotice(params: {
   const endLabel = formatDateLabel(params.endsAt || new Date()) || "today";
   const refundParagraph =
     params.refundAmountPence && params.refundAmountPence > 0
-      ? [`A refund of ${formatMoney(params.refundAmountPence)} has been initiated to your original payment method.`]
+      ? [
+          `A refund of ${formatMoney(params.refundAmountPence)} has been initiated to your original payment method.`,
+        ]
       : [];
 
   return sendAndRecordNotice({
@@ -296,6 +341,59 @@ export async function sendRenewalCoolingOffNotice(params: {
     },
     eventAt: params.renewalDate,
   });
+}
+
+export async function sendMembershipCheckoutConfirmationNotice(params: {
+  membershipId: string;
+  userId: string;
+  email: string;
+  firstName: string;
+  billingInterval: MembershipBillingInterval;
+  pricePence: number;
+  trialEndsAt: Date;
+  immediateStartSummary?: string | null;
+}) {
+  const copy = buildMembershipCheckoutConfirmationCopy({
+    billingInterval: params.billingInterval,
+    pricePence: params.pricePence,
+    trialEndsAt: params.trialEndsAt,
+    immediateStartSummary: params.immediateStartSummary,
+  });
+
+  const result = await sendSubscriptionNoticeEmail({
+    email: params.email,
+    firstName: params.firstName,
+    subject: copy.subject,
+    preview: copy.preview,
+    title: copy.title,
+    paragraphs: copy.paragraphs,
+    tag: "subscription-checkout-confirmation",
+    ctaLabel: "Open membership settings",
+    ctaUrl: `${APP_URL}/dashboard/membership`,
+    footnote:
+      "This email repeats the trial, billing, cancellation, and immediate-start details from checkout.",
+    metadata: {
+      membershipId: params.membershipId,
+      ...copy.metadata,
+    },
+  });
+
+  await recordSubscriptionComplianceEvent({
+    userId: params.userId,
+    membershipId: params.membershipId,
+    kind: SubscriptionComplianceEventKind.disclosure_acknowledged,
+    status: result.success ? "email_sent" : "email_failed",
+    channel: "email",
+    summary: result.success
+      ? "Membership checkout confirmation email sent."
+      : "Membership checkout confirmation email failed.",
+    metadataJson: {
+      emailType: "subscription-checkout-confirmation",
+      ...copy.metadata,
+    } as Prisma.InputJsonValue,
+  });
+
+  return result;
 }
 
 export async function sendTrialReminderNotice(params: {
@@ -480,7 +578,10 @@ async function processNoticeForMembership(membership: NoticeMembership, now: Dat
         kind: SubscriptionComplianceEventKind.monthly_reminder,
       },
     });
-    const nextDue = addMonths(membership.startsAt, MONTHLY_REMINDER_INTERVAL_MONTHS * (noticeCount + 1));
+    const nextDue = addMonths(
+      membership.startsAt,
+      MONTHLY_REMINDER_INTERVAL_MONTHS * (noticeCount + 1)
+    );
     if (nextDue <= now) {
       await sendMonthlyReminderNotice({
         membershipId: membership.id,
@@ -581,10 +682,7 @@ export async function issueMembershipRefund(params: {
   return refund;
 }
 
-export function getNextMonthlyReminderDate(params: {
-  startsAt: Date;
-  sentCount: number;
-}) {
+export function getNextMonthlyReminderDate(params: { startsAt: Date; sentCount: number }) {
   return addMonths(params.startsAt, MONTHLY_REMINDER_INTERVAL_MONTHS * (params.sentCount + 1));
 }
 
@@ -601,14 +699,12 @@ export function toIsoDate(value: Date | null | undefined) {
 }
 
 export function getMembershipComplianceStatus(params: {
-  membership:
-    | {
-        trialEndsAt?: Date | null;
-        initialCoolingOffEndsAt?: Date | null;
-        renewalCoolingOffEndsAt?: Date | null;
-        renewalCoolingOffKind?: RenewalCoolingOffKind | string | null;
-      }
-    | null;
+  membership: {
+    trialEndsAt?: Date | null;
+    initialCoolingOffEndsAt?: Date | null;
+    renewalCoolingOffEndsAt?: Date | null;
+    renewalCoolingOffKind?: RenewalCoolingOffKind | string | null;
+  } | null;
   now?: Date;
 }): {
   inInitialCoolingOff: boolean;

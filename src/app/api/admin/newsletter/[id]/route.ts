@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { getAdminNewsletterCampaign } from "@/lib/admin/newsletter-service";
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const { id } = await params;
     const campaign = await getAdminNewsletterCampaign(id);
     if (!campaign) {

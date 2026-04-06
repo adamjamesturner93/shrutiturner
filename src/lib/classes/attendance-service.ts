@@ -6,6 +6,7 @@ import {
   Prisma,
 } from "@prisma/client";
 import { db } from "@/lib/db";
+import { isStaffAdminRole } from "@/lib/authz/roles";
 import {
   getClassOperationalSettings,
   getJoinWindowOpensAt,
@@ -43,7 +44,7 @@ export async function getSessionAccessContext(sessionId: string, userId: string)
   }
 
   const booking = session.bookings[0] || null;
-  const isAdmin = user.role === "admin";
+  const isAdmin = isStaffAdminRole(user.role);
   const isInstructor = session.instructorUserId === userId;
   const displayName =
     [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || user.name || user.email;
@@ -65,6 +66,19 @@ export async function getRoomTokenAccess(sessionId: string, userId: string) {
   const access = await getSessionAccessContext(sessionId, userId);
   if (!access) {
     throw new Error("SESSION_NOT_FOUND");
+  }
+
+  const activeBlock = await db.sessionParticipantBlock.findFirst({
+    where: {
+      sessionId,
+      userId,
+      active: true,
+      OR: [{ blockedUntil: null }, { blockedUntil: { gt: new Date() } }],
+    },
+    select: { id: true },
+  });
+  if (activeBlock) {
+    throw new Error("PARTICIPANT_BLOCKED");
   }
 
   if (!access.session.dailyRoomName || !access.session.dailyRoomUrl) {

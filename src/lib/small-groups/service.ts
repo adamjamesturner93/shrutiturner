@@ -1,4 +1,5 @@
 import {
+  AcceptanceType,
   GiftPurchaseStatus,
   Prisma,
   SmallGroupEnrollmentStatus,
@@ -8,7 +9,9 @@ import {
 import type Stripe from "stripe";
 import { db } from "@/lib/db";
 import { buildAbsoluteUrl } from "@/lib/app-url";
+import { assertNoUserCheckoutDisputeHold } from "@/lib/billing/dispute-service";
 import { getStripeClient } from "@/lib/billing/stripe-client";
+import { assertCurrentAcceptances } from "@/lib/legal/acceptance-service";
 import {
   getSmallGroupTemplateBySlug,
   getSmallGroupTemplates,
@@ -745,6 +748,22 @@ export async function createSmallGroupCheckout(input: {
   recipientMessage?: string;
   deliveryTarget?: "recipient" | "buyer";
 }) {
+  const requiresMemberCompliance = input.purchaseMode === "self";
+  if (requiresMemberCompliance && !input.userId) {
+    throw new Error("AUTH_REQUIRED_FOR_PROGRAMME_CHECKOUT");
+  }
+
+  if (input.userId) {
+    await assertNoUserCheckoutDisputeHold(input.userId);
+  }
+
+  const acceptanceStates = input.userId
+    ? await assertCurrentAcceptances(input.userId, [
+        { type: AcceptanceType.terms, surface: "small_group_checkout" },
+        { type: AcceptanceType.health_waiver, surface: "small_group_checkout" },
+      ])
+    : null;
+
   const programme = await getRunByRunSlug(input.runSlug);
   if (!programme || programme.templateSlug !== input.templateSlug) {
     throw new Error("PROGRAMME_NOT_FOUND");
@@ -876,6 +895,18 @@ export async function createSmallGroupCheckout(input: {
       pricePaidPence: programme.pricePence,
       currency: "GBP",
       paymentWindowExpiresAt: new Date(Date.now() + PROGRAMME_PAYMENT_WINDOW_MS),
+      complianceSnapshotJson: acceptanceStates
+        ? {
+            acceptanceStates: acceptanceStates.map((state) => ({
+              type: state.type,
+              policyVersionId: state.policyVersionId,
+              acceptanceEventId: state.acceptanceEventId,
+              version: state.currentVersion,
+              surface: state.surface,
+            })),
+            programmeId: programme.id,
+          }
+        : undefined,
     },
   });
 

@@ -40,6 +40,7 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
+    seed: "node --experimental-strip-types --experimental-specifier-resolution=node prisma/seed.ts",
   },
   datasource: {
     // Prefer direct connection for CLI/migrations, fallback to runtime URL.

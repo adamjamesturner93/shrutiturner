@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  AlertCircle,
   Mic,
   MicOff,
   Video,
@@ -26,6 +27,10 @@ interface PreJoinLobbyProps {
   registeredCount: number;
   maxSpaces: number;
   mode: RoomMode;
+  defaultMicMuted?: boolean;
+  defaultCameraOff?: boolean;
+  isRecorded?: boolean;
+  chatEnabled?: boolean;
   onJoin: (settings: { isMuted: boolean; isCameraOn: boolean }) => void;
   onBack: () => void;
 }
@@ -40,11 +45,15 @@ export function PreJoinLobby({
   registeredCount,
   maxSpaces,
   mode,
+  defaultMicMuted = false,
+  defaultCameraOff = false,
+  isRecorded = false,
+  chatEnabled = true,
   onJoin,
   onBack,
 }: PreJoinLobbyProps) {
-  const [isMuted, setIsMuted] = useState(false);
-  const [isCameraOn, setIsCameraOn] = useState(true);
+  const [isMuted, setIsMuted] = useState(defaultMicMuted);
+  const [isCameraOn, setIsCameraOn] = useState(!defaultCameraOff);
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
 
   return (
@@ -157,6 +166,33 @@ export function PreJoinLobby({
                   <span className="text-white/80">Instructor controlled</span>
                 </div>
               )}
+            </div>
+
+            <div className="space-y-3 rounded-lg bg-white/5 p-4 text-sm text-white/75">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-300" />
+                <div>
+                  <p className="text-white">Safety reminder</p>
+                  <p className="mt-1 text-white/60">
+                    Work within your limits, stop if pain increases, and make sure your space and
+                    equipment feel safe before class starts.
+                  </p>
+                </div>
+              </div>
+
+              {isRecorded ? (
+                <div className="rounded-md border border-amber-300/25 bg-amber-300/10 p-3 text-white/80">
+                  <p className="text-white">This session is recorded.</p>
+                  <p className="mt-1 text-white/60">
+                    The instructor is intentionally recorded. Participants are not intended to be
+                    recorded, but incidental capture can happen if you unmute, turn on camera, or
+                    use chat.
+                  </p>
+                  <p className="mt-2 text-white/60">
+                    Chat: {chatEnabled ? "Enabled." : "Disabled."}
+                  </p>
+                </div>
+              ) : null}
             </div>
 
             {/* Actions */}

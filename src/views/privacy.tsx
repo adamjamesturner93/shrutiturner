@@ -193,8 +193,15 @@ export function PrivacyPage() {
             <p>We retain your information:</p>
             <ul className="list-disc space-y-2 pl-6">
               <li>
-                <strong>Active clients:</strong> For the duration of our relationship plus 6 years
-                (for legal and tax purposes)
+                <strong>Health and special-category service information:</strong> Health profiles,
+                retreat health details, and coaching check-in answers are retained for up to 24
+                months after they are last needed operationally, then deleted or cleared from the
+                live service
+              </li>
+              <li>
+                <strong>Billing, account, and legal records:</strong> Core account, booking,
+                transaction, and compliance records may be kept for longer where needed for tax,
+                accounting, dispute handling, fraud prevention, or legal obligations
               </li>
               <li>
                 <strong>Newsletter subscribers:</strong> Until you unsubscribe

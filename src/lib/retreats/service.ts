@@ -1,13 +1,29 @@
-import { GiftPurchaseStatus, RetreatBookingStatus, RetreatPaymentStatus } from "@prisma/client";
+import {
+  AcceptanceType,
+  GiftPurchaseStatus,
+  RetreatBookingStatus,
+  RetreatPaymentStatus,
+} from "@prisma/client";
 import type Stripe from "stripe";
 import { db } from "@/lib/db";
 import { buildAbsoluteUrl, getBaseSiteUrl } from "@/lib/app-url";
 import { getStripeClient } from "@/lib/billing/stripe-client";
 import {
+  assertNoResourceDisputeHold,
+  assertNoUserCheckoutDisputeHold,
+} from "@/lib/billing/dispute-service";
+import {
+  CURRENT_HEALTH_DATA_CONSENT_VERSION,
+  CURRENT_HEALTH_WAIVER_VERSION,
+  CURRENT_TERMS_VERSION,
+} from "@/data/legal-documents";
+import {
   getRetreatBySlugCombined,
   getRetreatsCombined,
   type RetreatCombinedContent,
 } from "@/lib/content";
+import { assertCurrentAcceptances } from "@/lib/legal/acceptance-service";
+import { getCurrentPolicyVersions } from "@/lib/legal/policy-service";
 import { sendPostmarkReactEmail } from "@/lib/postmark/client";
 import RetreatBookingEmail from "@/emails/retreat-booking";
 import RetreatBalanceDueEmail from "@/emails/retreat-balance-due";
@@ -65,6 +81,44 @@ function getDepositAmountPence(totalPricePence: number) {
 
 function getBalanceDueDate(startDate: Date) {
   return new Date(startDate.getTime() - 45 * 86400000);
+}
+
+async function createGuestAcceptanceEventsForRetreatPurchase(input: {
+  purchaserEmail: string;
+  surface: string;
+  retreatBookingId?: string;
+  giftPurchaseId?: string;
+  retreatSlug: string;
+  retreatDateId: string;
+  roomOptionId: string;
+  purchaseMode: "self" | "gift";
+}) {
+  const acceptanceTypes = [
+    AcceptanceType.terms,
+    AcceptanceType.health_waiver,
+    AcceptanceType.health_data,
+  ] as const;
+  const policies = await getCurrentPolicyVersions([...acceptanceTypes]);
+  const acceptedAt = new Date();
+
+  await db.guestAcceptanceEvent.createMany({
+    data: acceptanceTypes.map((type, index) => ({
+      purchaserEmail: input.purchaserEmail,
+      type,
+      policyVersionId: policies[index]?.id,
+      version: policies[index]?.version || "",
+      acceptanceSurface: input.surface,
+      acceptedAt,
+      metadataJson: {
+        purchaseMode: input.purchaseMode,
+        retreatSlug: input.retreatSlug,
+        retreatDateId: input.retreatDateId,
+        roomOptionId: input.roomOptionId,
+      },
+      retreatBookingId: input.retreatBookingId,
+      giftPurchaseId: input.giftPurchaseId,
+    })),
+  });
 }
 
 async function getOrCreateStripeCustomer(input: { userId: string; email: string; name: string }) {
@@ -327,6 +381,28 @@ export async function createRetreatCheckout(input: {
   recipientMessage?: string;
   deliveryTarget?: "recipient" | "buyer";
 }) {
+  if (input.purchaserUserId) {
+    await assertNoUserCheckoutDisputeHold(input.purchaserUserId);
+  }
+
+  const acceptanceStates = input.purchaserUserId
+    ? await assertCurrentAcceptances(input.purchaserUserId, [
+        { type: AcceptanceType.terms, surface: "retreat_checkout" },
+        { type: AcceptanceType.health_waiver, surface: "retreat_checkout" },
+        { type: AcceptanceType.health_data, surface: "retreat_checkout" },
+      ])
+    : null;
+
+  if (!input.purchaserUserId) {
+    if (
+      input.acceptedTermsVersion !== CURRENT_TERMS_VERSION ||
+      input.acceptedHealthWaiverVersion !== CURRENT_HEALTH_WAIVER_VERSION ||
+      input.acceptedHealthDataVersion !== CURRENT_HEALTH_DATA_CONSENT_VERSION
+    ) {
+      throw new Error("RETREAT_LEGAL_ACCEPTANCE_REQUIRED");
+    }
+  }
+
   const { retreatDate, roomOption } = await getSyncedRetreatDateAndRoomOption({
     retreatSlug: input.retreatSlug,
     retreatDateId: input.retreatDateId,
@@ -422,6 +498,18 @@ export async function createRetreatCheckout(input: {
       data: { stripeCheckoutSessionId: session.id },
     });
 
+    if (!input.purchaserUserId) {
+      await createGuestAcceptanceEventsForRetreatPurchase({
+        purchaserEmail,
+        surface: "retreat_gift_checkout_guest",
+        giftPurchaseId: gift.id,
+        retreatSlug: input.retreatSlug,
+        retreatDateId: input.retreatDateId,
+        roomOptionId: input.roomOptionId,
+        purchaseMode: input.purchaseMode,
+      });
+    }
+
     return { giftPurchaseId: gift.id, checkoutUrl: session.url };
   }
 
@@ -477,6 +565,24 @@ export async function createRetreatCheckout(input: {
       acceptedTermsVersion: input.acceptedTermsVersion || null,
       acceptedHealthWaiverVersion: input.acceptedHealthWaiverVersion || null,
       acceptedHealthDataVersion: input.acceptedHealthDataVersion || null,
+      complianceSnapshotJson:
+        acceptanceStates || input.acceptedTermsVersion || input.acceptedHealthWaiverVersion
+          ? {
+              acceptanceStates:
+                acceptanceStates?.map((state) => ({
+                  type: state.type,
+                  policyVersionId: state.policyVersionId,
+                  acceptanceEventId: state.acceptanceEventId,
+                  version: state.currentVersion,
+                  surface: state.surface,
+                })) || [],
+              acceptedTermsVersion: input.acceptedTermsVersion || null,
+              acceptedHealthWaiverVersion: input.acceptedHealthWaiverVersion || null,
+              acceptedHealthDataVersion: input.acceptedHealthDataVersion || null,
+              retreatDateId: retreatDate.id,
+              roomOptionId: roomOption.id,
+            }
+          : undefined,
       totalPricePence: roomOption.pricePence,
       depositAmountPence,
       balanceAmountPence,
@@ -535,6 +641,18 @@ export async function createRetreatCheckout(input: {
       stripeDepositSessionId: session.id,
     },
   });
+
+  if (!input.purchaserUserId) {
+    await createGuestAcceptanceEventsForRetreatPurchase({
+      purchaserEmail,
+      surface: "retreat_checkout_guest",
+      retreatBookingId: booking.id,
+      retreatSlug: input.retreatSlug,
+      retreatDateId: input.retreatDateId,
+      roomOptionId: input.roomOptionId,
+      purchaseMode: input.purchaseMode,
+    });
+  }
 
   return {
     bookingId: booking.id,
@@ -674,6 +792,7 @@ export async function createRetreatBalanceCheckout(input: {
   if (booking.balanceAmountPence <= 0 || booking.paymentStatus === "paid_in_full") {
     throw new Error("BALANCE_NOT_DUE");
   }
+  await assertNoResourceDisputeHold("retreat_booking", booking.id);
 
   const stripe = getStripeClient();
   const customerId = booking.purchaserUserId
@@ -727,6 +846,66 @@ export async function createRetreatBalanceCheckout(input: {
 
   return {
     checkoutUrl: session.url,
+  };
+}
+
+export async function getAdminRetreatEvidence(retreatDateId: string) {
+  const retreatDate = await db.retreatDate.findUnique({
+    where: { id: retreatDateId },
+    include: {
+      bookings: {
+        orderBy: { createdAt: "asc" },
+        include: {
+          guestAcceptanceEvents: {
+            orderBy: [{ acceptedAt: "asc" }, { createdAt: "asc" }],
+          },
+        },
+      },
+      giftPurchases: {
+        orderBy: { createdAt: "asc" },
+        include: {
+          guestAcceptanceEvents: {
+            orderBy: [{ acceptedAt: "asc" }, { createdAt: "asc" }],
+          },
+        },
+      },
+    },
+  });
+  if (!retreatDate) {
+    throw new Error("NOT_FOUND");
+  }
+
+  return {
+    retreatDateId: retreatDate.id,
+    bookings: retreatDate.bookings.map((booking) => ({
+      id: booking.id,
+      purchaserEmail: booking.purchaserEmail,
+      attendeeEmail: booking.attendeeEmail,
+      paymentStatus: booking.paymentStatus,
+      bookingStatus: booking.bookingStatus,
+      guestAcceptances: booking.guestAcceptanceEvents.map((event) => ({
+        id: event.id,
+        purchaserEmail: event.purchaserEmail,
+        type: event.type,
+        version: event.version,
+        acceptedAt: event.acceptedAt.toISOString(),
+        surface: event.acceptanceSurface,
+      })),
+    })),
+    gifts: retreatDate.giftPurchases.map((gift) => ({
+      id: gift.id,
+      purchaserEmail: gift.purchaserEmail,
+      recipientEmail: gift.recipientEmail,
+      status: gift.status,
+      guestAcceptances: gift.guestAcceptanceEvents.map((event) => ({
+        id: event.id,
+        purchaserEmail: event.purchaserEmail,
+        type: event.type,
+        version: event.version,
+        acceptedAt: event.acceptedAt.toISOString(),
+        surface: event.acceptanceSurface,
+      })),
+    })),
   };
 }
 

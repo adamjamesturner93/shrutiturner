@@ -1,11 +1,11 @@
 import { connection, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { getAdminBusinessSummary } from "@/lib/admin/business-service";
 
 export async function GET() {
   try {
     await connection();
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const summary = await getAdminBusinessSummary();
     return NextResponse.json(summary);
   } catch (error) {

@@ -1,4 +1,5 @@
 import {
+  AcceptanceType,
   BookingEntitlementType,
   ClassBookingStatus,
   ClassSessionStatus,
@@ -27,7 +28,9 @@ import {
   shouldRefundCreditForCancellation,
 } from "@/lib/classes/settings-service";
 import { setUpSessionRoom, tearDownSessionRoom } from "@/lib/classes/session-service";
+import { isOwnerAdminRole } from "@/lib/authz/roles";
 import { getHealthAccessState } from "@/lib/health/health-service";
+import { assertCurrentAcceptances } from "@/lib/legal/acceptance-service";
 const DATE_FORMAT_PREFERENCES: DateFormatPreference[] = ["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"];
 
 function toDateFormatPreference(value: string | null | undefined): DateFormatPreference {
@@ -130,7 +133,7 @@ async function decideEntitlement(
     where: { id: userId },
     select: { role: true },
   });
-  if (user?.role === "admin") {
+  if (isOwnerAdminRole(user?.role)) {
     return {
       entitlementType: BookingEntitlementType.manual,
       membershipId: null,
@@ -344,7 +347,10 @@ async function autoCancelClassSessionForNoAttendance(sessionId: string, now = ne
     message: error instanceof Error ? error.message : "Failed to close Daily room",
   }));
   if (roomTeardown.status === "failed") {
-    console.error("Failed to tear down Daily room for auto-cancelled session", roomTeardown.message);
+    console.error(
+      "Failed to tear down Daily room for auto-cancelled session",
+      roomTeardown.message
+    );
   }
 
   return { alreadyCancelled: false, removedWaitlist: session.waitlist.length };
@@ -454,6 +460,11 @@ export async function bookClassSession(
   sessionId: string,
   userId: string
 ): Promise<BookSessionResultDto> {
+  const acceptanceStates = await assertCurrentAcceptances(userId, [
+    { type: AcceptanceType.terms, surface: "class_booking" },
+    { type: AcceptanceType.health_waiver, surface: "class_booking" },
+    { type: AcceptanceType.health_data, surface: "class_booking" },
+  ]);
   const healthAccess = await getHealthAccessState(userId);
   if (!healthAccess.isComplete) {
     throw new Error("HEALTH_DECLARATION_REQUIRED");
@@ -523,12 +534,32 @@ export async function bookClassSession(
           status: ClassBookingStatus.booked,
           entitlementType: entitlement.entitlementType,
           creditLedgerEntryId: creditLedger?.id || null,
+          complianceSnapshotJson: {
+            acceptanceStates: acceptanceStates.map((state) => ({
+              type: state.type,
+              policyVersionId: state.policyVersionId,
+              acceptanceEventId: state.acceptanceEventId,
+              version: state.currentVersion,
+              surface: state.surface,
+            })),
+            sessionId,
+          },
         },
         update: {
           status: ClassBookingStatus.booked,
           cancelledAt: null,
           entitlementType: entitlement.entitlementType,
           creditLedgerEntryId: creditLedger?.id || null,
+          complianceSnapshotJson: {
+            acceptanceStates: acceptanceStates.map((state) => ({
+              type: state.type,
+              policyVersionId: state.policyVersionId,
+              acceptanceEventId: state.acceptanceEventId,
+              version: state.currentVersion,
+              surface: state.surface,
+            })),
+            sessionId,
+          },
         },
       });
 

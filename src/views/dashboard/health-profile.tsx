@@ -15,6 +15,14 @@ import {
 import { useI18n } from "../../lib/use-i18n";
 import { useAuth } from "@/context/auth-context";
 
+type LegalAcceptanceResponse = {
+  message?: string;
+  code?: string;
+  requiredAcceptances?: Array<{
+    type: string;
+  }>;
+};
+
 export function HealthProfilePage({ initialProfile }: { initialProfile?: HealthProfile }) {
   const { fmtDate } = useI18n();
   const { user, acceptHealthDataConsent, refreshAccountProfile } = useAuth();
@@ -61,17 +69,52 @@ export function HealthProfilePage({ initialProfile }: { initialProfile?: HealthP
   const handleSave = async (updated: HealthProfile, consentAccepted: boolean) => {
     setError("");
     try {
-      const res = await fetch("/api/me/health-profile", {
+      if (
+        consentAccepted &&
+        (!user?.hasConsentedToHealthData || user.needsHealthDataConsentRefresh)
+      ) {
+        await acceptHealthDataConsent();
+      }
+
+      let res = await fetch("/api/me/health-profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updated),
       });
-      if (!res.ok) throw new Error("Failed to save health profile.");
-      const next = (await res.json()) as HealthProfile;
-      if (consentAccepted && !user?.hasConsentedToHealthData) {
-        await acceptHealthDataConsent();
-        await refreshAccountProfile();
+
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as LegalAcceptanceResponse | null;
+        const requiresHealthDataRefresh =
+          res.status === 409 &&
+          payload?.code === "LEGAL_ACCEPTANCE_REQUIRED" &&
+          payload.requiredAcceptances?.some((item) => item.type === "health_data");
+
+        if (requiresHealthDataRefresh && consentAccepted) {
+          await acceptHealthDataConsent();
+          res = await fetch("/api/me/health-profile", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updated),
+          });
+        }
       }
+
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as LegalAcceptanceResponse | null;
+        if (
+          res.status === 409 &&
+          payload?.code === "LEGAL_ACCEPTANCE_REQUIRED" &&
+          payload.requiredAcceptances?.some((item) => item.type === "health_data")
+        ) {
+          throw new Error(
+            "Health data consent is required before saving this profile. Tick the consent box and try again."
+          );
+        }
+        throw new Error(payload?.message || "Failed to save health profile.");
+      }
+
+      const next = (await res.json()) as HealthProfile;
+      await refreshAccountProfile();
       setProfile(next);
       setEditing(false);
     } catch (e) {
@@ -83,10 +126,26 @@ export function HealthProfilePage({ initialProfile }: { initialProfile?: HealthP
     setConfirming(true);
     setError("");
     try {
+      if (!user?.hasConsentedToHealthData || user.needsHealthDataConsentRefresh) {
+        await acceptHealthDataConsent();
+      }
+
       const res = await fetch("/api/me/health-profile", {
         method: "POST",
       });
-      if (!res.ok) throw new Error("Failed to confirm health declaration.");
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as LegalAcceptanceResponse | null;
+        if (
+          res.status === 409 &&
+          payload?.code === "LEGAL_ACCEPTANCE_REQUIRED" &&
+          payload.requiredAcceptances?.some((item) => item.type === "health_data")
+        ) {
+          throw new Error(
+            "Health data consent is required before confirming your health declaration."
+          );
+        }
+        throw new Error(payload?.message || "Failed to confirm health declaration.");
+      }
       const next = (await res.json()) as HealthProfile;
       setProfile(next);
       await refreshAccountProfile();
@@ -138,8 +197,8 @@ export function HealthProfilePage({ initialProfile }: { initialProfile?: HealthP
               <div>
                 <p className="text-sm text-amber-900">Please review your health declaration.</p>
                 <p className="mt-1 text-xs text-amber-800">
-                  Confirm that nothing has changed, or update it to capture new injuries, flares,
-                  or recovery changes.
+                  Confirm that nothing has changed, or update it to capture new injuries, flares, or
+                  recovery changes.
                 </p>
               </div>
               <div className="flex gap-2">

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { ScheduledJobTriggerType } from "@prisma/client";
+import { runScheduledJob } from "@/lib/admin/scheduled-job-service";
 import { processDueSubscriptionComplianceNotices } from "@/lib/billing/subscription-compliance";
 
 function isAuthorized(request: Request) {
@@ -13,7 +15,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await processDueSubscriptionComplianceNotices();
+    const { result } = await runScheduledJob({
+      jobName: "subscription_compliance_notices",
+      triggerType: ScheduledJobTriggerType.cron,
+      run: () => processDueSubscriptionComplianceNotices(),
+    });
     return NextResponse.json(result);
   } catch (error) {
     console.error("POST /api/internal/subscriptions/process-notices failed", error);

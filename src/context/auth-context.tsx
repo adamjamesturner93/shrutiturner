@@ -9,6 +9,7 @@ import {
   useRef,
 } from "react";
 import { signOut as nextAuthSignOut, useSession } from "next-auth/react";
+import { isStaffAdminRole } from "@/lib/authz/roles";
 import type {
   HealthDeclarationStatusDto,
   MembershipStateDto,
@@ -368,7 +369,7 @@ function splitName(name: string | null | undefined) {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: session, status: authStatus } = useSession();
   const isAuthenticated = authStatus === "authenticated" && Boolean(session?.user);
-  const isAdmin = session?.user?.role === "admin";
+  const isAdmin = isStaffAdminRole(session?.user?.role);
   const sessionUserId = session?.user?.id || "";
   const sessionUserEmail = session?.user?.email || "";
   const sessionUserName = session?.user?.name || "";
@@ -565,8 +566,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 prev.healthDeclarationLastConfirmedAt,
               healthDeclarationNeedsReview:
                 data.profile?.healthDeclarationNeedsReview ?? prev.healthDeclarationNeedsReview,
-              tracksFlareCheckIns:
-                data.profile?.tracksFlareCheckIns ?? prev.tracksFlareCheckIns,
+              tracksFlareCheckIns: data.profile?.tracksFlareCheckIns ?? prev.tracksFlareCheckIns,
               hasAgreedToTerms: data.profile?.hasAgreedToTerms ?? prev.hasAgreedToTerms,
               hasAgreedToHealth: data.profile?.hasAgreedToHealth ?? prev.hasAgreedToHealth,
               termsAgreedAt: data.profile?.termsAgreedAt ?? prev.termsAgreedAt,

@@ -1,5 +1,5 @@
 import { connection, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { listAdminSubscribers, type SubscriptionType } from "@/lib/admin/newsletter-service";
 
 const validTypes = new Set(["all", "subscribed", "unsubscribed"]);
@@ -7,7 +7,7 @@ const validTypes = new Set(["all", "subscribed", "unsubscribed"]);
 export async function GET(req: Request) {
   try {
     await connection();
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const { searchParams } = new URL(req.url);
     const rawType = searchParams.get("type") || "all";
     const type = validTypes.has(rawType) ? (rawType as SubscriptionType | "all") : "all";

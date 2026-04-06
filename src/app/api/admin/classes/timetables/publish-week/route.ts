@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { publishActiveClassTimetablesForWeek } from "@/lib/classes/timetable-service";
 
 export async function POST(request: Request) {
   try {
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const body = (await request.json().catch(() => ({}))) as {
       weekStart?: string;
     };
@@ -26,11 +26,9 @@ export async function POST(request: Request) {
     }
     if (
       error instanceof Error &&
-      [
-        "INVALID_WEEK_START",
-        "PUBLISH_WEEK_IN_PAST",
-        "PUBLISH_WEEK_OUT_OF_RANGE",
-      ].includes(error.message)
+      ["INVALID_WEEK_START", "PUBLISH_WEEK_IN_PAST", "PUBLISH_WEEK_OUT_OF_RANGE"].includes(
+        error.message
+      )
     ) {
       return NextResponse.json({ message: error.message }, { status: 400 });
     }

@@ -211,6 +211,28 @@ export type RetreatBookingDetailDto = RetreatBookingSummaryDto & {
   emergencyContactPhone: string;
 };
 
+export type ReplayAssetSummaryDto = {
+  id: string;
+  resourceType: string;
+  title: string;
+  subtitle: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  status: "processing" | "ready" | "delete_pending" | "deleted" | "sync_failed" | "delete_failed";
+  entitlementEndsAt: string | null;
+  deleteAfterAt: string | null;
+  deletedAt: string | null;
+  accessType: "participant" | "assigned_instructor" | "owner_admin";
+  isExpired: boolean;
+  canPlay: boolean;
+};
+
+export type ReplayPlaybackAccessDto = {
+  replayAssetId: string;
+  playbackUrl: string;
+  status: "processing" | "ready" | "delete_pending" | "deleted" | "sync_failed" | "delete_failed";
+};
+
 export type AdminCoachingApplicationDto = {
   id: string;
   applicantName: string;
@@ -272,6 +294,39 @@ export type AdminRetreatDetailDto = {
     balancePaidPence: number;
     totalPricePence: number;
     bookedAt: string;
+  }>;
+};
+
+export type AdminRetreatEvidenceDto = {
+  retreatDateId: string;
+  bookings: Array<{
+    id: string;
+    purchaserEmail: string;
+    attendeeEmail: string;
+    paymentStatus: string;
+    bookingStatus: string;
+    guestAcceptances: Array<{
+      id: string;
+      purchaserEmail: string;
+      type: string;
+      version: string;
+      acceptedAt: string;
+      surface: string;
+    }>;
+  }>;
+  gifts: Array<{
+    id: string;
+    purchaserEmail: string;
+    recipientEmail: string;
+    status: string;
+    guestAcceptances: Array<{
+      id: string;
+      purchaserEmail: string;
+      type: string;
+      version: string;
+      acceptedAt: string;
+      surface: string;
+    }>;
   }>;
 };
 
@@ -478,6 +533,13 @@ export type ClassSessionListItemDto = {
   roomSetupStatus?: "pending" | "ready" | "failed";
   roomSetupError?: string | null;
   communityModeEnabled: boolean;
+  isRecorded?: boolean;
+  recordingScope?: string | null;
+  replayAvailable?: boolean;
+  replayAccessDurationDays?: number | null;
+  chatEnabled?: boolean;
+  participantMicDefaultMuted?: boolean;
+  participantCameraDefaultOff?: boolean;
   threeHourOutcome?: "pending" | "reminded" | "cancelled_no_attendance";
   joinWindowOpensAt: string;
   preJoinWindowMinutes: number;

@@ -33,6 +33,9 @@ type UpcomingSession = {
   capacity: number;
   instructorName?: string | null;
   instructorBio?: string | null;
+  isRecorded?: boolean;
+  replayAvailable?: boolean;
+  chatEnabled?: boolean;
 };
 
 interface ClassDetailPageProps {
@@ -207,6 +210,11 @@ export function ClassDetailPage({
             <Badge variant="outline" className="border-brand-white/25 text-brand-white/75">
               {classDetail.level}
             </Badge>
+            {selectedSession?.isRecorded ? (
+              <Badge variant="outline" className="border-amber-200/35 text-amber-100">
+                Recorded
+              </Badge>
+            ) : null}
           </div>
 
           <h1 className="max-w-4xl text-4xl leading-tight md:text-5xl lg:text-6xl">
@@ -247,6 +255,17 @@ export function ClassDetailPage({
               <span>Max {selectedSession?.capacity || classDetail.maxSpaces} people</span>
             </div>
           </div>
+
+          {selectedSession?.isRecorded ? (
+            <div className="text-brand-white/78 mt-6 max-w-3xl rounded-2xl border border-amber-200/20 bg-amber-200/10 p-4 text-sm">
+              <p className="text-brand-white">This session is recorded.</p>
+              <p className="mt-1">
+                The instructor is intentionally recorded. Participants are not intended to be
+                recorded, but incidental capture can happen if you unmute, turn on camera, or use
+                chat.
+              </p>
+            </div>
+          ) : null}
 
           <div className="mt-8 flex flex-col gap-4 sm:flex-row">
             <BookClassButton

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useAuth } from "../../context/auth-context";
 import { DashboardLayout } from "../../components/dashboard-layout";
 import { MembershipPageSkeleton } from "../../components/dashboard-skeleton";
 import { Button } from "../../components/ui/button";
@@ -42,6 +43,22 @@ type PortalResult = {
   portalUrl: string;
 };
 
+type AcceptanceRequirementState = {
+  type: string;
+  surface: string;
+  currentVersion: string;
+  acceptedVersion: string | null;
+  policyVersionId: string;
+  acceptanceEventId: string | null;
+  isCurrent: boolean;
+};
+
+type CheckoutErrorResponse = {
+  message?: string;
+  code?: string;
+  requiredAcceptances?: AcceptanceRequirementState[];
+};
+
 function formatMembershipStatus(
   status: "active" | "paused" | "cancelled" | "expired" | "past_due"
 ) {
@@ -59,6 +76,14 @@ function formatBillingHistoryStatus(status: BillingHistoryItemDto["status"]) {
   return "Applied";
 }
 
+function formatAcceptanceLabel(type: string) {
+  if (type === "terms") return "Terms & Conditions";
+  if (type === "health_waiver") return "Health & Liability Waiver";
+  if (type === "health_data") return "Health Data Consent";
+  if (type === "recording_notice") return "Recording Notice";
+  return "Legal agreement";
+}
+
 export function MembershipPage({
   initialState,
   initialHistory,
@@ -68,6 +93,7 @@ export function MembershipPage({
   initialHistory?: BillingHistoryItemDto[];
   initialPricing?: PublicPricingDto | null;
 }) {
+  const { acceptTermsAndHealth, acceptHealthDataConsent, refreshAccountProfile } = useAuth();
   const searchParams = useSearchParams();
   const hasServerData =
     initialState !== undefined && initialHistory !== undefined && initialPricing !== undefined;
@@ -80,6 +106,9 @@ export function MembershipPage({
   const [showDisclosure, setShowDisclosure] = useState(false);
   const [pendingInterval, setPendingInterval] = useState<"monthly" | "annual" | null>(null);
   const [disclosureAccepted, setDisclosureAccepted] = useState(false);
+  const [pendingLegalAcceptances, setPendingLegalAcceptances] = useState<
+    AcceptanceRequirementState[]
+  >([]);
   const [error, setError] = useState("");
   const [pricing, setPricing] = useState<PublicPricingDto | null>(initialPricing || null);
   const membership = state?.membership || null;
@@ -163,7 +192,74 @@ export function MembershipPage({
   const startMembershipCheckout = async (billingInterval: "monthly" | "annual") => {
     setPendingInterval(billingInterval);
     setDisclosureAccepted(false);
+    setPendingLegalAcceptances([]);
+    setError("");
     setShowDisclosure(true);
+  };
+
+  const requestMembershipCheckout = async () => {
+    if (!pendingInterval) throw new Error("Choose a membership plan before continuing.");
+    const res = await fetch("/api/me/membership/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        plan: "movewell",
+        billingInterval: pendingInterval,
+        disclosureAccepted: true,
+        disclosureVersion: SUBSCRIPTION_DISCLOSURE_VERSION,
+      }),
+    });
+
+    const payload = (await res.json().catch(() => null)) as
+      | CheckoutErrorResponse
+      | CheckoutResult
+      | null;
+    if (!res.ok) {
+      if (
+        res.status === 409 &&
+        payload &&
+        "code" in payload &&
+        payload.code === "LEGAL_ACCEPTANCE_REQUIRED" &&
+        Array.isArray(payload.requiredAcceptances)
+      ) {
+        setPendingLegalAcceptances(payload.requiredAcceptances);
+        throw new Error(
+          "Updated legal agreements are required before checkout. Review them below, then continue again."
+        );
+      }
+      throw new Error(
+        payload && "message" in payload && typeof payload.message === "string"
+          ? payload.message
+          : "Failed to start membership checkout."
+      );
+    }
+
+    return payload as CheckoutResult;
+  };
+
+  const resolvePendingLegalAcceptances = async () => {
+    const needsTerms = pendingLegalAcceptances.some((item) => item.type === "terms");
+    const needsHealthWaiver = pendingLegalAcceptances.some((item) => item.type === "health_waiver");
+    const needsHealthData = pendingLegalAcceptances.some((item) => item.type === "health_data");
+    const unsupportedAcceptances = pendingLegalAcceptances.filter(
+      (item) =>
+        item.type !== "terms" && item.type !== "health_waiver" && item.type !== "health_data"
+    );
+
+    if (unsupportedAcceptances.length > 0) {
+      throw new Error("Some required agreements cannot be refreshed from this page yet.");
+    }
+
+    if (needsTerms || needsHealthWaiver) {
+      await acceptTermsAndHealth(needsTerms, needsHealthWaiver);
+    }
+
+    if (needsHealthData) {
+      await acceptHealthDataConsent();
+    }
+
+    await refreshAccountProfile();
+    setPendingLegalAcceptances([]);
   };
 
   const continueToMembershipCheckout = async () => {
@@ -171,18 +267,10 @@ export function MembershipPage({
     setWorking(true);
     setError("");
     try {
-      const res = await fetch("/api/me/membership/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plan: "movewell",
-          billingInterval: pendingInterval,
-          disclosureAccepted: true,
-          disclosureVersion: SUBSCRIPTION_DISCLOSURE_VERSION,
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to start membership checkout.");
-      const payload = (await res.json()) as CheckoutResult;
+      if (pendingLegalAcceptances.length > 0) {
+        await resolvePendingLegalAcceptances();
+      }
+      const payload = await requestMembershipCheckout();
       window.location.href = payload.checkoutUrl;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to start membership checkout.");
@@ -271,12 +359,12 @@ export function MembershipPage({
       ? `Ends ${membership.endsAt}`
       : membership.compliance.trialEndsAt && membership.status === "active"
         ? `Trial ends ${membership.compliance.trialEndsAt}`
-      : membership.accessActive
-        ? `Renews ${membership.renewalDate || "-"}`
-        : membership.endsAt
-          ? `Ended ${membership.endsAt}`
-          : formatMembershipStatus(membership.status)
-    : "Choose monthly, annual, or credits";
+        : membership.accessActive
+          ? `Renews ${membership.renewalDate || "-"}`
+          : membership.endsAt
+            ? `Ended ${membership.endsAt}`
+            : formatMembershipStatus(membership.status)
+    : "Choose monthly, annual, or class credits";
 
   const disclosure = useMemo(
     () => buildMembershipDisclosure(pendingInterval || preferredInterval),
@@ -313,7 +401,7 @@ export function MembershipPage({
       <AppMetricGrid className="mb-8 lg:grid-cols-3">
         <AppMetricCard
           label="Membership"
-          value={membership ? membership.label : "No active plan"}
+          value={membership ? membership.label : "Pay as you go"}
           detail={membershipDetail}
         />
         <AppMetricCard
@@ -473,7 +561,12 @@ export function MembershipPage({
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Button variant="outline" size="sm" onClick={() => void openBillingPortal()} disabled={portalWorking}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void openBillingPortal()}
+                disabled={portalWorking}
+              >
                 Manage billing details
               </Button>
               {membership.cancelAtPeriodEnd ? (
@@ -946,6 +1039,32 @@ export function MembershipPage({
           </DialogHeader>
 
           <div className="space-y-5">
+            {pendingLegalAcceptances.length > 0 ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-700" />
+                  <div className="space-y-2">
+                    <p className="font-medium">Updated agreements are required before checkout.</p>
+                    <p className="text-amber-900/80">
+                      This local account is missing the latest acceptance record for:
+                    </p>
+                    <ul className="space-y-1">
+                      {pendingLegalAcceptances.map((item) => (
+                        <li key={item.type} className="flex items-center gap-2">
+                          <Check className="h-3.5 w-3.5 flex-shrink-0 text-amber-700" />
+                          <span>{formatAcceptanceLabel(item.type)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-amber-900/80">
+                      Continue again to record the current versions on your account, then checkout
+                      will restart automatically.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             <div className="rounded-lg border bg-slate-50 p-4">
               <p className="text-brand-accent text-xs tracking-[0.18em] uppercase">
                 Key pre-contract information
@@ -1003,6 +1122,7 @@ export function MembershipPage({
               onClick={() => {
                 setShowDisclosure(false);
                 setPendingInterval(null);
+                setPendingLegalAcceptances([]);
               }}
               disabled={working}
             >
@@ -1012,7 +1132,13 @@ export function MembershipPage({
               onClick={() => void continueToMembershipCheckout()}
               disabled={working || !disclosureAccepted}
             >
-              {working ? "Opening checkout..." : "Acknowledge and continue"}
+              {working
+                ? pendingLegalAcceptances.length > 0
+                  ? "Refreshing agreements..."
+                  : "Opening checkout..."
+                : pendingLegalAcceptances.length > 0
+                  ? "Accept agreements and continue"
+                  : "Acknowledge and continue"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -5,10 +5,7 @@ import {
   CURRENT_HEALTH_WAIVER_VERSION,
   CURRENT_TERMS_VERSION,
 } from "@/data/legal-documents";
-import {
-  loginWithEmail,
-  makeE2eAuthEmail,
-} from "../../helpers/auth";
+import { loginWithEmail, makeE2eAuthEmail } from "../../helpers/auth";
 
 const pricingPayload = {
   currency: "GBP",
@@ -88,6 +85,81 @@ function createMembershipState(options?: {
   };
 }
 
+function createAccountResponse(overrides?: {
+  hasAgreedToTerms?: boolean;
+  hasAgreedToHealth?: boolean;
+  hasConsentedToHealthData?: boolean;
+  acceptedTermsVersion?: string | null;
+  acceptedHealthWaiverVersion?: string | null;
+  acceptedHealthDataConsentVersion?: string | null;
+  needsTermsReacceptance?: boolean;
+  needsHealthWaiverReacceptance?: boolean;
+  needsHealthDataConsentRefresh?: boolean;
+}) {
+  return {
+    profile: {
+      id: "account_user_1",
+      firstName: "Taylor",
+      lastName: "Member",
+      name: "Taylor Member",
+      email: "taylor@example.com",
+      isCoachingClient: false,
+      hasHealthProfile: true,
+      healthDeclarationStatus: "context_declared" as const,
+      healthDeclarationLastConfirmedAt: "2026-04-01T10:00:00.000Z",
+      healthDeclarationNeedsReview: false,
+      tracksFlareCheckIns: true,
+      dob: "1990-03-14",
+      gender: null,
+      ethnicity: null,
+      timezone: "Europe/London",
+      dateFormat: "DD/MM/YYYY",
+      isOnboarded: true,
+      hasAgreedToTerms: overrides?.hasAgreedToTerms ?? true,
+      hasAgreedToHealth: overrides?.hasAgreedToHealth ?? true,
+      termsAgreedAt: "2026-04-01T10:00:00.000Z",
+      healthAgreedAt: "2026-04-01T10:00:00.000Z",
+      acceptedTermsVersion: overrides?.acceptedTermsVersion ?? CURRENT_TERMS_VERSION,
+      acceptedHealthWaiverVersion:
+        overrides?.acceptedHealthWaiverVersion ?? CURRENT_HEALTH_WAIVER_VERSION,
+      currentTermsVersion: CURRENT_TERMS_VERSION,
+      currentHealthWaiverVersion: CURRENT_HEALTH_WAIVER_VERSION,
+      needsTermsReacceptance: overrides?.needsTermsReacceptance ?? false,
+      needsHealthWaiverReacceptance: overrides?.needsHealthWaiverReacceptance ?? false,
+      hasConsentedToHealthData: overrides?.hasConsentedToHealthData ?? true,
+      healthDataConsentedAt: "2026-04-01T10:00:00.000Z",
+      acceptedHealthDataConsentVersion:
+        overrides?.acceptedHealthDataConsentVersion ?? CURRENT_HEALTH_DATA_CONSENT_VERSION,
+      currentHealthDataConsentVersion: CURRENT_HEALTH_DATA_CONSENT_VERSION,
+      needsHealthDataConsentRefresh: overrides?.needsHealthDataConsentRefresh ?? false,
+      heardAboutSource: "google",
+      heardAboutDetail: null,
+      onboarding: {
+        isComplete: true,
+        checklistComplete: true,
+        nextStep: "complete" as const,
+        missingSteps: [],
+      },
+    },
+    notifications: {
+      userId: "account_user_1",
+      classReminders: true,
+      scheduleUpdates: true,
+      programAnnouncements: true,
+      marketingEmails: false,
+      updatedAt: "2026-04-01T10:00:00.000Z",
+    },
+    referral: {
+      referralCode: "TESTCODE",
+      referralLink: "http://127.0.0.1:3001/referrals/TESTCODE",
+      referralCount: 0,
+      referralEarnedPence: 0,
+      referralBalancePence: 0,
+      history: [],
+    },
+  };
+}
+
 async function seedMember(email: string) {
   const user = await db.user.create({
     data: {
@@ -118,7 +190,7 @@ test("membership page opens the billing portal from the active membership state"
   const email = makeE2eAuthEmail("membership-portal");
   await seedMember(email);
 
-  let currentState = createMembershipState();
+  const currentState = createMembershipState();
 
   await page.route("**/api/me/membership", async (route) => {
     await route.fulfill({ json: currentState });
@@ -232,6 +304,145 @@ test("membership checkout starts from the purchase state", async ({ page, baseUR
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Acknowledge and continue" }).click();
   await expect(page).toHaveURL(/\/dashboard\/membership\?checkout=success$/);
+});
+
+test("membership checkout can recover from a legal acceptance conflict", async ({
+  page,
+  baseURL,
+}) => {
+  const email = makeE2eAuthEmail("membership-acceptance-refresh");
+  await seedMember(email);
+
+  let checkoutAttempts = 0;
+
+  await page.route("**/api/me/membership", async (route) => {
+    await route.fulfill({
+      json: {
+        membership: null,
+        credits: { balance: 0, summary: [] },
+        referral: { balancePence: 0 },
+        complianceHistory: [],
+      },
+    });
+  });
+  await page.route("**/api/me/billing-history?limit=30", async (route) => {
+    await route.fulfill({ json: [] });
+  });
+  await page.route("**/api/public/pricing", async (route) => {
+    await route.fulfill({ json: pricingPayload });
+  });
+  await page.route("**/api/me", async (route) => {
+    if (route.request().method() === "PATCH") {
+      await route.fulfill({
+        json: createAccountResponse({
+          hasAgreedToTerms: true,
+          hasAgreedToHealth: true,
+          hasConsentedToHealthData: true,
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      json: createAccountResponse({
+        hasAgreedToTerms: true,
+        hasAgreedToHealth: true,
+        hasConsentedToHealthData: true,
+      }),
+    });
+  });
+  await page.route("**/api/me/membership/checkout", async (route) => {
+    checkoutAttempts += 1;
+
+    if (checkoutAttempts === 1) {
+      await route.fulfill({
+        status: 409,
+        json: {
+          code: "LEGAL_ACCEPTANCE_REQUIRED",
+          requiredAcceptances: [
+            {
+              type: "terms",
+              surface: "membership_checkout",
+              currentVersion: CURRENT_TERMS_VERSION,
+              acceptedVersion: "2025-10-01",
+              policyVersionId: "policy_terms_current",
+              acceptanceEventId: "event_terms_legacy",
+              isCurrent: false,
+            },
+            {
+              type: "health_waiver",
+              surface: "membership_checkout",
+              currentVersion: CURRENT_HEALTH_WAIVER_VERSION,
+              acceptedVersion: "2025-10-01",
+              policyVersionId: "policy_health_current",
+              acceptanceEventId: "event_health_legacy",
+              isCurrent: false,
+            },
+          ],
+        },
+      });
+      return;
+    }
+
+    await route.fulfill({
+      json: {
+        checkoutUrl: new URL("/dashboard/membership?checkout=success", baseURL).toString(),
+      },
+    });
+  });
+
+  await loginWithEmail(page, email);
+  await page.goto("/dashboard/membership");
+
+  await page.getByRole("button", { name: /Start Monthly/i }).click();
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Acknowledge and continue" }).click();
+  await expect(page.getByText("Updated agreements are required before checkout.")).toBeVisible();
+
+  await page.getByRole("button", { name: "Accept agreements and continue" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/membership\?checkout=success$/);
+});
+
+test("membership checkout shows the stale disclosure message instead of a generic error", async ({
+  page,
+}) => {
+  const email = makeE2eAuthEmail("membership-stale-disclosure");
+  await seedMember(email);
+
+  await page.route("**/api/me/membership", async (route) => {
+    await route.fulfill({
+      json: {
+        membership: null,
+        credits: { balance: 0, summary: [] },
+        referral: { balancePence: 0 },
+        complianceHistory: [],
+      },
+    });
+  });
+  await page.route("**/api/me/billing-history?limit=30", async (route) => {
+    await route.fulfill({ json: [] });
+  });
+  await page.route("**/api/public/pricing", async (route) => {
+    await route.fulfill({ json: pricingPayload });
+  });
+  await page.route("**/api/me/membership/checkout", async (route) => {
+    await route.fulfill({
+      status: 409,
+      json: {
+        message: "Subscription disclosure is out of date. Refresh and review it again.",
+      },
+    });
+  });
+
+  await loginWithEmail(page, email);
+  await page.goto("/dashboard/membership");
+
+  await page.getByRole("button", { name: /Start Monthly/i }).click();
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Acknowledge and continue" }).click();
+  await expect(
+    page.getByText("Subscription disclosure is out of date. Refresh and review it again.")
+  ).toBeVisible();
 });
 
 test("credit checkout starts from the purchase state", async ({ page, baseURL }) => {

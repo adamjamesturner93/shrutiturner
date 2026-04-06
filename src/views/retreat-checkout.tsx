@@ -23,8 +23,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/auth-context";
+import {
+  CURRENT_HEALTH_DATA_CONSENT_VERSION,
+  CURRENT_HEALTH_WAIVER_VERSION,
+  CURRENT_TERMS_VERSION,
+} from "@/data/legal-documents";
 import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content";
 import { useI18n } from "@/lib/use-i18n";
+
+type PendingAcceptance = {
+  type: string;
+  currentVersion: string;
+};
 
 function formatMoney(pence: number, currency = "GBP") {
   return new Intl.NumberFormat("en-GB", {
@@ -66,7 +76,7 @@ function getRoomGuestLabel(roomOption: RetreatRoomOptionContent) {
 export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedContent | null }) {
   const searchParams = useSearchParams();
   const { fmtDate, fmtDateRange } = useI18n();
-  const { user, acceptTermsAndHealth, acceptHealthDataConsent } = useAuth();
+  const { user, acceptTermsAndHealth, acceptHealthDataConsent, refreshAccountProfile } = useAuth();
 
   const queryDateId = searchParams.get("date");
   const queryRoomId = searchParams.get("room");
@@ -80,6 +90,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
   const [selectedRoomId, setSelectedRoomId] = useState(queryRoomId || "");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingLegalAcceptances, setPendingLegalAcceptances] = useState<PendingAcceptance[]>([]);
   const [formData, setFormData] = useState({
     purchaserFirstName: "",
     purchaserLastName: "",
@@ -189,6 +200,31 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
     ? formData.attendeeEmail
     : purchaserEmail;
 
+  const resolvePendingLegalAcceptances = async () => {
+    const needsTerms = pendingLegalAcceptances.some((item) => item.type === "terms");
+    const needsHealthWaiver = pendingLegalAcceptances.some((item) => item.type === "health_waiver");
+    const needsHealthData = pendingLegalAcceptances.some((item) => item.type === "health_data");
+    const unsupportedAcceptances = pendingLegalAcceptances.filter(
+      (item) =>
+        item.type !== "terms" && item.type !== "health_waiver" && item.type !== "health_data"
+    );
+
+    if (unsupportedAcceptances.length > 0) {
+      throw new Error("Some required agreements cannot be refreshed from this page yet.");
+    }
+
+    if (needsTerms || needsHealthWaiver) {
+      await acceptTermsAndHealth(needsTerms, needsHealthWaiver);
+    }
+
+    if (needsHealthData) {
+      await acceptHealthDataConsent();
+    }
+
+    await refreshAccountProfile();
+    setPendingLegalAcceptances([]);
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
@@ -242,6 +278,10 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
     }
 
     try {
+      if (pendingLegalAcceptances.length > 0) {
+        await resolvePendingLegalAcceptances();
+      }
+
       if (purchaseMode === "self" && user) {
         if (!user.hasAgreedToTerms || !user.hasAgreedToHealth) {
           await acceptTermsAndHealth(!user.hasAgreedToTerms, !user.hasAgreedToHealth);
@@ -275,11 +315,17 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
           guestTwoEmail: formData.guestTwoEmail,
           guestTwoDietaryRequirements: formData.guestTwoDietaryRequirements,
           acceptedTermsVersion:
-            purchaseMode === "self" ? (user?.currentTermsVersion ?? null) : undefined,
+            purchaseMode === "self"
+              ? (user?.currentTermsVersion ?? CURRENT_TERMS_VERSION)
+              : CURRENT_TERMS_VERSION,
           acceptedHealthWaiverVersion:
-            purchaseMode === "self" ? (user?.currentHealthWaiverVersion ?? null) : undefined,
+            purchaseMode === "self"
+              ? (user?.currentHealthWaiverVersion ?? CURRENT_HEALTH_WAIVER_VERSION)
+              : CURRENT_HEALTH_WAIVER_VERSION,
           acceptedHealthDataVersion:
-            purchaseMode === "self" ? (user?.currentHealthDataConsentVersion ?? null) : undefined,
+            purchaseMode === "self"
+              ? (user?.currentHealthDataConsentVersion ?? CURRENT_HEALTH_DATA_CONSENT_VERSION)
+              : CURRENT_HEALTH_DATA_CONSENT_VERSION,
           recipientFirstName: formData.recipientFirstName,
           recipientLastName: formData.recipientLastName,
           recipientEmail: formData.recipientEmail,
@@ -291,8 +337,29 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
       const payload = (await response.json().catch(() => null)) as {
         checkoutUrl?: string;
         message?: string;
+        code?: string;
+        requiredAcceptances?: PendingAcceptance[];
       } | null;
       if (!response.ok || !payload?.checkoutUrl) {
+        if (
+          response.status === 409 &&
+          payload?.code === "LEGAL_ACCEPTANCE_REQUIRED" &&
+          Array.isArray(payload.requiredAcceptances)
+        ) {
+          setPendingLegalAcceptances(payload.requiredAcceptances);
+          throw new Error(
+            "Updated legal agreements are required before checkout. Review them below, then continue again."
+          );
+        }
+        if (
+          response.status === 409 &&
+          payload?.code === "GUEST_LEGAL_ACCEPTANCE_REFRESH_REQUIRED"
+        ) {
+          throw new Error(
+            payload.message ||
+              "The retreat legal agreements have changed. Refresh this page and review the latest versions before continuing."
+          );
+        }
         throw new Error(payload?.message || "Failed to start checkout.");
       }
 
@@ -312,7 +379,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
         noIndex
       />
 
-      <section className="marketing-grid overflow-hidden px-4 py-10 text-brand-white md:py-14">
+      <section className="marketing-grid text-brand-white overflow-hidden px-4 py-10 md:py-14">
         <div className="container mx-auto max-w-6xl">
           <Link
             href={`/retreats/${retreat.slug}`}
@@ -327,17 +394,17 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
               <h1 className="text-4xl leading-tight md:text-5xl">
                 {purchaseMode === "gift" ? "Gift This Retreat" : "Complete Your Retreat Booking"}
               </h1>
-              <p className="mt-4 max-w-2xl text-lg leading-relaxed text-brand-white/80">
+              <p className="text-brand-white/80 mt-4 max-w-2xl text-lg leading-relaxed">
                 {retreat.title} · {retreat.location}
               </p>
             </div>
 
-            <div className="overflow-hidden rounded-[2rem] border border-brand-white/10 bg-brand-white/8 p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
-              <div className="rounded-[1.45rem] bg-brand-white/8 p-6">
+            <div className="border-brand-white/10 bg-brand-white/8 overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+              <div className="bg-brand-white/8 rounded-[1.45rem] p-6">
                 <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
                   Selected pricing
                 </p>
-                <div className="mt-4 space-y-2 text-sm text-brand-white/84">
+                <div className="text-brand-white/84 mt-4 space-y-2 text-sm">
                   {selectedRoom ? (
                     <>
                       <p>
@@ -378,7 +445,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
               </div>
             ) : null}
 
-            <div className="rounded-[1.5rem] border border-brand-dark/10 bg-background p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+            <div className="border-brand-dark/10 bg-background rounded-[1.5rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
               <div className="flex flex-wrap gap-3">
                 <Button
                   type="button"

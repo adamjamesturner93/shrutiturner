@@ -1,11 +1,11 @@
 import { connection, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { getAdminRetreatDetail } from "@/lib/retreats/service";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     await connection();
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const { id } = await context.params;
     const detail = await getAdminRetreatDetail(id);
     return NextResponse.json(detail);

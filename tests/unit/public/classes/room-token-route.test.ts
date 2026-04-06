@@ -9,6 +9,8 @@ const buildSessionParticipantPermissionsMock = vi.fn();
 const getEffectiveSessionCommunityModeMock = vi.fn();
 const setUpSessionRoomMock = vi.fn();
 const getHealthAccessStateMock = vi.fn();
+const assertCurrentAcceptancesMock = vi.fn();
+const isAcceptanceRequiredErrorMock = vi.fn();
 
 vi.mock("@/lib/api/auth-user", () => ({
   requireSessionUser: requireSessionUserMock,
@@ -37,11 +39,18 @@ vi.mock("@/lib/health/health-service", () => ({
   getHealthAccessState: getHealthAccessStateMock,
 }));
 
+vi.mock("@/lib/legal/acceptance-service", () => ({
+  assertCurrentAcceptances: assertCurrentAcceptancesMock,
+  isAcceptanceRequiredError: isAcceptanceRequiredErrorMock,
+}));
+
 const route = await import("@/app/api/classes/sessions/[id]/room-token/route");
 
 describe("POST /api/classes/sessions/[id]/room-token", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    assertCurrentAcceptancesMock.mockResolvedValue([]);
+    isAcceptanceRequiredErrorMock.mockReturnValue(false);
     isDailyConfiguredMock.mockReturnValue(true);
     requireSessionUserMock.mockResolvedValue({ id: "user_123" });
     getSessionAccessContextMock.mockResolvedValue({
@@ -52,6 +61,9 @@ describe("POST /api/classes/sessions/[id]/room-token", () => {
         communityModeEnabled: false,
         communityModeUpdatedAt: null,
         instructorUserId: "instructor_123",
+        isRecorded: false,
+        participantMicDefaultMuted: false,
+        participantCameraDefaultOff: false,
       },
     });
     buildSessionParticipantPermissionsMock.mockReturnValue({ permissions: { canSend: true } });
@@ -96,6 +108,104 @@ describe("POST /api/classes/sessions/[id]/room-token", () => {
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({
       message: "Warm-up has finished, so late joining is no longer available.",
+    });
+  });
+
+  it("returns a dedicated blocked-participant denial", async () => {
+    getRoomTokenAccessMock.mockRejectedValue(new Error("PARTICIPANT_BLOCKED"));
+
+    const response = await route.POST(new Request("http://localhost"), {
+      params: Promise.resolve({ id: "session_123" }),
+    });
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      message: "You cannot re-enter this session.",
+    });
+  });
+
+  it("returns a structured re-acceptance response when class join legal acceptance is stale", async () => {
+    const requiredAcceptances = [
+      {
+        type: "terms",
+        surface: "class_join",
+        currentVersion: "terms.v2",
+        acceptedVersion: null,
+        policyVersionId: "policy_terms_v2",
+        acceptanceEventId: null,
+        isCurrent: false,
+      },
+    ];
+    getSessionAccessContextMock.mockResolvedValue({
+      session: {
+        endsAtUtc: "2026-03-24T19:00:00.000Z",
+        typeSnapshot: "Strength",
+        capacity: 10,
+        communityModeEnabled: false,
+        communityModeUpdatedAt: null,
+        instructorUserId: "instructor_123",
+        isRecorded: true,
+        participantMicDefaultMuted: true,
+        participantCameraDefaultOff: true,
+      },
+    });
+    const acceptanceError = {
+      message: "LEGAL_ACCEPTANCE_REQUIRED",
+      details: {
+        code: "LEGAL_ACCEPTANCE_REQUIRED",
+        requiredAcceptances,
+      },
+    };
+    assertCurrentAcceptancesMock.mockRejectedValue(acceptanceError);
+    isAcceptanceRequiredErrorMock.mockImplementation(
+      (error) => error === acceptanceError || error?.message === "LEGAL_ACCEPTANCE_REQUIRED"
+    );
+
+    const response = await route.POST(new Request("http://localhost"), {
+      params: Promise.resolve({ id: "session_123" }),
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      code: "LEGAL_ACCEPTANCE_REQUIRED",
+      requiredAcceptances,
+    });
+    expect(getRoomTokenAccessMock).not.toHaveBeenCalled();
+  });
+
+  it("does not expose replay metadata for standard classes even when legacy recording flags exist", async () => {
+    getSessionAccessContextMock.mockResolvedValue({
+      session: {
+        endsAtUtc: "2026-03-24T19:00:00.000Z",
+        typeSnapshot: "Strength",
+        capacity: 10,
+        communityModeEnabled: false,
+        communityModeUpdatedAt: null,
+        instructorUserId: "instructor_123",
+        isRecorded: true,
+        replayAvailable: true,
+        participantMicDefaultMuted: true,
+        participantCameraDefaultOff: true,
+        status: "live",
+      },
+    });
+    getRoomTokenAccessMock.mockResolvedValue({
+      roomName: "room_123",
+      roomUrl: "https://daily.example/room_123",
+      userName: "Shruti",
+      isOwner: true,
+      lateJoinCutoffAt: new Date("2026-03-24T18:05:00.000Z"),
+      hasPreviouslyJoined: true,
+    });
+
+    const response = await route.POST(new Request("http://localhost"), {
+      params: Promise.resolve({ id: "session_123" }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      token: "token_123",
+      isRecorded: false,
     });
   });
 });

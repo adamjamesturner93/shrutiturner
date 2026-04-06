@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getClassSessionDetail } from "@/lib/classes/session-service";
+import { getSessionAccessScope } from "@/lib/authz/access";
+import { getClassSessionDetailForScope } from "@/lib/classes/session-service";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params;
     const session = await auth();
-    const detail = await getClassSessionDetail(id, session?.user?.id);
+    const scope = await getSessionAccessScope(session?.user?.id, id);
+    const detail = await getClassSessionDetailForScope(id, session?.user?.id, scope);
     if (!detail) {
       return NextResponse.json({ message: "Session not found" }, { status: 404 });
     }

@@ -174,6 +174,8 @@ describe("POST /api/newsletter/subscribe", () => {
       email: "reader@example.com",
       userId: null,
       source: "subscribe",
+      surface: "newsletter_signup_subscribe",
+      wordingText: "No spam. Unsubscribe anytime.",
     });
     expect(sendEmailMock).toHaveBeenCalledTimes(1);
     expect(sendEmailMock.mock.calls[0]?.[0]).toMatchObject({

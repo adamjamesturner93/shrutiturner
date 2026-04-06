@@ -80,7 +80,12 @@ describe("account journeys integration", () => {
       programAnnouncements: true,
       marketingEmails: false,
     });
-    expect(syncMarketingPreferenceForUserMock).toHaveBeenCalledWith(user.id, false);
+    expect(syncMarketingPreferenceForUserMock).toHaveBeenCalledWith(user.id, false, {
+      source: "account",
+      surface: "account_notifications",
+      wordingText:
+        "I want to receive marketing emails, newsletter updates, and occasional offers from Shruti Turner. I can unsubscribe at any time.",
+    });
   });
 
   it("persists onboarding profile, legal, source, and health data for later account views", async () => {

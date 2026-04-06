@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import {
   deleteClassTimetableRule,
   updateClassTimetableRule,
@@ -7,7 +7,7 @@ import {
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const { id } = await context.params;
     const body = (await request.json()) as {
       classDefinitionSlug?: string;
@@ -72,7 +72,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
 export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const { id } = await context.params;
     await deleteClassTimetableRule(id);
     return NextResponse.json({ ok: true });

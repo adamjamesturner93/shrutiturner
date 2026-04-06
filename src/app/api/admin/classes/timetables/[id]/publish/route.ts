@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { publishClassTimetableRule } from "@/lib/classes/timetable-service";
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdminUser();
+    await requireStaffAdminUser();
     const { id } = await context.params;
     const result = await publishClassTimetableRule(id);
     return NextResponse.json(result);

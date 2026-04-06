@@ -1,12 +1,12 @@
 import { connection, NextResponse } from "next/server";
 import { ClassSessionStatus } from "@prisma/client";
-import { requireAdminUser } from "@/lib/api/auth-user";
+import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { listAdminClassSessions } from "@/lib/classes/session-service";
 
 export async function GET(request: Request) {
   try {
     await connection();
-    const adminUser = await requireAdminUser();
+    const adminUser = await requireStaffAdminUser();
     const url = new URL(request.url);
     const from = url.searchParams.get("from");
     const to = url.searchParams.get("to");
