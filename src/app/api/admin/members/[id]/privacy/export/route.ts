@@ -7,7 +7,15 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     const admin = await requireOwnerAdminUser();
     const { id } = await context.params;
     const result = await createPrivacyExportRequest(admin.id, id);
-    return NextResponse.json(result);
+    return NextResponse.json({
+      requestId: result.request.id,
+      checksum: result.checksum,
+      generatedAt: result.request.generatedAt?.toISOString() || null,
+      includedSections: result.includedSections,
+      rowCounts: result.rowCounts,
+      fileName: result.fileName,
+      downloadUrl: `/api/admin/privacy/requests/${result.request.id}/download`,
+    });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });

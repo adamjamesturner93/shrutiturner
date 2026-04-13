@@ -1,8 +1,14 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { ClassRoomSetupStatus, ClassSessionStatus, CreditEntryType } from "@prisma/client";
+import {
+  AcceptanceType,
+  ClassRoomSetupStatus,
+  ClassSessionStatus,
+  CreditEntryType,
+} from "@prisma/client";
 import { CURRENT_HEALTH_DATA_CONSENT_VERSION } from "@/data/legal-documents";
 import { db } from "@/lib/db";
 import { addCredits } from "@/lib/credits/credit-service";
+import { recordAcceptanceEvent } from "@/lib/legal/acceptance-service";
 
 const {
   createSessionRoomMock,
@@ -132,6 +138,18 @@ describe("Daily room lifecycle for class sessions", () => {
         declarationStatus: "none_declared",
       },
     });
+
+    for (const type of [
+      AcceptanceType.terms,
+      AcceptanceType.health_waiver,
+      AcceptanceType.health_data,
+    ]) {
+      await recordAcceptanceEvent({
+        userId: member.id,
+        type,
+        surface: "class_booking",
+      });
+    }
 
     await addCredits({
       userId: member.id,

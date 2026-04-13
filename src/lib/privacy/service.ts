@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { PrivacyRequestStatus, PrivacyRequestType, Prisma } from "@prisma/client";
 import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { db } from "@/lib/db";
+import { createZipArchive } from "@/lib/privacy/zip";
 
 function buildChecksum(value: string) {
   return createHash("sha256").update(value).digest("hex");
@@ -9,6 +10,15 @@ function buildChecksum(value: string) {
 
 function anonymizedEmail(userId: string) {
   return `deleted+${userId}@redacted.invalid`;
+}
+
+function toJsonString(value: unknown) {
+  return JSON.stringify(value, null, 2);
+}
+
+function countRows(value: unknown) {
+  if (Array.isArray(value)) return value.length;
+  return value ? 1 : 0;
 }
 
 export async function buildUserExportData(userId: string) {
@@ -26,6 +36,10 @@ export async function buildUserExportData(userId: string) {
     retreatBookings,
     smallGroups,
     billingEvents,
+    privacyRequests,
+    coachingApplications,
+    contactSubmissions,
+    giftPurchases,
   ] = await Promise.all([
     db.user.findUnique({
       where: { id: userId },
@@ -107,6 +121,24 @@ export async function buildUserExportData(userId: string) {
       where: { userId },
       orderBy: { createdAt: "desc" },
     }),
+    db.privacyRequest.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+    }),
+    db.coachingApplication.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+    }),
+    db.contactSubmission.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+    }),
+    db.giftPurchase.findMany({
+      where: {
+        OR: [{ purchaserUserId: userId }, { redeemedByUserId: userId }],
+      },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
   return {
@@ -124,13 +156,155 @@ export async function buildUserExportData(userId: string) {
     consentHistory: acceptances,
     retreatBookings,
     smallGroupEnrollments: smallGroups,
+    privacyRequests,
+    coachingApplications,
+    contactSubmissions,
+    giftPurchases,
   };
+}
+
+type PrivacyExportData = Awaited<ReturnType<typeof buildUserExportData>>;
+
+type PrivacyExportManifest = {
+  requestId: string;
+  userId: string;
+  actorUserId: string;
+  generatedAt: string;
+  checksum: string;
+  includedSections: string[];
+  rowCounts: Record<string, number>;
+};
+
+function getPrivacyExportSections(exportData: PrivacyExportData) {
+  return [
+    { key: "account", fileName: "account.json", data: exportData.account },
+    { key: "newsletter", fileName: "newsletter.json", data: exportData.newsletter },
+    { key: "memberships", fileName: "memberships.json", data: exportData.memberships },
+    { key: "billing-events", fileName: "billing-events.json", data: exportData.billingEvents },
+    { key: "class-bookings", fileName: "class-bookings.json", data: exportData.classBookings },
+    { key: "attendance", fileName: "attendance.json", data: exportData.attendance },
+    { key: "health-profile", fileName: "health-profile.json", data: exportData.healthProfile },
+    { key: "health-revisions", fileName: "health-revisions.json", data: exportData.healthRevisions },
+    { key: "consent-history", fileName: "consent-history.json", data: exportData.consentHistory },
+    { key: "retreat-bookings", fileName: "retreat-bookings.json", data: exportData.retreatBookings },
+    {
+      key: "small-group-enrolments",
+      fileName: "small-group-enrolments.json",
+      data: exportData.smallGroupEnrollments,
+    },
+    { key: "blog-comments", fileName: "blog-comments.json", data: exportData.blogComments },
+    { key: "blog-reactions", fileName: "blog-reactions.json", data: exportData.blogReactions },
+    {
+      key: "privacy-requests",
+      fileName: "privacy-requests.json",
+      data: exportData.privacyRequests,
+    },
+    {
+      key: "coaching-applications",
+      fileName: "coaching-applications.json",
+      data: exportData.coachingApplications,
+    },
+    {
+      key: "contact-submissions",
+      fileName: "contact-submissions.json",
+      data: exportData.contactSubmissions,
+    },
+    { key: "gift-purchases", fileName: "gift-purchases.json", data: exportData.giftPurchases },
+  ] as const;
+}
+
+function buildPrivacyExportMetadata(exportData: PrivacyExportData) {
+  const sections = getPrivacyExportSections(exportData);
+  const includedSections = sections.map((section) => section.key);
+  const rowCounts = Object.fromEntries(
+    sections.map((section) => [section.key, countRows(section.data)])
+  );
+
+  return {
+    includedSections,
+    rowCounts,
+  };
+}
+
+function buildPrivacyExportReadme(manifest: PrivacyExportManifest) {
+  return [
+    "Shruti Turner privacy export",
+    "",
+    `Request ID: ${manifest.requestId}`,
+    `Subject user ID: ${manifest.userId}`,
+    `Generated at: ${manifest.generatedAt}`,
+    `Checksum: ${manifest.checksum}`,
+    "",
+    "Files included:",
+    ...manifest.includedSections.map(
+      (section) => `- ${section} (${manifest.rowCounts[section] || 0} record(s))`
+    ),
+    "",
+    "This package is generated for privacy-access handling and contains the server-side records",
+    "currently associated with the subject account in the live platform.",
+  ].join("\n");
+}
+
+function buildPrivacyExportArchive(input: {
+  requestId: string;
+  userId: string;
+  actorUserId: string;
+  generatedAt: Date;
+  checksum: string;
+  exportData: PrivacyExportData;
+  includedSections: string[];
+  rowCounts: Record<string, number>;
+}) {
+  const manifest: PrivacyExportManifest = {
+    requestId: input.requestId,
+    userId: input.userId,
+    actorUserId: input.actorUserId,
+    generatedAt: input.generatedAt.toISOString(),
+    checksum: input.checksum,
+    includedSections: input.includedSections,
+    rowCounts: input.rowCounts,
+  };
+
+  const entries = [
+    {
+      name: "README.txt",
+      data: buildPrivacyExportReadme(manifest),
+      modifiedAt: input.generatedAt,
+    },
+    {
+      name: "manifest.json",
+      data: toJsonString(manifest),
+      modifiedAt: input.generatedAt,
+    },
+    {
+      name: "summary.json",
+      data: toJsonString({
+        exportedAt: input.exportData.exportedAt,
+        includedSections: input.includedSections,
+        rowCounts: input.rowCounts,
+      }),
+      modifiedAt: input.generatedAt,
+    },
+    ...getPrivacyExportSections(input.exportData).map((section) => ({
+      name: section.fileName,
+      data: toJsonString(section.data),
+      modifiedAt: input.generatedAt,
+    })),
+  ];
+
+  return createZipArchive(entries);
+}
+
+function toExportDownloadFileName(userId: string, requestId: string) {
+  return `privacy-export-${userId}-${requestId}.zip`;
 }
 
 export async function createPrivacyExportRequest(actorUserId: string, userId: string) {
   const exportData = await buildUserExportData(userId);
   const serialized = JSON.stringify(exportData);
   const checksum = buildChecksum(serialized);
+  const generatedAt = new Date();
+  const metadata = buildPrivacyExportMetadata(exportData);
 
   const request = await db.privacyRequest.create({
     data: {
@@ -138,9 +312,11 @@ export async function createPrivacyExportRequest(actorUserId: string, userId: st
       actorUserId,
       type: PrivacyRequestType.export,
       status: PrivacyRequestStatus.completed,
-      generatedAt: new Date(),
+      generatedAt,
       summaryChecksum: checksum,
       summaryJson: exportData as Prisma.InputJsonValue,
+      exportSectionsJson: metadata.includedSections as Prisma.InputJsonValue,
+      exportRowCountsJson: metadata.rowCounts as Prisma.InputJsonValue,
     },
   });
 
@@ -152,13 +328,60 @@ export async function createPrivacyExportRequest(actorUserId: string, userId: st
     metadataJson: {
       userId,
       checksum,
+      sections: metadata.includedSections,
+      rowCounts: metadata.rowCounts,
     },
   });
 
   return {
     request,
-    exportData,
     checksum,
+    includedSections: metadata.includedSections,
+    rowCounts: metadata.rowCounts,
+    fileName: toExportDownloadFileName(userId, request.id),
+  };
+}
+
+export async function downloadPrivacyExportRequest(requestId: string) {
+  const request = await db.privacyRequest.findUnique({
+    where: { id: requestId },
+  });
+
+  if (!request || request.type !== PrivacyRequestType.export) {
+    throw new Error("NOT_FOUND");
+  }
+
+  if (
+    request.status !== PrivacyRequestStatus.completed ||
+    !request.generatedAt ||
+    !request.summaryChecksum ||
+    !request.summaryJson
+  ) {
+    throw new Error("EXPORT_NOT_READY");
+  }
+
+  const exportData = request.summaryJson as unknown as PrivacyExportData;
+  const metadata = buildPrivacyExportMetadata(exportData);
+  const archive = buildPrivacyExportArchive({
+    requestId: request.id,
+    userId: request.userId,
+    actorUserId: request.actorUserId,
+    generatedAt: request.generatedAt,
+    checksum: request.summaryChecksum,
+    exportData,
+    includedSections:
+      (Array.isArray(request.exportSectionsJson)
+        ? request.exportSectionsJson.map((section) => String(section))
+        : metadata.includedSections) || metadata.includedSections,
+    rowCounts:
+      (request.exportRowCountsJson as Record<string, number> | null) || metadata.rowCounts,
+  });
+
+  return {
+    request,
+    fileName: toExportDownloadFileName(request.userId, request.id),
+    contentType: "application/zip",
+    archive,
   };
 }
 
@@ -194,6 +417,26 @@ export async function previewPrivacyDeletion(userId: string) {
       retreatBookings,
       programmeEnrollments,
     },
+    deletes: [
+      "Active Auth.js sessions",
+      "Health profile revisions",
+      "Structured health condition selections",
+      "Live health profile record",
+    ],
+    anonymises: [
+      "Core account profile fields",
+      "Retreat booking personal and health fields",
+      "Small-group attendee identity fields",
+      "Coaching application answers and notes",
+      "Contact submissions",
+      "Newsletter subscriber identity",
+    ],
+    preserves: [
+      "Finance and payment records",
+      "Dispute and audit trails",
+      "Membership and booking identifiers",
+      "Privacy request records",
+    ],
   };
 }
 

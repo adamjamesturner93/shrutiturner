@@ -298,6 +298,7 @@ enum PrivacyRequestStatus {
 enum ScheduledJobRunStatus {
   started
   succeeded
+  skipped
   partial
   failed
 }
@@ -422,6 +423,7 @@ model User {
   retreatInstructorAssignments          RetreatDateInstructorAssignment[]
   smallGroupInstructorAssignments       SmallGroupProgrammeInstructorAssignment[]
   scheduledJobRuns                      ScheduledJobRun[]                         @relation("ScheduledJobActor")
+  scheduledJobLeases                    ScheduledJobLease[]                       @relation("ScheduledJobLeaseActor")
   privacyRequestsForSubject             PrivacyRequest[]                          @relation("PrivacyRequestSubject")
   privacyRequestsActed                  PrivacyRequest[]                          @relation("PrivacyRequestActor")
   adminActionLogs                       AdminActionLog[]                          @relation("AdminActionActor")
@@ -584,6 +586,8 @@ model PrivacyRequest {
   status          PrivacyRequestStatus @default(pending)
   summaryChecksum String?
   summaryJson     Json?
+  exportSectionsJson Json?
+  exportRowCountsJson Json?
   blockReason     String?
   generatedAt     DateTime?
   executedAt      DateTime?
@@ -634,6 +638,19 @@ model ScheduledJobRun {
 
   @@index([jobName, createdAt])
   @@index([status, createdAt])
+}
+
+model ScheduledJobLease {
+  jobName      String   @id
+  leaseId      String   @unique
+  actorUserId  String?
+  leasedUntil  DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  actor User? @relation("ScheduledJobLeaseActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([leasedUntil])
 }
 
 model BillingDisputeCase {

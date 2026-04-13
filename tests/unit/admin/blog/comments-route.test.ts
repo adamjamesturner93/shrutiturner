@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const connectionMock = vi.fn();
-const requireAdminUserMock = vi.fn();
+const requireStaffAdminUserMock = vi.fn();
 const listAdminBlogCommentsMock = vi.fn();
 const updateAdminBlogCommentStatusMock = vi.fn();
 
@@ -14,7 +14,7 @@ vi.mock("next/server", async () => {
 });
 
 vi.mock("@/lib/api/auth-user", () => ({
-  requireAdminUser: requireAdminUserMock,
+  requireStaffAdminUser: requireStaffAdminUserMock,
 }));
 
 vi.mock("@/lib/blog/engagement-service", () => ({
@@ -36,13 +36,13 @@ describe("GET /api/admin/blog/comments", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     connectionMock.mockResolvedValue(undefined);
-    requireAdminUserMock.mockResolvedValue({ id: "admin_123", role: "admin" });
+    requireStaffAdminUserMock.mockResolvedValue({ id: "admin_123", role: "admin" });
     listAdminBlogCommentsMock.mockResolvedValue([]);
     updateAdminBlogCommentStatusMock.mockResolvedValue({ ok: true });
   });
 
   it("requires an authenticated admin user", async () => {
-    requireAdminUserMock.mockRejectedValue(new Error("UNAUTHORIZED"));
+    requireStaffAdminUserMock.mockRejectedValue(new Error("UNAUTHORIZED"));
 
     const response = await route.GET(new Request("http://localhost/api/admin/blog/comments"));
 
@@ -69,7 +69,7 @@ describe("GET /api/admin/blog/comments", () => {
 describe("PATCH /api/admin/blog/comments", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireAdminUserMock.mockResolvedValue({ id: "admin_123", role: "admin" });
+    requireStaffAdminUserMock.mockResolvedValue({ id: "admin_123", role: "admin" });
     updateAdminBlogCommentStatusMock.mockResolvedValue({ ok: true });
   });
 

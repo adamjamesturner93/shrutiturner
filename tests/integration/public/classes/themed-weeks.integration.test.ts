@@ -33,8 +33,8 @@ describe("public themed weeks integration", () => {
           audience: "Future audience",
           ctaHref: "/classes",
           ctaLabel: "Register",
-          startDate: new Date("2026-03-23T00:00:00.000Z"),
-          endDate: new Date("2026-03-29T23:59:59.999Z"),
+          startDate: new Date("2099-03-23T00:00:00.000Z"),
+          endDate: new Date("2099-03-29T23:59:59.999Z"),
           sortOrder: 1,
         },
         {
@@ -44,14 +44,14 @@ describe("public themed weeks integration", () => {
           audience: "Current audience",
           ctaHref: "/schedule",
           ctaLabel: "See What's Running",
-          startDate: new Date("2026-03-09T00:00:00.000Z"),
-          endDate: new Date("2026-03-15T23:59:59.999Z"),
+          startDate: new Date("2099-03-09T00:00:00.000Z"),
+          endDate: new Date("2099-03-15T23:59:59.999Z"),
           sortOrder: 0,
         },
       ],
     });
 
-    const themedWeek = await getScheduleThemedWeek(new Date("2026-03-15T09:00:00.000Z"));
+    const themedWeek = await getScheduleThemedWeek(new Date("2099-03-15T09:00:00.000Z"));
 
     expect(themedWeek?.slug).toBe(`${SCOPE}-current`);
   });
@@ -66,8 +66,8 @@ describe("public themed weeks integration", () => {
           audience: "Later audience",
           ctaHref: "/classes",
           ctaLabel: "Register",
-          startDate: new Date("2026-04-20T00:00:00.000Z"),
-          endDate: new Date("2026-04-26T23:59:59.999Z"),
+          startDate: new Date("2099-04-20T00:00:00.000Z"),
+          endDate: new Date("2099-04-26T23:59:59.999Z"),
           sortOrder: 2,
         },
         {
@@ -77,14 +77,14 @@ describe("public themed weeks integration", () => {
           audience: "Next audience",
           ctaHref: "/classes",
           ctaLabel: "Register",
-          startDate: new Date("2026-03-23T00:00:00.000Z"),
-          endDate: new Date("2026-03-29T23:59:59.999Z"),
+          startDate: new Date("2099-03-23T00:00:00.000Z"),
+          endDate: new Date("2099-03-29T23:59:59.999Z"),
           sortOrder: 1,
         },
       ],
     });
 
-    const themedWeek = await getScheduleThemedWeek(new Date("2026-03-16T09:00:00.000Z"));
+    const themedWeek = await getScheduleThemedWeek(new Date("2099-03-16T09:00:00.000Z"));
 
     expect(themedWeek?.slug).toBe(`${SCOPE}-next`);
   });

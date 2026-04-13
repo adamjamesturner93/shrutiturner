@@ -73,6 +73,9 @@ export function AdminMemberDetail() {
   const [deletePreview, setDeletePreview] = useState<{
     blocked: boolean;
     blockReason: string | null;
+    deletes?: string[];
+    anonymises?: string[];
+    preserves?: string[];
   } | null>(null);
 
   const applyMemberState = (data: AdminMemberDetailDto) => {
@@ -278,25 +281,19 @@ export function AdminMemberDetail() {
         method: "POST",
       });
       const payload = (await response.json().catch(() => null)) as {
-        exportData?: unknown;
+        downloadUrl?: string;
         message?: string;
       } | null;
-      if (!response.ok || !payload?.exportData) {
+      if (!response.ok || !payload?.downloadUrl) {
         toast.error(payload?.message || "Failed to generate export.");
         return;
       }
-      const blob = new Blob([JSON.stringify(payload.exportData, null, 2)], {
-        type: "application/json;charset=utf-8",
-      });
-      const href = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = href;
-      link.download = `${member.id}-export.json`;
+      link.href = payload.downloadUrl;
       document.body.append(link);
       link.click();
       link.remove();
-      URL.revokeObjectURL(href);
-      toast.success("User export generated.");
+      toast.success("Privacy export generated.");
     } finally {
       setPrivacyBusy(null);
     }
@@ -310,6 +307,9 @@ export function AdminMemberDetail() {
     const payload = (await response.json().catch(() => null)) as {
       blocked?: boolean;
       blockReason?: string | null;
+      deletes?: string[];
+      anonymises?: string[];
+      preserves?: string[];
     } | null;
     if (!response.ok || !payload) {
       toast.error("Failed to load deletion preview.");
@@ -318,6 +318,9 @@ export function AdminMemberDetail() {
     setDeletePreview({
       blocked: Boolean(payload.blocked),
       blockReason: payload.blockReason || null,
+      deletes: Array.isArray(payload.deletes) ? payload.deletes : [],
+      anonymises: Array.isArray(payload.anonymises) ? payload.anonymises : [],
+      preserves: Array.isArray(payload.preserves) ? payload.preserves : [],
     });
   };
 
@@ -657,6 +660,34 @@ export function AdminMemberDetail() {
                       ? `Deletion is blocked: ${deletePreview.blockReason || "active hold"}`
                       : "Deletion can proceed. Personal data will be anonymised and active sessions revoked."}
                   </p>
+                  {!deletePreview.blocked && deletePreview.deletes?.length ? (
+                    <div className="mt-3 space-y-3">
+                      <div>
+                        <p className="font-medium">Deleted now</p>
+                        <ul className="text-muted-foreground mt-1 list-disc pl-5">
+                          {deletePreview.deletes.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="font-medium">Anonymised but preserved</p>
+                        <ul className="text-muted-foreground mt-1 list-disc pl-5">
+                          {deletePreview.anonymises?.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="font-medium">Retained for finance, audit, or disputes</p>
+                        <ul className="text-muted-foreground mt-1 list-disc pl-5">
+                          {deletePreview.preserves?.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  ) : null}
                   {!deletePreview.blocked ? (
                     <Button
                       className="mt-3"

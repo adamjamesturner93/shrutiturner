@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const requireSessionUserMock = vi.fn();
 const createMembershipCheckoutSessionMock = vi.fn();
+const assertNoUserCheckoutDisputeHoldMock = vi.fn();
 const recordSubscriptionComplianceEventMock = vi.fn();
 const assertCurrentAcceptancesMock = vi.fn();
 const recordAcceptanceEventMock = vi.fn();
@@ -13,6 +14,10 @@ vi.mock("@/lib/api/auth-user", () => ({
 
 vi.mock("@/lib/billing/billing-service", () => ({
   createMembershipCheckoutSession: createMembershipCheckoutSessionMock,
+}));
+
+vi.mock("@/lib/billing/dispute-service", () => ({
+  assertNoUserCheckoutDisputeHold: assertNoUserCheckoutDisputeHoldMock,
 }));
 
 vi.mock("@/lib/billing/subscription-disclosure", () => ({
@@ -43,6 +48,7 @@ describe("POST /api/me/membership/checkout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     requireSessionUserMock.mockResolvedValue({ id: "user_123" });
+    assertNoUserCheckoutDisputeHoldMock.mockResolvedValue(undefined);
     assertCurrentAcceptancesMock.mockResolvedValue([
       {
         type: "terms",
@@ -89,6 +95,7 @@ describe("POST /api/me/membership/checkout", () => {
       message: "Subscription terms must be acknowledged before checkout.",
     });
     expect(createMembershipCheckoutSessionMock).not.toHaveBeenCalled();
+    expect(assertNoUserCheckoutDisputeHoldMock).toHaveBeenCalledWith("user_123");
   });
 
   it("rejects checkout when the disclosure version is stale", async () => {
@@ -107,6 +114,7 @@ describe("POST /api/me/membership/checkout", () => {
     });
     expect(recordSubscriptionComplianceEventMock).not.toHaveBeenCalled();
     expect(createMembershipCheckoutSessionMock).not.toHaveBeenCalled();
+    expect(assertNoUserCheckoutDisputeHoldMock).toHaveBeenCalledWith("user_123");
   });
 
   it("records disclosure acceptance before creating checkout", async () => {
@@ -174,6 +182,7 @@ describe("POST /api/me/membership/checkout", () => {
         },
       })
     );
+    expect(assertNoUserCheckoutDisputeHoldMock).toHaveBeenCalledWith("user_123");
   });
 
   it("returns a structured re-acceptance response when a required acceptance is stale", async () => {
@@ -216,5 +225,6 @@ describe("POST /api/me/membership/checkout", () => {
     });
     expect(recordAcceptanceEventMock).not.toHaveBeenCalled();
     expect(createMembershipCheckoutSessionMock).not.toHaveBeenCalled();
+    expect(assertNoUserCheckoutDisputeHoldMock).toHaveBeenCalledWith("user_123");
   });
 });

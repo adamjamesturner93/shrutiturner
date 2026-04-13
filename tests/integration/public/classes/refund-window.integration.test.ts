@@ -1,8 +1,9 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { ClassBookingStatus, ClassSessionStatus, CreditEntryType } from "@prisma/client";
+import { AcceptanceType, ClassBookingStatus, ClassSessionStatus, CreditEntryType } from "@prisma/client";
 import { CURRENT_HEALTH_DATA_CONSENT_VERSION } from "@/data/legal-documents";
 import { db } from "@/lib/db";
 import { addCredits, getCreditBalance } from "@/lib/credits/credit-service";
+import { recordAcceptanceEvent } from "@/lib/legal/acceptance-service";
 
 const {
   sendBookingConfirmationMock,
@@ -122,6 +123,18 @@ async function createUser(label: string, firstName: string) {
       declarationStatus: "none_declared",
     },
   });
+
+  for (const type of [
+    AcceptanceType.terms,
+    AcceptanceType.health_waiver,
+    AcceptanceType.health_data,
+  ]) {
+    await recordAcceptanceEvent({
+      userId: user.id,
+      type,
+      surface: "class_booking",
+    });
+  }
 
   return user;
 }

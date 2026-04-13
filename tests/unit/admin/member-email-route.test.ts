@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const requireAdminUserMock = vi.fn();
+const requireStaffAdminUserMock = vi.fn();
 const sendAdminMemberMessageMock = vi.fn();
 
 vi.mock("@/lib/api/auth-user", () => ({
-  requireAdminUser: requireAdminUserMock,
+  requireStaffAdminUser: requireStaffAdminUserMock,
 }));
 
 vi.mock("@/lib/admin/member-email-service", () => ({
@@ -24,7 +24,7 @@ function createRequest(body: Record<string, unknown>) {
 describe("POST /api/admin/members/[id]/email", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireAdminUserMock.mockResolvedValue({ id: "admin_123", role: "admin" });
+    requireStaffAdminUserMock.mockResolvedValue({ id: "admin_123", role: "admin" });
     sendAdminMemberMessageMock.mockResolvedValue({ ok: true });
   });
 

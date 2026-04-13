@@ -3,7 +3,7 @@
 import { Layout } from "../components/layout";
 import { SEO } from "../components/seo";
 
-const LAST_UPDATED_LABEL = "12 March 2026";
+const LAST_UPDATED_LABEL = "6 April 2026";
 
 export function PrivacyPage() {
   return (
@@ -20,24 +20,17 @@ export function PrivacyPage() {
         <div className="prose prose-lg text-muted-foreground max-w-none space-y-8">
           <p className="text-sm italic">Last updated: {LAST_UPDATED_LABEL}</p>
 
-          <p className="text-lg">
-            <em>
-              Note: This page will be managed through the CMS. The following is placeholder content
-              that should be reviewed and updated to comply with GDPR and relevant data protection
-              laws.
-            </em>
-          </p>
-
           <section>
             <h2 className="text-foreground mb-4 text-2xl">1. Introduction</h2>
             <p>
-              Shruti Turner ("we", "us", "our") is committed to protecting your privacy. This policy
-              explains how we collect, use, store, and protect your personal information.
+              Shruti Turner (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;) provides strength,
+              yoga, retreat, and coaching services. This policy explains what personal information
+              we collect, why we use it, who can access it, and how long we keep it.
             </p>
             <p>
-              We are the data controller for the personal information we collect and process. We
-              comply with the UK General Data Protection Regulation (GDPR) and the Data Protection
-              Act 2018.
+              We are the data controller for the personal information processed through this
+              platform. We work to the UK GDPR, the Data Protection Act 2018, and related UK
+              privacy and electronic marketing rules.
             </p>
           </section>
 
@@ -50,19 +43,20 @@ export function PrivacyPage() {
                 <strong>Contact information:</strong> Name, email address, phone number
               </li>
               <li>
-                <strong>Health information:</strong> Medical conditions, symptoms, injuries,
-                limitations (for coaching services)
+                <strong>Health and participation information:</strong> Context you choose to share
+                so we can adapt movement, class, retreat, and coaching delivery more safely
               </li>
               <li>
-                <strong>Emergency contact details:</strong> For retreat bookings
+                <strong>Emergency contact details:</strong> For retreat bookings and other
+                in-person services where needed for participant safety
               </li>
               <li>
                 <strong>Payment information:</strong> Processed securely through Stripe (we do not
                 store card details)
               </li>
               <li>
-                <strong>Dietary requirements:</strong> Allergies, preferences (for retreats and
-                events)
+                <strong>Dietary requirements:</strong> Food allergies and related retreat/event
+                information
               </li>
             </ul>
 
@@ -93,8 +87,8 @@ export function PrivacyPage() {
                 services you've purchased
               </li>
               <li>
-                <strong>Personalize programming:</strong> Adapt training and yoga practices to your
-                specific needs and conditions
+                <strong>Adapt delivery safely:</strong> Adjust classes, programmes, retreats, and
+                coaching based on the minimum relevant information you share with us
               </li>
               <li>
                 <strong>Process payments:</strong> Handle billing and transactions
@@ -104,11 +98,11 @@ export function PrivacyPage() {
                 service updates
               </li>
               <li>
-                <strong>Newsletter:</strong> Send educational content (only if you've subscribed)
+                <strong>Newsletter and updates:</strong> Send marketing emails only where you have
+                opted in
               </li>
               <li>
-                <strong>Safety:</strong> Ensure appropriate medical considerations are taken during
-                physical activities
+                <strong>Safety:</strong> Support safer participation during physical activities
               </li>
               <li>
                 <strong>Improve services:</strong> Analyze usage to enhance our offerings
@@ -121,22 +115,32 @@ export function PrivacyPage() {
 
           <section>
             <h2 className="text-foreground mb-4 text-2xl">4. Legal Basis for Processing</h2>
-            <p>We process your data based on:</p>
+            <p>We process your data on the following legal bases:</p>
             <ul className="list-disc space-y-2 pl-6">
               <li>
-                <strong>Contract:</strong> To provide services you've purchased
+                <strong>Contract:</strong> To set up and deliver the memberships, bookings,
+                retreats, programmes, gifts, and coaching services you request
               </li>
               <li>
-                <strong>Consent:</strong> For marketing communications (you can withdraw consent at
-                any time)
+                <strong>Consent:</strong> For marketing emails and, where relied upon, for
+                special-category health information used to support safer participation. You can
+                withdraw consent at any time, although we may then be unable to continue a service
+                that depends on that information.
               </li>
               <li>
-                <strong>Legitimate interests:</strong> To improve services and ensure safety
+                <strong>Legitimate interests:</strong> To run and improve the platform, prevent
+                misuse, and keep appropriate operational records
               </li>
               <li>
                 <strong>Legal obligation:</strong> To comply with legal requirements
               </li>
             </ul>
+            <p>
+              Where health information is processed, our Article 6 basis is usually contract,
+              legitimate interests, or legal obligation depending on the service context. Our
+              Article 9 condition is explicit consent where we rely on the health information you
+              provide for safe participation and programme adaptation.
+            </p>
           </section>
 
           <section>
@@ -162,13 +166,15 @@ export function PrivacyPage() {
           <section>
             <h2 className="text-foreground mb-4 text-2xl">6. Sensitive Personal Data</h2>
             <p>
-              We collect sensitive health information to provide safe and appropriate services. This
-              is processed based on your explicit consent and our legitimate interest in ensuring
-              your safety during physical activities.
+              We only ask for health information that is relevant to safer participation,
+              adaptation, safeguarding, and operational support. We do not collect health
+              information to diagnose, monitor, or treat you as a patient.
             </p>
             <p>
-              Health information is stored securely and accessed only by authorized personnel who
-              need it to provide your services.
+              Full health detail is restricted to the minimum number of authorised staff who need it
+              for service delivery, safeguarding, privacy handling, or dispute resolution. In
+              instructor-facing operational views we aim to show only the minimum derived safety
+              context needed for the assigned session, run, or retreat date.
             </p>
           </section>
 
@@ -245,11 +251,27 @@ export function PrivacyPage() {
               <a href="mailto:privacy@shrutiturner.com" className="text-primary underline">
                 privacy@shrutiturner.com
               </a>
+              . Privacy requests are fulfilled by an owner-admin workflow in the platform and may
+              be limited where we must retain records for legal, tax, accounting, fraud, audit, or
+              active dispute reasons.
             </p>
           </section>
 
           <section>
-            <h2 className="text-foreground mb-4 text-2xl">10. Cookies & Tracking</h2>
+            <h2 className="text-foreground mb-4 text-2xl">10. Marketing Emails</h2>
+            <p>
+              We send newsletters, blog announcements, and promotional emails only where you have
+              actively opted in or where another valid marketing basis applies under UK rules.
+            </p>
+            <p>
+              You can unsubscribe at any time using the link in the email or by contacting us
+              directly. Transactional emails such as sign-in codes, booking confirmations, payment
+              notices, and operational service messages are sent separately from marketing emails.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-foreground mb-4 text-2xl">11. Cookies & Tracking</h2>
             <p>
               We use cookies and similar technologies to improve your experience. See our{" "}
               <a href="/cookies" className="text-primary underline">

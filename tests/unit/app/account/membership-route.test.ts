@@ -55,8 +55,8 @@ describe("GET /api/me/membership", () => {
     });
   });
 
-  it("uses instructor membership for admin users without Stripe sync", async () => {
-    requireSessionUserMock.mockResolvedValue({ id: "admin_123", role: "admin" });
+  it("uses instructor membership for owner admin users without Stripe sync", async () => {
+    requireSessionUserMock.mockResolvedValue({ id: "admin_123", role: "owner_admin" });
 
     const response = await route.GET();
 

@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const requireAdminUserMock = vi.fn();
+const requireStaffAdminUserMock = vi.fn();
 const publishActiveClassTimetablesForWeekMock = vi.fn();
 
 vi.mock("@/lib/api/auth-user", () => ({
-  requireAdminUser: requireAdminUserMock,
+  requireStaffAdminUser: requireStaffAdminUserMock,
 }));
 
 vi.mock("@/lib/classes/timetable-service", () => ({
@@ -16,7 +16,7 @@ const route = await import("@/app/api/admin/classes/timetables/publish-week/rout
 describe("POST /api/admin/classes/timetables/publish-week", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireAdminUserMock.mockResolvedValue({ id: "admin_123", role: "admin" });
+    requireStaffAdminUserMock.mockResolvedValue({ id: "admin_123", role: "admin" });
     publishActiveClassTimetablesForWeekMock.mockResolvedValue({
       weekStart: "2026-04-06",
       publishUntil: "2026-04-12",

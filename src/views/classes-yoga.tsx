@@ -325,7 +325,7 @@ export function ClassesYogaPage({
       <PreFooterCtaSection
         layout="centered"
         title="Ready to Experience Yoga That Works With Your Body?"
-        description="Join live classes or catch the replays. All levels welcome, all bodies respected."
+        description="Join live classes with clear pacing, thoughtful teaching, and room to adapt. All levels welcome, all bodies respected."
         actions={[
           {
             href: "/schedule",

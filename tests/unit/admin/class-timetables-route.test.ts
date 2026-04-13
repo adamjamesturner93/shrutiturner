@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const requireAdminUserMock = vi.fn();
+const requireStaffAdminUserMock = vi.fn();
 const createClassTimetableRuleMock = vi.fn();
 const generateDraftSessionsForTimetableRuleMock = vi.fn();
 const listClassTimetableRulesMock = vi.fn();
 
 vi.mock("@/lib/api/auth-user", () => ({
-  requireAdminUser: requireAdminUserMock,
+  requireStaffAdminUser: requireStaffAdminUserMock,
 }));
 
 vi.mock("@/lib/classes/timetable-service", () => ({
@@ -28,7 +28,7 @@ function createRequest(body: Record<string, unknown>) {
 describe("POST /api/admin/classes/timetables", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireAdminUserMock.mockResolvedValue({ id: "admin_123", role: "admin" });
+    requireStaffAdminUserMock.mockResolvedValue({ id: "admin_123", role: "admin" });
     createClassTimetableRuleMock.mockResolvedValue({ id: "rule_123" });
     generateDraftSessionsForTimetableRuleMock.mockResolvedValue({
       createdCount: 8,

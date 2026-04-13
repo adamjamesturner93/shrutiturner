@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const requireAdminUserMock = vi.fn();
+const requireStaffAdminUserMock = vi.fn();
 const cancelClassSessionsForWeekMock = vi.fn();
 
 vi.mock("@/lib/api/auth-user", () => ({
-  requireAdminUser: requireAdminUserMock,
+  requireStaffAdminUser: requireStaffAdminUserMock,
 }));
 
 vi.mock("@/lib/classes/booking-service", () => ({
@@ -16,7 +16,7 @@ const route = await import("@/app/api/admin/classes/sessions/cancel-week/route")
 describe("POST /api/admin/classes/sessions/cancel-week", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireAdminUserMock.mockResolvedValue({ id: "admin_123", role: "admin" });
+    requireStaffAdminUserMock.mockResolvedValue({ id: "admin_123", role: "admin" });
     cancelClassSessionsForWeekMock.mockResolvedValue({
       weekStart: "2026-03-23",
       weekEndExclusive: "2026-03-30",
