@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { PublicHoldingGuard } from "@/components/public-holding-guard";
+import { isHoldingStage } from "@/lib/site-stage";
 
 export const metadata: Metadata = {
   title: {
@@ -10,5 +12,5 @@ export const metadata: Metadata = {
 };
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <PublicHoldingGuard holdingMode={isHoldingStage()}>{children}</PublicHoldingGuard>;
 }

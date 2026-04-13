@@ -108,7 +108,7 @@ function toNotificationSnapshot(input: {
     programAnnouncements: boolean;
   } | null;
   newsletterSubscriber: {
-    status: "subscribed" | "unsubscribed";
+    status: "pending" | "subscribed" | "unsubscribed";
   } | null;
 }): NotificationSnapshot {
   const marketingEmails = input.notificationPreference?.marketingEmails ?? true;

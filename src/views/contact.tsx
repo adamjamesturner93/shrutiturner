@@ -74,7 +74,8 @@ const contactExpectations = [
   },
   {
     label: "Useful Detail",
-    detail: "Accessibility, symptoms, uncertainty, and past bad experiences are all relevant context.",
+    detail:
+      "Accessibility, symptoms, uncertainty, and past bad experiences are all relevant context.",
   },
 ] as const;
 
@@ -138,7 +139,7 @@ export function ContactPage() {
         <section className="section-wash min-h-[calc(100dvh-4rem)] px-4 py-10 md:py-14">
           <div className="container mx-auto max-w-6xl">
             <div className="grid gap-6 lg:min-h-[calc(100dvh-12rem)] lg:grid-cols-[0.96fr_1.04fr] lg:items-center">
-              <div className="marketing-grid overflow-hidden rounded-[2rem] px-6 py-8 text-brand-white md:px-8 md:py-9">
+              <div className="marketing-grid text-brand-white overflow-hidden rounded-[2rem] px-6 py-8 md:px-8 md:py-9">
                 <div className="relative z-10">
                   <p className="text-brand-accent-light text-xs tracking-[0.3em] uppercase">
                     Message Received
@@ -146,9 +147,9 @@ export function ContactPage() {
                   <h1 className="mt-5 text-4xl leading-tight md:text-5xl">
                     Thank you, {formData.firstName || "there"}.
                   </h1>
-                  <p className="mt-5 max-w-xl text-lg leading-relaxed text-brand-white/80">
-                    I read every enquiry personally. If this is about coaching, I may come back
-                    with a couple of clarifying questions before suggesting the best next step.
+                  <p className="text-brand-white/80 mt-5 max-w-xl text-lg leading-relaxed">
+                    I read every enquiry personally. If this is about coaching, I may come back with
+                    a couple of clarifying questions before suggesting the best next step.
                   </p>
 
                   <div className="mt-8 grid gap-3 sm:grid-cols-3">
@@ -159,7 +160,7 @@ export function ContactPage() {
                     ].map((item) => (
                       <div
                         key={item}
-                        className="rounded-[1.3rem] border border-brand-white/10 bg-brand-white/8 px-4 py-4 text-sm leading-relaxed text-brand-white/84"
+                        className="border-brand-white/10 bg-brand-white/8 text-brand-white/84 rounded-[1.3rem] border px-4 py-4 text-sm leading-relaxed"
                       >
                         {item}
                       </div>
@@ -185,7 +186,7 @@ export function ContactPage() {
                         <Link
                           key={card.href}
                           href={card.href}
-                          className="rounded-[1.5rem] border border-brand-dark/10 bg-background p-5 transition-transform duration-300 hover:-translate-y-1"
+                          className="border-brand-dark/10 bg-background rounded-[1.5rem] border p-5 transition-transform duration-300 hover:-translate-y-1"
                         >
                           <div className="bg-brand-accent/10 text-brand-accent flex h-11 w-11 items-center justify-center rounded-2xl">
                             <Icon className="h-5 w-5" />
@@ -243,7 +244,8 @@ export function ContactPage() {
         metrics={[
           {
             label: "Best For",
-            detail: "Service questions, access needs, coaching fit, retreat suitability, or general context.",
+            detail:
+              "Service questions, access needs, coaching fit, retreat suitability, or general context.",
           },
           {
             label: "Tone",
@@ -256,7 +258,7 @@ export function ContactPage() {
         ]}
         aside={
           <div className="relative mx-auto max-w-xl">
-            <div className="overflow-hidden rounded-[2rem] border border-brand-white/10 bg-brand-white/8 p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+            <div className="border-brand-white/10 bg-brand-white/8 overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
               <div className="aspect-[4/4.55] overflow-hidden rounded-[1.45rem]">
                 <ImageWithFallback
                   src="/images/shruti.jpeg"
@@ -265,19 +267,19 @@ export function ContactPage() {
                 />
               </div>
               <div className="mt-3 grid gap-3 md:grid-cols-2">
-                <div className="rounded-[1.15rem] bg-brand-white/10 p-4 backdrop-blur-sm">
+                <div className="bg-brand-white/10 rounded-[1.15rem] p-4 backdrop-blur-sm">
                   <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
                     Expect
                   </p>
-                  <p className="mt-2 text-sm leading-relaxed text-brand-white/84">
+                  <p className="text-brand-white/84 mt-2 text-sm leading-relaxed">
                     Clarity on fit, pricing, and the next best route if you are still deciding.
                   </p>
                 </div>
-                <div className="rounded-[1.15rem] bg-brand-accent-light/12 p-4 backdrop-blur-sm">
+                <div className="bg-brand-accent-light/12 rounded-[1.15rem] p-4 backdrop-blur-sm">
                   <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
                     Safe to mention
                   </p>
-                  <p className="mt-2 text-sm leading-relaxed text-brand-white/84">
+                  <p className="text-brand-white/84 mt-2 text-sm leading-relaxed">
                     Symptoms, uncertainty, access needs, old injury stories, or bad past advice.
                   </p>
                 </div>
@@ -439,8 +441,8 @@ export function ContactPage() {
                   <h2 className="text-2xl">What to expect</h2>
                   <ul className="text-muted-foreground mt-5 space-y-4 text-sm leading-relaxed">
                     <li className="flex items-start gap-3">
-                      <CheckCircle2 className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
-                      I reply personally rather than handing this to a generic inbox.
+                      <CheckCircle2 className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />I
+                      reply personally rather than handing this to a generic inbox.
                     </li>
                     <li className="flex items-start gap-3">
                       <CheckCircle2 className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
@@ -455,7 +457,7 @@ export function ContactPage() {
               </div>
             </div>
 
-            <div className="rounded-[1.75rem] border border-brand-dark/10 bg-background p-6 shadow-[0_18px_40px_rgba(46,31,51,0.06)]">
+            <div className="border-brand-dark/10 bg-background rounded-[1.75rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.06)]">
               <div className="flex items-start gap-3">
                 <div className="bg-brand-accent/10 text-brand-accent flex h-11 w-11 items-center justify-center rounded-2xl">
                   <Mail className="h-5 w-5" />
@@ -465,10 +467,10 @@ export function ContactPage() {
                   <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
                     You can email{" "}
                     <a
-                      href="mailto:hello@shrutiturner.com"
+                      href="mailto:tech@thechronicyogini.com"
                       className="text-primary font-medium underline decoration-2 underline-offset-3"
                     >
-                      hello@shrutiturner.com
+                      tech@thechronicyogini.com
                     </a>{" "}
                     directly if that is easier.
                   </p>
@@ -476,7 +478,7 @@ export function ContactPage() {
               </div>
             </div>
 
-            <div className="rounded-[1.75rem] border border-brand-dark/10 bg-brand-warm/60 p-6 shadow-[0_18px_40px_rgba(46,31,51,0.06)]">
+            <div className="border-brand-dark/10 bg-brand-warm/60 rounded-[1.75rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.06)]">
               <h2 className="text-2xl">Not sure what you need yet?</h2>
               <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
                 These pages usually help people narrow the question before they reach out.

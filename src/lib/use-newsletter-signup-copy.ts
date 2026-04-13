@@ -8,11 +8,11 @@ const DEFAULT_SIGNUP_COPY: NewsletterSignupContent = {
   hookText: 'Get "5 Yoga Poses That Actually Build Strength" - free:',
   formPlaceholder: "your.email@example.com",
   buttonLabel: "Subscribe",
-  successMessage: "You're subscribed! Check your inbox.",
+  successMessage: "Please check your inbox to confirm your email address.",
   consentText: "No spam. Unsubscribe anytime.",
   popupTitle: "Get Evidence-Based Insights",
   popupDescription:
-    "Join the mailing list for research-backed articles on strength, movement, and chronic illness management. No spam, unsubscribe anytime.",
+    "Join the mailing list for launch updates, practical strength guidance, and occasional offers. No spam, unsubscribe anytime.",
 };
 
 export function useNewsletterSignupCopy() {

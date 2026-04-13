@@ -1,18 +1,15 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const sendEmailMock = vi.fn();
-const renderMock = vi.fn();
 const verifyTurnstileTokenMock = vi.fn();
 const getNewsletterSignupContentMock = vi.fn();
+const sendLeadMagnetDeliveryEmailMock = vi.fn();
+const sendNewsletterVerificationEmailMock = vi.fn();
 
 vi.mock("postmark", () => ({
   ServerClient: class {
     sendEmail = sendEmailMock;
   },
-}));
-
-vi.mock("@react-email/render", () => ({
-  render: renderMock,
 }));
 
 vi.mock("@/lib/content", () => ({
@@ -28,8 +25,15 @@ vi.mock("@/lib/turnstile", async () => {
   };
 });
 
+vi.mock("@/lib/newsletter/email-service", () => ({
+  sendLeadMagnetDeliveryEmail: sendLeadMagnetDeliveryEmailMock,
+  sendNewsletterVerificationEmail: sendNewsletterVerificationEmailMock,
+}));
+
 const { db } = await import("@/lib/db");
+const { hashVerificationToken } = await import("@/lib/newsletter/tokens");
 const newsletterRoute = await import("@/app/api/newsletter/subscribe/route");
+const verifyRoute = await import("@/app/api/newsletter/verify/route");
 const unsubscribeRoute = await import("@/app/api/unsubscribe/route");
 
 function createRequest(url: string, body: Record<string, unknown>) {
@@ -77,22 +81,23 @@ describe("newsletter public journeys integration", () => {
     process.env.POSTMARK_API_TOKEN = "postmark-token";
     process.env.NEXT_PUBLIC_SITE_URL = "https://shrutiturner.com";
 
-    renderMock.mockResolvedValue("<p>html</p>");
     verifyTurnstileTokenMock.mockResolvedValue(true);
     getNewsletterSignupContentMock.mockResolvedValue({
       slug: "default",
       hookText: 'Get "5 Yoga Poses That Actually Build Strength" - free:',
       formPlaceholder: "your.email@example.com",
       buttonLabel: "Subscribe",
-      successMessage: "You're subscribed! Check your inbox.",
+      successMessage: "Please check your inbox to confirm your email address.",
       consentText: "No spam. Unsubscribe anytime.",
       leadMagnetTitle: "Guide",
       popupDescription: "Popup description",
-      emailSubject: "Welcome",
+      emailSubject: "Confirm your email to get your free guide",
       emailBody: "Hi {{firstName}}",
       assetUrl: "https://shrutiturner.com/guide.pdf",
     });
     sendEmailMock.mockResolvedValue(undefined);
+    sendLeadMagnetDeliveryEmailMock.mockResolvedValue(undefined);
+    sendNewsletterVerificationEmailMock.mockResolvedValue(undefined);
 
     await cleanupTestRows();
   });
@@ -101,7 +106,7 @@ describe("newsletter public journeys integration", () => {
     await cleanupTestRows();
   });
 
-  it("creates or links a subscriber and updates the user's marketing preference", async () => {
+  it("creates or links a pending subscriber before verification", async () => {
     const email = makeEmail("subscribe");
     const user = await db.user.create({
       data: {
@@ -129,12 +134,63 @@ describe("newsletter public journeys integration", () => {
 
     expect(subscriber).toMatchObject({
       email,
+      firstName: "Integration",
       userId: user.id,
-      status: "subscribed",
+      status: "pending",
       source: "subscribe",
     });
-    expect(subscriber?.token).toBeTruthy();
+    expect(subscriber?.verificationTokenHash).toBeTruthy();
+    expect(subscriber?.verificationTokenExpiresAt).toBeTruthy();
+    expect(subscriber?.verifiedAt).toBeNull();
+    expect(preference).toBeNull();
+  });
+
+  it("verifies a pending subscriber and updates the user's marketing preference", async () => {
+    const email = makeEmail("verify");
+    const rawToken = "verify_token_123";
+    const user = await db.user.create({
+      data: {
+        email,
+        firstName: "Verify",
+      },
+    });
+    const subscriber = await db.newsletterSubscriber.create({
+      data: {
+        email,
+        firstName: "Verify",
+        userId: user.id,
+        source: "holding-page",
+        status: "pending",
+        token: `tok_${Date.now()}_verify`,
+        consentedAt: new Date(),
+        verificationTokenHash: hashVerificationToken(rawToken),
+        verificationTokenExpiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+
+    const response = await verifyRoute.GET(
+      new Request(`http://localhost/api/newsletter/verify?token=${rawToken}`)
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("http://localhost/?verified=success");
+
+    const refreshedSubscriber = await db.newsletterSubscriber.findUnique({
+      where: { id: subscriber.id },
+    });
+    const preference = await db.userNotificationPreference.findUnique({
+      where: { userId: user.id },
+    });
+
+    expect(refreshedSubscriber?.status).toBe("subscribed");
+    expect(refreshedSubscriber?.verifiedAt).toBeTruthy();
+    expect(refreshedSubscriber?.verificationTokenHash).toBeNull();
     expect(preference?.marketingEmails).toBe(true);
+    expect(sendLeadMagnetDeliveryEmailMock).toHaveBeenCalledWith({
+      email,
+      firstName: "Verify",
+      subscriberId: subscriber.id,
+    });
   });
 
   it("processes a token unsubscribe against the live database", async () => {
@@ -208,6 +264,8 @@ describe("newsletter public journeys integration", () => {
       To: email,
       Subject: "Confirm your unsubscribe request",
     });
-    expect(String(sendEmailMock.mock.calls[0]?.[0]?.TextBody ?? "")).toContain(subscriber.token);
+    expect(String(sendEmailMock.mock.calls[0]?.[0]?.TextBody ?? "")).toContain(
+      "https://shrutiturner.com/unsubscribe?token="
+    );
   });
 });

@@ -127,7 +127,7 @@ export function Footer() {
             {/* Social Media */}
             <div className="flex items-center gap-4 pt-2">
               <a
-                href="https://youtube.com/@shrutiturner"
+                href="https://youtube.com/@TheChronicYogini"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand-white/60 hover:text-brand-accent-light transition-colors"
@@ -145,7 +145,7 @@ export function Footer() {
                 <Instagram className="h-5 w-5" />
               </a>
               <a
-                href="https://facebook.com/shrutiturner"
+                href="https://facebook.com/profile.php?id=61556124191934"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand-white/60 hover:text-brand-accent-light transition-colors"

@@ -29,8 +29,8 @@ export function PrivacyPage() {
             </p>
             <p>
               We are the data controller for the personal information processed through this
-              platform. We work to the UK GDPR, the Data Protection Act 2018, and related UK
-              privacy and electronic marketing rules.
+              platform. We work to the UK GDPR, the Data Protection Act 2018, and related UK privacy
+              and electronic marketing rules.
             </p>
           </section>
 
@@ -43,12 +43,17 @@ export function PrivacyPage() {
                 <strong>Contact information:</strong> Name, email address, phone number
               </li>
               <li>
+                <strong>Newsletter signup information:</strong> First name, email address, consent
+                wording, consent timestamp, verification status, unsubscribe status, and related
+                delivery metadata when you join the mailing list or request a lead magnet
+              </li>
+              <li>
                 <strong>Health and participation information:</strong> Context you choose to share
                 so we can adapt movement, class, retreat, and coaching delivery more safely
               </li>
               <li>
-                <strong>Emergency contact details:</strong> For retreat bookings and other
-                in-person services where needed for participant safety
+                <strong>Emergency contact details:</strong> For retreat bookings and other in-person
+                services where needed for participant safety
               </li>
               <li>
                 <strong>Payment information:</strong> Processed securely through Stripe (we do not
@@ -99,7 +104,7 @@ export function PrivacyPage() {
               </li>
               <li>
                 <strong>Newsletter and updates:</strong> Send marketing emails only where you have
-                opted in
+                opted in, requested launch updates, or confirmed a double opt-in email
               </li>
               <li>
                 <strong>Safety:</strong> Support safer participation during physical activities
@@ -149,7 +154,8 @@ export function PrivacyPage() {
             <ul className="list-disc space-y-2 pl-6">
               <li>
                 <strong>Service providers:</strong> Stripe (payment processing), email service
-                providers, website hosting
+                providers including Postmark, website hosting, and Contentful for controlled content
+                and newsletter campaign operations
               </li>
               <li>
                 <strong>Emergency contacts:</strong> In case of medical emergencies during services
@@ -210,7 +216,9 @@ export function PrivacyPage() {
                 accounting, dispute handling, fraud prevention, or legal obligations
               </li>
               <li>
-                <strong>Newsletter subscribers:</strong> Until you unsubscribe
+                <strong>Newsletter subscribers:</strong> Active subscriber records are kept until
+                you unsubscribe. Pending verification records and related tokens are routinely
+                cleared when they expire or are no longer needed for launch communications
               </li>
               <li>
                 <strong>Website visitors:</strong> Analytics data aggregated and anonymized after 26
@@ -251,8 +259,8 @@ export function PrivacyPage() {
               <a href="mailto:privacy@shrutiturner.com" className="text-primary underline">
                 privacy@shrutiturner.com
               </a>
-              . Privacy requests are fulfilled by an owner-admin workflow in the platform and may
-              be limited where we must retain records for legal, tax, accounting, fraud, audit, or
+              . Privacy requests are fulfilled by an owner-admin workflow in the platform and may be
+              limited where we must retain records for legal, tax, accounting, fraud, audit, or
               active dispute reasons.
             </p>
           </section>
@@ -260,13 +268,22 @@ export function PrivacyPage() {
           <section>
             <h2 className="text-foreground mb-4 text-2xl">10. Marketing Emails</h2>
             <p>
-              We send newsletters, blog announcements, and promotional emails only where you have
-              actively opted in or where another valid marketing basis applies under UK rules.
+              We send newsletters, launch updates, lead magnet delivery emails, and occasional
+              promotional emails only where you have actively opted in or completed a double opt-in
+              confirmation step under UK marketing rules.
+            </p>
+            <p>
+              For the holding-page launch, we collect your first name, email address, consent
+              wording, consent timestamp, verification status, and unsubscribe status so we can send
+              the requested guide, keep an audit trail of permission, and suppress future marketing
+              emails if you opt out.
             </p>
             <p>
               You can unsubscribe at any time using the link in the email or by contacting us
-              directly. Transactional emails such as sign-in codes, booking confirmations, payment
-              notices, and operational service messages are sent separately from marketing emails.
+              directly. Verification links expire after a limited period and no launch marketing
+              emails are sent before confirmation. Transactional emails such as sign-in codes,
+              booking confirmations, payment notices, and operational service messages are sent
+              separately from marketing emails.
             </p>
           </section>
 

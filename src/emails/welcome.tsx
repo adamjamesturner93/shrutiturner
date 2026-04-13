@@ -10,8 +10,8 @@ interface WelcomeEmailProps {
   ctaLabel?: string;
   welcomeCopy?: string;
   classesUrl?: string;
-  blogUrl?: string;
   aboutUrl?: string;
+  privacyUrl?: string;
   unsubscribeUrl?: string;
 }
 
@@ -23,8 +23,8 @@ export default function WelcomeEmail({
   ctaLabel = "Download your guide",
   welcomeCopy,
   classesUrl = "https://shrutiturner.com/classes",
-  blogUrl = "https://shrutiturner.com/blog",
   aboutUrl = "https://shrutiturner.com/about",
+  privacyUrl = "https://shrutiturner.com/privacy",
   unsubscribeUrl = "https://shrutiturner.com/unsubscribe",
 }: WelcomeEmailProps) {
   const welcomeParagraphs = welcomeCopy
@@ -38,6 +38,7 @@ export default function WelcomeEmail({
     <EmailLayout
       preview={`Welcome, ${firstName} — your free guide is ready`}
       unsubscribeUrl={unsubscribeUrl}
+      privacyUrl={privacyUrl}
       category="marketing"
     >
       <Text
@@ -138,8 +139,8 @@ export default function WelcomeEmail({
       </Text>
 
       <Text style={bodyTextStyle}>
-        I send occasional emails about new blog posts, class updates, retreat openings, and thoughts
-        on building strength and resilience through intelligent training. No spam, no filler.
+        I send occasional emails about launch updates, classes, coaching, retreat openings, and
+        thoughtful notes on building strength with a fluctuating body. No spam, no filler.
       </Text>
 
       <Text style={bodyTextStyle}>In the meantime, feel free to explore: </Text>
@@ -151,13 +152,13 @@ export default function WelcomeEmail({
         </Link>
         <br />
         {"\u2022 "}
-        <Link href={blogUrl} style={{ color: colors.brandAccent, textDecoration: "underline" }}>
-          Read the latest blog posts
+        <Link href={aboutUrl} style={{ color: colors.brandAccent, textDecoration: "underline" }}>
+          Learn more about my approach
         </Link>
         <br />
         {"\u2022 "}
-        <Link href={aboutUrl} style={{ color: colors.brandAccent, textDecoration: "underline" }}>
-          Learn more about my approach
+        <Link href={privacyUrl} style={{ color: colors.brandAccent, textDecoration: "underline" }}>
+          Review the privacy policy
         </Link>
       </Text>
 

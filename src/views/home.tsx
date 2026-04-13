@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
+  AlertCircle,
   ArrowRight,
   BookOpen,
   CalendarDays,
+  CheckCircle2,
   Dumbbell,
   GraduationCap,
   Heart,
@@ -45,6 +48,7 @@ const serviceIcons = {
 } as const;
 
 export function HomePage() {
+  const searchParams = useSearchParams();
   const recentPosts = blogPosts.slice(0, 3);
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterFirstName, setNewsletterFirstName] = useState("");
@@ -54,6 +58,7 @@ export function HomePage() {
   const [newsletterError, setNewsletterError] = useState<string | null>(null);
   const [newsletterSubmitted, setNewsletterSubmitted] = useState(false);
   const signupCopy = useNewsletterSignupCopy();
+  const verifiedState = searchParams.get("verified");
 
   const handleNewsletterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,6 +95,23 @@ export function HomePage() {
 
   return (
     <Layout>
+      {verifiedState === "success" ? (
+        <div className="bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          <div className="container mx-auto flex max-w-7xl items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+            Your email is confirmed. Check your inbox for the guide and future updates.
+          </div>
+        </div>
+      ) : null}
+      {verifiedState === "invalid" ? (
+        <div className="bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <div className="container mx-auto flex max-w-7xl items-center gap-2">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            That confirmation link has expired or is no longer valid. Subscribe again and we&apos;ll
+            send a fresh email.
+          </div>
+        </div>
+      ) : null}
       <SEO
         title="Shruti Turner - Strength & Yoga for Complex Bodies"
         description="Science-backed strength and yoga coaching for adults with chronic illness, autoimmune conditions, and complex bodies. Rehabilitation-informed training that builds capacity without pretending your body is simple."

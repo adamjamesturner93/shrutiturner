@@ -280,7 +280,10 @@ export function AboutPage() {
             "@type": "Person",
             name: "Shruti Turner",
             url: "https://shrutiturner.com",
-            sameAs: ["https://instagram.com/shrutiturner", "https://facebook.com/shrutiturner"],
+            sameAs: [
+              "https://instagram.com/shrutiturner",
+              "https://facebook.com/profile.php?id=61556124191934",
+            ],
             jobTitle: "Strength & Yoga Coach",
             description:
               "Strength and yoga coach specialising in rehabilitation-informed training for people with chronic illness, autoimmune conditions, and complex bodies. PhD Biomechanics.",

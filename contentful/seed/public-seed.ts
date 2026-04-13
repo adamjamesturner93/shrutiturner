@@ -424,7 +424,7 @@ export const CONTACT_BLOCK_SEED = {
       slug: "primary-contact",
       title: "Get in touch",
       body: "Questions about classes, retreats, or coaching? Email anytime.",
-      email: "hello@shrutiturner.com",
+      email: "tech@thechronicyogini.com",
       ctaLabel: "Contact Shruti",
       ctaHref: "/contact",
     },

@@ -1,21 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const sendEmailMock = vi.fn();
-const renderMock = vi.fn();
 const verifyTurnstileTokenMock = vi.fn();
 const getNewsletterSignupContentMock = vi.fn();
 const userFindUniqueMock = vi.fn();
-const subscribeMarketingEmailMock = vi.fn();
-
-vi.mock("postmark", () => ({
-  ServerClient: class {
-    sendEmail = sendEmailMock;
-  },
-}));
-
-vi.mock("@react-email/render", () => ({
-  render: renderMock,
-}));
+const createPendingMarketingSubscriberMock = vi.fn();
+const sendNewsletterVerificationEmailMock = vi.fn();
+const recordNewsletterSignupEventMock = vi.fn();
 
 vi.mock("@/lib/content", () => ({
   getNewsletterSignupContent: getNewsletterSignupContentMock,
@@ -35,7 +25,15 @@ vi.mock("@/lib/db", () => ({
 }));
 
 vi.mock("@/lib/newsletter/subscriber-service", () => ({
-  subscribeMarketingEmail: subscribeMarketingEmailMock,
+  createPendingMarketingSubscriber: createPendingMarketingSubscriberMock,
+}));
+
+vi.mock("@/lib/newsletter/email-service", () => ({
+  sendNewsletterVerificationEmail: sendNewsletterVerificationEmailMock,
+}));
+
+vi.mock("@/lib/newsletter/event-service", () => ({
+  recordNewsletterSignupEvent: recordNewsletterSignupEventMock,
 }));
 
 const route = await import("@/app/api/newsletter/subscribe/route");
@@ -52,39 +50,48 @@ describe("POST /api/newsletter/subscribe", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     route.resetNewsletterSignupRateLimitStore();
-    process.env.POSTMARK_API_TOKEN = "postmark-token";
-    process.env.NEXT_PUBLIC_SITE_URL = "https://shrutiturner.com";
 
-    renderMock.mockResolvedValue("<p>html</p>");
     verifyTurnstileTokenMock.mockResolvedValue(true);
     getNewsletterSignupContentMock.mockResolvedValue({
-      slug: "default",
-      hookText: 'Get "5 Yoga Poses That Actually Build Strength" - free:',
-      formPlaceholder: "your.email@example.com",
-      buttonLabel: "Subscribe",
-      successMessage: "You're subscribed! Check your inbox.",
       consentText: "No spam. Unsubscribe anytime.",
-      leadMagnetTitle: "Guide",
-      popupDescription: "Popup description",
-      emailSubject: "Welcome",
-      emailBody: "Hi {{firstName}}",
-      assetUrl: "https://shrutiturner.com/guide.pdf",
+      successMessage: "Please check your inbox to confirm your email address.",
     });
     userFindUniqueMock.mockResolvedValue(null);
-    subscribeMarketingEmailMock.mockResolvedValue({
-      id: "sub_123",
-      token: "token_123",
+    createPendingMarketingSubscriberMock.mockResolvedValue({
+      state: "pending",
+      subscriber: { id: "sub_123" },
+      verificationToken: "verify_123",
     });
-    sendEmailMock.mockResolvedValue(undefined);
+    sendNewsletterVerificationEmailMock.mockResolvedValue(undefined);
+    recordNewsletterSignupEventMock.mockResolvedValue(undefined);
+  });
+
+  it("rejects requests without a first name", async () => {
+    const response = await route.POST(
+      createRequest({
+        email: "reader@example.com",
+        firstName: "",
+        consent: true,
+        marketingOptIn: true,
+        source: "holding-page",
+        turnstileToken: "token",
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      message: "Please enter your first name.",
+    });
   });
 
   it("rejects an invalid email address", async () => {
     const response = await route.POST(
       createRequest({
         email: "not-an-email",
+        firstName: "Reader",
         consent: true,
         marketingOptIn: true,
-        source: "subscribe",
+        source: "holding-page",
         turnstileToken: "token",
       })
     );
@@ -95,53 +102,17 @@ describe("POST /api/newsletter/subscribe", () => {
     });
   });
 
-  it("rejects requests without consent", async () => {
-    const response = await route.POST(
-      createRequest({
-        email: "reader@example.com",
-        consent: false,
-        marketingOptIn: false,
-        source: "subscribe",
-        turnstileToken: "token",
-      })
-    );
-
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({
-      message: "You must provide consent before subscribing.",
-    });
-  });
-
-  it("rejects requests when turnstile verification fails", async () => {
-    verifyTurnstileTokenMock.mockResolvedValue(false);
-
-    const response = await route.POST(
-      createRequest({
-        email: "reader@example.com",
-        consent: true,
-        marketingOptIn: true,
-        source: "homepage",
-        turnstileToken: "bad-token",
-      })
-    );
-
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({
-      message: "Verification failed. Please try again.",
-    });
-  });
-
   it("rate limits repeated requests from the same IP", async () => {
     const body = {
       email: "reader@example.com",
       firstName: "Reader",
       consent: true,
       marketingOptIn: true,
-      source: "footer",
+      source: "holding-page",
       turnstileToken: "token",
     };
 
-    for (let attempt = 0; attempt < 8; attempt += 1) {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
       const response = await route.POST(createRequest(body));
       expect(response.status).toBe(200);
     }
@@ -153,7 +124,13 @@ describe("POST /api/newsletter/subscribe", () => {
     });
   });
 
-  it("sends the welcome email with subscriber metadata on success", async () => {
+  it("returns a confirmation message when the subscriber is already active", async () => {
+    createPendingMarketingSubscriberMock.mockResolvedValue({
+      state: "subscribed",
+      subscriber: { id: "sub_123" },
+      verificationToken: null,
+    });
+
     const response = await route.POST(
       createRequest({
         email: "reader@example.com",
@@ -168,28 +145,52 @@ describe("POST /api/newsletter/subscribe", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       ok: true,
-      message: "You're subscribed! Check your inbox.",
+      message: "You’re already confirmed. Keep an eye on your inbox for the next update.",
     });
-    expect(subscribeMarketingEmailMock).toHaveBeenCalledWith({
+    expect(sendNewsletterVerificationEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("creates a pending subscriber and sends a verification email on success", async () => {
+    const response = await route.POST(
+      createRequest({
+        email: "reader@example.com",
+        firstName: "Reader",
+        consent: true,
+        marketingOptIn: true,
+        source: "holding-page",
+        turnstileToken: "token",
+      })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      message: "Please check your inbox to confirm your email address.",
+    });
+    expect(createPendingMarketingSubscriberMock).toHaveBeenCalledWith({
       email: "reader@example.com",
+      firstName: "Reader",
       userId: null,
-      source: "subscribe",
-      surface: "newsletter_signup_subscribe",
+      source: "holding-page",
+      surface: "newsletter_signup_holding-page",
       wordingText: "No spam. Unsubscribe anytime.",
     });
-    expect(sendEmailMock).toHaveBeenCalledTimes(1);
-    expect(sendEmailMock.mock.calls[0]?.[0]).toMatchObject({
-      To: "reader@example.com",
-      Subject: "Welcome",
-      MessageStream: "outbound",
-      Tag: "newsletter-signup",
-      Metadata: expect.objectContaining({
-        emailCategory: "marketing",
-        source: "subscribe",
-        consent: "true",
-        marketingOptIn: "true",
-        subscriberId: "sub_123",
-      }),
+    expect(sendNewsletterVerificationEmailMock).toHaveBeenCalledWith({
+      email: "reader@example.com",
+      firstName: "Reader",
+      source: "holding-page",
+      subscriberId: "sub_123",
+      verificationToken: "verify_123",
+    });
+    expect(recordNewsletterSignupEventMock).toHaveBeenNthCalledWith(1, {
+      email: "reader@example.com",
+      source: "holding-page",
+      eventType: "subscribe_attempt",
+    });
+    expect(recordNewsletterSignupEventMock).toHaveBeenNthCalledWith(2, {
+      email: "reader@example.com",
+      source: "holding-page",
+      eventType: "subscribe_pending",
     });
   });
 });

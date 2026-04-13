@@ -5,7 +5,7 @@ export interface NewsletterSignupPayload {
   firstName?: string;
   marketingOptIn: boolean;
   consent: boolean;
-  source: "popup" | "inline" | "footer" | "homepage" | "subscribe";
+  source: "popup" | "inline" | "footer" | "homepage" | "subscribe" | "holding-page";
   turnstileToken: string;
 }
 

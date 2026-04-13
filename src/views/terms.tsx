@@ -172,8 +172,8 @@ export function TermsPage() {
             <h2 className="text-foreground mb-4 text-2xl">11. Contact</h2>
             <p>
               For questions about these terms, please contact:{" "}
-              <a href="mailto:hello@shrutiturner.com" className="text-primary underline">
-                hello@shrutiturner.com
+              <a href="mailto:tech@thechronicyogini.com" className="text-primary underline">
+                tech@thechronicyogini.com
               </a>
             </p>
           </section>

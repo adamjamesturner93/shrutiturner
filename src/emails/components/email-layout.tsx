@@ -18,6 +18,7 @@ interface EmailLayoutProps {
   websiteUrl?: string;
   instagramUrl?: string;
   contactUrl?: string;
+  privacyUrl?: string;
   unsubscribeUrl?: string;
   category?: "marketing" | "transactional";
 }
@@ -28,6 +29,7 @@ export function EmailLayout({
   websiteUrl = "https://shrutiturner.com",
   instagramUrl = "https://instagram.com/shrutiturner",
   contactUrl = "https://shrutiturner.com/contact",
+  privacyUrl = "https://shrutiturner.com/privacy",
   unsubscribeUrl = "https://shrutiturner.com/unsubscribe",
   category = "transactional",
 }: EmailLayoutProps) {
@@ -61,10 +63,10 @@ export function EmailLayout({
             }}
           >
             <Img
-              src={`${websiteUrl}/apple-icon`}
+              src={`${websiteUrl}/email-icon.png`}
               alt="Shruti Turner icon"
-              width="40"
-              height="40"
+              width="44"
+              height="44"
               style={{
                 display: "block",
                 margin: "0 auto 14px",
@@ -137,6 +139,13 @@ export function EmailLayout({
               >
                 Get in Touch
               </Link>
+              {"  \u00b7  "}
+              <Link
+                href={privacyUrl}
+                style={{ color: colors.brandAccent, textDecoration: "underline" }}
+              >
+                Privacy Policy
+              </Link>
             </Text>
             {category === "marketing" ? (
               <Text
@@ -154,6 +163,10 @@ export function EmailLayout({
                   style={{ color: "#a0a098", textDecoration: "underline" }}
                 >
                   Unsubscribe
+                </Link>
+                {"  \u00b7  "}
+                <Link href={privacyUrl} style={{ color: "#a0a098", textDecoration: "underline" }}>
+                  Privacy Policy
                 </Link>
               </Text>
             ) : null}

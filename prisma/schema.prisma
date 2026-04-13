@@ -176,6 +176,7 @@ enum BillingDisputeStatus {
 }
 
 enum NewsletterSubscriberStatus {
+  pending
   subscribed
   unsubscribed
 }
@@ -1266,20 +1267,40 @@ model ClassOperationalSettings {
 }
 
 model NewsletterSubscriber {
-  id             String                     @id @default(cuid())
-  email          String                     @unique
-  userId         String?                    @unique
-  status         NewsletterSubscriberStatus @default(subscribed)
-  source         String?
-  token          String                     @unique
-  subscribedAt   DateTime                   @default(now())
-  unsubscribedAt DateTime?
-  createdAt      DateTime                   @default(now())
-  updatedAt      DateTime                   @updatedAt
+  id                         String                     @id @default(cuid())
+  email                      String                     @unique
+  firstName                  String?
+  userId                     String?                    @unique
+  status                     NewsletterSubscriberStatus @default(pending)
+  source                     String?
+  token                      String                     @unique
+  consentedAt                DateTime?
+  subscribedAt               DateTime                   @default(now())
+  verifiedAt                 DateTime?
+  verificationTokenHash      String?
+  verificationTokenExpiresAt DateTime?
+  unsubscribedAt             DateTime?
+  createdAt                  DateTime                   @default(now())
+  updatedAt                  DateTime                   @updatedAt
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([status, updatedAt])
+  @@index([verificationTokenHash])
+  @@index([verifiedAt, status])
+}
+
+model NewsletterSignupEvent {
+  id          String   @id @default(cuid())
+  hashedEmail String
+  source      String
+  eventType   String
+  metadataJson Json?
+  createdAt   DateTime @default(now())
+
+  @@index([eventType, createdAt])
+  @@index([source, createdAt])
+  @@index([hashedEmail, createdAt])
 }
 
 model RetreatDate {

@@ -307,8 +307,8 @@ export function HealthDeclarationPage() {
               Questions about this health declaration? Contact:
               <br />
               Email:{" "}
-              <a href="mailto:hello@shrutiturner.com" className="text-primary underline">
-                hello@shrutiturner.com
+              <a href="mailto:tech@thechronicyogini.com" className="text-primary underline">
+                tech@thechronicyogini.com
               </a>
             </p>
           </section>

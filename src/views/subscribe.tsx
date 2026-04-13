@@ -35,9 +35,9 @@ const GUIDE_BENEFITS = [
 ];
 
 const SOCIAL_LINKS = [
-  { href: "https://youtube.com/@shrutiturner", label: "YouTube", icon: Youtube },
+  { href: "https://youtube.com/@TheChronicYogini", label: "YouTube", icon: Youtube },
   { href: "https://instagram.com/shrutiturner", label: "Instagram", icon: Instagram },
-  { href: "https://facebook.com/shrutiturner", label: "Facebook", icon: Facebook },
+  { href: "https://facebook.com/profile.php?id=61556124191934", label: "Facebook", icon: Facebook },
 ];
 
 const LINKS = [
@@ -327,7 +327,7 @@ export function SubscribePage() {
 
           <div className="grid gap-6">
             <a
-              href="https://youtube.com/@shrutiturner"
+              href="https://youtube.com/@TheChronicYogini"
               target="_blank"
               rel="noopener noreferrer"
               className="group block"

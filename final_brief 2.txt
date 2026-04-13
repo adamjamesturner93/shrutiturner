@@ -1,0 +1,551 @@
+Final launch-readiness audit brief
+
+Perform a final implementation and launch-readiness audit of the completed platform.
+
+This is a verification audit, not a planning exercise.
+Assess the current codebase, schema, services, routes, UI, emails, scheduled jobs, admin tooling, and user journeys against the final user requirements, compliance obligations, and UX expectations.
+
+Be strict. Do not assume a control exists unless it is evidenced in code or active operational wiring.
+
+Required output for every audit item
+
+For each item below, return:
+
+Status: Pass / Partial / Fail
+Risk: Critical / High / Medium / Low
+Evidence: exact file paths, models, routes, services, pages, email templates, jobs, or config
+Behaviour verified: what actually happens in product terms
+Mismatch: requirement vs implementation gap
+Fix required: only for Partial / Fail
+Launch blocker: Yes / No
+Required final sections
+
+End with:
+
+Critical launch blockers
+High-risk compliance gaps
+UX friction and trust issues
+Operational weaknesses
+Contradictions between code, UI, emails, and policy-linked wording
+Security and privacy weaknesses
+Accessibility gaps
+Performance/reliability concerns
+Final launch recommendation: Not ready / Ready with caveats / Ready
+1. Authority, access control, and instructor scoping
+
+Audit the authority model end to end.
+
+Verify that:
+Contentful instructor profiles are treated as public-content only
+operational authority comes only from Prisma role plus explicit assignment
+a Contentful instructor profile alone never grants instructor/admin capability
+owner_admin has intended global authority
+guest instructors only access sessions, runs, and dates they are explicitly assigned to
+guest instructors cannot enumerate, search, or infer users outside their assignment scope
+guest instructors cannot access:
+privacy tooling
+refund/dispute tooling
+legal/publication tooling
+global evidence tooling
+unrelated moderation surfaces
+public/member/assigned-instructor/owner-admin DTOs are truly separated server-side
+no staff-only or sensitive participant fields leak through shared endpoints, joins, caches, derived payloads, or UI prefetch paths
+Required scenarios
+
+Test:
+
+member with linked instructor profile but no assignment
+assigned guest instructor
+reassigned/removed instructor
+owner_admin
+normal member
+Cover/override scenarios
+
+Verify:
+
+timetable default instructor
+session-level override for a cover week
+permission transfer after reassignment
+old instructor loses scoped authority
+public instructor snapshot/history remains correct after reassignment
+2. Legal acceptance, consent, acknowledgement, and gating
+
+Audit immutable acceptance history and server-side enforcement.
+
+Verify that the system stores authoritative immutable records for:
+Terms acceptance
+Health waiver acceptance
+Health-data consent
+Recording notice acknowledgement
+Immediate-start acknowledgement where required
+Marketing consent where applicable
+Verify that:
+latest user flags, if still present, are only caches
+immutable acceptance events are the source of truth
+versioning is implemented correctly
+stale or missing acceptance is enforced server-side, not only in UI
+Verify server-side blocking for:
+health-profile writes
+retreat/programme medical data writes
+class booking
+membership checkout
+retreat checkout
+small-group checkout
+room-token issuance for recorded sessions
+replay access where relevant
+Verify the legal-gate error contract:
+consistent structure
+all required routes use it
+supports redirect-and-retry UX correctly
+
+Because health data is special category data, verify that the implementation clearly supports both a lawful basis under Article 6 and a separate Article 9 condition, and that explicit consent is correctly captured where relied upon.
+
+3. Health data handling, minimisation, instructor visibility, retention, and rights
+
+Audit health data end to end.
+
+Verify that:
+only minimum necessary health information is collected
+wording frames data use as safer participation/adaptation, not diagnosis or treatment
+guest instructors do not receive raw health declarations by default
+guest instructors receive only a minimal derived session-safety or participant-safe adaptation summary where operationally necessary
+owner_admin-only access to full health detail is enforced
+historical health revisions are protected
+no health data leaks into broad endpoints, logs, analytics payloads, or emails
+retention logic is implemented and operational
+retention anchors are explicit and correct
+deletion and export flows behave correctly for health data
+incident/dispute/legal hold logic prevents unsafe deletion
+deletion preserves referential integrity using anonymised shells where needed
+Verify DSAR/export and deletion against rights expectations
+
+Audit whether:
+
+access/export is complete, readable, and auditable
+deletion/anonymisation removes what should be removed
+preserved records are justified and non-identifying where possible
+
+This should be checked against ICO expectations for access and erasure handling.
+
+4. Recording, replay, deletion, and playback access
+
+Audit replay against the actual product rule:
+
+Product rule to verify
+Recording is enabled only for small-group programmes
+Standard live classes are not replayable
+Replay is available only in the authenticated small-group programme area
+Replay entitlement lasts until:
+programme end date + programme duration
+example: 4-week programme → replay for 4 weeks after programme end
+example: 6-week programme → replay for 6 weeks after programme end
+Replay must not be accessible through:
+public URLs
+general dashboard class history
+generic email links that bypass entitlement
+raw/direct Daily playback URLs
+Replay must be auto-deleted by Daily after the replay period ends
+Playback access must stop immediately when entitlement ends, even if remote deletion is still retrying
+Verify:
+only small-group products can be configured recorded/replayable
+recording notice is shown on relevant programme pages and before joining recorded sessions
+recording acknowledgement is required before room-token issuance for recorded small-group sessions
+replay policy is derived from programme duration, not a generic hard-coded window
+replay appears only in the relevant small-group area
+replay entitlement is tied to the enrolled user and programme
+assigned instructor replay access is limited to sessions/runs they taught or are assigned to
+owner_admin replay controls are properly scoped and audited
+playback access ends on time
+Daily deletion is triggered, retried on failure, and audited
+local replay state remains correct if Daily sync or deletion fails
+no public or permanent replay URLs are exposed
+
+Also verify that the copy shown to users, the config, the entitlement logic, and the deletion job all derive from the same authoritative path.
+
+5. Checkout, trial, cancellation, refunds, and confirmation flows
+
+Audit all product families:
+
+classes
+memberships
+credits
+retreats
+small groups
+gifts
+Verify:
+refund logic is implemented server-side
+correct refund rule is resolved for each product
+refund rule ids and evidence snapshots are stored at transaction time
+membership trial flow clearly shows:
+trial length
+billing start date
+post-trial amount
+cancellation method
+immediate-start / cooling-off summary
+confirmation emails include the required details
+retreat refund rules are correctly enforced and surfaced
+small groups are fixed-fee only, with no hidden deposit/balance logic
+self-serve cancellation and refund actions respect legal gating and dispute states
+replay access changes correctly when cancellation/refund/dispute changes entitlement
+
+Audit this against UK distance-selling / digital-content guidance on cancellation information and immediate supply. GOV.UK says streamed/downloaded digital content requires confirmation before supply starts, agreement to immediate supply, and inclusion of this in the contract confirmation; if the required information is not given, cancellation rights can persist longer.
+
+Also verify readiness against the new UK subscription-contract regime direction under the Digital Markets, Competition and Consumers Act implementation work, especially around reminders and subscription transparency.
+
+6. Email audit: transactional vs marketing
+
+Audit every outbound email and classify it.
+
+Classification rule
+
+Classify each email as either:
+
+Transactional / service
+Marketing
+
+Be strict. If a message contains promotional content, product upsell, or direct marketing elements, it may count as direct marketing even if its main purpose is service-related. ICO guidance says if a service message has direct marketing elements, it counts as direct marketing.
+
+Transactional / service emails to audit
+
+Verify trigger, recipient, copy, and logging for:
+
+passwordless sign-in / auth code
+account verification / onboarding
+booking confirmation
+calendar invite / ICS delivery
+waitlist promotion
+booking cancellation confirmation
+class cancellation notification
+instructor first-booking notification
+empty-class auto-cancel notification
+membership checkout confirmation
+trial start confirmation
+trial reminder / compliance notice / renewal reminder
+failed payment notice
+receipt / invoice
+retreat booking confirmation
+retreat balance due reminder if applicable
+small-group enrolment confirmation
+replay availability notice for enrolled small-group users
+DSAR export ready
+deletion request update/completion
+dispute / refund operational notices
+Marketing emails to audit
+
+Verify consent, suppression, and audience for:
+
+newsletter sends
+new blog post announcement emails
+lead magnet follow-up sequences that promote services
+class/programme/retreat launch announcements
+promotional offers or discounts
+win-back or “come back” emails
+campaign sends triggered from Contentful newsletter content
+Verify for every email
+trigger source
+audience source
+classification correctness
+whether marketing consent is required and respected
+whether unsubscribe link is present when required
+whether unsubscribed users are suppressed correctly
+whether transactional emails still send when the user has opted out of marketing
+whether delivery metadata is logged for evidence
+whether any “transactional” email contains promotional copy that would reclassify it as marketing
+
+Under ICO PECR guidance, unsolicited email marketing to individuals usually requires specific consent unless a narrow soft opt-in applies. Consent must be freely given, and making email marketing consent a condition of purchase is unlikely to be valid.
+
+7. Newsletter audit
+
+Audit newsletter compliance, editorial workflow, and analytics.
+
+Verify:
+newsletter signup captures valid marketing consent where required
+wording version is stored
+source/surface is stored
+unsubscribe works reliably
+suppression works reliably
+sends go only to the correct subscribed audience
+campaign metrics are accurate and visible
+subscriber trend analytics are accurate and time-based
+Contentful-triggered send flow matches the real editorial workflow
+marketing consent is not bundled improperly with service terms
+no transactional email depends on newsletter consent
+no marketing email is sent under a transactional trigger
+8. Blog and community audit
+
+Audit blog functionality and moderation.
+
+Verify:
+blog publishing flow is operationally clear
+anonymous reactions have abuse controls
+authenticated comments work
+report flow works
+moderation queue/state flow works
+community rules are visible where needed
+owner_admin moderation is complete
+guest instructors can moderate only spaces explicitly in scope for assigned programme/retreat community areas, not unrelated site-wide content
+moderation actions are logged
+comment/report states are auditable
+comments/reactions are handled correctly in export/deletion flows
+blog-related announcement emails are correctly classified as marketing
+9. Disputes, holds, overrides, and evidence
+
+Audit dispute and evidence handling end to end.
+
+Verify:
+Stripe dispute webhooks are handled correctly
+dispute cases are created, updated, and closed correctly
+dispute hold applies only to the disputed entitlement/product by default
+wider account restriction requires explicit owner_admin action
+guest instructors have no visibility into dispute existence or state
+replay/refund/self-serve actions behave correctly while under review
+owner_admin override actions are logged with actor, reason, and before/after values
+replay revoke/delete actions are logged
+evidence views can reconstruct:
+what was bought/booked
+what refund rule applied
+what legal versions were accepted
+whether recording/replay notice applied
+whether user attended
+what notices were shown and sent
+what overrides, incidents, moderation actions, and disputes occurred
+
+Be strict here. This is your complaint-defence surface.
+
+10. Privacy operations and DSAR workflows
+
+Audit privacy tooling and workflows end to end.
+
+Verify:
+export preview works
+export generation works
+ZIP is readable and complete
+summary output is useful to a human
+checksum/audit metadata is stored
+deletion preview explains what will and will not be deleted
+deletion execute revokes active auth sessions/tokens
+anonymisation works where intended
+finance/tax/audit records are preserved appropriately
+privacy requests are auditable end to end
+guest instructors cannot see the existence or status of privacy requests, disputes, deletion holds, or legal holds
+11. Scheduled jobs and operational resilience
+
+Audit all wired jobs:
+
+class three-hour cutoff
+subscription/compliance notices
+replay sync
+replay deletion
+health retention cleanup
+dispute follow-up reconciliation
+any reminder jobs in scope
+Verify for each:
+trigger mechanism
+idempotency
+retry safety
+locking / duplicate prevention
+failure surfacing
+owner_admin manual rerun
+rerun auditing
+output counters and summaries
+safe behaviour if dependent external APIs fail
+12. Public schedule, booking journeys, and UX readiness
+
+Audit these journeys end to end:
+
+Journey A — new user books a normal class
+browse public schedule
+view class detail
+create account
+accept legal docs
+complete health declaration
+start membership or buy credits
+book class
+receive confirmation email and calendar invite
+join class
+cancel before and after cutoff
+Journey B — user joins a recorded small group
+discover programme
+understand replay clearly
+accept legal docs and recording acknowledgement
+purchase fixed-fee enrolment
+join session
+access replay only in programme area
+lose replay access at the correct time
+Journey C — retreat booking
+public retreat page
+date/room selection
+medical/safety data entry
+legal acceptance
+checkout
+confirmation email
+later cancellation/refund evaluation
+Journey D — guest instructor cover week
+owner_admin assigns cover instructor
+cover instructor accesses only assigned session/run/date
+sees only minimum participant data
+can run the room, moderate, and log incidents
+cannot access broader admin surfaces
+Journey E — privacy and complaint journey
+user requests export
+owner_admin fulfils request
+user requests deletion
+preview blocks/allows correctly
+owner_admin executes deletion
+evidence view can still reconstruct what happened
+Journey F — replay lifecycle
+user enrols in recorded small group
+replay notice is clear before purchase and before join
+replay appears only in programme area
+replay remains available through programme end plus programme duration
+replay disappears on time
+Daily asset deletion is triggered/audited
+stale links do not work after expiry
+Journey G — email classification and consent
+user unsubscribed from marketing still receives required transactional emails
+user unsubscribed from marketing does not receive newsletter/blog/promotional mail
+user with valid marketing consent receives newsletter/blog announcement emails
+transactional emails do not contain promotional copy that would effectively reclassify them as marketing
+
+For each journey, report:
+
+friction
+confusing copy
+inconsistent wording
+trust issues
+unnecessary steps
+technically compliant but poor UX decisions
+13. Non-functional requirements audit
+Security
+
+Audit for:
+
+authentication/session security
+authorisation bypass risk
+insecure direct object reference risk
+sensitive-data leakage in APIs
+replay URL leakage
+webhook verification
+secret handling
+audit logging for sensitive actions
+safe handling of uploads/exports/downloads
+rate limiting / abuse controls where relevant
+
+Use OWASP-style reasoning and flag anything that would materially weaken launch safety, even if no exploit proof is present.
+
+Accessibility
+
+Audit against WCAG 2.2 AA expectations, including:
+
+keyboard access
+focus visibility
+focus order
+form labels and errors
+dialog/modal accessibility
+colour contrast
+text alternatives
+media controls where relevant
+replay/video player accessibility
+error identification and recovery
+responsive/mobile usability
+reduced-motion considerations where relevant
+
+WCAG 2.2 is the current W3C Recommendation baseline and should be the reference point for the audit.
+
+Performance
+
+Audit:
+
+public schedule performance
+booking flow latency
+replay page load and playback startup
+large admin evidence views
+DSAR export generation behaviour
+N+1/query inefficiencies in session/member views
+oversized payloads, especially around member/session data
+Reliability
+
+Audit:
+
+retry behaviour
+idempotency
+external dependency failure handling for Stripe, Daily, Postmark, and Contentful
+state recovery after partial failure
+replay sync/deletion robustness
+consistency between UI state and backend truth
+Privacy and data minimisation
+
+Audit:
+
+unnecessary persistence of payloads
+over-retention
+oversharing in support/admin views
+whether “need to know” is respected for guest instructors
+whether evidence tooling exposes more than it should
+Observability and supportability
+
+Audit:
+
+operational logging
+structured audit trails
+manual rerun visibility
+ability to diagnose user complaints quickly
+ability to answer “what happened and why?” without raw DB inspection
+Required testing audit section
+
+Audit test coverage and quality by test type, not just raw count.
+
+A. Playwright / end-to-end coverage
+
+Verify that critical journeys have browser-level coverage, including:
+
+public schedule to booking
+legal re-acceptance redirect flow
+recorded small-group acknowledgement flow
+small-group replay visible only in programme area
+replay no longer accessible after entitlement expiry in a suitable staged/mocked test
+guest instructor scoped access
+owner_admin privacy workflows
+marketing unsubscribe flow
+blog comment/report/moderation surface
+B. Integration / service coverage
+
+Verify coverage for:
+
+refund rule evaluation
+replay entitlement calculation
+recording/replay policy resolution
+legal acceptance gating
+access helper logic
+DTO separation / sensitive field suppression
+Daily sync/deletion lifecycle
+dispute hold behaviour
+DSAR export content logic
+deletion/anonymisation logic
+retention jobs
+scheduled job idempotency and locking
+C. Unit coverage
+
+Verify targeted unit coverage for:
+
+pure policy/version helpers
+refund rule calculators
+replay window calculators
+retention anchor calculations
+email classification logic if codified
+small derived safety-summary builders
+config resolution utilities
+Testing verdict
+
+Do not require Playwright for every single criterion.
+Instead verify:
+
+every critical user journey has end-to-end coverage
+every critical backend rule has integration/service coverage
+pure logic has unit coverage
+
+Flag:
+
+critical behaviours with no automated coverage
+overreliance on Playwright for backend-only rules
+backend-only controls that are not directly tested

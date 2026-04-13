@@ -6,6 +6,7 @@ import {
   getRetreatsCombined,
   getSmallGroupTemplates,
 } from "@/lib/content";
+import { HOLDING_SITEMAP_PATHS, isHoldingStage } from "@/lib/site-stage";
 
 const STATIC_ROUTES = [
   "",
@@ -41,6 +42,12 @@ function dedupeEntries(entries: MetadataRoute.Sitemap): MetadataRoute.Sitemap {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  if (isHoldingStage()) {
+    return HOLDING_SITEMAP_PATHS.map((path) => ({
+      url: toAbsoluteUrl(path),
+    }));
+  }
+
   const staticEntries: MetadataRoute.Sitemap = STATIC_ROUTES.map((path) => ({
     url: toAbsoluteUrl(path),
   }));

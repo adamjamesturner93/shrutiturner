@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 3001;
+const PORT = Number(process.env.PLAYWRIGHT_PORT || 3001);
+const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${PORT}`;
 
 function loadEnvFile() {
   const envPath = ".env";
@@ -33,7 +34,7 @@ export default defineConfig({
     timeout: 5_000,
   },
   use: {
-    baseURL: `http://127.0.0.1:${PORT}`,
+    baseURL: BASE_URL,
     trace: "on-first-retry",
   },
   projects: [
@@ -42,15 +43,19 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  webServer: {
-    command: `pnpm exec next dev --port ${PORT}`,
-    url: `http://127.0.0.1:${PORT}`,
-    reuseExistingServer: false,
-    stdout: "pipe",
-    stderr: "pipe",
-    env: {
-      NEXT_PUBLIC_E2E_TEST_MODE: "1",
-      NEXT_PUBLIC_SITE_URL: `http://127.0.0.1:${PORT}`,
-    },
-  },
+  webServer:
+    process.env.PLAYWRIGHT_SKIP_WEBSERVER === "1"
+      ? undefined
+      : {
+          command: `pnpm exec next dev --port ${PORT}`,
+          url: BASE_URL,
+          reuseExistingServer: false,
+          stdout: "pipe",
+          stderr: "pipe",
+          env: {
+            ...process.env,
+            NEXT_PUBLIC_E2E_TEST_MODE: process.env.NEXT_PUBLIC_E2E_TEST_MODE || "1",
+            NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || BASE_URL,
+          },
+        },
 });

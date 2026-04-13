@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { shouldRedirectPublicPathInHolding } from "@/lib/site-stage";
 
 const ADMIN_EMAILS = (
   process.env.ADMIN_EMAILS || "tech@thechronicyogini.com,shruti@shrutiturner.com"
@@ -10,6 +11,11 @@ const ADMIN_EMAILS = (
 
 export default auth((req) => {
   const pathname = req.nextUrl.pathname;
+
+  if (shouldRedirectPublicPathInHolding(pathname)) {
+    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  }
+
   const isAuthed = Boolean(req.auth?.user);
   const user = req.auth?.user as { role?: string; email?: string | null } | undefined;
   const role =
@@ -38,5 +44,5 @@ export default auth((req) => {
 
 export const config = {
   runtime: "nodejs",
-  matcher: ["/dashboard/:path*", "/admin/:path*", "/account/:path*"],
+  matcher: ["/((?!api|_next/static|_next/image|.*\\..*).*)"],
 };
