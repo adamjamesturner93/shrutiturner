@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:clean": "rm -rf .next && next dev",
+    "prebuild": "npx prisma generate",
     "build": "next build",
     "start": "next start",
     "prepare": "husky",
