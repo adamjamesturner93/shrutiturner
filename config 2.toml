@@ -1,5 +1,0 @@
-[mcp_servers.next-devtools]
-startup_timeout_sec = 30
-
-[mcp_servers.playwright]
-startup_timeout_sec = 30

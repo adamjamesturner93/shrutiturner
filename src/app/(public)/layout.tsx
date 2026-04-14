@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { PublicHoldingGuard } from "@/components/public-holding-guard";
 import { isHoldingStage } from "@/lib/site-stage";
 
@@ -12,5 +13,9 @@ export const metadata: Metadata = {
 };
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
-  return <PublicHoldingGuard holdingMode={isHoldingStage()}>{children}</PublicHoldingGuard>;
+  return (
+    <Suspense fallback={children}>
+      <PublicHoldingGuard holdingMode={isHoldingStage()}>{children}</PublicHoldingGuard>
+    </Suspense>
+  );
 }
