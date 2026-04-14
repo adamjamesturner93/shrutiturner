@@ -2,6 +2,7 @@ import NewsletterVerificationEmail from "@/emails/newsletter-verification";
 import WelcomeEmail from "@/emails/welcome";
 import { buildAbsoluteUrl } from "@/lib/app-url";
 import { getNewsletterSignupContent } from "@/lib/content";
+import { CANONICAL_LEAD_MAGNET } from "@/lib/newsletter/lead-magnet";
 import { sendPostmarkReactEmail } from "@/lib/postmark/client";
 import { createSignedUnsubscribeToken } from "@/lib/newsletter/tokens";
 
@@ -22,11 +23,13 @@ export async function sendNewsletterVerificationEmail(input: {
   subscriberId: string;
   verificationToken: string;
 }) {
+  const signupContent = await getNewsletterSignupContent();
   const privacyUrl = buildPrivacyUrl();
   const verificationUrl = buildAbsoluteUrl(
     `/api/newsletter/verify?token=${encodeURIComponent(input.verificationToken)}`
   );
   const unsubscribeUrl = buildUnsubscribeUrl(input.subscriberId);
+  const leadMagnetTitle = signupContent.leadMagnetTitle || CANONICAL_LEAD_MAGNET.title;
 
   await sendPostmarkReactEmail({
     to: input.email,
@@ -34,6 +37,7 @@ export async function sendNewsletterVerificationEmail(input: {
     react: (
       <NewsletterVerificationEmail
         firstName={input.firstName || "there"}
+        leadMagnetTitle={leadMagnetTitle}
         privacyUrl={privacyUrl}
         unsubscribeUrl={unsubscribeUrl}
         verificationUrl={verificationUrl}
@@ -42,7 +46,7 @@ export async function sendNewsletterVerificationEmail(input: {
     textBody: [
       `Hi ${input.firstName || "there"},`,
       "",
-      "Confirm your email to receive launch updates and your free guide:",
+      `Confirm your email to receive launch updates and your free guide, ${leadMagnetTitle}:`,
       verificationUrl,
       "",
       "This link expires in 24 hours.",
@@ -66,8 +70,7 @@ export async function sendLeadMagnetDeliveryEmail(input: {
   const signupContent = await getNewsletterSignupContent();
   const privacyUrl = buildPrivacyUrl();
   const unsubscribeUrl = buildUnsubscribeUrl(input.subscriberId);
-  const downloadUrl =
-    signupContent.assetUrl || buildAbsoluteUrl("/resources/5-yoga-poses-strength");
+  const downloadUrl = signupContent.assetUrl || CANONICAL_LEAD_MAGNET.assetUrl;
 
   await sendPostmarkReactEmail({
     to: input.email,

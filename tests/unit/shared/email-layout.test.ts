@@ -4,7 +4,7 @@ import ClassBookingEmail from "@/emails/class-booking";
 import NewsletterEmail from "@/emails/newsletter";
 
 describe("EmailLayout categories", () => {
-  it("renders the brand icon in the shared header", async () => {
+  it("renders the shared branded header", async () => {
     const html = await render(
       ClassBookingEmail({
         firstName: "Taylor",
@@ -12,8 +12,8 @@ describe("EmailLayout categories", () => {
       })
     );
 
-    expect(html).toContain("Shruti Turner icon");
-    expect(html).toContain("/apple-icon");
+    expect(html).toContain("/logos/logo-white-horizontal.svg");
+    expect(html).toContain('alt="Shruti Turner Private Studio"');
   });
 
   it("does not render unsubscribe content for transactional emails", async () => {

@@ -24,15 +24,11 @@ import { SEO } from "@/components/seo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
+import { CANONICAL_LEAD_MAGNET, FREE_GUIDE_META_DESCRIPTION } from "@/lib/newsletter/lead-magnet";
 import { submitNewsletterSignup } from "@/lib/newsletter-signup";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 
-const GUIDE_BENEFITS = [
-  "5 specific poses chosen for chronic illness and hypermobility",
-  "Why each pose builds real strength, not just flexibility",
-  "Modifications for flare days and low-energy sessions",
-  "A printable reference card to keep by your mat",
-];
+const GUIDE_BENEFITS = CANONICAL_LEAD_MAGNET.subscribeBenefits;
 
 const SOCIAL_LINKS = [
   { href: "https://youtube.com/@TheChronicYogini", label: "YouTube", icon: Youtube },
@@ -108,7 +104,7 @@ export function SubscribePage() {
     <Layout>
       <SEO
         title="Links & Newsletter - Shruti Turner"
-        description="Move better. Hurt less. Train for life. Get a free yoga strength guide and join the weekly newsletter."
+        description={FREE_GUIDE_META_DESCRIPTION}
         canonicalUrl="https://shrutiturner.com/subscribe"
       />
 
@@ -208,11 +204,10 @@ export function SubscribePage() {
                       Free Guide
                     </span>
                     <h2 className="mt-4 text-2xl leading-tight md:text-[1.9rem]">
-                      5 Yoga Poses That Actually Build Strength
+                      {CANONICAL_LEAD_MAGNET.title}
                     </h2>
                     <p className="text-brand-white/76 mt-3 text-sm leading-relaxed md:text-base">
-                      A practical starting point for chronic illness and hypermobility, with
-                      flare-day options and explanations that make sense.
+                      {CANONICAL_LEAD_MAGNET.cardDescription}
                     </p>
 
                     <ul className="mt-5 space-y-3">

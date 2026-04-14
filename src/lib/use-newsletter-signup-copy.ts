@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import type { NewsletterSignupContent } from "@/lib/content";
+import { CANONICAL_LEAD_MAGNET } from "@/lib/newsletter/lead-magnet";
 
 const DEFAULT_SIGNUP_COPY: NewsletterSignupContent = {
   slug: "default",
-  hookText: 'Get "5 Yoga Poses That Actually Build Strength" - free:',
+  hookText: CANONICAL_LEAD_MAGNET.hookText,
   formPlaceholder: "your.email@example.com",
   buttonLabel: "Subscribe",
   successMessage: "Please check your inbox to confirm your email address.",

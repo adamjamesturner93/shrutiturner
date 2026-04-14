@@ -63,40 +63,15 @@ export function EmailLayout({
             }}
           >
             <Img
-              src={`${websiteUrl}/email-icon.png`}
-              alt="Shruti Turner icon"
-              width="44"
+              src={`${websiteUrl}/logos/logo-white-horizontal.svg`}
+              alt="Shruti Turner Private Studio"
+              width="172"
               height="44"
               style={{
                 display: "block",
-                margin: "0 auto 14px",
+                margin: "0 auto",
               }}
             />
-            <Text
-              style={{
-                fontFamily: fonts.heading,
-                color: colors.brandWhite,
-                fontSize: "22px",
-                fontWeight: "700",
-                margin: "0",
-                letterSpacing: "-0.01em",
-              }}
-            >
-              Shruti Turner
-            </Text>
-            <Text
-              style={{
-                fontFamily: fonts.body,
-                color: "rgba(250, 250, 248, 0.5)",
-                fontSize: "12px",
-                fontWeight: "400",
-                margin: "4px 0 0 0",
-                letterSpacing: "0.06em",
-                textTransform: "uppercase" as const,
-              }}
-            >
-              Private Studio
-            </Text>
           </Section>
 
           {/* Accent stripe */}

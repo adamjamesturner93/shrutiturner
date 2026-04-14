@@ -448,19 +448,20 @@ export const LEAD_MAGNET_SEED = {
   contentType: "leadMagnet",
   entries: [
     {
-      slug: "5-yoga-poses-strength",
-      title: "5 Yoga Poses That Actually Build Strength",
-      hookText: 'Get "5 Yoga Poses That Actually Build Strength" - free:',
-      landingHeadline: "5 Yoga Poses That Actually Build Strength",
+      slug: "why-some-bodies-need-strength-before-more-stretching",
+      title: "Why Some Bodies Need Strength Before More Stretching",
+      hookText: 'Get "Why Some Bodies Need Strength Before More Stretching" - free:',
+      landingHeadline: "Why Some Bodies Need Strength Before More Stretching",
       landingDescription:
-        "A short, practical guide for building strength safely, plus research-backed newsletter updates.",
+        "A free guide exploring stability, control, and capacity in flexible bodies.",
       ctaLabel: "Get Free Guide",
-      emailSubject: "Your free guide: 5 Yoga Poses That Actually Build Strength",
+      emailSubject: "Your free guide: Why Some Bodies Need Strength Before More Stretching",
       emailPreviewText: "Here is your welcome gift and how to get started.",
       emailBody:
-        "Hi {{firstName}},\n\nThanks for joining. Here is your guide: 5 Yoga Poses That Actually Build Strength.\n\n{{leadMagnetLink}}\n\nShruti",
+        "Hi {{firstName}},\n\nThanks for joining. Here is your guide: Why Some Bodies Need Strength Before More Stretching.\n\n{{leadMagnetLink}}\n\nShruti",
       deliveryType: "link",
-      assetUrl: "https://shrutiturner.com/resources/5-yoga-poses-strength",
+      assetUrl:
+        "https://shrutiturner.com/guides/why-some-bodies-need-strength-before-more-stretching.pdf",
       active: true,
     },
   ],
@@ -471,7 +472,7 @@ export const NEWSLETTER_SIGNUP_CONTENT_SEED = {
   entries: [
     {
       slug: "default",
-      activeLeadMagnetSlug: "5-yoga-poses-strength",
+      activeLeadMagnetSlug: "why-some-bodies-need-strength-before-more-stretching",
       formPlaceholder: "your.email@example.com",
       buttonLabel: "Subscribe",
       successMessage: "You're subscribed! Check your inbox.",

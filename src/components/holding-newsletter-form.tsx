@@ -6,6 +6,7 @@ import { AlertCircle, CheckCircle2, LoaderCircle } from "lucide-react";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CANONICAL_LEAD_MAGNET } from "@/lib/newsletter/lead-magnet";
 import { submitNewsletterSignup } from "@/lib/newsletter-signup";
 
 function isValidEmail(value: string) {
@@ -128,7 +129,7 @@ export function HoldingNewsletterForm() {
           Join the mailing list for launch updates, useful notes, and a free guide:
         </p>
         <p className="text-brand-accent-light mt-2 text-sm italic sm:text-[0.96rem]">
-          5 Yoga Poses That Actually Build Strength
+          {CANONICAL_LEAD_MAGNET.title}
         </p>
       </div>
 

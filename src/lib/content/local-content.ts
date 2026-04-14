@@ -1,4 +1,5 @@
 import { classDetails, getScheduleByDay, type ClassDetail } from "@/data/schedule-data";
+import { CANONICAL_LEAD_MAGNET } from "@/lib/newsletter/lead-magnet";
 import { retreats } from "@/data/retreat-data";
 import { LEGAL_DOCUMENTS } from "@/data/legal-documents";
 import { smallGroupTemplates } from "@/data/small-group-programmes";
@@ -78,7 +79,7 @@ export const LOCAL_LEGAL_DOCUMENTS: LegalDocumentContent[] = LEGAL_DOCUMENTS;
 
 export const LOCAL_NEWSLETTER_SIGNUP_CONTENT: NewsletterSignupContent = {
   slug: "default",
-  hookText: 'Get "5 Yoga Poses That Actually Build Strength" - free:',
+  hookText: CANONICAL_LEAD_MAGNET.hookText,
   formPlaceholder: "your.email@example.com",
   buttonLabel: "Subscribe",
   successMessage: "Please check your inbox to confirm your email address.",
@@ -86,14 +87,14 @@ export const LOCAL_NEWSLETTER_SIGNUP_CONTENT: NewsletterSignupContent = {
   popupTitle: "Get Evidence-Based Insights",
   popupDescription:
     "Join the mailing list for launch updates, practical strength guidance, and occasional offers. No spam, unsubscribe anytime.",
-  leadMagnetSlug: "5-yoga-poses-strength",
-  leadMagnetTitle: "5 Yoga Poses That Actually Build Strength",
+  leadMagnetSlug: CANONICAL_LEAD_MAGNET.slug,
+  leadMagnetTitle: CANONICAL_LEAD_MAGNET.title,
   emailSubject: "Confirm your email to get your free guide",
   emailPreviewText: "Confirm your email to receive the guide and launch updates.",
   emailBody:
     "Hi {{firstName}},\n\nConfirm your email to receive launch updates and your free guide.\n\n{{leadMagnetLink}}\n\nShruti",
   deliveryType: "link",
-  assetUrl: "https://shrutiturner.com/resources/5-yoga-poses-strength",
+  assetUrl: CANONICAL_LEAD_MAGNET.assetUrl,
 };
 
 export const LOCAL_RETREAT_INSTANCES: RetreatInstanceContent[] = retreats.flatMap((retreat) =>

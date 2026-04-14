@@ -1,4 +1,5 @@
 import { blogAuthors as LOCAL_BLOG_AUTHORS, blogPosts as LOCAL_BLOG_POSTS } from "@/data/blog-data";
+import { normalizeNewsletterSignupContent } from "@/lib/newsletter/lead-magnet";
 import {
   LOCAL_CLASS_DEFINITIONS,
   LOCAL_GLOBAL_CONTENT,
@@ -287,7 +288,7 @@ export async function getNewsletterSignupContent(): Promise<NewsletterSignupCont
       const leadMagnetEntry = getIncludedEntryById(res.includes?.Entry, leadMagnetId);
       const leadMagnetFields = leadMagnetEntry?.fields;
 
-      return {
+      return normalizeNewsletterSignupContent({
         slug: "default",
         hookText: String(leadMagnetFields?.hookText || LOCAL_NEWSLETTER_SIGNUP_CONTENT.hookText),
         formPlaceholder: String(
@@ -336,11 +337,11 @@ export async function getNewsletterSignupContent(): Promise<NewsletterSignupCont
         assetUrl: leadMagnetFields?.assetUrl
           ? String(leadMagnetFields.assetUrl)
           : LOCAL_NEWSLETTER_SIGNUP_CONTENT.assetUrl,
-      };
+      });
     }
   }
 
-  return LOCAL_NEWSLETTER_SIGNUP_CONTENT;
+  return normalizeNewsletterSignupContent(LOCAL_NEWSLETTER_SIGNUP_CONTENT);
 }
 
 export async function getLeadMagnetBySlug(slug: string): Promise<LeadMagnetContent | null> {

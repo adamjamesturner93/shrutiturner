@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/icon", sizes: "32x32", type: "image/png" },
-      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/logos/logo-colour-icon-only.svg", type: "image/svg+xml" },
     ],
     shortcut: [{ url: "/icon", sizes: "32x32", type: "image/png" }],
     apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],

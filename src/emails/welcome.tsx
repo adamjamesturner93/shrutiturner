@@ -1,4 +1,5 @@
 import { Section, Text, Link, Hr } from "@react-email/components";
+import { FREE_GUIDE_TITLE, FREE_GUIDE_SUPPORTING_LINE } from "@/lib/newsletter/lead-magnet";
 import { EmailLayout } from "./components/email-layout";
 import { colors, fonts, headingStyle, bodyTextStyle, buttonStyle, dividerStyle } from "./styles";
 
@@ -17,9 +18,9 @@ interface WelcomeEmailProps {
 
 export default function WelcomeEmail({
   firstName = "there",
-  leadMagnetTitle = "The Foundations Guide: 5 Principles for a Sustainable Practice",
-  leadMagnetDescription = "A practical guide to building a yoga and movement practice that respects your body's complexity — with exercises, reflections, and evidence-based insights you can start using today.",
-  downloadUrl = "https://shrutiturner.com/download/foundations-guide",
+  leadMagnetTitle = FREE_GUIDE_TITLE,
+  leadMagnetDescription = FREE_GUIDE_SUPPORTING_LINE,
+  downloadUrl = "https://shrutiturner.com/guides/why-some-bodies-need-strength-before-more-stretching.pdf",
   ctaLabel = "Download your guide",
   welcomeCopy,
   classesUrl = "https://shrutiturner.com/classes",

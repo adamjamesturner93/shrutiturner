@@ -1,9 +1,11 @@
 import { Link, Section, Text } from "@react-email/components";
+import { CANONICAL_LEAD_MAGNET } from "@/lib/newsletter/lead-magnet";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, buttonStyle, colors, headingStyle } from "./styles";
 
 interface NewsletterVerificationEmailProps {
   firstName?: string;
+  leadMagnetTitle?: string;
   privacyUrl: string;
   unsubscribeUrl: string;
   verificationUrl: string;
@@ -11,6 +13,7 @@ interface NewsletterVerificationEmailProps {
 
 export default function NewsletterVerificationEmail({
   firstName = "there",
+  leadMagnetTitle = CANONICAL_LEAD_MAGNET.title,
   privacyUrl,
   unsubscribeUrl,
   verificationUrl,
@@ -30,7 +33,7 @@ export default function NewsletterVerificationEmail({
 
       <Text style={bodyTextStyle}>
         Thanks for signing up. Confirm your email address to receive launch updates and the free
-        guide, <em>5 Yoga Poses That Actually Build Strength</em>.
+        guide, <em>{leadMagnetTitle}</em>.
       </Text>
 
       <Section
