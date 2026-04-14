@@ -1594,7 +1594,7 @@ DTSTAMP:{now}
 DTSTART:{session.date}
 DTEND:{session.endTime}
 SUMMARY:{className} with Shruti Turner
-DESCRIPTION:Join link: https://shrutiturner.daily.co/{roomId}\n\nClass: {className}\nLevel: {level}\n\nManage your booking: https://shrutiturner.com/dashboard
+DESCRIPTION:Join link: https://shrutiturner.daily.co/{roomId}\n\nClass: {className}\nLevel: {level}\n\nManage your booking: https://shrutiturner.co.uk/dashboard
 LOCATION:Online (Daily.co)
 ORGANIZER;CN=Shruti Turner:mailto:shruti@shrutiturner.com
 STATUS:CONFIRMED

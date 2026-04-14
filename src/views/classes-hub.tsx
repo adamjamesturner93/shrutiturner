@@ -43,7 +43,7 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
         title="Move Well Classes - Adaptive Yoga & Strength Training - Shruti Turner"
         description="Move Well Classes are live online adaptive yoga and intelligent strength sessions for complex bodies. Evidence-based classes that build capacity without burnout."
         keywords="move well classes, online yoga classes, online strength training, adaptive yoga, intelligent training, yoga for chronic illness"
-        canonicalUrl="https://shrutiturner.com/classes"
+        canonicalUrl="https://shrutiturner.co.uk/classes"
       />
 
       <EditorialHero
@@ -79,7 +79,7 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
         ]}
         aside={
           <div className="relative mx-auto max-w-xl">
-            <div className="overflow-hidden rounded-[2rem] border border-brand-white/10 bg-brand-white/8 p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+            <div className="border-brand-white/10 bg-brand-white/8 overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
               <div className="grid gap-3 md:grid-cols-[1.08fr_0.92fr]">
                 <div className="aspect-[4/5] overflow-hidden rounded-[1.4rem]">
                   <ImageWithFallback
@@ -89,20 +89,20 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
                   />
                 </div>
                 <div className="flex flex-col gap-3">
-                  <div className="flex-1 rounded-[1.35rem] bg-brand-white/10 p-4 backdrop-blur-sm">
+                  <div className="bg-brand-white/10 flex-1 rounded-[1.35rem] p-4 backdrop-blur-sm">
                     <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
                       What changes here
                     </p>
-                    <p className="mt-3 text-sm leading-relaxed text-brand-white/84">
+                    <p className="text-brand-white/84 mt-3 text-sm leading-relaxed">
                       You are not asked to keep up. You are taught how to scale well and still make
                       progress.
                     </p>
                   </div>
-                  <div className="flex-1 rounded-[1.35rem] bg-brand-accent-light/12 p-4 backdrop-blur-sm">
+                  <div className="bg-brand-accent-light/12 flex-1 rounded-[1.35rem] p-4 backdrop-blur-sm">
                     <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
                       Membership mood
                     </p>
-                    <p className="mt-3 text-sm leading-relaxed text-brand-white/84">
+                    <p className="text-brand-white/84 mt-3 text-sm leading-relaxed">
                       Consistency, not punishment. Good teaching, good pacing, and no performance
                       theatre.
                     </p>
@@ -138,9 +138,9 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
                 </div>
               ))}
             </div>
-            <div className="rounded-[1.5rem] border border-brand-dark/10 bg-brand-warm px-6 py-6">
+            <div className="border-brand-dark/10 bg-brand-warm rounded-[1.5rem] border px-6 py-6">
               <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">In practice</p>
-              <p className="mt-3 text-muted-foreground leading-relaxed">
+              <p className="text-muted-foreground mt-3 leading-relaxed">
                 Classes are coached live so you can respond to what your body is doing on the day,
                 not what a programme designer imagined weeks ago.
               </p>
@@ -168,7 +168,10 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
             ].map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.title} className="rounded-[1.5rem] border border-brand-dark/10 bg-background p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+                <div
+                  key={item.title}
+                  className="border-brand-dark/10 bg-background rounded-[1.5rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]"
+                >
                   <div className="bg-brand-accent/10 text-brand-accent flex h-11 w-11 items-center justify-center rounded-2xl">
                     <Icon className="h-5 w-5" />
                   </div>
@@ -208,7 +211,10 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
               body: "Building physical capacity is easier when the nervous system is not already overwhelmed.",
             },
           ].map((item) => (
-            <div key={item.title} className="rounded-[1.65rem] border border-brand-dark/10 bg-background p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+            <div
+              key={item.title}
+              className="border-brand-dark/10 bg-background rounded-[1.65rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]"
+            >
               <h3 className="text-2xl">{item.title}</h3>
               <p className="text-muted-foreground mt-4 leading-relaxed">{item.body}</p>
             </div>
@@ -240,7 +246,9 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
                 <Heart className="text-brand-accent h-5 w-5" />
                 <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">Yoga classes</p>
               </div>
-              <h2 className="mt-4 text-3xl md:text-4xl">Adaptive practice, not mainstream yoga with edits.</h2>
+              <h2 className="mt-4 text-3xl md:text-4xl">
+                Adaptive practice, not mainstream yoga with edits.
+              </h2>
               <p className="text-muted-foreground mt-5 text-lg leading-relaxed">
                 These sessions prioritise joint safety, proprioception, regulation, and movement
                 options that make sense for complex bodies.
@@ -252,7 +260,10 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
                   "Support for hypermobility and symptom-sensitive pacing",
                   "A calmer route into confidence and consistency",
                 ].map((item) => (
-                  <li key={item} className="flex items-start gap-3 text-sm leading-relaxed text-muted-foreground">
+                  <li
+                    key={item}
+                    className="text-muted-foreground flex items-start gap-3 text-sm leading-relaxed"
+                  >
                     <Check className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
                     <span>{item}</span>
                   </li>
@@ -263,7 +274,7 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
                   <Link
                     key={card.id}
                     href={`/classes/${card.slug}`}
-                    className="rounded-[1.4rem] border border-brand-dark/10 bg-background p-5 shadow-[0_16px_36px_rgba(46,31,51,0.05)] transition-transform duration-300 hover:-translate-y-1"
+                    className="border-brand-dark/10 bg-background rounded-[1.4rem] border p-5 shadow-[0_16px_36px_rgba(46,31,51,0.05)] transition-transform duration-300 hover:-translate-y-1"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <h3 className="text-xl">{card.name}</h3>
@@ -282,7 +293,7 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
           </div>
 
           <div id="strength" className="grid gap-8 lg:grid-cols-[0.98fr_1.02fr] lg:items-start">
-            <div className="lg:order-2 overflow-hidden rounded-[2rem]">
+            <div className="overflow-hidden rounded-[2rem] lg:order-2">
               <ImageWithFallback
                 src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHJlbmd0aCUyMHRyYWluaW5nJTIwd29tYW4lMjBhdCUyMGhvbWV8ZW58MXx8fHwxNzEwODQ5NzQ3fDA&ixlib=rb-4.0.3&q=80&w=1080"
                 alt="Online strength session"
@@ -292,9 +303,13 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
             <div className="lg:order-1">
               <div className="flex items-center gap-3">
                 <Dumbbell className="text-brand-accent h-5 w-5" />
-                <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">Strength classes</p>
+                <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">
+                  Strength classes
+                </p>
               </div>
-              <h2 className="mt-4 text-3xl md:text-4xl">Strength that makes daily life feel less fragile.</h2>
+              <h2 className="mt-4 text-3xl md:text-4xl">
+                Strength that makes daily life feel less fragile.
+              </h2>
               <p className="text-muted-foreground mt-5 text-lg leading-relaxed">
                 Classes focus on progressive load tolerance, pacing, and clearer movement choices so
                 you can build confidence instead of bracing for the next setback.
@@ -306,7 +321,10 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
                   "Clear cueing around effort, pacing, and recovery",
                   "A stronger, less fearful relationship with resistance work",
                 ].map((item) => (
-                  <li key={item} className="flex items-start gap-3 text-sm leading-relaxed text-muted-foreground">
+                  <li
+                    key={item}
+                    className="text-muted-foreground flex items-start gap-3 text-sm leading-relaxed"
+                  >
                     <Check className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
                     <span>{item}</span>
                   </li>
@@ -317,7 +335,7 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
                   <Link
                     key={card.id}
                     href={`/classes/${card.slug}`}
-                    className="rounded-[1.4rem] border border-brand-dark/10 bg-background p-5 shadow-[0_16px_36px_rgba(46,31,51,0.05)] transition-transform duration-300 hover:-translate-y-1"
+                    className="border-brand-dark/10 bg-background rounded-[1.4rem] border p-5 shadow-[0_16px_36px_rgba(46,31,51,0.05)] transition-transform duration-300 hover:-translate-y-1"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <h3 className="text-xl">{card.name}</h3>
@@ -347,7 +365,10 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
           />
           <div className="mt-10 grid gap-5 md:grid-cols-2">
             {nextThemedWeeks.map((week) => (
-              <article key={week.id} className="rounded-[1.75rem] border border-brand-dark/10 bg-background p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+              <article
+                key={week.id}
+                className="border-brand-dark/10 bg-background rounded-[1.75rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]"
+              >
                 <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">Themed week</p>
                 <h3 className="mt-4 text-2xl">{week.title}</h3>
                 <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
@@ -356,7 +377,10 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
                 <p className="text-muted-foreground mt-4 text-sm">
                   Best for: <span className="text-foreground">{week.audience}</span>
                 </p>
-                <Button asChild className="mt-6 bg-brand-dark text-brand-white hover:bg-brand-dark/90">
+                <Button
+                  asChild
+                  className="bg-brand-dark text-brand-white hover:bg-brand-dark/90 mt-6"
+                >
                   <Link href={week.ctaHref}>
                     {week.ctaLabel}
                     <ArrowRight className="h-4 w-4" />

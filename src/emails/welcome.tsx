@@ -20,13 +20,13 @@ export default function WelcomeEmail({
   firstName = "there",
   leadMagnetTitle = FREE_GUIDE_TITLE,
   leadMagnetDescription = FREE_GUIDE_SUPPORTING_LINE,
-  downloadUrl = "https://shrutiturner.com/guides/why-some-bodies-need-strength-before-more-stretching.pdf",
+  downloadUrl = "https://shrutiturner.co.uk/guides/why-some-bodies-need-strength-before-more-stretching.pdf",
   ctaLabel = "Download your guide",
   welcomeCopy,
-  classesUrl = "https://shrutiturner.com/classes",
-  aboutUrl = "https://shrutiturner.com/about",
-  privacyUrl = "https://shrutiturner.com/privacy",
-  unsubscribeUrl = "https://shrutiturner.com/unsubscribe",
+  classesUrl = "https://shrutiturner.co.uk/classes",
+  aboutUrl = "https://shrutiturner.co.uk/about",
+  privacyUrl = "https://shrutiturner.co.uk/privacy",
+  unsubscribeUrl = "https://shrutiturner.co.uk/unsubscribe",
 }: WelcomeEmailProps) {
   const welcomeParagraphs = welcomeCopy
     ? welcomeCopy

@@ -79,7 +79,7 @@ describe("newsletter public journeys integration", () => {
     vi.clearAllMocks();
     newsletterRoute.resetNewsletterSignupRateLimitStore();
     process.env.POSTMARK_API_TOKEN = "postmark-token";
-    process.env.NEXT_PUBLIC_SITE_URL = "https://shrutiturner.com";
+    process.env.NEXT_PUBLIC_SITE_URL = "https://shrutiturner.co.uk";
 
     verifyTurnstileTokenMock.mockResolvedValue(true);
     getNewsletterSignupContentMock.mockResolvedValue({
@@ -93,7 +93,7 @@ describe("newsletter public journeys integration", () => {
       popupDescription: "Popup description",
       emailSubject: "Confirm your email to get your free guide",
       emailBody: "Hi {{firstName}}",
-      assetUrl: "https://shrutiturner.com/guide.pdf",
+      assetUrl: "https://shrutiturner.co.uk/guide.pdf",
     });
     sendEmailMock.mockResolvedValue(undefined);
     sendLeadMagnetDeliveryEmailMock.mockResolvedValue(undefined);
@@ -265,7 +265,7 @@ describe("newsletter public journeys integration", () => {
       Subject: "Confirm your unsubscribe request",
     });
     expect(String(sendEmailMock.mock.calls[0]?.[0]?.TextBody ?? "")).toContain(
-      "https://shrutiturner.com/unsubscribe?token="
+      "https://shrutiturner.co.uk/unsubscribe?token="
     );
   });
 });

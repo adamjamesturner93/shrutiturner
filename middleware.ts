@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { shouldRedirectPublicPathInHolding } from "@/lib/site-stage";
+import {
+  getCanonicalProductionSiteUrl,
+  shouldRedirectToCanonicalProductionHost,
+} from "@/lib/app-url";
 
 const ADMIN_EMAILS = (
   process.env.ADMIN_EMAILS || "tech@thechronicyogini.com,shruti@shrutiturner.com"
@@ -11,6 +15,17 @@ const ADMIN_EMAILS = (
 
 export default auth((req) => {
   const pathname = req.nextUrl.pathname;
+
+  if (
+    process.env.VERCEL_ENV === "production" &&
+    shouldRedirectToCanonicalProductionHost(req.nextUrl.hostname)
+  ) {
+    const canonicalUrl = new URL(
+      req.nextUrl.pathname + req.nextUrl.search,
+      getCanonicalProductionSiteUrl()
+    );
+    return NextResponse.redirect(canonicalUrl, 308);
+  }
 
   if (shouldRedirectPublicPathInHolding(pathname)) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));

@@ -30,7 +30,7 @@ export default function ClassBookingEmail({
   classDuration = "60 minutes",
   classLocation = "Online via Zoom",
   instructorNote = "No special equipment needed for this session — just a mat and yourself. We'll be working on building capacity through slow, intentional movement.",
-  manageBookingUrl = "https://shrutiturner.com/account/bookings",
+  manageBookingUrl = "https://shrutiturner.co.uk/account/bookings",
   creditRefundWindowLabel = "3 hours",
 }: ClassBookingEmailProps) {
   return (

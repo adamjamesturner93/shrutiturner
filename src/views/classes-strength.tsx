@@ -24,7 +24,7 @@ export function ClassesStrengthPage({
         title="Online Strength Training Classes - Adaptive Strength for Complex Bodies - Shruti Turner"
         description="Live online strength training classes designed for chronic illness and autoimmune conditions. Progressive, evidence-based resistance training that builds capacity without burnout."
         keywords="online strength training UK, strength training chronic illness, adaptive strength classes, bodyweight strength progression, strength training autoimmune"
-        canonicalUrl="https://shrutiturner.com/classes/strength"
+        canonicalUrl="https://shrutiturner.co.uk/classes/strength"
       />
 
       {/* Hero */}

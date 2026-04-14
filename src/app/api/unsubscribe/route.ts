@@ -28,11 +28,8 @@ export async function POST(request: Request) {
     if (email) {
       const pendingRequest = await requestMarketingUnsubscribeByAddress(email);
       if (pendingRequest) {
-        const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://shrutiturner.com").replace(
-          /\/$/,
-          ""
-        );
-        const unsubscribeUrl = `${siteUrl}/unsubscribe?token=${encodeURIComponent(pendingRequest.token)}`;
+        const requestUrl = new URL(request.url);
+        const unsubscribeUrl = `${requestUrl.origin}/unsubscribe?token=${encodeURIComponent(pendingRequest.token)}`;
         await sendMarketingUnsubscribeRequestEmail({
           email: pendingRequest.email,
           unsubscribeUrl,

@@ -22,8 +22,8 @@ export default function WinBackEmail({
   firstName = "Sarah",
   daysSinceLastClass = "34",
   lastClassName = "Adaptive Yoga Flow",
-  scheduleUrl = "https://shrutiturner.com/schedule",
-  blogUrl = "https://shrutiturner.com/blog",
+  scheduleUrl = "https://shrutiturner.co.uk/schedule",
+  blogUrl = "https://shrutiturner.co.uk/blog",
 }: WinBackEmailProps) {
   return (
     <EmailLayout

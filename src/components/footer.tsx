@@ -53,12 +53,8 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-4">
           {/* Brand + Newsletter */}
           <div className="space-y-6 lg:col-span-2">
-            <div
-              className="[&_line]:stroke-brand-white [&_path]:fill-brand-white [&>svg]:h-12 [&>svg]:w-auto"
-              role="img"
-              aria-label="Shruti Turner"
-            >
-              <IconHorizontal />
+            <div role="img" aria-label="Shruti Turner">
+              <IconHorizontal tone="white" className="h-12 w-auto" />
             </div>
             <p className="text-brand-white/70 max-w-md leading-relaxed">
               Science-backed strength and yoga coaching for people with chronic illness, autoimmune

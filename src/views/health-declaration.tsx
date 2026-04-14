@@ -11,7 +11,7 @@ export function HealthDeclarationPage() {
       <SEO
         title="Health Declaration - Shruti Turner"
         description="Health declaration and informed consent for participation in strength training, yoga, and physical activities with Shruti Turner."
-        canonicalUrl="https://shrutiturner.com/health-declaration"
+        canonicalUrl="https://shrutiturner.co.uk/health-declaration"
       />
 
       <div className="container mx-auto max-w-4xl px-4 py-16">

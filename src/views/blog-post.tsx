@@ -29,7 +29,7 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
   const articleSchemaAuthors = authors.map((author) => ({
     "@type": "Person",
     name: author.name,
-    url: author.websiteUrl || "https://shrutiturner.com/about",
+    url: author.websiteUrl || "https://shrutiturner.co.uk/about",
     jobTitle: author.role || "Contributor",
   }));
 
@@ -40,10 +40,10 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
         description={post.excerpt}
         keywords={post.tags.join(", ")}
         ogType="article"
-        canonicalUrl={`https://shrutiturner.com/blog/${post.id}`}
+        canonicalUrl={`https://shrutiturner.co.uk/blog/${post.id}`}
       />
 
-      <section className="marketing-grid overflow-hidden px-4 py-12 text-brand-white md:py-16">
+      <section className="marketing-grid text-brand-white overflow-hidden px-4 py-12 md:py-16">
         <div className="container mx-auto max-w-6xl">
           <div className="grid items-start gap-8 lg:grid-cols-[0.95fr_1.05fr]">
             <div>
@@ -60,7 +60,7 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
                   <Link key={tag} href={`/blog?tag=${encodeURIComponent(tag)}`}>
                     <Badge
                       variant="secondary"
-                      className="cursor-pointer border border-brand-white/10 bg-brand-white/8 text-brand-white hover:bg-brand-white/12"
+                      className="border-brand-white/10 bg-brand-white/8 text-brand-white hover:bg-brand-white/12 cursor-pointer border"
                     >
                       {tag}
                     </Badge>
@@ -99,8 +99,10 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
                     ))}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-brand-white">By {formatAuthorList(post)}</p>
-                    <div className="flex flex-wrap items-center gap-2 text-sm text-brand-white/70">
+                    <p className="text-brand-white text-sm font-medium">
+                      By {formatAuthorList(post)}
+                    </p>
+                    <div className="text-brand-white/70 flex flex-wrap items-center gap-2 text-sm">
                       <span>{fmtDate(post.date)}</span>
                       <span>•</span>
                       <span>{post.readTime}</span>
@@ -118,12 +120,12 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
                 <BlogShare
                   title={post.title}
                   excerpt={post.excerpt}
-                  url={`https://shrutiturner.com/blog/${post.id}`}
+                  url={`https://shrutiturner.co.uk/blog/${post.id}`}
                 />
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-[2rem] border border-brand-white/10 bg-brand-white/8 p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+            <div className="border-brand-white/10 bg-brand-white/8 overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
               <ImageWithFallback
                 src={post.coverImage}
                 alt={post.coverAlt}
@@ -135,47 +137,15 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
       </section>
 
       <MarketingSection className="section-wash" contentClassName="max-w-4xl">
-          <article className="marketing-panel rounded-[2rem] p-6 md:p-8">
-            <div className="prose prose-lg max-w-none">
-              <div className="space-y-6 leading-relaxed" style={{ whiteSpace: "pre-line" }}>
-                {post.content.split("\n## ").map((section, index) => {
-                  if (index === 0) {
-                    const lines = section.split("\n").filter((line) => line.trim());
-                    return (
-                      <div key={index} className="space-y-4">
-                        {lines.slice(1).map((line, lineIndex) => {
-                          if (line.startsWith("### ")) {
-                            return (
-                              <h3 key={lineIndex} className="mt-8 mb-4 text-2xl">
-                                {line.replace("### ", "")}
-                              </h3>
-                            );
-                          }
-                          if (line.match(/^\d+\.\s/)) {
-                            return (
-                              <p key={lineIndex} className="ml-4">
-                                {line}
-                              </p>
-                            );
-                          }
-                          if (line.startsWith("- ")) {
-                            return (
-                              <p key={lineIndex} className="ml-4">
-                                {line}
-                              </p>
-                            );
-                          }
-                          return <p key={lineIndex}>{line}</p>;
-                        })}
-                      </div>
-                    );
-                  }
-
-                  const [heading, ...content] = section.split("\n").filter((line) => line.trim());
+        <article className="marketing-panel rounded-[2rem] p-6 md:p-8">
+          <div className="prose prose-lg max-w-none">
+            <div className="space-y-6 leading-relaxed" style={{ whiteSpace: "pre-line" }}>
+              {post.content.split("\n## ").map((section, index) => {
+                if (index === 0) {
+                  const lines = section.split("\n").filter((line) => line.trim());
                   return (
                     <div key={index} className="space-y-4">
-                      <h2 className="mt-12 mb-6 text-3xl">{heading}</h2>
-                      {content.map((line, lineIndex) => {
+                      {lines.slice(1).map((line, lineIndex) => {
                         if (line.startsWith("### ")) {
                           return (
                             <h3 key={lineIndex} className="mt-8 mb-4 text-2xl">
@@ -201,87 +171,122 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
                       })}
                     </div>
                   );
-                })}
-              </div>
-            </div>
-          </article>
+                }
 
-          {authors.length > 0 ? (
-            <section className="mt-10">
-              <div className="mb-6 flex items-center justify-between gap-3">
-                <h2 className="text-2xl md:text-3xl">{authorHeading}</h2>
-                {authors.length > 1 ? (
-                  <Badge variant="secondary">{authors.length} contributors</Badge>
-                ) : null}
-              </div>
-
-              <div className="grid gap-5 md:grid-cols-2">
-                {authors.map((author) => (
-                  <div key={author.slug} className="bg-card rounded-[1.6rem] border border-brand-dark/10 p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
-                    <div className="flex items-start gap-4">
-                      <div className="bg-brand-warm h-16 w-16 overflow-hidden rounded-full">
-                        {author.avatarImageUrl ? (
-                          <ImageWithFallback
-                            src={author.avatarImageUrl}
-                            alt={author.avatarAlt || `${author.name} avatar`}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="text-brand-dark flex h-full w-full items-center justify-center text-sm font-semibold">
-                            {author.name
-                              .split(" ")
-                              .map((part) => part[0])
-                              .join("")
-                              .slice(0, 2)}
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-xl">{author.name}</h3>
-                          {author.isGuestContributor ? (
-                            <Badge variant="outline">Guest Contributor</Badge>
-                          ) : null}
-                        </div>
-                        {author.role ? (
-                          <p className="text-muted-foreground text-sm">{author.role}</p>
-                        ) : null}
-                        {author.bio ? (
-                          <p className="text-muted-foreground text-sm leading-relaxed">
-                            {author.bio}
+                const [heading, ...content] = section.split("\n").filter((line) => line.trim());
+                return (
+                  <div key={index} className="space-y-4">
+                    <h2 className="mt-12 mb-6 text-3xl">{heading}</h2>
+                    {content.map((line, lineIndex) => {
+                      if (line.startsWith("### ")) {
+                        return (
+                          <h3 key={lineIndex} className="mt-8 mb-4 text-2xl">
+                            {line.replace("### ", "")}
+                          </h3>
+                        );
+                      }
+                      if (line.match(/^\d+\.\s/)) {
+                        return (
+                          <p key={lineIndex} className="ml-4">
+                            {line}
                           </p>
-                        ) : null}
-                        <div className="flex flex-wrap gap-3 pt-2 text-sm">
-                          {author.websiteUrl ? (
-                            <Link
-                              href={author.websiteUrl}
-                              className="text-brand-accent inline-flex items-center gap-1 hover:underline"
-                            >
-                              <Globe className="h-4 w-4" />
-                              Website
-                            </Link>
-                          ) : null}
-                          {author.instagramHandle ? (
-                            <Link
-                              href={
-                                author.instagramHandle.startsWith("http")
-                                  ? author.instagramHandle
-                                  : `https://instagram.com/${author.instagramHandle.replace(/^@/, "")}`
-                              }
-                              className="text-brand-accent inline-flex items-center gap-1 hover:underline"
-                            >
-                              <Instagram className="h-4 w-4" />
-                              {author.instagramHandle}
-                            </Link>
-                          ) : null}
+                        );
+                      }
+                      if (line.startsWith("- ")) {
+                        return (
+                          <p key={lineIndex} className="ml-4">
+                            {line}
+                          </p>
+                        );
+                      }
+                      return <p key={lineIndex}>{line}</p>;
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </article>
+
+        {authors.length > 0 ? (
+          <section className="mt-10">
+            <div className="mb-6 flex items-center justify-between gap-3">
+              <h2 className="text-2xl md:text-3xl">{authorHeading}</h2>
+              {authors.length > 1 ? (
+                <Badge variant="secondary">{authors.length} contributors</Badge>
+              ) : null}
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-2">
+              {authors.map((author) => (
+                <div
+                  key={author.slug}
+                  className="bg-card border-brand-dark/10 rounded-[1.6rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="bg-brand-warm h-16 w-16 overflow-hidden rounded-full">
+                      {author.avatarImageUrl ? (
+                        <ImageWithFallback
+                          src={author.avatarImageUrl}
+                          alt={author.avatarAlt || `${author.name} avatar`}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="text-brand-dark flex h-full w-full items-center justify-center text-sm font-semibold">
+                          {author.name
+                            .split(" ")
+                            .map((part) => part[0])
+                            .join("")
+                            .slice(0, 2)}
                         </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-xl">{author.name}</h3>
+                        {author.isGuestContributor ? (
+                          <Badge variant="outline">Guest Contributor</Badge>
+                        ) : null}
+                      </div>
+                      {author.role ? (
+                        <p className="text-muted-foreground text-sm">{author.role}</p>
+                      ) : null}
+                      {author.bio ? (
+                        <p className="text-muted-foreground text-sm leading-relaxed">
+                          {author.bio}
+                        </p>
+                      ) : null}
+                      <div className="flex flex-wrap gap-3 pt-2 text-sm">
+                        {author.websiteUrl ? (
+                          <Link
+                            href={author.websiteUrl}
+                            className="text-brand-accent inline-flex items-center gap-1 hover:underline"
+                          >
+                            <Globe className="h-4 w-4" />
+                            Website
+                          </Link>
+                        ) : null}
+                        {author.instagramHandle ? (
+                          <Link
+                            href={
+                              author.instagramHandle.startsWith("http")
+                                ? author.instagramHandle
+                                : `https://instagram.com/${author.instagramHandle.replace(/^@/, "")}`
+                            }
+                            className="text-brand-accent inline-flex items-center gap-1 hover:underline"
+                          >
+                            <Instagram className="h-4 w-4" />
+                            {author.instagramHandle}
+                          </Link>
+                        ) : null}
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </section>
-          ) : null}
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </MarketingSection>
 
       <MarketingSection compact contentClassName="max-w-4xl">
@@ -293,7 +298,7 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
             <BlogShare
               title={post.title}
               excerpt={post.excerpt}
-              url={`https://shrutiturner.com/blog/${post.id}`}
+              url={`https://shrutiturner.co.uk/blog/${post.id}`}
             />
           </div>
 
@@ -304,7 +309,9 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
 
       <MarketingSection className="section-wash" compact contentClassName="max-w-4xl">
         <div className="bg-brand-accent text-brand-white space-y-6 rounded-[2rem] p-8 text-center md:p-10">
-          <h3 className="text-2xl md:text-3xl">Ready to Build Strength That Works for Your Body?</h3>
+          <h3 className="text-2xl md:text-3xl">
+            Ready to Build Strength That Works for Your Body?
+          </h3>
           <p className="text-lg leading-relaxed opacity-90">
             Whether you&apos;re interested in group classes, 1:1 coaching, or just have a question
             I&apos;d love to hear from you.
@@ -328,7 +335,7 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
             {relatedPosts.map((relatedPost) => (
               <article
                 key={relatedPost.id}
-                className="bg-card group overflow-hidden rounded-[1.75rem] border border-brand-dark/10 shadow-[0_20px_50px_rgba(46,31,51,0.06)] transition-shadow hover:shadow-lg"
+                className="bg-card group border-brand-dark/10 overflow-hidden rounded-[1.75rem] border shadow-[0_20px_50px_rgba(46,31,51,0.06)] transition-shadow hover:shadow-lg"
               >
                 <Link href={`/blog/${relatedPost.id}`} className="block overflow-hidden">
                   <ImageWithFallback
@@ -386,11 +393,11 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
             publisher: {
               "@type": "Organization",
               name: "Shruti Turner",
-              url: "https://shrutiturner.com",
+              url: "https://shrutiturner.co.uk",
             },
             mainEntityOfPage: {
               "@type": "WebPage",
-              "@id": `https://shrutiturner.com/blog/${post.id}`,
+              "@id": `https://shrutiturner.co.uk/blog/${post.id}`,
             },
           }),
         }}

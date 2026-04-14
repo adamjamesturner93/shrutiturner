@@ -175,7 +175,7 @@ export function SignupPage() {
       <SEO
         title="Sign Up - Shruti Turner"
         description="Create your account to access personalised training programmes, online classes, and expert coaching."
-        canonicalUrl="https://shrutiturner.com/signup"
+        canonicalUrl="https://shrutiturner.co.uk/signup"
         noIndex
       />
 
@@ -189,11 +189,11 @@ export function SignupPage() {
                     Join The Studio
                   </p>
                   <div className="mt-5 max-w-md space-y-5">
-                    <div className="hidden lg:block [&>svg]:h-auto [&>svg]:w-52">
-                      <IconVertical />
+                    <div className="hidden lg:block">
+                      <IconVertical tone="white" className="h-auto w-52" />
                     </div>
-                    <div className="lg:hidden [&>svg]:h-9 [&>svg]:w-auto">
-                      <IconHorizontal />
+                    <div className="lg:hidden">
+                      <IconHorizontal tone="white" className="h-9 w-auto" />
                     </div>
                     <h1 className="text-4xl leading-tight md:text-5xl">
                       Create an account that starts with context, not pressure.
@@ -254,8 +254,8 @@ export function SignupPage() {
                     </div>
                   )}
 
-                  <div className="mb-6 lg:hidden [&>svg]:h-10 [&>svg]:w-auto">
-                    <IconHorizontal />
+                  <div className="mb-6 lg:hidden">
+                    <IconHorizontal className="h-10 w-auto" />
                   </div>
 
                   <div className="mb-8">

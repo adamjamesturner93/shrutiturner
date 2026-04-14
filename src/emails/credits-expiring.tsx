@@ -21,7 +21,7 @@ export default function CreditsExpiringEmail({
   firstName = "there",
   creditCount = "3",
   expiryDate = "18 March 2026",
-  scheduleUrl = "https://shrutiturner.com/schedule",
+  scheduleUrl = "https://shrutiturner.co.uk/schedule",
 }: CreditsExpiringEmailProps) {
   return (
     <EmailLayout preview={`Your credits expire on ${expiryDate} — use them before they go`}>

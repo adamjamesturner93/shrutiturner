@@ -22,7 +22,8 @@ const independentPlanProof = [
   },
   {
     label: "Support",
-    detail: "This is lower-touch than coaching, but it is still tailored and reviewed around your feedback.",
+    detail:
+      "This is lower-touch than coaching, but it is still tailored and reviewed around your feedback.",
   },
   {
     label: "Best Fit",
@@ -42,7 +43,7 @@ export function CoachingPersonalProgrammePage() {
       <SEO
         title="Independent Training Plan - Shruti Turner"
         description="Tailored training delivered through Everfit for complex bodies that need smart structure without weekly live coaching."
-        canonicalUrl="https://shrutiturner.com/coaching/personal-programme"
+        canonicalUrl="https://shrutiturner.co.uk/coaching/personal-programme"
       />
 
       <EditorialHero
@@ -64,16 +65,18 @@ export function CoachingPersonalProgrammePage() {
         ]}
         aside={
           <div className="relative mx-auto max-w-xl">
-            <div className="overflow-hidden rounded-[2rem] border border-brand-white/10 bg-brand-white/8 p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
-              <div className="rounded-[1.45rem] bg-brand-white/8 p-6">
+            <div className="border-brand-white/10 bg-brand-white/8 overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+              <div className="bg-brand-white/8 rounded-[1.45rem] p-6">
                 <div className="bg-brand-accent-light/12 text-brand-accent-light flex h-12 w-12 items-center justify-center rounded-2xl">
                   <Smartphone className="h-6 w-6" />
                 </div>
-                <p className="mt-5 text-xs tracking-[0.18em] uppercase text-brand-accent-light">
+                <p className="text-brand-accent-light mt-5 text-xs tracking-[0.18em] uppercase">
                   Delivered in Everfit
                 </p>
-                <h2 className="mt-3 text-3xl leading-tight">Your plan, check-ins, and training rhythm in one place.</h2>
-                <p className="mt-4 text-sm leading-relaxed text-brand-white/82">
+                <h2 className="mt-3 text-3xl leading-tight">
+                  Your plan, check-ins, and training rhythm in one place.
+                </h2>
+                <p className="text-brand-white/82 mt-4 text-sm leading-relaxed">
                   You get personalised programming, habits, and review notes without needing to
                   coordinate weekly live sessions.
                 </p>
@@ -85,7 +88,7 @@ export function CoachingPersonalProgrammePage() {
                   ].map((item) => (
                     <div
                       key={item}
-                      className="rounded-[1.2rem] border border-brand-white/10 bg-brand-white/8 px-4 py-4 text-sm leading-relaxed text-brand-white/84"
+                      className="border-brand-white/10 bg-brand-white/8 text-brand-white/84 rounded-[1.2rem] border px-4 py-4 text-sm leading-relaxed"
                     >
                       {item}
                     </div>
@@ -115,7 +118,7 @@ export function CoachingPersonalProgrammePage() {
               {independentTier.features.map((feature) => (
                 <div
                   key={feature}
-                  className="rounded-[1.5rem] border border-brand-dark/10 bg-background px-5 py-5 shadow-[0_18px_40px_rgba(46,31,51,0.05)]"
+                  className="border-brand-dark/10 bg-background rounded-[1.5rem] border px-5 py-5 shadow-[0_18px_40px_rgba(46,31,51,0.05)]"
                 >
                   <div className="flex items-start gap-3">
                     <div className="bg-brand-accent/10 text-brand-accent flex h-9 w-9 items-center justify-center rounded-full">
@@ -149,7 +152,7 @@ export function CoachingPersonalProgrammePage() {
               </ul>
             </div>
 
-            <div className="rounded-[1.8rem] border border-brand-dark/10 bg-background p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+            <div className="border-brand-dark/10 bg-background rounded-[1.8rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
               <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">Price and note</p>
               <h2 className="mt-4 text-3xl">{independentTier.priceLabel}</h2>
               <p className="text-muted-foreground mt-3 text-sm leading-relaxed">

@@ -165,35 +165,33 @@ export function CoachingApplyPage() {
         <SEO
           title="Coaching Application Received - Shruti Turner"
           description="Your coaching application has been received."
-          canonicalUrl="https://shrutiturner.com/coaching/apply"
+          canonicalUrl="https://shrutiturner.co.uk/coaching/apply"
         />
 
         <section className="section-wash min-h-[calc(100dvh-4rem)] px-4 py-10 md:py-14">
           <div className="container mx-auto max-w-6xl">
             <div className="grid gap-6 lg:min-h-[calc(100dvh-12rem)] lg:grid-cols-[0.98fr_1.02fr] lg:items-center">
-              <div className="marketing-grid overflow-hidden rounded-[2rem] px-6 py-8 text-brand-white md:px-8 md:py-9">
+              <div className="marketing-grid text-brand-white overflow-hidden rounded-[2rem] px-6 py-8 md:px-8 md:py-9">
                 <div className="relative z-10">
                   <p className="text-brand-accent-light text-xs tracking-[0.3em] uppercase">
                     Application Received
                   </p>
                   <h1 className="mt-5 text-4xl leading-tight md:text-5xl">Thank you.</h1>
-                  <p className="mt-5 max-w-xl text-lg leading-relaxed text-brand-white/80">
+                  <p className="text-brand-white/80 mt-5 max-w-xl text-lg leading-relaxed">
                     Your application is in. I will review it personally and reply with either the
                     next step or a couple of clarifying questions.
                   </p>
                   <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                    {[
-                      "Reviewed manually",
-                      "Reply within 48 hours",
-                      "No automatic upsell",
-                    ].map((item) => (
-                      <div
-                        key={item}
-                        className="rounded-[1.3rem] border border-brand-white/10 bg-brand-white/8 px-4 py-4 text-sm leading-relaxed text-brand-white/84"
-                      >
-                        {item}
-                      </div>
-                    ))}
+                    {["Reviewed manually", "Reply within 48 hours", "No automatic upsell"].map(
+                      (item) => (
+                        <div
+                          key={item}
+                          className="border-brand-white/10 bg-brand-white/8 text-brand-white/84 rounded-[1.3rem] border px-4 py-4 text-sm leading-relaxed"
+                        >
+                          {item}
+                        </div>
+                      )
+                    )}
                   </div>
                 </div>
               </div>
@@ -232,7 +230,7 @@ export function CoachingApplyPage() {
       <SEO
         title="Apply for Coaching - Shruti Turner"
         description="Apply for coached support with Shruti Turner, from coached training plans to high-touch 1:1 coaching."
-        canonicalUrl="https://shrutiturner.com/coaching/apply"
+        canonicalUrl="https://shrutiturner.co.uk/coaching/apply"
       />
 
       <EditorialHero
@@ -245,7 +243,8 @@ export function CoachingApplyPage() {
         metrics={[
           {
             label: "Good For",
-            detail: "People who need more nuance, more review, or help choosing the right support level.",
+            detail:
+              "People who need more nuance, more review, or help choosing the right support level.",
           },
           {
             label: "Response",
@@ -253,12 +252,13 @@ export function CoachingApplyPage() {
           },
           {
             label: "Tone",
-            detail: "Low pressure, clear recommendations, and no pushing you into more support than you need.",
+            detail:
+              "Low pressure, clear recommendations, and no pushing you into more support than you need.",
           },
         ]}
         aside={
-          <div className="mx-auto max-w-xl overflow-hidden rounded-[2rem] border border-brand-white/10 bg-brand-white/8 p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
-            <div className="rounded-[1.45rem] bg-brand-white/8 p-6">
+          <div className="border-brand-white/10 bg-brand-white/8 mx-auto max-w-xl overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+            <div className="bg-brand-white/8 rounded-[1.45rem] p-6">
               <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
                 This support includes
               </p>
@@ -266,7 +266,7 @@ export function CoachingApplyPage() {
                 {highlight.bullets.map((bullet) => (
                   <div
                     key={bullet}
-                    className="rounded-[1.2rem] border border-brand-white/10 bg-brand-white/8 px-4 py-4 text-sm leading-relaxed text-brand-white/84"
+                    className="border-brand-white/10 bg-brand-white/8 text-brand-white/84 rounded-[1.2rem] border px-4 py-4 text-sm leading-relaxed"
                   >
                     {bullet}
                   </div>
@@ -288,11 +288,11 @@ export function CoachingApplyPage() {
               />
             </div>
 
-            <div className="rounded-[1.75rem] border border-brand-dark/10 bg-background p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+            <div className="border-brand-dark/10 bg-background rounded-[1.75rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
               <h2 className="text-2xl">What this application is for</h2>
               <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-                This form is for higher-touch coaching enquiries only. If you want the lower-friction
-                self-serve plan, use the{" "}
+                This form is for higher-touch coaching enquiries only. If you want the
+                lower-friction self-serve plan, use the{" "}
                 <Link href="/coaching/personal-programme" className="text-primary underline">
                   Independent Training Plan
                 </Link>{" "}
@@ -301,7 +301,7 @@ export function CoachingApplyPage() {
             </div>
 
             {isAuthenticated ? (
-              <div className="rounded-[1.75rem] border border-brand-accent/20 bg-brand-accent/5 p-6">
+              <div className="border-brand-accent/20 bg-brand-accent/5 rounded-[1.75rem] border p-6">
                 <div className="flex items-start gap-3">
                   <Info className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
                   <p className="text-sm leading-relaxed">
@@ -324,7 +324,7 @@ export function CoachingApplyPage() {
               </div>
             ) : null}
 
-            <div className="rounded-[1.75rem] border border-brand-dark/10 bg-background p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+            <div className="border-brand-dark/10 bg-background rounded-[1.75rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
               <h2 className="text-2xl">What happens next</h2>
               <ol className="text-muted-foreground mt-5 space-y-3 text-sm leading-relaxed">
                 <li>1. I review your application personally.</li>
@@ -385,7 +385,7 @@ export function CoachingApplyPage() {
               </div>
             </div>
 
-            <div className="grid gap-5 rounded-[1.75rem] border border-brand-dark/10 bg-background p-6 md:grid-cols-2">
+            <div className="border-brand-dark/10 bg-background grid gap-5 rounded-[1.75rem] border p-6 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="name">Name *</Label>
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
@@ -402,7 +402,7 @@ export function CoachingApplyPage() {
               </div>
             </div>
 
-            <div className="space-y-5 rounded-[1.75rem] border border-brand-dark/10 bg-background p-6">
+            <div className="border-brand-dark/10 bg-background space-y-5 rounded-[1.75rem] border p-6">
               <div>
                 <h3 className="text-xl">Application details</h3>
                 <p className="text-muted-foreground mt-2 text-sm">
@@ -452,7 +452,7 @@ export function CoachingApplyPage() {
               ))}
             </div>
 
-            <div className="space-y-4 rounded-[1.75rem] border border-brand-dark/10 bg-background p-5">
+            <div className="border-brand-dark/10 bg-background space-y-4 rounded-[1.75rem] border p-5">
               <div className="flex items-start space-x-3">
                 <Checkbox
                   id="coaching-agreement"
@@ -464,7 +464,11 @@ export function CoachingApplyPage() {
                   className="cursor-pointer text-sm leading-relaxed"
                 >
                   I have read and agree to the{" "}
-                  <Link href="/coaching-agreement" className="text-primary underline" target="_blank">
+                  <Link
+                    href="/coaching-agreement"
+                    className="text-primary underline"
+                    target="_blank"
+                  >
                     Coaching Agreement
                   </Link>
                   . I also understand this application sits alongside the{" "}
@@ -472,7 +476,11 @@ export function CoachingApplyPage() {
                     Terms & Conditions
                   </Link>
                   ,{" "}
-                  <Link href="/health-declaration" className="text-primary underline" target="_blank">
+                  <Link
+                    href="/health-declaration"
+                    className="text-primary underline"
+                    target="_blank"
+                  >
                     Health & Liability Waiver
                   </Link>
                   , and{" "}
@@ -507,8 +515,9 @@ export function CoachingApplyPage() {
             <div className="text-muted-foreground flex items-start gap-2 text-sm leading-relaxed">
               <Shield className="mt-0.5 h-4 w-4 flex-shrink-0" />
               <p>
-                I aim to respond within 48 hours. If the Independent Training Plan is the better fit,
-                I will say so clearly rather than upselling you into more support than you need.
+                I aim to respond within 48 hours. If the Independent Training Plan is the better
+                fit, I will say so clearly rather than upselling you into more support than you
+                need.
               </p>
             </div>
           </form>

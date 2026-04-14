@@ -23,7 +23,7 @@ export const blogAuthors: AuthorProfileContent[] = [
     bio: "Shruti combines strength coaching, adaptive yoga, and rehabilitation-informed movement to help people with chronic illness, pain, hypermobility, and fluctuating energy build long-term capacity without boom-and-bust.",
     avatarImageUrl: "https://api.dicebear.com/9.x/initials/svg?seed=Shruti%20Turner",
     avatarAlt: "Portrait illustration of Shruti Turner",
-    websiteUrl: "https://shrutiturner.com/about",
+    websiteUrl: "https://shrutiturner.co.uk/about",
     instagramHandle: "@shrutiturner",
     isGuestContributor: false,
     active: true,

@@ -574,19 +574,19 @@ export function ClassDetailPage({
             eventStatus: "https://schema.org/EventScheduled",
             location: {
               "@type": "VirtualLocation",
-              url: `https://shrutiturner.com/classes/${classDetail.slug}`,
+              url: `https://shrutiturner.co.uk/classes/${classDetail.slug}`,
             },
             organizer: {
               "@type": "Person",
               name: "Shruti Turner",
-              url: "https://shrutiturner.com",
+              url: "https://shrutiturner.co.uk",
             },
             offers: {
               "@type": "Offer",
               price: "9",
               priceCurrency: "GBP",
               availability: "https://schema.org/InStock",
-              url: "https://shrutiturner.com/pricing",
+              url: "https://shrutiturner.co.uk/pricing",
               description: "Drop-in from £9. 3-pack £24. Membership from £29/month.",
             },
           }),

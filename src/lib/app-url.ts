@@ -1,3 +1,5 @@
+const CANONICAL_PRODUCTION_SITE_URL = "https://shrutiturner.co.uk";
+
 export function getBaseSiteUrl() {
   return (
     process.env.NEXT_PUBLIC_APP_URL ||
@@ -12,4 +14,12 @@ export function buildAbsoluteUrl(path: string) {
     return `${base}/${path}`;
   }
   return `${base}${path}`;
+}
+
+export function getCanonicalProductionSiteUrl() {
+  return CANONICAL_PRODUCTION_SITE_URL;
+}
+
+export function shouldRedirectToCanonicalProductionHost(hostname?: string | null) {
+  return Boolean(hostname) && hostname.toLowerCase() !== "shrutiturner.co.uk";
 }

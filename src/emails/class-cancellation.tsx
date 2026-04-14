@@ -25,7 +25,7 @@ export default function ClassCancellationEmail({
   classDate = "Thursday, 6 March 2026",
   classTime = "9:30 AM",
   cancellationReason = "Unfortunately, I need to cancel this session due to unforeseen circumstances. I'm sorry for the inconvenience and hope to see you at a future class soon.",
-  alternativeClassUrl = "https://shrutiturner.com/classes",
+  alternativeClassUrl = "https://shrutiturner.co.uk/classes",
 }: ClassCancellationEmailProps) {
   return (
     <EmailLayout preview={`Class cancelled: ${className} on ${classDate}`}>

@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Facebook, Instagram, Mail, Youtube } from "lucide-react";
 import { HoldingNewsletterForm } from "@/components/holding-newsletter-form";
-import { IconOnly } from "@/components/icon";
+import { IconVertical } from "@/components/icon";
 
 interface HoldingPageProps {
   existingPlatformUrl: string;
@@ -50,17 +50,7 @@ export function HoldingPage({ existingPlatformUrl }: HoldingPageProps) {
 
       <div className="relative mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
         <header className="flex flex-col items-center pt-1 text-center sm:pt-2">
-          <div className="flex h-16 w-16 items-center justify-center rounded-[1.35rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,251,245,0.12)_0%,rgba(255,244,219,0.06)_100%)] shadow-[0_10px_30px_rgba(8,4,12,0.18)] backdrop-blur-sm sm:h-[4.5rem] sm:w-[4.5rem]">
-            <div className="text-brand-accent-light flex h-11 w-11 items-center justify-center sm:h-12 sm:w-12">
-              <IconOnly className="h-full w-full" />
-            </div>
-          </div>
-          <p className="font-heading mt-3 text-[1.7rem] tracking-[0.08em] text-white/92 sm:text-[1.95rem]">
-            Shruti Turner
-          </p>
-          <p className="text-brand-accent-light/85 mt-2 text-[0.64rem] tracking-[0.28em] uppercase sm:text-[0.7rem]">
-            Understanding · Movement · Strength
-          </p>
+          <IconVertical tone="white" alt="Shruti Turner" className="h-24 w-auto sm:h-28" />
         </header>
 
         <main className="mx-auto flex w-full max-w-6xl flex-1 items-center pt-5 pb-4 sm:pt-6">

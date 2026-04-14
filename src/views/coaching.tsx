@@ -47,7 +47,7 @@ export function CoachingPage() {
         title="Coaching - Shruti Turner"
         description="Three tiers of personalised support for complex bodies, from tailored programming to high-touch 1:1 coaching."
         keywords="coaching chronic illness, personal training complex bodies, everfit coaching, training plan chronic pain"
-        canonicalUrl="https://shrutiturner.com/coaching"
+        canonicalUrl="https://shrutiturner.co.uk/coaching"
       />
 
       <EditorialHero

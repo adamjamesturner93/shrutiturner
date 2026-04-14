@@ -200,7 +200,7 @@ export async function sendPurchaseConfirmation(
         amount,
         invoiceId,
         date: formatDate(new Date(), userPrefs),
-        scheduleUrl: "https://shrutiturner.com/dashboard/schedule",
+        scheduleUrl: "https://shrutiturner.co.uk/dashboard/schedule",
       })
     );
     console.log(`[Mock Email Service] Sending Purchase Confirmation to ${email}`);

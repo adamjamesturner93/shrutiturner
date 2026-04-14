@@ -24,7 +24,7 @@ export function ClassesYogaPage({
         title="Online Yoga Classes - Adaptive Yoga for Complex Bodies - Shruti Turner"
         description="Live online adaptive yoga classes for chronic illness, autoimmune conditions, and hypermobility. Rehabilitation-informed yoga that prioritizes safety, stability, and nervous system regulation."
         keywords="online yoga classes UK, adaptive yoga online, yoga for chronic illness, yoga for hypermobility, rehabilitation yoga online, therapeutic yoga classes"
-        canonicalUrl="https://shrutiturner.com/classes/yoga"
+        canonicalUrl="https://shrutiturner.co.uk/classes/yoga"
       />
 
       {/* Hero */}

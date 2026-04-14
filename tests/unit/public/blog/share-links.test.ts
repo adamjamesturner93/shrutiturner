@@ -4,7 +4,7 @@ import { buildBlogShareLinks } from "@/lib/blog/share-links";
 describe("buildBlogShareLinks", () => {
   it("builds all expected social and email share URLs", () => {
     const links = buildBlogShareLinks({
-      url: "https://shrutiturner.com/blog/test-post",
+      url: "https://shrutiturner.co.uk/blog/test-post",
       title: "A Useful Post",
       excerpt: "Helpful summary",
     });
@@ -28,7 +28,7 @@ describe("buildBlogShareLinks", () => {
 
   it("handles a missing excerpt", () => {
     const links = buildBlogShareLinks({
-      url: "https://shrutiturner.com/blog/test-post",
+      url: "https://shrutiturner.co.uk/blog/test-post",
       title: "No Excerpt",
     });
 

@@ -21,7 +21,7 @@ export default function ClassReminderEmail({
   firstName = "there",
   className = "Slow Flow Yoga",
   classTime = "10:00 AM",
-  joinLink = "https://shrutiturner.com/dashboard/schedule",
+  joinLink = "https://shrutiturner.co.uk/dashboard/schedule",
   preJoinWindowLabel = "10 minutes",
 }: ClassReminderEmailProps) {
   return (

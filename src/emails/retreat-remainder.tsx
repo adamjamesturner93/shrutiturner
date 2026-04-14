@@ -35,7 +35,7 @@ export default function RetreatRemainderEmail({
   sortCode = "60-83-71",
   accountNumber = "12345678",
   paymentReference = "RT-2026-0342",
-  retreatDetailsUrl = "https://shrutiturner.com/retreats/rest-and-restore",
+  retreatDetailsUrl = "https://shrutiturner.co.uk/retreats/rest-and-restore",
 }: RetreatRemainderEmailProps) {
   return (
     <EmailLayout preview={`Retreat balance due: ${remainderAmount} by ${dueDate}`}>

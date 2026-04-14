@@ -5,6 +5,7 @@ import { AdminGuardWrapper } from "./admin-guard";
 import { useAuth } from "../context/auth-context";
 import { ScrollToTop } from "./scroll-to-top";
 import { SEO } from "./seo";
+import { IconHorizontal } from "./icon";
 import {
   LayoutDashboard,
   Users,
@@ -18,7 +19,6 @@ import {
   X,
   LogOut,
   ArrowLeft,
-  Shield,
   TrendingUp,
 } from "lucide-react";
 
@@ -61,21 +61,17 @@ export function AdminLayout({ children, title, description }: AdminLayoutProps) 
         <SEO title={title || "Admin - Shruti Turner"} description={description} noIndex />
 
         {/* Sidebar - Desktop */}
-        <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-brand-white/10 bg-[linear-gradient(180deg,rgba(46,31,51,0.99),rgba(86,52,74,0.99))] text-brand-white shadow-[0_24px_80px_rgba(46,31,51,0.28)] lg:flex">
+        <aside className="border-brand-white/10 text-brand-white fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r bg-[linear-gradient(180deg,rgba(46,31,51,0.99),rgba(86,52,74,0.99))] shadow-[0_24px_80px_rgba(46,31,51,0.28)] lg:flex">
           {/* Brand */}
           <div className="border-brand-white/10 border-b p-6">
-            <div className="flex items-center gap-2">
-              <Shield className="text-brand-accent-light h-5 w-5" />
-              <div>
-                <Link
-                  href="/admin"
-                  className="hover:text-brand-accent-light text-lg tracking-tight transition-colors"
-                >
-                  Shruti Turner
-                </Link>
-                <p className="text-brand-white/50 text-xs">Instructor Admin</p>
-              </div>
-            </div>
+            <Link href="/admin" className="block">
+              <IconHorizontal
+                tone="white"
+                alt="Shruti Turner Instructor Admin"
+                className="h-10 w-auto transition-opacity hover:opacity-90"
+              />
+            </Link>
+            <p className="text-brand-white/50 mt-2 text-xs">Instructor Admin</p>
           </div>
 
           {/* Navigation */}
@@ -119,14 +115,17 @@ export function AdminLayout({ children, title, description }: AdminLayoutProps) 
         </aside>
 
         {/* Mobile header */}
-        <div className="fixed inset-x-0 top-0 z-40 border-b border-brand-white/10 bg-[linear-gradient(180deg,rgba(46,31,51,0.99),rgba(86,52,74,0.99))] text-brand-white shadow-[0_18px_50px_rgba(46,31,51,0.24)] lg:hidden">
+        <div className="border-brand-white/10 text-brand-white fixed inset-x-0 top-0 z-40 border-b bg-[linear-gradient(180deg,rgba(46,31,51,0.99),rgba(86,52,74,0.99))] shadow-[0_18px_50px_rgba(46,31,51,0.24)] lg:hidden">
           <div className="flex items-center justify-between px-4 py-3">
             <button onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle menu">
               {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
             <div className="flex items-center gap-2">
-              <Shield className="text-brand-accent-light h-4 w-4" />
-              <span className="text-sm tracking-tight">Admin</span>
+              <IconHorizontal
+                tone="white"
+                alt="Shruti Turner Instructor Admin"
+                className="h-7 w-auto"
+              />
             </div>
             <div className="w-5" />
           </div>
@@ -136,12 +135,13 @@ export function AdminLayout({ children, title, description }: AdminLayoutProps) 
         {sidebarOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
             <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-            <aside className="absolute inset-y-0 left-0 flex w-72 flex-col bg-[linear-gradient(180deg,rgba(46,31,51,0.99),rgba(86,52,74,0.99))] text-brand-white shadow-[0_24px_70px_rgba(46,31,51,0.3)]">
+            <aside className="text-brand-white absolute inset-y-0 left-0 flex w-72 flex-col bg-[linear-gradient(180deg,rgba(46,31,51,0.99),rgba(86,52,74,0.99))] shadow-[0_24px_70px_rgba(46,31,51,0.3)]">
               <div className="border-brand-white/10 flex items-center justify-between border-b p-4">
-                <div className="flex items-center gap-2">
-                  <Shield className="text-brand-accent-light h-4 w-4" />
-                  <span className="text-sm">Instructor Admin</span>
-                </div>
+                <IconHorizontal
+                  tone="white"
+                  alt="Shruti Turner Instructor Admin"
+                  className="h-7 w-auto"
+                />
                 <button onClick={() => setSidebarOpen(false)}>
                   <X className="h-5 w-5" />
                 </button>

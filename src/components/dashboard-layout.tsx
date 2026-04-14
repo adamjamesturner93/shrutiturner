@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import { useAuth } from "../context/auth-context";
 import { ScrollToTop } from "./scroll-to-top";
-import { IconOnly } from "./icon";
+import { IconHorizontal, IconOnly } from "./icon";
 import {
   LayoutDashboard,
   Calendar,
@@ -261,13 +261,13 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
       <aside className="border-brand-white/10 text-brand-white fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r bg-[linear-gradient(180deg,rgba(46,31,51,0.98),rgba(86,52,74,0.98))] shadow-[0_24px_80px_rgba(46,31,51,0.28)] lg:flex">
         {/* Brand */}
         <div className="border-brand-white/10 border-b p-6">
-          <Link
-            href="/"
-            className="hover:text-brand-accent-light text-lg tracking-tight transition-colors"
-          >
-            Shruti Turner
+          <Link href="/" className="block">
+            <IconHorizontal
+              tone="white"
+              alt="Shruti Turner Private Studio"
+              className="h-10 w-auto transition-opacity hover:opacity-90"
+            />
           </Link>
-          <p className="text-brand-white/50 mt-1 text-xs">Private Studio</p>
         </div>
 
         {/* User card */}
@@ -373,8 +373,12 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
           <button onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle menu">
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
-          <Link href="/dashboard" className="text-sm tracking-tight">
-            Private Studio
+          <Link href="/dashboard">
+            <IconHorizontal
+              tone="white"
+              alt="Shruti Turner Private Studio"
+              className="h-7 w-auto"
+            />
           </Link>
           <div className="bg-brand-accent-light text-brand-dark flex h-8 w-8 items-center justify-center rounded-full text-xs">
             {user?.avatarInitials || "?"}
@@ -388,7 +392,13 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
           <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
           <aside className="text-brand-white absolute inset-y-0 left-0 flex w-72 flex-col bg-[linear-gradient(180deg,rgba(46,31,51,0.99),rgba(86,52,74,0.99))] shadow-[0_24px_70px_rgba(46,31,51,0.3)]">
             <div className="border-brand-white/10 flex items-center justify-between border-b p-4">
-              <span className="text-sm">Private Studio</span>
+              <Link href="/dashboard" onClick={() => setSidebarOpen(false)}>
+                <IconHorizontal
+                  tone="white"
+                  alt="Shruti Turner Private Studio"
+                  className="h-7 w-auto"
+                />
+              </Link>
               <button onClick={() => setSidebarOpen(false)}>
                 <X className="h-5 w-5" />
               </button>

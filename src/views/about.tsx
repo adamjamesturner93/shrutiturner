@@ -31,7 +31,7 @@ export function AboutPage() {
         title="About Shruti Turner - PhD Biomechanics, Strength & Yoga Coach"
         description="Shruti Turner is a strength and yoga coach with a PhD in Biomechanics, PGDip Rehabilitation, 650hr yoga training, and Level 4 PT qualification. Living with psoriatic arthritis, she specialises in evidence-based coaching for chronic illness and complex bodies."
         keywords="Shruti Turner, strength coach chronic illness, yoga teacher autoimmune, PhD biomechanics coach, psoriatic arthritis coach, rehabilitation informed yoga"
-        canonicalUrl="https://shrutiturner.com/about"
+        canonicalUrl="https://shrutiturner.co.uk/about"
       />
 
       <EditorialHero
@@ -279,7 +279,7 @@ export function AboutPage() {
             "@context": "https://schema.org",
             "@type": "Person",
             name: "Shruti Turner",
-            url: "https://shrutiturner.com",
+            url: "https://shrutiturner.co.uk",
             sameAs: [
               "https://instagram.com/shrutiturner",
               "https://facebook.com/profile.php?id=61556124191934",

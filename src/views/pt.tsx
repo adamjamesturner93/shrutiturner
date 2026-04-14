@@ -17,7 +17,7 @@ export function PTPage() {
         title="1:1 Personal Training for Complex Bodies - Shruti Turner"
         description="Personalized strength and movement programming designed for people with chronic illness and autoimmune conditions. Evidence-based coaching that adapts to your symptoms."
         keywords="personal training chronic illness, 1:1 strength coaching, personal trainer autoimmune disease, chronic pain personal training"
-        canonicalUrl="https://shrutiturner.com/pt"
+        canonicalUrl="https://shrutiturner.co.uk/pt"
       />
 
       {/* Hero */}

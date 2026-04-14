@@ -24,8 +24,8 @@ export default function ReferralRewardEmail({
   referredName = "Emma",
   creditAmount = "\u00a310",
   totalCredits = "\u00a310",
-  scheduleUrl = "https://shrutiturner.com/schedule",
-  referralUrl = "https://shrutiturner.com/referral",
+  scheduleUrl = "https://shrutiturner.co.uk/schedule",
+  referralUrl = "https://shrutiturner.co.uk/referral",
 }: ReferralRewardEmailProps) {
   return (
     <EmailLayout preview={`${referredName} signed up — you've earned ${creditAmount} credit!`}>

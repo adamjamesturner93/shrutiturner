@@ -461,7 +461,7 @@ export const LEAD_MAGNET_SEED = {
         "Hi {{firstName}},\n\nThanks for joining. Here is your guide: Why Some Bodies Need Strength Before More Stretching.\n\n{{leadMagnetLink}}\n\nShruti",
       deliveryType: "link",
       assetUrl:
-        "https://shrutiturner.com/guides/why-some-bodies-need-strength-before-more-stretching.pdf",
+        "https://shrutiturner.co.uk/guides/why-some-bodies-need-strength-before-more-stretching.pdf",
       active: true,
     },
   ],

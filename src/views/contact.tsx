@@ -226,7 +226,7 @@ export function ContactPage() {
         title="Contact & Enquiry - Shruti Turner"
         description="Get in touch to discuss 1:1 coaching, group classes, retreat information, or general questions. No hard sell, just honest conversation."
         keywords="contact Shruti Turner, fitness enquiry, coaching consultation, strength training enquiry"
-        canonicalUrl="https://shrutiturner.com/contact"
+        canonicalUrl="https://shrutiturner.co.uk/contact"
       />
 
       <EditorialHero

@@ -133,7 +133,7 @@ export function RetreatDetailPage({
       <SEO
         title={`${retreat.title} - Shruti Turner`}
         description={retreat.shortDescription}
-        canonicalUrl={`https://shrutiturner.com/retreats/${retreat.slug}`}
+        canonicalUrl={`https://shrutiturner.co.uk/retreats/${retreat.slug}`}
       />
 
       <section className="marketing-grid overflow-hidden px-4 py-12 text-white md:py-16">
@@ -154,22 +154,26 @@ export function RetreatDetailPage({
                 {retreat.shortDescription}
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
-                <span className="rounded-full border border-brand-white/12 bg-brand-white/8 px-4 py-2 text-sm text-brand-white/84">
+                <span className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 rounded-full border px-4 py-2 text-sm">
                   From {formatMoney(priceFromPence, retreat.currency)}
                 </span>
                 {depositFromPence > 0 ? (
-                  <span className="rounded-full border border-brand-white/12 bg-brand-white/8 px-4 py-2 text-sm text-brand-white/84">
+                  <span className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 rounded-full border px-4 py-2 text-sm">
                     Deposit from {formatMoney(depositFromPence, retreat.currency)}
                   </span>
                 ) : null}
                 {selectedDate ? (
-                  <span className="rounded-full border border-brand-white/12 bg-brand-white/8 px-4 py-2 text-sm text-brand-white/84">
+                  <span className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 rounded-full border px-4 py-2 text-sm">
                     {fmtDateRange(selectedDate.startDate, selectedDate.endDate)}
                   </span>
                 ) : null}
               </div>
               <div className="mt-7 flex flex-col gap-4 sm:flex-row">
-                <Button asChild size="lg" className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90">
+                <Button
+                  asChild
+                  size="lg"
+                  className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
+                >
                   <Link href="#booking">Choose Your Date</Link>
                 </Button>
                 <Button
@@ -183,7 +187,7 @@ export function RetreatDetailPage({
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-[2rem] border border-brand-white/10 bg-brand-white/8 p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+            <div className="border-brand-white/10 bg-brand-white/8 overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
               <div className="grid gap-3 md:grid-cols-[1.08fr_0.92fr]">
                 <div className="overflow-hidden rounded-[1.45rem]">
                   <ImageWithFallback
@@ -193,29 +197,29 @@ export function RetreatDetailPage({
                   />
                 </div>
                 <div className="grid gap-3">
-                  <div className="rounded-[1.25rem] bg-brand-white/10 p-4 backdrop-blur-sm">
+                  <div className="bg-brand-white/10 rounded-[1.25rem] p-4 backdrop-blur-sm">
                     <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
                       Atmosphere
                     </p>
-                    <p className="mt-2 text-sm leading-relaxed text-brand-white/84">
+                    <p className="text-brand-white/84 mt-2 text-sm leading-relaxed">
                       Spacious movement, enough rest, and no expectation that everyone extracts the
                       same thing from the day.
                     </p>
                   </div>
-                  <div className="rounded-[1.25rem] bg-brand-accent-light/12 p-4 backdrop-blur-sm">
+                  <div className="bg-brand-accent-light/12 rounded-[1.25rem] p-4 backdrop-blur-sm">
                     <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
                       Best for
                     </p>
-                    <p className="mt-2 text-sm leading-relaxed text-brand-white/84">
+                    <p className="text-brand-white/84 mt-2 text-sm leading-relaxed">
                       People who want movement and community without being pushed past what their
                       body can realistically hold.
                     </p>
                   </div>
-                  <div className="rounded-[1.25rem] bg-brand-white/10 p-4 backdrop-blur-sm">
+                  <div className="bg-brand-white/10 rounded-[1.25rem] p-4 backdrop-blur-sm">
                     <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
                       Early bird
                     </p>
-                    <p className="mt-2 text-sm leading-relaxed text-brand-white/84">
+                    <p className="text-brand-white/84 mt-2 text-sm leading-relaxed">
                       Available until {fmtDate(retreat.earlyBirdDeadline)} where applicable.
                     </p>
                   </div>
@@ -235,7 +239,7 @@ export function RetreatDetailPage({
               </div>
             </div>
 
-            <div className="rounded-[1.85rem] border border-brand-dark/10 bg-background p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+            <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
               <h2 className="text-3xl md:text-4xl">Who it&apos;s for</h2>
               <ul className="mt-6 space-y-4">
                 {retreat.suitableFor.map((item) => (
@@ -247,7 +251,7 @@ export function RetreatDetailPage({
               </ul>
             </div>
 
-            <div className="rounded-[1.85rem] border border-brand-dark/10 bg-background p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+            <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
               <h2 className="text-3xl md:text-4xl">What&apos;s included</h2>
               <div className="mt-6 grid gap-8 md:grid-cols-2">
                 <div>
@@ -274,11 +278,14 @@ export function RetreatDetailPage({
               </div>
             </div>
 
-            <div className="rounded-[1.85rem] border border-brand-dark/10 bg-background p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+            <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
               <h2 className="text-3xl md:text-4xl">Daily rhythm</h2>
               <div className="mt-6 space-y-5">
                 {retreat.schedule.map((day) => (
-                  <div key={day.day} className="rounded-[1.25rem] border border-brand-dark/10 bg-brand-warm/45 p-5">
+                  <div
+                    key={day.day}
+                    className="border-brand-dark/10 bg-brand-warm/45 rounded-[1.25rem] border p-5"
+                  >
                     <h3 className="text-xl">{day.day}</h3>
                     <ul className="text-muted-foreground mt-4 space-y-3 text-sm leading-relaxed">
                       {day.activities.map((activity) => (
@@ -293,20 +300,20 @@ export function RetreatDetailPage({
               </div>
             </div>
 
-            <div className="rounded-[1.85rem] border border-brand-dark/10 bg-background p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+            <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
               <h2 className="text-3xl md:text-4xl">Accommodation</h2>
               <p className="text-muted-foreground mt-4 leading-relaxed">{retreat.accommodation}</p>
             </div>
 
             {otherRetreatsAtVenue.length > 0 ? (
-              <div className="rounded-[1.85rem] border border-brand-dark/10 bg-background p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+              <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
                 <h2 className="text-3xl md:text-4xl">Other retreats at this venue</h2>
                 <div className="mt-6 grid gap-4 md:grid-cols-2">
                   {otherRetreatsAtVenue.map((other) => (
                     <Link
                       key={other.slug}
                       href={`/retreats/${other.slug}`}
-                      className="hover:bg-secondary/20 rounded-[1.25rem] border border-brand-dark/10 p-5 transition-colors"
+                      className="hover:bg-secondary/20 border-brand-dark/10 rounded-[1.25rem] border p-5 transition-colors"
                     >
                       <h3 className="text-xl">{other.title}</h3>
                       <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
@@ -320,7 +327,10 @@ export function RetreatDetailPage({
           </div>
 
           <aside>
-            <div id="booking" className="marketing-panel sticky top-24 rounded-[1.9rem] p-6 shadow-sm">
+            <div
+              id="booking"
+              className="marketing-panel sticky top-24 rounded-[1.9rem] p-6 shadow-sm"
+            >
               <p className="text-brand-accent text-sm tracking-[0.16em] uppercase">
                 Book this retreat
               </p>

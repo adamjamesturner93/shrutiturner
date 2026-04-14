@@ -25,7 +25,7 @@ describe("EmailLayout categories", () => {
     );
 
     expect(html).not.toContain("Unsubscribe");
-    expect(html).not.toContain("signed up at shrutiturner.com");
+    expect(html).not.toContain("signed up at shrutiturner.co.uk");
   });
 
   it("renders unsubscribe content for marketing emails", async () => {
@@ -37,6 +37,6 @@ describe("EmailLayout categories", () => {
     );
 
     expect(html).toContain("Unsubscribe");
-    expect(html).toContain("signed up at shrutiturner.com");
+    expect(html).toContain("signed up at shrutiturner.co.uk");
   });
 });

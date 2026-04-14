@@ -106,8 +106,8 @@ export function Header() {
     <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
       <div className="container mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
         <Link href="/" className="flex items-center" aria-label="Shruti Turner - Home">
-          <div className="h-12 [&>svg]:h-full [&>svg]:w-auto">
-            <IconHorizontal />
+          <div className="h-12">
+            <IconHorizontal className="h-full w-auto" />
           </div>
         </Link>
 

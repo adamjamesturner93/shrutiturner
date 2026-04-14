@@ -16,7 +16,7 @@ vi.mock("@/lib/newsletter/unsubscribe-email", () => ({
 const route = await import("@/app/api/unsubscribe/route");
 
 function createRequest(body: Record<string, unknown>) {
-  return new Request("http://localhost/api/unsubscribe", {
+  return new Request("https://shrutiturner.co.uk/api/unsubscribe", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -26,7 +26,7 @@ function createRequest(body: Record<string, unknown>) {
 describe("POST /api/unsubscribe", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.NEXT_PUBLIC_SITE_URL = "https://shrutiturner.com";
+    process.env.NEXT_PUBLIC_SITE_URL = "https://shrutiturner.co.uk";
   });
 
   it("unsubscribes immediately when given a valid token", async () => {
@@ -57,7 +57,7 @@ describe("POST /api/unsubscribe", () => {
     });
     expect(sendMarketingUnsubscribeRequestEmailMock).toHaveBeenCalledWith({
       email: "reader@example.com",
-      unsubscribeUrl: "https://shrutiturner.com/unsubscribe?token=token_123",
+      unsubscribeUrl: "https://shrutiturner.co.uk/unsubscribe?token=token_123",
     });
   });
 

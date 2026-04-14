@@ -375,7 +375,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
       <SEO
         title={`Book ${retreat.title} - Shruti Turner`}
         description={`Select your retreat date and room for ${retreat.title}.`}
-        canonicalUrl={`https://shrutiturner.com/retreats/${retreat.slug}/checkout`}
+        canonicalUrl={`https://shrutiturner.co.uk/retreats/${retreat.slug}/checkout`}
         noIndex
       />
 

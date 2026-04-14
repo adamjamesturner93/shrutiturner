@@ -116,7 +116,7 @@ export function HomePage() {
         title="Shruti Turner - Strength & Yoga for Complex Bodies"
         description="Science-backed strength and yoga coaching for adults with chronic illness, autoimmune conditions, and complex bodies. Rehabilitation-informed training that builds capacity without pretending your body is simple."
         keywords="strength training chronic illness, yoga autoimmune disease, psoriatic arthritis coaching, rheumatoid arthritis exercise, chronic pain strength training, hypermobility yoga, adaptive fitness coaching"
-        canonicalUrl="https://shrutiturner.com"
+        canonicalUrl="https://shrutiturner.co.uk"
       />
 
       <EditorialHero

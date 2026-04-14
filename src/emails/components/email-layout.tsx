@@ -26,11 +26,11 @@ interface EmailLayoutProps {
 export function EmailLayout({
   preview,
   children,
-  websiteUrl = "https://shrutiturner.com",
+  websiteUrl = "https://shrutiturner.co.uk",
   instagramUrl = "https://instagram.com/shrutiturner",
-  contactUrl = "https://shrutiturner.com/contact",
-  privacyUrl = "https://shrutiturner.com/privacy",
-  unsubscribeUrl = "https://shrutiturner.com/unsubscribe",
+  contactUrl = "https://shrutiturner.co.uk/contact",
+  privacyUrl = "https://shrutiturner.co.uk/privacy",
+  unsubscribeUrl = "https://shrutiturner.co.uk/unsubscribe",
   category = "transactional",
 }: EmailLayoutProps) {
   return (
@@ -63,10 +63,10 @@ export function EmailLayout({
             }}
           >
             <Img
-              src={`${websiteUrl}/logos/logo-white-horizontal.svg`}
+              src={`${websiteUrl}/logos/logo-white-horizontal.svg?v=2`}
               alt="Shruti Turner Private Studio"
-              width="172"
-              height="44"
+              width="240"
+              height="61"
               style={{
                 display: "block",
                 margin: "0 auto",
@@ -131,7 +131,7 @@ export function EmailLayout({
                   marginTop: "16px",
                 }}
               >
-                {"You're receiving this because you signed up at shrutiturner.com."}
+                {"You're receiving this because you signed up at shrutiturner.co.uk."}
                 <br />
                 <Link
                   href={unsubscribeUrl}

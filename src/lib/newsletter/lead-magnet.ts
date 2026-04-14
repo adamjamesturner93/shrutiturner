@@ -1,7 +1,7 @@
 import type { NewsletterSignupContent } from "@/lib/content/types";
 
 const LEGACY_LEAD_MAGNET = {
-  assetUrl: "https://shrutiturner.com/resources/5-yoga-poses-strength",
+  assetUrl: "https://shrutiturner.co.uk/resources/5-yoga-poses-strength",
   hookText: 'Get "5 Yoga Poses That Actually Build Strength" - free:',
   slug: "5-yoga-poses-strength",
   title: "5 Yoga Poses That Actually Build Strength",
@@ -18,7 +18,7 @@ export const FREE_GUIDE_DOWNLOAD_PATH =
   "/guides/why-some-bodies-need-strength-before-more-stretching.pdf";
 
 export const CANONICAL_LEAD_MAGNET = {
-  assetUrl: `https://shrutiturner.com${FREE_GUIDE_DOWNLOAD_PATH}`,
+  assetUrl: `https://shrutiturner.co.uk${FREE_GUIDE_DOWNLOAD_PATH}`,
   cardDescription: FREE_GUIDE_SUPPORTING_LINE,
   cardTitle: FREE_GUIDE_TITLE,
   emailBody: `Hi {{firstName}},\n\nThanks for joining. Here is your guide: ${FREE_GUIDE_TITLE}.\n\n{{leadMagnetLink}}\n\nShruti`,

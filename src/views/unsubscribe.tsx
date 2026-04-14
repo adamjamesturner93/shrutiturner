@@ -91,7 +91,7 @@ export function UnsubscribePage() {
       <SEO
         title="Unsubscribe - Shruti Turner"
         description="Manage your email preferences for Shruti Turner marketing emails."
-        canonicalUrl="https://shrutiturner.com/unsubscribe"
+        canonicalUrl="https://shrutiturner.co.uk/unsubscribe"
       />
 
       <div className="section-wash min-h-[calc(100dvh-4rem)] px-4 py-8 md:py-10">

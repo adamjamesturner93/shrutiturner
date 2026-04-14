@@ -20,7 +20,7 @@ export default function InstructorNotificationEmail({
   classDate = "Tomorrow, March 15th",
   attendeeCount = 1,
   attendeeName = "Student",
-  rosterUrl = "https://shrutiturner.com/admin/dashboard",
+  rosterUrl = "https://shrutiturner.co.uk/admin/dashboard",
   emptyClassCutoffLabel = "3 hours",
 }: InstructorNotificationEmailProps) {
   const isFirstSignup = type === "first-signup";

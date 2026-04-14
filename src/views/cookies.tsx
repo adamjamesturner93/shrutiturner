@@ -11,7 +11,7 @@ export function CookiesPage() {
       <SEO
         title="Cookie Policy - Shruti Turner"
         description="Information about how Shruti Turner uses cookies and similar tracking technologies."
-        canonicalUrl="https://shrutiturner.com/cookies"
+        canonicalUrl="https://shrutiturner.co.uk/cookies"
       />
 
       <div className="container mx-auto max-w-4xl px-4 py-16">

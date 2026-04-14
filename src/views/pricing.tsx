@@ -2,16 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import {
-  ArrowRight,
-  Check,
-  Clock,
-  Crown,
-  Shield,
-  Sparkles,
-  Star,
-  Ticket,
-} from "lucide-react";
+import { ArrowRight, Check, Clock, Crown, Shield, Sparkles, Star, Ticket } from "lucide-react";
 import { Layout } from "@/components/layout";
 import {
   EditorialHero,
@@ -165,7 +156,7 @@ export function PricingPage({ faqs }: PricingPageProps) {
         title="Pricing - Shruti Turner"
         description="Simple, transparent pricing for adaptive strength, yoga, mobility, and conditioning classes. One membership for all live classes, or flexible credit packs."
         keywords="strength coaching pricing, yoga pricing, chronic illness coaching cost, adaptive yoga rates, online fitness class pricing"
-        canonicalUrl="https://shrutiturner.com/pricing"
+        canonicalUrl="https://shrutiturner.co.uk/pricing"
       />
 
       <EditorialHero
@@ -187,7 +178,8 @@ export function PricingPage({ faqs }: PricingPageProps) {
         metrics={[
           {
             label: "Best For",
-            detail: "Membership suits regular attendance. Credits suit variable schedules or trialling the space.",
+            detail:
+              "Membership suits regular attendance. Credits suit variable schedules or trialling the space.",
           },
           {
             label: "Classes Included",
@@ -195,25 +187,26 @@ export function PricingPage({ faqs }: PricingPageProps) {
           },
           {
             label: "Confidence",
-            detail: "No hidden layers, no hard sell. Just a clearer fit based on how often you want to come.",
+            detail:
+              "No hidden layers, no hard sell. Just a clearer fit based on how often you want to come.",
           },
         ]}
         aside={
-          <div className="mx-auto max-w-xl rounded-[2rem] border border-brand-white/10 bg-brand-white/8 p-6 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+          <div className="border-brand-white/10 bg-brand-white/8 mx-auto max-w-xl rounded-[2rem] border p-6 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
             <p className="text-brand-accent-light text-xs tracking-[0.2em] uppercase">
               Best fit guidance
             </p>
             <div className="mt-5 grid gap-4">
-              <div className="rounded-[1.35rem] bg-brand-white/10 p-5">
-                <p className="text-sm font-medium text-brand-white">Choose membership if</p>
-                <p className="mt-2 text-sm leading-relaxed text-brand-white/80">
+              <div className="bg-brand-white/10 rounded-[1.35rem] p-5">
+                <p className="text-brand-white text-sm font-medium">Choose membership if</p>
+                <p className="text-brand-white/80 mt-2 text-sm leading-relaxed">
                   You want regular weekly practice, access to all class types, and the simplest way
                   to keep momentum.
                 </p>
               </div>
-              <div className="rounded-[1.35rem] bg-brand-accent-light/12 p-5">
-                <p className="text-sm font-medium text-brand-white">Choose credits if</p>
-                <p className="mt-2 text-sm leading-relaxed text-brand-white/80">
+              <div className="bg-brand-accent-light/12 rounded-[1.35rem] p-5">
+                <p className="text-brand-white text-sm font-medium">Choose credits if</p>
+                <p className="text-brand-white/80 mt-2 text-sm leading-relaxed">
                   You need flexibility, want to try the classes first, or your schedule changes from
                   week to week.
                 </p>
@@ -255,7 +248,7 @@ export function PricingPage({ faqs }: PricingPageProps) {
         />
 
         <div id="membership" className="mt-12 grid gap-6 lg:grid-cols-2">
-          <article className="rounded-[1.9rem] border border-brand-dark/10 bg-background p-8 shadow-[0_20px_50px_rgba(46,31,51,0.06)]">
+          <article className="border-brand-dark/10 bg-background rounded-[1.9rem] border p-8 shadow-[0_20px_50px_rgba(46,31,51,0.06)]">
             <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">Monthly</p>
             <div className="mt-4 flex items-end gap-2">
               <span className="text-5xl">£{monthlyPrice}</span>
@@ -285,17 +278,18 @@ export function PricingPage({ faqs }: PricingPageProps) {
             </Button>
           </article>
 
-          <article className="relative rounded-[1.9rem] border-2 border-brand-accent/25 bg-brand-dark p-8 text-brand-white shadow-[0_28px_60px_rgba(46,31,51,0.14)]">
+          <article className="border-brand-accent/25 bg-brand-dark text-brand-white relative rounded-[1.9rem] border-2 p-8 shadow-[0_28px_60px_rgba(46,31,51,0.14)]">
             <span className="bg-brand-white text-brand-dark absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs tracking-[0.16em] uppercase">
               Recommended
             </span>
             <p className="text-brand-accent-light text-xs tracking-[0.2em] uppercase">Annual</p>
             <div className="mt-4 flex items-end gap-2">
               <span className="text-5xl">£{annualPrice}</span>
-              <span className="pb-1 text-brand-white/80">/ year</span>
+              <span className="text-brand-white/80 pb-1">/ year</span>
             </div>
-            <p className="mt-3 text-sm text-brand-accent-light">
-              Save £{Math.max(0, monthlyPrice * 12 - annualPrice)} and keep the same all-access membership.
+            <p className="text-brand-accent-light mt-3 text-sm">
+              Save £{Math.max(0, monthlyPrice * 12 - annualPrice)} and keep the same all-access
+              membership.
             </p>
             <ul className="mt-8 space-y-3">
               {[
@@ -313,41 +307,41 @@ export function PricingPage({ faqs }: PricingPageProps) {
             <Button
               asChild
               size="lg"
-              className="mt-8 w-full bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
+              className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90 mt-8 w-full"
             >
               <Link href={getPurchaseHref({ kind: "membership", interval: "annual" })}>
                 Choose annual
                 <Crown className="h-4 w-4" />
               </Link>
             </Button>
-            <p className="mt-5 text-center text-xs text-brand-white/75">
+            <p className="text-brand-white/75 mt-5 text-center text-xs">
               Includes {trialDays} days to try before the first charge unless cancelled.
             </p>
           </article>
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-sm text-muted-foreground">
+        <div className="text-muted-foreground mt-8 flex flex-wrap items-center justify-center gap-3 text-sm">
           <span className="inline-flex items-center gap-2">
             <Shield className="h-4 w-4" />
             Cancel anytime
           </span>
-          <span className="hidden sm:inline text-muted-foreground/40">·</span>
+          <span className="text-muted-foreground/40 hidden sm:inline">·</span>
           <span className="inline-flex items-center gap-2">
             <Star className="h-4 w-4" />
             Trial included
           </span>
-          <span className="hidden sm:inline text-muted-foreground/40">·</span>
+          <span className="text-muted-foreground/40 hidden sm:inline">·</span>
           <span className="inline-flex items-center gap-2">
             <Sparkles className="h-4 w-4" />
             Founding members remain at £25/month
           </span>
         </div>
 
-        <div className="mt-8 rounded-[1.6rem] border border-brand-dark/10 bg-background p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+        <div className="border-brand-dark/10 bg-background mt-8 rounded-[1.6rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
           <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">
             Key subscription information
           </p>
-          <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+          <ul className="text-muted-foreground mt-4 space-y-3 text-sm">
             {[
               `The membership renews automatically until you cancel.`,
               `A ${trialDays}-day free trial applies before the first paid term.`,
@@ -391,7 +385,9 @@ export function PricingPage({ faqs }: PricingPageProps) {
               cta: "Buy 3-pack",
               highlight: false,
               savings:
-                credits3Savings > 0 ? `Save £${credits3Savings} (${credits3SavingsPct}% off)` : null,
+                credits3Savings > 0
+                  ? `Save £${credits3Savings} (${credits3SavingsPct}% off)`
+                  : null,
             },
             {
               title: "10-class pack",
@@ -423,30 +419,26 @@ export function PricingPage({ faqs }: PricingPageProps) {
               <p className="mt-4 text-5xl">£{item.price}</p>
               <p className="text-muted-foreground mt-3 text-sm">{item.perClass}</p>
               {item.savings ? (
-                <div className="mt-5 rounded-full bg-brand-accent/8 px-4 py-2 text-xs text-brand-accent">
+                <div className="bg-brand-accent/8 text-brand-accent mt-5 rounded-full px-4 py-2 text-xs">
                   {item.savings}
                 </div>
               ) : null}
               <ul className="mt-8 space-y-3 text-left">
-                {[
-                  "Any class type",
-                  `${creditsExpiryDays}-day validity`,
-                  "No subscription",
-                ].map((feature) => (
-                  <li key={feature} className="flex items-start gap-3 text-sm">
-                    <Check className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
-                    <span className="text-muted-foreground">{feature}</span>
-                  </li>
-                ))}
+                {["Any class type", `${creditsExpiryDays}-day validity`, "No subscription"].map(
+                  (feature) => (
+                    <li key={feature} className="flex items-start gap-3 text-sm">
+                      <Check className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
+                      <span className="text-muted-foreground">{feature}</span>
+                    </li>
+                  )
+                )}
               </ul>
               <Button
                 asChild
                 size="lg"
                 variant={item.highlight ? "default" : "outline"}
                 className={`mt-8 w-full ${
-                  item.highlight
-                    ? "bg-brand-dark text-brand-white hover:bg-brand-plum"
-                    : ""
+                  item.highlight ? "bg-brand-dark text-brand-white hover:bg-brand-plum" : ""
                 }`}
               >
                 <Link href={getPurchaseHref({ kind: "credits", bundle: item.bundle })}>
@@ -458,17 +450,17 @@ export function PricingPage({ faqs }: PricingPageProps) {
           ))}
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-sm text-muted-foreground">
+        <div className="text-muted-foreground mt-8 flex flex-wrap items-center justify-center gap-3 text-sm">
           <span className="inline-flex items-center gap-2">
             <Clock className="h-4 w-4" />
             Valid for {creditsExpiryDays} days
           </span>
-          <span className="hidden sm:inline text-muted-foreground/40">·</span>
+          <span className="text-muted-foreground/40 hidden sm:inline">·</span>
           <span className="inline-flex items-center gap-2">
             <Ticket className="h-4 w-4" />
             No auto-renewal
           </span>
-          <span className="hidden sm:inline text-muted-foreground/40">·</span>
+          <span className="text-muted-foreground/40 hidden sm:inline">·</span>
           <span className="inline-flex items-center gap-2">
             <Shield className="h-4 w-4" />
             Cancel 4+ hours before class to keep your credit
@@ -486,7 +478,7 @@ export function PricingPage({ faqs }: PricingPageProps) {
           {activeFaqs.map((faq) => (
             <article
               key={faq.slug}
-              className="rounded-[1.55rem] border border-brand-dark/10 bg-background p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]"
+              className="border-brand-dark/10 bg-background rounded-[1.55rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]"
             >
               <h3 className="text-2xl leading-tight">{faq.question}</h3>
               <p className="text-muted-foreground mt-4 text-sm leading-relaxed">{faq.answer}</p>

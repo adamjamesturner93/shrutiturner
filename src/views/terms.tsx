@@ -11,7 +11,7 @@ export function TermsPage() {
       <SEO
         title="Terms & Conditions - Shruti Turner"
         description="Terms and conditions for Shruti Turner's coaching services, retreats, and online classes."
-        canonicalUrl="https://shrutiturner.com/terms"
+        canonicalUrl="https://shrutiturner.co.uk/terms"
       />
 
       <div className="container mx-auto max-w-4xl px-4 py-16">

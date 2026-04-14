@@ -105,7 +105,7 @@ export function SubscribePage() {
       <SEO
         title="Links & Newsletter - Shruti Turner"
         description={FREE_GUIDE_META_DESCRIPTION}
-        canonicalUrl="https://shrutiturner.com/subscribe"
+        canonicalUrl="https://shrutiturner.co.uk/subscribe"
       />
 
       <section className="marketing-grid text-brand-white overflow-hidden px-4 py-10 md:py-14">

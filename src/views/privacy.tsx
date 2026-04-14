@@ -11,7 +11,7 @@ export function PrivacyPage() {
       <SEO
         title="Privacy Policy - Shruti Turner"
         description="Privacy policy explaining how Shruti Turner collects, uses, and protects your personal information."
-        canonicalUrl="https://shrutiturner.com/privacy"
+        canonicalUrl="https://shrutiturner.co.uk/privacy"
       />
 
       <div className="container mx-auto max-w-4xl px-4 py-16">

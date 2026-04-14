@@ -13,7 +13,7 @@ export default function BirthdayEmail({
   firstName = "Sarah",
   creditCode = "BDAY-ST2026",
   creditAmount = "\u00a35",
-  scheduleUrl = "https://shrutiturner.com/schedule",
+  scheduleUrl = "https://shrutiturner.co.uk/schedule",
 }: BirthdayEmailProps) {
   return (
     <EmailLayout

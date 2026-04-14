@@ -19,8 +19,8 @@ interface OnboardingEmailProps {
 
 export default function OnboardingEmail({
   firstName = "there",
-  membershipUrl = "https://shrutiturner.com/pricing",
-  scheduleUrl = "https://shrutiturner.com/schedule",
+  membershipUrl = "https://shrutiturner.co.uk/pricing",
+  scheduleUrl = "https://shrutiturner.co.uk/schedule",
   freeTrialDays = "7",
 }: OnboardingEmailProps) {
   return (

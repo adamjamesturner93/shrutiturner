@@ -34,11 +34,11 @@ describe("GET /api/newsletter/verify", () => {
     });
 
     const response = await route.GET(
-      new Request("https://shrutiturner.com/api/newsletter/verify?token=verify_123")
+      new Request("https://shrutiturner.co.uk/api/newsletter/verify?token=verify_123")
     );
 
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("https://shrutiturner.com/?verified=success");
+    expect(response.headers.get("location")).toBe("https://shrutiturner.co.uk/?verified=success");
     expect(sendLeadMagnetDeliveryEmailMock).toHaveBeenCalledWith({
       email: "reader@example.com",
       firstName: "Reader",
@@ -58,23 +58,23 @@ describe("GET /api/newsletter/verify", () => {
 
   it("redirects to invalid when the token is missing or invalid", async () => {
     const missingTokenResponse = await route.GET(
-      new Request("https://shrutiturner.com/api/newsletter/verify")
+      new Request("https://shrutiturner.co.uk/api/newsletter/verify")
     );
 
     expect(missingTokenResponse.status).toBe(307);
     expect(missingTokenResponse.headers.get("location")).toBe(
-      "https://shrutiturner.com/?verified=invalid"
+      "https://shrutiturner.co.uk/?verified=invalid"
     );
 
     verifyMarketingEmailByTokenMock.mockRejectedValue(new Error("INVALID_TOKEN"));
 
     const invalidTokenResponse = await route.GET(
-      new Request("https://shrutiturner.com/api/newsletter/verify?token=bad-token")
+      new Request("https://shrutiturner.co.uk/api/newsletter/verify?token=bad-token")
     );
 
     expect(invalidTokenResponse.status).toBe(307);
     expect(invalidTokenResponse.headers.get("location")).toBe(
-      "https://shrutiturner.com/?verified=invalid"
+      "https://shrutiturner.co.uk/?verified=invalid"
     );
   });
 });

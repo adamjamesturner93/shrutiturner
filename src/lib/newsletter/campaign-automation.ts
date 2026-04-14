@@ -79,7 +79,7 @@ async function renderCampaignMessage(
       ? fields.tags.filter((x): x is string => typeof x === "string")
       : [];
     const postUrl = slug
-      ? `${process.env.NEXT_PUBLIC_SITE_URL || "https://shrutiturner.com"}/blog/${slug}`
+      ? `${process.env.NEXT_PUBLIC_SITE_URL || "https://shrutiturner.co.uk"}/blog/${slug}`
       : undefined;
     const html = await render(
       BlogPostEmail({

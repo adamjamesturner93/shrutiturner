@@ -140,7 +140,7 @@ export function LoginPage({
       <SEO
         title="Login - Shruti Turner"
         description="Sign in to your Private Studio to access classes, coaching, health details, and account tools."
-        canonicalUrl="https://shrutiturner.com/login"
+        canonicalUrl="https://shrutiturner.co.uk/login"
         noIndex
       />
 
@@ -154,11 +154,11 @@ export function LoginPage({
                     Private Studio
                   </p>
                   <div className="mt-5 max-w-md space-y-5">
-                    <div className="hidden lg:block [&>svg]:h-auto [&>svg]:w-52">
-                      <IconVertical />
+                    <div className="hidden lg:block">
+                      <IconVertical tone="white" className="h-auto w-52" />
                     </div>
-                    <div className="lg:hidden [&>svg]:h-9 [&>svg]:w-auto">
-                      <IconHorizontal />
+                    <div className="lg:hidden">
+                      <IconHorizontal tone="white" className="h-9 w-auto" />
                     </div>
                     <h1 className="text-4xl leading-tight md:text-5xl">
                       Sign in to the part of the studio built around your actual life.
@@ -225,8 +225,8 @@ export function LoginPage({
                     </div>
                   )}
 
-                  <div className="mb-6 lg:hidden [&>svg]:h-10 [&>svg]:w-auto">
-                    <IconHorizontal />
+                  <div className="mb-6 lg:hidden">
+                    <IconHorizontal className="h-10 w-auto" />
                   </div>
 
                   <div className="mb-8">

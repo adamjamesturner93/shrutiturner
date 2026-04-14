@@ -23,7 +23,7 @@ export default function ClassUnbookingEmail({
   className = "Strength & Flow",
   classDate = "Thursday, 6 March 2026",
   classTime = "9:30 AM",
-  rebookUrl = "https://shrutiturner.com/classes",
+  rebookUrl = "https://shrutiturner.co.uk/classes",
 }: ClassUnbookingEmailProps) {
   return (
     <EmailLayout preview={`Booking cancelled: ${className} on ${classDate}`}>

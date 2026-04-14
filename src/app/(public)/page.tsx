@@ -11,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description:
         "A new home for evidence-based coaching, movement classes, and community is launching in early summer 2026.",
       alternates: {
-        canonical: "https://shrutiturner.com",
+        canonical: "https://shrutiturner.co.uk",
       },
     };
   }

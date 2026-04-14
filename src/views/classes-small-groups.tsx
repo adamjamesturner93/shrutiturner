@@ -63,7 +63,7 @@ export function ClassesSmallGroupsPage({ programmes = [] }: ClassesSmallGroupsPa
       <SEO
         title="Small Group Programmes - Shruti Turner"
         description="Focused multi-week programme blocks with a clear outcome, a fixed cohort, and more accountability than the regular class rhythm."
-        canonicalUrl="https://shrutiturner.com/classes/small-groups"
+        canonicalUrl="https://shrutiturner.co.uk/classes/small-groups"
       />
 
       <EditorialHero

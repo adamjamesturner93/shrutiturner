@@ -24,7 +24,7 @@ export default function PurchaseConfirmationEmail({
   amount = "£90.00",
   date = "March 15, 2026",
   invoiceId = "INV-12345678",
-  scheduleUrl = "https://shrutiturner.com/dashboard/schedule",
+  scheduleUrl = "https://shrutiturner.co.uk/dashboard/schedule",
 }: PurchaseConfirmationEmailProps) {
   return (
     <EmailLayout preview={`Receipt for ${purchaseDescription}`}>

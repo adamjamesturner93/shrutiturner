@@ -32,7 +32,7 @@ export default function RetreatBookingEmail({
   totalPrice = "\u00a3595.00",
   remainderAmount = "\u00a3445.00",
   remainderDueDate = "18 August 2026",
-  retreatDetailsUrl = "https://shrutiturner.com/retreats/rest-and-restore",
+  retreatDetailsUrl = "https://shrutiturner.co.uk/retreats/rest-and-restore",
   transactionRef = "RT-2026-0342",
 }: RetreatBookingEmailProps) {
   return (
