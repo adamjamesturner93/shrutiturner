@@ -61,7 +61,9 @@ test("homepage footer signup submits with the footer source", async ({ page }) =
   await expect(footer.getByRole("button", { name: "Subscribe" })).toBeEnabled();
   await footer.getByRole("button", { name: "Subscribe" }).click();
 
-  await expect(footer.getByText("You're subscribed! Check your inbox.")).toBeVisible();
+  await expect(
+    footer.getByText("Please check your inbox to confirm your email address.")
+  ).toBeVisible();
   expect(requestBody).toMatchObject({
     firstName: "Jordan",
     email: "jordan@example.com",
@@ -75,7 +77,7 @@ test("manual unsubscribe requires confirmation and then shows the secure-link st
 }) => {
   let requestBody: Record<string, unknown> | undefined;
 
-  await page.route("**/api/unsubscribe", async (route) => {
+  await page.route("**/api/newsletter/unsubscribe", async (route) => {
     requestBody = route.request().postDataJSON() as Record<string, unknown>;
     await route.fulfill({
       status: 200,
@@ -102,7 +104,7 @@ test("manual unsubscribe requires confirmation and then shows the secure-link st
 test("token unsubscribe auto-processes on page load", async ({ page }) => {
   let requestBody: Record<string, unknown> | undefined;
 
-  await page.route("**/api/unsubscribe", async (route) => {
+  await page.route("**/api/newsletter/unsubscribe", async (route) => {
     requestBody = route.request().postDataJSON() as Record<string, unknown>;
     await route.fulfill({
       status: 200,

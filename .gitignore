@@ -9,6 +9,8 @@ out
 
 # Local environment files (keep template)
 .env
+.env.staging
+.env.prod
 .env.local
 .env.development.local
 .env.test.local

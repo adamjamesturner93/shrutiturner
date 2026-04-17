@@ -27,10 +27,10 @@ function readFromDotEnvFile(key: "DIRECT_URL" | "DATABASE_URL"): string | undefi
 }
 
 const prismaUrl =
-  readFromDotEnvFile("DIRECT_URL") ||
-  readFromDotEnvFile("DATABASE_URL") ||
   cleanEnvUrl(process.env.DIRECT_URL) ||
-  cleanEnvUrl(process.env.DATABASE_URL);
+  cleanEnvUrl(process.env.DATABASE_URL) ||
+  readFromDotEnvFile("DIRECT_URL") ||
+  readFromDotEnvFile("DATABASE_URL");
 
 if (!prismaUrl) {
   throw new Error("Missing DIRECT_URL or DATABASE_URL in environment.");

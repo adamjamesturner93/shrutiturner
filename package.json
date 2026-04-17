@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
+  "packageManager": "pnpm@9.0.0",
   "engines": {
     "node": ">=24 <25"
   },
@@ -36,6 +37,10 @@
     "db:destroy:local": "docker compose down -v",
     "db:logs": "docker compose logs -f postgres",
     "db:reset:local": "prisma migrate reset --force && pnpm run prisma:seed:local",
+    "db:status:staging": "node scripts/prisma-deploy.mjs staging status",
+    "db:migrate:staging": "node scripts/prisma-deploy.mjs staging deploy",
+    "db:status:prod": "node scripts/prisma-deploy.mjs prod status",
+    "db:migrate:prod": "node scripts/prisma-deploy.mjs prod deploy",
     "prisma:generate": "prisma generate",
     "prisma:seed:local": "node --experimental-strip-types --experimental-specifier-resolution=node prisma/seed.ts",
     "prisma:migrate:reset": "prisma migrate reset",

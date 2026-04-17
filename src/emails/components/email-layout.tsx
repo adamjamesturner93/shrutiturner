@@ -63,7 +63,7 @@ export function EmailLayout({
             }}
           >
             <Img
-              src={`${websiteUrl}/logos/logo-white-horizontal.svg?v=2`}
+              src={`${websiteUrl}/logos/logo-white-horizontal-transparent.svg`}
               alt="Shruti Turner Private Studio"
               width="240"
               height="61"

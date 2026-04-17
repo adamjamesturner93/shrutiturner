@@ -15,7 +15,7 @@ const HORIZONTAL_ASSETS: Record<LogoTone, LogoAsset> = {
     height: 42,
   },
   white: {
-    src: "/logos/logo-white-horizontal.svg?v=2",
+    src: "/logos/logo-white-horizontal-transparent.svg",
     width: 172,
     height: 44,
   },
@@ -28,7 +28,7 @@ const VERTICAL_ASSETS: Record<LogoTone, LogoAsset> = {
     height: 84,
   },
   white: {
-    src: "/logos/logo-white-vertical.svg?v=2",
+    src: "/logos/logo-white-vertical-transparent.svg",
     width: 126,
     height: 84,
   },

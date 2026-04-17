@@ -12,7 +12,7 @@ describe("EmailLayout categories", () => {
       })
     );
 
-    expect(html).toContain("/logos/logo-white-horizontal.svg");
+    expect(html).toContain("/logos/logo-white-horizontal-transparent.svg");
     expect(html).toContain('alt="Shruti Turner Private Studio"');
   });
 

@@ -265,7 +265,7 @@ describe("newsletter public journeys integration", () => {
       Subject: "Confirm your unsubscribe request",
     });
     expect(String(sendEmailMock.mock.calls[0]?.[0]?.TextBody ?? "")).toContain(
-      "https://shrutiturner.co.uk/unsubscribe?token="
+      "http://localhost/unsubscribe?token="
     );
   });
 });
