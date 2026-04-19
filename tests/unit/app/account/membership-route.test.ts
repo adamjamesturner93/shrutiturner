@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const connectionMock = vi.fn();
-const requireSessionUserMock = vi.fn();
+const authMock = vi.fn();
 const ensureInstructorMembershipMock = vi.fn();
 const syncMembershipFromStripeMock = vi.fn();
 const getMembershipStateMock = vi.fn();
@@ -14,8 +14,8 @@ vi.mock("next/server", async () => {
   };
 });
 
-vi.mock("@/lib/api/auth-user", () => ({
-  requireSessionUser: requireSessionUserMock,
+vi.mock("@/lib/auth", () => ({
+  auth: authMock,
 }));
 
 vi.mock("@/lib/membership/membership-service", () => ({
@@ -30,7 +30,7 @@ describe("GET /api/me/membership", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     connectionMock.mockResolvedValue(undefined);
-    requireSessionUserMock.mockResolvedValue({ id: "user_123", role: "student" });
+    authMock.mockResolvedValue({ user: { id: "user_123", role: "student" } });
     getMembershipStateMock.mockResolvedValue({
       membership: null,
       credits: { balance: 2, summary: [] },
@@ -42,23 +42,26 @@ describe("GET /api/me/membership", () => {
   it("falls back to cached membership state if Stripe sync fails", async () => {
     syncMembershipFromStripeMock.mockRejectedValue(new Error("Stripe timeout"));
 
-    const response = await route.GET();
+    const response = await route.GET(new Request("http://localhost/api/me/membership"));
 
     expect(response.status).toBe(200);
     expect(syncMembershipFromStripeMock).toHaveBeenCalledWith("user_123");
     expect(getMembershipStateMock).toHaveBeenCalledWith("user_123");
     await expect(response.json()).resolves.toEqual({
-      membership: null,
-      credits: { balance: 2, summary: [] },
-      referral: { balancePence: 0 },
-      complianceHistory: [],
+      success: true,
+      data: {
+        membership: null,
+        credits: { balance: 2, summary: [] },
+        referral: { balancePence: 0 },
+        complianceHistory: [],
+      },
     });
   });
 
   it("uses instructor membership for owner admin users without Stripe sync", async () => {
-    requireSessionUserMock.mockResolvedValue({ id: "admin_123", role: "owner_admin" });
+    authMock.mockResolvedValue({ user: { id: "admin_123", role: "owner_admin" } });
 
-    const response = await route.GET();
+    const response = await route.GET(new Request("http://localhost/api/me/membership"));
 
     expect(response.status).toBe(200);
     expect(ensureInstructorMembershipMock).toHaveBeenCalledWith("admin_123");

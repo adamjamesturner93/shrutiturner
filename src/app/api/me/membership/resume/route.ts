@@ -1,25 +1,20 @@
-import { NextResponse } from "next/server";
-import { requireSessionUser } from "@/lib/api/auth-user";
+import { apiOk, handleApiRoute, notFound, serviceUnavailable } from "@/lib/api/route";
 import { resumeMembershipCancellation } from "@/lib/membership/membership-service";
 
-export async function POST() {
-  try {
-    const user = await requireSessionUser();
-    const membership = await resumeMembershipCancellation(user.id);
-    return NextResponse.json({ membership });
-  } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === "UNAUTHORIZED") {
-        return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+export const POST = handleApiRoute(
+  async ({ sessionUser }) => {
+    try {
+      const membership = await resumeMembershipCancellation(sessionUser!.id);
+      return apiOk({ membership });
+    } catch (error) {
+      if (error instanceof Error && error.message === "MEMBERSHIP_NOT_FOUND") {
+        throw notFound("Membership not found.");
       }
-      if (error.message === "MEMBERSHIP_NOT_FOUND") {
-        return NextResponse.json({ message: "Membership not found." }, { status: 404 });
+      if (error instanceof Error && error.message === "STRIPE_NOT_CONFIGURED") {
+        throw serviceUnavailable("Stripe is not configured.");
       }
-      if (error.message === "STRIPE_NOT_CONFIGURED") {
-        return NextResponse.json({ message: "Stripe is not configured." }, { status: 501 });
-      }
+      throw error;
     }
-    console.error("POST /api/me/membership/resume failed", error);
-    return NextResponse.json({ message: "Failed to resume membership" }, { status: 500 });
-  }
-}
+  },
+  { auth: "user" }
+);

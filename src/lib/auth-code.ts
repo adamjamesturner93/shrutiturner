@@ -1,7 +1,7 @@
 import { render } from "@react-email/render";
 import { ServerClient } from "postmark";
 import AuthCodeEmail from "@/emails/auth-code";
-import { env } from "@/lib/env";
+import { env, getPostmarkToken } from "@/lib/env";
 import { getPostmarkMessageStream } from "@/lib/postmark/client";
 
 export async function sendAuthCodeEmail(email: string, code: string, expiryMinutes = 10) {
@@ -9,9 +9,9 @@ export async function sendAuthCodeEmail(email: string, code: string, expiryMinut
     return;
   }
 
-  const postmarkToken = env.POSTMARK_API_TOKEN;
+  const postmarkToken = getPostmarkToken();
   if (!postmarkToken) {
-    throw new Error("POSTMARK_API_TOKEN is not configured.");
+    throw new Error("POSTMARK_API_TOKEN or POSTMARK_SERVER_TOKEN is not configured.");
   }
 
   const from = env.POSTMARK_FROM_EMAIL || "Shruti Turner <noreply@thechronicyogini.com>";

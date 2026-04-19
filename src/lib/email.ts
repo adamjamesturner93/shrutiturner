@@ -8,6 +8,7 @@ import ClassCancellationEmail from "../emails/class-cancellation";
 import ClassUnbookingEmail from "../emails/class-unbooking";
 import SubscriptionNoticeEmail from "../emails/subscription-notice";
 import NewsletterEmail from "../emails/newsletter";
+import { getBaseSiteUrlFromEnv } from "@/lib/env";
 import { sendPostmarkReactEmail } from "@/lib/postmark/client";
 import { getClassOperationalSettings } from "@/lib/classes/settings-service";
 import {
@@ -23,8 +24,7 @@ import {
 // Do not expose your API key in the frontend bundle.
 const POSTMARK_API_KEY = process.env.POSTMARK_API_KEY || "POSTMARK_API_TEST";
 void POSTMARK_API_KEY;
-const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const APP_URL = getBaseSiteUrlFromEnv();
 
 function toMinutesLabel(minutes: number) {
   if (minutes % 60 === 0) {

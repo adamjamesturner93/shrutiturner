@@ -5,6 +5,7 @@ import BlogPostEmail from "@/emails/blog-post";
 import NewsletterEmail from "@/emails/newsletter";
 import { db } from "@/lib/db";
 import { getEntries } from "@/lib/content/contentful-client";
+import { getBaseSiteUrlFromEnv, getPostmarkToken } from "@/lib/env";
 import { getPostmarkMessageStream } from "@/lib/postmark/client";
 
 type CampaignAudienceType = "newsletter" | "blog";
@@ -78,9 +79,7 @@ async function renderCampaignMessage(
     const tags = Array.isArray(fields.tags)
       ? fields.tags.filter((x): x is string => typeof x === "string")
       : [];
-    const postUrl = slug
-      ? `${process.env.NEXT_PUBLIC_SITE_URL || "https://shrutiturner.co.uk"}/blog/${slug}`
-      : undefined;
+    const postUrl = slug ? `${getBaseSiteUrlFromEnv()}/blog/${slug}` : undefined;
     const html = await render(
       BlogPostEmail({
         firstName,
@@ -113,7 +112,7 @@ async function runCampaign(params: {
   contentfulEntryId: string;
   audienceType: CampaignAudienceType;
 }) {
-  const postmarkToken = process.env.POSTMARK_API_TOKEN;
+  const postmarkToken = getPostmarkToken();
   if (!postmarkToken) {
     throw new Error("POSTMARK_NOT_CONFIGURED");
   }

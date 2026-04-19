@@ -45,7 +45,7 @@ describe("GET /api/me", () => {
     const response = await route.GET(new Request("http://localhost/api/me"));
 
     expect(response.status).toBe(200);
-    expect(getAccountMock).toHaveBeenCalledWith("user_123", "http://localhost:3000");
+    expect(getAccountMock).toHaveBeenCalledWith("user_123", "http://localhost");
     await expect(response.json()).resolves.toEqual({
       success: true,
       data: { profile: { firstName: "Reader" } },

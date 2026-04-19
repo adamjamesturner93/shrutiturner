@@ -22,6 +22,7 @@ import {
   refundOneCreditForBooking,
 } from "@/lib/credits/credit-service";
 import type { DateFormatPreference } from "@/lib/date-i18n";
+import { getBaseSiteUrlFromEnv } from "@/lib/env";
 import {
   getClassOperationalSettings,
   isInsideEmptyClassAutoCancelWindow,
@@ -1043,7 +1044,7 @@ export async function processThreeHourClassCutoff(now = new Date()) {
         continue;
       }
 
-      const joinLink = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/dashboard/classes/${session.classDefinitionSlug}/join?sessionId=${session.id}`;
+      const joinLink = `${getBaseSiteUrlFromEnv()}/dashboard/classes/${session.classDefinitionSlug}/join?sessionId=${session.id}`;
 
       void sendClassReminder(
         booking.user.email,

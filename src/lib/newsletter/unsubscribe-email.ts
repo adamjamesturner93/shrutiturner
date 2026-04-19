@@ -1,13 +1,13 @@
 import { ServerClient } from "postmark";
-import { getPostmarkMessageStream } from "@/lib/postmark/client";
+import { getPostmarkToken } from "@/lib/env";
+import { getPostmarkFromEmail, getPostmarkMessageStream } from "@/lib/postmark/client";
 
 export async function sendMarketingUnsubscribeRequestEmail(input: {
   email: string;
   unsubscribeUrl: string;
 }) {
-  const postmarkToken = process.env.POSTMARK_API_TOKEN;
-  const fromEmail =
-    process.env.POSTMARK_FROM_EMAIL || "Shruti Turner <shruti@thechronicyogini.com>";
+  const postmarkToken = getPostmarkToken();
+  const fromEmail = getPostmarkFromEmail();
 
   if (!postmarkToken) {
     throw new Error("POSTMARK_NOT_CONFIGURED");

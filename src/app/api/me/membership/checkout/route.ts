@@ -1,6 +1,12 @@
 import { AcceptanceType } from "@prisma/client";
-import { NextResponse } from "next/server";
-import { requireSessionUser } from "@/lib/api/auth-user";
+import {
+  apiOk,
+  badRequest,
+  conflict,
+  handleApiRoute,
+  parseJsonBody,
+  serviceUnavailable,
+} from "@/lib/api/route";
 import { createMembershipCheckoutSession } from "@/lib/billing/billing-service";
 import { assertNoUserCheckoutDisputeHold } from "@/lib/billing/dispute-service";
 import { SUBSCRIPTION_DISCLOSURE_VERSION } from "@/lib/billing/subscription-disclosure";
@@ -12,10 +18,9 @@ import {
 } from "@/lib/legal/acceptance-service";
 import { sanitizeRedirectPath } from "@/lib/navigation/safe-redirect";
 
-export async function POST(request: Request) {
-  try {
-    const user = await requireSessionUser();
-    const body = (await request.json().catch(() => ({}))) as {
+export const POST = handleApiRoute(
+  async ({ request, sessionUser }) => {
+    const body = await parseJsonBody<{
       plan?: string;
       billingInterval?: string;
       promotionCode?: string;
@@ -23,7 +28,7 @@ export async function POST(request: Request) {
       cancelPath?: string;
       disclosureVersion?: string;
       disclosureAccepted?: boolean;
-    };
+    }>(request);
     const requestedPlan = typeof body.plan === "string" ? body.plan : "movewell";
     const billingInterval =
       body.billingInterval === "annual" || body.billingInterval === "monthly"
@@ -31,38 +36,32 @@ export async function POST(request: Request) {
         : "monthly";
 
     if (billingInterval !== "monthly" && billingInterval !== "annual") {
-      return NextResponse.json({ message: "Invalid billing interval." }, { status: 400 });
+      throw badRequest("Invalid billing interval.");
     }
 
     if (requestedPlan !== "movewell") {
-      return NextResponse.json({ message: "Invalid membership plan." }, { status: 400 });
+      throw badRequest("Invalid membership plan.");
     }
 
-    await assertNoUserCheckoutDisputeHold(user.id);
+    await assertNoUserCheckoutDisputeHold(sessionUser!.id);
 
-    const acceptanceStates = await assertCurrentAcceptances(user.id, [
+    const acceptanceStates = await assertCurrentAcceptances(sessionUser!.id, [
       { type: AcceptanceType.terms, surface: "membership_checkout" },
       { type: AcceptanceType.health_waiver, surface: "membership_checkout" },
     ]);
 
     if (body.disclosureAccepted !== true) {
-      return NextResponse.json(
-        { message: "Subscription terms must be acknowledged before checkout." },
-        { status: 400 }
-      );
+      throw badRequest("Subscription terms must be acknowledged before checkout.");
     }
 
     if (body.disclosureVersion !== SUBSCRIPTION_DISCLOSURE_VERSION) {
-      return NextResponse.json(
-        { message: "Subscription disclosure is out of date. Refresh and review it again." },
-        { status: 409 }
-      );
+      throw conflict("Subscription disclosure is out of date. Refresh and review it again.");
     }
 
     const disclosureAcceptedAt = new Date();
     const immediateStartEvent = await recordAcceptanceEvent({
-      userId: user.id,
-      actorUserId: user.id,
+      userId: sessionUser!.id,
+      actorUserId: sessionUser!.id,
       type: AcceptanceType.immediate_start,
       surface: "membership_checkout",
       metadataJson: {
@@ -71,7 +70,7 @@ export async function POST(request: Request) {
       },
     });
     await recordSubscriptionComplianceEvent({
-      userId: user.id,
+      userId: sessionUser!.id,
       kind: "disclosure_acknowledged",
       status: "recorded",
       summary: `Subscription disclosure ${body.disclosureVersion} accepted for ${billingInterval} Move Well Membership checkout.`,
@@ -83,55 +82,53 @@ export async function POST(request: Request) {
       eventAt: disclosureAcceptedAt,
     });
 
-    const result = await createMembershipCheckoutSession(
-      user.id,
-      "movewell",
-      billingInterval,
-      typeof body.promotionCode === "string" ? body.promotionCode : undefined,
-      "movewell",
-      {
-        successPath: sanitizeRedirectPath(body.successPath),
-        cancelPath: sanitizeRedirectPath(body.cancelPath),
-        disclosureVersion: body.disclosureVersion,
-        disclosureAcceptedAt,
-        complianceSnapshot: {
-          acceptanceStates: acceptanceStates.map((state) => ({
-            type: state.type,
-            policyVersionId: state.policyVersionId,
-            acceptanceEventId: state.acceptanceEventId,
-            version: state.currentVersion,
-            surface: state.surface,
-          })),
-          immediateStartAcceptanceEventId: immediateStartEvent.id,
-        },
-      }
-    );
-    return NextResponse.json(result);
-  } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === "UNAUTHORIZED") {
-        return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-      }
-      if (error.message.startsWith("MISSING_STRIPE_PRICE:")) {
-        return NextResponse.json({ message: "Stripe price is not configured." }, { status: 501 });
-      }
-      if (error.message === "STRIPE_NOT_CONFIGURED") {
-        return NextResponse.json({ message: "Stripe is not configured." }, { status: 501 });
-      }
-      if (error.message === "DISPUTE_HOLD") {
-        return NextResponse.json(
-          {
-            message:
-              "Checkout is temporarily blocked while an open payment dispute is under review.",
+    try {
+      const result = await createMembershipCheckoutSession(
+        sessionUser!.id,
+        "movewell",
+        billingInterval,
+        typeof body.promotionCode === "string" ? body.promotionCode : undefined,
+        "movewell",
+        {
+          successPath: sanitizeRedirectPath(body.successPath),
+          cancelPath: sanitizeRedirectPath(body.cancelPath),
+          disclosureVersion: body.disclosureVersion,
+          disclosureAcceptedAt,
+          complianceSnapshot: {
+            acceptanceStates: acceptanceStates.map((state) => ({
+              type: state.type,
+              policyVersionId: state.policyVersionId,
+              acceptanceEventId: state.acceptanceEventId,
+              version: state.currentVersion,
+              surface: state.surface,
+            })),
+            immediateStartAcceptanceEventId: immediateStartEvent.id,
           },
-          { status: 409 }
+        }
+      );
+      return apiOk(result);
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message.startsWith("MISSING_STRIPE_PRICE:")) {
+          throw serviceUnavailable("Stripe price is not configured.");
+        }
+        if (error.message === "STRIPE_NOT_CONFIGURED") {
+          throw serviceUnavailable("Stripe is not configured.");
+        }
+        if (error.message === "DISPUTE_HOLD") {
+          throw conflict(
+            "Checkout is temporarily blocked while an open payment dispute is under review."
+          );
+        }
+      }
+      if (isAcceptanceRequiredError(error)) {
+        throw conflict(
+          "Current legal acceptance is required before membership checkout.",
+          error.details
         );
       }
+      throw error;
     }
-    if (isAcceptanceRequiredError(error)) {
-      return NextResponse.json(error.details, { status: 409 });
-    }
-    console.error("POST /api/me/membership/checkout failed", error);
-    return NextResponse.json({ message: "Failed to create checkout session" }, { status: 500 });
-  }
-}
+  },
+  { auth: "user" }
+);

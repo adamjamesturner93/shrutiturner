@@ -7,6 +7,7 @@ import {
 } from "@prisma/client";
 import type Stripe from "stripe";
 import { db } from "@/lib/db";
+import { getBaseSiteUrlFromEnv } from "@/lib/env";
 import { getStripeClient } from "@/lib/billing/stripe-client";
 import {
   CREDIT_BUNDLE_CONFIG,
@@ -31,8 +32,7 @@ import { processGiftPurchaseCheckoutCompleted } from "@/lib/gifts/service";
 import { processRetreatCheckoutCompleted } from "@/lib/retreats/service";
 import { processSmallGroupCheckoutCompleted } from "@/lib/small-groups/service";
 
-const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const APP_URL = getBaseSiteUrlFromEnv();
 
 function startOfUtcDay(date: Date) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));

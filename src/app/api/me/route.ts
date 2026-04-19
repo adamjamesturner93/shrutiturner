@@ -1,10 +1,11 @@
 import { connection } from "next/server";
 import { getAccount, updateAccount } from "@/lib/account/account-service";
+import { getBaseSiteUrlFromEnv } from "@/lib/env";
 import { apiOk, ApiError, handleApiRoute, parseJsonBody } from "@/lib/api/route";
 
 function siteUrlFromRequest(request: Request) {
-  const env = process.env.NEXT_PUBLIC_SITE_URL;
-  if (env) return env;
+  const configured = getBaseSiteUrlFromEnv();
+  if (configured !== "http://localhost:3000") return configured;
   const url = new URL(request.url);
   return `${url.protocol}//${url.host}`;
 }

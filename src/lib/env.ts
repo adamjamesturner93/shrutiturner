@@ -34,6 +34,7 @@ const schema = z.object({
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: optionalString,
   NEXT_PUBLIC_E2E_TEST_MODE: z.enum(["0", "1"]).optional(),
   POSTMARK_API_TOKEN: optionalString,
+  POSTMARK_SERVER_TOKEN: optionalString,
   POSTMARK_FROM_EMAIL: optionalString,
   POSTMARK_MESSAGE_STREAM: optionalString,
   POSTMARK_MARKETING_MESSAGE_STREAM: optionalString,
@@ -52,7 +53,37 @@ const schema = z.object({
   SITE_STAGE: z.enum(["holding", "live"]).optional(),
 });
 
-export const env = schema.parse(process.env);
+function isDeploymentEnvironment(value: z.infer<typeof schema>) {
+  return (
+    value.NODE_ENV === "production" ||
+    value.VERCEL_ENV === "preview" ||
+    value.VERCEL_ENV === "production"
+  );
+}
+
+function ensureRequiredRuntimeEnv(value: z.infer<typeof schema>) {
+  if (!isDeploymentEnvironment(value)) return value;
+
+  const missing: string[] = [];
+  if (!value.AUTH_SECRET) missing.push("AUTH_SECRET");
+  if (!value.DATABASE_URL && !value.DIRECT_URL) missing.push("DATABASE_URL or DIRECT_URL");
+  if (!value.NEXT_PUBLIC_APP_URL && !value.NEXT_PUBLIC_SITE_URL) {
+    missing.push("NEXT_PUBLIC_APP_URL or NEXT_PUBLIC_SITE_URL");
+  }
+  if (!value.POSTMARK_API_TOKEN && !value.POSTMARK_SERVER_TOKEN) {
+    missing.push("POSTMARK_API_TOKEN or POSTMARK_SERVER_TOKEN");
+  }
+  if (!value.POSTMARK_FROM_EMAIL) missing.push("POSTMARK_FROM_EMAIL");
+  if (!value.STRIPE_SECRET_KEY) missing.push("STRIPE_SECRET_KEY");
+
+  if (missing.length) {
+    throw new Error(`Missing required runtime environment variables: ${missing.join(", ")}`);
+  }
+
+  return value;
+}
+
+export const env = ensureRequiredRuntimeEnv(schema.parse(process.env));
 
 export function getDatabaseUrl() {
   return env.DATABASE_URL || env.DIRECT_URL;
@@ -67,4 +98,8 @@ export function getAdminEmailAllowlist() {
 
 export function getBaseSiteUrlFromEnv() {
   return env.NEXT_PUBLIC_APP_URL || env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+}
+
+export function getPostmarkToken() {
+  return env.POSTMARK_API_TOKEN || env.POSTMARK_SERVER_TOKEN;
 }

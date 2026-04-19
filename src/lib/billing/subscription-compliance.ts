@@ -12,10 +12,10 @@ import {
   MONTHLY_REMINDER_INTERVAL_MONTHS,
   TRIAL_REMINDER_LEAD_DAYS,
 } from "@/lib/billing/subscription-disclosure";
+import { getBaseSiteUrlFromEnv } from "@/lib/env";
 import { sendSubscriptionNoticeEmail } from "@/lib/email";
 
-const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const APP_URL = getBaseSiteUrlFromEnv();
 
 export type SubscriptionNoticeHistoryItem = {
   id: string;

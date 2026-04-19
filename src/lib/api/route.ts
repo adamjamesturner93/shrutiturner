@@ -99,6 +99,7 @@ function buildErrorResponse(
     requestId: context.requestId,
     userId: context.sessionUser?.id || null,
     error: message,
+    stack: error instanceof Error ? error.stack : undefined,
   });
 
   return NextResponse.json<ApiFailure>(
@@ -115,6 +116,10 @@ function buildErrorResponse(
 
 export function apiOk<T>(data: T, init?: ResponseInit) {
   return NextResponse.json<ApiSuccess<T>>({ success: true, data }, init);
+}
+
+export function apiCreated<T>(data: T, init?: ResponseInit) {
+  return apiOk(data, { status: 201, ...init });
 }
 
 export async function parseJsonBody<T>(request: Request): Promise<T> {
@@ -145,17 +150,29 @@ export function notFound(message: string) {
   return new ApiError(404, "NOT_FOUND", message);
 }
 
+export function conflict(message: string, details?: unknown) {
+  return new ApiError(409, "CONFLICT", message, details);
+}
+
+export function gone(message: string, details?: unknown) {
+  return new ApiError(410, "GONE", message, details);
+}
+
+export function serviceUnavailable(message: string, details?: unknown) {
+  return new ApiError(503, "SERVICE_UNAVAILABLE", message, details);
+}
+
 export function upstreamFailure(message: string, details?: unknown) {
   return new ApiError(502, "UPSTREAM_FAILURE", message, details);
 }
 
 export function handleApiRoute(
-  handler: (context: RouteContext) => Promise<Response>,
+  handler: (context: RouteContext, handlerContext?: unknown) => Promise<Response>,
   options?: { auth?: AuthPolicy }
 ) {
   const policy = options?.auth || "public";
 
-  return async function routeHandler(request: Request) {
+  return async function routeHandler(request: Request, handlerContext?: unknown) {
     const url = new URL(request.url);
     const requestId = request.headers.get("x-request-id") || randomUUID();
     let context: RouteContext = {
@@ -171,7 +188,7 @@ export function handleApiRoute(
         ...context,
         sessionUser: await requirePolicyUser(policy),
       };
-      const response = await handler(context);
+      const response = await handler(context, handlerContext);
       response.headers.set("x-request-id", requestId);
       return response;
     } catch (error) {

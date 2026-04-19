@@ -1,12 +1,12 @@
 import { render } from "@react-email/render";
 import { ServerClient } from "postmark";
-import { env } from "@/lib/env";
+import { env, getPostmarkToken } from "@/lib/env";
 
 const FALLBACK_FROM = "Shruti Turner <shruti@thechronicyogini.com>";
 type EmailCategory = "marketing" | "transactional";
 
 export function getPostmarkClient() {
-  const token = env.POSTMARK_API_TOKEN;
+  const token = getPostmarkToken();
   if (!token) {
     throw new Error("POSTMARK_NOT_CONFIGURED");
   }

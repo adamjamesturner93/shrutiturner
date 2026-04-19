@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { env } from "@/lib/env";
+import { env, getPostmarkToken } from "@/lib/env";
 import { getPostmarkClient } from "@/lib/postmark/client";
 import { getStripeClient } from "@/lib/billing/stripe-client";
 import { getContentfulConfig } from "@/lib/content/config";
@@ -20,13 +20,14 @@ async function checkStripe() {
 }
 
 async function checkPostmark() {
-  if (!env.POSTMARK_API_TOKEN) {
+  const token = getPostmarkToken();
+  if (!token) {
     return { ok: false as const, configured: false, message: "POSTMARK_NOT_CONFIGURED" };
   }
 
   await fetch("https://api.postmarkapp.com/server", {
     headers: {
-      "X-Postmark-Server-Token": env.POSTMARK_API_TOKEN,
+      "X-Postmark-Server-Token": token,
       Accept: "application/json",
     },
     cache: "no-store",
