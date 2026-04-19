@@ -321,7 +321,8 @@ We keep personal data only for as long as necessary for the purposes described i
 
 Retention periods vary by data type. For example:
 - account and transactional records may be kept for several years to meet tax and accounting obligations
-- health-related records are kept only while reasonably needed for service delivery, safety, and legal protection
+- if you request account deletion, the account is first soft-deleted so access stops immediately while certain health declarations and legal acceptance records are retained for up to 6 months for safety, dispute handling, and legal protection
+- legal hold may extend that retention where there is an active dispute, complaint, or claim
 - marketing preferences are kept until you unsubscribe or ask us to stop
 - security and operational logs are retained for a limited period appropriate to fraud prevention and service reliability
 

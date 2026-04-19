@@ -179,7 +179,14 @@ Turnstile environment variables:
 ## Preview-safe jobs and focused E2E
 
 - Scheduled jobs are registered centrally in `src/lib/jobs/registry.ts`.
+- The infra-only cron endpoint is `POST /api/internal/jobs/[jobName]`.
+- Protect cron requests with `INTERNAL_JOB_SECRET` and send it as `Authorization: Bearer <secret>`.
 - Jobs marked `previewSafe: false` are skipped automatically when `VERCEL_ENV=preview`.
+- Add new framework jobs by:
+  - implementing a pure infrastructure handler under `src/lib/jobs/**`
+  - registering it in `src/lib/jobs/registry.ts`
+  - triggering it from Vercel Cron against `/api/internal/jobs/<jobName>`
+- Keep business-domain schedulers out of the core registry. Domain routes can still reuse `runScheduledJob(...)` directly.
 - For incremental live checks around holding pages and newsletter flows, run:
   - `pnpm run test:e2e:newsletter`
 - Full regression coverage remains available through:

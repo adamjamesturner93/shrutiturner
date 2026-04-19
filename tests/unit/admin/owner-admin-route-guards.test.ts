@@ -4,6 +4,11 @@ const requireOwnerAdminUserMock = vi.fn();
 const createPrivacyExportRequestMock = vi.fn();
 const listBillingDisputeCasesMock = vi.fn();
 const listScheduledJobRunsMock = vi.fn();
+const authMock = vi.fn();
+
+vi.mock("@/lib/auth", () => ({
+  auth: authMock,
+}));
 
 vi.mock("@/lib/api/auth-user", () => ({
   requireOwnerAdminUser: requireOwnerAdminUserMock,
@@ -30,6 +35,7 @@ const jobsRoute = await import("@/app/api/admin/jobs/route");
 describe("owner-admin route guards", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    authMock.mockResolvedValue({ user: { id: "staff_123", role: "member" } });
     requireOwnerAdminUserMock.mockRejectedValue(new Error("FORBIDDEN"));
   });
 

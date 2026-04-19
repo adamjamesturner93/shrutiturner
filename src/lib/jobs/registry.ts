@@ -1,9 +1,6 @@
 import { ScheduledJobTriggerType } from "@prisma/client";
-import { processDueSubscriptionComplianceNotices } from "@/lib/billing/subscription-compliance";
-import { processThreeHourClassCutoff } from "@/lib/classes/booking-service";
 import { env } from "@/lib/env";
-import { processHealthDataRetention } from "@/lib/health/retention-service";
-import { cleanupExpiredReplayAssets } from "@/lib/replay/service";
+import { cleanupScheduledJobRuntimeData } from "@/lib/jobs/runtime-maintenance";
 
 type JobHandlerResult = Record<string, unknown>;
 
@@ -16,32 +13,14 @@ export type RegisteredJob = {
 
 const registry: RegisteredJob[] = [
   {
-    jobName: "class_three_hour_cutoff",
+    jobName: "scheduled_job_runtime_cleanup",
     triggerTypes: [ScheduledJobTriggerType.cron, ScheduledJobTriggerType.manual],
     previewSafe: true,
-    run: () => processThreeHourClassCutoff(),
-  },
-  {
-    jobName: "subscription_compliance_notices",
-    triggerTypes: [ScheduledJobTriggerType.cron, ScheduledJobTriggerType.manual],
-    previewSafe: true,
-    run: () => processDueSubscriptionComplianceNotices(),
-  },
-  {
-    jobName: "health_data_retention",
-    triggerTypes: [ScheduledJobTriggerType.cron, ScheduledJobTriggerType.manual],
-    previewSafe: false,
-    run: () => processHealthDataRetention(),
-  },
-  {
-    jobName: "replay_cleanup",
-    triggerTypes: [ScheduledJobTriggerType.cron, ScheduledJobTriggerType.manual],
-    previewSafe: true,
-    run: () => cleanupExpiredReplayAssets(),
+    run: () => cleanupScheduledJobRuntimeData(),
   },
   {
     jobName: "scheduler_heartbeat",
-    triggerTypes: [ScheduledJobTriggerType.manual],
+    triggerTypes: [ScheduledJobTriggerType.cron, ScheduledJobTriggerType.manual],
     previewSafe: true,
     run: async () => ({
       ok: true,

@@ -13,6 +13,12 @@ function anonymizedEmail(userId: string) {
   return `deleted+${userId}@redacted.invalid`;
 }
 
+function addMonths(date: Date, months: number) {
+  const next = new Date(date);
+  next.setUTCMonth(next.getUTCMonth() + months);
+  return next;
+}
+
 function toJsonString(value: unknown) {
   return JSON.stringify(value, null, 2);
 }
@@ -432,12 +438,7 @@ export async function previewPrivacyDeletion(userId: string) {
       retreatBookings,
       programmeEnrollments,
     },
-    deletes: [
-      "Active Auth.js sessions",
-      "Health profile revisions",
-      "Structured health condition selections",
-      "Live health profile record",
-    ],
+    deletes: ["Active Auth.js sessions", "Immediate account access and live sessions"],
     anonymises: [
       "Core account profile fields",
       "Retreat booking personal and health fields",
@@ -447,6 +448,8 @@ export async function previewPrivacyDeletion(userId: string) {
       "Newsletter subscriber identity",
     ],
     preserves: [
+      "Health declarations and revisions for up to 6 months after deletion",
+      "Legal acceptance records for up to 6 months after deletion",
       "Finance and payment records",
       "Dispute and audit trails",
       "Membership and booking identifiers",
@@ -482,27 +485,10 @@ export async function executePrivacyDeletion(actorUserId: string, userId: string
 
   const replacementEmail = anonymizedEmail(userId);
   const executedAt = new Date();
+  const retainedUntil = addMonths(executedAt, 6);
 
   await db.$transaction(async (tx) => {
     await tx.session.deleteMany({
-      where: { userId },
-    });
-
-    await tx.healthProfileRevision.deleteMany({
-      where: {
-        profile: {
-          userId,
-        },
-      },
-    });
-    await tx.healthConditionSelection.deleteMany({
-      where: {
-        profile: {
-          userId,
-        },
-      },
-    });
-    await tx.healthProfile.deleteMany({
       where: { userId },
     });
 
@@ -609,6 +595,8 @@ export async function executePrivacyDeletion(actorUserId: string, userId: string
     metadataJson: {
       userId,
       replacementEmail,
+      retainedUntil: retainedUntil.toISOString(),
+      retainedData: ["acceptance_events", "health_profile"],
     },
   });
 

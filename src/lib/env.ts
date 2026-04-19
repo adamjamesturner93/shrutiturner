@@ -50,6 +50,7 @@ const schema = z.object({
   CONTENTFUL_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(1000).default(4000),
   TURNSTILE_SECRET_KEY: optionalString,
   APP_HEALTH_SECRET: optionalString,
+  INTERNAL_JOB_SECRET: optionalString,
   SITE_STAGE: z.enum(["holding", "live"]).optional(),
 });
 
