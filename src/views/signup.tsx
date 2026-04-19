@@ -134,9 +134,11 @@ export function SignupPage() {
           }),
         });
 
-        const data = (await response.json().catch(() => ({}))) as { message?: string };
+        const data = (await response.json().catch(() => ({}))) as {
+          error?: { message?: string };
+        };
         if (!response.ok) {
-          throw new Error(data.message || "Failed to create account.");
+          throw new Error(data.error?.message || "Failed to create account.");
         }
 
         setCodeSent(true);

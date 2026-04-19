@@ -1,11 +1,12 @@
 import { render } from "@react-email/render";
 import { ServerClient } from "postmark";
+import { env } from "@/lib/env";
 
 const FALLBACK_FROM = "Shruti Turner <shruti@thechronicyogini.com>";
 type EmailCategory = "marketing" | "transactional";
 
 export function getPostmarkClient() {
-  const token = process.env.POSTMARK_API_TOKEN;
+  const token = env.POSTMARK_API_TOKEN;
   if (!token) {
     throw new Error("POSTMARK_NOT_CONFIGURED");
   }
@@ -13,23 +14,15 @@ export function getPostmarkClient() {
 }
 
 export function getPostmarkFromEmail() {
-  return process.env.POSTMARK_FROM_EMAIL || FALLBACK_FROM;
+  return env.POSTMARK_FROM_EMAIL || FALLBACK_FROM;
 }
 
 export function getPostmarkMessageStream(category: EmailCategory = "transactional") {
   if (category === "marketing") {
-    return (
-      process.env.POSTMARK_MARKETING_MESSAGE_STREAM ||
-      process.env.POSTMARK_MESSAGE_STREAM ||
-      "outbound"
-    );
+    return env.POSTMARK_MARKETING_MESSAGE_STREAM || env.POSTMARK_MESSAGE_STREAM || "outbound";
   }
 
-  return (
-    process.env.POSTMARK_TRANSACTIONAL_MESSAGE_STREAM ||
-    process.env.POSTMARK_MESSAGE_STREAM ||
-    "outbound"
-  );
+  return env.POSTMARK_TRANSACTIONAL_MESSAGE_STREAM || env.POSTMARK_MESSAGE_STREAM || "outbound";
 }
 
 export function extractPrimaryEmailAddress(value: string) {

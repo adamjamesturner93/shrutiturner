@@ -1,4 +1,4 @@
-import { AcceptanceType } from "@prisma/client";
+import { AcceptanceType, AuthChallengePurpose } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getReferralSummary } from "@/lib/referrals/referral-service";
 import {
@@ -9,8 +9,12 @@ import {
 import { linkPendingRecordsForUser } from "@/lib/link-pending-records";
 import { syncMarketingPreferenceForUser } from "@/lib/newsletter/subscriber-service";
 import { deriveOnboardingState } from "@/lib/account/onboarding-service";
+import { issueAuthChallenge, normalizeEmail, verifyAuthChallenge } from "@/lib/auth-challenge";
+import { sendAuthCodeEmail } from "@/lib/auth-code";
+import { sendWelcomeEmail } from "@/lib/email";
 import { needsHealthDeclarationReview } from "@/lib/health/health-service";
 import { recordAcceptanceEvent } from "@/lib/legal/acceptance-service";
+import { recordUserLifecycleEvent } from "@/lib/user-lifecycle";
 import type { HealthDeclarationStatusDto } from "@/lib/api/types";
 
 const ACCOUNT_MARKETING_CONSENT_WORDING =
@@ -216,20 +220,32 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
     isOnboarded?: boolean;
   } = {};
   const acceptancesToRecord: AcceptanceType[] = [];
+  const existingUser = await db.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      isOnboarded: true,
+      deletedAt: true,
+      acceptedTermsVersion: true,
+      acceptedHealthWaiverVersion: true,
+      acceptedHealthDataConsentVersion: true,
+      termsAgreedAt: true,
+      healthAgreedAt: true,
+      healthDataConsentedAt: true,
+    },
+  });
+
+  if (!existingUser || existingUser.deletedAt) throw new Error("USER_NOT_FOUND");
 
   if (typeof input.firstName === "string") data.firstName = input.firstName.trim().slice(0, 80);
   if (typeof input.lastName === "string") data.lastName = input.lastName.trim().slice(0, 80);
 
   if (data.firstName !== undefined || data.lastName !== undefined) {
-    const existing = await db.user.findUnique({
-      where: { id: userId },
-      select: { firstName: true, lastName: true },
-    });
-
-    if (!existing) throw new Error("USER_NOT_FOUND");
-
-    const firstName = data.firstName ?? existing.firstName ?? "";
-    const lastName = data.lastName ?? existing.lastName ?? "";
+    const firstName = data.firstName ?? existingUser.firstName ?? "";
+    const lastName = data.lastName ?? existingUser.lastName ?? "";
     const fullName = `${firstName} ${lastName}`.trim();
     data.name = fullName || undefined;
   }
@@ -265,37 +281,23 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
     input.hasAgreedToHealth === true ||
     input.hasConsentedToHealthData === true
   ) {
-    const existing = await db.user.findUnique({
-      where: { id: userId },
-      select: {
-        acceptedTermsVersion: true,
-        acceptedHealthWaiverVersion: true,
-        acceptedHealthDataConsentVersion: true,
-        termsAgreedAt: true,
-        healthAgreedAt: true,
-        healthDataConsentedAt: true,
-      },
-    });
-
-    if (!existing) throw new Error("USER_NOT_FOUND");
-
     if (
       input.hasAgreedToTerms === true &&
-      existing.acceptedTermsVersion !== CURRENT_TERMS_VERSION
+      existingUser.acceptedTermsVersion !== CURRENT_TERMS_VERSION
     ) {
       acceptancesToRecord.push(AcceptanceType.terms);
     }
 
     if (
       input.hasAgreedToHealth === true &&
-      existing.acceptedHealthWaiverVersion !== CURRENT_HEALTH_WAIVER_VERSION
+      existingUser.acceptedHealthWaiverVersion !== CURRENT_HEALTH_WAIVER_VERSION
     ) {
       acceptancesToRecord.push(AcceptanceType.health_waiver);
     }
 
     if (
       input.hasConsentedToHealthData === true &&
-      existing.acceptedHealthDataConsentVersion !== CURRENT_HEALTH_DATA_CONSENT_VERSION
+      existingUser.acceptedHealthDataConsentVersion !== CURRENT_HEALTH_DATA_CONSENT_VERSION
     ) {
       acceptancesToRecord.push(AcceptanceType.health_data);
     }
@@ -368,6 +370,21 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
     },
   });
   const healthDeclaration = mapHealthDeclaration(healthProfile);
+  const onboardingJustCompleted = !existingUser.isOnboarded && updated.isOnboarded;
+
+  await recordUserLifecycleEvent({
+    eventType: "user_updated",
+    userId,
+    actorUserId: userId,
+    payload: {
+      fields: Object.keys(data),
+      onboardingCompleted: onboardingJustCompleted,
+    },
+  }).catch(() => null);
+
+  if (onboardingJustCompleted && updated.email) {
+    await sendWelcomeEmail(updated.email, updated.firstName || "there").catch(() => null);
+  }
 
   return {
     ...updated,
@@ -390,6 +407,118 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
         updated.acceptedHealthDataConsentVersion !== CURRENT_HEALTH_DATA_CONSENT_VERSION,
     }),
   };
+}
+
+export async function requestEmailChange(userId: string, nextEmailRaw: string, ip?: string | null) {
+  const nextEmail = normalizeEmail(nextEmailRaw);
+  if (!nextEmail || !nextEmail.includes("@")) {
+    throw new Error("INVALID_EMAIL");
+  }
+
+  const [user, existing] = await Promise.all([
+    db.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, pendingEmail: true, deletedAt: true },
+    }),
+    db.user.findUnique({
+      where: { email: nextEmail },
+      select: { id: true },
+    }),
+  ]);
+
+  if (!user || user.deletedAt) {
+    throw new Error("USER_NOT_FOUND");
+  }
+  if (user.email === nextEmail) {
+    throw new Error("EMAIL_UNCHANGED");
+  }
+  if (existing && existing.id !== userId) {
+    throw new Error("EMAIL_IN_USE");
+  }
+
+  await db.user.update({
+    where: { id: userId },
+    data: { pendingEmail: nextEmail },
+  });
+
+  const issued = await issueAuthChallenge({
+    email: nextEmail,
+    userId,
+    purpose: AuthChallengePurpose.email_change,
+    ip,
+    metadata: {
+      currentEmail: user.email,
+    },
+  });
+
+  if (!issued.ok) {
+    throw new Error("EMAIL_CHANGE_COOLDOWN");
+  }
+
+  await sendAuthCodeEmail(nextEmail, issued.code, issued.expiryMinutes);
+
+  return {
+    pendingEmail: nextEmail,
+    expiresAt: issued.expiresAt.toISOString(),
+  };
+}
+
+export async function confirmEmailChange(
+  userId: string,
+  nextEmailRaw: string,
+  codeRaw: string,
+  ip?: string | null
+) {
+  const nextEmail = normalizeEmail(nextEmailRaw);
+  const code = codeRaw.replace(/\D/g, "").slice(0, 6);
+  if (!nextEmail || !code) {
+    throw new Error("INVALID_EMAIL_CHANGE_CONFIRMATION");
+  }
+
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, pendingEmail: true, deletedAt: true },
+  });
+
+  if (!user || user.deletedAt) {
+    throw new Error("USER_NOT_FOUND");
+  }
+  if (user.pendingEmail !== nextEmail) {
+    throw new Error("EMAIL_CHANGE_MISMATCH");
+  }
+
+  const verification = await verifyAuthChallenge({
+    email: nextEmail,
+    code,
+    purposes: [AuthChallengePurpose.email_change],
+    ip,
+  });
+
+  if (!verification.ok) {
+    throw new Error("INVALID_EMAIL_CHANGE_CODE");
+  }
+
+  await db.user.update({
+    where: { id: userId },
+    data: {
+      email: nextEmail,
+      pendingEmail: null,
+      emailVerified: new Date(),
+    },
+  });
+
+  await recordUserLifecycleEvent({
+    eventType: "user_updated",
+    userId,
+    actorUserId: userId,
+    payload: {
+      change: "email",
+      previousEmail: user.email,
+      nextEmail,
+    },
+  }).catch(() => null);
+
+  return { email: nextEmail };
 }
 
 export async function getNotificationPreferences(userId: string) {

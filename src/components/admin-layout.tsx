@@ -20,6 +20,7 @@ import {
   LogOut,
   ArrowLeft,
   TrendingUp,
+  Shield,
 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -38,6 +39,7 @@ const NAV_ITEMS = [
   { path: "/admin/blog-comments", label: "Blog Comments", icon: MessageCircle },
   { path: "/admin/newsletter", label: "Newsletter", icon: Mail },
   { path: "/admin/business", label: "Business", icon: TrendingUp },
+  { path: "/admin/audit", label: "Audit", icon: Shield },
 ];
 
 export function AdminLayout({ children, title, description }: AdminLayoutProps) {

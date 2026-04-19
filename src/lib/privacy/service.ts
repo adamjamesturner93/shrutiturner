@@ -3,6 +3,7 @@ import { PrivacyRequestStatus, PrivacyRequestType, Prisma } from "@prisma/client
 import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { db } from "@/lib/db";
 import { createZipArchive } from "@/lib/privacy/zip";
+import { recordUserLifecycleEvent } from "@/lib/user-lifecycle";
 
 function buildChecksum(value: string) {
   return createHash("sha256").update(value).digest("hex");
@@ -184,9 +185,17 @@ function getPrivacyExportSections(exportData: PrivacyExportData) {
     { key: "class-bookings", fileName: "class-bookings.json", data: exportData.classBookings },
     { key: "attendance", fileName: "attendance.json", data: exportData.attendance },
     { key: "health-profile", fileName: "health-profile.json", data: exportData.healthProfile },
-    { key: "health-revisions", fileName: "health-revisions.json", data: exportData.healthRevisions },
+    {
+      key: "health-revisions",
+      fileName: "health-revisions.json",
+      data: exportData.healthRevisions,
+    },
     { key: "consent-history", fileName: "consent-history.json", data: exportData.consentHistory },
-    { key: "retreat-bookings", fileName: "retreat-bookings.json", data: exportData.retreatBookings },
+    {
+      key: "retreat-bookings",
+      fileName: "retreat-bookings.json",
+      data: exportData.retreatBookings,
+    },
     {
       key: "small-group-enrolments",
       fileName: "small-group-enrolments.json",
@@ -373,8 +382,7 @@ export async function downloadPrivacyExportRequest(requestId: string) {
       (Array.isArray(request.exportSectionsJson)
         ? request.exportSectionsJson.map((section) => String(section))
         : metadata.includedSections) || metadata.includedSections,
-    rowCounts:
-      (request.exportRowCountsJson as Record<string, number> | null) || metadata.rowCounts,
+    rowCounts: (request.exportRowCountsJson as Record<string, number> | null) || metadata.rowCounts,
   });
 
   return {
@@ -386,7 +394,7 @@ export async function downloadPrivacyExportRequest(requestId: string) {
 }
 
 export async function previewPrivacyDeletion(userId: string) {
-  const [openDisputes, sessions, healthProfile, retreatBookings, programmeEnrollments] =
+  const [openDisputes, sessions, healthProfile, retreatBookings, programmeEnrollments, user] =
     await Promise.all([
       db.billingDisputeCase.count({
         where: {
@@ -405,12 +413,19 @@ export async function previewPrivacyDeletion(userId: string) {
         },
       }),
       db.smallGroupProgrammeEnrollment.count({ where: { userId } }),
+      db.user.findUnique({
+        where: { id: userId },
+        select: { legalHoldUntil: true },
+      }),
     ]);
+
+  const activeLegalHold =
+    user?.legalHoldUntil && user.legalHoldUntil.getTime() > Date.now() ? "Active legal hold" : null;
 
   return {
     userId,
-    blocked: openDisputes > 0,
-    blockReason: openDisputes > 0 ? "Active dispute hold" : null,
+    blocked: openDisputes > 0 || Boolean(activeLegalHold),
+    blockReason: activeLegalHold || (openDisputes > 0 ? "Active dispute hold" : null),
     summary: {
       authSessions: sessions,
       hasHealthProfile: Boolean(healthProfile),
@@ -563,6 +578,7 @@ export async function executePrivacyDeletion(actorUserId: string, userId: string
         lastName: null,
         name: "Deleted User",
         email: replacementEmail,
+        deletedAt: executedAt,
         image: null,
         dob: null,
         gender: null,
@@ -595,6 +611,15 @@ export async function executePrivacyDeletion(actorUserId: string, userId: string
       replacementEmail,
     },
   });
+
+  await recordUserLifecycleEvent({
+    eventType: "user_deleted",
+    userId,
+    actorUserId,
+    payload: {
+      replacementEmail,
+    },
+  }).catch(() => null);
 
   return db.privacyRequest.findUniqueOrThrow({
     where: { id: request.id },

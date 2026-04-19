@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getTypeColor } from "@/lib/classes/type-color";
 import { useI18n } from "@/lib/use-i18n";
-import type { ClassDefinitionContent } from "@/lib/content";
+import type { ClassDefinitionContent } from "@/lib/content/types";
 
 type UpcomingSession = {
   id: string;

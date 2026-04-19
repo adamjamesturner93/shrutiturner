@@ -1,4 +1,4 @@
-import type { AuthorProfileContent, BlogPostContent } from "@/lib/content";
+import type { AuthorProfileContent, BlogPostContent } from "@/lib/content/types";
 
 export function getPostAuthors(post: BlogPostContent): AuthorProfileContent[] {
   if (post.authors.length > 0) return post.authors;

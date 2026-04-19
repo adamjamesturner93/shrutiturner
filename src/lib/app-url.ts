@@ -1,11 +1,9 @@
+import { getBaseSiteUrlFromEnv } from "@/lib/env";
+
 const CANONICAL_PRODUCTION_SITE_URL = "https://shrutiturner.co.uk";
 
 export function getBaseSiteUrl() {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    "http://localhost:3000"
-  ).replace(/\/$/, "");
+  return getBaseSiteUrlFromEnv();
 }
 
 export function buildAbsoluteUrl(path: string) {

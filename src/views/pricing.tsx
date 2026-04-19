@@ -15,7 +15,7 @@ import { SEO } from "@/components/seo";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth-context";
 import type { PublicPricingDto } from "@/lib/api/types";
-import type { FaqItemContent } from "@/lib/content";
+import type { FaqItemContent } from "@/lib/content/types";
 
 interface PricingPageProps {
   faqs?: FaqItemContent[];

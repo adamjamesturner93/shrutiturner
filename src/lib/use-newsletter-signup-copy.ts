@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { NewsletterSignupContent } from "@/lib/content";
+import type { NewsletterSignupContent } from "@/lib/content/types";
 import { CANONICAL_LEAD_MAGNET } from "@/lib/newsletter/lead-magnet";
 
 const DEFAULT_SIGNUP_COPY: NewsletterSignupContent = {

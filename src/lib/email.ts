@@ -1,5 +1,5 @@
 import { render } from "@react-email/render";
-import WelcomeEmail from "../emails/welcome";
+import OnboardingEmail from "../emails/onboarding";
 import ClassBookingEmail from "../emails/class-booking";
 import ClassReminderEmail from "../emails/class-reminder";
 import PurchaseConfirmationEmail from "../emails/purchase-confirmation";
@@ -69,8 +69,31 @@ END:VCALENDAR`.trim();
 
 export async function sendWelcomeEmail(email: string, firstName: string) {
   try {
-    await render(WelcomeEmail({ firstName }));
-    console.log(`[Mock Email Service] Sending Welcome Email to ${email}`);
+    const react = OnboardingEmail({
+      firstName,
+      membershipUrl: `${APP_URL}/pricing`,
+      scheduleUrl: `${APP_URL}/schedule`,
+      freeTrialDays: "7",
+    });
+
+    await sendPostmarkReactEmail({
+      to: email,
+      subject: "Your studio account is ready",
+      category: "transactional",
+      react,
+      textBody: [
+        `Hi ${firstName || "there"},`,
+        "",
+        "Your studio account is ready.",
+        `Explore classes: ${APP_URL}/schedule`,
+        `Membership options: ${APP_URL}/pricing`,
+      ].join("\n"),
+      tag: "account-welcome",
+      metadata: {
+        emailType: "account-welcome",
+      },
+    });
+
     return { success: true };
   } catch (error) {
     console.error("Failed to send welcome email", error);

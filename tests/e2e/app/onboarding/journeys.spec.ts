@@ -1,9 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { db } from "@/lib/db";
-import {
-  CURRENT_HEALTH_WAIVER_VERSION,
-  CURRENT_TERMS_VERSION,
-} from "@/data/legal-documents";
+import { db } from "../../helpers/db";
+import { CURRENT_HEALTH_WAIVER_VERSION, CURRENT_TERMS_VERSION } from "@/data/legal-documents";
 import { loginWithEmail, makeE2eAuthEmail } from "../../helpers/auth";
 
 test("first-time login completes onboarding and persists account and health details", async ({
@@ -32,7 +29,9 @@ test("first-time login completes onboarding and persists account and health deta
 
   await expect(page.getByRole("heading", { name: "Your Health Profile" })).toBeVisible();
   await page.getByLabel("Back").check();
-  await page.getByRole("checkbox", { name: /I agree to Shruti Turner using the health information/i }).check();
+  await page
+    .getByRole("checkbox", { name: /I agree to Shruti Turner using the health information/i })
+    .check();
   await page.getByRole("button", { name: "Continue" }).click();
 
   await expect(page.getByRole("heading", { name: "Welcome, Jamie." })).toBeVisible();

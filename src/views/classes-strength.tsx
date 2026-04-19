@@ -7,7 +7,7 @@ import { Button } from "../components/ui/button";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import Link from "next/link";
 import { Check, Calendar, TrendingUp } from "lucide-react";
-import type { ClassDefinitionContent, TestimonialContent } from "@/lib/content";
+import type { ClassDefinitionContent, TestimonialContent } from "@/lib/content/types";
 
 interface ClassesStrengthPageProps {
   classDefinitions?: ClassDefinitionContent[];

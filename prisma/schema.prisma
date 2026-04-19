@@ -13,6 +13,12 @@ enum UserRole {
   owner_admin
 }
 
+enum AuthChallengePurpose {
+  login
+  signup
+  email_change
+}
+
 enum AcceptanceType {
   terms
   health_waiver
@@ -346,6 +352,7 @@ model User {
   lastName                         String?
   name                             String?
   email                            String    @unique
+  pendingEmail                     String?
   emailVerified                    DateTime?
   image                            String?
   role                             UserRole  @default(student)
@@ -374,6 +381,9 @@ model User {
   referredByUserId                 String?
   authCode                         String?
   authCodeExpiry                   DateTime?
+  deletedAt                        DateTime?
+  legalHoldUntil                   DateTime?
+  legalHoldReason                  String?
   createdAt                        DateTime  @default(now())
   updatedAt                        DateTime  @updatedAt
 
@@ -428,6 +438,10 @@ model User {
   privacyRequestsForSubject             PrivacyRequest[]                          @relation("PrivacyRequestSubject")
   privacyRequestsActed                  PrivacyRequest[]                          @relation("PrivacyRequestActor")
   adminActionLogs                       AdminActionLog[]                          @relation("AdminActionActor")
+  authChallenges                        AuthChallenge[]
+  lifecycleEvents                       UserLifecycleEvent[]                      @relation("UserLifecycleSubject")
+  lifecycleActions                      UserLifecycleEvent[]                      @relation("UserLifecycleActor")
+  platformSettingsUpdates               PlatformSetting[]                         @relation("PlatformSettingUpdatedBy")
   billingDisputeCases                   BillingDisputeCase[]                      @relation("BillingDisputeUser")
   moderationActionsTaken                ParticipantModerationAction[]             @relation("ModerationActor")
   moderationActionsReceived             ParticipantModerationAction[]             @relation("ModerationSubject")
@@ -610,6 +624,9 @@ model AdminActionLog {
   targetType   String
   targetId     String?
   reason       String?
+  requestId    String?
+  requestPath  String?
+  requestIp    String?
   oldValueJson Json?
   newValueJson Json?
   metadataJson Json?
@@ -620,6 +637,64 @@ model AdminActionLog {
   @@index([actorUserId, createdAt])
   @@index([targetType, targetId, createdAt])
   @@index([actionType, createdAt])
+}
+
+model AuthChallenge {
+  id            String               @id @default(cuid())
+  email         String
+  userId        String?
+  purpose       AuthChallengePurpose
+  codeHash      String
+  expiresAt     DateTime
+  attemptCount  Int                  @default(0)
+  maxAttempts   Int                  @default(3)
+  sentAt        DateTime             @default(now())
+  sentIp        String?
+  lastAttemptAt DateTime?
+  lastAttemptIp String?
+  redirectTo    String?
+  consumedAt    DateTime?
+  metadataJson  Json?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email, purpose, expiresAt])
+  @@index([userId, purpose, expiresAt])
+  @@index([consumedAt, expiresAt])
+}
+
+model UserLifecycleEvent {
+  id          String   @id @default(cuid())
+  eventType   String
+  userId      String?
+  actorUserId String?
+  payloadJson Json?
+  createdAt   DateTime @default(now())
+
+  user  User? @relation("UserLifecycleSubject", fields: [userId], references: [id], onDelete: SetNull)
+  actor User? @relation("UserLifecycleActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([eventType, createdAt])
+  @@index([userId, createdAt])
+  @@index([actorUserId, createdAt])
+}
+
+model PlatformSetting {
+  id                    String   @id @default("default")
+  businessName          String   @default("Shruti Turner")
+  supportEmail          String?
+  contactEmail          String?
+  instagramUrl          String?
+  defaultSeoTitle       String?
+  defaultSeoDescription String?
+  gaMeasurementId       String?
+  updatedByUserId       String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  updatedBy User? @relation("PlatformSettingUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 }
 
 model ScheduledJobRun {
@@ -744,6 +819,8 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

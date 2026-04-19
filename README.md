@@ -48,6 +48,33 @@ Useful commands:
 6. `pnpm run prisma:studio`
 7. `pnpm run db:down`
 
+### Environment workflow
+
+- Local development:
+  - Use `.env` with the Docker Postgres instance from `pnpm run db:up`.
+  - Apply schema changes locally with `pnpm run prisma:migrate:dev`.
+  - Seed local scenarios with `pnpm run prisma:seed:local`.
+- Staging database:
+  - Keep credentials in `.env.staging` only.
+  - Check pending migrations with `pnpm run db:status:staging`.
+  - Apply backward-compatible migrations with `pnpm run db:migrate:staging`.
+- Production database:
+  - Keep credentials in `.env.prod` only.
+  - Check pending migrations with `pnpm run db:status:prod`.
+  - Apply backward-compatible migrations with `pnpm run db:migrate:prod`.
+- Important:
+  - Do not use `prisma db push` against staging or production.
+  - Remote migrations are run manually from a developer machine, not from CI or Vercel.
+  - Because database deploys can happen shortly before code deploys, every staging/prod migration must be backward-compatible.
+
+### Seed datasets
+
+- `pnpm run prisma:seed:local`
+  - Bootstraps the local app with admin users, current legal documents, local member scenarios, retreat inventory, and small-group fixtures.
+- `pnpm run prisma:seed:billing`
+  - Adds deterministic class, membership, credit, and themed-week fixtures that support billing and timetable flows.
+- Use `pnpm run db:reset:local` when you want a clean local rebuild from migrations plus the local seed.
+
 Prisma note:
 
 - This workspace targets Prisma 7 (`prisma` and `@prisma/client` in `package.json`).
@@ -148,3 +175,12 @@ Turnstile environment variables:
 
 - `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
 - `TURNSTILE_SECRET_KEY`
+
+## Preview-safe jobs and focused E2E
+
+- Scheduled jobs are registered centrally in `src/lib/jobs/registry.ts`.
+- Jobs marked `previewSafe: false` are skipped automatically when `VERCEL_ENV=preview`.
+- For incremental live checks around holding pages and newsletter flows, run:
+  - `pnpm run test:e2e:newsletter`
+- Full regression coverage remains available through:
+  - `pnpm run test:e2e`

@@ -17,7 +17,7 @@ import { Layout } from "@/components/layout";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 import { SEO } from "@/components/seo";
 import { Button } from "@/components/ui/button";
-import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content";
+import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content/types";
 import { useI18n } from "@/lib/use-i18n";
 
 interface RetreatDetailPageProps {

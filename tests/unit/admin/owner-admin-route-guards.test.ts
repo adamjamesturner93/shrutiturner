@@ -52,10 +52,13 @@ describe("owner-admin route guards", () => {
   });
 
   it("hides scheduled-job tooling from non-owner-admin users", async () => {
-    const response = await jobsRoute.GET();
+    const response = await jobsRoute.GET(new Request("http://localhost/api/admin/jobs"));
 
     expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toEqual({ message: "Forbidden" });
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      error: { code: "FORBIDDEN", message: "Forbidden" },
+    });
     expect(listScheduledJobRunsMock).not.toHaveBeenCalled();
   });
 });

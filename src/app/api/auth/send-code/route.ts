@@ -1,46 +1,70 @@
-import { NextResponse } from "next/server";
+import { AuthChallengePurpose } from "@prisma/client";
+import { sendAuthCodeEmail } from "@/lib/auth-code";
+import { issueAuthChallenge, normalizeEmail } from "@/lib/auth-challenge";
 import {
-  generateAuthCode,
-  normalizeEmail,
-  saveAuthCodeForEmail,
-  sendAuthCodeEmail,
-} from "@/lib/auth-code";
-import { getClientIp, verifyTurnstileToken } from "@/lib/turnstile";
+  apiOk,
+  badRequest,
+  handleApiRoute,
+  notFound,
+  parseJsonBody,
+  tooManyRequests,
+  upstreamFailure,
+} from "@/lib/api/route";
+import { db } from "@/lib/db";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 
 type SendCodeBody = {
   email?: string;
   turnstileToken?: string;
+  redirectTo?: string;
 };
 
-export async function POST(req: Request) {
-  const body = (await req.json().catch(() => null)) as SendCodeBody | null;
-  const email = normalizeEmail(body?.email || "");
-  const turnstileToken = (body?.turnstileToken || "").trim();
-  const ip = getClientIp(req);
+export const POST = handleApiRoute(async ({ request, requestIp }) => {
+  const body = await parseJsonBody<SendCodeBody>(request);
+  const email = normalizeEmail(body.email || "");
+  const turnstileToken = (body.turnstileToken || "").trim();
 
   if (!email || !email.includes("@")) {
-    return NextResponse.json({ message: "Invalid email." }, { status: 400 });
+    throw badRequest("Invalid email.");
   }
 
-  const turnstileValid = await verifyTurnstileToken(turnstileToken, ip);
+  const turnstileValid = await verifyTurnstileToken(turnstileToken, requestIp);
   if (!turnstileValid) {
-    return NextResponse.json(
-      { message: "Verification failed. Please try again." },
-      { status: 400 }
-    );
+    throw badRequest("Verification failed. Please try again.");
   }
 
-  const code = generateAuthCode();
-  const expiry = new Date(Date.now() + 10 * 60 * 1000);
+  const user = await db.user.findUnique({
+    where: { email },
+    select: { id: true, deletedAt: true },
+  });
+  if (!user || user.deletedAt) {
+    throw notFound("No account was found for that email.");
+  }
 
-  await saveAuthCodeForEmail(email, code, expiry);
+  const issued = await issueAuthChallenge({
+    email,
+    userId: user.id,
+    purpose: AuthChallengePurpose.login,
+    redirectTo: body.redirectTo || null,
+    ip: requestIp,
+  });
+
+  if (!issued.ok) {
+    throw tooManyRequests("Please wait before requesting another code.", {
+      retryAfterSeconds: issued.retryAfterSeconds,
+    });
+  }
 
   try {
-    await sendAuthCodeEmail(email, code, 10);
+    await sendAuthCodeEmail(email, issued.code, issued.expiryMinutes);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to send email.";
-    return NextResponse.json({ message }, { status: 502 });
+    throw upstreamFailure(message);
   }
 
-  return NextResponse.json({ ok: true });
-}
+  return apiOk({
+    sent: true,
+    expiresAt: issued.expiresAt.toISOString(),
+    retryAfterSeconds: 0,
+  });
+});

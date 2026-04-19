@@ -1,4 +1,4 @@
-import type { BlogPostContent } from "@/lib/content";
+import type { BlogPostContent } from "@/lib/content/types";
 
 export function resolveSelectedTag(tagParam: string | null, allTags: string[]) {
   if (!tagParam) return "all";

@@ -25,7 +25,7 @@ import { SEO } from "@/components/seo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { classesProofItems } from "@/data/public-refresh";
-import type { ClassDefinitionContent } from "@/lib/content";
+import type { ClassDefinitionContent } from "@/lib/content/types";
 import type { PublicThemedWeek } from "@/lib/themed-weeks/service";
 
 interface ClassesHubPageProps {

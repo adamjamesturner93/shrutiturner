@@ -645,6 +645,16 @@ export type AdminBusinessMetricDto = {
   dataFreshnessIso: string | null;
 };
 
+export type PlatformSettingsDto = {
+  businessName: string;
+  supportEmail: string | null;
+  contactEmail: string | null;
+  instagramUrl: string | null;
+  defaultSeoTitle: string | null;
+  defaultSeoDescription: string | null;
+  gaMeasurementId: string | null;
+};
+
 export type ClassOperationalSettingsDto = {
   preJoinWindowMinutes: number;
   lateJoinCutoffMinutes: number;

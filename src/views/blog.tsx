@@ -1,7 +1,7 @@
 "use client";
 
 import { Layout } from "../components/layout";
-import type { BlogPostContent } from "@/lib/content";
+import type { BlogPostContent } from "@/lib/content/types";
 import { useI18n } from "../lib/use-i18n";
 import Link from "next/link";
 import { useState, useMemo } from "react";

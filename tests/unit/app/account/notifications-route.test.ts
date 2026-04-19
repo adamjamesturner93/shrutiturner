@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const connectionMock = vi.fn();
-const requireSessionUserMock = vi.fn();
+const authMock = vi.fn();
 const getNotificationPreferencesMock = vi.fn();
 const updateNotificationPreferencesMock = vi.fn();
 
@@ -13,8 +13,8 @@ vi.mock("next/server", async () => {
   };
 });
 
-vi.mock("@/lib/api/auth-user", () => ({
-  requireSessionUser: requireSessionUserMock,
+vi.mock("@/lib/auth", () => ({
+  auth: authMock,
 }));
 
 vi.mock("@/lib/account/account-service", () => ({
@@ -36,31 +36,38 @@ describe("GET /api/me/notifications", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     connectionMock.mockResolvedValue(undefined);
-    requireSessionUserMock.mockResolvedValue({ id: "user_123" });
+    authMock.mockResolvedValue({ user: { id: "user_123", role: "member" } });
     getNotificationPreferencesMock.mockResolvedValue({ classReminders: true });
   });
 
   it("returns notification preferences for the current user", async () => {
-    const response = await route.GET();
+    const response = await route.GET(new Request("http://localhost/api/me/notifications"));
 
     expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      data: { classReminders: true },
+    });
     expect(getNotificationPreferencesMock).toHaveBeenCalledWith("user_123");
   });
 
   it("returns 401 when the user is not authenticated", async () => {
-    requireSessionUserMock.mockRejectedValue(new Error("UNAUTHORIZED"));
+    authMock.mockResolvedValue(null);
 
-    const response = await route.GET();
+    const response = await route.GET(new Request("http://localhost/api/me/notifications"));
 
     expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toEqual({ message: "Unauthorized" });
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      error: { code: "UNAUTHORIZED", message: "Unauthorized" },
+    });
   });
 });
 
 describe("PATCH /api/me/notifications", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireSessionUserMock.mockResolvedValue({ id: "user_123" });
+    authMock.mockResolvedValue({ user: { id: "user_123", role: "member" } });
     updateNotificationPreferencesMock.mockResolvedValue({ classReminders: false });
   });
 
@@ -75,6 +82,10 @@ describe("PATCH /api/me/notifications", () => {
     );
 
     expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      data: { classReminders: false },
+    });
     expect(updateNotificationPreferencesMock).toHaveBeenCalledWith("user_123", {
       classReminders: false,
       scheduleUpdates: true,

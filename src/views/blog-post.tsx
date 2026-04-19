@@ -10,7 +10,7 @@ import { ArrowLeft, ArrowRight, Globe, Instagram } from "lucide-react";
 import Link from "next/link";
 import { BlogReactions } from "@/components/blog-reactions";
 import { BlogComments } from "@/components/blog-comments";
-import type { BlogPostContent } from "@/lib/content";
+import type { BlogPostContent } from "@/lib/content/types";
 import { BlogShare } from "../components/blog-share";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { formatAuthorList, getPostAuthors, getRelatedPosts } from "@/lib/blog/view-model";

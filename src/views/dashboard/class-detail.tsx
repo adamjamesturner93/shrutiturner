@@ -23,7 +23,7 @@ import {
 import { getTypeColor } from "@/lib/classes/type-color";
 import { useEffect, useState } from "react";
 import type { ClassSessionDetailDto } from "@/lib/api/types";
-import type { ClassDefinitionContent } from "@/lib/content";
+import type { ClassDefinitionContent } from "@/lib/content/types";
 import {
   getBookingEntitlementText,
   isSessionUnavailableForBooking,

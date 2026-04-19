@@ -5,19 +5,16 @@ import {
   getCanonicalProductionSiteUrl,
   shouldRedirectToCanonicalProductionHost,
 } from "@/lib/app-url";
+import { env, getAdminEmailAllowlist } from "@/lib/env";
+import { isStaffAdminRole } from "@/lib/authz/roles";
 
-const ADMIN_EMAILS = (
-  process.env.ADMIN_EMAILS || "tech@thechronicyogini.com,shruti@shrutiturner.com"
-)
-  .split(",")
-  .map((email) => email.trim().toLowerCase())
-  .filter(Boolean);
+const ADMIN_EMAILS = getAdminEmailAllowlist();
 
 export default auth((req) => {
   const pathname = req.nextUrl.pathname;
 
   if (
-    process.env.VERCEL_ENV === "production" &&
+    env.VERCEL_ENV === "production" &&
     shouldRedirectToCanonicalProductionHost(req.nextUrl.hostname)
   ) {
     const canonicalUrl = new URL(
@@ -35,7 +32,7 @@ export default auth((req) => {
   const user = req.auth?.user as { role?: string; email?: string | null } | undefined;
   const role =
     user?.role ||
-    (user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase()) ? "admin" : "student");
+    (user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase()) ? "owner_admin" : "student");
 
   if (!isAuthed && (pathname.startsWith("/dashboard") || pathname.startsWith("/account"))) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
@@ -49,7 +46,7 @@ export default auth((req) => {
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
     }
-    if (role !== "admin") {
+    if (!isStaffAdminRole(role)) {
       return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
     }
   }

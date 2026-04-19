@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { db } from "@/lib/db";
+import { db } from "../../helpers/db";
 import {
   CURRENT_HEALTH_DATA_CONSENT_VERSION,
   CURRENT_HEALTH_WAIVER_VERSION,

@@ -28,7 +28,7 @@ import {
   CURRENT_HEALTH_WAIVER_VERSION,
   CURRENT_TERMS_VERSION,
 } from "@/data/legal-documents";
-import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content";
+import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content/types";
 import { useI18n } from "@/lib/use-i18n";
 
 type PendingAcceptance = {

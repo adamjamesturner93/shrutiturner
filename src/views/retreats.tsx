@@ -14,7 +14,7 @@ import {
 } from "@/components/marketing/sections";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/use-i18n";
-import type { FaqItemContent, RetreatCombinedContent } from "@/lib/content";
+import type { FaqItemContent, RetreatCombinedContent } from "@/lib/content/types";
 
 interface RetreatsPageProps {
   retreats?: RetreatCombinedContent[];

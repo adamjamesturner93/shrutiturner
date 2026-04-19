@@ -97,9 +97,11 @@ export function LoginPage({
           body: JSON.stringify({ email, turnstileToken }),
         });
 
-        const data = (await response.json().catch(() => ({}))) as { message?: string };
+        const data = (await response.json().catch(() => ({}))) as {
+          error?: { message?: string };
+        };
         if (!response.ok) {
-          throw new Error(data.message || "Failed to send verification code.");
+          throw new Error(data.error?.message || "Failed to send verification code.");
         }
 
         setCodeSent(true);

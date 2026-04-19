@@ -5,14 +5,19 @@ import { AdminLayout } from "../../components/admin-layout";
 import { Card, CardContent } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import type { AdminBusinessMetricDto, ClassOperationalSettingsDto } from "@/lib/api/types";
+import type {
+  AdminBusinessMetricDto,
+  ClassOperationalSettingsDto,
+  PlatformSettingsDto,
+} from "@/lib/api/types";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
+import { getApiErrorMessage, isApiSuccess } from "@/lib/api/client";
 
 export function AdminBusiness() {
   const [summary, setSummary] = useState<AdminBusinessMetricDto | null>(null);
-  const [activeTab, setActiveTab] = useState<"health" | "pricing" | "discounts" | "class-rules">(
-    "health"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "health" | "settings" | "pricing" | "discounts" | "class-rules"
+  >("health");
   const [catalog, setCatalog] = useState<
     Array<{ key: string; stripePriceId: string; unitAmountPence: number; currency: string }>
   >([]);
@@ -25,6 +30,10 @@ export function AdminBusiness() {
   const [newCodeType, setNewCodeType] = useState<"percent" | "amount">("percent");
   const [newCodeValue, setNewCodeValue] = useState("10");
   const [classRules, setClassRules] = useState<ClassOperationalSettingsDto | null>(null);
+  const [settings, setSettings] = useState<PlatformSettingsDto | null>(null);
+  const [settingsMessage, setSettingsMessage] = useState("");
+  const [settingsError, setSettingsError] = useState("");
+  const [savingSettings, setSavingSettings] = useState(false);
   const [savingClassRules, setSavingClassRules] = useState(false);
   const [classRulesMessage, setClassRulesMessage] = useState("");
   const [classRulesError, setClassRulesError] = useState("");
@@ -34,17 +43,19 @@ export function AdminBusiness() {
     let active = true;
     void (async () => {
       try {
-        const [response, catalogResponse, discountResponse, classRulesResponse] = await Promise.all(
-          [
+        const [response, catalogResponse, discountResponse, classRulesResponse, settingsResponse] =
+          await Promise.all([
             fetch("/api/admin/business", { cache: "no-store" }),
             fetch("/api/admin/business/catalog", { cache: "no-store" }),
             fetch("/api/admin/business/discounts", { cache: "no-store" }),
             fetch("/api/admin/business/class-rules", { cache: "no-store" }),
-          ]
-        );
+            fetch("/api/admin/business/settings", { cache: "no-store" }),
+          ]);
         if (response.ok && active) {
-          const payload = (await response.json()) as AdminBusinessMetricDto;
-          setSummary(payload);
+          const payload = (await response.json().catch(() => null)) as unknown;
+          if (isApiSuccess<AdminBusinessMetricDto>(payload)) {
+            setSummary(payload.data);
+          }
         }
         if (catalogResponse.ok && active) {
           setCatalog(
@@ -67,7 +78,16 @@ export function AdminBusiness() {
           );
         }
         if (classRulesResponse.ok && active) {
-          setClassRules((await classRulesResponse.json()) as ClassOperationalSettingsDto);
+          const payload = (await classRulesResponse.json().catch(() => null)) as unknown;
+          if (isApiSuccess<ClassOperationalSettingsDto>(payload)) {
+            setClassRules(payload.data);
+          }
+        }
+        if (settingsResponse.ok && active) {
+          const payload = (await settingsResponse.json().catch(() => null)) as unknown;
+          if (isApiSuccess<PlatformSettingsDto>(payload)) {
+            setSettings(payload.data);
+          }
         }
       } finally {
         if (active) setLoading(false);
@@ -106,6 +126,13 @@ export function AdminBusiness() {
                 onClick={() => setActiveTab("health")}
               >
                 Health
+              </Button>
+              <Button
+                variant={activeTab === "settings" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveTab("settings")}
+              >
+                Settings
               </Button>
               <Button
                 variant={activeTab === "pricing" ? "default" : "outline"}
@@ -156,6 +183,197 @@ export function AdminBusiness() {
               <AppMetricCard label="Failed payments (7d)" value={summary.failedPayments7d} />
               <AppMetricCard label="Failed payments (30d)" value={summary.failedPayments30d} />
             </AppMetricGrid>
+
+            {activeTab === "settings" ? (
+              <Card>
+                <CardContent className="space-y-4 pt-6">
+                  <div>
+                    <h2 className="text-brand-dark text-lg">Platform Settings</h2>
+                    <p className="text-muted-foreground mt-1 text-sm">
+                      Business details, default SEO metadata, and analytics identifiers.
+                    </p>
+                  </div>
+
+                  {settingsError ? (
+                    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {settingsError}
+                    </div>
+                  ) : null}
+                  {settingsMessage ? (
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                      {settingsMessage}
+                    </div>
+                  ) : null}
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="space-y-2">
+                      <span className="text-sm">Business name</span>
+                      <Input
+                        value={settings?.businessName || ""}
+                        onChange={(event) =>
+                          setSettings((current) => ({
+                            businessName: event.target.value,
+                            supportEmail: current?.supportEmail || null,
+                            contactEmail: current?.contactEmail || null,
+                            instagramUrl: current?.instagramUrl || null,
+                            defaultSeoTitle: current?.defaultSeoTitle || null,
+                            defaultSeoDescription: current?.defaultSeoDescription || null,
+                            gaMeasurementId: current?.gaMeasurementId || null,
+                          }))
+                        }
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm">Support email</span>
+                      <Input
+                        value={settings?.supportEmail || ""}
+                        onChange={(event) =>
+                          setSettings((current) => ({
+                            businessName: current?.businessName || "Shruti Turner",
+                            supportEmail: event.target.value || null,
+                            contactEmail: current?.contactEmail || null,
+                            instagramUrl: current?.instagramUrl || null,
+                            defaultSeoTitle: current?.defaultSeoTitle || null,
+                            defaultSeoDescription: current?.defaultSeoDescription || null,
+                            gaMeasurementId: current?.gaMeasurementId || null,
+                          }))
+                        }
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm">Contact email</span>
+                      <Input
+                        value={settings?.contactEmail || ""}
+                        onChange={(event) =>
+                          setSettings((current) => ({
+                            businessName: current?.businessName || "Shruti Turner",
+                            supportEmail: current?.supportEmail || null,
+                            contactEmail: event.target.value || null,
+                            instagramUrl: current?.instagramUrl || null,
+                            defaultSeoTitle: current?.defaultSeoTitle || null,
+                            defaultSeoDescription: current?.defaultSeoDescription || null,
+                            gaMeasurementId: current?.gaMeasurementId || null,
+                          }))
+                        }
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm">Instagram URL</span>
+                      <Input
+                        value={settings?.instagramUrl || ""}
+                        onChange={(event) =>
+                          setSettings((current) => ({
+                            businessName: current?.businessName || "Shruti Turner",
+                            supportEmail: current?.supportEmail || null,
+                            contactEmail: current?.contactEmail || null,
+                            instagramUrl: event.target.value || null,
+                            defaultSeoTitle: current?.defaultSeoTitle || null,
+                            defaultSeoDescription: current?.defaultSeoDescription || null,
+                            gaMeasurementId: current?.gaMeasurementId || null,
+                          }))
+                        }
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm">Default SEO title</span>
+                      <Input
+                        value={settings?.defaultSeoTitle || ""}
+                        onChange={(event) =>
+                          setSettings((current) => ({
+                            businessName: current?.businessName || "Shruti Turner",
+                            supportEmail: current?.supportEmail || null,
+                            contactEmail: current?.contactEmail || null,
+                            instagramUrl: current?.instagramUrl || null,
+                            defaultSeoTitle: event.target.value || null,
+                            defaultSeoDescription: current?.defaultSeoDescription || null,
+                            gaMeasurementId: current?.gaMeasurementId || null,
+                          }))
+                        }
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm">GA measurement ID</span>
+                      <Input
+                        value={settings?.gaMeasurementId || ""}
+                        onChange={(event) =>
+                          setSettings((current) => ({
+                            businessName: current?.businessName || "Shruti Turner",
+                            supportEmail: current?.supportEmail || null,
+                            contactEmail: current?.contactEmail || null,
+                            instagramUrl: current?.instagramUrl || null,
+                            defaultSeoTitle: current?.defaultSeoTitle || null,
+                            defaultSeoDescription: current?.defaultSeoDescription || null,
+                            gaMeasurementId: event.target.value || null,
+                          }))
+                        }
+                      />
+                    </label>
+                  </div>
+
+                  <label className="space-y-2">
+                    <span className="text-sm">Default SEO description</span>
+                    <Input
+                      value={settings?.defaultSeoDescription || ""}
+                      onChange={(event) =>
+                        setSettings((current) => ({
+                          businessName: current?.businessName || "Shruti Turner",
+                          supportEmail: current?.supportEmail || null,
+                          contactEmail: current?.contactEmail || null,
+                          instagramUrl: current?.instagramUrl || null,
+                          defaultSeoTitle: current?.defaultSeoTitle || null,
+                          defaultSeoDescription: event.target.value || null,
+                          gaMeasurementId: current?.gaMeasurementId || null,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <div className="flex justify-end">
+                    <Button
+                      disabled={!settings || savingSettings}
+                      onClick={async () => {
+                        if (!settings) return;
+                        setSavingSettings(true);
+                        setSettingsMessage("");
+                        setSettingsError("");
+                        try {
+                          const response = await fetch("/api/admin/business/settings", {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(settings),
+                          });
+                          const payload = (await response.json().catch(() => null)) as
+                            | { success: true; data: PlatformSettingsDto }
+                            | { error?: { message?: string } }
+                            | null;
+
+                          if (!response.ok || !payload || !("success" in payload)) {
+                            throw new Error(
+                              payload && "error" in payload
+                                ? payload.error?.message || "Unable to save platform settings."
+                                : "Unable to save platform settings."
+                            );
+                          }
+
+                          setSettings(payload.data);
+                          setSettingsMessage("Platform settings updated.");
+                        } catch (error) {
+                          setSettingsError(
+                            error instanceof Error
+                              ? error.message
+                              : "Unable to save platform settings."
+                          );
+                        } finally {
+                          setSavingSettings(false);
+                        }
+                      }}
+                    >
+                      {savingSettings ? "Saving..." : "Save Settings"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
 
             {activeTab === "pricing" ? (
               <Card>
@@ -416,18 +634,27 @@ export function AdminBusiness() {
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify(classRules),
                           });
+                          const payload = (await response.json().catch(() => null)) as unknown;
 
                           if (!response.ok) {
-                            const payload = (await response.json().catch(() => null)) as {
-                              message?: string;
-                            } | null;
                             throw new Error(
-                              payload?.message || "Unable to save class timing rules right now."
+                              getApiErrorMessage(
+                                payload,
+                                "Unable to save class timing rules right now."
+                              )
                             );
                           }
 
-                          const saved = (await response.json()) as ClassOperationalSettingsDto;
-                          setClassRules(saved);
+                          if (!isApiSuccess<ClassOperationalSettingsDto>(payload)) {
+                            throw new Error(
+                              getApiErrorMessage(
+                                payload,
+                                "Unable to save class timing rules right now."
+                              )
+                            );
+                          }
+
+                          setClassRules(payload.data);
                           setClassRulesMessage("Class timing rules updated.");
                         } catch (error) {
                           setClassRulesError(

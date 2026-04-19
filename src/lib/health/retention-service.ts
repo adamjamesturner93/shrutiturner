@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 
-const DEFAULT_RETENTION_MONTHS = 24;
+const DEFAULT_RETENTION_MONTHS = 6;
 
 function subtractMonths(date: Date, months: number) {
   const next = new Date(date);
@@ -13,7 +13,7 @@ export async function processHealthDataRetention(now = new Date()) {
   const profiles = await db.healthProfile.findMany({
     include: {
       user: {
-        select: { id: true },
+        select: { id: true, legalHoldUntil: true },
       },
       revisions: {
         select: { id: true },
@@ -26,6 +26,10 @@ export async function processHealthDataRetention(now = new Date()) {
   let clearedCoachingCheckIns = 0;
 
   for (const profile of profiles) {
+    if (profile.user.legalHoldUntil && profile.user.legalHoldUntil > now) {
+      continue;
+    }
+
     const latestAttendance = await db.classBooking.findFirst({
       where: {
         userId: profile.userId,

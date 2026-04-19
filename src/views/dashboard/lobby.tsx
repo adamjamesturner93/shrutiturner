@@ -29,6 +29,7 @@ import {
 import { useAuth } from "@/context/auth-context";
 import type { DashboardSummaryDto, OnboardingStateDto } from "@/lib/api/types";
 import { EMPTY_HEALTH_PROFILE, type HealthProfile } from "@/data/health-profile-data";
+import { getApiErrorMessage } from "@/lib/api/client";
 import { getGreeting } from "@/components/greeting";
 import {
   getDashboardAccessCard,
@@ -160,8 +161,8 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
       });
 
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-        throw new Error(payload?.message || "Could not save profile details.");
+        const payload = (await response.json().catch(() => null)) as unknown;
+        throw new Error(getApiErrorMessage(payload, "Could not save profile details."));
       }
 
       const account = await refreshAccountProfile();

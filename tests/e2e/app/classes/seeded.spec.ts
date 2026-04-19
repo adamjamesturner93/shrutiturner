@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { db } from "@/lib/db";
+import { db } from "../../helpers/db";
 import { loginWithEmail, preparePasswordlessCode } from "../../helpers/auth";
 
 const SEEDED_MEMBER_EMAIL = "seed.classes.member.unlimited@example.com";
