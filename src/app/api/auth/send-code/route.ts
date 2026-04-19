@@ -1,6 +1,7 @@
 import { AuthChallengePurpose } from "@prisma/client";
 import { sendAuthCodeEmail } from "@/lib/auth-code";
 import { issueAuthChallenge, normalizeEmail } from "@/lib/auth-challenge";
+import { enforceAuthEndpointRateLimit, enforceTrustedAuthOrigin } from "@/lib/auth-security";
 import {
   apiOk,
   badRequest,
@@ -24,9 +25,17 @@ export const POST = handleApiRoute(async ({ request, requestIp }) => {
   const email = normalizeEmail(body.email || "");
   const turnstileToken = (body.turnstileToken || "").trim();
 
+  enforceTrustedAuthOrigin(request);
+
   if (!email || !email.includes("@")) {
     throw badRequest("Invalid email.");
   }
+
+  enforceAuthEndpointRateLimit({
+    route: "send_code",
+    email,
+    requestIp,
+  });
 
   const turnstileValid = await verifyTurnstileToken(turnstileToken, requestIp);
   if (!turnstileValid) {

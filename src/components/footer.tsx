@@ -7,8 +7,10 @@ import { useNewsletterSignupCopy } from "@/lib/use-newsletter-signup-copy";
 import { submitNewsletterSignup } from "@/lib/newsletter-signup";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 import { IconHorizontal } from "./icon";
+import { usePlatformSettings } from "@/context/platform-settings-context";
 
 export function Footer() {
+  const { businessName, supportEmail, contactEmail, instagramUrl } = usePlatformSettings();
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [consent, setConsent] = useState(false);
@@ -17,6 +19,8 @@ export function Footer() {
   const [error, setError] = useState<string | null>(null);
   const [subscribed, setSubscribed] = useState(false);
   const signupCopy = useNewsletterSignupCopy();
+  const supportHref = supportEmail ? `mailto:${supportEmail}` : null;
+  const contactHref = contactEmail ? `mailto:${contactEmail}` : null;
 
   const handleNewsletterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +57,7 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-4">
           {/* Brand + Newsletter */}
           <div className="space-y-6 lg:col-span-2">
-            <div role="img" aria-label="Shruti Turner">
+            <div role="img" aria-label={businessName}>
               <IconHorizontal tone="white" className="h-12 w-auto" />
             </div>
             <p className="text-brand-white/70 max-w-md leading-relaxed">
@@ -132,7 +136,7 @@ export function Footer() {
                 <Youtube className="h-5 w-5" />
               </a>
               <a
-                href="https://instagram.com/shrutiturner"
+                href={instagramUrl || "https://instagram.com/shrutiturner"}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand-white/60 hover:text-brand-accent-light transition-colors"
@@ -211,6 +215,20 @@ export function Footer() {
                   Contact
                 </Link>
               </li>
+              {supportHref ? (
+                <li>
+                  <a href={supportHref} className="hover:text-brand-accent-light transition-colors">
+                    Support
+                  </a>
+                </li>
+              ) : null}
+              {contactHref && contactHref !== supportHref ? (
+                <li>
+                  <a href={contactHref} className="hover:text-brand-accent-light transition-colors">
+                    Email
+                  </a>
+                </li>
+              ) : null}
               <li>
                 <Link href="/login" className="hover:text-brand-accent-light transition-colors">
                   Client Login
@@ -256,7 +274,7 @@ export function Footer() {
               Acceptable Use Policy
             </Link>
           </div>
-          <p>Copyright Shruti Turner. All rights reserved.</p>
+          <p>Copyright {businessName}. All rights reserved.</p>
         </div>
       </div>
     </footer>

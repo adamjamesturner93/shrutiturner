@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { db } from "@/lib/db";
 import { syncMarketingPreferenceForUser } from "@/lib/newsletter/subscriber-service";
 
@@ -150,7 +151,13 @@ export async function listAdminSubscribers(params: {
 
 export async function updateAdminSubscriber(
   identifier: string,
-  updates: { marketingEmails?: boolean }
+  updates: {
+    marketingEmails?: boolean;
+    actorUserId?: string | null;
+    requestId?: string | null;
+    requestPath?: string | null;
+    requestIp?: string | null;
+  }
 ) {
   if (typeof updates.marketingEmails !== "boolean") {
     throw new Error("INVALID_UPDATE");
@@ -214,7 +221,7 @@ export async function updateAdminSubscriber(
   if (!refreshed) throw new Error("NOT_FOUND");
 
   const marketingSubscribed = refreshed.status === "subscribed";
-  return {
+  const result = {
     id: refreshed.id,
     userId: refreshed.userId,
     email: refreshed.email,
@@ -225,6 +232,29 @@ export async function updateAdminSubscriber(
     source: refreshed.source || null,
     updatedAt: refreshed.updatedAt.toISOString(),
   };
+
+  if (updates.actorUserId) {
+    await createAdminActionLog({
+      actorUserId: updates.actorUserId,
+      actionType: "newsletter_subscriber_updated",
+      targetType: "newsletter_subscriber",
+      targetId: refreshed.id,
+      requestId: updates.requestId,
+      requestPath: updates.requestPath,
+      requestIp: updates.requestIp,
+      oldValueJson: {
+        id: existing.id,
+        userId: existing.userId,
+        email: existing.email,
+        status: existing.status,
+        source: existing.source,
+        updatedAt: existing.updatedAt.toISOString(),
+      },
+      newValueJson: result,
+    });
+  }
+
+  return result;
 }
 
 function aggregateCampaignRows(

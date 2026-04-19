@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 
 export async function recordUserLifecycleEvent(input: {
-  eventType: "user_created" | "user_logged_in" | "user_updated" | "user_deleted";
+  eventType: string;
   userId?: string | null;
   actorUserId?: string | null;
   payload?: Prisma.InputJsonValue;

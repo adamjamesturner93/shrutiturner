@@ -15,7 +15,7 @@ const validKeys = new Set([
 
 export async function POST(request: Request) {
   try {
-    await requireStaffAdminUser();
+    const adminUser = await requireStaffAdminUser();
     const body = (await request.json().catch(() => ({}))) as {
       key?: string;
       unitAmountPence?: number;
@@ -33,6 +33,12 @@ export async function POST(request: Request) {
       key: body.key as BillingCatalogKey,
       unitAmountPence: Math.floor(amount),
       currency: body.currency,
+      actorUserId: adminUser.id,
+      requestId: request.headers.get("x-request-id"),
+      requestPath: new URL(request.url).pathname,
+      requestIp:
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        request.headers.get("x-real-ip"),
     });
     return NextResponse.json(result);
   } catch (error) {

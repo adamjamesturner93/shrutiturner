@@ -69,6 +69,10 @@ describe("admin class-rules route", () => {
       lateJoinCutoffMinutes: undefined,
       creditRefundWindowMinutes: 120,
       emptyClassAutoCancelWindowMinutes: undefined,
+      actorUserId: "admin_123",
+      requestId: expect.any(String),
+      requestPath: "/api/admin/business/class-rules",
+      requestIp: "",
     });
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({

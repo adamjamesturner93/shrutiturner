@@ -1,6 +1,7 @@
 import { AuthChallengePurpose } from "@prisma/client";
 import { sendAuthCodeEmail } from "@/lib/auth-code";
 import { issueAuthChallenge, normalizeEmail } from "@/lib/auth-challenge";
+import { enforceAuthEndpointRateLimit, enforceTrustedAuthOrigin } from "@/lib/auth-security";
 import {
   apiOk,
   badRequest,
@@ -39,6 +40,7 @@ function calculateAge(dob: Date): number {
 
 export const POST = handleApiRoute(async ({ request, requestIp }) => {
   const body = await parseJsonBody<RegisterBody>(request);
+  enforceTrustedAuthOrigin(request);
 
   const firstName = (body.firstName || "").trim();
   const lastName = (body.lastName || "").trim();
@@ -57,6 +59,12 @@ export const POST = handleApiRoute(async ({ request, requestIp }) => {
   if (!email || !email.includes("@")) {
     throw badRequest("Valid email is required.");
   }
+
+  enforceAuthEndpointRateLimit({
+    route: "register",
+    email,
+    requestIp,
+  });
 
   const dob = new Date(dobRaw);
   if (!dobRaw || Number.isNaN(dob.getTime())) {

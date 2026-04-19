@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { db } from "@/lib/db";
 import { getStripeClient } from "@/lib/billing/stripe-client";
 import { CREDIT_BUNDLE_CONFIG, MEMBERSHIP_CONFIG } from "@/lib/billing/price-map";
@@ -147,10 +148,18 @@ export async function createOrActivateCatalogPrice(input: {
   key: BillingCatalogKey;
   unitAmountPence: number;
   currency?: string;
+  actorUserId?: string | null;
+  requestId?: string | null;
+  requestPath?: string | null;
+  requestIp?: string | null;
 }) {
   const stripe = getStripeClient();
   const productId = await resolveOrCreateProduct(stripe, input.key);
   const meta = catalogMetaForKey(input.key);
+  const previousActive = await db.billingCatalogItem.findFirst({
+    where: { key: input.key, active: true },
+    orderBy: { updatedAt: "desc" },
+  });
 
   const price = await stripe.prices.create({
     product: productId,
@@ -177,13 +186,29 @@ export async function createOrActivateCatalogPrice(input: {
     });
   });
 
-  return {
+  const result = {
     key: input.key,
     stripePriceId: price.id,
     stripeProductId: productId,
     unitAmountPence: price.unit_amount || input.unitAmountPence,
     currency: (price.currency || "gbp").toUpperCase(),
   };
+
+  if (input.actorUserId) {
+    await createAdminActionLog({
+      actorUserId: input.actorUserId,
+      actionType: "billing_catalog_price_updated",
+      targetType: "billing_catalog_item",
+      targetId: input.key,
+      requestId: input.requestId,
+      requestPath: input.requestPath,
+      requestIp: input.requestIp,
+      oldValueJson: previousActive,
+      newValueJson: result,
+    });
+  }
+
+  return result;
 }
 
 export async function listPromotionCodes() {
@@ -198,6 +223,10 @@ export async function createPromotionCode(input: {
   currency?: string;
   expiresAt?: string;
   maxRedemptions?: number;
+  actorUserId?: string | null;
+  requestId?: string | null;
+  requestPath?: string | null;
+  requestIp?: string | null;
 }) {
   const stripe = getStripeClient();
 
@@ -254,19 +283,69 @@ export async function createPromotionCode(input: {
     },
   });
 
-  return { id: promo.id, code: promo.code, active: promo.active };
+  const result = { id: promo.id, code: promo.code, active: promo.active };
+
+  if (input.actorUserId) {
+    await createAdminActionLog({
+      actorUserId: input.actorUserId,
+      actionType: "promotion_code_created",
+      targetType: "promotion_code",
+      targetId: promo.id,
+      requestId: input.requestId,
+      requestPath: input.requestPath,
+      requestIp: input.requestIp,
+      newValueJson: {
+        ...result,
+        type: input.type,
+        percentOff: input.percentOff || null,
+        amountOffPence: input.amountOffPence || null,
+        currency: input.currency || "GBP",
+        expiresAt: input.expiresAt || null,
+        maxRedemptions: input.maxRedemptions || null,
+      },
+    });
+  }
+
+  return result;
 }
 
-export async function setPromotionCodeActive(id: string, active: boolean) {
+export async function setPromotionCodeActive(input: {
+  id: string;
+  active: boolean;
+  actorUserId?: string | null;
+  requestId?: string | null;
+  requestPath?: string | null;
+  requestIp?: string | null;
+}) {
   const stripe = getStripeClient();
-  const updated = await stripe.promotionCodes.update(id, { active });
+  const previous = await db.promotionCodeMirror.findFirst({
+    where: { stripePromotionCodeId: input.id },
+    orderBy: { updatedAt: "desc" },
+  });
+  const updated = await stripe.promotionCodes.update(input.id, { active: input.active });
 
   await db.promotionCodeMirror.updateMany({
-    where: { stripePromotionCodeId: id },
+    where: { stripePromotionCodeId: input.id },
     data: { active: updated.active, timesRedeemed: updated.times_redeemed || 0 },
   });
 
-  return { id: updated.id, active: updated.active };
+  const result = { id: updated.id, active: updated.active };
+
+  if (input.actorUserId) {
+    await createAdminActionLog({
+      actorUserId: input.actorUserId,
+      actionType: "promotion_code_updated",
+      targetType: "promotion_code",
+      targetId: updated.id,
+      requestId: input.requestId,
+      requestPath: input.requestPath,
+      requestIp: input.requestIp,
+      oldValueJson: previous,
+      newValueJson: result,
+    });
+  }
+
+  return result;
 }
 
 export async function resolvePromotionCodeDiscount(code: string, amountPence: number) {

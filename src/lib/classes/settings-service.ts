@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { createAdminActionLog } from "@/lib/admin/action-log-service";
 
 export const DEFAULT_CLASS_OPERATIONAL_SETTINGS = {
   preJoinWindowMinutes: 10,
@@ -72,8 +73,14 @@ export async function getClassOperationalSettings(): Promise<ClassOperationalSet
 }
 
 export async function updateClassOperationalSettings(
-  input: Partial<ClassOperationalSettingsDto>
+  input: Partial<ClassOperationalSettingsDto> & {
+    actorUserId?: string | null;
+    requestId?: string | null;
+    requestPath?: string | null;
+    requestIp?: string | null;
+  }
 ): Promise<ClassOperationalSettingsDto> {
+  const current = await getClassOperationalSettings();
   const next = toDto({
     ...DEFAULT_CLASS_OPERATIONAL_SETTINGS,
     ...input,
@@ -94,7 +101,23 @@ export async function updateClassOperationalSettings(
     },
   });
 
-  return toDto(row);
+  const result = toDto(row);
+
+  if (input.actorUserId) {
+    await createAdminActionLog({
+      actorUserId: input.actorUserId,
+      actionType: "class_operational_settings_updated",
+      targetType: "class_operational_settings",
+      targetId: "default",
+      requestId: input.requestId,
+      requestPath: input.requestPath,
+      requestIp: input.requestIp,
+      oldValueJson: current,
+      newValueJson: result,
+    });
+  }
+
+  return result;
 }
 
 export function getJoinWindowOpensAt(startsAtUtc: Date, settings: ClassOperationalSettingsDto) {

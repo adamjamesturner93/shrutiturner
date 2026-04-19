@@ -1,4 +1,5 @@
 import { ClassBookingStatus, MembershipStatus, UserRole } from "@prisma/client";
+import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { db } from "@/lib/db";
 import { adjustCredits, getCreditBalance } from "@/lib/credits/credit-service";
 import { getReferralBalancePence } from "@/lib/referrals/referral-discount-service";
@@ -410,8 +411,31 @@ export async function updateAdminMember(
     isCoachingClient?: boolean;
     notes?: string;
     status?: MembershipStatus;
+  },
+  audit?: {
+    actorUserId?: string | null;
+    requestId?: string | null;
+    requestPath?: string | null;
+    requestIp?: string | null;
   }
 ) {
+  const existing = await db.user.findUnique({
+    where: { id: userId },
+    select: {
+      instructorProfileEntryId: true,
+      isCoachingClient: true,
+      adminNotes: true,
+    },
+  });
+  if (!existing) {
+    return null;
+  }
+  const existingMembership = await db.membershipSubscription.findFirst({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, status: true },
+  });
+
   const userData: {
     instructorProfileEntryId?: string | null;
     isCoachingClient?: boolean;
@@ -437,19 +461,41 @@ export async function updateAdminMember(
   await db.user.update({ where: { id: userId }, data: userData });
 
   if (updates.status) {
-    const membership = await db.membershipSubscription.findFirst({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-    });
-    if (membership) {
+    if (existingMembership) {
       await db.membershipSubscription.update({
-        where: { id: membership.id },
+        where: { id: existingMembership.id },
         data: { status: updates.status },
       });
     }
   }
 
-  return getAdminMemberDetail(userId);
+  const detail = await getAdminMemberDetail(userId);
+
+  if (detail && audit?.actorUserId) {
+    await createAdminActionLog({
+      actorUserId: audit.actorUserId,
+      actionType: "member_profile_updated",
+      targetType: "user",
+      targetId: userId,
+      requestId: audit.requestId,
+      requestPath: audit.requestPath,
+      requestIp: audit.requestIp,
+      oldValueJson: {
+        instructorProfileEntryId: existing.instructorProfileEntryId,
+        isCoachingClient: existing.isCoachingClient,
+        notes: existing.adminNotes,
+        membershipStatus: existingMembership?.status || null,
+      },
+      newValueJson: {
+        instructorProfileEntryId: detail.instructorProfileEntryId,
+        isCoachingClient: detail.isCoachingClient,
+        notes: detail.notes,
+        membershipStatus: detail.status,
+      },
+    });
+  }
+
+  return detail;
 }
 
 export async function adminAdjustCredits(params: {
@@ -457,7 +503,11 @@ export async function adminAdjustCredits(params: {
   adminUserId: string;
   delta: number;
   reason: string;
+  requestId?: string | null;
+  requestPath?: string | null;
+  requestIp?: string | null;
 }) {
+  const beforeBalance = await getCreditBalance(params.userId);
   await adjustCredits({
     userId: params.userId,
     adminUserId: params.adminUserId,
@@ -465,5 +515,27 @@ export async function adminAdjustCredits(params: {
     reason: params.reason,
   });
 
-  return getAdminMemberDetail(params.userId);
+  const member = await getAdminMemberDetail(params.userId);
+
+  if (member) {
+    await createAdminActionLog({
+      actorUserId: params.adminUserId,
+      actionType: "member_credits_adjusted",
+      targetType: "user",
+      targetId: params.userId,
+      reason: params.reason,
+      requestId: params.requestId,
+      requestPath: params.requestPath,
+      requestIp: params.requestIp,
+      oldValueJson: {
+        creditBalance: beforeBalance,
+      },
+      newValueJson: {
+        creditBalance: member.creditBalance,
+        delta: params.delta,
+      },
+    });
+  }
+
+  return member;
 }

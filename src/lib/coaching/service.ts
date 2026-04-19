@@ -1,4 +1,5 @@
 import { CoachingApplicationStatus, CoachingSupportTier, Prisma } from "@prisma/client";
+import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import type { CoachingDashboardDto } from "@/lib/api/types";
 import { db } from "@/lib/db";
 import { buildAbsoluteUrl } from "@/lib/app-url";
@@ -265,6 +266,10 @@ export async function updateAdminCoachingApplication(input: {
   status?: CoachingApplicationStatus;
   adminNotes?: string;
   convertToClient?: boolean;
+  actorUserId?: string | null;
+  requestId?: string | null;
+  requestPath?: string | null;
+  requestIp?: string | null;
 }) {
   const existing = await db.coachingApplication.findUnique({
     where: { id: input.id },
@@ -312,6 +317,37 @@ export async function updateAdminCoachingApplication(input: {
     await db.user.update({
       where: { id: existing.userId },
       data: { isCoachingClient: true },
+    });
+  }
+
+  if (input.actorUserId) {
+    await createAdminActionLog({
+      actorUserId: input.actorUserId,
+      actionType: "coaching_application_updated",
+      targetType: "coaching_application",
+      targetId: updated.id,
+      requestId: input.requestId,
+      requestPath: input.requestPath,
+      requestIp: input.requestIp,
+      oldValueJson: {
+        status: existing.status,
+        adminNotes: existing.adminNotes,
+        reviewedAt: existing.reviewedAt,
+        approvedAt: existing.approvedAt,
+        convertedAt: existing.convertedAt,
+        userId: existing.userId,
+      },
+      newValueJson: {
+        status: updated.status,
+        adminNotes: updated.adminNotes,
+        reviewedAt: updated.reviewedAt,
+        approvedAt: updated.approvedAt,
+        convertedAt: updated.convertedAt,
+        userId: updated.userId,
+      },
+      metadataJson: {
+        convertToClient: input.convertToClient === true,
+      },
     });
   }
 

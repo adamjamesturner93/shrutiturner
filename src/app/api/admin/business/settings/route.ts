@@ -37,6 +37,7 @@ export const PATCH = handleApiRoute(
         values: body,
       });
 
+      revalidatePath("/", "layout");
       revalidatePath("/");
       revalidatePath("/about");
       revalidatePath("/contact");

@@ -2,28 +2,20 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import "../styles/index.css";
 import { Providers } from "./providers";
+import { buildRootMetadata, getRuntimePlatformSettings } from "@/lib/platform/runtime-settings";
 
-export const metadata: Metadata = {
-  title: {
-    default: "Strength and Yoga Coaching",
-    template: "%s | Strength and Yoga Coaching",
-  },
-  description: "Strength and yoga coaching website",
-  icons: {
-    icon: [
-      { url: "/icon", sizes: "32x32", type: "image/png" },
-      { url: "/logos/logo-colour-icon-only.svg", type: "image/svg+xml" },
-    ],
-    shortcut: [{ url: "/icon", sizes: "32x32", type: "image/png" }],
-    apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return buildRootMetadata();
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const platformSettings = await getRuntimePlatformSettings();
+  const gaMeasurementId = platformSettings.gaMeasurementId;
+
   return (
     <html lang="en" data-scroll-behavior="smooth">
       <body>
@@ -31,7 +23,21 @@ export default function RootLayout({
           src="https://challenges.cloudflare.com/turnstile/v0/api.js"
           strategy="afterInteractive"
         />
-        <Providers>{children}</Providers>
+        {gaMeasurementId ? (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(gaMeasurementId)}`}
+              strategy="afterInteractive"
+            />
+            <Script id="google-analytics" strategy="afterInteractive">
+              {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', '${gaMeasurementId}', { anonymize_ip: true });`}
+            </Script>
+          </>
+        ) : null}
+        <Providers platformSettings={platformSettings}>{children}</Providers>
       </body>
     </html>
   );

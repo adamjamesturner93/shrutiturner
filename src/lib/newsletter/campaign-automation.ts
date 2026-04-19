@@ -3,6 +3,7 @@ import { UserRole } from "@prisma/client";
 import { ServerClient } from "postmark";
 import BlogPostEmail from "@/emails/blog-post";
 import NewsletterEmail from "@/emails/newsletter";
+import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { db } from "@/lib/db";
 import { getEntries } from "@/lib/content/contentful-client";
 import { getBaseSiteUrlFromEnv, getPostmarkToken } from "@/lib/env";
@@ -244,11 +245,21 @@ export async function triggerContentfulPublishCampaign(input: {
   }
 }
 
-export async function retryContentfulCampaign(campaignId: string) {
+export async function retryContentfulCampaign(input: {
+  campaignId: string;
+  actorUserId?: string | null;
+  requestId?: string | null;
+  requestPath?: string | null;
+  requestIp?: string | null;
+}) {
   const campaign = await db.emailCampaign.findUnique({
-    where: { id: campaignId },
+    where: { id: input.campaignId },
     select: {
       id: true,
+      status: true,
+      sentCount: true,
+      failedCount: true,
+      errorSummary: true,
       contentfulEntryId: true,
       contentfulContentType: true,
       audienceType: true,
@@ -271,5 +282,26 @@ export async function retryContentfulCampaign(campaignId: string) {
     audienceType: (campaign.audienceType as CampaignAudienceType) || "newsletter",
   });
 
-  return { ok: true, campaignId: campaign.id };
+  const result = { ok: true, campaignId: campaign.id };
+
+  if (input.actorUserId) {
+    await createAdminActionLog({
+      actorUserId: input.actorUserId,
+      actionType: "newsletter_campaign_retried",
+      targetType: "email_campaign",
+      targetId: campaign.id,
+      requestId: input.requestId,
+      requestPath: input.requestPath,
+      requestIp: input.requestIp,
+      oldValueJson: {
+        status: campaign.status,
+        sentCount: campaign.sentCount,
+        failedCount: campaign.failedCount,
+        errorSummary: campaign.errorSummary,
+      },
+      newValueJson: result,
+    });
+  }
+
+  return result;
 }

@@ -26,7 +26,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    await requireStaffAdminUser();
+    const adminUser = await requireStaffAdminUser();
     const { id } = await context.params;
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 
@@ -36,19 +36,30 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         ? (statusRaw as MembershipStatus)
         : undefined;
 
-    const member = await updateAdminMember(id, {
-      isInstructor: typeof body.isInstructor === "boolean" ? body.isInstructor : undefined,
-      instructorProfileEntryId:
-        typeof body.instructorProfileEntryId === "string"
-          ? body.instructorProfileEntryId
-          : body.instructorProfileEntryId === null
-            ? null
-            : undefined,
-      isCoachingClient:
-        typeof body.isCoachingClient === "boolean" ? body.isCoachingClient : undefined,
-      notes: typeof body.notes === "string" ? body.notes : undefined,
-      status,
-    });
+    const member = await updateAdminMember(
+      id,
+      {
+        isInstructor: typeof body.isInstructor === "boolean" ? body.isInstructor : undefined,
+        instructorProfileEntryId:
+          typeof body.instructorProfileEntryId === "string"
+            ? body.instructorProfileEntryId
+            : body.instructorProfileEntryId === null
+              ? null
+              : undefined,
+        isCoachingClient:
+          typeof body.isCoachingClient === "boolean" ? body.isCoachingClient : undefined,
+        notes: typeof body.notes === "string" ? body.notes : undefined,
+        status,
+      },
+      {
+        actorUserId: adminUser.id,
+        requestId: request.headers.get("x-request-id"),
+        requestPath: new URL(request.url).pathname,
+        requestIp:
+          request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+          request.headers.get("x-real-ip"),
+      }
+    );
 
     if (!member) {
       return NextResponse.json({ message: "Member not found" }, { status: 404 });

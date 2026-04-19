@@ -6,6 +6,7 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { redirect } from "next/navigation";
 import { verifyAuthChallenge } from "@/lib/auth-challenge";
+import { recordFailedLoginAttempt } from "@/lib/auth-security";
 import { db } from "@/lib/db";
 import { env, getAdminEmailAllowlist } from "@/lib/env";
 import { isOwnerAdminRole, isStaffAdminRole } from "@/lib/authz/roles";
@@ -89,18 +90,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         authCode: { label: "Code", type: "text" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const email = String(credentials?.email || "")
           .trim()
           .toLowerCase();
         const authCode = normalizeAuthCode(String(credentials?.authCode || ""));
+        const requestIp =
+          request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+          request.headers.get("x-real-ip") ||
+          null;
         if (!email || !authCode) {
+          void recordFailedLoginAttempt({
+            email,
+            ip: requestIp,
+            reason: "missing_email_or_code",
+          });
           if (env.NODE_ENV === "development") {
             console.info("[auth][credentials] rejected: missing email or code");
           }
           return null;
         }
         if (authCode.length !== 6) {
+          void recordFailedLoginAttempt({
+            email,
+            ip: requestIp,
+            reason: "invalid_code_length",
+          });
           if (env.NODE_ENV === "development") {
             console.info("[auth][credentials] rejected: code is not 6 digits", { email });
           }
@@ -111,8 +126,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email,
           code: authCode,
           purposes: [AuthChallengePurpose.login, AuthChallengePurpose.signup],
+          ip: requestIp,
         });
         if (!verification.ok) {
+          void recordFailedLoginAttempt({
+            email,
+            ip: requestIp,
+            reason: `challenge_${verification.reason}`,
+          });
           if (env.NODE_ENV === "development") {
             console.info("[auth][credentials] rejected: challenge verification failed", {
               email,
@@ -123,7 +144,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         const user = await db.user.findUnique({ where: { email } });
-        if (!user || user.deletedAt) return null;
+        if (!user || user.deletedAt) {
+          void recordFailedLoginAttempt({
+            email,
+            ip: requestIp,
+            reason: "user_not_found_or_deleted",
+          });
+          return null;
+        }
 
         return {
           id: user.id,

@@ -1,4 +1,5 @@
 import { BlogCommentStatus, Prisma } from "@prisma/client";
+import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { db } from "@/lib/db";
 import { getNotificationInbox, sendPostmarkReactEmail } from "@/lib/postmark/client";
 import { buildAbsoluteUrl } from "@/lib/app-url";
@@ -360,10 +361,14 @@ export async function listAdminBlogComments(params: {
 export async function updateAdminBlogCommentStatus(input: {
   id: string;
   action: "hide" | "show" | "delete";
+  actorUserId?: string | null;
+  requestId?: string | null;
+  requestPath?: string | null;
+  requestIp?: string | null;
 }) {
   const comment = await db.blogComment.findUnique({
     where: { id: input.id },
-    select: { id: true, parentId: true },
+    select: { id: true, parentId: true, status: true, postSlug: true, content: true },
   });
   if (!comment) {
     throw new Error("NOT_FOUND");
@@ -375,6 +380,19 @@ export async function updateAdminBlogCommentStatus(input: {
         OR: [{ id: input.id }, { parentId: input.id }],
       },
     });
+    if (input.actorUserId) {
+      await createAdminActionLog({
+        actorUserId: input.actorUserId,
+        actionType: "blog_comment_deleted",
+        targetType: "blog_comment",
+        targetId: input.id,
+        requestId: input.requestId,
+        requestPath: input.requestPath,
+        requestIp: input.requestIp,
+        oldValueJson: comment,
+        newValueJson: { deleted: true },
+      });
+    }
     return { ok: true };
   }
 
@@ -385,6 +403,23 @@ export async function updateAdminBlogCommentStatus(input: {
     },
     data: { status: nextStatus },
   });
+
+  if (input.actorUserId) {
+    await createAdminActionLog({
+      actorUserId: input.actorUserId,
+      actionType: "blog_comment_moderated",
+      targetType: "blog_comment",
+      targetId: input.id,
+      requestId: input.requestId,
+      requestPath: input.requestPath,
+      requestIp: input.requestIp,
+      oldValueJson: comment,
+      newValueJson: {
+        status: nextStatus,
+        action: input.action,
+      },
+    });
+  }
 
   return { ok: true };
 }

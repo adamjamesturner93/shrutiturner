@@ -13,7 +13,7 @@ export const GET = handleApiRoute(
 );
 
 export const PATCH = handleApiRoute(
-  async ({ request }) => {
+  async ({ request, requestId, requestIp, path, sessionUser }) => {
     const body = await parseJsonBody<{
       preJoinWindowMinutes?: number;
       lateJoinCutoffMinutes?: number;
@@ -34,6 +34,10 @@ export const PATCH = handleApiRoute(
         typeof body.emptyClassAutoCancelWindowMinutes === "number"
           ? body.emptyClassAutoCancelWindowMinutes
           : undefined,
+      actorUserId: sessionUser?.id,
+      requestId,
+      requestPath: path,
+      requestIp,
     });
 
     return apiOk(settings);
