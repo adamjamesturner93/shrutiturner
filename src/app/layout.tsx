@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import "../styles/index.css";
 import { Providers } from "./providers";
+import { env } from "@/lib/env";
 import { buildRootMetadata, getRuntimePlatformSettings } from "@/lib/platform/runtime-settings";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -14,7 +15,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const platformSettings = await getRuntimePlatformSettings();
-  const gaMeasurementId = platformSettings.gaMeasurementId;
+  const gaMeasurementId = platformSettings.gaMeasurementId || env.GA4_MEASUREMENT_ID || null;
 
   return (
     <html lang="en" data-scroll-behavior="smooth">

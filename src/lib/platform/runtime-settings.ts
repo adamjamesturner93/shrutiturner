@@ -2,7 +2,7 @@ import "server-only";
 
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
-import { getBaseSiteUrlFromEnv } from "@/lib/env";
+import { env, getBaseSiteUrlFromEnv } from "@/lib/env";
 
 export type RuntimePlatformSettings = {
   businessName: string;
@@ -68,6 +68,7 @@ export async function buildRootMetadata(): Promise<Metadata> {
   const settings = await getRuntimePlatformSettings();
   const metadataBase = new URL(getBaseSiteUrlFromEnv());
   const titleDefault = settings.defaultSeoTitle || settings.businessName;
+  const gaMeasurementId = settings.gaMeasurementId || env.GA4_MEASUREMENT_ID || null;
 
   return {
     metadataBase,
@@ -95,6 +96,11 @@ export async function buildRootMetadata(): Promise<Metadata> {
       description:
         settings.defaultSeoDescription || DEFAULT_RUNTIME_PLATFORM_SETTINGS.defaultSeoDescription,
     },
+    other: gaMeasurementId
+      ? {
+          "google-analytics-measurement-id": gaMeasurementId,
+        }
+      : undefined,
     icons: {
       icon: [
         { url: "/icon", sizes: "32x32", type: "image/png" },

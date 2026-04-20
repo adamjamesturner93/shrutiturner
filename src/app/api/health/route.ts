@@ -1,70 +1,24 @@
 import { db } from "@/lib/db";
-import { env, getPostmarkToken } from "@/lib/env";
-import { getPostmarkClient } from "@/lib/postmark/client";
-import { getStripeClient } from "@/lib/billing/stripe-client";
-import { getContentfulConfig } from "@/lib/content/config";
 import { apiOk, handleApiRoute } from "@/lib/api/route";
+import {
+  contentfulCmsProvider,
+  dailyVideoProvider,
+  postmarkEmailProvider,
+  stripePaymentProvider,
+} from "@/lib/integrations/providers";
+
+type HealthCheckResult = {
+  ok: boolean;
+  configured?: boolean;
+  message?: string;
+};
 
 async function checkDatabase() {
   await db.$queryRaw`SELECT 1`;
-  return { ok: true as const };
+  return { ok: true as const } satisfies HealthCheckResult;
 }
 
-async function checkStripe() {
-  if (!env.STRIPE_SECRET_KEY) {
-    return { ok: false as const, configured: false, message: "STRIPE_NOT_CONFIGURED" };
-  }
-
-  await getStripeClient().balance.retrieve();
-  return { ok: true as const, configured: true };
-}
-
-async function checkPostmark() {
-  const token = getPostmarkToken();
-  if (!token) {
-    return { ok: false as const, configured: false, message: "POSTMARK_NOT_CONFIGURED" };
-  }
-
-  await fetch("https://api.postmarkapp.com/server", {
-    headers: {
-      "X-Postmark-Server-Token": token,
-      Accept: "application/json",
-    },
-    cache: "no-store",
-  }).then(async (response) => {
-    if (!response.ok) {
-      throw new Error(`POSTMARK_${response.status}`);
-    }
-  });
-
-  getPostmarkClient();
-  return { ok: true as const, configured: true };
-}
-
-async function checkContentful() {
-  const config = getContentfulConfig();
-  if (!config) {
-    return { ok: false as const, configured: false, message: "CONTENTFUL_NOT_CONFIGURED" };
-  }
-
-  const response = await fetch(
-    `https://cdn.contentful.com/spaces/${config.spaceId}/environments/${config.environment}`,
-    {
-      headers: {
-        Authorization: `Bearer ${config.deliveryToken}`,
-      },
-      cache: "no-store",
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`CONTENTFUL_${response.status}`);
-  }
-
-  return { ok: true as const, configured: true };
-}
-
-async function runCheck(name: string, check: () => Promise<Record<string, unknown>>) {
+async function runCheck(name: string, check: () => Promise<HealthCheckResult>) {
   try {
     return [name, await check()] as const;
   } catch (error) {
@@ -84,9 +38,10 @@ export const GET = handleApiRoute(
     const checks = Object.fromEntries(
       await Promise.all([
         runCheck("database", checkDatabase),
-        runCheck("stripe", checkStripe),
-        runCheck("postmark", checkPostmark),
-        runCheck("contentful", checkContentful),
+        runCheck("stripe", () => stripePaymentProvider.verifyConnection()),
+        runCheck("postmark", () => postmarkEmailProvider.verifyConnection()),
+        runCheck("daily", () => dailyVideoProvider.verifyConnection()),
+        runCheck("contentful", () => contentfulCmsProvider.verifyConnection()),
       ])
     );
 
