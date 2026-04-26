@@ -148,11 +148,13 @@ async function maybeAlertOnFailedLogin(input: {
         .filter(Boolean)
         .join("\n"),
       tag: "auth-security-alert",
+      templateKey: "auth-security-alert",
       metadata: {
         reason: input.reason,
         email: input.email || "unknown",
         ip: input.ip || "unknown",
       },
+      dispatchMode: "immediate_best_effort",
     });
   } catch (error) {
     console.error("[auth][security] failed to send security alert", error);

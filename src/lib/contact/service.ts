@@ -59,11 +59,13 @@ export async function submitContactForm(input: ContactSubmissionInput) {
     }),
     textBody: `New contact enquiry from ${firstName} ${lastName}\nEmail: ${email}\nTopic: ${topic}\n${submission.conditions ? `Conditions: ${submission.conditions}\n` : ""}${submission.howFound ? `How found: ${submission.howFound}\n` : ""}\n${message}`,
     tag: "contact-submission",
+    templateKey: "contact-submission",
     replyTo: email,
     metadata: {
       submissionId: submission.id,
       topic,
     },
+    dispatchMode: "immediate_best_effort",
   });
 
   return submission;

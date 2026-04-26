@@ -1,35 +1,23 @@
-import { render } from "@react-email/render";
-import { ServerClient } from "postmark";
 import AuthCodeEmail from "@/emails/auth-code";
-import { env, getPostmarkToken } from "@/lib/env";
-import { getPostmarkMessageStream } from "@/lib/postmark/client";
+import { env } from "@/lib/env";
+import { sendPostmarkReactEmail } from "@/lib/postmark/client";
 
 export async function sendAuthCodeEmail(email: string, code: string, expiryMinutes = 10) {
   if (env.NEXT_PUBLIC_E2E_TEST_MODE === "1") {
     return;
   }
-
-  const postmarkToken = getPostmarkToken();
-  if (!postmarkToken) {
-    throw new Error("POSTMARK_API_TOKEN or POSTMARK_SERVER_TOKEN is not configured.");
-  }
-
-  const from = env.POSTMARK_FROM_EMAIL || "Shruti Turner <noreply@thechronicyogini.com>";
-  const client = new ServerClient(postmarkToken);
-
-  const html = await render(AuthCodeEmail({ code, expiryMinutes }));
   const text = `Your login code is ${code}. It expires in ${expiryMinutes} minutes.`;
 
-  await client.sendEmail({
-    From: from,
-    To: email,
-    Subject: "Your login code",
-    HtmlBody: html,
-    TextBody: text,
-    MessageStream: getPostmarkMessageStream("transactional"),
-    Tag: "auth-code",
-    Metadata: {
-      emailCategory: "transactional",
-    },
+  await sendPostmarkReactEmail({
+    to: email,
+    subject: "Your login code",
+    react: AuthCodeEmail({ code, expiryMinutes }),
+    textBody: text,
+    tag: "auth-code",
+    templateKey: "auth-code",
+    category: "transactional",
+    retryable: false,
+    maxAttempts: 1,
+    dispatchMode: "immediate_required",
   });
 }

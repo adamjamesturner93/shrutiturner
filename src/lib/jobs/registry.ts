@@ -1,6 +1,7 @@
 import { ScheduledJobTriggerType } from "@prisma/client";
 import { env } from "@/lib/env";
 import { cleanupScheduledJobRuntimeData } from "@/lib/jobs/runtime-maintenance";
+import { processTransactionalEmailRetries } from "@/lib/jobs/transactional-email";
 
 type JobHandlerResult = Record<string, unknown>;
 
@@ -27,6 +28,12 @@ const registry: RegisteredJob[] = [
       environment: env.VERCEL_ENV || env.NODE_ENV,
       at: new Date().toISOString(),
     }),
+  },
+  {
+    jobName: "transactional_email_retry",
+    triggerTypes: [ScheduledJobTriggerType.cron, ScheduledJobTriggerType.manual],
+    previewSafe: true,
+    run: () => processTransactionalEmailRetries(),
   },
 ];
 

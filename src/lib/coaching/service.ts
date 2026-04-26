@@ -93,10 +93,12 @@ export async function submitCoachingApplication(input: {
       }),
       textBody: `Hi ${applicantFirstName},\n\nThanks for applying for ${tierLabel}. Your application is in and will be reviewed personally within 48 hours.\n\nDashboard: ${dashboardUrl}`,
       tag: "coaching-application-confirmation",
+      templateKey: "coaching-application-confirmation",
       metadata: {
         applicationId: application.id,
         tier: input.tier,
       },
+      dispatchMode: "immediate_best_effort",
     }),
     sendPostmarkReactEmail({
       to: getNotificationInbox("COACHING_APPLICATION_NOTIFICATION_EMAIL"),
@@ -110,11 +112,13 @@ export async function submitCoachingApplication(input: {
       }),
       textBody: `New coaching application from ${applicantFirstName} ${applicantLastName}\nEmail: ${applicantEmail}\nTier: ${tierLabel}\n\n${summary.join("\n")}\n\nReview: ${adminUrl}`,
       tag: "coaching-application-notification",
+      templateKey: "coaching-application-notification",
       replyTo: applicantEmail,
       metadata: {
         applicationId: application.id,
         tier: input.tier,
       },
+      dispatchMode: "immediate_best_effort",
     }),
   ]);
 

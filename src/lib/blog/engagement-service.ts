@@ -44,9 +44,11 @@ async function sendNewCommentNotification(input: {
     }),
     textBody: `New blog comment from ${input.authorName}\n\nPost: ${input.postSlug}\n\n${input.content}\n\nReview: ${postUrl}`,
     tag: "blog-comment-notification",
+    templateKey: "blog-comment-notification",
     metadata: {
       postSlug: input.postSlug,
     },
+    dispatchMode: "immediate_best_effort",
   });
 }
 

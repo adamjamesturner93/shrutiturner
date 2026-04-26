@@ -89,9 +89,11 @@ export async function sendWelcomeEmail(email: string, firstName: string) {
         `Membership options: ${APP_URL}/pricing`,
       ].join("\n"),
       tag: "account-welcome",
+      templateKey: "account-welcome",
       metadata: {
         emailType: "account-welcome",
       },
+      dispatchMode: "immediate_best_effort",
     });
 
     return { success: true };
@@ -148,6 +150,8 @@ export async function sendBookingConfirmation(
         className,
         emailType: "class-booking-confirmation",
       },
+      templateKey: "class-booking-confirmation",
+      dispatchMode: "immediate_best_effort",
       attachments: [
         {
           name: "invite.ics",
@@ -198,6 +202,8 @@ export async function sendClassReminder(
         className,
         emailType: "class-reminder",
       },
+      templateKey: "class-reminder",
+      dispatchMode: "immediate_best_effort",
     });
     return { success: true };
   } catch (error) {
@@ -216,17 +222,38 @@ export async function sendPurchaseConfirmation(
   userPrefs: I18nPreferences = DEFAULT_PREFS
 ) {
   try {
-    await render(
-      PurchaseConfirmationEmail({
-        firstName,
+    const react = PurchaseConfirmationEmail({
+      firstName,
+      purchaseDescription,
+      amount,
+      invoiceId,
+      date: formatDate(new Date(), userPrefs),
+      scheduleUrl: `${APP_URL}/dashboard/schedule`,
+    });
+
+    await sendPostmarkReactEmail({
+      to: email,
+      subject: "Purchase confirmed",
+      category: "transactional",
+      react,
+      textBody: [
+        `Hi ${firstName},`,
+        "",
+        `Thanks for your purchase: ${purchaseDescription}.`,
+        `Amount: ${amount}`,
+        `Invoice: ${invoiceId}`,
+        `Manage your schedule: ${APP_URL}/dashboard/schedule`,
+      ].join("\n"),
+      tag: "purchase-confirmation",
+      templateKey: "purchase-confirmation",
+      metadata: {
         purchaseDescription,
-        amount,
         invoiceId,
-        date: formatDate(new Date(), userPrefs),
-        scheduleUrl: "https://shrutiturner.co.uk/dashboard/schedule",
-      })
-    );
-    console.log(`[Mock Email Service] Sending Purchase Confirmation to ${email}`);
+        emailType: "purchase-confirmation",
+      },
+      dispatchMode: "immediate_best_effort",
+    });
+
     return { success: true };
   } catch (error) {
     console.error("Failed to send purchase confirmation", error);
@@ -274,6 +301,8 @@ export async function sendSubscriptionNoticeEmail(params: {
         emailType: params.tag,
         ...(params.metadata || {}),
       },
+      templateKey: params.tag,
+      dispatchMode: "immediate_best_effort",
     });
 
     return { success: true };
@@ -338,10 +367,12 @@ export async function sendInstructorNotification(
       react,
       textBody: `${className}\nDate: ${formattedDate}\nTime: ${formattedTime}\nAttendees: ${attendeeCount}\nRoster: ${APP_URL}/admin/classes`,
       tag: `instructor-${type}`,
+      templateKey: `instructor-${type}`,
       metadata: {
         className,
         emailType: `instructor-${type}`,
       },
+      dispatchMode: "immediate_best_effort",
       attachments:
         invite && type === "first-signup"
           ? [
@@ -400,10 +431,12 @@ export async function sendClassCancellation(
       react,
       textBody: `Hi ${firstName},\n\n${className} on ${formattedDate} at ${formattedTime} has been cancelled.\n\nView available classes: ${APP_URL}/schedule`,
       tag: "class-cancellation",
+      templateKey: "class-cancellation",
       metadata: {
         className,
         emailType: "class-cancellation",
       },
+      dispatchMode: "immediate_best_effort",
       attachments: [
         {
           name: "class-cancel.ics",
@@ -454,11 +487,13 @@ export async function sendClassUnbooking(
       react,
       textBody: `Hi ${firstName},\n\nYour booking for ${className} on ${formattedDate} at ${formattedTime} has been cancelled.\n\nBrowse upcoming classes: ${APP_URL}/dashboard/schedule`,
       tag: "class-unbooking",
+      templateKey: "class-unbooking",
       metadata: {
         className,
         emailType: "class-unbooking",
         classDate,
       },
+      dispatchMode: "immediate_best_effort",
       attachments: [
         {
           name: "class-unbook.ics",

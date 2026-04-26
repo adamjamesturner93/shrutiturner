@@ -15,6 +15,11 @@ type RawPostmarkEvent = {
   OriginalLink?: string;
 };
 
+type LinkedDelivery = {
+  id: string;
+  campaignId: string | null;
+};
+
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
@@ -74,12 +79,14 @@ export async function ingestPostmarkEvent(payload: RawPostmarkEvent) {
     select: { id: true },
   });
 
-  let campaignId: string | undefined;
+  const linkedDelivery = await findLinkedDelivery(metadata, messageId);
+
+  let campaignId: string | undefined = linkedDelivery?.campaignId || undefined;
   const explicitCampaignId =
     typeof metadata.campaignId === "string" && metadata.campaignId
       ? metadata.campaignId
       : undefined;
-  if (explicitCampaignId) {
+  if (!campaignId && explicitCampaignId) {
     const existingById = await db.emailCampaign.findUnique({
       where: { id: explicitCampaignId },
       select: { id: true },
@@ -87,36 +94,6 @@ export async function ingestPostmarkEvent(payload: RawPostmarkEvent) {
     if (existingById) {
       campaignId = existingById.id;
     }
-  }
-
-  const providerCampaignId =
-    (campaignId ? undefined : explicitCampaignId) ||
-    (typeof payload.Tag === "string" && payload.Tag) ||
-    messageId ||
-    undefined;
-
-  if (!campaignId && providerCampaignId) {
-    const campaign = await db.emailCampaign.upsert({
-      where: { providerCampaignId },
-      create: {
-        providerCampaignId,
-        subject: payload.Subject || "Untitled campaign",
-        stream: payload.MessageStream || null,
-        status: type === "Scheduled" ? "scheduled" : "sent",
-        sentAt: type === "Scheduled" ? null : eventAt,
-        scheduledAt: type === "Scheduled" ? eventAt : null,
-        metadataJson: metadata as Prisma.InputJsonValue,
-      },
-      update: {
-        subject: payload.Subject || undefined,
-        stream: payload.MessageStream || undefined,
-        status: type === "Scheduled" ? "scheduled" : "sent",
-        sentAt: type === "Scheduled" ? undefined : eventAt,
-        metadataJson: metadata as Prisma.InputJsonValue,
-      },
-      select: { id: true },
-    });
-    campaignId = campaign.id;
   }
 
   await db.emailEvent.upsert({
@@ -129,6 +106,7 @@ export async function ingestPostmarkEvent(payload: RawPostmarkEvent) {
       email: recipient,
       userId: user?.id,
       campaignId,
+      deliveryId: linkedDelivery?.id,
       eventAt,
       metadataJson: metadata as Prisma.InputJsonValue,
     },
@@ -137,10 +115,39 @@ export async function ingestPostmarkEvent(payload: RawPostmarkEvent) {
       email: recipient,
       userId: user?.id,
       campaignId,
+      deliveryId: linkedDelivery?.id,
       eventAt,
       metadataJson: metadata as Prisma.InputJsonValue,
     },
   });
 
   return { providerEventId };
+}
+
+async function findLinkedDelivery(metadata: Record<string, unknown>, messageId: string | null) {
+  const explicitDeliveryId =
+    typeof metadata.deliveryId === "string" && metadata.deliveryId.trim()
+      ? metadata.deliveryId.trim()
+      : null;
+
+  if (explicitDeliveryId) {
+    const delivery = await db.emailDelivery.findUnique({
+      where: { id: explicitDeliveryId },
+      select: { id: true, campaignId: true },
+    });
+    if (delivery) {
+      return delivery satisfies LinkedDelivery;
+    }
+  }
+
+  if (!messageId) {
+    return null;
+  }
+
+  const delivery = await db.emailDelivery.findFirst({
+    where: { providerMessageId: messageId },
+    select: { id: true, campaignId: true },
+  });
+
+  return delivery ? (delivery satisfies LinkedDelivery) : null;
 }

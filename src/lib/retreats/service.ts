@@ -685,10 +685,12 @@ async function sendDepositConfirmationEmail(bookingId: string) {
     }),
     textBody: `Deposit received for ${booking.retreatDate.retreatTitleSnapshot}\nDates: ${formatDateRange(booking.retreatDate.startsAt, booking.retreatDate.endsAt)}\nDeposit paid: ${formatCurrency(booking.depositAmountPence, booking.currency)}\nRemaining balance: ${formatCurrency(booking.balanceAmountPence, booking.currency)}\nDetails: ${retreatDetailsUrl}`,
     tag: "retreat-deposit-confirmation",
+    templateKey: "retreat-deposit-confirmation",
     metadata: {
       bookingId: booking.id,
       retreatSlug: booking.retreatDate.retreatSlug,
     },
+    dispatchMode: "immediate_best_effort",
   });
 
   if (booking.balanceAmountPence > 0 && booking.balancePaymentUrlToken) {
@@ -706,10 +708,12 @@ async function sendDepositConfirmationEmail(bookingId: string) {
       }),
       textBody: `Your balance payment link for ${booking.retreatDate.retreatTitleSnapshot}\nAmount due: ${formatCurrency(booking.balanceAmountPence, booking.currency)}\nDue by: ${booking.balanceDueAt ? formatDate(booking.balanceDueAt) : "Before arrival"}\nPay here: ${paymentUrl}`,
       tag: "retreat-balance-due",
+      templateKey: "retreat-balance-due",
       metadata: {
         bookingId: booking.id,
         retreatSlug: booking.retreatDate.retreatSlug,
       },
+      dispatchMode: "immediate_best_effort",
     });
   }
 }
