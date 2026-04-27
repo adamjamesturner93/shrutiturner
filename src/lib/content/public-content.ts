@@ -85,6 +85,14 @@ function getIncludedEntryById(
   return includes.find((entry) => entry.sys.id === id) || null;
 }
 
+function getIncludedAssetById(
+  includes: Array<{ sys: { id: string }; fields: Record<string, unknown> }> | undefined,
+  id: string | undefined
+) {
+  if (!includes || !id) return null;
+  return includes.find((asset) => asset.sys.id === id) || null;
+}
+
 function slugify(input: string) {
   return input
     .toLowerCase()
@@ -96,6 +104,106 @@ function slugify(input: string) {
 
 function createFallbackAvatar(name: string) {
   return `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(name)}`;
+}
+
+function toContentfulImageUrl(rawUrl: string, width = 1200) {
+  const url = rawUrl.startsWith("//") ? `https:${rawUrl}` : rawUrl;
+  if (!url.includes("images.ctfassets.net") && !url.includes("images.contentful.com")) {
+    return url;
+  }
+
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}w=${width}&fm=webp&q=80`;
+}
+
+function readContentfulAssetUrl(fields: Record<string, unknown> | undefined) {
+  const file = fields?.file;
+  if (!file || typeof file !== "object" || Array.isArray(file)) return null;
+  const url = (file as { url?: unknown }).url;
+  return typeof url === "string" && url.trim() ? url.trim() : null;
+}
+
+function readContentfulAssetAlt(fields: Record<string, unknown> | undefined) {
+  const description = fields?.description;
+  if (typeof description === "string" && description.trim()) return description.trim();
+  const title = fields?.title;
+  if (typeof title === "string" && title.trim()) return title.trim();
+  return null;
+}
+
+function renderRichTextNode(node: unknown): string {
+  if (!node || typeof node !== "object" || Array.isArray(node)) {
+    return "";
+  }
+
+  const richNode = node as {
+    nodeType?: unknown;
+    value?: unknown;
+    content?: unknown;
+  };
+  const nodeType = typeof richNode.nodeType === "string" ? richNode.nodeType : "";
+
+  if (nodeType === "text") {
+    return typeof richNode.value === "string" ? richNode.value : "";
+  }
+
+  const children = Array.isArray(richNode.content)
+    ? richNode.content.map(renderRichTextNode).join("")
+    : "";
+
+  if (nodeType === "heading-2") return `\n## ${children.trim()}\n`;
+  if (nodeType === "heading-3") return `\n### ${children.trim()}\n`;
+  if (nodeType === "paragraph") return `${children.trim()}\n\n`;
+  if (nodeType === "list-item") return `- ${children.trim()}\n`;
+  if (nodeType === "ordered-list" || nodeType === "unordered-list") return `\n${children}\n`;
+  if (nodeType === "blockquote") return `> ${children.trim()}\n\n`;
+
+  return children;
+}
+
+function renderContentfulRichText(value: unknown) {
+  if (typeof value === "string") return value;
+  return renderRichTextNode(value)
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function mapBlogPostContent(
+  item: { sys: { id: string }; fields: Record<string, unknown> },
+  includes: {
+    Entry?: Array<{ sys: { id: string }; fields: Record<string, unknown> }>;
+    Asset?: Array<{ sys: { id: string }; fields: Record<string, unknown> }>;
+  } = {}
+): BlogPostContent {
+  const coverImageAssetId = getLinkedEntryId(item.fields.coverImage);
+  const coverImageAsset = getIncludedAssetById(includes.Asset, coverImageAssetId);
+  const assetUrl = readContentfulAssetUrl(coverImageAsset?.fields);
+  const stringCoverImage =
+    typeof item.fields.coverImage === "string" && item.fields.coverImage.trim()
+      ? item.fields.coverImage.trim()
+      : "";
+
+  return {
+    id: String(item.fields.slug || item.sys.id),
+    title: String(item.fields.title || "Untitled"),
+    excerpt: String(item.fields.excerpt || ""),
+    content: renderContentfulRichText(item.fields.content),
+    author: item.fields.authorName ? String(item.fields.authorName) : undefined,
+    authors: mapBlogPostAuthors(item, includes.Entry),
+    date: String(item.fields.publishDate || ""),
+    tags: parseStringArray(item.fields.tags),
+    readTime: String(item.fields.readTime || ""),
+    coverImage: assetUrl
+      ? toContentfulImageUrl(assetUrl)
+      : stringCoverImage
+        ? toContentfulImageUrl(stringCoverImage)
+        : "https://images.unsplash.com/photo-1615388599690-02c0d4a3dfa7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+    coverAlt:
+      readContentfulAssetAlt(coverImageAsset?.fields) ||
+      (item.fields.coverAlt ? String(item.fields.coverAlt) : "Blog cover image"),
+    seoTitle: item.fields.seoTitle ? String(item.fields.seoTitle) : undefined,
+    seoDescription: item.fields.seoDescription ? String(item.fields.seoDescription) : undefined,
+  };
 }
 
 const localBlogAuthorBySlug = new Map(LOCAL_BLOG_AUTHORS.map((author) => [author.slug, author]));
@@ -539,23 +647,7 @@ export async function getBlogPosts(): Promise<BlogPostContent[]> {
       include: 2,
     });
     if (res?.items?.length) {
-      return res.items.map((item) => ({
-        id: String(item.fields.slug || item.sys.id),
-        title: String(item.fields.title || "Untitled"),
-        excerpt: String(item.fields.excerpt || ""),
-        content: String(item.fields.content || ""),
-        author: item.fields.authorName ? String(item.fields.authorName) : undefined,
-        authors: mapBlogPostAuthors(item, res.includes?.Entry),
-        date: String(item.fields.publishDate || ""),
-        tags: parseStringArray(item.fields.tags),
-        readTime: String(item.fields.readTime || ""),
-        coverImage: item.fields.coverImage
-          ? String(item.fields.coverImage)
-          : "https://images.unsplash.com/photo-1615388599690-02c0d4a3dfa7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
-        coverAlt: item.fields.coverAlt ? String(item.fields.coverAlt) : "Blog cover image",
-        seoTitle: item.fields.seoTitle ? String(item.fields.seoTitle) : undefined,
-        seoDescription: item.fields.seoDescription ? String(item.fields.seoDescription) : undefined,
-      }));
+      return res.items.map((item) => mapBlogPostContent(item, res.includes));
     }
   }
 
@@ -569,6 +661,24 @@ export async function getBlogPosts(): Promise<BlogPostContent[]> {
 export async function getBlogPostBySlug(slug: string): Promise<BlogPostContent | null> {
   const posts = await getBlogPosts();
   return posts.find((p) => p.id === slug) || null;
+}
+
+export async function getBlogPostPreviewBySlug(slug: string): Promise<BlogPostContent | null> {
+  if (!prefersContentfulSource()) {
+    return null;
+  }
+
+  const res = await getEntries<Record<string, unknown>>(
+    "blogPost",
+    {
+      "fields.slug": slug,
+      limit: 1,
+      include: 2,
+    },
+    { preview: true }
+  );
+  const entry = res?.items?.[0];
+  return entry ? mapBlogPostContent(entry, res.includes) : null;
 }
 
 export async function getBlogPostStaticParams(): Promise<Array<{ slug: string }>> {

@@ -10,6 +10,10 @@ type EntriesResponse<T> = {
   };
 };
 
+type ContentfulFetchOptions = {
+  preview?: boolean;
+};
+
 function toQueryString(query: Record<string, string | number | boolean | undefined>) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
@@ -59,15 +63,22 @@ function getContentfulRequestTimeoutMs() {
 
 async function cdaFetch<T>(
   path: string,
-  query: Record<string, string | number | boolean | undefined> = {}
+  query: Record<string, string | number | boolean | undefined> = {},
+  options: ContentfulFetchOptions = {}
 ) {
   const cfg = getContentfulConfig();
   if (!cfg) {
     return null;
   }
 
+  const token = options.preview ? cfg.previewToken : cfg.deliveryToken;
+  if (!token) {
+    return null;
+  }
+
   const qs = toQueryString(query);
-  const url = `https://cdn.contentful.com/spaces/${cfg.spaceId}/environments/${cfg.environment}${path}${qs ? `?${qs}` : ""}`;
+  const host = options.preview ? "preview.contentful.com" : "cdn.contentful.com";
+  const url = `https://${host}/spaces/${cfg.spaceId}/environments/${cfg.environment}${path}${qs ? `?${qs}` : ""}`;
 
   let res: Response;
   const controller = new AbortController();
@@ -75,14 +86,20 @@ async function cdaFetch<T>(
   try {
     res = await fetch(url, {
       headers: {
-        Authorization: `Bearer ${cfg.deliveryToken}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       signal: controller.signal,
-      next: {
-        revalidate: 60,
-        tags: getCacheTags(typeof query.content_type === "string" ? query.content_type : undefined),
-      },
+      ...(options.preview
+        ? { cache: "no-store" as const }
+        : {
+            next: {
+              revalidate: 60,
+              tags: getCacheTags(
+                typeof query.content_type === "string" ? query.content_type : undefined
+              ),
+            },
+          }),
     });
   } catch {
     return null;
@@ -99,35 +116,50 @@ async function cdaFetch<T>(
 
 export async function getEntries<TFields>(
   contentType: string,
-  query: Record<string, string | number | boolean | undefined> = {}
+  query: Record<string, string | number | boolean | undefined> = {},
+  options: ContentfulFetchOptions = {}
 ): Promise<EntriesResponse<TFields> | null> {
-  return cdaFetch<EntriesResponse<TFields>>("/entries", {
-    content_type: contentType,
-    ...query,
-  });
+  return cdaFetch<EntriesResponse<TFields>>(
+    "/entries",
+    {
+      content_type: contentType,
+      ...query,
+    },
+    options
+  );
 }
 
 export async function getEntryBySlug<TFields>(
   contentType: string,
   slug: string,
-  slugField = "slug"
+  slugField = "slug",
+  options: ContentfulFetchOptions = {}
 ): Promise<EntryEnvelope<TFields> | null> {
-  const res = await getEntries<TFields>(contentType, {
-    [`fields.${slugField}`]: slug,
-    limit: 1,
-  });
+  const res = await getEntries<TFields>(
+    contentType,
+    {
+      [`fields.${slugField}`]: slug,
+      limit: 1,
+    },
+    options
+  );
 
   return res?.items?.[0] ?? null;
 }
 
 export async function getEntryById<TFields>(
   contentType: string,
-  entryId: string
+  entryId: string,
+  options: ContentfulFetchOptions = {}
 ): Promise<EntryEnvelope<TFields> | null> {
-  const res = await getEntries<TFields>(contentType, {
-    "sys.id": entryId,
-    limit: 1,
-  });
+  const res = await getEntries<TFields>(
+    contentType,
+    {
+      "sys.id": entryId,
+      limit: 1,
+    },
+    options
+  );
 
   return res?.items?.[0] ?? null;
 }
