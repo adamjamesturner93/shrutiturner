@@ -19,6 +19,7 @@ import {
 import { Layout } from "@/components/layout";
 import { BookClassButton } from "@/components/booking-modal";
 import { PreFooterCtaSection } from "@/components/marketing/sections";
+import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getTypeColor } from "@/lib/classes/type-color";
@@ -184,23 +185,15 @@ export function ClassDetailPage({
     <Layout>
       <section className="bg-brand-dark text-brand-white py-14 md:py-18">
         <div className="container mx-auto max-w-6xl px-4">
-          <nav aria-label="Breadcrumb" className="mb-8">
-            <ol className="text-brand-white/60 flex flex-wrap items-center gap-2 text-sm">
-              <li>
-                <Link href="/" className="hover:text-brand-accent-light transition-colors">
-                  Home
-                </Link>
-              </li>
-              <li>/</li>
-              <li>
-                <Link href="/classes" className="hover:text-brand-accent-light transition-colors">
-                  Classes
-                </Link>
-              </li>
-              <li>/</li>
-              <li className="text-brand-accent-light">{classDetail.name}</li>
-            </ol>
-          </nav>
+          <PublicBreadcrumbs
+            inverted
+            className="mb-8"
+            items={[
+              { name: "Home", href: "/" },
+              { name: "Classes", href: "/classes" },
+              { name: classDetail.name, href: `/classes/${classDetail.slug}` },
+            ]}
+          />
 
           <div className="mb-5 flex flex-wrap items-center gap-3">
             <Badge variant="outline" className={heroTypeBadgeClass}>

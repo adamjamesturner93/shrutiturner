@@ -7,10 +7,11 @@ import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { MarketingSection } from "@/components/marketing/sections";
 import { SEO } from "../components/seo";
-import { ArrowLeft, ArrowRight, ChevronRight, Globe, Instagram } from "lucide-react";
+import { ArrowLeft, ArrowRight, Globe, Instagram } from "lucide-react";
 import Link from "next/link";
 import { BlogReactions } from "@/components/blog-reactions";
 import { BlogComments } from "@/components/blog-comments";
+import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
 import type { BlogPostContent } from "@/lib/content/types";
 import { BlogShare } from "../components/blog-share";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
@@ -63,33 +64,15 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
                 Back to Blog
               </Link>
 
-              <nav aria-label="Breadcrumb" className="mt-6 max-w-full text-sm">
-                <ol className="text-brand-white/70 flex min-w-0 items-center gap-2">
-                  <li>
-                    <Link href="/" className="hover:text-brand-accent-light">
-                      Home
-                    </Link>
-                  </li>
-                  <li aria-hidden="true">
-                    <ChevronRight className="h-4 w-4" />
-                  </li>
-                  <li>
-                    <Link href="/blog" className="hover:text-brand-accent-light">
-                      Blog
-                    </Link>
-                  </li>
-                  <li aria-hidden="true">
-                    <ChevronRight className="h-4 w-4" />
-                  </li>
-                  <li
-                    aria-current="page"
-                    className="text-brand-white max-w-[13rem] min-w-0 truncate sm:max-w-sm"
-                    title={post.title}
-                  >
-                    {post.title}
-                  </li>
-                </ol>
-              </nav>
+              <PublicBreadcrumbs
+                inverted
+                className="mt-6"
+                items={[
+                  { name: "Home", href: "/" },
+                  { name: "Blog", href: "/blog" },
+                  { name: post.title, href: `/blog/${post.id}` },
+                ]}
+              />
 
               <div className="mt-6 flex flex-wrap gap-2">
                 {post.tags.map((tag) => (

@@ -2,6 +2,7 @@
 
 import { Layout } from "@/components/layout";
 import { MarketingSection } from "@/components/marketing/sections";
+import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
 import type { LegalDocumentContent } from "@/lib/content/types";
 
 interface LegalDocumentPageProps {
@@ -17,6 +18,15 @@ export function LegalDocumentPage({ document }: LegalDocumentPageProps) {
     <Layout>
       <section className="marketing-grid text-brand-white overflow-hidden px-4 py-10 md:py-12">
         <div className="container mx-auto max-w-5xl">
+          <PublicBreadcrumbs
+            inverted
+            className="mb-7"
+            items={[
+              { name: "Home", href: "/" },
+              { name: "Legal", href: "/terms" },
+              { name: document.title, href: `/${document.slug}` },
+            ]}
+          />
           <p className="text-brand-accent-light text-xs tracking-[0.3em] uppercase">
             Legal Information
           </p>

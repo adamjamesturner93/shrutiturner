@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
+import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
 import { SEO } from "@/components/seo";
 import { Button } from "@/components/ui/button";
 import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content/types";
@@ -140,6 +141,15 @@ export function RetreatDetailPage({
         <div className="container mx-auto max-w-6xl">
           <div className="grid items-center gap-8 lg:grid-cols-[0.92fr_1.08fr] lg:gap-10">
             <div>
+              <PublicBreadcrumbs
+                inverted
+                className="mb-7"
+                items={[
+                  { name: "Home", href: "/" },
+                  { name: "Retreats", href: "/retreats" },
+                  { name: retreat.title, href: `/retreats/${retreat.slug}` },
+                ]}
+              />
               <div className="text-brand-accent-light inline-flex items-center gap-2 text-sm">
                 <MapPin className="h-4 w-4" />
                 {retreat.location}
