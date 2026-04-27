@@ -3,6 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, ChevronLeft, ChevronRight, Filter, RefreshCcw, Search } from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { AdminLayout } from "@/components/admin-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +72,38 @@ type NewsletterSummary = {
     pageSize: number;
     total: number;
     totalPages: number;
+  };
+  audienceReporting: {
+    dateRange: string;
+    source: string;
+    exportHref: string;
+    trend: Array<{
+      date: string;
+      newSubscribers: number;
+      verifiedSubscribers: number;
+      unsubscribes: number;
+      netGrowth: number;
+      bounces: number;
+      spamComplaints: number;
+    }>;
+    sourceSegments: Array<{
+      source: string;
+      newSubscribers: number;
+      verifiedSubscribers: number;
+      unsubscribes: number;
+      netGrowth: number;
+      activeSubscriberCount: number;
+    }>;
+    campaignInfluence: Array<{
+      campaignId: string;
+      subject: string;
+      sentDate: string;
+      sourceSystem: string;
+      delivered: number;
+      opened: number;
+      clicked: number;
+      unsubscribed: number;
+    }>;
   };
 };
 
@@ -122,6 +165,8 @@ export function AdminNewsletter() {
   const [campaignStatus, setCampaignStatus] = useState<CampaignStatusFilter>("all");
   const [campaignDateRange, setCampaignDateRange] = useState<CampaignDateRange>("30d");
   const [campaignPage, setCampaignPage] = useState(1);
+  const [audienceDateRange, setAudienceDateRange] = useState<CampaignDateRange>("30d");
+  const [audienceSource, setAudienceSource] = useState("all");
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
@@ -129,15 +174,21 @@ export function AdminNewsletter() {
     status?: CampaignStatusFilter;
     range?: CampaignDateRange;
     page?: number;
+    audienceRange?: CampaignDateRange;
+    source?: string;
   }) => {
     const status = options?.status || campaignStatus;
     const range = options?.range || campaignDateRange;
     const page = options?.page || campaignPage;
+    const nextAudienceRange = options?.audienceRange || audienceDateRange;
+    const source = options?.source || audienceSource;
     const query = new URLSearchParams({
       campaignStatus: status,
       campaignDateRange: range,
       campaignPage: String(page),
       campaignPageSize: "10",
+      audienceDateRange: nextAudienceRange,
+      audienceSource: source,
     });
     const response = await fetch(`/api/admin/newsletter?${query.toString()}`, {
       cache: "no-store",
@@ -166,7 +217,7 @@ export function AdminNewsletter() {
         setLoading(true);
         const [summaryResponse, subscribersResponse] = await Promise.all([
           fetch(
-            "/api/admin/newsletter?campaignStatus=all&campaignDateRange=30d&campaignPage=1&campaignPageSize=10",
+            "/api/admin/newsletter?campaignStatus=all&campaignDateRange=30d&campaignPage=1&campaignPageSize=10&audienceDateRange=30d&audienceSource=all",
             { cache: "no-store" }
           ),
           fetch("/api/admin/newsletter/subscribers?type=all&page=1&pageSize=50", {
@@ -222,6 +273,14 @@ export function AdminNewsletter() {
     setCampaignDateRange(nextRange);
     setCampaignPage(nextPage);
     void refreshSummary({ status: nextStatus, range: nextRange, page: nextPage });
+  };
+
+  const updateAudienceFilters = (next: { range?: CampaignDateRange; source?: string }) => {
+    const nextRange = next.range || audienceDateRange;
+    const nextSource = next.source || audienceSource;
+    setAudienceDateRange(nextRange);
+    setAudienceSource(nextSource);
+    void refreshSummary({ audienceRange: nextRange, source: nextSource });
   };
 
   const campaignNeedsAttention = (campaign: CampaignSummary) =>
@@ -286,6 +345,149 @@ export function AdminNewsletter() {
               detail="confirmed subscribers"
             />
           </AppMetricGrid>
+        ) : null}
+
+        {summary ? (
+          <Card>
+            <CardContent className="space-y-5 pt-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <h2 className="text-lg">Subscriber growth and source attribution</h2>
+                  <p className="text-muted-foreground text-sm">
+                    New, verified, unsubscribed, bounce, and complaint trends by signup source.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {CAMPAIGN_RANGES.map((range) => (
+                    <Button
+                      key={range.value}
+                      size="sm"
+                      variant={audienceDateRange === range.value ? "default" : "outline"}
+                      onClick={() => updateAudienceFilters({ range: range.value })}
+                    >
+                      {range.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant={audienceSource === "all" ? "default" : "outline"}
+                  onClick={() => updateAudienceFilters({ source: "all" })}
+                >
+                  All sources
+                </Button>
+                {summary.sourceAttribution.slice(0, 8).map((source) => (
+                  <Button
+                    key={source.source}
+                    size="sm"
+                    variant={audienceSource === source.source ? "default" : "outline"}
+                    onClick={() => updateAudienceFilters({ source: source.source })}
+                  >
+                    {source.source}
+                  </Button>
+                ))}
+              </div>
+
+              <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
+                <div className="h-72 rounded border p-3">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={summary.audienceReporting.trend}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                      <Tooltip />
+                      <Area
+                        type="monotone"
+                        dataKey="newSubscribers"
+                        name="New"
+                        stroke="#2563eb"
+                        fill="#93c5fd"
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="verifiedSubscribers"
+                        name="Verified"
+                        stroke="#16a34a"
+                        fill="#86efac"
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="unsubscribes"
+                        name="Unsubscribes"
+                        stroke="#dc2626"
+                        fill="#fecaca"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="h-72 rounded border p-3">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={summary.audienceReporting.trend}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                      <Tooltip />
+                      <Bar dataKey="bounces" name="Bounces" fill="#f97316" />
+                      <Bar dataKey="spamComplaints" name="Spam" fill="#dc2626" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="text-muted-foreground border-b">
+                    <tr>
+                      <th className="py-2">Source</th>
+                      <th className="py-2">New</th>
+                      <th className="py-2">Verified</th>
+                      <th className="py-2">Unsubscribed</th>
+                      <th className="py-2">Net</th>
+                      <th className="py-2">Active</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {summary.audienceReporting.sourceSegments.map((source) => (
+                      <tr key={source.source} className="border-b">
+                        <td className="py-3">{source.source}</td>
+                        <td className="py-3">{source.newSubscribers}</td>
+                        <td className="py-3">{source.verifiedSubscribers}</td>
+                        <td className="py-3">{source.unsubscribes}</td>
+                        <td className="py-3">{source.netGrowth}</td>
+                        <td className="py-3">{source.activeSubscriberCount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium">Campaign influence</h3>
+                {summary.audienceReporting.campaignInfluence.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    No campaign influence data for this range.
+                  </p>
+                ) : (
+                  summary.audienceReporting.campaignInfluence.map((campaign) => (
+                    <div
+                      key={campaign.campaignId}
+                      className="grid gap-2 rounded border p-3 text-sm md:grid-cols-[1fr_repeat(4,auto)]"
+                    >
+                      <span className="truncate">{campaign.subject}</span>
+                      <span>{campaign.sourceSystem}</span>
+                      <span>Delivered {campaign.delivered}</span>
+                      <span>Clicked {campaign.clicked}</span>
+                      <span>Unsub {campaign.unsubscribed}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
         ) : null}
 
         <Card>

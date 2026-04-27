@@ -12,6 +12,8 @@ export async function GET(request: Request) {
       campaignDateRange: url.searchParams.get("campaignDateRange") || undefined,
       campaignPage: Number(url.searchParams.get("campaignPage") || "1"),
       campaignPageSize: Number(url.searchParams.get("campaignPageSize") || "10"),
+      audienceDateRange: url.searchParams.get("audienceDateRange") || undefined,
+      audienceSource: url.searchParams.get("audienceSource") || undefined,
     });
     return NextResponse.json(summary);
   } catch (error) {

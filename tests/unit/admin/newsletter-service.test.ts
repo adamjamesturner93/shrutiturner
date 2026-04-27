@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const newsletterSubscriberCountMock = vi.fn();
 const newsletterSubscriberGroupByMock = vi.fn();
+const newsletterSubscriberFindManyMock = vi.fn();
+const emailEventFindManyMock = vi.fn();
 const emailCampaignCountMock = vi.fn();
 const emailCampaignFindManyMock = vi.fn();
 
@@ -10,6 +12,10 @@ vi.mock("@/lib/db", () => ({
     newsletterSubscriber: {
       count: newsletterSubscriberCountMock,
       groupBy: newsletterSubscriberGroupByMock,
+      findMany: newsletterSubscriberFindManyMock,
+    },
+    emailEvent: {
+      findMany: emailEventFindManyMock,
     },
     emailCampaign: {
       count: emailCampaignCountMock,
@@ -36,6 +42,19 @@ describe("admin newsletter reporting service", () => {
     vi.setSystemTime(new Date("2026-04-27T12:00:00.000Z"));
     newsletterSubscriberCountMock.mockResolvedValue(0);
     newsletterSubscriberGroupByMock.mockResolvedValue([]);
+    newsletterSubscriberFindManyMock.mockResolvedValue([
+      {
+        status: "subscribed",
+        source: "landing-page",
+        createdAt: new Date("2026-04-26T08:00:00.000Z"),
+        verifiedAt: new Date("2026-04-26T08:05:00.000Z"),
+        unsubscribedAt: null,
+      },
+    ]);
+    emailEventFindManyMock.mockResolvedValue([
+      { type: "Bounce", eventAt: new Date("2026-04-26T09:00:00.000Z") },
+      { type: "SpamComplaint", eventAt: new Date("2026-04-26T09:05:00.000Z") },
+    ]);
     emailCampaignCountMock.mockResolvedValue(1);
     emailCampaignFindManyMock.mockResolvedValue([
       {
@@ -73,6 +92,8 @@ describe("admin newsletter reporting service", () => {
       campaignDateRange: "7d",
       campaignPage: 2,
       campaignPageSize: 10,
+      audienceDateRange: "7d",
+      audienceSource: "landing-page",
     });
 
     expect(emailCampaignFindManyMock).toHaveBeenCalledWith(
@@ -101,6 +122,19 @@ describe("admin newsletter reporting service", () => {
       bounceRate: 1,
       complaintRate: 1,
       unsubscribeRate: 1,
+    });
+    expect(summary.audienceReporting.source).toBe("landing-page");
+    expect(summary.audienceReporting.sourceSegments[0]).toMatchObject({
+      source: "landing-page",
+      newSubscribers: 1,
+      verifiedSubscribers: 1,
+      netGrowth: 1,
+    });
+    expect(summary.audienceReporting.trend.find((row) => row.date === "2026-04-26")).toMatchObject({
+      newSubscribers: 1,
+      verifiedSubscribers: 1,
+      bounces: 1,
+      spamComplaints: 1,
     });
   });
 });
