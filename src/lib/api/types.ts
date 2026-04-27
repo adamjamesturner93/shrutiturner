@@ -509,6 +509,26 @@ export type AdminDashboardSummaryDto = {
   }>;
 };
 
+export type AdminEmailDeliveryHealthDto = {
+  failedCount: number;
+  deadLetterCount: number;
+  retryQueuedCount: number;
+  nextRetryAt: string | null;
+  recentFailures: Array<{
+    id: string;
+    toEmail: string;
+    templateKey: string;
+    category: string;
+    subject: string;
+    status: "failed" | "dead_letter";
+    attemptCount: number;
+    maxAttempts: number;
+    nextRetryAt: string | null;
+    lastError: string | null;
+    updatedAt: string;
+  }>;
+};
+
 export type ClassSessionListItemDto = {
   id: string;
   classDefinitionSlug: string;
