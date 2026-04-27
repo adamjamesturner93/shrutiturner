@@ -9,7 +9,7 @@ vi.mock("@/lib/postmark/client", () => ({
   sendPostmarkReactEmail: sendPostmarkReactEmailMock,
 }));
 
-const { createBlogComment, getBlogEngagement, toggleBlogReaction } =
+const { createBlogComment, getBlogEngagement, sanitizeBlogCommentContent, toggleBlogReaction } =
   await import("@/lib/blog/engagement-service");
 
 describe("blog public engagement integration", () => {
@@ -49,6 +49,25 @@ describe("blog public engagement integration", () => {
     expect(engagement.comments).toHaveLength(1);
     expect(engagement.comments[0]?.replies).toHaveLength(1);
     expect(sendPostmarkReactEmailMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("sanitises comment content before persistence and notifications", async () => {
+    const postSlug = createBlogPostSlug(TEST_SCOPE, "sanitize");
+    const author = await createBlogUser(TEST_SCOPE, "sanitize");
+
+    const comment = await createBlogComment({
+      postSlug,
+      userId: author.id,
+      content: "  Helpful <strong>comment</strong><script>alert('x')</script>\n\n  ",
+    });
+
+    expect(comment.content).toBe("Helpful comment");
+    expect(sanitizeBlogCommentContent("<img src=x onerror=alert(1)>Nice")).toBe("Nice");
+    expect(sendPostmarkReactEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        textBody: expect.stringContaining("Helpful comment"),
+      })
+    );
   });
 
   it("rejects invalid reply targets and nested replies", async () => {

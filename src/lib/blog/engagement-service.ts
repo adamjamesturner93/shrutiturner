@@ -8,6 +8,17 @@ import BlogCommentNotificationEmail from "@/emails/blog-comment-notification";
 const COMMENT_MIN_LENGTH = 3;
 const COMMENT_MAX_LENGTH = 3000;
 
+export function sanitizeBlogCommentContent(rawContent: string) {
+  return rawContent
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{4,}/g, "\n\n\n")
+    .trim();
+}
+
 function toAuthorName(user: {
   firstName: string | null;
   lastName: string | null;
@@ -182,7 +193,7 @@ export async function createBlogComment(input: {
   content: string;
   parentId?: string | null;
 }) {
-  const content = input.content.trim();
+  const content = sanitizeBlogCommentContent(input.content);
   if (content.length < COMMENT_MIN_LENGTH) {
     throw new Error("COMMENT_TOO_SHORT");
   }

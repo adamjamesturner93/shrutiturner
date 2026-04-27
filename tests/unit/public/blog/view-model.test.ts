@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { blogAuthors, blogPosts } from "@/data/blog-data";
 import {
   formatAuthorList,
+  getBlogPostContextualCta,
   getAuthorLabel,
   getPostAuthors,
   getRelatedPosts,
@@ -56,5 +57,10 @@ describe("blog view model helpers", () => {
     expect(related.every((post) => post.tags.some((tag) => blogPosts[0]!.tags.includes(tag)))).toBe(
       true
     );
+  });
+
+  it("selects contextual article CTAs from post topics", () => {
+    expect(getBlogPostContextualCta(blogPosts[0]!).href).toBe("/coaching");
+    expect(getBlogPostContextualCta(blogPosts[1]!).href).toBe("/classes");
   });
 });
