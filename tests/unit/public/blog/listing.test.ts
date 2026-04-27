@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { blogPosts } from "@/data/blog-data";
-import { filterAndSortPosts, resolveSelectedTag } from "@/lib/blog/listing";
+import { filterAndSortPosts, paginatePosts, resolveSelectedTag } from "@/lib/blog/listing";
 
 describe("blog listing helpers", () => {
   const allTags = Array.from(new Set(blogPosts.flatMap((post) => post.tags))).sort();
@@ -15,7 +15,10 @@ describe("blog listing helpers", () => {
 
   it("sorts posts newest first", () => {
     const posts = filterAndSortPosts(blogPosts, "all", "newest");
-    expect(posts[0]?.date >= posts[1]?.date!).toBe(true);
+    expect(posts).toHaveLength(blogPosts.length);
+    expect(new Date(posts[0].date).getTime()).toBeGreaterThanOrEqual(
+      new Date(posts[1].date).getTime()
+    );
   });
 
   it("sorts posts alphabetically", () => {
@@ -27,5 +30,25 @@ describe("blog listing helpers", () => {
     const posts = filterAndSortPosts(blogPosts, "Yoga", "newest");
     expect(posts).toHaveLength(1);
     expect(posts[0]?.id).toBe("adaptive-yoga-vs-mainstream");
+  });
+
+  it("searches posts by title, excerpt, content, or tag", () => {
+    const posts = filterAndSortPosts(blogPosts, "all", "newest", "hypermobility");
+    expect(posts.length).toBeGreaterThan(0);
+    expect(
+      posts.every((post) =>
+        [post.title, post.excerpt, post.content, ...post.tags]
+          .join(" ")
+          .toLowerCase()
+          .includes("hypermobility")
+      )
+    ).toBe(true);
+  });
+
+  it("paginates posts with a bounded current page", () => {
+    const result = paginatePosts(blogPosts, 99, 2);
+    expect(result.currentPage).toBe(result.totalPages);
+    expect(result.items.length).toBeGreaterThan(0);
+    expect(result.items.length).toBeLessThanOrEqual(2);
   });
 });

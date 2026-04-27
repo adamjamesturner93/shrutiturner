@@ -20,7 +20,7 @@ test("blog sorting can switch to alphabetical order", async ({ page }) => {
   await page.getByRole("combobox").click();
   await page.getByRole("option", { name: "A-Z" }).click();
 
-  await expect(page.locator("article h3").first()).toContainText(
+  await expect(page.locator("article").first().getByRole("heading")).toContainText(
     "Building Training Capacity When You Start From Zero"
   );
 });
@@ -127,14 +127,20 @@ test("authenticated readers can post a comment and a reply", async ({ page }) =>
   await page.goto("/blog/strength-training-chronic-illness");
 
   await page.getByPlaceholder("Add your thoughts...").fill(commentText);
+  const commentResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/blog/strength-training-chronic-illness/comments") &&
+      response.request().method() === "POST"
+  );
   await page.getByRole("button", { name: "Post comment" }).click();
+  await commentResponse;
 
   const discussion = page
     .locator("section")
     .filter({ has: page.getByRole("heading", { name: "Discussion" }) })
     .first();
   const topLevelComment = discussion.locator("div.group").filter({ hasText: commentText }).first();
-  await expect(topLevelComment).toBeVisible();
+  await expect(topLevelComment).toBeVisible({ timeout: 15000 });
   await topLevelComment.getByRole("button", { name: "Reply" }).click();
 
   await topLevelComment.getByPlaceholder("Write your reply...").fill(replyText);
