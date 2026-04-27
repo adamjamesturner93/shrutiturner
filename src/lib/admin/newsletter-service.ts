@@ -36,11 +36,17 @@ export type AdminNewsletterCampaignSummaryDto = {
   bounced: number;
   spamComplaints: number;
   unsubscribed: number;
+  failedSends: number;
+  deliveryRate: number;
   openRate: number;
   clickRate: number;
   clickToOpenRate: number;
+  unsubscribeRate: number;
+  bounceRate: number;
+  complaintRate: number;
   audienceType?: string | null;
   triggeredBy?: string | null;
+  sourceSystem: string;
 };
 
 export type AdminNewsletterCampaignDetailDto = AdminNewsletterCampaignSummaryDto & {
@@ -68,6 +74,12 @@ export type AdminNewsletterSummaryDto = {
     unsubscribed: number;
   }>;
   campaigns: AdminNewsletterCampaignSummaryDto[];
+  campaignsPagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
 };
 
 function toSubscriptionType(marketingSubscribed: boolean): SubscriptionType {
@@ -77,6 +89,51 @@ function toSubscriptionType(marketingSubscribed: boolean): SubscriptionType {
 function toPercent(value: number, total: number) {
   if (total <= 0) return 0;
   return Math.round((value / total) * 1000) / 10;
+}
+
+function getCampaignSourceSystem(campaign: {
+  contentfulEntryId: string | null;
+  triggeredBy: string | null;
+}) {
+  if (campaign.contentfulEntryId || campaign.triggeredBy === "contentful_publish") {
+    return "Contentful";
+  }
+  if (campaign.triggeredBy) return campaign.triggeredBy.replaceAll("_", " ");
+  return "Manual";
+}
+
+function getCampaignRangeStart(range: string | undefined) {
+  if (range === "7d") return new Date(Date.now() - 7 * 86400000);
+  if (range === "90d") return new Date(Date.now() - 90 * 86400000);
+  if (range === "all") return null;
+  return new Date(Date.now() - 30 * 86400000);
+}
+
+function buildCampaignWhere(params: {
+  status?: string;
+  dateRange?: string;
+}): Prisma.EmailCampaignWhereInput {
+  const where: Prisma.EmailCampaignWhereInput = {};
+  if (
+    params.status === "sent" ||
+    params.status === "scheduled" ||
+    params.status === "sending" ||
+    params.status === "failed" ||
+    params.status === "failed_partial"
+  ) {
+    where.status = params.status;
+  }
+
+  const rangeStart = getCampaignRangeStart(params.dateRange);
+  if (rangeStart) {
+    where.OR = [
+      { sentAt: { gte: rangeStart } },
+      { scheduledAt: { gte: rangeStart } },
+      { createdAt: { gte: rangeStart } },
+    ];
+  }
+
+  return where;
 }
 
 export async function getSubscriberSegmentSummary(): Promise<AdminSubscriberSegmentSummaryDto> {
@@ -352,14 +409,28 @@ function aggregateCampaignRows(
   };
 }
 
-export async function getAdminNewsletterSummary(): Promise<AdminNewsletterSummaryDto> {
+export async function getAdminNewsletterSummary(
+  params: {
+    campaignStatus?: string;
+    campaignDateRange?: string;
+    campaignPage?: number;
+    campaignPageSize?: number;
+  } = {}
+): Promise<AdminNewsletterSummaryDto> {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
+  const campaignPage = Math.max(1, params.campaignPage || 1);
+  const campaignPageSize = Math.min(50, Math.max(1, params.campaignPageSize || 10));
+  const campaignWhere = buildCampaignWhere({
+    status: params.campaignStatus,
+    dateRange: params.campaignDateRange,
+  });
   const [
     segments,
     subscriberUnsubscribes30d,
     newSubscribers30d,
     verifiedSubscribers30d,
     sourceRows,
+    campaignTotal,
     campaigns,
   ] = await Promise.all([
     getSubscriberSegmentSummary(),
@@ -383,9 +454,12 @@ export async function getAdminNewsletterSummary(): Promise<AdminNewsletterSummar
       by: ["source", "status"],
       _count: { _all: true },
     }),
+    db.emailCampaign.count({ where: campaignWhere }),
     db.emailCampaign.findMany({
+      where: campaignWhere,
       orderBy: [{ sentAt: "desc" }, { createdAt: "desc" }],
-      take: 25,
+      skip: (campaignPage - 1) * campaignPageSize,
+      take: campaignPageSize,
       include: {
         emailEvents: {
           select: { type: true, metadataJson: true },
@@ -422,6 +496,8 @@ export async function getAdminNewsletterSummary(): Promise<AdminNewsletterSummar
       agg.delivered + agg.bounced,
       agg.delivered
     );
+    const deliveredOrTotal = Math.max(totalRecipients, 1);
+    const delivered = Math.max(agg.delivered, campaign.sentCount - campaign.failedCount, 0);
     return {
       id: campaign.id,
       providerCampaignId: campaign.providerCampaignId,
@@ -435,17 +511,23 @@ export async function getAdminNewsletterSummary(): Promise<AdminNewsletterSummar
           : "sent",
       sentDate: (campaign.sentAt || campaign.scheduledAt || campaign.createdAt).toISOString(),
       totalRecipients,
-      delivered: agg.delivered,
+      delivered,
       opened: agg.opened,
       clicked: agg.clicked,
       bounced: agg.bounced,
       spamComplaints: agg.spamComplaints,
       unsubscribed: agg.unsubscribed,
-      openRate: toPercent(agg.opened, Math.max(agg.delivered, 1)),
-      clickRate: toPercent(agg.clicked, Math.max(agg.delivered, 1)),
+      failedSends: campaign.failedCount,
+      deliveryRate: toPercent(delivered, deliveredOrTotal),
+      openRate: toPercent(agg.opened, Math.max(delivered, 1)),
+      clickRate: toPercent(agg.clicked, Math.max(delivered, 1)),
       clickToOpenRate: toPercent(agg.clicked, Math.max(agg.opened, 1)),
+      unsubscribeRate: toPercent(agg.unsubscribed, deliveredOrTotal),
+      bounceRate: toPercent(agg.bounced, deliveredOrTotal),
+      complaintRate: toPercent(agg.spamComplaints, deliveredOrTotal),
       audienceType: campaign.audienceType || null,
       triggeredBy: campaign.triggeredBy || null,
+      sourceSystem: getCampaignSourceSystem(campaign),
     };
   });
 
@@ -463,6 +545,12 @@ export async function getAdminNewsletterSummary(): Promise<AdminNewsletterSummar
     },
     sourceAttribution: Array.from(sourceMap.values()).sort((a, b) => b.total - a.total),
     campaigns: campaignDtos,
+    campaignsPagination: {
+      page: campaignPage,
+      pageSize: campaignPageSize,
+      total: campaignTotal,
+      totalPages: Math.max(1, Math.ceil(campaignTotal / campaignPageSize)),
+    },
   };
 }
 
@@ -501,6 +589,8 @@ export async function getAdminNewsletterCampaign(
     agg.delivered + agg.bounced,
     agg.delivered
   );
+  const delivered = Math.max(agg.delivered, campaign.sentCount - campaign.failedCount, 0);
+  const deliveredOrTotal = Math.max(totalRecipients, 1);
 
   return {
     id: campaign.id,
@@ -515,17 +605,23 @@ export async function getAdminNewsletterCampaign(
         : "sent",
     sentDate: (campaign.sentAt || campaign.scheduledAt || campaign.createdAt).toISOString(),
     totalRecipients,
-    delivered: agg.delivered,
+    delivered,
     opened: agg.opened,
     clicked: agg.clicked,
     bounced: agg.bounced,
     spamComplaints: agg.spamComplaints,
     unsubscribed: agg.unsubscribed,
-    openRate: toPercent(agg.opened, Math.max(agg.delivered, 1)),
-    clickRate: toPercent(agg.clicked, Math.max(agg.delivered, 1)),
+    failedSends: campaign.failedCount,
+    deliveryRate: toPercent(delivered, deliveredOrTotal),
+    openRate: toPercent(agg.opened, Math.max(delivered, 1)),
+    clickRate: toPercent(agg.clicked, Math.max(delivered, 1)),
     clickToOpenRate: toPercent(agg.clicked, Math.max(agg.opened, 1)),
+    unsubscribeRate: toPercent(agg.unsubscribed, deliveredOrTotal),
+    bounceRate: toPercent(agg.bounced, deliveredOrTotal),
+    complaintRate: toPercent(agg.spamComplaints, deliveredOrTotal),
     audienceType: campaign.audienceType || null,
     triggeredBy: campaign.triggeredBy || null,
+    sourceSystem: getCampaignSourceSystem(campaign),
     topLinks: agg.topLinks,
     eventTimeline: Array.from(eventTimelineByDate.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))

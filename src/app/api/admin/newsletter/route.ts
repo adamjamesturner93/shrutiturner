@@ -2,11 +2,17 @@ import { connection, NextResponse } from "next/server";
 import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { getAdminNewsletterSummary } from "@/lib/admin/newsletter-service";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await connection();
     await requireStaffAdminUser();
-    const summary = await getAdminNewsletterSummary();
+    const url = new URL(request.url);
+    const summary = await getAdminNewsletterSummary({
+      campaignStatus: url.searchParams.get("campaignStatus") || undefined,
+      campaignDateRange: url.searchParams.get("campaignDateRange") || undefined,
+      campaignPage: Number(url.searchParams.get("campaignPage") || "1"),
+      campaignPageSize: Number(url.searchParams.get("campaignPageSize") || "10"),
+    });
     return NextResponse.json(summary);
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {

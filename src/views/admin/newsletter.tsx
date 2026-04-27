@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Filter, RefreshCcw, Search } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Filter, RefreshCcw, Search } from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,11 +23,17 @@ type CampaignSummary = {
   bounced: number;
   spamComplaints: number;
   unsubscribed: number;
+  failedSends: number;
+  deliveryRate: number;
   openRate: number;
   clickRate: number;
   clickToOpenRate: number;
+  unsubscribeRate: number;
+  bounceRate: number;
+  complaintRate: number;
   audienceType?: string | null;
   triggeredBy?: string | null;
+  sourceSystem: string;
 };
 
 type NewsletterSummary = {
@@ -50,6 +56,12 @@ type NewsletterSummary = {
     unsubscribed: number;
   }>;
   campaigns: CampaignSummary[];
+  campaignsPagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
 };
 
 type SubscriberRow = {
@@ -74,6 +86,22 @@ type SubscribersResponse = {
 
 const FILTERS = ["all", "subscribed", "unsubscribed"] as const;
 type FilterType = (typeof FILTERS)[number];
+const CAMPAIGN_STATUSES = [
+  "all",
+  "sent",
+  "scheduled",
+  "sending",
+  "failed",
+  "failed_partial",
+] as const;
+type CampaignStatusFilter = (typeof CAMPAIGN_STATUSES)[number];
+const CAMPAIGN_RANGES = [
+  { value: "7d", label: "7d" },
+  { value: "30d", label: "30d" },
+  { value: "90d", label: "90d" },
+  { value: "all", label: "All" },
+] as const;
+type CampaignDateRange = (typeof CAMPAIGN_RANGES)[number]["value"];
 
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("en-GB", {
@@ -91,11 +119,29 @@ export function AdminNewsletter() {
   const [filter, setFilter] = useState<FilterType>("all");
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [campaignStatus, setCampaignStatus] = useState<CampaignStatusFilter>("all");
+  const [campaignDateRange, setCampaignDateRange] = useState<CampaignDateRange>("30d");
+  const [campaignPage, setCampaignPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  const refreshSummary = async () => {
-    const response = await fetch("/api/admin/newsletter", { cache: "no-store" });
+  const refreshSummary = async (options?: {
+    status?: CampaignStatusFilter;
+    range?: CampaignDateRange;
+    page?: number;
+  }) => {
+    const status = options?.status || campaignStatus;
+    const range = options?.range || campaignDateRange;
+    const page = options?.page || campaignPage;
+    const query = new URLSearchParams({
+      campaignStatus: status,
+      campaignDateRange: range,
+      campaignPage: String(page),
+      campaignPageSize: "10",
+    });
+    const response = await fetch(`/api/admin/newsletter?${query.toString()}`, {
+      cache: "no-store",
+    });
     if (!response.ok) return;
     setSummary((await response.json()) as NewsletterSummary);
   };
@@ -119,7 +165,10 @@ export function AdminNewsletter() {
       try {
         setLoading(true);
         const [summaryResponse, subscribersResponse] = await Promise.all([
-          fetch("/api/admin/newsletter", { cache: "no-store" }),
+          fetch(
+            "/api/admin/newsletter?campaignStatus=all&campaignDateRange=30d&campaignPage=1&campaignPageSize=10",
+            { cache: "no-store" }
+          ),
           fetch("/api/admin/newsletter/subscribers?type=all&page=1&pageSize=50", {
             cache: "no-store",
           }),
@@ -159,6 +208,28 @@ export function AdminNewsletter() {
   };
 
   const campaigns = useMemo(() => summary?.campaigns || [], [summary]);
+  const campaignPagination = summary?.campaignsPagination;
+
+  const updateCampaignFilters = (next: {
+    status?: CampaignStatusFilter;
+    range?: CampaignDateRange;
+    page?: number;
+  }) => {
+    const nextStatus = next.status || campaignStatus;
+    const nextRange = next.range || campaignDateRange;
+    const nextPage = next.page || 1;
+    setCampaignStatus(nextStatus);
+    setCampaignDateRange(nextRange);
+    setCampaignPage(nextPage);
+    void refreshSummary({ status: nextStatus, range: nextRange, page: nextPage });
+  };
+
+  const campaignNeedsAttention = (campaign: CampaignSummary) =>
+    campaign.status === "failed" ||
+    campaign.status === "failed_partial" ||
+    campaign.failedSends > 0 ||
+    campaign.bounceRate >= 5 ||
+    campaign.complaintRate > 0;
 
   return (
     <AdminLayout title="Newsletter Analytics - Admin">
@@ -344,40 +415,112 @@ export function AdminNewsletter() {
 
         <Card>
           <CardContent className="space-y-3 pt-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg">Recent campaigns</h2>
-              <Link href="/admin/newsletter">
-                <Button variant="ghost" size="sm">
-                  View detail
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <h2 className="text-lg">Campaign reporting</h2>
+                <p className="text-muted-foreground text-sm">
+                  Delivered, opened, clicked, bounced, unsubscribed, and complaint outcomes.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {CAMPAIGN_RANGES.map((range) => (
+                  <Button
+                    key={range.value}
+                    size="sm"
+                    variant={campaignDateRange === range.value ? "default" : "outline"}
+                    onClick={() => updateCampaignFilters({ range: range.value })}
+                  >
+                    {range.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {CAMPAIGN_STATUSES.map((status) => (
+                <Button
+                  key={status}
+                  size="sm"
+                  variant={campaignStatus === status ? "default" : "outline"}
+                  onClick={() => updateCampaignFilters({ status })}
+                >
+                  {status.replace("_", " ")}
                 </Button>
-              </Link>
+              ))}
             </div>
 
             {campaigns.length === 0 ? (
               <p className="text-muted-foreground text-sm">No campaign data available yet.</p>
             ) : (
-              campaigns.slice(0, 8).map((campaign) => (
+              campaigns.map((campaign) => (
                 <Link
                   key={campaign.id}
                   href={`/admin/newsletter/${campaign.id}`}
-                  className="hover:bg-secondary/40 block rounded-lg border p-4 transition-colors"
+                  className={`hover:bg-secondary/40 block rounded-lg border p-4 transition-colors ${
+                    campaignNeedsAttention(campaign) ? "border-red-300 bg-red-50/60" : ""
+                  }`}
                 >
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <p>{campaign.subject}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p>{campaign.subject}</p>
+                        {campaignNeedsAttention(campaign) ? (
+                          <Badge variant="destructive" className="gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Attention
+                          </Badge>
+                        ) : null}
+                      </div>
                       <p className="text-muted-foreground mt-1 text-xs">
                         {formatDateTime(campaign.sentDate)} · {campaign.totalRecipients} recipients
+                        · {campaign.sourceSystem}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2 text-xs">
                       <Badge variant="outline">{campaign.status}</Badge>
+                      <Badge variant="outline">Delivered {campaign.delivered}</Badge>
                       <Badge variant="outline">Open {campaign.openRate}%</Badge>
                       <Badge variant="outline">Click {campaign.clickRate}%</Badge>
+                      <Badge variant={campaign.bounceRate >= 5 ? "destructive" : "outline"}>
+                        Bounce {campaign.bounceRate}%
+                      </Badge>
+                      <Badge variant={campaign.complaintRate > 0 ? "destructive" : "outline"}>
+                        Spam {campaign.spamComplaints}
+                      </Badge>
+                      <Badge variant="outline">Unsub {campaign.unsubscribeRate}%</Badge>
                     </div>
                   </div>
                 </Link>
               ))
             )}
+            {campaignPagination ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                <p className="text-muted-foreground text-sm">
+                  Page {campaignPagination.page} of {campaignPagination.totalPages} ·{" "}
+                  {campaignPagination.total} campaigns
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={campaignPagination.page <= 1}
+                    onClick={() => updateCampaignFilters({ page: campaignPagination.page - 1 })}
+                  >
+                    <ChevronLeft className="mr-1 h-4 w-4" />
+                    Previous
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={campaignPagination.page >= campaignPagination.totalPages}
+                    onClick={() => updateCampaignFilters({ page: campaignPagination.page + 1 })}
+                  >
+                    Next
+                    <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </div>

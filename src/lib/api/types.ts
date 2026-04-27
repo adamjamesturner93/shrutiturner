@@ -644,11 +644,17 @@ export type AdminNewsletterCampaignDetailDto = {
   bounced: number;
   spamComplaints: number;
   unsubscribed: number;
+  failedSends: number;
+  deliveryRate: number;
   openRate: number;
   clickRate: number;
   clickToOpenRate: number;
+  unsubscribeRate: number;
+  bounceRate: number;
+  complaintRate: number;
   audienceType?: string | null;
   triggeredBy?: string | null;
+  sourceSystem: string;
   topLinks: Array<{ url: string; clicks: number }>;
   eventTimeline: Array<{ date: string; opened: number; clicked: number; bounced: number }>;
 };
