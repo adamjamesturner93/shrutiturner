@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { JsonLd } from "@/components/json-ld";
 import { RetreatDetailPage } from "@/views/retreat-detail";
 import { buildSeoMetadata } from "@/lib/content/metadata";
 import { getRetreatsCombined } from "@/lib/content";
 import { getOperationalRetreatBySlug } from "@/lib/retreats/service";
+import { createBreadcrumbListSchema, createRetreatEventSchema } from "@/lib/seo/structured-data";
 
 export async function generateMetadata({
   params,
@@ -43,5 +45,21 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       })
     : [];
 
-  return <RetreatDetailPage retreat={retreat} otherRetreatsAtVenue={otherRetreatsAtVenue} />;
+  return (
+    <>
+      {retreat ? (
+        <JsonLd
+          data={[
+            createRetreatEventSchema(retreat),
+            createBreadcrumbListSchema([
+              { name: "Home", path: "/" },
+              { name: "Retreats", path: "/retreats" },
+              { name: retreat.title, path: `/retreats/${retreat.slug}` },
+            ]),
+          ]}
+        />
+      ) : null}
+      <RetreatDetailPage retreat={retreat} otherRetreatsAtVenue={otherRetreatsAtVenue} />
+    </>
+  );
 }

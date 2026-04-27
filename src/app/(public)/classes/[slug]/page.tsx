@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { JsonLd } from "@/components/json-ld";
 import { ClassDetailPage } from "@/views/class-detail";
 import { buildSeoMetadata } from "@/lib/content/metadata";
 import { getClassDefinitionBySlug, getClassDefinitions } from "@/lib/content";
+import { createBreadcrumbListSchema, createClassCourseSchema } from "@/lib/seo/structured-data";
 
 export async function generateMetadata({
   params,
@@ -30,5 +32,21 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     getClassDefinitions(),
   ]);
 
-  return <ClassDetailPage classDetail={classDetail} allClasses={allClasses} />;
+  return (
+    <>
+      {classDetail ? (
+        <JsonLd
+          data={[
+            createClassCourseSchema(classDetail),
+            createBreadcrumbListSchema([
+              { name: "Home", path: "/" },
+              { name: "Classes", path: "/classes" },
+              { name: classDetail.name, path: `/classes/${classDetail.slug}` },
+            ]),
+          ]}
+        />
+      ) : null}
+      <ClassDetailPage classDetail={classDetail} allClasses={allClasses} />
+    </>
+  );
 }

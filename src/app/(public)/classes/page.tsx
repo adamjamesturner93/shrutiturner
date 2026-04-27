@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { JsonLd } from "@/components/json-ld";
 import { ClassesHubPage } from "@/views/classes-hub";
 import { buildPageMetadata } from "@/lib/content/metadata";
 import { getClassDefinitions } from "@/lib/content";
 import type { ClassDefinitionContent } from "@/lib/content";
+import {
+  createClassesItemListSchema,
+  createServiceSchema,
+  createWebPageSchema,
+} from "@/lib/seo/structured-data";
 import { listPublicThemedWeeks } from "@/lib/themed-weeks/service";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -46,10 +52,28 @@ export default async function Page() {
   );
 
   return (
-    <ClassesHubPage
-      yogaClasses={yogaClasses}
-      strengthClasses={strengthClasses}
-      themedWeeks={themedWeeks}
-    />
+    <>
+      <JsonLd
+        data={[
+          createWebPageSchema({
+            name: "Move Well Classes",
+            path: "/classes",
+            description: "Online yoga and strength classes for complex bodies.",
+          }),
+          createServiceSchema({
+            name: "Move Well Classes",
+            path: "/classes",
+            description: "Live online yoga and strength sessions designed for complex bodies.",
+            serviceType: "Online fitness classes",
+          }),
+          createClassesItemListSchema([...yogaClasses, ...strengthClasses]),
+        ]}
+      />
+      <ClassesHubPage
+        yogaClasses={yogaClasses}
+        strengthClasses={strengthClasses}
+        themedWeeks={themedWeeks}
+      />
+    </>
   );
 }
