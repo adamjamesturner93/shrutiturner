@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ClassDetailPage } from "@/views/class-detail";
+import { buildSeoMetadata } from "@/lib/content/metadata";
 import { getClassDefinitionBySlug, getClassDefinitions } from "@/lib/content";
 
 export async function generateMetadata({
@@ -11,16 +12,15 @@ export async function generateMetadata({
   const cls = await getClassDefinitionBySlug(slug);
 
   if (!cls) {
-    return { title: "Class Not Found" };
+    return buildSeoMetadata({ title: "Class Not Found", path: `/classes/${slug}`, noIndex: true });
   }
 
-  return {
+  return buildSeoMetadata({
     title: cls.seoTitle || cls.name,
     description: cls.seoDescription || cls.shortDescription,
-    alternates: {
-      canonical: `/classes/${cls.slug}`,
-    },
-  };
+    keywords: cls.seoKeywords,
+    path: `/classes/${cls.slug}`,
+  });
 }
 
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
