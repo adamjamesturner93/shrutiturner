@@ -143,6 +143,7 @@ const CAMPAIGN_RANGES = [
   { value: "30d", label: "30d" },
   { value: "90d", label: "90d" },
   { value: "all", label: "All" },
+  { value: "custom", label: "Custom" },
 ] as const;
 type CampaignDateRange = (typeof CAMPAIGN_RANGES)[number]["value"];
 
@@ -167,6 +168,8 @@ export function AdminNewsletter() {
   const [campaignPage, setCampaignPage] = useState(1);
   const [audienceDateRange, setAudienceDateRange] = useState<CampaignDateRange>("30d");
   const [audienceSource, setAudienceSource] = useState("all");
+  const [audienceStart, setAudienceStart] = useState("");
+  const [audienceEnd, setAudienceEnd] = useState("");
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
@@ -176,12 +179,16 @@ export function AdminNewsletter() {
     page?: number;
     audienceRange?: CampaignDateRange;
     source?: string;
+    audienceStart?: string;
+    audienceEnd?: string;
   }) => {
     const status = options?.status || campaignStatus;
     const range = options?.range || campaignDateRange;
     const page = options?.page || campaignPage;
     const nextAudienceRange = options?.audienceRange || audienceDateRange;
     const source = options?.source || audienceSource;
+    const start = options?.audienceStart ?? audienceStart;
+    const end = options?.audienceEnd ?? audienceEnd;
     const query = new URLSearchParams({
       campaignStatus: status,
       campaignDateRange: range,
@@ -190,6 +197,10 @@ export function AdminNewsletter() {
       audienceDateRange: nextAudienceRange,
       audienceSource: source,
     });
+    if (nextAudienceRange === "custom") {
+      if (start) query.set("audienceStart", start);
+      if (end) query.set("audienceEnd", end);
+    }
     const response = await fetch(`/api/admin/newsletter?${query.toString()}`, {
       cache: "no-store",
     });
@@ -275,12 +286,26 @@ export function AdminNewsletter() {
     void refreshSummary({ status: nextStatus, range: nextRange, page: nextPage });
   };
 
-  const updateAudienceFilters = (next: { range?: CampaignDateRange; source?: string }) => {
+  const updateAudienceFilters = (next: {
+    range?: CampaignDateRange;
+    source?: string;
+    start?: string;
+    end?: string;
+  }) => {
     const nextRange = next.range || audienceDateRange;
     const nextSource = next.source || audienceSource;
+    const nextStart = next.start ?? audienceStart;
+    const nextEnd = next.end ?? audienceEnd;
     setAudienceDateRange(nextRange);
     setAudienceSource(nextSource);
-    void refreshSummary({ audienceRange: nextRange, source: nextSource });
+    setAudienceStart(nextStart);
+    setAudienceEnd(nextEnd);
+    void refreshSummary({
+      audienceRange: nextRange,
+      source: nextSource,
+      audienceStart: nextStart,
+      audienceEnd: nextEnd,
+    });
   };
 
   const campaignNeedsAttention = (campaign: CampaignSummary) =>
@@ -637,6 +662,35 @@ export function AdminNewsletter() {
                 ))}
               </div>
             </div>
+
+            {audienceDateRange === "custom" ? (
+              <div className="grid gap-3 md:grid-cols-[minmax(0,12rem)_minmax(0,12rem)_auto]">
+                <Input
+                  type="date"
+                  value={audienceStart}
+                  onChange={(event) => setAudienceStart(event.target.value)}
+                  aria-label="Audience report start date"
+                />
+                <Input
+                  type="date"
+                  value={audienceEnd}
+                  onChange={(event) => setAudienceEnd(event.target.value)}
+                  aria-label="Audience report end date"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    updateAudienceFilters({
+                      range: "custom",
+                      start: audienceStart,
+                      end: audienceEnd,
+                    })
+                  }
+                >
+                  Apply dates
+                </Button>
+              </div>
+            ) : null}
 
             <div className="flex flex-wrap gap-2">
               {CAMPAIGN_STATUSES.map((status) => (

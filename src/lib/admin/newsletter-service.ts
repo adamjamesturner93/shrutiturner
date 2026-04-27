@@ -141,6 +141,18 @@ function getCampaignRangeStart(range: string | undefined) {
   return new Date(Date.now() - 30 * 86400000);
 }
 
+function parseDateToken(value: string | undefined) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function parseDateTokenEnd(value: string | undefined) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const parsed = new Date(`${value}T23:59:59.999Z`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function toDateKey(value: Date) {
   return value.toISOString().slice(0, 10);
 }
@@ -488,11 +500,24 @@ export async function getAdminNewsletterSummary(
     campaignPageSize?: number;
     audienceDateRange?: string;
     audienceSource?: string;
+    audienceStart?: string;
+    audienceEnd?: string;
   } = {}
 ): Promise<AdminNewsletterSummaryDto> {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
-  const audienceRangeStart = getCampaignRangeStart(params.audienceDateRange);
-  const audienceRangeEnd = new Date();
+  const customAudienceStart =
+    params.audienceDateRange === "custom" ? parseDateToken(params.audienceStart) : null;
+  const customAudienceEnd =
+    params.audienceDateRange === "custom" ? parseDateTokenEnd(params.audienceEnd) : null;
+  const audienceRangeStart = customAudienceStart || getCampaignRangeStart(params.audienceDateRange);
+  const audienceRangeEnd = customAudienceEnd || new Date();
+  const audienceDateFilter: Prisma.DateTimeFilter | undefined =
+    audienceRangeStart || customAudienceEnd
+      ? {
+          gte: audienceRangeStart || undefined,
+          lte: customAudienceEnd ? audienceRangeEnd : undefined,
+        }
+      : undefined;
   const audienceSource = params.audienceSource?.trim() || "all";
   const audienceSourceWhere =
     audienceSource && audienceSource !== "all" ? { source: audienceSource } : {};
@@ -538,11 +563,11 @@ export async function getAdminNewsletterSummary(
     db.newsletterSubscriber.findMany({
       where: {
         ...audienceSourceWhere,
-        OR: audienceRangeStart
+        OR: audienceDateFilter
           ? [
-              { createdAt: { gte: audienceRangeStart } },
-              { verifiedAt: { gte: audienceRangeStart } },
-              { unsubscribedAt: { gte: audienceRangeStart } },
+              { createdAt: audienceDateFilter },
+              { verifiedAt: audienceDateFilter },
+              { unsubscribedAt: audienceDateFilter },
             ]
           : undefined,
       },
@@ -556,7 +581,7 @@ export async function getAdminNewsletterSummary(
     }),
     db.emailEvent.findMany({
       where: {
-        eventAt: audienceRangeStart ? { gte: audienceRangeStart } : undefined,
+        eventAt: audienceDateFilter,
         type: { in: ["Bounce", "bounce", "Bounced", "bounced", "SpamComplaint", "spamcomplaint"] },
       },
       select: {
