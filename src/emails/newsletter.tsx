@@ -8,6 +8,7 @@ interface NewsletterEmailProps {
   bodyContent?: string;
   signOffImageUrl?: string;
   signOffImageAlt?: string;
+  unsubscribeUrl?: string;
 }
 
 export default function NewsletterEmail({
@@ -16,6 +17,7 @@ export default function NewsletterEmail({
   bodyContent,
   signOffImageUrl = "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=520&h=400&fit=crop",
   signOffImageAlt = "Bonnie taking some time for recovery after her long and arduous playtime in the park!",
+  unsubscribeUrl,
 }: NewsletterEmailProps) {
   // Default body content matching the real newsletter style
   const defaultBody = [
@@ -26,7 +28,7 @@ export default function NewsletterEmail({
   ];
 
   return (
-    <EmailLayout preview={subject} category="marketing">
+    <EmailLayout preview={subject} category="marketing" unsubscribeUrl={unsubscribeUrl}>
       {/* Subject as serif heading */}
       <Text
         style={{

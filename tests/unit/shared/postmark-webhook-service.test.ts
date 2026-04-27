@@ -5,6 +5,9 @@ const emailDeliveryFindUniqueMock = vi.fn();
 const emailDeliveryFindFirstMock = vi.fn();
 const emailCampaignFindUniqueMock = vi.fn();
 const emailEventUpsertMock = vi.fn();
+const newsletterSubscriberFindUniqueMock = vi.fn();
+const newsletterSubscriberUpdateMock = vi.fn();
+const userNotificationPreferenceUpsertMock = vi.fn();
 
 vi.mock("@/lib/db", () => ({
   db: {
@@ -21,6 +24,13 @@ vi.mock("@/lib/db", () => ({
     emailEvent: {
       upsert: emailEventUpsertMock,
     },
+    newsletterSubscriber: {
+      findUnique: newsletterSubscriberFindUniqueMock,
+      update: newsletterSubscriberUpdateMock,
+    },
+    userNotificationPreference: {
+      upsert: userNotificationPreferenceUpsertMock,
+    },
   },
 }));
 
@@ -34,6 +44,9 @@ describe("ingestPostmarkEvent", () => {
     emailDeliveryFindFirstMock.mockResolvedValue(null);
     emailCampaignFindUniqueMock.mockResolvedValue(null);
     emailEventUpsertMock.mockResolvedValue(undefined);
+    newsletterSubscriberFindUniqueMock.mockResolvedValue(null);
+    newsletterSubscriberUpdateMock.mockResolvedValue(undefined);
+    userNotificationPreferenceUpsertMock.mockResolvedValue(undefined);
   });
 
   it("links events to a delivery via metadata and inherits the delivery campaign", async () => {
@@ -61,7 +74,7 @@ describe("ingestPostmarkEvent", () => {
         deliveryId: "delivery_123",
         campaignId: "campaign_123",
         messageId: "message_123",
-        type: "Delivered",
+        type: "delivered",
       }),
       update: expect.objectContaining({
         deliveryId: "delivery_123",
@@ -94,11 +107,53 @@ describe("ingestPostmarkEvent", () => {
         create: expect.objectContaining({
           deliveryId: "delivery_456",
           messageId: "message_456",
+          type: "opened",
         }),
         update: expect.objectContaining({
           deliveryId: "delivery_456",
         }),
       })
     );
+  });
+
+  it("suppresses subscribers when Postmark reports unsubscribe events", async () => {
+    newsletterSubscriberFindUniqueMock.mockResolvedValue({
+      id: "subscriber_123",
+      userId: "user_123",
+    });
+
+    await ingestPostmarkEvent({
+      ID: 1003,
+      RecordType: "SubscriptionChange",
+      MessageID: "message_789",
+      Recipient: "reader@example.com",
+      Metadata: {},
+    });
+
+    expect(emailEventUpsertMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          type: "unsubscribed",
+        }),
+      })
+    );
+    expect(newsletterSubscriberUpdateMock).toHaveBeenCalledWith({
+      where: { id: "subscriber_123" },
+      data: expect.objectContaining({
+        status: "unsubscribed",
+        verificationTokenHash: null,
+        verificationTokenExpiresAt: null,
+      }),
+    });
+    expect(userNotificationPreferenceUpsertMock).toHaveBeenCalledWith({
+      where: { userId: "user_123" },
+      create: expect.objectContaining({
+        userId: "user_123",
+        marketingEmails: false,
+      }),
+      update: {
+        marketingEmails: false,
+      },
+    });
   });
 });

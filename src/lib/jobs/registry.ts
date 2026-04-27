@@ -2,6 +2,7 @@ import { ScheduledJobTriggerType } from "@prisma/client";
 import { env } from "@/lib/env";
 import { cleanupScheduledJobRuntimeData } from "@/lib/jobs/runtime-maintenance";
 import { processTransactionalEmailRetries } from "@/lib/jobs/transactional-email";
+import { processDueContentfulCampaigns } from "@/lib/newsletter/campaign-automation";
 
 type JobHandlerResult = Record<string, unknown>;
 
@@ -34,6 +35,12 @@ const registry: RegisteredJob[] = [
     triggerTypes: [ScheduledJobTriggerType.cron, ScheduledJobTriggerType.manual],
     previewSafe: true,
     run: () => processTransactionalEmailRetries(),
+  },
+  {
+    jobName: "contentful_campaign_send",
+    triggerTypes: [ScheduledJobTriggerType.cron, ScheduledJobTriggerType.manual],
+    previewSafe: false,
+    run: () => processDueContentfulCampaigns(),
   },
 ];
 

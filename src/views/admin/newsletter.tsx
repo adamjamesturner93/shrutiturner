@@ -35,6 +35,20 @@ type NewsletterSummary = {
   subscribed: number;
   unsubscribed: number;
   unsubscribes30d: number;
+  growth: {
+    newSubscribers30d: number;
+    verifiedSubscribers30d: number;
+    unsubscribes30d: number;
+    netGrowth30d: number;
+    activeSubscriberCount: number;
+  };
+  sourceAttribution: Array<{
+    source: string;
+    total: number;
+    subscribed: number;
+    pending: number;
+    unsubscribed: number;
+  }>;
   campaigns: CampaignSummary[];
 };
 
@@ -190,6 +204,16 @@ export function AdminNewsletter() {
               value={summary.unsubscribes30d}
               detail="recent audience loss"
             />
+            <AppMetricCard
+              label="Net growth 30d"
+              value={summary.growth.netGrowth30d}
+              detail={`${summary.growth.newSubscribers30d} new, ${summary.growth.unsubscribes30d} left`}
+            />
+            <AppMetricCard
+              label="Verified 30d"
+              value={summary.growth.verifiedSubscribers30d}
+              detail="confirmed subscribers"
+            />
           </AppMetricGrid>
         ) : null}
 
@@ -276,6 +300,47 @@ export function AdminNewsletter() {
             </div>
           </CardContent>
         </Card>
+
+        {summary ? (
+          <Card>
+            <CardContent className="space-y-4 pt-6">
+              <div>
+                <h2 className="text-lg">Source attribution</h2>
+                <p className="text-muted-foreground text-sm">
+                  Subscriber list health grouped by captured signup source.
+                </p>
+              </div>
+              {summary.sourceAttribution.length === 0 ? (
+                <p className="text-muted-foreground text-sm">No source data available yet.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="text-muted-foreground border-b">
+                      <tr>
+                        <th className="py-2">Source</th>
+                        <th className="py-2">Total</th>
+                        <th className="py-2">Subscribed</th>
+                        <th className="py-2">Pending</th>
+                        <th className="py-2">Unsubscribed</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {summary.sourceAttribution.map((source) => (
+                        <tr key={source.source} className="border-b">
+                          <td className="py-3">{source.source}</td>
+                          <td className="py-3">{source.total}</td>
+                          <td className="py-3">{source.subscribed}</td>
+                          <td className="py-3">{source.pending}</td>
+                          <td className="py-3">{source.unsubscribed}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
 
         <Card>
           <CardContent className="space-y-3 pt-6">

@@ -19,6 +19,7 @@ interface BlogPostEmailProps {
   publishDate?: string;
   tags?: string[];
   blogUrl?: string;
+  unsubscribeUrl?: string;
 }
 
 export default function BlogPostEmail({
@@ -30,9 +31,14 @@ export default function BlogPostEmail({
   publishDate = "4 March 2026",
   tags = ["Strength Training", "Chronic Illness", "Evidence-Based"],
   blogUrl = "https://shrutiturner.co.uk/blog",
+  unsubscribeUrl,
 }: BlogPostEmailProps) {
   return (
-    <EmailLayout preview={`New on the blog: ${postTitle}`} category="marketing">
+    <EmailLayout
+      preview={`New on the blog: ${postTitle}`}
+      category="marketing"
+      unsubscribeUrl={unsubscribeUrl}
+    >
       <Text style={{ ...bodyTextStyle, marginBottom: "24px" }}>Hi {firstName},</Text>
 
       <Text style={bodyTextStyle}>

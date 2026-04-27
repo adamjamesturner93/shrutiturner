@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const cleanupScheduledJobRuntimeDataMock = vi.fn();
 const processTransactionalEmailRetriesMock = vi.fn();
+const processDueContentfulCampaignsMock = vi.fn();
 
 vi.mock("@/lib/env", () => ({
   env: {
@@ -19,6 +20,10 @@ vi.mock("@/lib/jobs/transactional-email", () => ({
   processTransactionalEmailRetries: processTransactionalEmailRetriesMock,
 }));
 
+vi.mock("@/lib/newsletter/campaign-automation", () => ({
+  processDueContentfulCampaigns: processDueContentfulCampaignsMock,
+}));
+
 const { getRegisteredJob, listRegisteredJobs } = await import("@/lib/jobs/registry");
 
 describe("jobs registry", () => {
@@ -26,15 +31,26 @@ describe("jobs registry", () => {
     vi.clearAllMocks();
     cleanupScheduledJobRuntimeDataMock.mockResolvedValue({ ok: true });
     processTransactionalEmailRetriesMock.mockResolvedValue({ ok: true, attempted: 0 });
+    processDueContentfulCampaignsMock.mockResolvedValue({
+      ok: true,
+      scanned: 0,
+      processed: 0,
+      failed: 0,
+    });
   });
 
-  it("lists the transactional email retry job", () => {
+  it("lists the email automation jobs", () => {
     expect(listRegisteredJobs()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           jobName: "transactional_email_retry",
           triggerTypes: [ScheduledJobTriggerType.cron, ScheduledJobTriggerType.manual],
           previewSafe: true,
+        }),
+        expect.objectContaining({
+          jobName: "contentful_campaign_send",
+          triggerTypes: [ScheduledJobTriggerType.cron, ScheduledJobTriggerType.manual],
+          previewSafe: false,
         }),
       ])
     );
@@ -46,5 +62,18 @@ describe("jobs registry", () => {
     expect(job).not.toBeNull();
     await expect(job?.run()).resolves.toEqual({ ok: true, attempted: 0 });
     expect(processTransactionalEmailRetriesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns a runnable Contentful campaign send handler", async () => {
+    const job = getRegisteredJob("contentful_campaign_send", ScheduledJobTriggerType.manual);
+
+    expect(job).not.toBeNull();
+    await expect(job?.run()).resolves.toEqual({
+      ok: true,
+      scanned: 0,
+      processed: 0,
+      failed: 0,
+    });
+    expect(processDueContentfulCampaignsMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,5 +1,5 @@
 import { render } from "@react-email/render";
-import { UserRole } from "@prisma/client";
+import { EmailDeliveryAttemptStatus, EmailDeliveryStatus, type Prisma } from "@prisma/client";
 import { ServerClient } from "postmark";
 import BlogPostEmail from "@/emails/blog-post";
 import NewsletterEmail from "@/emails/newsletter";
@@ -8,10 +8,18 @@ import { db } from "@/lib/db";
 import { getEntries } from "@/lib/content/contentful-client";
 import { getBaseSiteUrlFromEnv, getPostmarkToken } from "@/lib/env";
 import { getPostmarkMessageStream } from "@/lib/postmark/client";
+import { createSignedUnsubscribeToken } from "@/lib/newsletter/tokens";
 
 type CampaignAudienceType = "newsletter" | "blog";
 type SupportedContentType = "blogPost" | "newsletterTemplate";
 type SendEmailBatchResponse = Awaited<ReturnType<ServerClient["sendEmailBatch"]>>;
+type CampaignEntry = Awaited<ReturnType<typeof loadEntry>>;
+type CampaignRecipient = {
+  subscriberId: string;
+  userId: string | null;
+  email: string;
+  firstName: string;
+};
 
 const POSTMARK_FROM_EMAIL =
   process.env.POSTMARK_FROM_EMAIL || "Shruti Turner <shruti@thechronicyogini.com>";
@@ -27,6 +35,76 @@ function mapAudience(contentType: SupportedContentType): CampaignAudienceType {
   return contentType === "blogPost" ? "blog" : "newsletter";
 }
 
+function toJsonValue(value: unknown): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+function readStringField(fields: Record<string, unknown>, key: string) {
+  const value = fields[key];
+  if (typeof value === "string") return value.trim();
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const localized = Object.values(value).find((item) => typeof item === "string" && item.trim());
+    return typeof localized === "string" ? localized.trim() : "";
+  }
+  return "";
+}
+
+function readBooleanField(fields: Record<string, unknown>, key: string) {
+  const value = fields[key];
+  if (typeof value === "boolean") return value;
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const localized = Object.values(value).find((item) => typeof item === "boolean");
+    return typeof localized === "boolean" ? localized : false;
+  }
+  return false;
+}
+
+function readDateField(fields: Record<string, unknown>, key: string) {
+  const raw = readStringField(fields, key);
+  if (!raw) return null;
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getEntrySubject(contentType: SupportedContentType, fields: Record<string, unknown>) {
+  const subject = readStringField(fields, "subject");
+  if (subject) return subject;
+  const title = readStringField(fields, "title");
+  if (title) return title;
+  return contentType === "blogPost" ? "Blog campaign" : "Newsletter campaign";
+}
+
+function getPublishReadiness(input: {
+  contentType: SupportedContentType;
+  fields: Record<string, unknown>;
+  now: Date;
+}) {
+  const status = readStringField(input.fields, "status").toLowerCase();
+  if (status === "draft") {
+    return { ready: false as const, reason: "draft_status" };
+  }
+  if (readBooleanField(input.fields, "testMode")) {
+    return { ready: false as const, reason: "test_mode" };
+  }
+
+  if (input.contentType === "newsletterTemplate") {
+    if (!readStringField(input.fields, "subject") || !readStringField(input.fields, "body")) {
+      return { ready: false as const, reason: "missing_required_fields" };
+    }
+
+    const scheduledAt = readDateField(input.fields, "sendDate");
+    if (scheduledAt && scheduledAt.getTime() > input.now.getTime()) {
+      return {
+        ready: false as const,
+        reason: "scheduled_for_future",
+        scheduledAt,
+      };
+    }
+  }
+
+  return { ready: true as const };
+}
+
 async function loadEntry(contentType: SupportedContentType, entryId: string) {
   const res = await getEntries<Record<string, unknown>>(contentType, {
     "sys.id": entryId,
@@ -35,33 +113,40 @@ async function loadEntry(contentType: SupportedContentType, entryId: string) {
   return res?.items?.[0] || null;
 }
 
-async function getAudienceEmails(audienceType: CampaignAudienceType) {
-  const users = await db.user.findMany({
+async function getAudienceEmails() {
+  const subscribers = await db.newsletterSubscriber.findMany({
     where: {
-      role: { in: [UserRole.student, UserRole.member] },
-      OR:
-        audienceType === "blog"
-          ? [
-              { notificationPreference: { is: null } },
-              { notificationPreference: { is: { marketingEmails: true } } },
-            ]
-          : [
-              { notificationPreference: { is: null } },
-              { notificationPreference: { is: { marketingEmails: true } } },
-            ],
+      status: "subscribed",
+      OR: [
+        { user: null },
+        { user: { notificationPreference: { is: null } } },
+        { user: { notificationPreference: { is: { marketingEmails: true } } } },
+      ],
     },
     select: {
+      id: true,
       email: true,
       firstName: true,
+      userId: true,
+      user: {
+        select: {
+          firstName: true,
+        },
+      },
     },
   });
 
-  const deduped = new Map<string, { email: string; firstName: string }>();
-  for (const user of users) {
-    const email = user.email.trim().toLowerCase();
+  const deduped = new Map<string, CampaignRecipient>();
+  for (const subscriber of subscribers) {
+    const email = subscriber.email.trim().toLowerCase();
     if (!email) continue;
     if (!deduped.has(email)) {
-      deduped.set(email, { email, firstName: user.firstName || "there" });
+      deduped.set(email, {
+        subscriberId: subscriber.id,
+        userId: subscriber.userId,
+        email,
+        firstName: subscriber.firstName || subscriber.user?.firstName || "there",
+      });
     }
   }
   return Array.from(deduped.values());
@@ -70,13 +155,14 @@ async function getAudienceEmails(audienceType: CampaignAudienceType) {
 async function renderCampaignMessage(
   contentType: SupportedContentType,
   fields: Record<string, unknown>,
-  firstName: string
+  firstName: string,
+  unsubscribeUrl: string
 ) {
   if (contentType === "blogPost") {
-    const postTitle = String(fields.title || "New blog post");
-    const postExcerpt = String(fields.excerpt || "");
-    const slug = String(fields.slug || "");
-    const postImageUrl = fields.coverImage ? String(fields.coverImage) : undefined;
+    const postTitle = readStringField(fields, "title") || "New blog post";
+    const postExcerpt = readStringField(fields, "excerpt");
+    const slug = readStringField(fields, "slug");
+    const postImageUrl = readStringField(fields, "coverImage") || undefined;
     const tags = Array.isArray(fields.tags)
       ? fields.tags.filter((x): x is string => typeof x === "string")
       : [];
@@ -89,22 +175,101 @@ async function renderCampaignMessage(
         postImageUrl,
         postUrl,
         tags,
+        unsubscribeUrl,
       })
     );
     const subject = postTitle;
-    return { subject, html, text: `${postTitle}\n\n${postExcerpt}` };
+    return {
+      subject,
+      html,
+      text: `${postTitle}\n\n${postExcerpt}\n\nUnsubscribe: ${unsubscribeUrl}`,
+    };
   }
 
-  const subject = String(fields.subject || fields.title || "Newsletter");
-  const body = String(fields.body || "");
+  const subject =
+    readStringField(fields, "subject") || readStringField(fields, "title") || "Newsletter";
+  const body = readStringField(fields, "body");
   const html = await render(
     NewsletterEmail({
       firstName,
       subject,
       bodyContent: body,
+      unsubscribeUrl,
     })
   );
-  return { subject, html, text: body || subject };
+  return { subject, html, text: `${body || subject}\n\nUnsubscribe: ${unsubscribeUrl}` };
+}
+
+async function createCampaignDelivery(input: {
+  recipient: CampaignRecipient;
+  campaignId: string;
+  contentType: SupportedContentType;
+  subject: string;
+  htmlBody: string;
+  textBody: string;
+  tag: string;
+  metadata: Record<string, string>;
+}) {
+  return db.emailDelivery.create({
+    data: {
+      toEmail: input.recipient.email,
+      userId: input.recipient.userId || undefined,
+      campaignId: input.campaignId,
+      templateKey: `contentful-${input.contentType}`,
+      category: "marketing",
+      provider: "postmark",
+      subject: input.subject,
+      tag: input.tag,
+      messageStream: POSTMARK_STREAM,
+      status: EmailDeliveryStatus.sending,
+      retryable: true,
+      attemptCount: 1,
+      maxAttempts: 3,
+      payloadJson: toJsonValue({
+        htmlBody: input.htmlBody,
+        textBody: input.textBody,
+      }),
+      metadataJson: toJsonValue(input.metadata),
+    },
+    select: {
+      id: true,
+    },
+  });
+}
+
+async function recordCampaignDeliveryResult(input: {
+  deliveryId: string;
+  attemptNumber: number;
+  item: {
+    ErrorCode?: number;
+    Message?: string;
+    MessageID?: string;
+  };
+}) {
+  const failed = Boolean(input.item.ErrorCode && input.item.ErrorCode !== 0);
+  const now = new Date();
+
+  await db.emailDelivery.update({
+    where: { id: input.deliveryId },
+    data: {
+      status: failed ? EmailDeliveryStatus.failed : EmailDeliveryStatus.sent,
+      providerMessageId: input.item.MessageID || undefined,
+      lastError: failed ? input.item.Message || "Postmark campaign send failed" : null,
+      sentAt: failed ? undefined : now,
+    },
+  });
+
+  await db.emailDeliveryAttempt.create({
+    data: {
+      deliveryId: input.deliveryId,
+      attemptNumber: input.attemptNumber,
+      status: failed ? EmailDeliveryAttemptStatus.failed : EmailDeliveryAttemptStatus.sent,
+      providerMessageId: input.item.MessageID || undefined,
+      errorMessage: failed ? input.item.Message || "Postmark campaign send failed" : null,
+      responseJson: toJsonValue(input.item),
+      finishedAt: now,
+    },
+  });
 }
 
 async function runCampaign(params: {
@@ -112,18 +277,19 @@ async function runCampaign(params: {
   contentType: SupportedContentType;
   contentfulEntryId: string;
   audienceType: CampaignAudienceType;
+  entry?: NonNullable<CampaignEntry>;
 }) {
   const postmarkToken = getPostmarkToken();
   if (!postmarkToken) {
     throw new Error("POSTMARK_NOT_CONFIGURED");
   }
 
-  const entry = await loadEntry(params.contentType, params.contentfulEntryId);
+  const entry = params.entry || (await loadEntry(params.contentType, params.contentfulEntryId));
   if (!entry) {
     throw new Error("CONTENTFUL_ENTRY_NOT_FOUND");
   }
 
-  const audience = await getAudienceEmails(params.audienceType);
+  const audience = await getAudienceEmails();
   const client = new ServerClient(postmarkToken);
 
   let sentCount = 0;
@@ -133,38 +299,72 @@ async function runCampaign(params: {
   for (const batch of chunk(audience, 300)) {
     const messages = await Promise.all(
       batch.map(async (recipient) => {
+        const unsubscribeUrl = `${getBaseSiteUrlFromEnv()}/unsubscribe?token=${encodeURIComponent(
+          createSignedUnsubscribeToken(recipient.subscriberId)
+        )}`;
         const rendered = await renderCampaignMessage(
           params.contentType,
           entry.fields,
-          recipient.firstName
+          recipient.firstName,
+          unsubscribeUrl
         );
+        const tag = `contentful-${params.contentType}`;
+        const metadata: Record<string, string> = {
+          emailCategory: "marketing",
+          campaignId: params.campaignId,
+          contentfulEntryId: params.contentfulEntryId,
+          audienceType: params.audienceType,
+          source: "contentful_publish",
+          subscriberId: recipient.subscriberId,
+        };
+        const delivery = await createCampaignDelivery({
+          recipient,
+          campaignId: params.campaignId,
+          contentType: params.contentType,
+          subject: rendered.subject,
+          htmlBody: rendered.html,
+          textBody: rendered.text,
+          tag,
+          metadata,
+        });
         return {
-          From: POSTMARK_FROM_EMAIL,
-          To: recipient.email,
-          Subject: rendered.subject,
-          HtmlBody: rendered.html,
-          TextBody: rendered.text,
-          MessageStream: POSTMARK_STREAM,
-          Tag: `contentful-${params.contentType}`,
-          Metadata: {
-            emailCategory: "marketing",
-            campaignId: params.campaignId,
-            contentfulEntryId: params.contentfulEntryId,
-            audienceType: params.audienceType,
-            source: "contentful_publish",
+          deliveryId: delivery.id,
+          message: {
+            From: POSTMARK_FROM_EMAIL,
+            To: recipient.email,
+            Subject: rendered.subject,
+            HtmlBody: rendered.html,
+            TextBody: rendered.text,
+            MessageStream: POSTMARK_STREAM,
+            Tag: tag,
+            Metadata: {
+              ...metadata,
+              deliveryId: delivery.id,
+            },
           },
         };
       })
     );
 
-    const response = (await client.sendEmailBatch(messages)) as SendEmailBatchResponse;
+    const response = (await client.sendEmailBatch(
+      messages.map((item) => item.message)
+    )) as SendEmailBatchResponse;
     const items = response as Array<{
       ErrorCode?: number;
       Message?: string;
       MessageID?: string;
     }>;
 
-    for (const item of items) {
+    for (const [index, item] of items.entries()) {
+      const delivery = messages[index];
+      if (delivery) {
+        await recordCampaignDeliveryResult({
+          deliveryId: delivery.deliveryId,
+          attemptNumber: 1,
+          item,
+        });
+      }
+
       if (item.ErrorCode && item.ErrorCode !== 0) {
         failedCount += 1;
         if (item.Message) errors.push(item.Message);
@@ -190,12 +390,23 @@ export async function triggerContentfulPublishCampaign(input: {
   contentType: string;
   contentfulEntryId: string;
   contentfulVersion?: string;
+  now?: Date;
 }) {
   if (input.contentType !== "blogPost" && input.contentType !== "newsletterTemplate") {
     return { skipped: true as const, reason: "unsupported_content_type" };
   }
 
   const contentType = input.contentType as SupportedContentType;
+  const entry = await loadEntry(contentType, input.contentfulEntryId);
+  if (!entry) {
+    throw new Error("CONTENTFUL_ENTRY_NOT_FOUND");
+  }
+
+  const readiness = getPublishReadiness({
+    contentType,
+    fields: entry.fields,
+    now: input.now || new Date(),
+  });
   const audienceType = mapAudience(contentType);
   const providerCampaignId = `contentful:${contentType}:${input.contentfulEntryId}:${input.contentfulVersion || "latest"}:${audienceType}`;
 
@@ -207,15 +418,55 @@ export async function triggerContentfulPublishCampaign(input: {
     return { skipped: true as const, reason: "already_sent", campaignId: existing.id };
   }
 
+  if (!readiness.ready) {
+    if (readiness.reason === "scheduled_for_future") {
+      const campaign = existing
+        ? await db.emailCampaign.update({
+            where: { id: existing.id },
+            data: {
+              subject: getEntrySubject(contentType, entry.fields),
+              status: "scheduled",
+              scheduledAt: readiness.scheduledAt,
+              errorSummary: null,
+            },
+          })
+        : await db.emailCampaign.create({
+            data: {
+              providerCampaignId,
+              subject: getEntrySubject(contentType, entry.fields),
+              stream: POSTMARK_STREAM,
+              status: "scheduled",
+              audienceType,
+              triggeredBy: "contentful_publish",
+              contentfulEntryId: input.contentfulEntryId,
+              contentfulContentType: contentType,
+              scheduledAt: readiness.scheduledAt,
+              metadataJson: toJsonValue({ reason: readiness.reason }),
+            },
+          });
+      return {
+        skipped: true as const,
+        reason: readiness.reason,
+        campaignId: campaign.id,
+      };
+    }
+    return { skipped: true as const, reason: readiness.reason };
+  }
+
   const campaign = existing
     ? await db.emailCampaign.update({
         where: { id: existing.id },
-        data: { status: "sending", errorSummary: null },
+        data: {
+          subject: getEntrySubject(contentType, entry.fields),
+          status: "sending",
+          scheduledAt: null,
+          errorSummary: null,
+        },
       })
     : await db.emailCampaign.create({
         data: {
           providerCampaignId,
-          subject: contentType === "blogPost" ? "Blog campaign" : "Newsletter campaign",
+          subject: getEntrySubject(contentType, entry.fields),
           stream: POSTMARK_STREAM,
           status: "sending",
           audienceType,
@@ -231,6 +482,7 @@ export async function triggerContentfulPublishCampaign(input: {
       contentType,
       contentfulEntryId: input.contentfulEntryId,
       audienceType,
+      entry,
     });
     return { skipped: false as const, campaignId: campaign.id };
   } catch (error) {
@@ -304,4 +556,60 @@ export async function retryContentfulCampaign(input: {
   }
 
   return result;
+}
+
+export async function processDueContentfulCampaigns(now = new Date(), limit = 25) {
+  const campaigns = await db.emailCampaign.findMany({
+    where: {
+      status: "scheduled",
+      scheduledAt: { lte: now },
+      contentfulEntryId: { not: null },
+      contentfulContentType: { in: ["blogPost", "newsletterTemplate"] },
+    },
+    orderBy: { scheduledAt: "asc" },
+    take: limit,
+    select: {
+      id: true,
+      contentfulEntryId: true,
+      contentfulContentType: true,
+      audienceType: true,
+    },
+  });
+
+  let processed = 0;
+  let failed = 0;
+
+  for (const campaign of campaigns) {
+    if (!campaign.contentfulEntryId || !campaign.contentfulContentType) continue;
+    try {
+      await db.emailCampaign.update({
+        where: { id: campaign.id },
+        data: { status: "sending", errorSummary: null },
+      });
+      await runCampaign({
+        campaignId: campaign.id,
+        contentType: campaign.contentfulContentType as SupportedContentType,
+        contentfulEntryId: campaign.contentfulEntryId,
+        audienceType: (campaign.audienceType as CampaignAudienceType) || "newsletter",
+      });
+      processed += 1;
+    } catch (error) {
+      failed += 1;
+      await db.emailCampaign.update({
+        where: { id: campaign.id },
+        data: {
+          status: "failed",
+          errorSummary:
+            error instanceof Error ? error.message : "Failed to send scheduled campaign",
+        },
+      });
+    }
+  }
+
+  return {
+    ok: failed === 0,
+    scanned: campaigns.length,
+    processed,
+    failed,
+  };
 }

@@ -53,6 +53,20 @@ export type AdminNewsletterSummaryDto = {
   subscribed: number;
   unsubscribed: number;
   unsubscribes30d: number;
+  growth: {
+    newSubscribers30d: number;
+    verifiedSubscribers30d: number;
+    unsubscribes30d: number;
+    netGrowth30d: number;
+    activeSubscriberCount: number;
+  };
+  sourceAttribution: Array<{
+    source: string;
+    total: number;
+    subscribed: number;
+    pending: number;
+    unsubscribed: number;
+  }>;
   campaigns: AdminNewsletterCampaignSummaryDto[];
 };
 
@@ -269,23 +283,42 @@ function aggregateCampaignRows(
   const topLinks = new Map<string, number>();
 
   for (const row of rows) {
-    switch (row.type) {
+    switch (row.type.toLowerCase()) {
       case "Delivery":
+      case "delivery":
+      case "Delivered":
+      case "delivered":
         delivered += 1;
         break;
       case "Open":
+      case "open":
+      case "Opened":
+      case "opened":
         opened += 1;
         break;
       case "Click":
+      case "click":
+      case "Clicked":
+      case "clicked":
         clicked += 1;
         break;
       case "Bounce":
+      case "bounce":
+      case "Bounced":
+      case "bounced":
         bounced += 1;
         break;
       case "SpamComplaint":
+      case "spamcomplaint":
+      case "spam_complaint":
         spamComplaints += 1;
         break;
       case "SubscriptionChange":
+      case "subscriptionchange":
+      case "Unsubscribe":
+      case "unsubscribe":
+      case "Unsubscribed":
+      case "unsubscribed":
         unsubscribed += 1;
         break;
       default:
@@ -293,7 +326,7 @@ function aggregateCampaignRows(
     }
 
     if (
-      row.type === "Click" &&
+      (row.type === "Click" || row.type.toLowerCase() === "clicked") &&
       row.metadataJson &&
       typeof row.metadataJson === "object" &&
       !Array.isArray(row.metadataJson)
@@ -320,13 +353,35 @@ function aggregateCampaignRows(
 }
 
 export async function getAdminNewsletterSummary(): Promise<AdminNewsletterSummaryDto> {
-  const [segments, unsubscribes30d, campaigns] = await Promise.all([
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
+  const [
+    segments,
+    subscriberUnsubscribes30d,
+    newSubscribers30d,
+    verifiedSubscribers30d,
+    sourceRows,
+    campaigns,
+  ] = await Promise.all([
     getSubscriberSegmentSummary(),
-    db.emailEvent.count({
+    db.newsletterSubscriber.count({
       where: {
-        type: "SubscriptionChange",
-        eventAt: { gte: new Date(Date.now() - 30 * 86400000) },
+        status: "unsubscribed",
+        unsubscribedAt: { gte: thirtyDaysAgo },
       },
+    }),
+    db.newsletterSubscriber.count({
+      where: {
+        createdAt: { gte: thirtyDaysAgo },
+      },
+    }),
+    db.newsletterSubscriber.count({
+      where: {
+        verifiedAt: { gte: thirtyDaysAgo },
+      },
+    }),
+    db.newsletterSubscriber.groupBy({
+      by: ["source", "status"],
+      _count: { _all: true },
     }),
     db.emailCampaign.findMany({
       orderBy: [{ sentAt: "desc" }, { createdAt: "desc" }],
@@ -339,8 +394,34 @@ export async function getAdminNewsletterSummary(): Promise<AdminNewsletterSummar
     }),
   ]);
 
+  const sourceMap = new Map<
+    string,
+    { source: string; total: number; subscribed: number; pending: number; unsubscribed: number }
+  >();
+  for (const row of sourceRows) {
+    const source = row.source || "unknown";
+    const existing = sourceMap.get(source) || {
+      source,
+      total: 0,
+      subscribed: 0,
+      pending: 0,
+      unsubscribed: 0,
+    };
+    const count = row._count._all;
+    existing.total += count;
+    if (row.status === "subscribed") existing.subscribed += count;
+    if (row.status === "pending") existing.pending += count;
+    if (row.status === "unsubscribed") existing.unsubscribed += count;
+    sourceMap.set(source, existing);
+  }
+
   const campaignDtos: AdminNewsletterCampaignSummaryDto[] = campaigns.map((campaign) => {
     const agg = aggregateCampaignRows(campaign.emailEvents);
+    const totalRecipients = Math.max(
+      campaign.sentCount + campaign.failedCount,
+      agg.delivered + agg.bounced,
+      agg.delivered
+    );
     return {
       id: campaign.id,
       providerCampaignId: campaign.providerCampaignId,
@@ -353,7 +434,7 @@ export async function getAdminNewsletterSummary(): Promise<AdminNewsletterSummar
           ? (campaign.status as "scheduled" | "sending" | "failed" | "failed_partial")
           : "sent",
       sentDate: (campaign.sentAt || campaign.scheduledAt || campaign.createdAt).toISOString(),
-      totalRecipients: Math.max(agg.delivered + agg.bounced, agg.delivered),
+      totalRecipients,
       delivered: agg.delivered,
       opened: agg.opened,
       clicked: agg.clicked,
@@ -372,7 +453,15 @@ export async function getAdminNewsletterSummary(): Promise<AdminNewsletterSummar
     totalSubscribers: segments.total,
     subscribed: segments.subscribed,
     unsubscribed: segments.unsubscribed,
-    unsubscribes30d,
+    unsubscribes30d: subscriberUnsubscribes30d,
+    growth: {
+      newSubscribers30d,
+      verifiedSubscribers30d,
+      unsubscribes30d: subscriberUnsubscribes30d,
+      netGrowth30d: newSubscribers30d - subscriberUnsubscribes30d,
+      activeSubscriberCount: segments.subscribed,
+    },
+    sourceAttribution: Array.from(sourceMap.values()).sort((a, b) => b.total - a.total),
     campaigns: campaignDtos,
   };
 }
@@ -400,13 +489,18 @@ export async function getAdminNewsletterCampaign(
   for (const row of campaign.emailEvents) {
     const key = row.eventAt.toISOString().slice(0, 10);
     const bucket = eventTimelineByDate.get(key) || { opened: 0, clicked: 0, bounced: 0 };
-    if (row.type === "Open") bucket.opened += 1;
-    if (row.type === "Click") bucket.clicked += 1;
-    if (row.type === "Bounce") bucket.bounced += 1;
+    const type = row.type.toLowerCase();
+    if (type === "open" || type === "opened") bucket.opened += 1;
+    if (type === "click" || type === "clicked") bucket.clicked += 1;
+    if (type === "bounce" || type === "bounced") bucket.bounced += 1;
     eventTimelineByDate.set(key, bucket);
   }
 
-  const totalRecipients = Math.max(agg.delivered + agg.bounced, agg.delivered);
+  const totalRecipients = Math.max(
+    campaign.sentCount + campaign.failedCount,
+    agg.delivered + agg.bounced,
+    agg.delivered
+  );
 
   return {
     id: campaign.id,

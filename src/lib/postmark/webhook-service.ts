@@ -31,6 +31,79 @@ function toDate(value: string | undefined) {
   return parsed;
 }
 
+function normalizeEventType(recordType: string) {
+  const compact = recordType.replace(/[\s_-]/g, "").toLowerCase();
+  switch (compact) {
+    case "delivery":
+    case "delivered":
+      return "delivered";
+    case "open":
+    case "opened":
+      return "opened";
+    case "click":
+    case "clicked":
+      return "clicked";
+    case "bounce":
+    case "bounced":
+      return "bounced";
+    case "spamcomplaint":
+    case "spam":
+    case "complaint":
+      return "spam_complaint";
+    case "subscriptionchange":
+    case "unsubscribe":
+    case "unsubscribed":
+      return "unsubscribed";
+    default:
+      return recordType || "unknown";
+  }
+}
+
+async function suppressSubscriberForCompliance(input: {
+  email: string;
+  userId?: string | null;
+  type: string;
+}) {
+  if (input.type !== "unsubscribed" && input.type !== "spam_complaint") {
+    return;
+  }
+
+  const now = new Date();
+  const subscriber = await db.newsletterSubscriber.findUnique({
+    where: { email: input.email },
+    select: { id: true, userId: true },
+  });
+
+  if (subscriber) {
+    await db.newsletterSubscriber.update({
+      where: { id: subscriber.id },
+      data: {
+        status: "unsubscribed",
+        unsubscribedAt: now,
+        verificationTokenHash: null,
+        verificationTokenExpiresAt: null,
+      },
+    });
+  }
+
+  const userId = subscriber?.userId || input.userId;
+  if (userId) {
+    await db.userNotificationPreference.upsert({
+      where: { userId },
+      create: {
+        userId,
+        marketingEmails: false,
+        classReminders: true,
+        scheduleUpdates: true,
+        programAnnouncements: true,
+      },
+      update: {
+        marketingEmails: false,
+      },
+    });
+  }
+}
+
 export function verifyPostmarkWebhook(
   body: string,
   signatureHeader: string | null,
@@ -56,7 +129,7 @@ function timingSafeCompare(a: string, b: string) {
 }
 
 export async function ingestPostmarkEvent(payload: RawPostmarkEvent) {
-  const type = payload.RecordType || "Unknown";
+  const type = normalizeEventType(payload.RecordType || "Unknown");
   const recipient = normalizeEmail(payload.Recipient || "");
   if (!recipient) {
     throw new Error("MISSING_RECIPIENT");
@@ -119,6 +192,12 @@ export async function ingestPostmarkEvent(payload: RawPostmarkEvent) {
       eventAt,
       metadataJson: metadata as Prisma.InputJsonValue,
     },
+  });
+
+  await suppressSubscriberForCompliance({
+    email: recipient,
+    userId: user?.id,
+    type,
   });
 
   return { providerEventId };
