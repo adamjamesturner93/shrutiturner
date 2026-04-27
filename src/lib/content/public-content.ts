@@ -11,7 +11,7 @@ import {
   getLocalScheduleByDay,
 } from "./local-content";
 import { getContentSource } from "./config";
-import { getEntries, getEntryBySlug } from "./contentful-client";
+import { getEntries, getEntryById, getEntryBySlug } from "./contentful-client";
 import type {
   BlogPostContent,
   ClassDefinitionContent,
@@ -569,6 +569,21 @@ export async function getBlogPosts(): Promise<BlogPostContent[]> {
 export async function getBlogPostBySlug(slug: string): Promise<BlogPostContent | null> {
   const posts = await getBlogPosts();
   return posts.find((p) => p.id === slug) || null;
+}
+
+export async function getBlogPostStaticParams(): Promise<Array<{ slug: string }>> {
+  const posts = await getBlogPosts();
+  return posts.filter((post) => post.id.length > 0).map((post) => ({ slug: post.id }));
+}
+
+export async function getBlogPostSlugByContentfulEntryId(entryId: string): Promise<string | null> {
+  if (!entryId || !prefersContentfulSource()) {
+    return null;
+  }
+
+  const entry = await getEntryById<Record<string, unknown>>("blogPost", entryId);
+  const slug = entry?.fields.slug;
+  return typeof slug === "string" && slug.trim() ? slug.trim() : null;
 }
 
 export async function getClassDefinitions(): Promise<ClassDefinitionContent[]> {

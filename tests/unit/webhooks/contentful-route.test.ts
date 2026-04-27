@@ -1,10 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const revalidateTagMock = vi.fn();
+const revalidatePathMock = vi.fn();
+const getBlogPostSlugByContentfulEntryIdMock = vi.fn();
 const triggerContentfulPublishCampaignMock = vi.fn();
 
 vi.mock("next/cache", () => ({
+  revalidatePath: revalidatePathMock,
   revalidateTag: revalidateTagMock,
+}));
+
+vi.mock("@/lib/content", () => ({
+  getBlogPostSlugByContentfulEntryId: getBlogPostSlugByContentfulEntryIdMock,
 }));
 
 vi.mock("@/lib/newsletter/campaign-automation", () => ({
@@ -20,6 +27,7 @@ describe("POST /api/webhooks/contentful", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.CONTENTFUL_WEBHOOK_SECRET = "contentful-secret";
+    getBlogPostSlugByContentfulEntryIdMock.mockResolvedValue("resolved-blog-post");
     triggerContentfulPublishCampaignMock.mockResolvedValue({
       skipped: false,
       campaignId: "campaign_123",
@@ -72,6 +80,7 @@ describe("POST /api/webhooks/contentful", () => {
     expect(response.status).toBe(200);
     expect(revalidateTagMock).toHaveBeenCalledWith("content:classes", "max");
     expect(revalidateTagMock).toHaveBeenCalledWith("content:schedule", "max");
+    expect(revalidatePathMock).not.toHaveBeenCalled();
     expect(triggerContentfulPublishCampaignMock).toHaveBeenCalledWith({
       contentType: "classDefinition",
       contentfulEntryId: "entry_123",
@@ -95,5 +104,77 @@ describe("POST /api/webhooks/contentful", () => {
 
     expect(response.status).toBe(200);
     expect(triggerContentfulPublishCampaignMock).not.toHaveBeenCalled();
+  });
+
+  it("revalidates blog listing and post paths from the webhook payload slug", async () => {
+    const route = await loadRoute();
+
+    const response = await route.POST(
+      new Request("http://localhost/api/webhooks/contentful", {
+        method: "POST",
+        headers: {
+          "x-contentful-webhook-secret": "contentful-secret",
+          "x-contentful-topic": "ContentManagement.Entry.publish.blogPost",
+          "x-contentful-content-type": "blogPost",
+          "x-contentful-id": "entry_blog",
+        },
+        body: JSON.stringify({
+          fields: {
+            slug: {
+              "en-US": "strength-after-stretching",
+            },
+          },
+          sys: {
+            id: "entry_blog",
+            version: 7,
+            contentType: {
+              sys: {
+                id: "blogPost",
+              },
+            },
+          },
+        }),
+      }) as never
+    );
+
+    expect(response.status).toBe(200);
+    expect(revalidateTagMock).toHaveBeenCalledWith("content:blog", "max");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/blog");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/blog/strength-after-stretching");
+    expect(getBlogPostSlugByContentfulEntryIdMock).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      paths: ["/blog", "/blog/strength-after-stretching"],
+    });
+  });
+
+  it("falls back to resolving the blog slug by Contentful entry id", async () => {
+    const route = await loadRoute();
+
+    const response = await route.POST(
+      new Request("http://localhost/api/webhooks/contentful", {
+        method: "POST",
+        headers: {
+          "x-contentful-webhook-secret": "contentful-secret",
+          "x-contentful-topic": "ContentManagement.Entry.unpublish.blogPost",
+          "x-contentful-content-type": "blogPost",
+          "x-contentful-id": "entry_blog",
+        },
+        body: JSON.stringify({
+          sys: {
+            id: "entry_blog",
+            contentType: {
+              sys: {
+                id: "blogPost",
+              },
+            },
+          },
+        }),
+      }) as never
+    );
+
+    expect(response.status).toBe(200);
+    expect(getBlogPostSlugByContentfulEntryIdMock).toHaveBeenCalledWith("entry_blog");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/blog");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/blog/resolved-blog-post");
   });
 });

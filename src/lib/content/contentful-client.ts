@@ -119,3 +119,15 @@ export async function getEntryBySlug<TFields>(
 
   return res?.items?.[0] ?? null;
 }
+
+export async function getEntryById<TFields>(
+  contentType: string,
+  entryId: string
+): Promise<EntryEnvelope<TFields> | null> {
+  const res = await getEntries<TFields>(contentType, {
+    "sys.id": entryId,
+    limit: 1,
+  });
+
+  return res?.items?.[0] ?? null;
+}

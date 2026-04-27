@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BlogPostPage } from "@/views/blog-post";
-import { getBlogPostBySlug, getBlogPosts } from "@/lib/content";
+import { getBlogPostBySlug, getBlogPostStaticParams, getBlogPosts } from "@/lib/content";
+
+export async function generateStaticParams() {
+  return getBlogPostStaticParams();
+}
 
 export async function generateMetadata({
   params,
