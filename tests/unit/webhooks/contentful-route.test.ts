@@ -80,7 +80,7 @@ describe("POST /api/webhooks/contentful", () => {
     expect(response.status).toBe(200);
     expect(revalidateTagMock).toHaveBeenCalledWith("content:classes", "max");
     expect(revalidateTagMock).toHaveBeenCalledWith("content:schedule", "max");
-    expect(revalidatePathMock).not.toHaveBeenCalled();
+    expect(revalidatePathMock).toHaveBeenCalledWith("/sitemap.xml");
     expect(triggerContentfulPublishCampaignMock).toHaveBeenCalledWith({
       contentType: "classDefinition",
       contentfulEntryId: "entry_123",
@@ -139,6 +139,7 @@ describe("POST /api/webhooks/contentful", () => {
 
     expect(response.status).toBe(200);
     expect(revalidateTagMock).toHaveBeenCalledWith("content:blog", "max");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/sitemap.xml");
     expect(revalidatePathMock).toHaveBeenCalledWith("/blog");
     expect(revalidatePathMock).toHaveBeenCalledWith("/blog/strength-after-stretching");
     expect(getBlogPostSlugByContentfulEntryIdMock).not.toHaveBeenCalled();

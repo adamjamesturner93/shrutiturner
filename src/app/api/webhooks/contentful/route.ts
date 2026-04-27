@@ -132,6 +132,9 @@ export async function POST(req: NextRequest) {
   for (const tag of tags) {
     revalidateTag(tag, "max");
   }
+  if (shouldRevalidateEntryPath(topic)) {
+    revalidatePath("/sitemap.xml");
+  }
 
   const paths = await revalidateBlogPaths({
     topic,
