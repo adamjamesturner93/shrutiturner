@@ -128,6 +128,8 @@ export function MembershipPage({
   const [working, setWorking] = useState(false);
   const [portalWorking, setPortalWorking] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelReasonDetail, setCancelReasonDetail] = useState("");
   const [showDisclosure, setShowDisclosure] = useState(false);
   const [pendingInterval, setPendingInterval] = useState<"monthly" | "annual" | null>(null);
   const [disclosureAccepted, setDisclosureAccepted] = useState(false);
@@ -156,6 +158,14 @@ export function MembershipPage({
   const checkoutError = searchParams.get("checkoutError") === "1";
   const checkoutBundle = searchParams.get("bundle");
   const checkoutInterval = searchParams.get("interval") === "annual" ? "annual" : "monthly";
+  const annualSavings = Math.max(0, monthlyPrice * 12 - annualPrice);
+  const membershipUsagePercent =
+    membership && membership.classesPerWeek > 0
+      ? Math.min(
+          100,
+          Math.round((membership.classesUsedThisWeek / membership.classesPerWeek) * 100)
+        )
+      : 0;
 
   const creditExpiryInfo = useMemo(() => {
     const summary = state?.credits.summary || [];
@@ -324,15 +334,27 @@ export function MembershipPage({
     }
   };
 
-  const cancelMembership = async () => {
+  const cancelMembership = async (startReplacementPack = false) => {
     setWorking(true);
     setError("");
     try {
-      const res = await fetch("/api/me/membership/cancel", { method: "POST" });
+      const res = await fetch("/api/me/membership/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reason: cancelReason,
+          reasonDetail: cancelReasonDetail,
+        }),
+      });
       if (!res.ok) throw new Error("Failed to cancel membership.");
       await load();
       setShowCancel(false);
+      setCancelReason("");
+      setCancelReasonDetail("");
       setWorking(false);
+      if (startReplacementPack) {
+        await startCreditsCheckout(3);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to cancel membership.");
       setWorking(false);
@@ -604,6 +626,66 @@ export function MembershipPage({
               </div>
             </div>
 
+            {membership.accessActive ? (
+              <div className="rounded-lg border p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Weekly class usage</p>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {membership.plan === "movewell"
+                        ? `${membership.classesUsedThisWeek} classes used this week. Membership access is unlimited, so this is a rhythm check rather than a cap.`
+                        : `${membership.classesUsedThisWeek} of ${membership.classesPerWeek} weekly classes used.`}
+                    </p>
+                  </div>
+                  <Badge variant="outline">
+                    {membership.classesUsedThisWeek}/{membership.classesPerWeek}
+                  </Badge>
+                </div>
+                <div
+                  className="bg-muted mt-4 h-2 overflow-hidden rounded-full"
+                  role="progressbar"
+                  aria-label="Weekly class usage"
+                  aria-valuenow={membership.classesUsedThisWeek}
+                  aria-valuemin={0}
+                  aria-valuemax={membership.classesPerWeek}
+                >
+                  <div
+                    className="bg-brand-accent h-full rounded-full"
+                    style={{ width: `${membershipUsagePercent}%` }}
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            {membership.accessActive && membership.billingInterval === "monthly" ? (
+              <div className="border-brand-accent/20 bg-brand-accent/5 rounded-lg border p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Annual upgrade available</p>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      Annual membership is £{annualPrice}/year and saves £{annualSavings} compared
+                      with monthly billing.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void openBillingPortal()}
+                    disabled={portalWorking}
+                  >
+                    Review upgrade
+                  </Button>
+                </div>
+              </div>
+            ) : membership.accessActive && membership.billingInterval === "annual" ? (
+              <div className="border-brand-accent/20 bg-brand-accent/5 rounded-lg border p-4 text-sm">
+                <p className="font-medium">Annual savings active</p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  You are saving £{annualSavings} compared with paying monthly for the year.
+                </p>
+              </div>
+            ) : null}
+
             <div className="flex flex-wrap gap-3">
               <Button
                 variant="outline"
@@ -622,7 +704,11 @@ export function MembershipPage({
                   variant="outline"
                   size="sm"
                   className="text-destructive"
-                  onClick={() => setShowCancel(true)}
+                  onClick={() => {
+                    setCancelReason("");
+                    setCancelReasonDetail("");
+                    setShowCancel(true);
+                  }}
                 >
                   Cancel membership
                 </Button>
@@ -798,16 +884,38 @@ export function MembershipPage({
                 Your £{referralBalance} referral balance will carry over.
               </p>
             ) : null}
+            <label className="space-y-2 text-sm">
+              <span className="font-medium">Reason for cancelling</span>
+              <select
+                value={cancelReason}
+                onChange={(event) => setCancelReason(event.target.value)}
+                className="border-input bg-background ring-offset-background focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              >
+                <option value="">Select a reason</option>
+                <option value="schedule_changed">My schedule has changed</option>
+                <option value="budget">Budget or affordability</option>
+                <option value="not_using_enough">I am not using it enough</option>
+                <option value="switching_to_credits">I want to switch to credits</option>
+                <option value="health_or_capacity">Health, energy, or capacity changed</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <label className="space-y-2 text-sm">
+              <span className="font-medium">Anything else Shruti should know?</span>
+              <textarea
+                value={cancelReasonDetail}
+                onChange={(event) => setCancelReasonDetail(event.target.value)}
+                maxLength={500}
+                rows={3}
+                className="border-input bg-background ring-offset-background focus-visible:ring-ring min-h-20 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                placeholder="Optional context"
+              />
+            </label>
             <div className="flex flex-col gap-2">
               <Button
                 variant="outline"
-                onClick={() => {
-                  void cancelMembership();
-                  if (totalCredits === 0) {
-                    void startCreditsCheckout(3);
-                  }
-                }}
-                disabled={working}
+                onClick={() => void cancelMembership(totalCredits === 0)}
+                disabled={working || !cancelReason}
               >
                 {totalCredits === 0 ? (
                   <>Cancel & Switch to 3-Class Pack ({priceWithDiscount(credits3Price)})</>
@@ -820,12 +928,20 @@ export function MembershipPage({
                   variant="outline"
                   className="text-destructive"
                   onClick={() => void cancelMembership()}
-                  disabled={working}
+                  disabled={working || !cancelReason}
                 >
                   Cancel without replacement
                 </Button>
               ) : null}
-              <Button variant="ghost" onClick={() => setShowCancel(false)} disabled={working}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowCancel(false);
+                  setCancelReason("");
+                  setCancelReasonDetail("");
+                }}
+                disabled={working}
+              >
                 Keep my membership
               </Button>
             </div>

@@ -374,7 +374,10 @@ export async function startOrSwitchMembership({
   return db.membershipSubscription.create({ data });
 }
 
-export async function cancelMembership(userId: string) {
+export async function cancelMembership(
+  userId: string,
+  cancellation?: { reason?: string; reasonDetail?: string }
+) {
   const current = await getLatestMembership(userId);
   if (!current) return null;
   const user = await db.user.findUnique({
@@ -443,6 +446,8 @@ export async function cancelMembership(userId: string) {
         : "Membership cancelled during the renewal cooling-off period.",
       metadataJson: {
         refundAmountPence,
+        cancellationReason: cancellation?.reason || null,
+        cancellationReasonDetail: cancellation?.reasonDetail || null,
       },
       eventAt: now,
     });
@@ -484,6 +489,10 @@ export async function cancelMembership(userId: string) {
       kind: "membership_cancelled",
       status: "processed",
       summary: `Membership scheduled to end on ${updated.endsAt?.toISOString().slice(0, 10) || "the current period end"}.`,
+      metadataJson: {
+        cancellationReason: cancellation?.reason || null,
+        cancellationReasonDetail: cancellation?.reasonDetail || null,
+      },
       eventAt: now,
     });
     if (user?.email) {
@@ -516,6 +525,10 @@ export async function cancelMembership(userId: string) {
     kind: "membership_cancelled",
     status: "processed",
     summary: `Membership scheduled to end on ${updated.endsAt?.toISOString().slice(0, 10) || "the current period end"}.`,
+    metadataJson: {
+      cancellationReason: cancellation?.reason || null,
+      cancellationReasonDetail: cancellation?.reasonDetail || null,
+    },
     eventAt: now,
   });
   if (user?.email) {

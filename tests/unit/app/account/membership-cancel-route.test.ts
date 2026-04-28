@@ -22,11 +22,21 @@ describe("POST /api/me/membership/cancel", () => {
 
   it("cancels the current member subscription", async () => {
     const response = await route.POST(
-      new Request("http://localhost/api/me/membership/cancel", { method: "POST" })
+      new Request("http://localhost/api/me/membership/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reason: "schedule_changed",
+          reasonDetail: "Evenings no longer work.",
+        }),
+      })
     );
 
     expect(response.status).toBe(200);
-    expect(cancelMembershipMock).toHaveBeenCalledWith("user_123");
+    expect(cancelMembershipMock).toHaveBeenCalledWith("user_123", {
+      reason: "schedule_changed",
+      reasonDetail: "Evenings no longer work.",
+    });
     await expect(response.json()).resolves.toEqual({
       success: true,
       data: { membership: { id: "membership_123", cancelAtPeriodEnd: true } },
@@ -58,6 +68,26 @@ describe("POST /api/me/membership/cancel", () => {
     await expect(response.json()).resolves.toEqual({
       success: false,
       error: { code: "SERVICE_UNAVAILABLE", message: "Stripe is not configured." },
+    });
+  });
+
+  it("rejects oversized cancellation details", async () => {
+    const response = await route.POST(
+      new Request("http://localhost/api/me/membership/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reasonDetail: "x".repeat(501) }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(cancelMembershipMock).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      error: {
+        code: "BAD_REQUEST",
+        message: "Cancellation detail must be 500 characters or fewer.",
+      },
     });
   });
 });
