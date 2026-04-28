@@ -1,6 +1,6 @@
 export const SUBSCRIPTION_DISCLOSURE_VERSION = "2026-04-03";
 export const TRIAL_REMINDER_LEAD_DAYS = 3;
-export const ANNUAL_RENEWAL_REMINDER_LEAD_DAYS = 14;
+export const ANNUAL_RENEWAL_REMINDER_LEAD_DAYS = [30, 7] as const;
 export const MONTHLY_REMINDER_INTERVAL_MONTHS = 6;
 export const MEMBERSHIP_TRIAL_DAYS = 14;
 export const MOVEWELL_MONTHLY_PENCE = 2900;
@@ -34,7 +34,7 @@ export function buildMembershipDisclosure(interval: SubscriptionDisclosureInterv
       minimumLiability,
       "You can cancel online from your Membership dashboard. If you sign up online, you do not need to call or email to cancel.",
       "You have an initial 14-day cooling-off right from the day after signup. After a trial converts to paid, and after annual renewals, you also receive a further 14-day renewal cooling-off right.",
-      `Reminder notices are sent before the trial ends, before annual renewals, and every ${MONTHLY_REMINDER_INTERVAL_MONTHS} months for rolling monthly memberships.`,
+      `Reminder notices are sent before the trial ends, 30 days and 7 days before annual renewals, and every ${MONTHLY_REMINDER_INTERVAL_MONTHS} months for rolling monthly memberships.`,
     ],
     fullItems: [
       "Supplier: Shruti Turner.",
@@ -50,6 +50,6 @@ export function buildMembershipDisclosure(interval: SubscriptionDisclosureInterv
 
 export function getNoticeTimingSummary(interval: SubscriptionDisclosureInterval) {
   return interval === "annual"
-    ? `Trial reminder before the ${MEMBERSHIP_TRIAL_DAYS}-day trial ends, annual renewal reminder before the next term, and a renewal cooling-off notice on the day an annual term starts.`
+    ? `Trial reminder before the ${MEMBERSHIP_TRIAL_DAYS}-day trial ends, annual renewal reminders 30 days and 7 days before the next term, and a renewal cooling-off notice on the day an annual term starts.`
     : `Trial reminder before the ${MEMBERSHIP_TRIAL_DAYS}-day trial ends, rolling reminders every ${MONTHLY_REMINDER_INTERVAL_MONTHS} months, and a renewal cooling-off notice if the trial converts into a paid monthly term.`;
 }

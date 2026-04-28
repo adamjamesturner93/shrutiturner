@@ -468,6 +468,7 @@ export async function sendAnnualRenewalReminderNotice(params: {
   email: string;
   firstName: string;
   renewalDate: Date;
+  leadDays: number;
 }) {
   const renewalLabel = formatDateLabel(params.renewalDate) || "soon";
   return sendAndRecordNotice({
@@ -476,8 +477,8 @@ export async function sendAnnualRenewalReminderNotice(params: {
     email: params.email,
     firstName: params.firstName,
     kind: SubscriptionComplianceEventKind.annual_renewal_reminder,
-    summary: `Annual renewal reminder sent before ${renewalLabel}.`,
-    subject: "Your annual Move Well Membership renewal is coming up",
+    summary: `${params.leadDays}-day annual renewal reminder sent before ${renewalLabel}.`,
+    subject: `${params.leadDays}-day reminder: annual membership renewal`,
     preview: `Your annual renewal is due on ${renewalLabel}.`,
     title: "Annual renewal reminder",
     paragraphs: [
@@ -491,6 +492,7 @@ export async function sendAnnualRenewalReminderNotice(params: {
     metadata: {
       membershipId: params.membershipId,
       renewalDate: renewalLabel,
+      leadDays: String(params.leadDays),
     },
   });
 }
@@ -499,12 +501,13 @@ async function hasRecentEvent(params: {
   membershipId: string;
   kind: SubscriptionComplianceEventKind;
   from: Date;
+  to?: Date;
 }) {
   const existing = await db.subscriptionComplianceEvent.findFirst({
     where: {
       membershipId: params.membershipId,
       kind: params.kind,
-      eventAt: { gte: params.from },
+      eventAt: params.to ? { gte: params.from, lte: params.to } : { gte: params.from },
     },
     select: { id: true },
   });
@@ -548,23 +551,32 @@ async function processNoticeForMembership(membership: NoticeMembership, now: Dat
     membership.billingInterval === MembershipBillingInterval.annual &&
     membership.renewsAt &&
     membership.cancelAtPeriodEnd === false &&
-    membership.renewsAt > now &&
-    membership.renewsAt.getTime() - now.getTime() <= ANNUAL_RENEWAL_REMINDER_LEAD_DAYS * 86400000
+    membership.renewsAt > now
   ) {
-    const seen = await hasRecentEvent({
-      membershipId: membership.id,
-      kind: SubscriptionComplianceEventKind.annual_renewal_reminder,
-      from: addDays(membership.renewsAt, -ANNUAL_RENEWAL_REMINDER_LEAD_DAYS - 2),
-    });
-    if (!seen) {
-      await sendAnnualRenewalReminderNotice({
+    const msUntilRenewal = membership.renewsAt.getTime() - now.getTime();
+    for (const [index, leadDays] of ANNUAL_RENEWAL_REMINDER_LEAD_DAYS.entries()) {
+      const nextLeadDays = ANNUAL_RENEWAL_REMINDER_LEAD_DAYS[index + 1] || 0;
+      if (msUntilRenewal > leadDays * 86400000 || msUntilRenewal <= nextLeadDays * 86400000) {
+        continue;
+      }
+
+      const seen = await hasRecentEvent({
         membershipId: membership.id,
-        userId: membership.userId,
-        email: membership.user.email,
-        firstName,
-        renewalDate: membership.renewsAt,
+        kind: SubscriptionComplianceEventKind.annual_renewal_reminder,
+        from: addDays(membership.renewsAt, -leadDays - 2),
+        to: addDays(membership.renewsAt, -leadDays + 2),
       });
-      sent += 1;
+      if (!seen) {
+        await sendAnnualRenewalReminderNotice({
+          membershipId: membership.id,
+          userId: membership.userId,
+          email: membership.user.email,
+          firstName,
+          renewalDate: membership.renewsAt,
+          leadDays,
+        });
+        sent += 1;
+      }
     }
   }
 
