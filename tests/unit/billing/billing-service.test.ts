@@ -258,6 +258,62 @@ describe("billing-service Stripe integration", () => {
     expect(billingEventUpdateMock).not.toHaveBeenCalled();
   });
 
+  it("links a Stripe customer to a user from customer metadata", async () => {
+    billingEventFindUniqueMock.mockResolvedValue(null);
+    userFindUniqueMock
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: "user_123", name: null, stripeCustomerId: null });
+
+    await processStripeWebhookEvent(
+      event({
+        id: "evt_customer_created",
+        type: "customer.created",
+        object: {
+          id: "cus_123",
+          email: "taylor@example.com",
+          name: "Taylor Member",
+          metadata: { userId: "user_123" },
+        },
+      })
+    );
+
+    expect(userUpdateMock).toHaveBeenCalledWith({
+      where: { id: "user_123" },
+      data: {
+        stripeCustomerId: "cus_123",
+        name: "Taylor Member",
+      },
+    });
+    expect(billingEventUpdateMock).toHaveBeenLastCalledWith({
+      where: { id: "billing_event_123" },
+      data: { status: BillingEventStatus.processed, processedAt: expect.any(Date) },
+    });
+  });
+
+  it("clears a stale Stripe customer id when Stripe deletes the customer", async () => {
+    billingEventFindUniqueMock.mockResolvedValue(null);
+    userFindUniqueMock
+      .mockResolvedValueOnce({ id: "user_123" })
+      .mockResolvedValueOnce({ id: "user_123" });
+
+    await processStripeWebhookEvent(
+      event({
+        id: "evt_customer_deleted",
+        type: "customer.deleted",
+        object: {
+          id: "cus_123",
+          deleted: true,
+        },
+      })
+    );
+
+    expect(userUpdateMock).toHaveBeenCalledWith({
+      where: { id: "user_123" },
+      data: { stripeCustomerId: null },
+    });
+  });
+
   it("marks the member past due from a verified invoice payment failure webhook", async () => {
     billingEventFindUniqueMock.mockResolvedValue(null);
     userFindUniqueMock.mockResolvedValue({ id: "user_123" });

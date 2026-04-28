@@ -730,6 +730,88 @@ async function processSubscriptionUpdated(subscription: Stripe.Subscription) {
   });
 }
 
+async function linkStripeCustomerToUser(params: {
+  userId: string;
+  stripeCustomerId: string;
+  stripeName?: string | null;
+}) {
+  const user = await db.user.findUnique({
+    where: { id: params.userId },
+    select: { id: true, name: true, stripeCustomerId: true },
+  });
+  if (!user) return false;
+  if (user.stripeCustomerId && user.stripeCustomerId !== params.stripeCustomerId) return false;
+
+  const stripeName = params.stripeName?.trim() || "";
+  await db.user.update({
+    where: { id: user.id },
+    data: {
+      stripeCustomerId: params.stripeCustomerId,
+      ...(stripeName && !user.name ? { name: stripeName } : {}),
+    },
+  });
+  return true;
+}
+
+async function processCustomerCreatedOrUpdated(customer: Stripe.Customer) {
+  const stripeName = typeof customer.name === "string" ? customer.name : null;
+  const existing = await db.user.findUnique({
+    where: { stripeCustomerId: customer.id },
+    select: { id: true, name: true },
+  });
+
+  if (existing) {
+    if (stripeName?.trim() && !existing.name) {
+      await db.user.update({
+        where: { id: existing.id },
+        data: { name: stripeName.trim() },
+      });
+    }
+    return;
+  }
+
+  const metadataUserId =
+    typeof customer.metadata?.userId === "string" ? customer.metadata.userId : null;
+  if (metadataUserId) {
+    const linked = await linkStripeCustomerToUser({
+      userId: metadataUserId,
+      stripeCustomerId: customer.id,
+      stripeName,
+    });
+    if (linked) return;
+  }
+
+  const email = typeof customer.email === "string" ? customer.email.trim().toLowerCase() : "";
+  if (!email) return;
+
+  const userByEmail = await db.user.findUnique({
+    where: { email },
+    select: { id: true, name: true, stripeCustomerId: true },
+  });
+  if (!userByEmail || userByEmail.stripeCustomerId) return;
+
+  await db.user.update({
+    where: { id: userByEmail.id },
+    data: {
+      stripeCustomerId: customer.id,
+      ...(stripeName?.trim() && !userByEmail.name ? { name: stripeName.trim() } : {}),
+    },
+  });
+}
+
+async function processCustomerDeleted(customer: Stripe.DeletedCustomer) {
+  const user = await db.user.findUnique({
+    where: { stripeCustomerId: customer.id },
+    select: { id: true },
+  });
+  if (!user) return;
+
+  await db.user.update({
+    where: { id: user.id },
+    data: { stripeCustomerId: null },
+  });
+}
+
 async function processPromotionCodeUpdated(promotionCode: Stripe.PromotionCode) {
   const coupon = promotionCode.coupon;
   if (!coupon || typeof coupon === "string") return;
@@ -796,6 +878,16 @@ async function handleStripeEvent(event: Stripe.Event) {
     return;
   }
 
+  if (event.type === "customer.created" || event.type === "customer.updated") {
+    await processCustomerCreatedOrUpdated(event.data.object as Stripe.Customer);
+    return;
+  }
+
+  if (event.type === "customer.deleted") {
+    await processCustomerDeleted(event.data.object as unknown as Stripe.DeletedCustomer);
+    return;
+  }
+
   if (event.type === "promotion_code.updated") {
     await processPromotionCodeUpdated(event.data.object as Stripe.PromotionCode);
     return;
@@ -833,6 +925,19 @@ async function resolveBillingEventUserId(event: Stripe.Event) {
     const customerId = String(subscription.customer);
     const user = await db.user.findUnique({
       where: { stripeCustomerId: customerId },
+      select: { id: true },
+    });
+    return user?.id || null;
+  }
+
+  if (
+    event.type === "customer.created" ||
+    event.type === "customer.updated" ||
+    event.type === "customer.deleted"
+  ) {
+    const customer = event.data.object as Stripe.Customer | Stripe.DeletedCustomer;
+    const user = await db.user.findUnique({
+      where: { stripeCustomerId: customer.id },
       select: { id: true },
     });
     return user?.id || null;
