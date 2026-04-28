@@ -14,6 +14,7 @@ import {
 import { SEO } from "@/components/seo";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth-context";
+import { getPricingCoachingRows, getPricingProgrammeCards } from "@/lib/billing/pricing-page-model";
 import type { PublicPricingDto } from "@/lib/api/types";
 import type { FaqItemContent } from "@/lib/content/types";
 
@@ -72,6 +73,8 @@ const DEFAULT_PRICING_FAQS: FaqItemContent[] = [
 export function PricingPage({ faqs }: PricingPageProps) {
   const { isAuthenticated } = useAuth();
   const [pricing, setPricing] = useState<PublicPricingDto | null>(null);
+  const coachingRows = useMemo(() => getPricingCoachingRows(), []);
+  const programmeCards = useMemo(() => getPricingProgrammeCards(), []);
 
   const activeFaqs = useMemo(
     () =>
@@ -465,6 +468,159 @@ export function PricingPage({ faqs }: PricingPageProps) {
             <Shield className="h-4 w-4" />
             Cancel 4+ hours before class to keep your credit
           </span>
+        </div>
+      </MarketingSection>
+
+      <MarketingSection className="section-wash" contentClassName="max-w-7xl">
+        <SectionHeading
+          eyebrow="Coaching"
+          title="Personal coaching tiers"
+          description="Choose the coaching model that matches how much structure, review, and live support you want around your training."
+          align="center"
+        />
+
+        <div className="mt-12 grid gap-5 lg:grid-cols-3">
+          {coachingRows.map((tier) => (
+            <article
+              key={tier.id}
+              className="border-brand-dark/10 bg-background flex flex-col rounded-[1.75rem] border p-7 shadow-[0_20px_50px_rgba(46,31,51,0.06)]"
+            >
+              <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">{tier.tagline}</p>
+              <h3 className="mt-4 text-3xl leading-tight">{tier.name}</h3>
+              <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
+                {tier.description}
+              </p>
+              <div className="mt-6">
+                <p className="text-4xl" aria-label={tier.priceLabel}>
+                  {tier.priceLabel}
+                </p>
+                <p className="text-muted-foreground mt-2 text-sm">{tier.priceNote}</p>
+              </div>
+              <ul className="mt-7 flex-1 space-y-3">
+                {tier.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-3 text-sm">
+                    <Check className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
+                    <span className="text-muted-foreground">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button asChild size="lg" variant="outline" className="mt-8 w-full">
+                <Link href={tier.ctaHref}>
+                  {tier.ctaLabel}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </article>
+          ))}
+        </div>
+
+        <div className="border-brand-dark/10 bg-background mt-10 overflow-hidden rounded-[1.6rem] border shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+              <caption className="sr-only">
+                Coaching tier comparison showing price, support level, membership inclusion, and
+                next step.
+              </caption>
+              <thead className="bg-brand-warm text-brand-dark">
+                <tr>
+                  <th scope="col" className="px-5 py-4 font-medium">
+                    Tier
+                  </th>
+                  <th scope="col" className="px-5 py-4 font-medium">
+                    Price
+                  </th>
+                  <th scope="col" className="px-5 py-4 font-medium">
+                    Support
+                  </th>
+                  <th scope="col" className="px-5 py-4 font-medium">
+                    Membership
+                  </th>
+                  <th scope="col" className="px-5 py-4 font-medium">
+                    Next step
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-brand-dark/10 divide-y">
+                {coachingRows.map((tier) => (
+                  <tr key={tier.id}>
+                    <th scope="row" className="px-5 py-5 align-top font-medium">
+                      {tier.name}
+                    </th>
+                    <td className="text-muted-foreground px-5 py-5 align-top">
+                      <span aria-label={tier.priceLabel}>{tier.priceLabel}</span>
+                      <span className="mt-1 block text-xs">{tier.priceNote}</span>
+                    </td>
+                    <td className="text-muted-foreground px-5 py-5 align-top">{tier.tagline}</td>
+                    <td className="text-muted-foreground px-5 py-5 align-top">
+                      {tier.includesMembership ? "Included" : "Optional add-on"}
+                    </td>
+                    <td className="px-5 py-5 align-top">
+                      <Link
+                        href={tier.ctaHref}
+                        className="text-brand-accent inline-flex items-center gap-2 font-medium underline-offset-4 hover:underline"
+                      >
+                        {tier.ctaLabel}
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </MarketingSection>
+
+      <MarketingSection className="section-divider" contentClassName="max-w-7xl">
+        <SectionHeading
+          eyebrow="Small Group Programmes"
+          title="Focused programme blocks"
+          description="Small-group programmes give you a fixed cohort, live feedback, and a clearer progression when weekly classes are not quite enough."
+          align="center"
+        />
+
+        <div className="mt-12 grid gap-5 lg:grid-cols-3">
+          {programmeCards.map((programme) => (
+            <article
+              key={programme.id}
+              className="border-brand-dark/10 bg-background flex flex-col rounded-[1.75rem] border p-7 shadow-[0_20px_50px_rgba(46,31,51,0.06)]"
+            >
+              <div className="flex flex-wrap items-center gap-2 text-xs tracking-[0.16em] uppercase">
+                <span className="bg-brand-accent/8 text-brand-accent rounded-full px-3 py-1">
+                  {programme.durationLabel}
+                </span>
+                <span className="bg-brand-dark/6 text-brand-dark rounded-full px-3 py-1">
+                  {programme.sessionsPerWeek} sessions/week
+                </span>
+              </div>
+              <h3 className="mt-5 text-3xl leading-tight">{programme.title}</h3>
+              <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
+                {programme.summary}
+              </p>
+              <div className="mt-6">
+                <p className="text-4xl" aria-label={`${programme.priceLabel} per programme`}>
+                  {programme.priceLabel}
+                </p>
+                <p className="text-muted-foreground mt-2 text-sm">
+                  Per programme, cohort capped at {programme.cohortSize}
+                </p>
+              </div>
+              <ul className="mt-7 flex-1 space-y-3">
+                {programme.inclusions.map((inclusion) => (
+                  <li key={inclusion} className="flex items-start gap-3 text-sm">
+                    <Check className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
+                    <span className="text-muted-foreground">{inclusion}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button asChild size="lg" variant="outline" className="mt-8 w-full">
+                <Link href={programme.ctaHref}>
+                  View programme
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </article>
+          ))}
         </div>
       </MarketingSection>
 
