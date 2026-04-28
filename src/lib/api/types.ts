@@ -444,6 +444,7 @@ export type BillingHistoryItemDto = {
   status: "paid" | "failed" | "refunded" | "applied";
   stripeInvoiceId?: string | null;
   stripeCheckoutSessionId?: string | null;
+  invoiceUrl?: string | null;
 };
 
 export type DashboardSummaryDto = {

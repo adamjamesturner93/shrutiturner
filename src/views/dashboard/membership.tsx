@@ -47,6 +47,10 @@ type PortalResult = {
   portalUrl: string;
 };
 
+type ChangePlanResult = {
+  mode: "already_current" | "immediate" | "period_end";
+};
+
 type AcceptanceRequirementState = {
   type: string;
   surface: string;
@@ -130,6 +134,7 @@ export function MembershipPage({
   const [showCancel, setShowCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelReasonDetail, setCancelReasonDetail] = useState("");
+  const [changePlanMessage, setChangePlanMessage] = useState("");
   const [showDisclosure, setShowDisclosure] = useState(false);
   const [pendingInterval, setPendingInterval] = useState<"monthly" | "annual" | null>(null);
   const [disclosureAccepted, setDisclosureAccepted] = useState(false);
@@ -394,6 +399,33 @@ export function MembershipPage({
     }
   };
 
+  const changeMembershipInterval = async (billingInterval: "monthly" | "annual") => {
+    setWorking(true);
+    setError("");
+    setChangePlanMessage("");
+    try {
+      const res = await fetch("/api/me/membership/change-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: "movewell", billingInterval }),
+      });
+      if (!res.ok) throw new Error("Failed to change membership plan.");
+      const payload = (await res.json()) as { success: true; data: ChangePlanResult };
+      await load();
+      setChangePlanMessage(
+        payload.data.mode === "period_end"
+          ? "Your monthly switch has been scheduled for the end of the paid annual period."
+          : payload.data.mode === "already_current"
+            ? "You are already on that billing interval."
+            : "Your annual upgrade has been applied. Stripe will handle any prorated charge."
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to change membership plan.");
+    } finally {
+      setWorking(false);
+    }
+  };
+
   const priceWithDiscount = (basePrice: number) => {
     if (referralBalance <= 0) return `£${basePrice}`;
     const discounted = Math.max(0, basePrice - referralBalance);
@@ -447,6 +479,11 @@ export function MembershipPage({
       />
 
       {error ? <p className="mb-4 text-sm text-red-600">{error}</p> : null}
+      {changePlanMessage ? (
+        <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          {changePlanMessage}
+        </div>
+      ) : null}
 
       <AppMetricGrid className="mb-8 lg:grid-cols-3">
         <AppMetricCard
@@ -670,19 +707,32 @@ export function MembershipPage({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => void openBillingPortal()}
-                    disabled={portalWorking}
+                    onClick={() => void changeMembershipInterval("annual")}
+                    disabled={working}
                   >
-                    Review upgrade
+                    Upgrade to annual
                   </Button>
                 </div>
               </div>
             ) : membership.accessActive && membership.billingInterval === "annual" ? (
-              <div className="border-brand-accent/20 bg-brand-accent/5 rounded-lg border p-4 text-sm">
-                <p className="font-medium">Annual savings active</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  You are saving £{annualSavings} compared with paying monthly for the year.
-                </p>
+              <div className="border-brand-accent/20 bg-brand-accent/5 rounded-lg border p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Annual savings active</p>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      You are saving £{annualSavings} compared with paying monthly for the year. You
+                      can schedule a monthly switch for the end of the current paid period.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void changeMembershipInterval("monthly")}
+                    disabled={working}
+                  >
+                    Schedule monthly switch
+                  </Button>
+                </div>
               </div>
             ) : null}
 
@@ -1180,6 +1230,16 @@ export function MembershipPage({
                   <p className="text-muted-foreground text-xs">
                     {item.createdAt.slice(0, 10)} · {formatBillingHistoryStatus(item.status)}
                   </p>
+                  {item.invoiceUrl ? (
+                    <a
+                      href={item.invoiceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary mt-1 inline-flex text-xs underline"
+                    >
+                      View invoice
+                    </a>
+                  ) : null}
                 </div>
                 <span>£{(item.amountPence / 100).toFixed(2)}</span>
               </div>

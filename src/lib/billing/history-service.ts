@@ -6,6 +6,7 @@ type StripeInvoiceObject = {
   amount_paid?: number;
   amount_due?: number;
   id?: string;
+  hosted_invoice_url?: string | null;
 };
 
 type StripeCheckoutObject = {
@@ -74,6 +75,7 @@ export async function getBillingHistory(
       amountPence: stripeObject?.amount_paid || 0,
       status: "paid",
       stripeInvoiceId: stripeObject?.id || null,
+      invoiceUrl: stripeObject?.hosted_invoice_url || null,
     };
   });
 
@@ -88,6 +90,7 @@ export async function getBillingHistory(
       amountPence: stripeObject?.amount_due || 0,
       status: "failed",
       stripeInvoiceId: stripeObject?.id || null,
+      invoiceUrl: stripeObject?.hosted_invoice_url || null,
     };
   });
 
