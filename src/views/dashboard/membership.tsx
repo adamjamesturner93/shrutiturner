@@ -31,6 +31,10 @@ import {
 import type { BillingHistoryItemDto, MembershipStateDto, PublicPricingDto } from "@/lib/api/types";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 import {
+  buildCreditCheckoutReturnPaths,
+  buildMembershipCheckoutReturnPaths,
+} from "@/lib/billing/checkout-flow";
+import {
   buildMembershipDisclosure,
   SUBSCRIPTION_DISCLOSURE_VERSION,
 } from "@/lib/billing/subscription-disclosure";
@@ -148,6 +152,10 @@ export function MembershipPage({
   const creditsExpiryDays = pricing?.creditsExpiryDays ?? 90;
   const preferredInterval = searchParams.get("interval") === "annual" ? "annual" : "monthly";
   const disclosureRequested = searchParams.get("subscribe") === "1";
+  const checkoutPurchase = searchParams.get("purchase");
+  const checkoutError = searchParams.get("checkoutError") === "1";
+  const checkoutBundle = searchParams.get("bundle");
+  const checkoutInterval = searchParams.get("interval") === "annual" ? "annual" : "monthly";
 
   const creditExpiryInfo = useMemo(() => {
     const summary = state?.credits.summary || [];
@@ -228,6 +236,7 @@ export function MembershipPage({
         billingInterval: pendingInterval,
         disclosureAccepted: true,
         disclosureVersion: SUBSCRIPTION_DISCLOSURE_VERSION,
+        ...buildMembershipCheckoutReturnPaths(pendingInterval),
       }),
     });
 
@@ -301,7 +310,10 @@ export function MembershipPage({
       const res = await fetch("/api/me/credits/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bundleSize }),
+        body: JSON.stringify({
+          bundleSize,
+          ...buildCreditCheckoutReturnPaths(bundleSize),
+        }),
       });
       if (!res.ok) throw new Error("Failed to start credits checkout.");
       const payload = (await res.json()) as CheckoutResult;
@@ -438,13 +450,29 @@ export function MembershipPage({
 
       {checkoutState === "success" ? (
         <div className="mb-8 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-          Checkout completed. Your membership and billing history will refresh automatically.
+          {checkoutPurchase === "membership"
+            ? `Membership checkout completed. Stripe will confirm your ${checkoutInterval} membership and the dashboard will refresh with your access details.`
+            : checkoutPurchase === "credits"
+              ? `Credit checkout completed. Your ${checkoutBundle || "class"} credits will appear here as soon as Stripe confirms the payment.`
+              : "Checkout completed. Your membership, credits, and billing history will refresh automatically."}
         </div>
       ) : null}
 
       {checkoutState === "cancelled" ? (
         <div className="mb-8 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Checkout was cancelled. Your current membership and credits were left unchanged.
+          {checkoutPurchase === "membership"
+            ? "Membership checkout was cancelled. Your current access was left unchanged and you can restart checkout below."
+            : checkoutPurchase === "credits"
+              ? "Credit checkout was cancelled. No credits were added or charged, and you can choose a pack below."
+              : "Checkout was cancelled. Your current membership and credits were left unchanged."}
+        </div>
+      ) : null}
+
+      {checkoutState === "retry" && checkoutError ? (
+        <div className="mb-8 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          {checkoutPurchase === "credits"
+            ? "We could not start credit checkout after sign-in. Choose the credit pack again below."
+            : "We could not start checkout after sign-in. Review the option below and try again."}
         </div>
       ) : null}
 
