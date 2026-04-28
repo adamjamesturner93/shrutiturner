@@ -20,6 +20,7 @@ const billingCatalogItemFindFirstMock = vi.fn();
 
 const stripeCustomerCreateMock = vi.fn();
 const stripeCheckoutSessionCreateMock = vi.fn();
+const stripeSubscriptionRetrieveMock = vi.fn();
 const getActiveCatalogItemMock = vi.fn();
 const resolvePromotionCodeDiscountMock = vi.fn();
 const computeReferralDiscountPenceMock = vi.fn();
@@ -81,6 +82,9 @@ vi.mock("@/lib/billing/stripe-client", () => ({
       sessions: {
         create: stripeCheckoutSessionCreateMock,
       },
+    },
+    subscriptions: {
+      retrieve: stripeSubscriptionRetrieveMock,
     },
   }),
 }));
@@ -164,6 +168,16 @@ describe("billing-service Stripe integration", () => {
     stripeCheckoutSessionCreateMock.mockResolvedValue({
       id: "cs_membership",
       url: "https://checkout.stripe.com/session",
+    });
+    stripeSubscriptionRetrieveMock.mockResolvedValue({
+      id: "sub_123",
+      status: "active",
+      current_period_end: 1770000000,
+      cancel_at: null,
+      cancel_at_period_end: false,
+      items: {
+        data: [{ price: { id: "price_membership_monthly" } }],
+      },
     });
     userFindUniqueMock.mockResolvedValue({
       id: "user_123",
@@ -380,6 +394,105 @@ describe("billing-service Stripe integration", () => {
         endsAt: expect.any(Date),
       }),
     });
+  });
+
+  it("creates membership entitlement from a completed subscription checkout webhook", async () => {
+    billingEventFindUniqueMock.mockResolvedValue(null);
+    billingCatalogItemFindFirstMock.mockResolvedValue({ key: "membership_movewell_annual" });
+    stripeSubscriptionRetrieveMock.mockResolvedValue({
+      id: "sub_annual",
+      status: "active",
+      current_period_end: 1800000000,
+      cancel_at: null,
+      cancel_at_period_end: false,
+      items: {
+        data: [{ price: { id: "price_membership_annual" } }],
+      },
+    });
+    const trialEndsAt = new Date("2026-04-17T10:00:00.000Z");
+    startOrSwitchMembershipMock.mockResolvedValue({
+      id: "membership_annual",
+      pricePence: 29000,
+      trialEndsAt,
+    });
+    userFindUniqueMock.mockResolvedValue({
+      email: "taylor@example.com",
+      firstName: "Taylor",
+      name: "Taylor Member",
+    });
+
+    await processStripeWebhookEvent(
+      event({
+        id: "evt_membership_checkout",
+        type: "checkout.session.completed",
+        object: {
+          id: "cs_membership",
+          created: 1770000000,
+          subscription: "sub_annual",
+          metadata: {
+            userId: "user_123",
+            kind: "membership",
+            plan: "movewell",
+            billingInterval: "annual",
+            disclosureVersion: "2026-04-03",
+            disclosureAcceptedAt: "2026-04-03T10:00:00.000Z",
+            complianceSnapshotJson: '{"source":"test"}',
+          },
+        },
+      })
+    );
+
+    expect(stripeSubscriptionRetrieveMock).toHaveBeenCalledWith("sub_annual");
+    expect(startOrSwitchMembershipMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user_123",
+        plan: "movewell",
+        billingInterval: "annual",
+        stripeSubscriptionId: "sub_annual",
+        stripePriceId: "price_membership_annual",
+        disclosureVersion: "2026-04-03",
+        disclosureAcceptedAt: new Date("2026-04-03T10:00:00.000Z"),
+        complianceSnapshotJson: { source: "test" },
+        startedAt: new Date(1770000000 * 1000),
+      })
+    );
+    expect(sendMembershipCheckoutConfirmationNoticeMock).toHaveBeenCalledWith({
+      membershipId: "membership_annual",
+      userId: "user_123",
+      email: "taylor@example.com",
+      firstName: "Taylor",
+      billingInterval: "annual",
+      pricePence: 29000,
+      trialEndsAt,
+      immediateStartSummary: null,
+    });
+  });
+
+  it("does not grant duplicate credit entitlements for an already fulfilled checkout", async () => {
+    billingEventFindUniqueMock.mockResolvedValue(null);
+    creditLedgerEntryFindFirstMock.mockResolvedValue({ id: "credit_existing" });
+    referralLedgerEntryFindFirstMock.mockResolvedValue({ id: "referral_existing" });
+
+    await processStripeWebhookEvent(
+      event({
+        id: "evt_checkout_duplicate",
+        type: "checkout.session.completed",
+        object: {
+          id: "cs_credits",
+          amount_total: 2400,
+          payment_intent: "pi_123",
+          metadata: {
+            userId: "user_123",
+            kind: "credits",
+            bundleSize: "3",
+            referralDiscountPence: "1000",
+          },
+        },
+      })
+    );
+
+    expect(addCreditsMock).not.toHaveBeenCalled();
+    expect(consumeReferralDiscountMock).not.toHaveBeenCalled();
   });
 
   it("grants credit entitlements from a completed one-off checkout webhook only once", async () => {
