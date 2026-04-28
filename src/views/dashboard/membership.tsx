@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "../../context/auth-context";
 import { DashboardLayout } from "../../components/dashboard-layout";
@@ -128,8 +128,12 @@ export function MembershipPage({
     initialState !== undefined && initialHistory !== undefined && initialPricing !== undefined;
   const [state, setState] = useState<MembershipStateDto | null>(initialState || null);
   const [history, setHistory] = useState<BillingHistoryItemDto[]>(initialHistory || []);
+  const [historyLimit, setHistoryLimit] = useState(
+    Math.min(100, Math.max(30, initialHistory?.length || 30))
+  );
   const [loading, setLoading] = useState(!hasServerData);
   const [working, setWorking] = useState(false);
+  const [historyWorking, setHistoryWorking] = useState(false);
   const [portalWorking, setPortalWorking] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -189,10 +193,10 @@ export function MembershipPage({
     return { date: earliest, count, daysLeft };
   }, [state?.credits.summary]);
 
-  const load = async () => {
+  const load = useCallback(async (limit: number) => {
     const [membershipRes, historyRes, pricingRes] = await Promise.all([
       fetch("/api/me/membership", { cache: "no-store" }),
-      fetch("/api/me/billing-history?limit=30", { cache: "no-store" }),
+      fetch(`/api/me/billing-history?limit=${limit}`, { cache: "no-store" }),
       fetch("/api/public/pricing", { cache: "no-store" }),
     ]);
 
@@ -205,7 +209,27 @@ export function MembershipPage({
 
     setState(membership);
     setHistory(billingHistory);
+    setHistoryLimit(limit);
     if (publicPricing) setPricing(publicPricing);
+  }, []);
+
+  const loadMoreBillingHistory = async () => {
+    const nextLimit = Math.min(100, historyLimit + 30);
+    setHistoryWorking(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/me/billing-history?limit=${nextLimit}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error("Failed to load billing history.");
+      const billingHistory = (await res.json()) as BillingHistoryItemDto[];
+      setHistory(billingHistory);
+      setHistoryLimit(nextLimit);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load billing history.");
+    } finally {
+      setHistoryWorking(false);
+    }
   };
 
   useEffect(() => {
@@ -214,7 +238,7 @@ export function MembershipPage({
       setError("");
       if (!hasServerData) setLoading(true);
       try {
-        await load();
+        await load(30);
       } catch (e) {
         if (active) setError(e instanceof Error ? e.message : "Failed to load membership.");
       } finally {
@@ -225,7 +249,7 @@ export function MembershipPage({
     return () => {
       active = false;
     };
-  }, [hasServerData]);
+  }, [hasServerData, load]);
 
   useEffect(() => {
     if (!disclosureRequested || hasActiveMembership) return;
@@ -352,7 +376,7 @@ export function MembershipPage({
         }),
       });
       if (!res.ok) throw new Error("Failed to cancel membership.");
-      await load();
+      await load(historyLimit);
       setShowCancel(false);
       setCancelReason("");
       setCancelReasonDetail("");
@@ -372,7 +396,7 @@ export function MembershipPage({
     try {
       const res = await fetch("/api/me/membership/resume", { method: "POST" });
       if (!res.ok) throw new Error("Failed to resume membership.");
-      await load();
+      await load(historyLimit);
       setShowCancel(false);
       setWorking(false);
     } catch (e) {
@@ -411,7 +435,7 @@ export function MembershipPage({
       });
       if (!res.ok) throw new Error("Failed to change membership plan.");
       const payload = (await res.json()) as { success: true; data: ChangePlanResult };
-      await load();
+      await load(historyLimit);
       setChangePlanMessage(
         payload.data.mode === "period_end"
           ? "Your monthly switch has been scheduled for the end of the paid annual period."
@@ -1215,7 +1239,15 @@ export function MembershipPage({
       </div>
 
       <div className="bg-background rounded-lg border p-6">
-        <h2 className="mb-4 text-xl">Billing History</h2>
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xl">Billing History</h2>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Charges, credits, refunds, and referral discounts from Stripe and internal records.
+            </p>
+          </div>
+          <Badge variant="outline">{history.length} shown</Badge>
+        </div>
         <div className="space-y-3 text-sm">
           {history.length === 0 ? (
             <p className="text-muted-foreground text-sm">No billing events yet.</p>
@@ -1246,6 +1278,19 @@ export function MembershipPage({
             ))
           )}
         </div>
+        {history.length >= historyLimit && historyLimit < 100 ? (
+          <div className="mt-5 border-t pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void loadMoreBillingHistory()}
+              disabled={historyWorking}
+            >
+              {historyWorking ? "Loading..." : "Show more billing history"}
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       <Dialog open={showDisclosure} onOpenChange={setShowDisclosure}>
