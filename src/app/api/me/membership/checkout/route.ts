@@ -43,13 +43,6 @@ export const POST = handleApiRoute(
       throw badRequest("Invalid membership plan.");
     }
 
-    await assertNoUserCheckoutDisputeHold(sessionUser!.id);
-
-    const acceptanceStates = await assertCurrentAcceptances(sessionUser!.id, [
-      { type: AcceptanceType.terms, surface: "membership_checkout" },
-      { type: AcceptanceType.health_waiver, surface: "membership_checkout" },
-    ]);
-
     if (body.disclosureAccepted !== true) {
       throw badRequest("Subscription terms must be acknowledged before checkout.");
     }
@@ -58,31 +51,38 @@ export const POST = handleApiRoute(
       throw conflict("Subscription disclosure is out of date. Refresh and review it again.");
     }
 
-    const disclosureAcceptedAt = new Date();
-    const immediateStartEvent = await recordAcceptanceEvent({
-      userId: sessionUser!.id,
-      actorUserId: sessionUser!.id,
-      type: AcceptanceType.immediate_start,
-      surface: "membership_checkout",
-      metadataJson: {
-        disclosureVersion: body.disclosureVersion,
-        billingInterval,
-      },
-    });
-    await recordSubscriptionComplianceEvent({
-      userId: sessionUser!.id,
-      kind: "disclosure_acknowledged",
-      status: "recorded",
-      summary: `Subscription disclosure ${body.disclosureVersion} accepted for ${billingInterval} Move Well Membership checkout.`,
-      metadataJson: {
-        disclosureVersion: body.disclosureVersion,
-        billingInterval,
-        immediateStartAcceptanceEventId: immediateStartEvent.id,
-      },
-      eventAt: disclosureAcceptedAt,
-    });
-
     try {
+      await assertNoUserCheckoutDisputeHold(sessionUser!.id);
+
+      const acceptanceStates = await assertCurrentAcceptances(sessionUser!.id, [
+        { type: AcceptanceType.terms, surface: "membership_checkout" },
+        { type: AcceptanceType.health_waiver, surface: "membership_checkout" },
+      ]);
+
+      const disclosureAcceptedAt = new Date();
+      const immediateStartEvent = await recordAcceptanceEvent({
+        userId: sessionUser!.id,
+        actorUserId: sessionUser!.id,
+        type: AcceptanceType.immediate_start,
+        surface: "membership_checkout",
+        metadataJson: {
+          disclosureVersion: body.disclosureVersion,
+          billingInterval,
+        },
+      });
+      await recordSubscriptionComplianceEvent({
+        userId: sessionUser!.id,
+        kind: "disclosure_acknowledged",
+        status: "recorded",
+        summary: `Subscription disclosure ${body.disclosureVersion} accepted for ${billingInterval} Move Well Membership checkout.`,
+        metadataJson: {
+          disclosureVersion: body.disclosureVersion,
+          billingInterval,
+          immediateStartAcceptanceEventId: immediateStartEvent.id,
+        },
+        eventAt: disclosureAcceptedAt,
+      });
+
       const result = await createMembershipCheckoutSession(
         sessionUser!.id,
         "movewell",

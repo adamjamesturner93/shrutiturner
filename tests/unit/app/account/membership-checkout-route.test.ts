@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const requireSessionUserMock = vi.fn();
+const authMock = vi.fn();
 const createMembershipCheckoutSessionMock = vi.fn();
 const assertNoUserCheckoutDisputeHoldMock = vi.fn();
 const recordSubscriptionComplianceEventMock = vi.fn();
@@ -8,8 +8,8 @@ const assertCurrentAcceptancesMock = vi.fn();
 const recordAcceptanceEventMock = vi.fn();
 const isAcceptanceRequiredErrorMock = vi.fn();
 
-vi.mock("@/lib/api/auth-user", () => ({
-  requireSessionUser: requireSessionUserMock,
+vi.mock("@/lib/auth", () => ({
+  auth: authMock,
 }));
 
 vi.mock("@/lib/billing/billing-service", () => ({
@@ -47,7 +47,7 @@ function createRequest(body: Record<string, unknown>) {
 describe("POST /api/me/membership/checkout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireSessionUserMock.mockResolvedValue({ id: "user_123" });
+    authMock.mockResolvedValue({ user: { id: "user_123", role: "member" } });
     assertNoUserCheckoutDisputeHoldMock.mockResolvedValue(undefined);
     assertCurrentAcceptancesMock.mockResolvedValue([
       {
@@ -92,10 +92,14 @@ describe("POST /api/me/membership/checkout", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      message: "Subscription terms must be acknowledged before checkout.",
+      success: false,
+      error: {
+        code: "BAD_REQUEST",
+        message: "Subscription terms must be acknowledged before checkout.",
+      },
     });
     expect(createMembershipCheckoutSessionMock).not.toHaveBeenCalled();
-    expect(assertNoUserCheckoutDisputeHoldMock).toHaveBeenCalledWith("user_123");
+    expect(assertNoUserCheckoutDisputeHoldMock).not.toHaveBeenCalled();
   });
 
   it("rejects checkout when the disclosure version is stale", async () => {
@@ -110,11 +114,15 @@ describe("POST /api/me/membership/checkout", () => {
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
-      message: "Subscription disclosure is out of date. Refresh and review it again.",
+      success: false,
+      error: {
+        code: "CONFLICT",
+        message: "Subscription disclosure is out of date. Refresh and review it again.",
+      },
     });
     expect(recordSubscriptionComplianceEventMock).not.toHaveBeenCalled();
     expect(createMembershipCheckoutSessionMock).not.toHaveBeenCalled();
-    expect(assertNoUserCheckoutDisputeHoldMock).toHaveBeenCalledWith("user_123");
+    expect(assertNoUserCheckoutDisputeHoldMock).not.toHaveBeenCalled();
   });
 
   it("records disclosure acceptance before creating checkout", async () => {
@@ -220,8 +228,15 @@ describe("POST /api/me/membership/checkout", () => {
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
-      code: "LEGAL_ACCEPTANCE_REQUIRED",
-      requiredAcceptances,
+      success: false,
+      error: {
+        code: "CONFLICT",
+        message: "Current legal acceptance is required before membership checkout.",
+        details: {
+          code: "LEGAL_ACCEPTANCE_REQUIRED",
+          requiredAcceptances,
+        },
+      },
     });
     expect(recordAcceptanceEventMock).not.toHaveBeenCalled();
     expect(createMembershipCheckoutSessionMock).not.toHaveBeenCalled();

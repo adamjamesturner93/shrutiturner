@@ -57,6 +57,15 @@ type CheckoutErrorResponse = {
   message?: string;
   code?: string;
   requiredAcceptances?: AcceptanceRequirementState[];
+  success?: false;
+  error?: {
+    code?: string;
+    message?: string;
+    details?: {
+      code?: string;
+      requiredAcceptances?: AcceptanceRequirementState[];
+    };
+  };
 };
 
 function formatMembershipStatus(
@@ -82,6 +91,18 @@ function formatAcceptanceLabel(type: string) {
   if (type === "health_data") return "Health Data Consent";
   if (type === "recording_notice") return "Recording Notice";
   return "Legal agreement";
+}
+
+function extractCheckoutError(payload: CheckoutErrorResponse | null) {
+  if (!payload) return { message: "Failed to start membership checkout." };
+
+  const details = payload.error?.details;
+  const code = payload.code || details?.code || payload.error?.code;
+  const requiredAcceptances = payload.requiredAcceptances || details?.requiredAcceptances;
+  const message =
+    payload.message || payload.error?.message || "Failed to start membership checkout.";
+
+  return { code, requiredAcceptances, message };
 }
 
 export function MembershipPage({
@@ -215,23 +236,18 @@ export function MembershipPage({
       | CheckoutResult
       | null;
     if (!res.ok) {
+      const checkoutError = extractCheckoutError(payload as CheckoutErrorResponse | null);
       if (
         res.status === 409 &&
-        payload &&
-        "code" in payload &&
-        payload.code === "LEGAL_ACCEPTANCE_REQUIRED" &&
-        Array.isArray(payload.requiredAcceptances)
+        checkoutError.code === "LEGAL_ACCEPTANCE_REQUIRED" &&
+        Array.isArray(checkoutError.requiredAcceptances)
       ) {
-        setPendingLegalAcceptances(payload.requiredAcceptances);
+        setPendingLegalAcceptances(checkoutError.requiredAcceptances);
         throw new Error(
           "Updated legal agreements are required before checkout. Review them below, then continue again."
         );
       }
-      throw new Error(
-        payload && "message" in payload && typeof payload.message === "string"
-          ? payload.message
-          : "Failed to start membership checkout."
-      );
+      throw new Error(checkoutError.message);
     }
 
     return payload as CheckoutResult;
