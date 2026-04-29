@@ -34,6 +34,8 @@ const processSmallGroupCheckoutCompletedMock = vi.fn();
 const sendMembershipCheckoutConfirmationNoticeMock = vi.fn();
 const sendRenewalCoolingOffNoticeMock = vi.fn();
 const processStripeDisputeEventMock = vi.fn();
+const openMembershipDunningFromInvoiceMock = vi.fn();
+const recoverMembershipDunningCaseMock = vi.fn();
 
 vi.mock("@/lib/env", () => ({
   getBaseSiteUrlFromEnv: () => "http://localhost:3000",
@@ -132,6 +134,11 @@ vi.mock("@/lib/billing/dispute-service", () => ({
   processStripeDisputeEvent: processStripeDisputeEventMock,
 }));
 
+vi.mock("@/lib/billing/dunning-service", () => ({
+  openMembershipDunningFromInvoice: openMembershipDunningFromInvoiceMock,
+  recoverMembershipDunningCase: recoverMembershipDunningCaseMock,
+}));
+
 const { createMembershipCheckoutSession, processStripeWebhookEvent } =
   await import("@/lib/billing/billing-service");
 
@@ -198,6 +205,8 @@ describe("billing-service Stripe integration", () => {
     addCreditsMock.mockResolvedValue(undefined);
     startOrSwitchMembershipMock.mockResolvedValue({ id: "membership_123" });
     membershipSubscriptionUpdateMock.mockResolvedValue({ id: "membership_123" });
+    openMembershipDunningFromInvoiceMock.mockResolvedValue({ id: "dunning_123" });
+    recoverMembershipDunningCaseMock.mockResolvedValue(null);
     billingCatalogItemFindFirstMock.mockResolvedValue({ key: "membership_movewell_monthly" });
     mockMetricRecomputeDefaults();
   });
@@ -340,10 +349,13 @@ describe("billing-service Stripe integration", () => {
         userId: "user_123",
       }),
     });
-    expect(membershipSubscriptionUpdateMock).toHaveBeenCalledWith({
-      where: { id: "membership_123" },
-      data: { status: MembershipStatus.past_due },
-    });
+    expect(openMembershipDunningFromInvoiceMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "in_failed",
+        customer: "cus_123",
+        amount_due: 2900,
+      })
+    );
     expect(billingEventUpdateMock).toHaveBeenLastCalledWith({
       where: { id: "billing_event_123" },
       data: { status: BillingEventStatus.processed, processedAt: expect.any(Date) },
@@ -409,6 +421,11 @@ describe("billing-service Stripe integration", () => {
     expect(qualifyReferralMock).toHaveBeenCalledWith({
       referredUserId: "user_123",
       notes: "Auto-qualified on first paid subscription invoice.",
+    });
+    expect(recoverMembershipDunningCaseMock).toHaveBeenCalledWith({
+      userId: "user_123",
+      membershipId: "membership_123",
+      stripeInvoiceId: "in_paid",
     });
   });
 

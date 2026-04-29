@@ -22,6 +22,10 @@ import {
 } from "@/lib/billing/subscription-compliance";
 import { processStripeDisputeEvent } from "@/lib/billing/dispute-service";
 import {
+  openMembershipDunningFromInvoice,
+  recoverMembershipDunningCase,
+} from "@/lib/billing/dunning-service";
+import {
   computeReferralDiscountPence,
   consumeReferralDiscount,
 } from "@/lib/referrals/referral-discount-service";
@@ -281,6 +285,7 @@ export async function createMembershipCheckoutSession(
     disclosureVersion?: string;
     disclosureAcceptedAt?: Date;
     complianceSnapshot?: Record<string, unknown>;
+    immediateStartSummary?: string;
   }
 ) {
   const catalog = await getActiveCatalogItem(planToCatalogKey(plan, billingInterval));
@@ -329,6 +334,7 @@ export async function createMembershipCheckoutSession(
       discountSource: chosen.source,
       disclosureVersion: options?.disclosureVersion || "",
       disclosureAcceptedAt: disclosureAcceptedAtIso || "",
+      immediateStartSummary: options?.immediateStartSummary || "",
       complianceSnapshotJson: options?.complianceSnapshot
         ? JSON.stringify(options.complianceSnapshot)
         : "",
@@ -614,6 +620,12 @@ async function processInvoicePaid(event: Stripe.Event, invoice: Stripe.Invoice) 
         },
       });
 
+  await recoverMembershipDunningCase({
+    userId: user.id,
+    membershipId: updatedMembership.id,
+    stripeInvoiceId: invoice.id || null,
+  });
+
   if (
     shouldOpenRenewalCoolingOff &&
     membershipWithCoolingOff.user.email &&
@@ -661,28 +673,7 @@ async function processInvoicePaid(event: Stripe.Event, invoice: Stripe.Invoice) 
 }
 
 async function processInvoicePaymentFailed(invoice: Stripe.Invoice) {
-  const stripeCustomerId =
-    typeof invoice.customer === "string" ? invoice.customer : (invoice.customer?.id ?? null);
-  if (!stripeCustomerId) return;
-
-  const user = await db.user.findUnique({
-    where: { stripeCustomerId },
-    select: { id: true },
-  });
-  if (!user) return;
-
-  const membership = await db.membershipSubscription.findFirst({
-    where: { userId: user.id },
-    orderBy: { createdAt: "desc" },
-  });
-  if (!membership) return;
-
-  await db.membershipSubscription.update({
-    where: { id: membership.id },
-    data: {
-      status: MembershipStatus.past_due,
-    },
-  });
+  await openMembershipDunningFromInvoice(invoice);
 }
 
 async function processSubscriptionUpdated(subscription: Stripe.Subscription) {

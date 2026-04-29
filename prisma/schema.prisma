@@ -82,6 +82,13 @@ enum MembershipStatus {
   past_due
 }
 
+enum MembershipDunningStatus {
+  open
+  suspended
+  recovered
+  cancelled
+}
+
 enum SubscriptionComplianceEventKind {
   disclosure_acknowledged
   trial_reminder
@@ -92,6 +99,15 @@ enum SubscriptionComplianceEventKind {
   membership_cancelled
   cooling_off_cancellation
   refund_issued
+  payment_failure_notice
+  payment_recovery_notice
+}
+
+enum BillingRefundStatus {
+  pending
+  succeeded
+  failed
+  credited
 }
 
 enum CreditEntryType {
@@ -410,6 +426,9 @@ model User {
   referralEventsReceived                ReferralEvent[]                           @relation("ReferredEvents")
   referralLedgerEntries                 ReferralLedgerEntry[]
   membershipSubscriptions               MembershipSubscription[]
+  membershipDunningCases                MembershipDunningCase[]
+  billingRefunds                        BillingRefund[]                          @relation("BillingRefundUser")
+  billingRefundActions                  BillingRefund[]                          @relation("BillingRefundActor")
   subscriptionComplianceEvents          SubscriptionComplianceEvent[]
   creditLedgerEntries                   CreditLedgerEntry[]
   billingEvents                         BillingEvent[]                            @relation("UserBillingEvents")
@@ -928,9 +947,42 @@ model MembershipSubscription {
 
   user             User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
   complianceEvents SubscriptionComplianceEvent[]
+  dunningCases     MembershipDunningCase[]
+  billingRefunds   BillingRefund[]
 
   @@index([userId, status])
   @@index([stripeSubscriptionId])
+}
+
+model MembershipDunningCase {
+  id                  String                  @id @default(cuid())
+  userId              String
+  membershipId        String
+  status              MembershipDunningStatus @default(open)
+  stripeInvoiceId     String?
+  amountDuePence      Int                     @default(0)
+  invoiceUrl          String?
+  firstFailedAt       DateTime
+  lastFailedAt        DateTime
+  graceEndsAt         DateTime
+  day0NoticeSentAt    DateTime?
+  day3ReminderSentAt  DateTime?
+  day6ReminderSentAt  DateTime?
+  suspendedAt         DateTime?
+  recoveredAt         DateTime?
+  cancelledAt         DateTime?
+  graceExtendedUntil  DateTime?
+  manualExtensionNote String?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  membership MembershipSubscription @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([membershipId, status])
+  @@index([status, graceEndsAt])
+  @@index([stripeInvoiceId])
 }
 
 model SubscriptionComplianceEvent {
@@ -1005,6 +1057,31 @@ model BillingMetricDaily {
   churnedMembersCount Int      @default(0)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+}
+
+model BillingRefund {
+  id              String              @id @default(cuid())
+  userId          String
+  membershipId    String
+  actorUserId     String?
+  status          BillingRefundStatus @default(pending)
+  amountPence     Int
+  reason          String
+  refundedAsCredit Boolean            @default(false)
+  stripeRefundId  String?             @unique
+  stripeInvoiceId String?
+  paymentIntentId String?
+  metadataJson    Json?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  user       User                   @relation("BillingRefundUser", fields: [userId], references: [id], onDelete: Cascade)
+  actor      User?                  @relation("BillingRefundActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  membership MembershipSubscription @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([membershipId, createdAt])
+  @@index([stripeInvoiceId])
 }
 
 model HealthProfile {

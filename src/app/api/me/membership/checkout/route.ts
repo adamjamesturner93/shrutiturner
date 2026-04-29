@@ -9,8 +9,12 @@ import {
 } from "@/lib/api/route";
 import { createMembershipCheckoutSession } from "@/lib/billing/billing-service";
 import { assertNoUserCheckoutDisputeHold } from "@/lib/billing/dispute-service";
-import { SUBSCRIPTION_DISCLOSURE_VERSION } from "@/lib/billing/subscription-disclosure";
+import {
+  buildMembershipDisclosure,
+  SUBSCRIPTION_DISCLOSURE_VERSION,
+} from "@/lib/billing/subscription-disclosure";
 import { recordSubscriptionComplianceEvent } from "@/lib/billing/subscription-compliance";
+import { getPublicPricing } from "@/lib/billing/public-pricing";
 import {
   assertCurrentAcceptances,
   isAcceptanceRequiredError,
@@ -60,6 +64,13 @@ export const POST = handleApiRoute(
       ]);
 
       const disclosureAcceptedAt = new Date();
+      const pricing = await getPublicPricing();
+      const disclosureSnapshot = buildMembershipDisclosure(billingInterval, {
+        monthlyPricePence: Math.round((pricing.membershipDisplay.movewellMonthly || 29) * 100),
+        annualPricePence: Math.round((pricing.membershipDisplay.movewellAnnual || 290) * 100),
+      });
+      const immediateStartSummary =
+        "Membership access begins immediately after checkout confirmation. If you use the service during a cooling-off period, any refund rights are subject to the immediate-start terms shown at checkout.";
       const immediateStartEvent = await recordAcceptanceEvent({
         userId: sessionUser!.id,
         actorUserId: sessionUser!.id,
@@ -68,6 +79,8 @@ export const POST = handleApiRoute(
         metadataJson: {
           disclosureVersion: body.disclosureVersion,
           billingInterval,
+          disclosureSnapshot,
+          immediateStartSummary,
         },
       });
       await recordSubscriptionComplianceEvent({
@@ -79,6 +92,7 @@ export const POST = handleApiRoute(
           disclosureVersion: body.disclosureVersion,
           billingInterval,
           immediateStartAcceptanceEventId: immediateStartEvent.id,
+          disclosureSnapshot,
         },
         eventAt: disclosureAcceptedAt,
       });
@@ -103,7 +117,10 @@ export const POST = handleApiRoute(
               surface: state.surface,
             })),
             immediateStartAcceptanceEventId: immediateStartEvent.id,
+            subscriptionDisclosure: disclosureSnapshot,
+            immediateStartSummary,
           },
+          immediateStartSummary,
         }
       );
       return apiOk(result);

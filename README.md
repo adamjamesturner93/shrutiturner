@@ -190,6 +190,10 @@ Turnstile environment variables:
   - registering it in `src/lib/jobs/registry.ts`
   - triggering it from Vercel Cron against `/api/internal/jobs/<jobName>`
 - Keep business-domain schedulers out of the core registry. Domain routes can still reuse `runScheduledJob(...)` directly.
+- Subscription compliance notices run through `POST /api/internal/subscriptions/process-notices`.
+- Membership dunning runs through `POST /api/internal/subscriptions/process-dunning`.
+- Protect subscription domain cron requests with `SUBSCRIPTION_COMPLIANCE_CRON_SECRET` or `INTERNAL_JOB_SECRET` and send it as `Authorization: Bearer <secret>`.
+- Recommended production cadence: run both subscription notice and dunning endpoints daily.
 - For incremental live checks around holding pages and newsletter flows, run:
   - `pnpm run test:e2e:newsletter`
 - Full regression coverage remains available through:

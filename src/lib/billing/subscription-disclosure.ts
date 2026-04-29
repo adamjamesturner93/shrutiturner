@@ -12,12 +12,19 @@ function formatMoney(pence: number) {
   return `£${(pence / 100).toFixed(2)}`;
 }
 
-function disclosurePrice(interval: SubscriptionDisclosureInterval) {
-  return interval === "annual" ? MOVEWELL_ANNUAL_PENCE : MOVEWELL_MONTHLY_PENCE;
+function disclosurePrice(
+  interval: SubscriptionDisclosureInterval,
+  prices?: { monthlyPricePence?: number | null; annualPricePence?: number | null }
+) {
+  if (interval === "annual") return prices?.annualPricePence || MOVEWELL_ANNUAL_PENCE;
+  return prices?.monthlyPricePence || MOVEWELL_MONTHLY_PENCE;
 }
 
-export function buildMembershipDisclosure(interval: SubscriptionDisclosureInterval) {
-  const pricePence = disclosurePrice(interval);
+export function buildMembershipDisclosure(
+  interval: SubscriptionDisclosureInterval,
+  prices?: { monthlyPricePence?: number | null; annualPricePence?: number | null }
+) {
+  const pricePence = disclosurePrice(interval, prices);
   const intervalLabel = interval === "annual" ? "year" : "month";
   const minimumLiability =
     interval === "annual"

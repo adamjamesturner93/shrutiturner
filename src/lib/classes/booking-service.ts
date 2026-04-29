@@ -4,6 +4,7 @@ import {
   ClassBookingStatus,
   ClassSessionStatus,
   ClassWaitlistStatus,
+  MembershipDunningStatus,
   MembershipStatus,
   Prisma,
 } from "@prisma/client";
@@ -117,6 +118,19 @@ async function getBookableMembership(
       userId,
       status: {
         in: [MembershipStatus.active, MembershipStatus.past_due],
+      },
+      NOT: {
+        dunningCases: {
+          some: {
+            OR: [
+              { status: MembershipDunningStatus.suspended },
+              {
+                status: MembershipDunningStatus.open,
+                graceEndsAt: { lte: new Date() },
+              },
+            ],
+          },
+        },
       },
     },
     orderBy: {

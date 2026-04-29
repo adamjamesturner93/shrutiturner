@@ -25,6 +25,7 @@ describe("dashboard view model helpers", () => {
           cancelAtPeriodEnd: false,
           accessActive: true,
           endsAt: null,
+          paymentIssue: null,
           compliance: {
             disclosureVersion: "2026-04-03",
             disclosureAcceptedAt: "2026-04-03T10:00:00.000Z",

@@ -16,7 +16,7 @@ import { getApiErrorMessage, isApiSuccess } from "@/lib/api/client";
 export function AdminBusiness() {
   const [summary, setSummary] = useState<AdminBusinessMetricDto | null>(null);
   const [activeTab, setActiveTab] = useState<
-    "health" | "settings" | "pricing" | "discounts" | "class-rules"
+    "health" | "settings" | "pricing" | "discounts" | "class-rules" | "billing"
   >("health");
   const [catalog, setCatalog] = useState<
     Array<{ key: string; stripePriceId: string; unitAmountPence: number; currency: string }>
@@ -38,19 +38,47 @@ export function AdminBusiness() {
   const [classRulesMessage, setClassRulesMessage] = useState("");
   const [classRulesError, setClassRulesError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [dunningCases, setDunningCases] = useState<
+    Array<{
+      id: string;
+      status: "open" | "suspended";
+      memberName: string;
+      memberEmail: string;
+      membershipId: string;
+      amountDuePence: number;
+      invoiceUrl: string | null;
+      graceEndsAt: string;
+      suspendedAt: string | null;
+    }>
+  >([]);
+  const [billingMessage, setBillingMessage] = useState("");
+  const [billingError, setBillingError] = useState("");
+  const [billingWorking, setBillingWorking] = useState(false);
+  const [refundMembershipId, setRefundMembershipId] = useState("");
+  const [refundAmountPence, setRefundAmountPence] = useState("");
+  const [refundReason, setRefundReason] = useState("");
+  const [refundAsCredit, setRefundAsCredit] = useState(false);
+  const [refundCreditAmount, setRefundCreditAmount] = useState("");
 
   useEffect(() => {
     let active = true;
     void (async () => {
       try {
-        const [response, catalogResponse, discountResponse, classRulesResponse, settingsResponse] =
-          await Promise.all([
-            fetch("/api/admin/business", { cache: "no-store" }),
-            fetch("/api/admin/business/catalog", { cache: "no-store" }),
-            fetch("/api/admin/business/discounts", { cache: "no-store" }),
-            fetch("/api/admin/business/class-rules", { cache: "no-store" }),
-            fetch("/api/admin/business/settings", { cache: "no-store" }),
-          ]);
+        const [
+          response,
+          catalogResponse,
+          discountResponse,
+          classRulesResponse,
+          settingsResponse,
+          dunningResponse,
+        ] = await Promise.all([
+          fetch("/api/admin/business", { cache: "no-store" }),
+          fetch("/api/admin/business/catalog", { cache: "no-store" }),
+          fetch("/api/admin/business/discounts", { cache: "no-store" }),
+          fetch("/api/admin/business/class-rules", { cache: "no-store" }),
+          fetch("/api/admin/business/settings", { cache: "no-store" }),
+          fetch("/api/admin/billing/dunning", { cache: "no-store" }),
+        ]);
         if (response.ok && active) {
           const payload = (await response.json().catch(() => null)) as unknown;
           if (isApiSuccess<AdminBusinessMetricDto>(payload)) {
@@ -87,6 +115,12 @@ export function AdminBusiness() {
           const payload = (await settingsResponse.json().catch(() => null)) as unknown;
           if (isApiSuccess<PlatformSettingsDto>(payload)) {
             setSettings(payload.data);
+          }
+        }
+        if (dunningResponse.ok && active) {
+          const payload = (await dunningResponse.json().catch(() => null)) as unknown;
+          if (isApiSuccess<typeof dunningCases>(payload)) {
+            setDunningCases(payload.data);
           }
         }
       } finally {
@@ -154,6 +188,13 @@ export function AdminBusiness() {
                 onClick={() => setActiveTab("class-rules")}
               >
                 Class Rules
+              </Button>
+              <Button
+                variant={activeTab === "billing" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveTab("billing")}
+              >
+                Billing Ops
               </Button>
             </div>
 
@@ -370,6 +411,193 @@ export function AdminBusiness() {
                     >
                       {savingSettings ? "Saving..." : "Save Settings"}
                     </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {activeTab === "billing" ? (
+              <Card>
+                <CardContent className="space-y-6 pt-6">
+                  <div>
+                    <h2 className="text-brand-dark text-lg">Billing Operations</h2>
+                    <p className="text-muted-foreground mt-1 text-sm">
+                      Open dunning cases and membership-only refunds.
+                    </p>
+                  </div>
+
+                  {billingError ? (
+                    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {billingError}
+                    </div>
+                  ) : null}
+                  {billingMessage ? (
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                      {billingMessage}
+                    </div>
+                  ) : null}
+
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-medium">Payment recovery</h3>
+                    {dunningCases.length === 0 ? (
+                      <p className="text-muted-foreground text-sm">No open dunning cases.</p>
+                    ) : (
+                      dunningCases.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex flex-col gap-3 rounded-lg border p-4 text-sm md:flex-row md:items-center md:justify-between"
+                        >
+                          <div>
+                            <p className="font-medium">
+                              {item.memberName} · £{(item.amountDuePence / 100).toFixed(2)}
+                            </p>
+                            <p className="text-muted-foreground">
+                              {item.memberEmail} · {item.status} · grace ends{" "}
+                              {new Date(item.graceEndsAt).toLocaleDateString("en-GB")}
+                            </p>
+                            {item.invoiceUrl ? (
+                              <a
+                                href={item.invoiceUrl}
+                                className="text-primary underline"
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Stripe invoice
+                              </a>
+                            ) : null}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={billingWorking}
+                            onClick={async () => {
+                              setBillingWorking(true);
+                              setBillingError("");
+                              setBillingMessage("");
+                              try {
+                                const extension = new Date();
+                                extension.setUTCDate(extension.getUTCDate() + 7);
+                                const response = await fetch("/api/admin/billing/dunning", {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    dunningCaseId: item.id,
+                                    graceExtendedUntil: extension.toISOString(),
+                                    reason: "Manual 7-day grace extension from billing ops.",
+                                  }),
+                                });
+                                const payload = await response.json().catch(() => null);
+                                if (!response.ok) {
+                                  throw new Error(
+                                    getApiErrorMessage(payload, "Failed to extend grace period.")
+                                  );
+                                }
+                                setBillingMessage("Grace period extended.");
+                              } catch (error) {
+                                setBillingError(
+                                  error instanceof Error
+                                    ? error.message
+                                    : "Failed to extend grace period."
+                                );
+                              } finally {
+                                setBillingWorking(false);
+                              }
+                            }}
+                          >
+                            Extend 7 days
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="grid gap-4 rounded-lg border p-4 md:grid-cols-2">
+                    <h3 className="text-sm font-medium md:col-span-2">Membership refund</h3>
+                    <label className="space-y-2">
+                      <span className="text-sm">Membership ID</span>
+                      <Input
+                        value={refundMembershipId}
+                        onChange={(event) => setRefundMembershipId(event.target.value)}
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm">Amount in pence</span>
+                      <Input
+                        inputMode="numeric"
+                        value={refundAmountPence}
+                        onChange={(event) => setRefundAmountPence(event.target.value)}
+                      />
+                    </label>
+                    <label className="space-y-2 md:col-span-2">
+                      <span className="text-sm">Reason</span>
+                      <Input
+                        value={refundReason}
+                        onChange={(event) => setRefundReason(event.target.value)}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={refundAsCredit}
+                        onChange={(event) => setRefundAsCredit(event.target.checked)}
+                      />
+                      Issue as class credits instead
+                    </label>
+                    {refundAsCredit ? (
+                      <label className="space-y-2">
+                        <span className="text-sm">Credit amount</span>
+                        <Input
+                          inputMode="numeric"
+                          value={refundCreditAmount}
+                          onChange={(event) => setRefundCreditAmount(event.target.value)}
+                        />
+                      </label>
+                    ) : null}
+                    <div className="md:col-span-2">
+                      <Button
+                        disabled={billingWorking}
+                        onClick={async () => {
+                          setBillingWorking(true);
+                          setBillingError("");
+                          setBillingMessage("");
+                          try {
+                            const response = await fetch("/api/admin/billing/refunds", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                membershipId: refundMembershipId,
+                                amountPence: Number(refundAmountPence),
+                                reason: refundReason,
+                                refundAsCredit,
+                                creditAmount: refundAsCredit
+                                  ? Number(refundCreditAmount || "0")
+                                  : undefined,
+                              }),
+                            });
+                            const payload = await response.json().catch(() => null);
+                            if (!response.ok) {
+                              throw new Error(
+                                getApiErrorMessage(payload, "Failed to issue refund.")
+                              );
+                            }
+                            setBillingMessage("Membership refund recorded.");
+                            setRefundMembershipId("");
+                            setRefundAmountPence("");
+                            setRefundReason("");
+                            setRefundAsCredit(false);
+                            setRefundCreditAmount("");
+                          } catch (error) {
+                            setBillingError(
+                              error instanceof Error ? error.message : "Failed to issue refund."
+                            );
+                          } finally {
+                            setBillingWorking(false);
+                          }
+                        }}
+                      >
+                        Issue refund
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

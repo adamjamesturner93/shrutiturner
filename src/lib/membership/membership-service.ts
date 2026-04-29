@@ -21,6 +21,10 @@ import {
 } from "@/lib/billing/subscription-compliance";
 import { getCreditBalance, getCreditSummary } from "@/lib/credits/credit-service";
 import { getReferralBalancePence } from "@/lib/referrals/referral-discount-service";
+import {
+  getActiveDunningCaseForMembership,
+  membershipDunningAccessActive,
+} from "@/lib/billing/dunning-service";
 
 function getSubscriptionPeriodEnd(
   subscription: { current_period_end?: number | null } | Stripe.Subscription
@@ -41,11 +45,7 @@ function unixToDate(value?: number | null) {
 }
 
 function isAccessActiveStatus(status: MembershipStatus) {
-  return (
-    status === MembershipStatus.active ||
-    status === MembershipStatus.paused ||
-    status === MembershipStatus.past_due
-  );
+  return status === MembershipStatus.active || status === MembershipStatus.past_due;
 }
 
 export function getMembershipLabel(plan: MembershipPlan | null) {
@@ -221,6 +221,15 @@ export async function getMembershipState(userId: string): Promise<MembershipStat
       getReferralBalancePence(userId),
       getSubscriptionComplianceHistory(userId),
     ]);
+  const activeDunningCase = subscription
+    ? await getActiveDunningCaseForMembership(subscription.id)
+    : null;
+  const accessActive = subscription
+    ? membershipDunningAccessActive({
+        membershipStatus: subscription.status,
+        dunningCase: activeDunningCase,
+      })
+    : false;
 
   const membership = subscription
     ? {
@@ -242,7 +251,20 @@ export async function getMembershipState(userId: string): Promise<MembershipStat
         ),
         pricePence: subscription.pricePence,
         cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
-        accessActive: isAccessActiveStatus(subscription.status),
+        accessActive,
+        paymentIssue: activeDunningCase
+          ? {
+              status: activeDunningCase.status as "open" | "suspended",
+              graceEndsAt: (activeDunningCase.graceExtendedUntil || activeDunningCase.graceEndsAt)
+                .toISOString()
+                .slice(0, 10),
+              amountDuePence: activeDunningCase.amountDuePence,
+              invoiceUrl: activeDunningCase.invoiceUrl || null,
+              suspendedAt: activeDunningCase.suspendedAt
+                ? activeDunningCase.suspendedAt.toISOString().slice(0, 10)
+                : null,
+            }
+          : null,
         compliance: {
           disclosureVersion: subscription.disclosureVersion || null,
           disclosureAcceptedAt: subscription.disclosureAcceptedAt

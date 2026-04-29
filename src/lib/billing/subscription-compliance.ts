@@ -1,4 +1,5 @@
 import {
+  BillingRefundStatus,
   MembershipBillingInterval,
   MembershipStatus,
   Prisma,
@@ -647,12 +648,33 @@ export async function issueMembershipRefund(params: {
     select: {
       id: true,
       latestInvoiceId: true,
+      latestInvoiceAmountPence: true,
       userId: true,
     },
   });
   if (!membership?.latestInvoiceId || params.amountPence <= 0) {
     return null;
   }
+  const alreadyRefunded = await db.billingRefund.aggregate({
+    where: {
+      membershipId: params.membershipId,
+      stripeInvoiceId: membership.latestInvoiceId,
+      status: {
+        in: [
+          BillingRefundStatus.pending,
+          BillingRefundStatus.succeeded,
+          BillingRefundStatus.credited,
+        ],
+      },
+    },
+    _sum: { amountPence: true },
+  });
+  const remainingPence = Math.max(
+    0,
+    (membership.latestInvoiceAmountPence || 0) - (alreadyRefunded._sum.amountPence || 0)
+  );
+  const amountPence = Math.min(params.amountPence, remainingPence);
+  if (amountPence <= 0) return null;
 
   const stripe = getStripeClient();
   const invoice = await stripe.invoices.retrieve(membership.latestInvoiceId);
@@ -668,12 +690,31 @@ export async function issueMembershipRefund(params: {
 
   const refund = await stripe.refunds.create({
     payment_intent: paymentIntentId,
-    amount: params.amountPence,
+    amount: amountPence,
     reason: "requested_by_customer",
     metadata: {
       membershipId: params.membershipId,
       userId: params.userId,
       reason: params.reason,
+    },
+  });
+
+  await db.billingRefund.create({
+    data: {
+      userId: params.userId,
+      membershipId: params.membershipId,
+      amountPence,
+      reason: params.reason,
+      status:
+        refund.status === "succeeded"
+          ? BillingRefundStatus.succeeded
+          : refund.status === "failed"
+            ? BillingRefundStatus.failed
+            : BillingRefundStatus.pending,
+      stripeRefundId: refund.id,
+      stripeInvoiceId: membership.latestInvoiceId,
+      paymentIntentId,
+      metadataJson: refund as unknown as Prisma.InputJsonValue,
     },
   });
 
@@ -683,10 +724,10 @@ export async function issueMembershipRefund(params: {
     kind: SubscriptionComplianceEventKind.refund_issued,
     status: refund.status || "pending",
     channel: "stripe",
-    summary: `Refund initiated for ${formatMoney(params.amountPence)}.`,
+    summary: `Refund initiated for ${formatMoney(amountPence)}.`,
     metadataJson: {
       refundId: refund.id,
-      amountPence: params.amountPence,
+      amountPence,
       reason: params.reason,
     },
   });

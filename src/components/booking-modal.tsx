@@ -5,6 +5,7 @@ import { Button } from "./ui/button";
 import { useAuth, type CreditItem } from "../context/auth-context";
 import { useI18n } from "../lib/use-i18n";
 import type { PublicPricingDto } from "@/lib/api/types";
+import { getApiErrorMessage, isApiSuccess } from "@/lib/api/client";
 import {
   isSessionUnavailableForBooking,
   resolveSessionStart,
@@ -221,25 +222,19 @@ export function PurchaseModal({
     setPurchaseError("");
 
     try {
-      const request =
-        option === "membership"
-          ? {
-              url: "/api/me/membership/checkout",
-              body: {
-                plan: "movewell",
-                billingInterval: "monthly",
-                successPath: buildReturnPath("success"),
-                cancelPath: buildReturnPath("cancelled"),
-              },
-            }
-          : {
-              url: "/api/me/credits/checkout",
-              body: {
-                bundleSize: option === "dropin" ? 1 : option === "3pack" ? 3 : 10,
-                successPath: buildReturnPath("success"),
-                cancelPath: buildReturnPath("cancelled"),
-              },
-            };
+      if (option === "membership") {
+        window.location.href = "/dashboard/membership?subscribe=1&interval=monthly&source=booking";
+        return;
+      }
+
+      const request = {
+        url: "/api/me/credits/checkout",
+        body: {
+          bundleSize: option === "dropin" ? 1 : option === "3pack" ? 3 : 10,
+          successPath: buildReturnPath("success"),
+          cancelPath: buildReturnPath("cancelled"),
+        },
+      };
 
       const response = await fetch(request.url, {
         method: "POST",
@@ -248,13 +243,17 @@ export function PurchaseModal({
       });
 
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-        throw new Error(payload?.message || "Could not start checkout.");
+        const payload = await response.json().catch(() => null);
+        throw new Error(getApiErrorMessage(payload, "Could not start checkout."));
       }
 
-      const payload = (await response.json()) as CheckoutResult;
+      const payload = (await response.json()) as unknown;
+      const result = isApiSuccess<CheckoutResult>(payload)
+        ? payload.data
+        : (payload as CheckoutResult);
+      if (!result.checkoutUrl) throw new Error("Could not start checkout.");
       onSuccess();
-      window.location.href = payload.checkoutUrl;
+      window.location.href = result.checkoutUrl;
     } catch (error) {
       setPurchaseError(error instanceof Error ? error.message : "Could not start checkout.");
       setPurchasing(false);

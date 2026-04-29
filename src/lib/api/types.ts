@@ -359,6 +359,13 @@ export type MembershipStateDto = {
     cancelAtPeriodEnd: boolean;
     accessActive: boolean;
     endsAt: string | null;
+    paymentIssue: {
+      status: "open" | "suspended";
+      graceEndsAt: string;
+      amountDuePence: number;
+      invoiceUrl: string | null;
+      suspendedAt: string | null;
+    } | null;
     compliance: {
       disclosureVersion: string | null;
       disclosureAcceptedAt: string | null;
@@ -393,7 +400,9 @@ export type MembershipStateDto = {
       | "end_of_contract_notice"
       | "membership_cancelled"
       | "cooling_off_cancellation"
-      | "refund_issued";
+      | "refund_issued"
+      | "payment_failure_notice"
+      | "payment_recovery_notice";
     status: string;
     channel: string;
     summary: string;

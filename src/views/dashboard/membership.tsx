@@ -38,6 +38,7 @@ import {
   buildMembershipDisclosure,
   SUBSCRIPTION_DISCLOSURE_VERSION,
 } from "@/lib/billing/subscription-disclosure";
+import { getApiErrorMessage, isApiSuccess } from "@/lib/api/client";
 
 type CheckoutResult = {
   checkoutUrl: string;
@@ -75,6 +76,11 @@ type CheckoutErrorResponse = {
     };
   };
 };
+
+function unwrapApiData<T>(payload: unknown): T | null {
+  if (isApiSuccess<T>(payload)) return payload.data;
+  return payload as T;
+}
 
 function formatMembershipStatus(
   status: "active" | "paused" | "cancelled" | "expired" | "past_due"
@@ -201,9 +207,11 @@ export function MembershipPage({
     ]);
 
     if (!membershipRes.ok) throw new Error("Failed to load membership.");
-    const membership = (await membershipRes.json()) as MembershipStateDto;
+    const membershipPayload = await membershipRes.json();
+    const membership = unwrapApiData<MembershipStateDto>(membershipPayload);
+    if (!membership) throw new Error("Failed to load membership.");
     const billingHistory = historyRes.ok
-      ? ((await historyRes.json()) as BillingHistoryItemDto[])
+      ? unwrapApiData<BillingHistoryItemDto[]>(await historyRes.json()) || []
       : [];
     const publicPricing = pricingRes.ok ? ((await pricingRes.json()) as PublicPricingDto) : null;
 
@@ -222,7 +230,7 @@ export function MembershipPage({
         cache: "no-store",
       });
       if (!res.ok) throw new Error("Failed to load billing history.");
-      const billingHistory = (await res.json()) as BillingHistoryItemDto[];
+      const billingHistory = unwrapApiData<BillingHistoryItemDto[]>(await res.json()) || [];
       setHistory(billingHistory);
       setHistoryLimit(nextLimit);
     } catch (e) {
@@ -298,7 +306,9 @@ export function MembershipPage({
       throw new Error(checkoutError.message);
     }
 
-    return payload as CheckoutResult;
+    const result = unwrapApiData<CheckoutResult>(payload);
+    if (!result?.checkoutUrl) throw new Error("Failed to start membership checkout.");
+    return result;
   };
 
   const resolvePendingLegalAcceptances = async () => {
@@ -354,9 +364,12 @@ export function MembershipPage({
           ...buildCreditCheckoutReturnPaths(bundleSize),
         }),
       });
-      if (!res.ok) throw new Error("Failed to start credits checkout.");
-      const payload = (await res.json()) as CheckoutResult;
-      window.location.href = payload.checkoutUrl;
+      const payload = await res.json().catch(() => null);
+      if (!res.ok)
+        throw new Error(getApiErrorMessage(payload, "Failed to start credits checkout."));
+      const result = unwrapApiData<CheckoutResult>(payload);
+      if (!result?.checkoutUrl) throw new Error("Failed to start credits checkout.");
+      window.location.href = result.checkoutUrl;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to start credits checkout.");
       setWorking(false);
@@ -414,9 +427,11 @@ export function MembershipPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ returnPath: "/dashboard/membership" }),
       });
-      if (!res.ok) throw new Error("Failed to open billing portal.");
-      const payload = (await res.json()) as PortalResult;
-      window.location.href = payload.portalUrl;
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(getApiErrorMessage(payload, "Failed to open billing portal."));
+      const result = unwrapApiData<PortalResult>(payload);
+      if (!result?.portalUrl) throw new Error("Failed to open billing portal.");
+      window.location.href = result.portalUrl;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to open billing portal.");
       setPortalWorking(false);
@@ -433,13 +448,16 @@ export function MembershipPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan: "movewell", billingInterval }),
       });
-      if (!res.ok) throw new Error("Failed to change membership plan.");
-      const payload = (await res.json()) as { success: true; data: ChangePlanResult };
+      const payload = await res.json().catch(() => null);
+      if (!res.ok)
+        throw new Error(getApiErrorMessage(payload, "Failed to change membership plan."));
+      const result = unwrapApiData<ChangePlanResult>(payload);
+      if (!result) throw new Error("Failed to change membership plan.");
       await load(historyLimit);
       setChangePlanMessage(
-        payload.data.mode === "period_end"
+        result.mode === "period_end"
           ? "Your monthly switch has been scheduled for the end of the paid annual period."
-          : payload.data.mode === "already_current"
+          : result.mode === "already_current"
             ? "You are already on that billing interval."
             : "Your annual upgrade has been applied. Stripe will handle any prorated charge."
       );
@@ -473,8 +491,12 @@ export function MembershipPage({
     : "Choose monthly, annual, or class credits";
 
   const disclosure = useMemo(
-    () => buildMembershipDisclosure(pendingInterval || preferredInterval),
-    [pendingInterval, preferredInterval]
+    () =>
+      buildMembershipDisclosure(pendingInterval || preferredInterval, {
+        monthlyPricePence: monthlyPrice * 100,
+        annualPricePence: annualPrice * 100,
+      }),
+    [annualPrice, monthlyPrice, pendingInterval, preferredInterval]
   );
 
   if (loading) {
@@ -616,8 +638,18 @@ export function MembershipPage({
 
             {membership.status === "past_due" ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                Payment for your membership needs attention. Use the billing portal to update your
-                card, review invoices, or recover access.
+                Payment for your membership needs attention.
+                {membership.paymentIssue?.status === "open"
+                  ? ` Your grace period ends on ${membership.paymentIssue.graceEndsAt}.`
+                  : ""}{" "}
+                Use the billing portal to update your card, review invoices, or recover access.
+              </div>
+            ) : null}
+
+            {membership.paymentIssue?.status === "suspended" ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+                Membership access is paused because a payment is still outstanding. Update your
+                payment method in the billing portal to restore membership booking access.
               </div>
             ) : null}
 

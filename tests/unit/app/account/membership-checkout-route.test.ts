@@ -22,10 +22,24 @@ vi.mock("@/lib/billing/dispute-service", () => ({
 
 vi.mock("@/lib/billing/subscription-disclosure", () => ({
   SUBSCRIPTION_DISCLOSURE_VERSION: "2026-04-03",
+  buildMembershipDisclosure: vi.fn(() => ({
+    version: "2026-04-03",
+    keyItems: ["Price: £290.00 per year."],
+    fullItems: [],
+  })),
 }));
 
 vi.mock("@/lib/billing/subscription-compliance", () => ({
   recordSubscriptionComplianceEvent: recordSubscriptionComplianceEventMock,
+}));
+
+vi.mock("@/lib/billing/public-pricing", () => ({
+  getPublicPricing: vi.fn(async () => ({
+    membershipDisplay: {
+      movewellMonthly: 29,
+      movewellAnnual: 290,
+    },
+  })),
 }));
 
 vi.mock("@/lib/legal/acceptance-service", () => ({
@@ -169,7 +183,7 @@ describe("POST /api/me/membership/checkout", () => {
         cancelPath: "/dashboard/membership",
         disclosureVersion: "2026-04-03",
         disclosureAcceptedAt: expect.any(Date),
-        complianceSnapshot: {
+        complianceSnapshot: expect.objectContaining({
           acceptanceStates: [
             {
               type: "terms",
@@ -187,7 +201,8 @@ describe("POST /api/me/membership/checkout", () => {
             },
           ],
           immediateStartAcceptanceEventId: "event_immediate_start_v1",
-        },
+        }),
+        immediateStartSummary: expect.any(String),
       })
     );
     expect(assertNoUserCheckoutDisputeHoldMock).toHaveBeenCalledWith("user_123");

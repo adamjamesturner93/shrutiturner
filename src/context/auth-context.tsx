@@ -425,7 +425,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch("/api/me/membership", { cache: "no-store" });
       if (!response.ok) return;
-      const data = (await response.json()) as MembershipStateDto;
+      const payload = (await response.json()) as unknown;
+      const data = isApiSuccess<MembershipStateDto>(payload)
+        ? payload.data
+        : (payload as MembershipStateDto);
       applyMembershipState(data);
     } catch {
       // Leave fallback local state in place.
@@ -811,8 +814,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({ bundleSize: count }),
         });
         if (!response.ok) return;
-        const data = (await response.json()) as { checkoutUrl?: string };
-        if (data.checkoutUrl && typeof window !== "undefined") {
+        const payload = (await response.json().catch(() => null)) as unknown;
+        const data = isApiSuccess<{ checkoutUrl?: string }>(payload)
+          ? payload.data
+          : (payload as { checkoutUrl?: string } | null);
+        if (data?.checkoutUrl && typeof window !== "undefined") {
           window.location.href = data.checkoutUrl;
           return;
         }
@@ -828,27 +834,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void purchaseCredits(1);
   }, [purchaseCredits]);
 
-  const upgradeMembership = useCallback(
-    async (plan: "movewell") => {
-      try {
-        const response = await fetch("/api/me/membership/checkout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ plan }),
-        });
-        if (!response.ok) return;
-        const data = (await response.json()) as { checkoutUrl?: string };
-        if (data.checkoutUrl && typeof window !== "undefined") {
-          window.location.href = data.checkoutUrl;
-          return;
-        }
-        await loadMembershipState();
-      } catch {
-        // keep UI stable
-      }
-    },
-    [loadMembershipState]
-  );
+  const upgradeMembership = useCallback(async (plan: "movewell") => {
+    if (typeof window !== "undefined") {
+      window.location.href = `/dashboard/membership?subscribe=1&interval=monthly&plan=${plan}`;
+    }
+  }, []);
 
   const cancelMembership = useCallback(async () => {
     try {
