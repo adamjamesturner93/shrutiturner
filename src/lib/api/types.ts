@@ -101,6 +101,9 @@ export type AccountActivityDto = {
   attendedCount: number;
   totalCount: number;
   items: AccountActivityItemDto[];
+  pageInfo: {
+    nextCursor: string | null;
+  };
 };
 
 export type SessionFeedbackRequestDto =
@@ -474,12 +477,22 @@ export type DashboardSummaryDto = {
   attendance: {
     attendedCount: number;
     thisWeekBookedCount: number;
+    currentStreakWeeks: number;
+    lastAttendedAt: string | null;
   };
   favourites: Array<{
     classSlug: string;
     className: string;
     classType: string;
     startsAtUtc: string | null;
+  }>;
+  suggestedClasses: Array<{
+    sessionId: string;
+    classSlug: string;
+    className: string;
+    classType: string;
+    startsAtUtc: string;
+    durationMinutes: number;
   }>;
   membership: MembershipStateDto["membership"];
   credits: MembershipStateDto["credits"];

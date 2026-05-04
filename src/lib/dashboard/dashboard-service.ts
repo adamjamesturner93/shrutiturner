@@ -1,16 +1,25 @@
-import { ClassBookingStatus } from "@prisma/client";
+import { ClassBookingStatus, ClassSessionStatus } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getMembershipState } from "@/lib/membership/membership-service";
 import type { DashboardSummaryDto } from "@/lib/api/types";
 import { needsHealthDeclarationReview } from "@/lib/health/health-service";
 
-export async function getDashboardSummary(userId: string): Promise<DashboardSummaryDto> {
-  const now = new Date();
-  const weekStart = new Date(now);
+function getUtcWeekStart(date: Date) {
+  const weekStart = new Date(date);
   const day = weekStart.getUTCDay();
   const diffToMonday = day === 0 ? -6 : 1 - day;
   weekStart.setUTCDate(weekStart.getUTCDate() + diffToMonday);
   weekStart.setUTCHours(0, 0, 0, 0);
+  return weekStart;
+}
+
+function getUtcWeekStartKey(date: Date) {
+  return getUtcWeekStart(date).toISOString().slice(0, 10);
+}
+
+export async function getDashboardSummary(userId: string): Promise<DashboardSummaryDto> {
+  const now = new Date();
+  const weekStart = getUtcWeekStart(now);
   const weekEnd = new Date(weekStart);
   weekEnd.setUTCDate(weekEnd.getUTCDate() + 7);
 
@@ -52,7 +61,18 @@ export async function getDashboardSummary(userId: string): Promise<DashboardSumm
     }),
     db.classBooking.findMany({
       where: { userId, status: { in: [ClassBookingStatus.booked, ClassBookingStatus.attended] } },
-      select: { sessionId: true },
+      select: {
+        status: true,
+        session: {
+          select: {
+            id: true,
+            classDefinitionSlug: true,
+            titleSnapshot: true,
+            typeSnapshot: true,
+            startsAtUtc: true,
+          },
+        },
+      },
     }),
     db.healthProfile.findUnique({
       where: { userId },
@@ -63,27 +83,57 @@ export async function getDashboardSummary(userId: string): Promise<DashboardSumm
     }),
   ]);
 
-  const sessionFrequency = new Map<string, number>();
+  const classFrequency = new Map<string, number>();
+  const latestSessionByClass = new Map<string, (typeof historicalBookings)[number]["session"]>();
+  const attendedWeekKeys = new Set<string>();
+  let lastAttendedAt: Date | null = null;
+
   for (const row of historicalBookings) {
-    sessionFrequency.set(row.sessionId, (sessionFrequency.get(row.sessionId) || 0) + 1);
+    const classSlug = row.session.classDefinitionSlug;
+    classFrequency.set(classSlug, (classFrequency.get(classSlug) || 0) + 1);
+
+    const latest = latestSessionByClass.get(classSlug);
+    if (!latest || row.session.startsAtUtc > latest.startsAtUtc) {
+      latestSessionByClass.set(classSlug, row.session);
+    }
+
+    if (row.status === ClassBookingStatus.attended) {
+      attendedWeekKeys.add(getUtcWeekStartKey(row.session.startsAtUtc));
+      if (!lastAttendedAt || row.session.startsAtUtc > lastAttendedAt) {
+        lastAttendedAt = row.session.startsAtUtc;
+      }
+    }
   }
-  const favouriteSessionIds = Array.from(sessionFrequency.entries())
+
+  let currentStreakWeeks = 0;
+  for (
+    let cursor = new Date(weekStart);
+    attendedWeekKeys.has(cursor.toISOString().slice(0, 10));
+    cursor.setUTCDate(cursor.getUTCDate() - 7)
+  ) {
+    currentStreakWeeks += 1;
+  }
+
+  const favouriteClassSlugs = Array.from(classFrequency.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
-    .map(([sessionId]) => sessionId);
-  const favouriteSessions = favouriteSessionIds.length
+    .map(([classSlug]) => classSlug);
+  const bookedUpcomingSessionIds = new Set(upcomingBookings.map((booking) => booking.sessionId));
+  const suggestedClasses = favouriteClassSlugs.length
     ? await db.classSession.findMany({
-        where: { id: { in: favouriteSessionIds } },
-        select: {
-          id: true,
-          classDefinitionSlug: true,
-          titleSnapshot: true,
-          typeSnapshot: true,
-          startsAtUtc: true,
+        where: {
+          classDefinitionSlug: { in: favouriteClassSlugs },
+          id:
+            bookedUpcomingSessionIds.size > 0
+              ? { notIn: Array.from(bookedUpcomingSessionIds) }
+              : undefined,
+          status: { in: [ClassSessionStatus.scheduled, ClassSessionStatus.live] },
+          startsAtUtc: { gte: now },
         },
+        orderBy: { startsAtUtc: "asc" },
+        take: 5,
       })
     : [];
-  const favouriteById = new Map(favouriteSessions.map((session) => [session.id, session]));
 
   return {
     hasHealthProfile: Boolean(healthProfile),
@@ -103,9 +153,11 @@ export async function getDashboardSummary(userId: string): Promise<DashboardSumm
     attendance: {
       attendedCount,
       thisWeekBookedCount,
+      currentStreakWeeks,
+      lastAttendedAt: lastAttendedAt?.toISOString() ?? null,
     },
-    favourites: favouriteSessionIds
-      .map((sessionId) => favouriteById.get(sessionId))
+    favourites: favouriteClassSlugs
+      .map((classSlug) => latestSessionByClass.get(classSlug))
       .filter(Boolean)
       .map((session) => ({
         classSlug: session!.classDefinitionSlug,
@@ -113,6 +165,14 @@ export async function getDashboardSummary(userId: string): Promise<DashboardSumm
         classType: session!.typeSnapshot,
         startsAtUtc: session!.startsAtUtc.toISOString(),
       })),
+    suggestedClasses: suggestedClasses.map((session) => ({
+      sessionId: session.id,
+      classSlug: session.classDefinitionSlug,
+      className: session.titleSnapshot,
+      classType: session.typeSnapshot,
+      startsAtUtc: session.startsAtUtc.toISOString(),
+      durationMinutes: session.durationMinutes,
+    })),
     membership: membershipState.membership,
     credits: membershipState.credits,
     referral: membershipState.referral,
