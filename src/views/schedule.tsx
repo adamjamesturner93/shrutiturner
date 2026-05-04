@@ -25,6 +25,7 @@ type ApiScheduleDay = {
     time: string;
     duration: string;
     level: string;
+    instructorName?: string | null;
     maxSpaces: number;
     shortDescription: string;
     sessionId?: string;
@@ -59,6 +60,42 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
     year: "numeric",
     timeZone: "Europe/London",
   }).format(new Date());
+  const scheduleRows = renderedScheduleData.flatMap((daySchedule) =>
+    daySchedule.classes.map((classItem, index) => ({
+      ...classItem,
+      rowKey:
+        classItem.sessionId || `${classItem.slug}-${classItem.day}-${classItem.time}-${index}`,
+      dayLabel: daySchedule.day,
+      isToday: daySchedule.day === todayScheduleLabel,
+    }))
+  );
+
+  const renderBookingActions = (classItem: ApiScheduleDay["classes"][number]) => (
+    <div className="flex flex-col gap-2 md:min-w-[140px]">
+      <BookClassButton
+        sessionId={classItem.sessionId}
+        isBooked={Boolean(classItem.isBookedByCurrentUser)}
+        classSlug={classItem.slug}
+        className={classItem.name}
+        day={classItem.day}
+        time={classItem.time}
+        attendeeCount={classItem.bookedCount ?? 0}
+        spotsRemaining={classItem.spotsRemaining}
+        waitlistPosition={classItem.waitlistPosition}
+      />
+      <Link
+        href={
+          classItem.sessionId
+            ? `/classes/${classItem.slug}?session=${encodeURIComponent(classItem.sessionId)}`
+            : `/classes/${classItem.slug}`
+        }
+      >
+        <Button variant="ghost" size="sm" className="w-full md:w-auto">
+          View Details
+        </Button>
+      </Link>
+    </div>
+  );
 
   return (
     <Layout>
@@ -196,6 +233,102 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
                 </div>
               </div>
             ) : null}
+            {scheduleRows.length > 0 ? (
+              <div className="marketing-panel hidden overflow-x-auto rounded-[1.25rem] p-0 md:block">
+                <table className="w-full min-w-[920px] border-collapse text-left">
+                  <caption className="sr-only">
+                    Weekly class timetable with day, time, class details, instructor, available
+                    spaces, and booking actions.
+                  </caption>
+                  <thead>
+                    <tr className="border-brand-dark/10 border-b">
+                      <th scope="col" className="text-muted-foreground px-5 py-4 text-sm">
+                        Day
+                      </th>
+                      <th scope="col" className="text-muted-foreground px-5 py-4 text-sm">
+                        Time
+                      </th>
+                      <th scope="col" className="text-muted-foreground px-5 py-4 text-sm">
+                        Class
+                      </th>
+                      <th scope="col" className="text-muted-foreground px-5 py-4 text-sm">
+                        Instructor
+                      </th>
+                      <th scope="col" className="text-muted-foreground px-5 py-4 text-sm">
+                        Spaces
+                      </th>
+                      <th scope="col" className="text-muted-foreground px-5 py-4 text-sm">
+                        Book
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {scheduleRows.map((classItem) => (
+                      <tr
+                        key={classItem.rowKey}
+                        className={`border-brand-dark/10 border-b align-top last:border-b-0 ${
+                          classItem.isToday ? "bg-brand-accent/5" : ""
+                        }`}
+                      >
+                        <th scope="row" className="px-5 py-5 text-sm font-normal">
+                          <span>{classItem.dayLabel}</span>
+                          {classItem.isToday ? (
+                            <Badge className="bg-brand-accent ml-2 align-middle text-white">
+                              Today
+                            </Badge>
+                          ) : null}
+                        </th>
+                        <td className="px-5 py-5">
+                          <div className="flex items-center gap-2">
+                            <Clock className="text-primary h-4 w-4" />
+                            <div>
+                              <p className="text-sm">{fmtTimeStr(classItem.time)}</p>
+                              <p className="text-muted-foreground text-xs">{classItem.duration}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-5">
+                          <Link
+                            href={
+                              classItem.sessionId
+                                ? `/classes/${classItem.slug}?session=${encodeURIComponent(classItem.sessionId)}`
+                                : `/classes/${classItem.slug}`
+                            }
+                            className="hover:text-primary text-base transition-colors"
+                          >
+                            {classItem.name}
+                          </Link>
+                          <p className="text-muted-foreground mt-1 max-w-sm text-sm leading-relaxed">
+                            {classItem.shortDescription}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Badge variant="outline" className={getTypeColor(classItem.type)}>
+                              {classItem.type}
+                            </Badge>
+                            <Badge variant="outline">{classItem.level}</Badge>
+                          </div>
+                        </td>
+                        <td className="text-muted-foreground px-5 py-5 text-sm">
+                          {"instructorName" in classItem && classItem.instructorName
+                            ? classItem.instructorName
+                            : "Shruti Turner"}
+                        </td>
+                        <td className="px-5 py-5 text-sm">
+                          {typeof classItem.spotsRemaining === "number" ? (
+                            <span>
+                              {classItem.spotsRemaining}/{classItem.maxSpaces} available
+                            </span>
+                          ) : (
+                            <span>{classItem.maxSpaces} max</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-5">{renderBookingActions(classItem)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
             {renderedScheduleData.map((daySchedule) => {
               const isToday = daySchedule.day === todayScheduleLabel;
 
@@ -203,11 +336,9 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
                 <section
                   key={daySchedule.day}
                   aria-labelledby={`schedule-${daySchedule.day.replace(/[^a-z0-9]+/gi, "-")}`}
-                  className={
-                    isToday
-                      ? "border-brand-accent/20 bg-brand-accent/5 rounded-2xl border p-4 md:p-5"
-                      : ""
-                  }
+                  className={`md:hidden ${
+                    isToday ? "border-brand-accent/20 bg-brand-accent/5 rounded-2xl border p-4" : ""
+                  }`}
                 >
                   <h2 className="border-brand-dark/10 mb-6 border-b pb-3 text-2xl md:text-3xl">
                     <span id={`schedule-${daySchedule.day.replace(/[^a-z0-9]+/gi, "-")}`}>
@@ -274,30 +405,7 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
                           </div>
 
                           {/* Actions */}
-                          <div className="flex flex-col gap-2 md:min-w-[140px]">
-                            <BookClassButton
-                              sessionId={classItem.sessionId}
-                              isBooked={Boolean(classItem.isBookedByCurrentUser)}
-                              classSlug={classItem.slug}
-                              className={classItem.name}
-                              day={classItem.day}
-                              time={classItem.time}
-                              attendeeCount={classItem.bookedCount ?? 0}
-                              spotsRemaining={classItem.spotsRemaining}
-                              waitlistPosition={classItem.waitlistPosition}
-                            />
-                            <Link
-                              href={
-                                classItem.sessionId
-                                  ? `/classes/${classItem.slug}?session=${encodeURIComponent(classItem.sessionId)}`
-                                  : `/classes/${classItem.slug}`
-                              }
-                            >
-                              <Button variant="ghost" size="sm" className="w-full md:w-auto">
-                                View Details
-                              </Button>
-                            </Link>
-                          </div>
+                          {renderBookingActions(classItem)}
                         </div>
                       </div>
                     ))}
