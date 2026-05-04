@@ -183,7 +183,7 @@ describe("POST /api/classes/sessions/[id]/room-token", () => {
     expect(getRoomTokenAccessMock).not.toHaveBeenCalled();
   });
 
-  it("does not expose replay metadata for standard classes even when legacy recording flags exist", async () => {
+  it("returns the recording flag for recorded class sessions", async () => {
     getSessionAccessContextMock.mockResolvedValue({
       session: {
         endsAtUtc: "2026-03-24T19:00:00.000Z",
@@ -215,7 +215,7 @@ describe("POST /api/classes/sessions/[id]/room-token", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
       token: "token_123",
-      isRecorded: false,
+      isRecorded: true,
     });
   });
 });

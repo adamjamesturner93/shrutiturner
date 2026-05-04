@@ -3,7 +3,10 @@ import { db } from "@/lib/db";
 const DAY_MS = 86_400_000;
 const WEEK_MS = 7 * DAY_MS;
 
-export type ReplayResourceType = "small_group_programme" | "small_group_programme_session";
+export type ReplayResourceType =
+  | "small_group_programme"
+  | "small_group_programme_session"
+  | "class_session";
 
 export type ReplayPolicy = {
   resourceType: ReplayResourceType;
@@ -123,6 +126,31 @@ export async function resolveReplayPolicyForSmallGroupProgrammeSession(
     ...programmePolicy,
     resourceType: "small_group_programme_session",
     entitlementStartsAt,
+    configId: session.id,
+  };
+}
+
+export async function resolveReplayPolicyForClassSession(
+  classSessionId: string
+): Promise<ReplayPolicy> {
+  const session = await db.classSession.findUniqueOrThrow({
+    where: { id: classSessionId },
+    select: {
+      id: true,
+      startsAtUtc: true,
+      endsAtUtc: true,
+      replayAccessDurationDays: true,
+    },
+  });
+  const entitlementStartsAt = session.endsAtUtc || session.startsAtUtc;
+  const accessDurationDays = Math.max(1, session.replayAccessDurationDays || 7);
+  const entitlementEndsAt = addMilliseconds(entitlementStartsAt, accessDurationDays * DAY_MS);
+
+  return {
+    resourceType: "class_session",
+    entitlementStartsAt,
+    entitlementEndsAt,
+    deleteAfterAt: entitlementEndsAt,
     configId: session.id,
   };
 }

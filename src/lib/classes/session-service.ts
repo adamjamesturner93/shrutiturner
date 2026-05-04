@@ -27,6 +27,7 @@ import { createSessionRoom, deleteSessionRoom, isDailyConfigured } from "@/lib/d
 import { HEALTH_CATEGORIES } from "@/data/health-profile-data";
 import { getHealthCheckInMode } from "@/lib/health/health-service";
 import { resolveClassInstructorSnapshot } from "@/lib/instructors/effective-instructor-service";
+import { resolveReplayPolicyForClassSession } from "@/lib/replay/policy-service";
 import type {
   AdminClassSessionDto,
   BulkCreateSessionsInput,
@@ -167,10 +168,10 @@ function toSessionListItem(
       communityModeEnabled: session.communityModeEnabled,
       communityModeUpdatedAt: session.communityModeUpdatedAt,
     }),
-    isRecorded: false,
-    recordingScope: null,
-    replayAvailable: false,
-    replayAccessDurationDays: null,
+    isRecorded: session.isRecorded,
+    recordingScope: session.recordingScope,
+    replayAvailable: session.replayAvailable,
+    replayAccessDurationDays: session.replayAccessDurationDays,
     chatEnabled: session.chatEnabled,
     participantMicDefaultMuted: session.participantMicDefaultMuted,
     participantCameraDefaultOff: session.participantCameraDefaultOff,
@@ -558,6 +559,9 @@ export async function setUpSessionRoom(sessionId: string) {
       dailyRoomName: true,
       dailyRoomUrl: true,
       roomSetupStatus: true,
+      isRecorded: true,
+      recordingScope: true,
+      replayAccessDurationDays: true,
       bookings: {
         where: {
           status: {
@@ -638,6 +642,31 @@ export async function setUpSessionRoom(sessionId: string) {
         roomSetupError: null,
       },
     });
+    if (session.isRecorded) {
+      const policy = await resolveReplayPolicyForClassSession(session.id);
+      await db.replayAsset.upsert({
+        where: { classSessionId: session.id },
+        create: {
+          resourceType: "class_session",
+          classSessionId: session.id,
+          dailyRoomName: room.roomName,
+          status: "processing",
+          deleteAfterAt: policy.deleteAfterAt,
+          recordingConfigSnapshotJson: {
+            recordingScope: session.recordingScope,
+            replayAccessDurationDays: session.replayAccessDurationDays,
+          },
+        },
+        update: {
+          dailyRoomName: room.roomName,
+          deleteAfterAt: policy.deleteAfterAt,
+          recordingConfigSnapshotJson: {
+            recordingScope: session.recordingScope,
+            replayAccessDurationDays: session.replayAccessDurationDays,
+          },
+        },
+      });
+    }
     return { status: "ready" as const };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to create Daily room";

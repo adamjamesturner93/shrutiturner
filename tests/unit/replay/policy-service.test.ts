@@ -7,6 +7,9 @@ const dbMock = {
   smallGroupProgrammeSession: {
     findUniqueOrThrow: vi.fn(),
   },
+  classSession: {
+    findUniqueOrThrow: vi.fn(),
+  },
 };
 
 vi.mock("@/lib/db", () => ({
@@ -81,5 +84,21 @@ describe("replay policy service", () => {
     expect(policy.entitlementStartsAt.toISOString()).toBe("2026-03-09T19:15:00.000Z");
     expect(policy.entitlementEndsAt.toISOString()).toBe("2026-05-10T19:00:00.000Z");
     expect(policy.resourceType).toBe("small_group_programme_session");
+  });
+
+  it("uses the class end plus class replay access days for class sessions", async () => {
+    dbMock.classSession.findUniqueOrThrow.mockResolvedValue({
+      id: "class_session_123",
+      startsAtUtc: new Date("2026-03-09T18:00:00.000Z"),
+      endsAtUtc: new Date("2026-03-09T19:00:00.000Z"),
+      replayAccessDurationDays: 14,
+    });
+
+    const policy = await policyService.resolveReplayPolicyForClassSession("class_session_123");
+
+    expect(policy.resourceType).toBe("class_session");
+    expect(policy.entitlementStartsAt.toISOString()).toBe("2026-03-09T19:00:00.000Z");
+    expect(policy.entitlementEndsAt.toISOString()).toBe("2026-03-23T19:00:00.000Z");
+    expect(policy.deleteAfterAt.toISOString()).toBe("2026-03-23T19:00:00.000Z");
   });
 });

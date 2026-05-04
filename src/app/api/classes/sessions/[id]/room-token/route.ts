@@ -74,7 +74,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
       }),
       lateJoinCutoffAt: access.lateJoinCutoffAt.toISOString(),
       hasPreviouslyJoinedCurrentUser: access.hasPreviouslyJoined,
-      isRecorded: false,
+      isRecorded: Boolean(contextData.session.isRecorded),
       defaultMicMuted: contextData.session.participantMicDefaultMuted,
       defaultCameraOff: contextData.session.participantCameraDefaultOff,
     });

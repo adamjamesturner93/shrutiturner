@@ -45,15 +45,13 @@ export function DashboardReplays({ initialData }: { initialData: ReplayAssetSumm
         throw new Error(
           payload && "message" in payload && payload.message
             ? payload.message
-            : "Programme replay is not available right now."
+            : "Replay is not available right now."
         );
       }
       window.open(payload.playbackUrl, "_blank", "noopener,noreferrer");
     } catch (openError) {
       setError(
-        openError instanceof Error
-          ? openError.message
-          : "Programme replay is not available right now."
+        openError instanceof Error ? openError.message : "Replay is not available right now."
       );
     } finally {
       setOpeningReplayId(null);
@@ -64,10 +62,10 @@ export function DashboardReplays({ initialData }: { initialData: ReplayAssetSumm
     <DashboardLayout title="Replays - Private Studio">
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl">Programme Replays</h1>
+          <h1 className="text-3xl">Replays</h1>
           <p className="text-muted-foreground mt-2 max-w-3xl">
-            Watch available small-group programme recordings here. Access ends at the programme
-            policy cutoff, and the recording is then queued for deletion.
+            Watch available class and small-group programme recordings here. Access ends at the
+            relevant replay cutoff, and the recording is then queued for deletion.
           </p>
         </div>
 
@@ -82,7 +80,7 @@ export function DashboardReplays({ initialData }: { initialData: ReplayAssetSumm
             <CardContent className="py-12 text-center">
               <Video className="text-muted-foreground mx-auto mb-3 h-8 w-8" />
               <p className="text-muted-foreground">
-                No programme replays are currently available on your account.
+                No replays are currently available on your account.
               </p>
             </CardContent>
           </Card>
@@ -166,7 +164,7 @@ export function DashboardReplays({ initialData }: { initialData: ReplayAssetSumm
                         disabled={!replay.canPlay || openingReplayId === replay.id}
                       >
                         <PlayCircle className="mr-2 h-4 w-4" />
-                        {openingReplayId === replay.id ? "Opening..." : "Open programme replay"}
+                        {openingReplayId === replay.id ? "Opening..." : "Open replay"}
                       </Button>
                     </div>
                   </CardContent>

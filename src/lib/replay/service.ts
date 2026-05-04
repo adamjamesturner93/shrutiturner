@@ -1,4 +1,9 @@
-import { ReplayAssetStatus, ReplayEntitlementAccessType } from "@prisma/client";
+import {
+  ClassBookingStatus,
+  Prisma,
+  ReplayAssetStatus,
+  ReplayEntitlementAccessType,
+} from "@prisma/client";
 import { canViewReplayAsset } from "@/lib/authz/access";
 import { isOwnerAdminRole } from "@/lib/authz/roles";
 import { createAdminActionLog } from "@/lib/admin/action-log-service";
@@ -6,39 +11,58 @@ import type { ReplayAssetSummaryDto, ReplayPlaybackAccessDto } from "@/lib/api/t
 import { deleteRecording } from "@/lib/daily/service";
 import { db } from "@/lib/db";
 import { getReplayDisputeHoldState } from "@/lib/billing/dispute-service";
+import { resolveReplayPolicyForClassSession } from "@/lib/replay/policy-service";
 
 function now() {
   return new Date();
 }
 
-function assertSmallGroupReplayAsset(resourceType: string) {
-  if (resourceType !== "small_group_programme_session") {
+const REPLAY_RESOURCE_TYPES = ["small_group_programme_session", "class_session"] as const;
+
+type ReplayResourceType = (typeof REPLAY_RESOURCE_TYPES)[number];
+
+const replayAssetInclude = {
+  classSession: true,
+  smallGroupProgrammeSession: {
+    include: {
+      programme: {
+        select: {
+          id: true,
+          title: true,
+          runSlug: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.ReplayAssetInclude;
+
+type ReplayAssetWithResource = Prisma.ReplayAssetGetPayload<{
+  include: typeof replayAssetInclude;
+}>;
+
+function assertSupportedReplayAsset(
+  resourceType: string
+): asserts resourceType is ReplayResourceType {
+  if (!REPLAY_RESOURCE_TYPES.includes(resourceType as ReplayResourceType)) {
     throw new Error("REPLAY_NOT_AVAILABLE");
   }
 }
 
-async function getSmallGroupReplayAssetOrThrow(replayAssetId: string) {
+async function getReplayAssetOrThrow(replayAssetId: string) {
   const asset = await db.replayAsset.findUniqueOrThrow({
     where: { id: replayAssetId },
-    include: {
-      smallGroupProgrammeSession: {
-        include: {
-          programme: {
-            select: {
-              id: true,
-              title: true,
-              runSlug: true,
-            },
-          },
-        },
-      },
-    },
+    include: replayAssetInclude,
   });
-  assertSmallGroupReplayAsset(asset.resourceType);
+  assertSupportedReplayAsset(asset.resourceType);
   return asset;
 }
 
 function getReplayTitle(asset: {
+  classSession?: {
+    titleSnapshot: string;
+    startsAtUtc: Date;
+    endsAtUtc: Date;
+  } | null;
   smallGroupProgrammeSession?: {
     title: string;
     sequenceNumber: number;
@@ -49,13 +73,17 @@ function getReplayTitle(asset: {
     };
   } | null;
 }) {
-  if (!asset.smallGroupProgrammeSession) {
+  if (asset.classSession) {
     return {
-      title: "Programme replay",
-      subtitle: null,
-      startsAt: null,
-      endsAt: null,
+      title: asset.classSession.titleSnapshot,
+      subtitle: "Class replay",
+      startsAt: asset.classSession.startsAtUtc.toISOString(),
+      endsAt: asset.classSession.endsAtUtc.toISOString(),
     };
+  }
+
+  if (!asset.smallGroupProgrammeSession) {
+    return { title: "Replay", subtitle: null, startsAt: null, endsAt: null };
   }
 
   const session = asset.smallGroupProgrammeSession;
@@ -68,7 +96,7 @@ function getReplayTitle(asset: {
 }
 
 function toReplaySummaryDto(input: {
-  asset: Awaited<ReturnType<typeof getSmallGroupReplayAssetOrThrow>>;
+  asset: ReplayAssetWithResource;
   accessType: ReplayEntitlementAccessType | "owner_admin";
   entitlementEndsAt?: Date | null;
 }): ReplayAssetSummaryDto {
@@ -97,7 +125,10 @@ function toReplaySummaryDto(input: {
 }
 
 async function assertReplayEntitlementNotBlockedForDispute(userId: string, replayAssetId: string) {
-  const asset = await getSmallGroupReplayAssetOrThrow(replayAssetId);
+  const asset = await getReplayAssetOrThrow(replayAssetId);
+  if (asset.resourceType !== "small_group_programme_session") {
+    return;
+  }
   const programmeId = asset.smallGroupProgrammeSession?.programmeId;
   if (!programmeId) {
     return;
@@ -137,7 +168,7 @@ export async function syncReplayAssetFromDailyWebhook(input: {
   const asset = await db.replayAsset.findFirst({
     where: {
       dailyRoomName: input.roomName,
-      resourceType: "small_group_programme_session",
+      resourceType: { in: [...REPLAY_RESOURCE_TYPES] },
     },
   });
   if (!asset) {
@@ -152,7 +183,7 @@ export async function syncReplayAssetFromDailyWebhook(input: {
         ? ReplayAssetStatus.ready
         : ReplayAssetStatus.processing;
 
-  return db.replayAsset.update({
+  const updated = await db.replayAsset.update({
     where: { id: asset.id },
     data: {
       dailyRecordingId: input.recordingId || asset.dailyRecordingId,
@@ -164,6 +195,81 @@ export async function syncReplayAssetFromDailyWebhook(input: {
         nextStatus === ReplayAssetStatus.sync_failed ? JSON.stringify(input.payload || {}) : null,
     },
   });
+
+  if (updated.resourceType === "class_session" && updated.classSessionId) {
+    await createClassReplayEntitlements(updated.id, updated.classSessionId);
+  }
+
+  return updated;
+}
+
+async function createClassReplayEntitlements(replayAssetId: string, classSessionId: string) {
+  const policy = await resolveReplayPolicyForClassSession(classSessionId);
+  const session = await db.classSession.findUnique({
+    where: { id: classSessionId },
+    select: {
+      instructorUserId: true,
+      bookings: {
+        where: {
+          status: {
+            in: [ClassBookingStatus.booked, ClassBookingStatus.attended],
+          },
+        },
+        select: { userId: true },
+      },
+    },
+  });
+  if (!session) return;
+
+  const participantUserIds = Array.from(new Set(session.bookings.map((booking) => booking.userId)));
+  await db.$transaction([
+    ...participantUserIds.map((userId) =>
+      db.replayEntitlement.upsert({
+        where: {
+          replayAssetId_userId_accessType: {
+            replayAssetId,
+            userId,
+            accessType: ReplayEntitlementAccessType.participant,
+          },
+        },
+        create: {
+          replayAssetId,
+          userId,
+          accessType: ReplayEntitlementAccessType.participant,
+          startsAt: policy.entitlementStartsAt,
+          endsAt: policy.entitlementEndsAt,
+        },
+        update: {
+          startsAt: policy.entitlementStartsAt,
+          endsAt: policy.entitlementEndsAt,
+          revokedAt: null,
+          revokedByUserId: null,
+        },
+      })
+    ),
+    db.replayEntitlement.upsert({
+      where: {
+        replayAssetId_userId_accessType: {
+          replayAssetId,
+          userId: session.instructorUserId,
+          accessType: ReplayEntitlementAccessType.assigned_instructor,
+        },
+      },
+      create: {
+        replayAssetId,
+        userId: session.instructorUserId,
+        accessType: ReplayEntitlementAccessType.assigned_instructor,
+        startsAt: policy.entitlementStartsAt,
+        endsAt: policy.entitlementEndsAt,
+      },
+      update: {
+        startsAt: policy.entitlementStartsAt,
+        endsAt: policy.entitlementEndsAt,
+        revokedAt: null,
+        revokedByUserId: null,
+      },
+    }),
+  ]);
 }
 
 export async function getReplayPlaybackAccess(
@@ -195,7 +301,7 @@ export async function getReplayPlaybackAccess(
     }),
   ]);
 
-  assertSmallGroupReplayAsset(asset.resourceType);
+  assertSupportedReplayAsset(asset.resourceType);
 
   if (!user) {
     throw new Error("FORBIDDEN");
@@ -248,7 +354,7 @@ export async function revokeReplayEntitlement(input: {
     where: { id: input.replayAssetId },
     select: { resourceType: true },
   });
-  assertSmallGroupReplayAsset(asset.resourceType);
+  assertSupportedReplayAsset(asset.resourceType);
 
   const entitlement = await db.replayEntitlement.findFirst({
     where: {
@@ -292,7 +398,7 @@ export async function deleteReplayAssetNow(replayAssetId: string, actorUserId: s
   const asset = await db.replayAsset.findUniqueOrThrow({
     where: { id: replayAssetId },
   });
-  assertSmallGroupReplayAsset(asset.resourceType);
+  assertSupportedReplayAsset(asset.resourceType);
 
   let nextStatus: ReplayAssetStatus = ReplayAssetStatus.deleted;
   let deletedAt = now();
@@ -334,7 +440,7 @@ export async function deleteReplayAssetNow(replayAssetId: string, actorUserId: s
 export async function cleanupExpiredReplayAssets() {
   const assets = await db.replayAsset.findMany({
     where: {
-      resourceType: "small_group_programme_session",
+      resourceType: { in: [...REPLAY_RESOURCE_TYPES] },
       deleteAfterAt: {
         lte: now(),
       },
@@ -406,21 +512,9 @@ export async function listReplayAssetsForUser(userId: string): Promise<ReplayAss
   if (isOwnerAdminRole(user.role)) {
     const assets = await db.replayAsset.findMany({
       where: {
-        resourceType: "small_group_programme_session",
+        resourceType: { in: [...REPLAY_RESOURCE_TYPES] },
       },
-      include: {
-        smallGroupProgrammeSession: {
-          include: {
-            programme: {
-              select: {
-                id: true,
-                title: true,
-                runSlug: true,
-              },
-            },
-          },
-        },
-      },
+      include: replayAssetInclude,
       orderBy: [{ createdAt: "desc" }],
     });
 
@@ -437,24 +531,12 @@ export async function listReplayAssetsForUser(userId: string): Promise<ReplayAss
       userId,
       revokedAt: null,
       replayAsset: {
-        resourceType: "small_group_programme_session",
+        resourceType: { in: [...REPLAY_RESOURCE_TYPES] },
       },
     },
     include: {
       replayAsset: {
-        include: {
-          smallGroupProgrammeSession: {
-            include: {
-              programme: {
-                select: {
-                  id: true,
-                  title: true,
-                  runSlug: true,
-                },
-              },
-            },
-          },
-        },
+        include: replayAssetInclude,
       },
     },
     orderBy: [{ createdAt: "desc" }],
