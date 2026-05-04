@@ -230,6 +230,64 @@ describe("three-hour cutoff booking flows", () => {
     expect(refreshedSession.firstSignupInstructorEmailSentAt).not.toBeNull();
   });
 
+  it("treats concurrent duplicate booking attempts as one booking", async () => {
+    const instructor = await createUser("instructor", "Shruti", "admin");
+    const member = await createUser("member", "Ava");
+    const startsAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    const endsAt = new Date(startsAt.getTime() + 45 * 60 * 1000);
+
+    await db.membershipSubscription.create({
+      data: {
+        id: `membership-${member.id}`,
+        userId: member.id,
+        plan: MembershipPlan.movewell,
+        status: MembershipStatus.active,
+        pricePence: 2900,
+        currency: "GBP",
+        classesPerWeek: 3,
+        classesUsedThisWeek: 0,
+        startsAt: new Date("2026-03-01T00:00:00.000Z"),
+        renewsAt: new Date("2026-04-01T00:00:00.000Z"),
+      },
+    });
+
+    const session = await db.classSession.create({
+      data: {
+        classDefinitionSlug: "integration-cutoff-duplicate-booking",
+        titleSnapshot: "Integration Duplicate Booking",
+        typeSnapshot: "Strength",
+        levelSnapshot: "Adaptive",
+        durationMinutes: 45,
+        startsAtUtc: startsAt,
+        endsAtUtc: endsAt,
+        timezone: "Europe/London",
+        capacity: 10,
+        status: ClassSessionStatus.scheduled,
+        instructorUserId: instructor.id,
+        instructorNameSnapshot: "Shruti Turner",
+      },
+    });
+
+    const [first, second] = await Promise.all([
+      bookClassSession(session.id, member.id),
+      bookClassSession(session.id, member.id),
+    ]);
+
+    expect(first.status).toBe("booked");
+    expect(second.status).toBe("booked");
+    if (first.status === "booked" && second.status === "booked") {
+      expect(second.bookingId).toBe(first.bookingId);
+    }
+    await expect(
+      db.classBooking.count({
+        where: { sessionId: session.id, userId: member.id, status: ClassBookingStatus.booked },
+      })
+    ).resolves.toBe(1);
+    await expect(
+      db.membershipSubscription.findUniqueOrThrow({ where: { id: `membership-${member.id}` } })
+    ).resolves.toMatchObject({ classesUsedThisWeek: 1 });
+  });
+
   it("branches at the configured empty-class cutoff by cancelling empty classes and reminding booked attendees", async () => {
     const now = new Date("2026-03-24T12:00:00.000Z");
     const instructor = await createUser("instructor", "Shruti", "admin");

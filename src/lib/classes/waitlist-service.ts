@@ -18,12 +18,23 @@ export async function joinWaitlist(
   userId: string,
   tx: Prisma.TransactionClient | typeof db = db
 ) {
-  const existing = await tx.classWaitlistEntry.findFirst({
-    where: { sessionId, userId, status: ClassWaitlistStatus.waiting },
+  const existing = await tx.classWaitlistEntry.findUnique({
+    where: { sessionId_userId: { sessionId, userId } },
   });
-  if (existing) return existing;
+  if (existing?.status === ClassWaitlistStatus.waiting) return existing;
 
   const position = await getNextWaitlistPosition(sessionId, tx);
+  if (existing) {
+    return tx.classWaitlistEntry.update({
+      where: { id: existing.id },
+      data: {
+        position,
+        status: ClassWaitlistStatus.waiting,
+        promotedAt: null,
+      },
+    });
+  }
+
   return tx.classWaitlistEntry.create({
     data: {
       sessionId,

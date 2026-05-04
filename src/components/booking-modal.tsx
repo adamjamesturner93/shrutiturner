@@ -481,6 +481,8 @@ interface BookClassButtonProps {
   attendeeCount?: number;
   status?: "draft" | "scheduled" | "live" | "completed" | "cancelled";
   emptyClassAutoCancelWindowMinutes?: number;
+  spotsRemaining?: number;
+  waitlistPosition?: number | null;
 }
 
 export function BookClassButton({
@@ -498,6 +500,8 @@ export function BookClassButton({
   attendeeCount = 5,
   status,
   emptyClassAutoCancelWindowMinutes,
+  spotsRemaining,
+  waitlistPosition,
 }: BookClassButtonProps) {
   const { isAuthenticated, refreshMembershipState, user } = useAuth();
   const router = useRouter();
@@ -505,7 +509,10 @@ export function BookClassButton({
   const searchParams = useSearchParams();
   const [showPurchase, setShowPurchase] = useState(false);
   const [confirmation, setConfirmation] = useState<{ creditUsed: CreditItem } | null>(null);
-  const [bookingState, setBookingState] = useState<"idle" | "loading" | "waitlisted">("idle");
+  const [bookingState, setBookingState] = useState<"idle" | "loading" | "leaving_waitlist">("idle");
+  const [currentWaitlistPosition, setCurrentWaitlistPosition] = useState<number | null>(
+    waitlistPosition ?? null
+  );
   const [bookedOverride, setBookedOverride] = useState(false);
   const [resolvedSessionId, setResolvedSessionId] = useState<string | null>(sessionId ?? null);
   const autoBookingAttemptedRef = useRef(false);
@@ -528,6 +535,14 @@ export function BookClassButton({
   });
 
   const effectiveSize = sizeProp || (variant === "lg" ? "lg" : "default");
+  const isWaitlisted = currentWaitlistPosition !== null;
+  const primaryLabel =
+    label ||
+    (spotsRemaining === 0 ? "Join Waitlist" : effectiveSize === "sm" ? "Book" : "Book This Class");
+
+  useEffect(() => {
+    setCurrentWaitlistPosition(waitlistPosition ?? null);
+  }, [waitlistPosition]);
 
   const clearCheckoutIntent = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -570,13 +585,17 @@ export function BookClassButton({
         method: "POST",
       });
       const payload = (await response.json().catch(() => ({}))) as {
+        code?: string;
         status?: "booked" | "waitlisted";
         bookingMode?: "membership" | "credit" | "waitlist" | "manual";
+        position?: number;
         message?: string;
       };
 
       if (!response.ok) {
-        if (payload.message === "HEALTH_DECLARATION_REQUIRED") {
+        if (payload.code === "LEGAL_ACCEPTANCE_REQUIRED") {
+          router.push(`/dashboard/account?returnTo=${encodeURIComponent(pathname)}`);
+        } else if (payload.message === "HEALTH_DECLARATION_REQUIRED") {
           router.push(`/dashboard/health?returnTo=${encodeURIComponent(pathname)}`);
         }
         if (payload.message === "BOOKING_LIMIT_REACHED" && openPurchaseModalOnLimit) {
@@ -589,7 +608,8 @@ export function BookClassButton({
       }
 
       if (payload.status === "waitlisted") {
-        setBookingState("waitlisted");
+        setCurrentWaitlistPosition(payload.position ?? null);
+        setBookingState("idle");
         await refreshMembershipState();
         return "waitlisted" as const;
       }
@@ -615,12 +635,36 @@ export function BookClassButton({
     [classSlug, effectiveSessionId, pathname, refreshMembershipState, router]
   );
 
+  const handleLeaveWaitlist = () => {
+    if (!effectiveSessionId || bookingState === "leaving_waitlist") return;
+
+    setBookingState("leaving_waitlist");
+    void (async () => {
+      try {
+        const response = await fetch(`/api/classes/sessions/${effectiveSessionId}/waitlist`, {
+          method: "DELETE",
+        });
+        if (response.ok) {
+          setCurrentWaitlistPosition(null);
+          await refreshMembershipState();
+        }
+      } finally {
+        setBookingState("idle");
+      }
+    })();
+  };
+
   const handleBook = () => {
     if (isCancelledDueToLowEnrollment) return;
 
     if (!isAuthenticated) {
       const returnUrl = encodeURIComponent(pathname);
       router.push(`/login?redirect=${returnUrl}&intent=book`);
+      return;
+    }
+
+    if (user?.needsTermsReacceptance || user?.needsHealthWaiverReacceptance) {
+      router.push(`/dashboard/account?returnTo=${encodeURIComponent(pathname)}`);
       return;
     }
 
@@ -696,16 +740,30 @@ export function BookClassButton({
     searchParams,
   ]);
 
-  if (bookingState === "waitlisted") {
+  if (isWaitlisted) {
     return (
-      <Button
-        variant="outline"
-        disabled
-        size={effectiveSize}
-        className={variant === "lg" ? "px-8 text-lg" : ""}
-      >
-        Waitlisted
-      </Button>
+      <div className="flex flex-col gap-2">
+        <Button
+          variant="outline"
+          disabled
+          size={effectiveSize}
+          className={variant === "lg" ? "px-8 text-lg" : ""}
+        >
+          Waitlisted
+          {currentWaitlistPosition ? ` #${currentWaitlistPosition}` : ""}
+        </Button>
+        {effectiveSessionId ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size={effectiveSize === "lg" ? "default" : "sm"}
+            disabled={bookingState === "leaving_waitlist"}
+            onClick={handleLeaveWaitlist}
+          >
+            {bookingState === "leaving_waitlist" ? "Leaving..." : "Leave waitlist"}
+          </Button>
+        ) : null}
+      </div>
     );
   }
 
@@ -751,9 +809,7 @@ export function BookClassButton({
         size={effectiveSize}
         className={variant === "lg" ? "px-8 text-lg" : ""}
       >
-        {bookingState === "loading"
-          ? "Booking..."
-          : label || (effectiveSize === "sm" ? "Book" : "Book This Class")}
+        {bookingState === "loading" ? "Booking..." : primaryLabel}
         <ArrowRight className="ml-2 h-4 w-4" />
       </Button>
 

@@ -1,4 +1,3 @@
-import { AcceptanceType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api/auth-user";
 import { getSessionAccessContext, getRoomTokenAccess } from "@/lib/classes/attendance-service";
@@ -10,8 +9,8 @@ import { setUpSessionRoom } from "@/lib/classes/session-service";
 import { createMeetingToken, isDailyConfigured } from "@/lib/daily/service";
 import { getHealthAccessState } from "@/lib/health/health-service";
 import {
-  type AcceptanceRequirement,
   assertCurrentAcceptances,
+  getPhysicalServiceAcceptanceRequirements,
   isAcceptanceRequiredError,
 } from "@/lib/legal/acceptance-service";
 
@@ -36,12 +35,10 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
       return NextResponse.json({ message: "Session not found" }, { status: 404 });
     }
 
-    const acceptanceRequirements: AcceptanceRequirement[] = [
-      { type: AcceptanceType.terms, surface: "class_join" },
-      { type: AcceptanceType.health_waiver, surface: "class_join" },
-      { type: AcceptanceType.health_data, surface: "class_join" },
-    ];
-    await assertCurrentAcceptances(sessionUser.id, acceptanceRequirements);
+    await assertCurrentAcceptances(
+      sessionUser.id,
+      getPhysicalServiceAcceptanceRequirements("class_join")
+    );
 
     if (!contextData.session.dailyRoomName || !contextData.session.dailyRoomUrl) {
       await setUpSessionRoom(id);

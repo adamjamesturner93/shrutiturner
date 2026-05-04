@@ -1,5 +1,4 @@
 import {
-  AcceptanceType,
   BookingEntitlementType,
   ClassBookingStatus,
   ClassSessionStatus,
@@ -32,7 +31,10 @@ import {
 import { setUpSessionRoom, tearDownSessionRoom } from "@/lib/classes/session-service";
 import { isOwnerAdminRole } from "@/lib/authz/roles";
 import { getHealthAccessState } from "@/lib/health/health-service";
-import { assertCurrentAcceptances } from "@/lib/legal/acceptance-service";
+import {
+  assertCurrentAcceptances,
+  getPhysicalServiceAcceptanceRequirements,
+} from "@/lib/legal/acceptance-service";
 const DATE_FORMAT_PREFERENCES: DateFormatPreference[] = ["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"];
 
 function toDateFormatPreference(value: string | null | undefined): DateFormatPreference {
@@ -83,6 +85,25 @@ async function getActiveBookedCount(
   });
 }
 
+async function acquireBookingLock(tx: Prisma.TransactionClient, key: string) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`;
+}
+
+async function hasMembershipDunningCaseTable(tx: Prisma.TransactionClient | typeof db = db) {
+  const rows = await tx.$queryRaw<Array<{ table_name: string | null }>>`
+    SELECT to_regclass('public."MembershipDunningCase"')::text AS table_name
+  `;
+  return Boolean(rows[0]?.table_name);
+}
+
+function toBookingMode(entitlementType: BookingEntitlementType) {
+  return entitlementType === BookingEntitlementType.credit
+    ? "credit"
+    : entitlementType === BookingEntitlementType.membership
+      ? "membership"
+      : "manual";
+}
+
 async function getMembershipWeeklyUsage(
   userId: string,
   now: Date,
@@ -113,30 +134,46 @@ async function getBookableMembership(
   userId: string,
   tx: Prisma.TransactionClient | typeof db = db
 ) {
-  return tx.membershipSubscription.findFirst({
+  const memberships = await tx.membershipSubscription.findMany({
     where: {
       userId,
       status: {
         in: [MembershipStatus.active, MembershipStatus.past_due],
       },
-      NOT: {
-        dunningCases: {
-          some: {
-            OR: [
-              { status: MembershipDunningStatus.suspended },
-              {
-                status: MembershipDunningStatus.open,
-                graceEndsAt: { lte: new Date() },
-              },
-            ],
-          },
-        },
-      },
     },
     orderBy: {
       createdAt: "desc",
     },
+    take: 5,
   });
+
+  if (memberships.length === 0) {
+    return null;
+  }
+
+  if (!(await hasMembershipDunningCaseTable(tx))) {
+    return memberships[0];
+  }
+
+  for (const membership of memberships) {
+    const blockingDunningCaseCount = await tx.membershipDunningCase.count({
+      where: {
+        membershipId: membership.id,
+        OR: [
+          { status: MembershipDunningStatus.suspended },
+          {
+            status: MembershipDunningStatus.open,
+            graceEndsAt: { lte: new Date() },
+          },
+        ],
+      },
+    });
+    if (blockingDunningCaseCount === 0) {
+      return membership;
+    }
+  }
+
+  return null;
 }
 
 async function decideEntitlement(
@@ -372,15 +409,45 @@ async function autoCancelClassSessionForNoAttendance(sessionId: string, now = ne
 }
 
 async function promoteFirstWaitlisted(sessionId: string) {
-  const waiting = await getFirstWaiting(sessionId);
-  if (!waiting) return null;
+  const promotion = await db.$transaction(async (tx) => {
+    await acquireBookingLock(tx, `class_session:${sessionId}`);
 
-  const bookedCountBeforePromotion = await getActiveBookedCount(sessionId);
+    const session = await tx.classSession.findUnique({
+      where: { id: sessionId },
+      select: { capacity: true },
+    });
+    if (!session) {
+      throw new Error("SESSION_NOT_FOUND");
+    }
 
-  const promotedBooking = await db.$transaction(async (tx) => {
-    const row = await tx.classWaitlistEntry.findUnique({ where: { id: waiting.id } });
-    if (!row || row.status !== ClassWaitlistStatus.waiting) {
+    const waiting = await getFirstWaiting(sessionId, tx);
+    if (!waiting) {
       return null;
+    }
+
+    await acquireBookingLock(tx, `class_user:${waiting.userId}`);
+
+    const bookedCountBeforePromotion = await getActiveBookedCount(sessionId, tx);
+    if (bookedCountBeforePromotion >= session.capacity) {
+      return null;
+    }
+
+    const existingBooking = await tx.classBooking.findFirst({
+      where: {
+        sessionId,
+        userId: waiting.userId,
+        status: ClassBookingStatus.booked,
+      },
+    });
+    if (existingBooking) {
+      await tx.classWaitlistEntry.update({
+        where: { id: waiting.id },
+        data: {
+          status: ClassWaitlistStatus.promoted,
+          promotedAt: new Date(),
+        },
+      });
+      return { booking: existingBooking, waiting, bookedCountBeforePromotion };
     }
 
     let entitlement: {
@@ -437,18 +504,18 @@ async function promoteFirstWaitlisted(sessionId: string) {
       });
     }
 
-    return booking;
+    return { booking, waiting, bookedCountBeforePromotion };
   });
 
-  if (!promotedBooking) return null;
+  if (!promotion) return null;
 
   await logEvent(sessionId, "waitlist_promoted", "Waitlist promoted", {
-    userId: waiting.userId,
-    bookingId: promotedBooking.id,
+    userId: promotion.waiting.userId,
+    bookingId: promotion.booking.id,
   });
 
   const [user, session] = await Promise.all([
-    db.user.findUnique({ where: { id: waiting.userId } }),
+    db.user.findUnique({ where: { id: promotion.waiting.userId } }),
     db.classSession.findUnique({ where: { id: sessionId } }),
   ]);
 
@@ -464,75 +531,75 @@ async function promoteFirstWaitlisted(sessionId: string) {
     );
   }
 
-  if (bookedCountBeforePromotion === 0) {
-    await handleFirstBookedAttendee(sessionId, waiting.userId);
+  if (promotion.bookedCountBeforePromotion === 0) {
+    await handleFirstBookedAttendee(sessionId, promotion.waiting.userId);
   }
 
-  return promotedBooking;
+  return promotion.booking;
 }
 
 export async function bookClassSession(
   sessionId: string,
   userId: string
 ): Promise<BookSessionResultDto> {
-  const acceptanceStates = await assertCurrentAcceptances(userId, [
-    { type: AcceptanceType.terms, surface: "class_booking" },
-    { type: AcceptanceType.health_waiver, surface: "class_booking" },
-    { type: AcceptanceType.health_data, surface: "class_booking" },
-  ]);
+  const acceptanceStates = await assertCurrentAcceptances(
+    userId,
+    getPhysicalServiceAcceptanceRequirements("class_booking")
+  );
   const healthAccess = await getHealthAccessState(userId);
   if (!healthAccess.isComplete) {
     throw new Error("HEALTH_DECLARATION_REQUIRED");
   }
 
-  const session = await db.classSession.findUnique({
-    where: { id: sessionId },
-    include: {
-      bookings: {
-        where: { status: ClassBookingStatus.booked },
-        select: { id: true },
+  const result = await db.$transaction(async (tx) => {
+    await acquireBookingLock(tx, `class_session:${sessionId}`);
+    await acquireBookingLock(tx, `class_user:${userId}`);
+
+    const session = await tx.classSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        id: true,
+        status: true,
+        startsAtUtc: true,
+        titleSnapshot: true,
+        durationMinutes: true,
+        capacity: true,
       },
-    },
-  });
+    });
 
-  if (!session) throw new Error("SESSION_NOT_FOUND");
-  if (
-    session.status !== ClassSessionStatus.scheduled &&
-    session.status !== ClassSessionStatus.live
-  ) {
-    throw new Error("SESSION_NOT_BOOKABLE");
-  }
-  if (session.startsAtUtc <= new Date()) {
-    throw new Error("SESSION_STARTED");
-  }
+    if (!session) throw new Error("SESSION_NOT_FOUND");
+    if (
+      session.status !== ClassSessionStatus.scheduled &&
+      session.status !== ClassSessionStatus.live
+    ) {
+      throw new Error("SESSION_NOT_BOOKABLE");
+    }
+    if (session.startsAtUtc <= new Date()) {
+      throw new Error("SESSION_STARTED");
+    }
 
-  const existingBooking = await db.classBooking.findFirst({
-    where: {
-      sessionId,
-      userId,
-      status: ClassBookingStatus.booked,
-    },
-  });
-  if (existingBooking) {
-    return {
-      status: "booked",
-      bookingId: existingBooking.id,
-      sessionId,
-      bookingMode:
-        existingBooking.entitlementType === BookingEntitlementType.credit
-          ? "credit"
-          : existingBooking.entitlementType === BookingEntitlementType.membership
-            ? "membership"
-            : "manual",
-    };
-  }
+    const existingBooking = await tx.classBooking.findFirst({
+      where: {
+        sessionId,
+        userId,
+        status: ClassBookingStatus.booked,
+      },
+    });
+    if (existingBooking) {
+      return {
+        kind: "booked" as const,
+        booking: existingBooking,
+        session,
+        activeBookingsBefore: null,
+        alreadyBooked: true,
+      };
+    }
 
-  await removeFromWaitlist(sessionId, userId);
+    const activeBookings = await getActiveBookedCount(sessionId, tx);
 
-  const activeBookings = session.bookings.length;
-  if (activeBookings < session.capacity) {
-    const now = new Date();
-    const booking = await db.$transaction(async (tx) => {
+    if (activeBookings < session.capacity) {
+      const now = new Date();
+      await removeFromWaitlist(sessionId, userId, tx);
       const entitlement = await decideEntitlement(userId, now, tx);
       const bookingRef = `class_booking:${sessionId}:${userId}:${now.toISOString()}`;
 
@@ -590,56 +657,67 @@ export async function bookClassSession(
         });
       }
 
-      return booked;
-    });
-
-    await logEvent(sessionId, "booking_created", "Booking created", {
-      userId,
-      bookingId: booking.id,
-    });
-
-    const user = await db.user.findUnique({ where: { id: userId } });
-    if (user?.email) {
-      void sendBookingConfirmation(
-        user.email,
-        user.firstName || user.name || "there",
-        session.titleSnapshot,
-        session.startsAtUtc.toISOString().slice(0, 10),
-        session.startsAtUtc.toISOString().slice(11, 16),
-        session.startsAtUtc,
-        session.durationMinutes
-      );
+      return {
+        kind: "booked" as const,
+        booking: booked,
+        session,
+        activeBookingsBefore: activeBookings,
+        alreadyBooked: false,
+      };
     }
 
-    if (activeBookings === 0) {
-      await handleFirstBookedAttendee(sessionId, userId);
+    const waitlistEntry = await joinWaitlist(sessionId, userId, tx);
+    return {
+      kind: "waitlisted" as const,
+      waitlistEntry,
+      session,
+    };
+  });
+
+  if (result.kind === "booked") {
+    if (!result.alreadyBooked) {
+      await logEvent(sessionId, "booking_created", "Booking created", {
+        userId,
+        bookingId: result.booking.id,
+      });
+
+      const user = await db.user.findUnique({ where: { id: userId } });
+      if (user?.email) {
+        void sendBookingConfirmation(
+          user.email,
+          user.firstName || user.name || "there",
+          result.session.titleSnapshot,
+          result.session.startsAtUtc.toISOString().slice(0, 10),
+          result.session.startsAtUtc.toISOString().slice(11, 16),
+          result.session.startsAtUtc,
+          result.session.durationMinutes
+        );
+      }
+
+      if (result.activeBookingsBefore === 0) {
+        await handleFirstBookedAttendee(sessionId, userId);
+      }
     }
 
     return {
       status: "booked",
-      bookingId: booking.id,
+      bookingId: result.booking.id,
       sessionId,
-      bookingMode:
-        booking.entitlementType === BookingEntitlementType.credit
-          ? "credit"
-          : booking.entitlementType === BookingEntitlementType.membership
-            ? "membership"
-            : "manual",
+      bookingMode: toBookingMode(result.booking.entitlementType),
     };
   }
 
-  const waitlistEntry = await joinWaitlist(sessionId, userId);
   await logEvent(sessionId, "waitlist_joined", "Joined waitlist", {
     userId,
-    waitlistEntryId: waitlistEntry.id,
-    position: waitlistEntry.position,
+    waitlistEntryId: result.waitlistEntry.id,
+    position: result.waitlistEntry.position,
   });
 
   return {
     status: "waitlisted",
-    waitlistEntryId: waitlistEntry.id,
+    waitlistEntryId: result.waitlistEntry.id,
     sessionId,
-    position: waitlistEntry.position,
+    position: result.waitlistEntry.position,
     bookingMode: "waitlist",
   };
 }
@@ -699,6 +777,9 @@ async function cancelBookingForUser(
   const settings = await getClassOperationalSettings();
 
   await db.$transaction(async (tx) => {
+    await acquireBookingLock(tx, `class_session:${sessionId}`);
+    await acquireBookingLock(tx, `class_user:${userId}`);
+
     await tx.classBooking.update({
       where: { id: booking.id },
       data: {

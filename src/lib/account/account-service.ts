@@ -13,7 +13,11 @@ import { issueAuthChallenge, normalizeEmail, verifyAuthChallenge } from "@/lib/a
 import { sendAuthCodeEmail } from "@/lib/auth-code";
 import { sendWelcomeEmail } from "@/lib/email";
 import { needsHealthDeclarationReview } from "@/lib/health/health-service";
-import { recordAcceptanceEvent } from "@/lib/legal/acceptance-service";
+import {
+  isAcceptanceDateFresh,
+  PHYSICAL_SERVICE_HEALTH_WAIVER_MAX_AGE_DAYS,
+  recordAcceptanceEvent,
+} from "@/lib/legal/acceptance-service";
 import { recordUserLifecycleEvent } from "@/lib/user-lifecycle";
 import type { HealthDeclarationStatusDto } from "@/lib/api/types";
 
@@ -72,7 +76,9 @@ async function getOrCreateNotificationPreferences(userId: string) {
 
 function mapLegalAcceptance<T extends LegalAcceptanceShape>(user: T) {
   const hasCurrentTerms = user.acceptedTermsVersion === CURRENT_TERMS_VERSION;
-  const hasCurrentHealthWaiver = user.acceptedHealthWaiverVersion === CURRENT_HEALTH_WAIVER_VERSION;
+  const hasCurrentHealthWaiver =
+    user.acceptedHealthWaiverVersion === CURRENT_HEALTH_WAIVER_VERSION &&
+    isAcceptanceDateFresh(user.healthAgreedAt, PHYSICAL_SERVICE_HEALTH_WAIVER_MAX_AGE_DAYS);
   const hasCurrentHealthDataConsent =
     user.acceptedHealthDataConsentVersion === CURRENT_HEALTH_DATA_CONSENT_VERSION;
 
@@ -190,7 +196,9 @@ export async function getAccount(userId: string, siteUrl: string) {
         dob: user.dob,
         isOnboarded: user.isOnboarded,
         hasAgreedToTerms: user.acceptedTermsVersion === CURRENT_TERMS_VERSION,
-        hasAgreedToHealth: user.acceptedHealthWaiverVersion === CURRENT_HEALTH_WAIVER_VERSION,
+        hasAgreedToHealth:
+          user.acceptedHealthWaiverVersion === CURRENT_HEALTH_WAIVER_VERSION &&
+          isAcceptanceDateFresh(user.healthAgreedAt, PHYSICAL_SERVICE_HEALTH_WAIVER_MAX_AGE_DAYS),
         heardAboutSource: user.heardAboutSource,
         hasHealthProfile: healthDeclaration.hasHealthProfile,
         healthDeclarationStatus: healthDeclaration.healthDeclarationStatus,
@@ -290,7 +298,11 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
 
     if (
       input.hasAgreedToHealth === true &&
-      existingUser.acceptedHealthWaiverVersion !== CURRENT_HEALTH_WAIVER_VERSION
+      (existingUser.acceptedHealthWaiverVersion !== CURRENT_HEALTH_WAIVER_VERSION ||
+        !isAcceptanceDateFresh(
+          existingUser.healthAgreedAt,
+          PHYSICAL_SERVICE_HEALTH_WAIVER_MAX_AGE_DAYS
+        ))
     ) {
       acceptancesToRecord.push(AcceptanceType.health_waiver);
     }
@@ -397,7 +409,9 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
       dob: updated.dob,
       isOnboarded: updated.isOnboarded,
       hasAgreedToTerms: updated.acceptedTermsVersion === CURRENT_TERMS_VERSION,
-      hasAgreedToHealth: updated.acceptedHealthWaiverVersion === CURRENT_HEALTH_WAIVER_VERSION,
+      hasAgreedToHealth:
+        updated.acceptedHealthWaiverVersion === CURRENT_HEALTH_WAIVER_VERSION &&
+        isAcceptanceDateFresh(updated.healthAgreedAt, PHYSICAL_SERVICE_HEALTH_WAIVER_MAX_AGE_DAYS),
       heardAboutSource: updated.heardAboutSource,
       hasHealthProfile: healthDeclaration.hasHealthProfile,
       healthDeclarationStatus: healthDeclaration.healthDeclarationStatus,
