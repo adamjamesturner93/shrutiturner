@@ -37,10 +37,7 @@ import {
 import type { AdminClassSessionDto, ClassTimetableRuleDto } from "@/lib/classes/types";
 import { getTypeColor } from "@/lib/classes/type-color";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
-import {
-  getWeekEndExclusiveIso,
-  groupAdminSessionsByWeek,
-} from "@/lib/classes/admin-week-groups";
+import { getWeekEndExclusiveIso, groupAdminSessionsByWeek } from "@/lib/classes/admin-week-groups";
 
 const STATUS_ICON: Record<string, typeof Play> = {
   draft: Clock,
@@ -99,6 +96,10 @@ export function AdminClasses() {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackError, setFeedbackError] = useState("");
   const [cancellingWeekStart, setCancellingWeekStart] = useState<string | null>(null);
+  const [showRescheduleWeekDialog, setShowRescheduleWeekDialog] = useState(false);
+  const [rescheduleWeekStart, setRescheduleWeekStart] = useState("");
+  const [rescheduleDayDelta, setRescheduleDayDelta] = useState("7");
+  const [reschedulingWeek, setReschedulingWeek] = useState(false);
   const [endingRule, setEndingRule] = useState<ClassTimetableRuleDto | null>(null);
   const [endingMode, setEndingMode] = useState<"immediate" | "last-class-date">("immediate");
   const [endingLastClassDate, setEndingLastClassDate] = useState("");
@@ -456,6 +457,57 @@ export function AdminClasses() {
     }
   };
 
+  const openRescheduleWeekDialog = (weekStart: string) => {
+    setRescheduleWeekStart(weekStart);
+    setRescheduleDayDelta("7");
+    setFeedbackError("");
+    setShowRescheduleWeekDialog(true);
+  };
+
+  const handleRescheduleWeek = async () => {
+    const dayDelta = Number(rescheduleDayDelta);
+    if (!rescheduleWeekStart || !Number.isInteger(dayDelta) || dayDelta === 0) {
+      setFeedbackError("Choose a whole-day shift before rescheduling this week.");
+      return;
+    }
+
+    setReschedulingWeek(true);
+    setFeedbackError("");
+    try {
+      const response = await fetch("/api/admin/classes/sessions/reschedule-week", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          weekStart: rescheduleWeekStart,
+          dayDelta,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as {
+        message?: string;
+        weekStart?: string;
+        dayDelta?: number;
+        updatedCount?: number;
+        skippedCount?: number;
+      } | null;
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to reschedule this week of classes.");
+      }
+
+      await refreshData();
+      setFeedbackMessage(
+        `Week of ${payload?.weekStart || rescheduleWeekStart}: moved ${payload?.updatedCount || 0} classes by ${payload?.dayDelta || dayDelta} day${Math.abs(payload?.dayDelta || dayDelta) === 1 ? "" : "s"}, skipped ${payload?.skippedCount || 0}.`
+      );
+      setShowRescheduleWeekDialog(false);
+    } catch (error) {
+      setFeedbackError(
+        error instanceof Error ? error.message : "Failed to reschedule this week of classes."
+      );
+    } finally {
+      setReschedulingWeek(false);
+    }
+  };
+
   return (
     <AdminLayout title="Classes - Admin">
       <div className="space-y-6">
@@ -635,6 +687,59 @@ export function AdminClasses() {
           onConfirm={() => void handleEndRule()}
         />
 
+        <Dialog
+          open={showRescheduleWeekDialog}
+          onOpenChange={(open) => {
+            if (!reschedulingWeek) {
+              setShowRescheduleWeekDialog(open);
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Reschedule this week</DialogTitle>
+              <DialogDescription>
+                Move all future draft or scheduled sessions in this week by whole days.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="reschedule-week-start">Week start</Label>
+                <Input id="reschedule-week-start" value={rescheduleWeekStart} disabled />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="reschedule-day-shift">Day shift</Label>
+                <Input
+                  id="reschedule-day-shift"
+                  type="number"
+                  min={-14}
+                  max={14}
+                  step={1}
+                  value={rescheduleDayDelta}
+                  onChange={(event) => setRescheduleDayDelta(event.target.value)}
+                  disabled={reschedulingWeek}
+                />
+              </div>
+              <p className="text-muted-foreground text-sm">
+                Use a positive number to move classes later, or a negative number to bring them
+                forward.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowRescheduleWeekDialog(false)}
+                disabled={reschedulingWeek}
+              >
+                Cancel
+              </Button>
+              <Button onClick={() => void handleRescheduleWeek()} disabled={reschedulingWeek}>
+                {reschedulingWeek ? "Rescheduling..." : "Reschedule Week"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <div className="flex flex-wrap gap-3">
           <select
             aria-label="Filter classes by status"
@@ -691,7 +796,21 @@ export function AdminClasses() {
                     }
                     onClick={() => void handlePublishWeek(group.weekStart)}
                   >
-                    {publishingWeekStart === group.weekStart ? "Publishing..." : "Publish This Week"}
+                    {publishingWeekStart === group.weekStart
+                      ? "Publishing..."
+                      : "Publish This Week"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      group.cancelEligibleCount === 0 ||
+                      reschedulingWeek ||
+                      cancellingWeekStart === group.weekStart
+                    }
+                    onClick={() => openRescheduleWeekDialog(group.weekStart)}
+                  >
+                    Reschedule This Week
                   </Button>
                   <Button
                     variant="outline"
