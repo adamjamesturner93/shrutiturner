@@ -1,6 +1,7 @@
 import { render } from "@react-email/render";
 import OnboardingEmail from "../emails/onboarding";
 import ClassBookingEmail from "../emails/class-booking";
+import ClassWaitlistEmail from "../emails/class-waitlist";
 import ClassReminderEmail from "../emails/class-reminder";
 import PurchaseConfirmationEmail from "../emails/purchase-confirmation";
 import InstructorNotificationEmail from "../emails/instructor-notification";
@@ -163,6 +164,119 @@ export async function sendBookingConfirmation(
     return { success: true };
   } catch (error) {
     console.error("Failed to send booking confirmation", error);
+    return { success: false, error };
+  }
+}
+
+export async function sendWaitlistJoinedEmail(
+  email: string,
+  firstName: string,
+  className: string,
+  classDate: string,
+  classTime: string,
+  classDateObj: Date = new Date(),
+  durationMinutes: number = 60,
+  position?: number,
+  userPrefs: I18nPreferences = DEFAULT_PREFS
+) {
+  try {
+    const formattedDate = formatDate(classDateObj, userPrefs);
+    const formattedTime = formatTime(classDateObj, userPrefs);
+    const react = ClassWaitlistEmail({
+      firstName,
+      className,
+      classDate: formattedDate,
+      classTime: formattedTime,
+      classDuration: `${durationMinutes} minutes`,
+      manageBookingUrl: `${APP_URL}/dashboard/schedule`,
+      position,
+      variant: "joined",
+    });
+
+    await sendPostmarkReactEmail({
+      to: email,
+      subject: `Waitlist joined: ${className}`,
+      category: "transactional",
+      react,
+      textBody: [
+        `Hi ${firstName},`,
+        "",
+        `You are on the waitlist for ${className} on ${formattedDate} at ${formattedTime}.`,
+        position ? `Your current waitlist position is #${position}.` : "",
+        "",
+        `View your schedule: ${APP_URL}/dashboard/schedule`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      tag: "class-waitlist-joined",
+      metadata: {
+        className,
+        emailType: "class-waitlist-joined",
+      },
+      templateKey: "class-waitlist-joined",
+      dispatchMode: "immediate_best_effort",
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send waitlist joined email", error);
+    return { success: false, error };
+  }
+}
+
+export async function sendWaitlistPromotedEmail(
+  email: string,
+  firstName: string,
+  className: string,
+  classDate: string,
+  classTime: string,
+  classDateObj: Date = new Date(),
+  durationMinutes: number = 60,
+  userPrefs: I18nPreferences = DEFAULT_PREFS
+) {
+  try {
+    const formattedDate = formatDate(classDateObj, userPrefs);
+    const formattedTime = formatTime(classDateObj, userPrefs);
+    const invite = buildCalendarInvite({
+      eventName: className,
+      startTime: classDateObj,
+      durationMinutes,
+      description: `Join link: ${APP_URL}/dashboard/schedule`,
+      method: "REQUEST",
+    });
+    const react = ClassWaitlistEmail({
+      firstName,
+      className,
+      classDate: formattedDate,
+      classTime: formattedTime,
+      classDuration: `${durationMinutes} minutes`,
+      manageBookingUrl: `${APP_URL}/dashboard/schedule`,
+      variant: "promoted",
+    });
+
+    await sendPostmarkReactEmail({
+      to: email,
+      subject: `Waitlist confirmed: ${className}`,
+      category: "transactional",
+      react,
+      textBody: `Hi ${firstName},\n\nA space opened up and your booking is now confirmed for ${className} on ${formattedDate} at ${formattedTime}.\n\nManage your booking: ${APP_URL}/dashboard/schedule`,
+      tag: "class-waitlist-promoted",
+      metadata: {
+        className,
+        emailType: "class-waitlist-promoted",
+      },
+      templateKey: "class-waitlist-promoted",
+      dispatchMode: "immediate_best_effort",
+      attachments: [
+        {
+          name: "invite.ics",
+          content: Buffer.from(invite).toString("base64"),
+          contentType: "text/calendar",
+        },
+      ],
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send waitlist promoted email", error);
     return { success: false, error };
   }
 }

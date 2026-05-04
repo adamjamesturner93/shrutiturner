@@ -14,6 +14,8 @@ import {
   sendClassUnbooking,
   sendClassReminder,
   sendInstructorNotification,
+  sendWaitlistJoinedEmail,
+  sendWaitlistPromotedEmail,
 } from "@/lib/email";
 import { getFirstWaiting, joinWaitlist, removeFromWaitlist } from "@/lib/classes/waitlist-service";
 import type { BookSessionResultDto } from "@/lib/classes/types";
@@ -520,14 +522,18 @@ async function promoteFirstWaitlisted(sessionId: string) {
   ]);
 
   if (user?.email && session) {
-    void sendBookingConfirmation(
+    void sendWaitlistPromotedEmail(
       user.email,
       user.firstName || user.name || "there",
       session.titleSnapshot,
       session.startsAtUtc.toISOString().slice(0, 10),
       session.startsAtUtc.toISOString().slice(11, 16),
       session.startsAtUtc,
-      session.durationMinutes
+      session.durationMinutes,
+      {
+        timezone: user.timezone || "Europe/London",
+        dateFormat: toDateFormatPreference(user.dateFormat),
+      }
     );
   }
 
@@ -712,6 +718,33 @@ export async function bookClassSession(
     waitlistEntryId: result.waitlistEntry.id,
     position: result.waitlistEntry.position,
   });
+
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: {
+      email: true,
+      firstName: true,
+      name: true,
+      timezone: true,
+      dateFormat: true,
+    },
+  });
+  if (user?.email) {
+    void sendWaitlistJoinedEmail(
+      user.email,
+      user.firstName || user.name || "there",
+      result.session.titleSnapshot,
+      result.session.startsAtUtc.toISOString().slice(0, 10),
+      result.session.startsAtUtc.toISOString().slice(11, 16),
+      result.session.startsAtUtc,
+      result.session.durationMinutes,
+      result.waitlistEntry.position,
+      {
+        timezone: user.timezone || "Europe/London",
+        dateFormat: toDateFormatPreference(user.dateFormat),
+      }
+    );
+  }
 
   return {
     status: "waitlisted",

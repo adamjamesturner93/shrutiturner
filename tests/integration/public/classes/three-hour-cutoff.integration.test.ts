@@ -18,12 +18,16 @@ const {
   sendClassUnbookingMock,
   sendClassReminderMock,
   sendInstructorNotificationMock,
+  sendWaitlistJoinedEmailMock,
+  sendWaitlistPromotedEmailMock,
 } = vi.hoisted(() => ({
   sendBookingConfirmationMock: vi.fn().mockResolvedValue({ success: true }),
   sendClassCancellationMock: vi.fn().mockResolvedValue({ success: true }),
   sendClassUnbookingMock: vi.fn().mockResolvedValue({ success: true }),
   sendClassReminderMock: vi.fn().mockResolvedValue({ success: true }),
   sendInstructorNotificationMock: vi.fn().mockResolvedValue({ success: true }),
+  sendWaitlistJoinedEmailMock: vi.fn().mockResolvedValue({ success: true }),
+  sendWaitlistPromotedEmailMock: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 vi.mock("@/lib/email", () => ({
@@ -32,6 +36,8 @@ vi.mock("@/lib/email", () => ({
   sendClassUnbooking: sendClassUnbookingMock,
   sendClassReminder: sendClassReminderMock,
   sendInstructorNotification: sendInstructorNotificationMock,
+  sendWaitlistJoinedEmail: sendWaitlistJoinedEmailMock,
+  sendWaitlistPromotedEmail: sendWaitlistPromotedEmailMock,
 }));
 
 import {
@@ -228,6 +234,91 @@ describe("three-hour cutoff booking flows", () => {
       select: { firstSignupInstructorEmailSentAt: true },
     });
     expect(refreshedSession.firstSignupInstructorEmailSentAt).not.toBeNull();
+  });
+
+  it("sends dedicated waitlist joined and promoted emails", async () => {
+    const instructor = await createUser("waitlist-instructor", "Shruti", "admin");
+    const attendee = await createUser("waitlist-attendee", "Ava");
+    const waitlisted = await createUser("waitlist-member", "Joel");
+    const startsAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    const endsAt = new Date(startsAt.getTime() + 45 * 60 * 1000);
+
+    for (const member of [attendee, waitlisted]) {
+      await db.membershipSubscription.create({
+        data: {
+          id: `membership-${member.id}`,
+          userId: member.id,
+          plan: MembershipPlan.movewell,
+          status: MembershipStatus.active,
+          pricePence: 2900,
+          currency: "GBP",
+          classesPerWeek: 3,
+          classesUsedThisWeek: 0,
+          startsAt: new Date("2026-03-01T00:00:00.000Z"),
+          renewsAt: new Date("2026-04-01T00:00:00.000Z"),
+        },
+      });
+    }
+
+    const session = await db.classSession.create({
+      data: {
+        classDefinitionSlug: "integration-cutoff-waitlist-emails",
+        titleSnapshot: "Integration Waitlist Emails",
+        typeSnapshot: "Yoga",
+        levelSnapshot: "All levels",
+        durationMinutes: 45,
+        startsAtUtc: startsAt,
+        endsAtUtc: endsAt,
+        timezone: "Europe/London",
+        capacity: 1,
+        status: ClassSessionStatus.scheduled,
+        instructorUserId: instructor.id,
+      },
+    });
+
+    await bookClassSession(session.id, attendee.id);
+    vi.clearAllMocks();
+
+    const waitlistResult = await bookClassSession(session.id, waitlisted.id);
+
+    expect(waitlistResult).toMatchObject({
+      status: "waitlisted",
+      position: 1,
+      bookingMode: "waitlist",
+    });
+    expect(sendWaitlistJoinedEmailMock).toHaveBeenCalledWith(
+      waitlisted.email,
+      "Joel",
+      "Integration Waitlist Emails",
+      expect.any(String),
+      expect.any(String),
+      startsAt,
+      45,
+      1,
+      {
+        timezone: "Europe/London",
+        dateFormat: "DD/MM/YYYY",
+      }
+    );
+
+    vi.clearAllMocks();
+    const cancellation = await cancelOwnBooking(session.id, attendee.id);
+
+    expect(cancellation.promotedUserId).toBe(waitlisted.id);
+    expect(sendWaitlistPromotedEmailMock).toHaveBeenCalledWith(
+      waitlisted.email,
+      "Joel",
+      "Integration Waitlist Emails",
+      expect.any(String),
+      expect.any(String),
+      startsAt,
+      45,
+      {
+        timezone: "Europe/London",
+        dateFormat: "DD/MM/YYYY",
+      }
+    );
+    expect(sendBookingConfirmationMock).not.toHaveBeenCalled();
   });
 
   it("treats concurrent duplicate booking attempts as one booking", async () => {

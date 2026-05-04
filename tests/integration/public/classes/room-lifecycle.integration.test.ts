@@ -19,6 +19,8 @@ const {
   sendClassUnbookingMock,
   sendClassReminderMock,
   sendInstructorNotificationMock,
+  sendWaitlistJoinedEmailMock,
+  sendWaitlistPromotedEmailMock,
 } = vi.hoisted(() => ({
   createSessionRoomMock: vi.fn(),
   deleteSessionRoomMock: vi.fn(),
@@ -28,6 +30,8 @@ const {
   sendClassUnbookingMock: vi.fn().mockResolvedValue({ success: true }),
   sendClassReminderMock: vi.fn().mockResolvedValue({ success: true }),
   sendInstructorNotificationMock: vi.fn().mockResolvedValue({ success: true }),
+  sendWaitlistJoinedEmailMock: vi.fn().mockResolvedValue({ success: true }),
+  sendWaitlistPromotedEmailMock: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 vi.mock("@/lib/daily/service", () => ({
@@ -42,6 +46,8 @@ vi.mock("@/lib/email", () => ({
   sendClassUnbooking: sendClassUnbookingMock,
   sendClassReminder: sendClassReminderMock,
   sendInstructorNotification: sendInstructorNotificationMock,
+  sendWaitlistJoinedEmail: sendWaitlistJoinedEmailMock,
+  sendWaitlistPromotedEmail: sendWaitlistPromotedEmailMock,
 }));
 
 import { bookClassSession, cancelClassSession } from "@/lib/classes/booking-service";
