@@ -156,7 +156,10 @@ export function DashboardSchedule({
     window.history.replaceState(null, "", target);
   }, [weekOffset]);
 
-  const totalClasses = scheduleData.reduce((count, daySchedule) => count + daySchedule.classes.length, 0);
+  const totalClasses = scheduleData.reduce(
+    (count, daySchedule) => count + daySchedule.classes.length,
+    0
+  );
   const filteredDaySchedules = scheduleData
     .map((daySchedule) => ({
       day: daySchedule.day,
@@ -173,7 +176,8 @@ export function DashboardSchedule({
     hasActiveFilters,
     weekOffset,
   });
-  const showEmptyState = filteredClasses === 0 && (!isWeekLoading || loadedWeekOffset === weekOffset);
+  const showEmptyState =
+    filteredClasses === 0 && (!isWeekLoading || loadedWeekOffset === weekOffset);
 
   return (
     <DashboardLayout title="Schedule - Private Studio">
@@ -293,104 +297,106 @@ export function DashboardSchedule({
 
           {filteredDaySchedules.map((daySchedule) => (
             <div key={daySchedule.day}>
-                <h2 className="mb-4 border-b pb-2 text-2xl">{daySchedule.day}</h2>
-                <div className="space-y-4">
-                  {daySchedule.classes.map((cls, idx) => {
-                    const booked = Boolean(cls.isBookedByCurrentUser);
-                    return (
-                      <div
-                        key={cls.sessionId || `${cls.slug}-${cls.day}-${cls.time}-${idx}`}
-                        className={`bg-background rounded-lg border p-5 transition-shadow hover:shadow-md ${
-                          booked ? "border-brand-accent bg-brand-accent/5" : ""
-                        }`}
-                      >
-                        <div className="flex flex-col gap-4 md:flex-row md:items-center">
-                          {/* Time + Type */}
-                          <div className="flex items-center gap-3 md:min-w-[160px]">
-                            <div
-                              className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                                cls.type === "Yoga"
-                                  ? "bg-brand-accent/10 text-brand-accent"
-                                  : cls.type === "HIIT"
-                                    ? "bg-orange-100 text-orange-600"
-                                    : "bg-primary/10 text-primary"
-                              }`}
-                            >
-                              {typeIcon(cls.type)}
-                            </div>
-                            <div>
-                              <p className="text-sm">{fmtTimeStr(cls.time)}</p>
-                              <p className="text-muted-foreground text-xs">{cls.duration}</p>
-                            </div>
+              <h2 className="mb-4 border-b pb-2 text-2xl">{daySchedule.day}</h2>
+              <div className="space-y-4">
+                {daySchedule.classes.map((cls, idx) => {
+                  const booked = Boolean(cls.isBookedByCurrentUser);
+                  return (
+                    <div
+                      key={cls.sessionId || `${cls.slug}-${cls.day}-${cls.time}-${idx}`}
+                      className={`bg-background rounded-lg border p-5 transition-shadow hover:shadow-md ${
+                        booked ? "border-brand-accent bg-brand-accent/5" : ""
+                      }`}
+                    >
+                      <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                        {/* Time + Type */}
+                        <div className="flex items-center gap-3 md:min-w-[160px]">
+                          <div
+                            className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                              cls.type === "Yoga"
+                                ? "bg-brand-accent/10 text-brand-accent"
+                                : cls.type === "HIIT"
+                                  ? "bg-orange-100 text-orange-600"
+                                  : "bg-primary/10 text-primary"
+                            }`}
+                          >
+                            {typeIcon(cls.type)}
                           </div>
+                          <div>
+                            <p className="text-sm">{fmtTimeStr(cls.time)}</p>
+                            <p className="text-muted-foreground text-xs">{cls.duration}</p>
+                          </div>
+                        </div>
 
-                          {/* Class info */}
-                          <div className="flex-1">
+                        {/* Class info */}
+                        <div className="flex-1">
+                          <Link
+                            href={
+                              cls.sessionId
+                                ? `/dashboard/classes/${cls.slug}?sessionId=${encodeURIComponent(cls.sessionId)}&wk=${weekOffset}`
+                                : `/dashboard/classes/${cls.slug}?wk=${weekOffset}`
+                            }
+                            className="hover:text-primary transition-colors"
+                          >
+                            <h3 className="mb-1 text-lg">{cls.name}</h3>
+                          </Link>
+                          <p className="text-muted-foreground line-clamp-1 text-sm">
+                            {cls.shortDescription}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Badge variant="outline" className={getTypeColor(cls.type)}>
+                              {cls.type}
+                            </Badge>
+                            <Badge variant="outline">{cls.level}</Badge>
+                            <Badge variant="outline" className="gap-1">
+                              <Users className="h-3 w-3" />
+                              {cls.maxSpaces} max
+                            </Badge>
+                            {booked && (
+                              <Badge className="bg-brand-accent text-brand-white gap-1">
+                                <Check className="h-3 w-3" />
+                                Booked
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-2 md:min-w-[180px] md:justify-end">
+                          {booked ? (
                             <Link
                               href={
                                 cls.sessionId
                                   ? `/dashboard/classes/${cls.slug}?sessionId=${encodeURIComponent(cls.sessionId)}&wk=${weekOffset}`
                                   : `/dashboard/classes/${cls.slug}?wk=${weekOffset}`
                               }
-                              className="hover:text-primary transition-colors"
                             >
-                              <h3 className="mb-1 text-lg">{cls.name}</h3>
+                              <Button>View Details</Button>
                             </Link>
-                            <p className="text-muted-foreground line-clamp-1 text-sm">
-                              {cls.shortDescription}
-                            </p>
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              <Badge variant="outline" className={getTypeColor(cls.type)}>
-                                {cls.type}
-                              </Badge>
-                              <Badge variant="outline">{cls.level}</Badge>
-                              <Badge variant="outline" className="gap-1">
-                                <Users className="h-3 w-3" />
-                                {cls.maxSpaces} max
-                              </Badge>
-                              {booked && (
-                                <Badge className="bg-brand-accent text-brand-white gap-1">
-                                  <Check className="h-3 w-3" />
-                                  Booked
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Actions */}
-                          <div className="flex gap-2 md:min-w-[180px] md:justify-end">
-                            {booked ? (
-                              <Link
-                                href={
-                                  cls.sessionId
-                                    ? `/dashboard/classes/${cls.slug}?sessionId=${encodeURIComponent(cls.sessionId)}&wk=${weekOffset}`
-                                    : `/dashboard/classes/${cls.slug}?wk=${weekOffset}`
-                                }
-                              >
-                                <Button>View Details</Button>
-                              </Link>
-                            ) : (
-                              <BookClassButton
-                                sessionId={cls.sessionId}
-                                isBooked={Boolean(cls.isBookedByCurrentUser)}
-                                classSlug={cls.slug}
-                                className={cls.name}
-                                day={cls.day}
-                                startsAtUtc={cls.startsAtUtc}
-                                time={cls.time}
-                                attendeeCount={cls.bookedCount ?? 0}
-                                status={cls.status}
-                                emptyClassAutoCancelWindowMinutes={
-                                  cls.emptyClassAutoCancelWindowMinutes
-                                }
-                              />
-                            )}
-                          </div>
+                          ) : (
+                            <BookClassButton
+                              sessionId={cls.sessionId}
+                              isBooked={Boolean(cls.isBookedByCurrentUser)}
+                              classSlug={cls.slug}
+                              className={cls.name}
+                              day={cls.day}
+                              startsAtUtc={cls.startsAtUtc}
+                              time={cls.time}
+                              attendeeCount={cls.bookedCount ?? 0}
+                              spotsRemaining={cls.spotsRemaining}
+                              waitlistPosition={cls.waitlistPosition}
+                              status={cls.status}
+                              emptyClassAutoCancelWindowMinutes={
+                                cls.emptyClassAutoCancelWindowMinutes
+                              }
+                            />
+                          )}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ))}
         </div>

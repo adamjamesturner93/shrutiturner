@@ -37,6 +37,8 @@ type UpcomingSession = {
   isRecorded?: boolean;
   replayAvailable?: boolean;
   chatEnabled?: boolean;
+  isBookedByCurrentUser?: boolean;
+  waitlistPosition?: number | null;
 };
 
 interface ClassDetailPageProps {
@@ -263,11 +265,15 @@ export function ClassDetailPage({
           <div className="mt-8 flex flex-col gap-4 sm:flex-row">
             <BookClassButton
               sessionId={nextSessionId || undefined}
+              isBooked={Boolean(selectedSession?.isBookedByCurrentUser)}
               classSlug={classDetail.slug}
               className={classDetail.name}
               day={classDetail.day}
               time={classDetail.time}
-              label="Book Next Session"
+              startsAtUtc={selectedSession?.startsAtUtc}
+              spotsRemaining={selectedSession?.spotsRemaining}
+              waitlistPosition={selectedSession?.waitlistPosition}
+              label={selectedSession?.spotsRemaining === 0 ? "Join waitlist" : "Book Next Session"}
               variant="lg"
             />
             <Button
@@ -489,12 +495,20 @@ export function ClassDetailPage({
                               <div className="mt-3">
                                 <BookClassButton
                                   sessionId={session.id}
+                                  isBooked={Boolean(session.isBookedByCurrentUser)}
                                   classSlug={classDetail.slug}
                                   className={classDetail.name}
                                   day={dateLabel}
                                   time={fmtTimeStr(classDetail.time)}
+                                  startsAtUtc={session.startsAtUtc}
+                                  spotsRemaining={session.spotsRemaining}
+                                  waitlistPosition={session.waitlistPosition}
                                   size="sm"
-                                  label={`Book ${dateLabel}`}
+                                  label={
+                                    session.spotsRemaining === 0
+                                      ? "Join waitlist"
+                                      : `Book ${dateLabel}`
+                                  }
                                 />
                               </div>
                             </div>

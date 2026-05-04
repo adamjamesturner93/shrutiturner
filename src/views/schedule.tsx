@@ -52,6 +52,13 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
         year: "numeric",
       }).format(new Date(themedWeek.startDate))
     : null;
+  const todayScheduleLabel = new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "Europe/London",
+  }).format(new Date());
 
   return (
     <Layout>
@@ -189,96 +196,115 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
                 </div>
               </div>
             ) : null}
-            {renderedScheduleData.map((daySchedule) => (
-              <div key={daySchedule.day}>
-                <h2 className="border-brand-dark/10 mb-6 border-b pb-3 text-2xl md:text-3xl">
-                  {daySchedule.day}
-                </h2>
-                <div className="space-y-6">
-                  {daySchedule.classes.map((classItem, idx) => (
-                    <div
-                      key={
-                        classItem.sessionId ||
-                        `${classItem.slug}-${classItem.day}-${classItem.time}-${idx}`
-                      }
-                      className="marketing-panel rounded-[1.65rem] p-6 transition-shadow"
-                    >
-                      <div className="grid items-start gap-6 md:grid-cols-[auto_1fr_auto]">
-                        {/* Time */}
-                        <div className="flex items-center gap-3 md:min-w-[140px]">
-                          <Clock className="text-primary h-5 w-5" />
-                          <div>
-                            <div className="text-lg">{fmtTimeStr(classItem.time)}</div>
-                            <div className="text-muted-foreground text-sm">
-                              {classItem.duration}
-                            </div>
-                            {"dateLabel" in classItem && classItem.dateLabel ? (
-                              <div className="text-muted-foreground text-xs">
-                                {classItem.dateLabel}
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
+            {renderedScheduleData.map((daySchedule) => {
+              const isToday = daySchedule.day === todayScheduleLabel;
 
-                        {/* Class Info */}
-                        <div className="space-y-3">
-                          <div>
+              return (
+                <section
+                  key={daySchedule.day}
+                  aria-labelledby={`schedule-${daySchedule.day.replace(/[^a-z0-9]+/gi, "-")}`}
+                  className={
+                    isToday
+                      ? "border-brand-accent/20 bg-brand-accent/5 rounded-2xl border p-4 md:p-5"
+                      : ""
+                  }
+                >
+                  <h2 className="border-brand-dark/10 mb-6 border-b pb-3 text-2xl md:text-3xl">
+                    <span id={`schedule-${daySchedule.day.replace(/[^a-z0-9]+/gi, "-")}`}>
+                      {daySchedule.day}
+                    </span>
+                    {isToday ? (
+                      <Badge className="bg-brand-accent ml-3 align-middle text-white">Today</Badge>
+                    ) : null}
+                  </h2>
+                  <div className="space-y-6">
+                    {daySchedule.classes.map((classItem, idx) => (
+                      <div
+                        key={
+                          classItem.sessionId ||
+                          `${classItem.slug}-${classItem.day}-${classItem.time}-${idx}`
+                        }
+                        className="marketing-panel rounded-[1.65rem] p-6 transition-shadow"
+                      >
+                        <div className="grid items-start gap-6 md:grid-cols-[auto_1fr_auto]">
+                          {/* Time */}
+                          <div className="flex items-center gap-3 md:min-w-[140px]">
+                            <Clock className="text-primary h-5 w-5" />
+                            <div>
+                              <div className="text-lg">{fmtTimeStr(classItem.time)}</div>
+                              <div className="text-muted-foreground text-sm">
+                                {classItem.duration}
+                              </div>
+                              {"dateLabel" in classItem && classItem.dateLabel ? (
+                                <div className="text-muted-foreground text-xs">
+                                  {classItem.dateLabel}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          {/* Class Info */}
+                          <div className="space-y-3">
+                            <div>
+                              <Link
+                                href={
+                                  classItem.sessionId
+                                    ? `/classes/${classItem.slug}?session=${encodeURIComponent(classItem.sessionId)}`
+                                    : `/classes/${classItem.slug}`
+                                }
+                                className="hover:text-primary transition-colors"
+                              >
+                                <h3 className="mb-2 text-xl">{classItem.name}</h3>
+                              </Link>
+                              <p className="text-muted-foreground leading-relaxed">
+                                {classItem.shortDescription}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              <Badge variant="outline" className={getTypeColor(classItem.type)}>
+                                {classItem.type}
+                              </Badge>
+                              <Badge variant="outline">{classItem.level}</Badge>
+                              <Badge variant="outline" className="gap-1">
+                                <Users className="h-3 w-3" />
+                                {classItem.maxSpaces} max
+                              </Badge>
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex flex-col gap-2 md:min-w-[140px]">
+                            <BookClassButton
+                              sessionId={classItem.sessionId}
+                              isBooked={Boolean(classItem.isBookedByCurrentUser)}
+                              classSlug={classItem.slug}
+                              className={classItem.name}
+                              day={classItem.day}
+                              time={classItem.time}
+                              attendeeCount={classItem.bookedCount ?? 0}
+                              spotsRemaining={classItem.spotsRemaining}
+                              waitlistPosition={classItem.waitlistPosition}
+                            />
                             <Link
                               href={
                                 classItem.sessionId
                                   ? `/classes/${classItem.slug}?session=${encodeURIComponent(classItem.sessionId)}`
                                   : `/classes/${classItem.slug}`
                               }
-                              className="hover:text-primary transition-colors"
                             >
-                              <h3 className="mb-2 text-xl">{classItem.name}</h3>
+                              <Button variant="ghost" size="sm" className="w-full md:w-auto">
+                                View Details
+                              </Button>
                             </Link>
-                            <p className="text-muted-foreground leading-relaxed">
-                              {classItem.shortDescription}
-                            </p>
                           </div>
-
-                          <div className="flex flex-wrap gap-2">
-                            <Badge variant="outline" className={getTypeColor(classItem.type)}>
-                              {classItem.type}
-                            </Badge>
-                            <Badge variant="outline">{classItem.level}</Badge>
-                            <Badge variant="outline" className="gap-1">
-                              <Users className="h-3 w-3" />
-                              {classItem.maxSpaces} max
-                            </Badge>
-                          </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex flex-col gap-2 md:min-w-[140px]">
-                          <BookClassButton
-                            sessionId={classItem.sessionId}
-                            isBooked={Boolean(classItem.isBookedByCurrentUser)}
-                            classSlug={classItem.slug}
-                            className={classItem.name}
-                            day={classItem.day}
-                            time={classItem.time}
-                            attendeeCount={classItem.bookedCount ?? 0}
-                          />
-                          <Link
-                            href={
-                              classItem.sessionId
-                                ? `/classes/${classItem.slug}?session=${encodeURIComponent(classItem.sessionId)}`
-                                : `/classes/${classItem.slug}`
-                            }
-                          >
-                            <Button variant="ghost" size="sm" className="w-full md:w-auto">
-                              View Details
-                            </Button>
-                          </Link>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
           </div>
         </div>
       </section>

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { connection } from "next/server";
 import { JsonLd } from "@/components/json-ld";
 import { ClassesHubPage } from "@/views/classes-hub";
 import { buildPageMetadata } from "@/lib/content/metadata";
@@ -15,6 +14,8 @@ import { listPublicThemedWeeks } from "@/lib/themed-weeks/service";
 export async function generateMetadata(): Promise<Metadata> {
   return buildPageMetadata("classes", "Move Well Classes");
 }
+
+export const revalidate = 3600;
 
 function sortClasses(items: ClassDefinitionContent[]) {
   const dayOrder = new Map([
@@ -35,7 +36,6 @@ function sortClasses(items: ClassDefinitionContent[]) {
 }
 
 export default async function Page() {
-  await connection();
   const [classDefinitions, themedWeeks] = await Promise.all([
     getClassDefinitions(),
     listPublicThemedWeeks(),

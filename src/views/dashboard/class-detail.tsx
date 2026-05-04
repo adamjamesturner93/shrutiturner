@@ -327,6 +327,8 @@ export function DashboardClassDetail({
                   duration={resolvedDuration}
                   variant="lg"
                   attendeeCount={session?.bookedCount}
+                  spotsRemaining={session?.spotsRemaining}
+                  waitlistPosition={session?.waitlistPosition}
                   status={session?.status}
                   emptyClassAutoCancelWindowMinutes={session?.emptyClassAutoCancelWindowMinutes}
                 />
@@ -425,6 +427,8 @@ export function DashboardClassDetail({
                   duration={resolvedDuration}
                   variant="lg"
                   attendeeCount={session?.bookedCount}
+                  spotsRemaining={session?.spotsRemaining}
+                  waitlistPosition={session?.waitlistPosition}
                   status={session?.status}
                   emptyClassAutoCancelWindowMinutes={session?.emptyClassAutoCancelWindowMinutes}
                 />
