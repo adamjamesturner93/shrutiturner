@@ -6,6 +6,7 @@ import {
   MembershipDunningStatus,
   MembershipStatus,
   Prisma,
+  UserRole,
 } from "@prisma/client";
 import { db } from "@/lib/db";
 import {
@@ -43,6 +44,10 @@ function toDateFormatPreference(value: string | null | undefined): DateFormatPre
   return DATE_FORMAT_PREFERENCES.includes(value as DateFormatPreference)
     ? (value as DateFormatPreference)
     : "DD/MM/YYYY";
+}
+
+function isPresentEmail(email: string | null | undefined): email is string {
+  return Boolean(email);
 }
 
 async function logEvent(
@@ -257,6 +262,24 @@ async function resetFirstSignupInstructorNotification(sessionId: string) {
   });
 }
 
+async function getAutoCancelNotificationEmails(instructorEmail: string | null | undefined) {
+  const ownerAdmins = await db.user.findMany({
+    where: {
+      role: UserRole.owner_admin,
+      deletedAt: null,
+    },
+    select: {
+      email: true,
+    },
+  });
+
+  return Array.from(
+    new Set(
+      [instructorEmail, ...ownerAdmins.map((ownerAdmin) => ownerAdmin.email)].filter(isPresentEmail)
+    )
+  );
+}
+
 async function notifyInstructorOfFirstSignup(sessionId: string, attendeeUserId: string) {
   const claimed = await claimFirstSignupInstructorNotification(sessionId);
   if (!claimed) {
@@ -382,9 +405,10 @@ async function autoCancelClassSessionForNoAttendance(sessionId: string, now = ne
     reason: "no_attendance_three_hour_cutoff",
   });
 
-  if (session.instructor.email) {
+  const notificationEmails = await getAutoCancelNotificationEmails(session.instructor.email);
+  for (const notificationEmail of notificationEmails) {
     void sendInstructorNotification(
-      session.instructor.email,
+      notificationEmail,
       "no-attendance-cancelled",
       session.titleSnapshot,
       session.startsAtUtc.toISOString(),

@@ -117,7 +117,11 @@ function createUserEmail(label: string) {
   return `${USER_PREFIX}${label}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
 }
 
-async function createUser(label: string, firstName: string, role: "admin" | "student" = "student") {
+async function createUser(
+  label: string,
+  firstName: string,
+  role: "admin" | "owner_admin" | "student" = "student"
+) {
   const user = await db.user.create({
     data: {
       email: createUserEmail(label),
@@ -508,6 +512,7 @@ describe("three-hour cutoff booking flows", () => {
 
   it("auto-cancels the session if the last attendee cancels inside the three-hour window", async () => {
     const instructor = await createUser("instructor", "Shruti", "admin");
+    const ownerAdmin = await createUser("owner-admin", "Owner", "owner_admin");
     const attendee = await createUser("attendee", "Mia");
     const waitlisted = await createUser("waitlisted", "Joel");
 
@@ -577,6 +582,17 @@ describe("three-hour cutoff booking flows", () => {
     expect(refreshedWaitlist.status).toBe(ClassWaitlistStatus.removed);
     expect(sendInstructorNotificationMock).toHaveBeenCalledWith(
       instructor.email,
+      "no-attendance-cancelled",
+      "Integration Last Cancel",
+      expect.any(String),
+      expect.any(String),
+      "No attendees",
+      0,
+      expect.any(Date),
+      60
+    );
+    expect(sendInstructorNotificationMock).toHaveBeenCalledWith(
+      ownerAdmin.email,
       "no-attendance-cancelled",
       "Integration Last Cancel",
       expect.any(String),
