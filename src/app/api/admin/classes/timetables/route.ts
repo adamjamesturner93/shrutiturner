@@ -75,6 +75,7 @@ export async function POST(request: Request) {
 
     const draftResult = await generateDraftSessionsForTimetableRule(created.id, {
       fromDate: new Date(`${body.startsOn}T00:00:00.000Z`),
+      actorUserId: adminUser.id,
     });
 
     return NextResponse.json(

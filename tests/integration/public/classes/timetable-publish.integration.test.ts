@@ -61,6 +61,15 @@ async function cleanupRows() {
       },
     },
   });
+  await db.adminActionLog.deleteMany({
+    where: {
+      actor: {
+        email: {
+          startsWith: USER_PREFIX,
+        },
+      },
+    },
+  });
   await db.user.deleteMany({
     where: {
       email: {

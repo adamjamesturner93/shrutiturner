@@ -4,8 +4,8 @@ import { publishActiveClassTimetables } from "@/lib/classes/timetable-service";
 
 export async function POST() {
   try {
-    await requireStaffAdminUser();
-    const results = await publishActiveClassTimetables();
+    const adminUser = await requireStaffAdminUser();
+    const results = await publishActiveClassTimetables({ actorUserId: adminUser.id });
     return NextResponse.json(results);
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {

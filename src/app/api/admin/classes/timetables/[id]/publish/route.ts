@@ -4,9 +4,9 @@ import { publishClassTimetableRule } from "@/lib/classes/timetable-service";
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    await requireStaffAdminUser();
+    const adminUser = await requireStaffAdminUser();
     const { id } = await context.params;
-    const result = await publishClassTimetableRule(id);
+    const result = await publishClassTimetableRule(id, { actorUserId: adminUser.id });
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {

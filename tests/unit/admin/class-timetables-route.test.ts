@@ -59,6 +59,7 @@ describe("POST /api/admin/classes/timetables", () => {
     );
     expect(generateDraftSessionsForTimetableRuleMock).toHaveBeenCalledWith("rule_123", {
       fromDate: new Date("2026-03-24T00:00:00.000Z"),
+      actorUserId: "admin_123",
     });
     await expect(response.json()).resolves.toEqual({
       id: "rule_123",

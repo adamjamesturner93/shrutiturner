@@ -26,7 +26,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    await requireStaffAdminUser();
+    const adminUser = await requireStaffAdminUser();
     const { id } = await context.params;
     const body = (await request.json()) as {
       startsAtUtc?: string;
@@ -58,6 +58,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
           : body.instructorProfileEntryId === null
             ? null
             : undefined,
+      actorUserId: adminUser.id,
     });
 
     return NextResponse.json(updated);

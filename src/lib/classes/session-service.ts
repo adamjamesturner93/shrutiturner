@@ -6,6 +6,7 @@ import {
   Prisma,
 } from "@prisma/client";
 import { db } from "@/lib/db";
+import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import {
   getClassDefinitionBySlug,
   getClassDefinitions,
@@ -41,6 +42,31 @@ const CONDITION_LABELS = new Map(
   HEALTH_CATEGORIES.flatMap((category) => category.items.map((item) => [item.key, item.label]))
 );
 const PUBLIC_SCHEDULE_HORIZON_DAYS = 28;
+
+async function logClassSessionAction(input: {
+  actorUserId?: string | null;
+  actionType: string;
+  targetId?: string | null;
+  reason?: string | null;
+  oldValueJson?: Prisma.InputJsonValue;
+  newValueJson?: Prisma.InputJsonValue;
+  metadataJson?: Prisma.InputJsonValue;
+}) {
+  if (!input.actorUserId) {
+    return;
+  }
+
+  await createAdminActionLog({
+    actorUserId: input.actorUserId,
+    actionType: input.actionType,
+    targetType: "class_session",
+    targetId: input.targetId,
+    reason: input.reason,
+    oldValueJson: input.oldValueJson,
+    newValueJson: input.newValueJson,
+    metadataJson: input.metadataJson,
+  });
+}
 
 function formatDateInTimezone(date: Date, timezone: string) {
   const formatter = new Intl.DateTimeFormat("en-GB", {
@@ -569,6 +595,24 @@ export async function bulkCreateClassSessions(
     return records;
   });
 
+  await logClassSessionAction({
+    actorUserId: fallbackInstructorUserId,
+    actionType: "class_sessions_bulk_created",
+    metadataJson: {
+      createdSessionIds: created.map((c) => c.id),
+      createdCount: created.length,
+      classDefinitionSlug: classDef.slug,
+      startDate: input.startDate,
+      timeLocal: input.timeLocal,
+      durationMinutes: input.durationMinutes,
+      capacity: input.capacity,
+      repeatWeeks: input.repeatWeeks,
+      weekdays: days,
+      instructorUserId,
+      instructorProfileEntryId: input.instructorProfileEntryId || null,
+    },
+  });
+
   return {
     createdSessionIds: created.map((c) => c.id),
     dailyConfigured: isDailyConfigured(),
@@ -773,15 +817,22 @@ export async function updateClassSession(
     notes?: string;
     instructorUserId?: string;
     instructorProfileEntryId?: string | null;
+    actorUserId?: string;
   }
 ) {
   const existing = await db.classSession.findUnique({
     where: { id: sessionId },
     select: {
+      id: true,
       classDefinitionSlug: true,
       instructorUserId: true,
       instructorProfileEntryId: true,
       timezone: true,
+      startsAtUtc: true,
+      endsAtUtc: true,
+      capacity: true,
+      status: true,
+      notes: true,
     },
   });
   if (!existing) {
@@ -826,6 +877,34 @@ export async function updateClassSession(
   if (updates.status === ClassSessionStatus.completed) {
     await finalizeSessionNoShows(sessionId);
   }
+
+  await logClassSessionAction({
+    actorUserId: updates.actorUserId,
+    actionType: "class_session_updated",
+    targetId: sessionId,
+    oldValueJson: {
+      startsAtUtc: existing.startsAtUtc.toISOString(),
+      endsAtUtc: existing.endsAtUtc.toISOString(),
+      capacity: existing.capacity,
+      status: existing.status,
+      notes: existing.notes,
+      instructorUserId: existing.instructorUserId,
+      instructorProfileEntryId: existing.instructorProfileEntryId,
+    },
+    newValueJson: {
+      startsAtUtc: updated.startsAtUtc.toISOString(),
+      endsAtUtc: updated.endsAtUtc.toISOString(),
+      capacity: updated.capacity,
+      status: updated.status,
+      notes: updated.notes,
+      instructorUserId: updated.instructorUserId,
+      instructorProfileEntryId: updated.instructorProfileEntryId,
+    },
+    metadataJson: {
+      classDefinitionSlug: existing.classDefinitionSlug,
+      completedNoShowsFinalized: updates.status === ClassSessionStatus.completed,
+    },
+  });
 
   return updated;
 }
