@@ -1186,6 +1186,7 @@ export async function processThreeHourClassCutoff(now = new Date()) {
         },
         {
           preJoinWindowMinutes: settings.preJoinWindowMinutes,
+          lateJoinCutoffMinutes: settings.lateJoinCutoffMinutes,
         }
       );
     }

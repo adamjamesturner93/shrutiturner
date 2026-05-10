@@ -15,6 +15,7 @@ interface ClassReminderEmailProps {
   classTime?: string;
   joinLink?: string;
   preJoinWindowLabel?: string;
+  lateJoinCutoffLabel?: string;
 }
 
 export default function ClassReminderEmail({
@@ -23,6 +24,7 @@ export default function ClassReminderEmail({
   classTime = "10:00 AM",
   joinLink = "https://shrutiturner.co.uk/dashboard/schedule",
   preJoinWindowLabel = "10 minutes",
+  lateJoinCutoffLabel = "5 minutes",
 }: ClassReminderEmailProps) {
   return (
     <EmailLayout preview={`Reminder: ${className} starts soon`}>
@@ -57,7 +59,10 @@ export default function ClassReminderEmail({
       </Section>
 
       <Hr style={dividerStyle} />
-      <Text style={mutedTextStyle}>The studio opens around {preJoinWindowLabel} before class.</Text>
+      <Text style={mutedTextStyle}>
+        The studio opens around {preJoinWindowLabel} before class. If this is your first join for
+        the session, please arrive before the {lateJoinCutoffLabel} warm-up cutoff.
+      </Text>
     </EmailLayout>
   );
 }

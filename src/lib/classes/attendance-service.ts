@@ -6,6 +6,7 @@ import {
   Prisma,
 } from "@prisma/client";
 import { db } from "@/lib/db";
+import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { isStaffAdminRole } from "@/lib/authz/roles";
 import {
   getClassOperationalSettings,
@@ -111,6 +112,18 @@ export async function getRoomTokenAccess(sessionId: string, userId: string) {
   }
   const hasPreviouslyJoined = Boolean(booking.firstJoinedAt);
   if (now > access.lateJoinCutoffAt && !hasPreviouslyJoined) {
+    await createAdminActionLog({
+      actorUserId: userId,
+      actionType: "class_late_join_denied",
+      targetType: "class_session",
+      targetId: sessionId,
+      metadataJson: {
+        startsAtUtc: access.session.startsAtUtc.toISOString(),
+        lateJoinCutoffAt: access.lateJoinCutoffAt.toISOString(),
+        attemptedAt: now.toISOString(),
+        bookingId: booking.id,
+      },
+    });
     throw new Error("LATE_JOIN_CUTOFF");
   }
 

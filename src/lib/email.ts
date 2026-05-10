@@ -138,6 +138,8 @@ export async function sendBookingConfirmation(
       classLocation: "Online (Daily.co)",
       manageBookingUrl: `${APP_URL}/dashboard/schedule`,
       creditRefundWindowLabel: toMinutesLabel(settings.creditRefundWindowMinutes),
+      preJoinWindowLabel: toMinutesLabel(settings.preJoinWindowMinutes),
+      lateJoinCutoffLabel: toMinutesLabel(settings.lateJoinCutoffMinutes),
     });
 
     await sendPostmarkReactEmail({
@@ -145,7 +147,7 @@ export async function sendBookingConfirmation(
       subject: `Booking confirmed: ${className}`,
       category: "transactional",
       react,
-      textBody: `Hi ${firstName},\n\nYour booking is confirmed for ${className} on ${formattedDate} at ${formattedTime}.\n\nManage your booking: ${APP_URL}/dashboard/schedule`,
+      textBody: `Hi ${firstName},\n\nYour booking is confirmed for ${className} on ${formattedDate} at ${formattedTime}.\n\nThe online studio opens ${toMinutesLabel(settings.preJoinWindowMinutes)} before class. First-time joins close ${toMinutesLabel(settings.lateJoinCutoffMinutes)} after the start time.\n\nManage your booking: ${APP_URL}/dashboard/schedule`,
       tag: "class-booking-confirmation",
       metadata: {
         className,
@@ -291,11 +293,14 @@ export async function sendClassReminder(
   userPrefs: I18nPreferences = DEFAULT_PREFS,
   options?: {
     preJoinWindowMinutes?: number;
+    lateJoinCutoffMinutes?: number;
   }
 ) {
   try {
     const preJoinWindowMinutes =
       options?.preJoinWindowMinutes ?? (await getClassOperationalSettings()).preJoinWindowMinutes;
+    const lateJoinCutoffMinutes =
+      options?.lateJoinCutoffMinutes ?? (await getClassOperationalSettings()).lateJoinCutoffMinutes;
     const formattedTime = formatTimeString(classTime, userPrefs);
     const react = ClassReminderEmail({
       firstName,
@@ -303,6 +308,7 @@ export async function sendClassReminder(
       classTime: formattedTime,
       joinLink: joinLink || `${APP_URL}/dashboard/schedule`,
       preJoinWindowLabel: toMinutesLabel(preJoinWindowMinutes),
+      lateJoinCutoffLabel: toMinutesLabel(lateJoinCutoffMinutes),
     });
 
     await sendPostmarkReactEmail({
@@ -310,7 +316,7 @@ export async function sendClassReminder(
       subject: `Reminder: ${className} starts soon`,
       category: "transactional",
       react,
-      textBody: `Hi ${firstName},\n\nThis is a reminder that ${className} begins at ${formattedTime}.\n\nJoin class: ${joinLink || `${APP_URL}/dashboard/schedule`}`,
+      textBody: `Hi ${firstName},\n\nThis is a reminder that ${className} begins at ${formattedTime}.\n\nThe studio opens ${toMinutesLabel(preJoinWindowMinutes)} before class. First-time joins close ${toMinutesLabel(lateJoinCutoffMinutes)} after the start time.\n\nJoin class: ${joinLink || `${APP_URL}/dashboard/schedule`}`,
       tag: "class-reminder",
       metadata: {
         className,

@@ -501,6 +501,7 @@ describe("three-hour cutoff booking flows", () => {
       },
       {
         preJoinWindowMinutes: 10,
+        lateJoinCutoffMinutes: 5,
       }
     );
   });

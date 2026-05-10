@@ -20,6 +20,8 @@ interface ClassBookingEmailProps {
   instructorNote?: string;
   manageBookingUrl?: string;
   creditRefundWindowLabel?: string;
+  preJoinWindowLabel?: string;
+  lateJoinCutoffLabel?: string;
 }
 
 export default function ClassBookingEmail({
@@ -32,6 +34,8 @@ export default function ClassBookingEmail({
   instructorNote = "No special equipment needed for this session — just a mat and yourself. We'll be working on building capacity through slow, intentional movement.",
   manageBookingUrl = "https://shrutiturner.co.uk/account/bookings",
   creditRefundWindowLabel = "3 hours",
+  preJoinWindowLabel = "10 minutes",
+  lateJoinCutoffLabel = "5 minutes",
 }: ClassBookingEmailProps) {
   return (
     <EmailLayout preview={`Booking confirmed: ${className} on ${classDate}`}>
@@ -153,6 +157,10 @@ export default function ClassBookingEmail({
       <Text style={mutedTextStyle}>
         Need to cancel? You can do so up to {creditRefundWindowLabel} before the class starts from
         your account dashboard.
+      </Text>
+      <Text style={mutedTextStyle}>
+        The online studio opens {preJoinWindowLabel} before class. First-time joins close{" "}
+        {lateJoinCutoffLabel} after the start time so everyone has the warm-up context.
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>

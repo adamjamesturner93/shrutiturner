@@ -51,6 +51,7 @@ vi.mock("@/lib/email", () => ({
 }));
 
 import { bookClassSession, cancelClassSession } from "@/lib/classes/booking-service";
+import { getRoomTokenAccess } from "@/lib/classes/attendance-service";
 
 const USER_PREFIX = "integration-room-lifecycle-";
 
@@ -83,6 +84,15 @@ async function cleanupRows() {
   await db.creditLedgerEntry.deleteMany({
     where: {
       user: {
+        email: {
+          startsWith: USER_PREFIX,
+        },
+      },
+    },
+  });
+  await db.adminActionLog.deleteMany({
+    where: {
+      actor: {
         email: {
           startsWith: USER_PREFIX,
         },
@@ -274,6 +284,66 @@ describe("Daily room lifecycle for class sessions", () => {
       dailyRoomUrl: null,
       roomSetupStatus: ClassRoomSetupStatus.pending,
       status: ClassSessionStatus.cancelled,
+    });
+  });
+
+  it("logs first-time late join denials for audit", async () => {
+    const instructor = await db.user.create({
+      data: {
+        email: createUserEmail("instructor-late"),
+        firstName: "Shruti",
+        lastName: "Turner",
+      },
+    });
+    const attendee = await db.user.create({
+      data: {
+        email: createUserEmail("late-attendee"),
+        firstName: "Alex",
+        lastName: "Late",
+      },
+    });
+
+    const startsAt = new Date(Date.now() - 10 * 60 * 1000);
+    const session = await db.classSession.create({
+      data: {
+        classDefinitionSlug: "integration-room-lifecycle-late-join",
+        titleSnapshot: "Room Lifecycle Late Join",
+        typeSnapshot: "Strength",
+        levelSnapshot: "Adaptive",
+        durationMinutes: 45,
+        startsAtUtc: startsAt,
+        endsAtUtc: new Date(startsAt.getTime() + 45 * 60 * 1000),
+        timezone: "Europe/London",
+        capacity: 8,
+        status: ClassSessionStatus.scheduled,
+        instructorUserId: instructor.id,
+        dailyRoomName: "integration-room-late",
+        dailyRoomUrl: "https://daily.example/integration-room-late",
+        roomSetupStatus: ClassRoomSetupStatus.ready,
+        bookings: {
+          create: {
+            userId: attendee.id,
+            status: "booked",
+          },
+        },
+      },
+    });
+
+    await expect(getRoomTokenAccess(session.id, attendee.id)).rejects.toThrow("LATE_JOIN_CUTOFF");
+
+    await expect(
+      db.adminActionLog.findFirst({
+        where: {
+          actorUserId: attendee.id,
+          actionType: "class_late_join_denied",
+          targetType: "class_session",
+          targetId: session.id,
+        },
+      })
+    ).resolves.toMatchObject({
+      actorUserId: attendee.id,
+      actionType: "class_late_join_denied",
+      targetId: session.id,
     });
   });
 });
