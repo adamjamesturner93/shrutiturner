@@ -27,6 +27,36 @@ const POSTMARK_API_KEY = process.env.POSTMARK_API_KEY || "POSTMARK_API_TEST";
 void POSTMARK_API_KEY;
 const APP_URL = getBaseSiteUrlFromEnv();
 
+type ClassLifecycleDeliveryOptions = {
+  category: "transactional";
+  dispatchMode: "immediate_best_effort";
+  retryable: true;
+  metadata: Record<string, string>;
+};
+
+function getClassLifecycleDeliveryOptions(params: {
+  emailType: string;
+  className: string;
+  startsAt?: Date;
+  classDate?: string;
+}): ClassLifecycleDeliveryOptions {
+  return {
+    category: "transactional",
+    dispatchMode: "immediate_best_effort",
+    retryable: true,
+    metadata: {
+      className: params.className,
+      emailType: params.emailType,
+      ...(params.startsAt ? { classStartsAtUtc: params.startsAt.toISOString() } : {}),
+      ...(params.classDate ? { classDate: params.classDate } : {}),
+    },
+  };
+}
+
+function getClassLifecycleSupportLine() {
+  return `Need help? Contact Shruti: ${APP_URL}/contact`;
+}
+
 function toMinutesLabel(minutes: number) {
   if (minutes % 60 === 0) {
     const hours = minutes / 60;
@@ -145,16 +175,15 @@ export async function sendBookingConfirmation(
     await sendPostmarkReactEmail({
       to: email,
       subject: `Booking confirmed: ${className}`,
-      category: "transactional",
       react,
-      textBody: `Hi ${firstName},\n\nYour booking is confirmed for ${className} on ${formattedDate} at ${formattedTime}.\n\nThe online studio opens ${toMinutesLabel(settings.preJoinWindowMinutes)} before class. First-time joins close ${toMinutesLabel(settings.lateJoinCutoffMinutes)} after the start time.\n\nManage your booking: ${APP_URL}/dashboard/schedule`,
+      textBody: `Hi ${firstName},\n\nYour booking is confirmed for ${className} on ${formattedDate} at ${formattedTime}.\n\nThe online studio opens ${toMinutesLabel(settings.preJoinWindowMinutes)} before class. First-time joins close ${toMinutesLabel(settings.lateJoinCutoffMinutes)} after the start time.\n\nManage your booking: ${APP_URL}/dashboard/schedule\n\n${getClassLifecycleSupportLine()}`,
       tag: "class-booking-confirmation",
-      metadata: {
-        className,
-        emailType: "class-booking-confirmation",
-      },
       templateKey: "class-booking-confirmation",
-      dispatchMode: "immediate_best_effort",
+      ...getClassLifecycleDeliveryOptions({
+        emailType: "class-booking-confirmation",
+        className,
+        startsAt: classDateObj,
+      }),
       attachments: [
         {
           name: "invite.ics",
@@ -198,7 +227,6 @@ export async function sendWaitlistJoinedEmail(
     await sendPostmarkReactEmail({
       to: email,
       subject: `Waitlist joined: ${className}`,
-      category: "transactional",
       react,
       textBody: [
         `Hi ${firstName},`,
@@ -207,16 +235,18 @@ export async function sendWaitlistJoinedEmail(
         position ? `Your current waitlist position is #${position}.` : "",
         "",
         `View your schedule: ${APP_URL}/dashboard/schedule`,
+        "",
+        getClassLifecycleSupportLine(),
       ]
         .filter(Boolean)
         .join("\n"),
       tag: "class-waitlist-joined",
-      metadata: {
-        className,
-        emailType: "class-waitlist-joined",
-      },
       templateKey: "class-waitlist-joined",
-      dispatchMode: "immediate_best_effort",
+      ...getClassLifecycleDeliveryOptions({
+        emailType: "class-waitlist-joined",
+        className,
+        startsAt: classDateObj,
+      }),
     });
     return { success: true };
   } catch (error) {
@@ -258,16 +288,15 @@ export async function sendWaitlistPromotedEmail(
     await sendPostmarkReactEmail({
       to: email,
       subject: `Waitlist confirmed: ${className}`,
-      category: "transactional",
       react,
-      textBody: `Hi ${firstName},\n\nA space opened up and your booking is now confirmed for ${className} on ${formattedDate} at ${formattedTime}.\n\nManage your booking: ${APP_URL}/dashboard/schedule`,
+      textBody: `Hi ${firstName},\n\nA space opened up and your booking is now confirmed for ${className} on ${formattedDate} at ${formattedTime}.\n\nManage your booking: ${APP_URL}/dashboard/schedule\n\n${getClassLifecycleSupportLine()}`,
       tag: "class-waitlist-promoted",
-      metadata: {
-        className,
-        emailType: "class-waitlist-promoted",
-      },
       templateKey: "class-waitlist-promoted",
-      dispatchMode: "immediate_best_effort",
+      ...getClassLifecycleDeliveryOptions({
+        emailType: "class-waitlist-promoted",
+        className,
+        startsAt: classDateObj,
+      }),
       attachments: [
         {
           name: "invite.ics",
@@ -314,16 +343,14 @@ export async function sendClassReminder(
     await sendPostmarkReactEmail({
       to: email,
       subject: `Reminder: ${className} starts soon`,
-      category: "transactional",
       react,
-      textBody: `Hi ${firstName},\n\nThis is a reminder that ${className} begins at ${formattedTime}.\n\nThe studio opens ${toMinutesLabel(preJoinWindowMinutes)} before class. First-time joins close ${toMinutesLabel(lateJoinCutoffMinutes)} after the start time.\n\nJoin class: ${joinLink || `${APP_URL}/dashboard/schedule`}`,
+      textBody: `Hi ${firstName},\n\nThis is a reminder that ${className} begins at ${formattedTime}.\n\nThe studio opens ${toMinutesLabel(preJoinWindowMinutes)} before class. First-time joins close ${toMinutesLabel(lateJoinCutoffMinutes)} after the start time.\n\nJoin class: ${joinLink || `${APP_URL}/dashboard/schedule`}\n\n${getClassLifecycleSupportLine()}`,
       tag: "class-reminder",
-      metadata: {
-        className,
-        emailType: "class-reminder",
-      },
       templateKey: "class-reminder",
-      dispatchMode: "immediate_best_effort",
+      ...getClassLifecycleDeliveryOptions({
+        emailType: "class-reminder",
+        className,
+      }),
     });
     return { success: true };
   } catch (error) {
@@ -483,16 +510,16 @@ export async function sendInstructorNotification(
           : type === "no-attendance-cancelled"
             ? `Class cancelled: ${className}`
             : `Class empty: ${className}`,
-      category: "transactional",
       react,
-      textBody: `${className}\nDate: ${formattedDate}\nTime: ${formattedTime}\nAttendees: ${attendeeCount}\nRoster: ${APP_URL}/admin/classes`,
+      textBody: `${className}\nDate: ${formattedDate}\nTime: ${formattedTime}\nAttendees: ${attendeeCount}\nRoster: ${APP_URL}/admin/classes\n\n${getClassLifecycleSupportLine()}`,
       tag: `instructor-${type}`,
       templateKey: `instructor-${type}`,
-      metadata: {
-        className,
+      ...getClassLifecycleDeliveryOptions({
         emailType: `instructor-${type}`,
-      },
-      dispatchMode: "immediate_best_effort",
+        className,
+        startsAt,
+        classDate,
+      }),
       attachments:
         invite && type === "first-signup"
           ? [
@@ -547,16 +574,15 @@ export async function sendClassCancellation(
     await sendPostmarkReactEmail({
       to: email,
       subject: `Class cancelled: ${className}`,
-      category: "transactional",
       react,
-      textBody: `Hi ${firstName},\n\n${className} on ${formattedDate} at ${formattedTime} has been cancelled.\n\nView available classes: ${APP_URL}/schedule`,
+      textBody: `Hi ${firstName},\n\n${className} on ${formattedDate} at ${formattedTime} has been cancelled.\n\nView available classes: ${APP_URL}/schedule\n\n${getClassLifecycleSupportLine()}`,
       tag: "class-cancellation",
       templateKey: "class-cancellation",
-      metadata: {
-        className,
+      ...getClassLifecycleDeliveryOptions({
         emailType: "class-cancellation",
-      },
-      dispatchMode: "immediate_best_effort",
+        className,
+        startsAt,
+      }),
       attachments: [
         {
           name: "class-cancel.ics",
@@ -603,17 +629,16 @@ export async function sendClassUnbooking(
     await sendPostmarkReactEmail({
       to: email,
       subject: `Booking cancelled: ${className}`,
-      category: "transactional",
       react,
-      textBody: `Hi ${firstName},\n\nYour booking for ${className} on ${formattedDate} at ${formattedTime} has been cancelled.\n\nBrowse upcoming classes: ${APP_URL}/dashboard/schedule`,
+      textBody: `Hi ${firstName},\n\nYour booking for ${className} on ${formattedDate} at ${formattedTime} has been cancelled.\n\nBrowse upcoming classes: ${APP_URL}/dashboard/schedule\n\n${getClassLifecycleSupportLine()}`,
       tag: "class-unbooking",
       templateKey: "class-unbooking",
-      metadata: {
-        className,
+      ...getClassLifecycleDeliveryOptions({
         emailType: "class-unbooking",
+        className,
+        startsAt: classDateObj,
         classDate,
-      },
-      dispatchMode: "immediate_best_effort",
+      }),
       attachments: [
         {
           name: "class-unbook.ics",
