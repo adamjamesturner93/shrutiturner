@@ -35,9 +35,10 @@ import {
 } from "@/data/marketing";
 
 const tierIcon = {
-  "independent-plan": ClipboardList,
-  "coached-plan": Users,
-  coaching: GraduationCap,
+  guided_accountability: ClipboardList,
+  independent_training_plan: Smartphone,
+  guided_training_plan: Users,
+  one_to_one_coaching: GraduationCap,
 } as const;
 
 export function CoachingPage() {
@@ -56,16 +57,16 @@ export function CoachingPage() {
         title={
           <>
             Coaching built around
-            <span className="text-brand-accent-light"> your real body,</span> not an idealised one.
+            <span className="text-brand-accent-light"> your real body,</span> not instant checkout.
           </>
         }
-        description="Choose from lower-touch programming, guided coaching, or a fuller strategic partnership. Every tier is designed for symptom fluctuation, thoughtful progression, and long-term capacity."
+        description="Every coaching place starts with an application so support, safety, boundaries, payment, and Everfit setup match the person in front of us."
         primaryCta={{ href: "#tiers", label: "Explore Coaching Tiers" }}
         secondaryCta={{ href: "/coaching/apply", label: "Apply Now" }}
         stats={[
-          { value: "3", label: "Distinct coaching levels" },
+          { value: "4", label: "Application-led offers" },
           { value: "Everfit", label: "Training delivery and check-ins" },
-          { value: "Built-in", label: "Good day and flare day planning" },
+          { value: "No", label: "Instant coaching checkout" },
         ]}
         metrics={[
           {
@@ -76,12 +77,11 @@ export function CoachingPage() {
           {
             label: "Delivery",
             detail:
-              "Workouts, habits, and reviews live in Everfit while the website remains the service hub.",
+              "Programming, check-ins, and coaching communication live in Everfit while the website remains the service hub.",
           },
           {
             label: "Difference",
-            detail:
-              "Support tiers vary by coaching depth, not by how seriously your body is taken.",
+            detail: "Support varies by coaching depth, not by how seriously your body is taken.",
           },
         ]}
         aside={
@@ -100,7 +100,7 @@ export function CoachingPage() {
                     What coaching changes
                   </p>
                   <p className="text-brand-white/84 mt-3 text-sm leading-relaxed">
-                    You stop guessing how hard to push and start training with clearer rules.
+                    You apply first, then payment is invited only if the offer is a good fit.
                   </p>
                 </div>
                 <div className="bg-brand-accent-light/12 rounded-[1.15rem] p-4 backdrop-blur-sm">
@@ -108,7 +108,8 @@ export function CoachingPage() {
                     What stays true
                   </p>
                   <p className="text-brand-white/84 mt-3 text-sm leading-relaxed">
-                    Ambition remains. The plan just makes room for the messier reality of symptoms.
+                    Ambition remains. Everfit carries the coaching work, while the website carries
+                    the admin.
                   </p>
                 </div>
               </div>
@@ -119,7 +120,7 @@ export function CoachingPage() {
 
       <ProofBand
         title="What personalised support means here"
-        description="The difference between the tiers is the rhythm of review, accountability, and live support. The programming standard stays high throughout."
+        description="The difference between offers is the rhythm of accountability, programming, review, and live support. Every offer starts with an application."
         items={[...coachingProofItems]}
       />
 
@@ -201,14 +202,14 @@ export function CoachingPage() {
         <SectionHeading
           eyebrow="Choose Your Tier"
           title="The support stays personalised. The touch level changes."
-          description="Pick the version of coaching that matches how much review, live input, and accountability you want."
+          description="Choose the closest offer and apply. Checkout is only created after Shruti accepts the application."
           align="center"
         />
         <div id="tiers" className="mt-12 grid gap-6 md:grid-cols-3 lg:gap-8">
           {coachingTiers.map((tier) => {
             const Icon = tierIcon[tier.id];
-            const highlighted = tier.id === "coached-plan";
-            const highest = tier.id === "coaching";
+            const highlighted = tier.id === "guided_training_plan";
+            const highest = tier.id === "one_to_one_coaching";
 
             return (
               <article
@@ -282,11 +283,13 @@ export function CoachingPage() {
                         : "border-brand-dark/10 bg-secondary text-foreground"
                     }
                   >
-                    {tier.supportLevel === "async"
-                      ? "Async support"
-                      : tier.supportLevel === "moderate"
-                        ? "Live + async"
-                        : "Highest touch"}
+                    {tier.supportLevel === "programme"
+                      ? "Programme + review"
+                      : tier.supportLevel === "guided"
+                        ? "Guided review"
+                        : tier.supportLevel === "accountability"
+                          ? "Accountability"
+                          : "Highest touch"}
                   </Badge>
                   {tier.includesMembership ? (
                     <Badge
@@ -302,7 +305,7 @@ export function CoachingPage() {
                 </div>
 
                 <ul className="mt-6 flex-1 space-y-3">
-                  {tier.features.map((feature) => (
+                  {[...tier.features, ...tier.boundaries].map((feature) => (
                     <li key={feature} className="flex items-start gap-3 text-sm">
                       <Check
                         className={`mt-0.5 h-4 w-4 flex-shrink-0 ${
@@ -329,9 +332,7 @@ export function CoachingPage() {
                   }`}
                 >
                   <Link href={tier.ctaHref}>
-                    {tier.purchaseModel === "application" ? (
-                      <MessageCircle className="h-4 w-4" />
-                    ) : null}
+                    <MessageCircle className="h-4 w-4" />
                     {tier.ctaLabel}
                   </Link>
                 </Button>
@@ -345,9 +346,9 @@ export function CoachingPage() {
         <div className="grid gap-12 lg:grid-cols-2">
           <div>
             <SectionHeading
-              eyebrow="Independent Plan Journey"
-              title="For clients who want expert structure with lighter-touch review."
-              description="The Independent Training Plan is the cleanest route if you want personalised programming without regular live coaching."
+              eyebrow="Application-Led Journey"
+              title="For every coaching offer, apply before payment."
+              description="The website owns application, acceptance, payment invitation, billing, cancellation requests, status, and links into Everfit."
             />
             <div className="mt-8">
               <JourneySection steps={personalProgrammeJourney} />
@@ -356,8 +357,8 @@ export function CoachingPage() {
           <div>
             <SectionHeading
               eyebrow="Application Journey"
-              title="For coached tiers with more support and fit-checking."
-              description="The application-led tiers help confirm the right support level before you begin."
+              title="Everfit is where coaching delivery happens."
+              description="The website does not duplicate workouts, detailed check-ins, or messaging. Those coaching interactions happen inside Everfit."
             />
             <div className="mt-8">
               <JourneySection steps={applicationJourney} />

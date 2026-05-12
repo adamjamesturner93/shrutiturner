@@ -13,7 +13,7 @@ import {
 import { SEO } from "@/components/seo";
 import { coachingTiers, personalProgrammeJourney } from "@/data/marketing";
 
-const independentTier = coachingTiers.find((tier) => tier.id === "independent-plan");
+const independentTier = coachingTiers.find((tier) => tier.id === "independent_training_plan");
 
 const independentPlanProof = [
   {
@@ -60,7 +60,7 @@ export function CoachingPersonalProgrammePage() {
         secondaryCta={{ href: "/coaching", label: "Compare All Coaching Tiers" }}
         stats={[
           { value: independentTier.priceLabel, label: "Monthly investment" },
-          { value: "3+", label: "Month minimum commitment" },
+          { value: "Apply", label: "Required before payment" },
           { value: "Everfit", label: "Programme delivery platform" },
         ]}
         aside={
@@ -156,8 +156,8 @@ export function CoachingPersonalProgrammePage() {
               <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">Price and note</p>
               <h2 className="mt-4 text-3xl">{independentTier.priceLabel}</h2>
               <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                {independentTier.priceNote}. If you later need more oversight, it is easy to move
-                into a coached tier.
+                {independentTier.priceNote}. If accepted, payment is invited from the approved
+                application rather than started from this page.
               </p>
             </div>
           </div>
@@ -167,8 +167,8 @@ export function CoachingPersonalProgrammePage() {
       <MarketingSection className="section-divider">
         <SectionHeading
           eyebrow="How It Works"
-          title="A clean setup, then ongoing review."
-          description="The process is intentionally simple so the effort goes into the training, not the admin."
+          title="Apply first, then move into Everfit after payment."
+          description="The process keeps subscription checkout behind admin acceptance so the offer, boundaries, and setup are agreed first."
           align="center"
         />
         <div className="mt-12">
@@ -188,12 +188,12 @@ export function CoachingPersonalProgrammePage() {
         actions={[
           {
             href: "/pricing#coaching",
-            label: "View Pricing & Next Steps",
+            label: "View Pricing",
             icon: ArrowRight,
           },
           {
-            href: "/coaching",
-            label: "Compare All Coaching Tiers",
+            href: independentTier.ctaHref,
+            label: "Apply First",
             variant: "secondary",
           },
         ]}

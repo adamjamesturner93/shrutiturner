@@ -1,11 +1,20 @@
-export type CoachingTierId = "independent-plan" | "coached-plan" | "coaching";
+export type CoachingOfferKey =
+  | "guided_accountability"
+  | "independent_training_plan"
+  | "guided_training_plan"
+  | "one_to_one_coaching";
 
-export type CoachingPurchaseModel = "self-serve" | "application";
+export type CoachingTierId = CoachingOfferKey;
 
-export type CoachingSupportLevel = "async" | "moderate" | "high";
+export type CoachingPurchaseModel = "application_required";
+
+export type CoachingSupportLevel = "accountability" | "programme" | "guided" | "high";
+
+export type CoachingApplicationPayloadTier = "personal_programme" | "coached_plan" | "coaching";
 
 export interface CoachingTierMarketing {
   id: CoachingTierId;
+  applicationTier: CoachingApplicationPayloadTier;
   name: string;
   tagline: string;
   description: string;
@@ -17,6 +26,8 @@ export interface CoachingTierMarketing {
   ctaHref: string;
   ctaLabel: string;
   features: string[];
+  boundaries: string[];
+  expectedNextStep: string;
 }
 
 export interface JourneyStep {
@@ -33,89 +44,131 @@ export interface CoachingFaq {
 
 export const coachingTiers: CoachingTierMarketing[] = [
   {
-    id: "independent-plan",
-    name: "Independent Training Plan",
-    tagline: "Expert programming, your schedule",
+    id: "guided_accountability",
+    applicationTier: "personal_programme",
+    name: "Guided Accountability",
+    tagline: "A lighter coaching rhythm for staying consistent",
     description:
-      "Tailored training delivered through Everfit for clients who want smart structure without live coaching every week.",
-    priceLabel: "£60 / month",
-    priceNote: "Minimum 3-month commitment",
-    supportLevel: "async",
-    purchaseModel: "self-serve",
+      "For people who already know broadly what they are doing but need structure, review prompts, and a clearer accountability container.",
+    priceLabel: "£70 / month",
+    priceNote: "Application required before payment",
+    supportLevel: "accountability",
+    purchaseModel: "application_required",
     includesMembership: false,
-    ctaHref: "/coaching/personal-programme",
-    ctaLabel: "Get Started",
+    ctaHref: "/coaching/apply?offer=guided_accountability",
+    ctaLabel: "Apply First",
+    features: [
+      "Accountability rhythm inside Everfit",
+      "Monthly written reflection and direction",
+      "Clear boundaries for when to adjust or ask for help",
+      "Best when you do not need a fully written training plan",
+    ],
+    boundaries: [
+      "Does not include bespoke programme writing",
+      "Does not include Move Well Membership",
+    ],
+    expectedNextStep: "Submit a short application so Shruti can check fit and boundaries.",
+  },
+  {
+    id: "independent_training_plan",
+    applicationTier: "personal_programme",
+    name: "Independent Training Plan",
+    tagline: "Expert programming, reviewed monthly",
+    description:
+      "Tailored training delivered through Everfit for clients who want smart structure without frequent live or written coaching.",
+    priceLabel: "£90 / month",
+    priceNote: "Application required before payment",
+    supportLevel: "programme",
+    purchaseModel: "application_required",
+    includesMembership: false,
+    ctaHref: "/coaching/apply?offer=independent_training_plan",
+    ctaLabel: "Apply First",
     features: [
       "Personalised training programme via Everfit",
-      "Three-tier programming for optimal, moderate, and survival days",
+      "Good-day, average-day, and survival-day planning",
       "Monthly written check-in and plan update",
       "Programme adjusted around your feedback and symptoms",
     ],
+    boundaries: ["Does not include weekly review", "Does not include Move Well Membership"],
+    expectedNextStep:
+      "Apply with training context, equipment, preferences, and health considerations.",
   },
   {
-    id: "coached-plan",
-    name: "Coached Training Plan",
-    tagline: "Guided progress with regular support",
+    id: "guided_training_plan",
+    applicationTier: "coached_plan",
+    name: "Guided Training Plan",
+    tagline: "Programming plus closer review",
     description:
-      "For people who want expert programming plus more regular review, accountability, and access to Move Well Membership.",
-    priceLabel: "£200 / month",
-    priceNote: "Includes Move Well Membership",
-    supportLevel: "moderate",
-    purchaseModel: "application",
-    includesMembership: true,
-    ctaHref: "/coaching/apply?tier=coached-plan",
-    ctaLabel: "Apply Now",
+      "For people who want a written training plan plus more regular accountability, expectation-setting, and adaptation support.",
+    priceLabel: "£130 / month",
+    priceNote: "Application required before payment",
+    supportLevel: "guided",
+    purchaseModel: "application_required",
+    includesMembership: false,
+    ctaHref: "/coaching/apply?offer=guided_training_plan",
+    ctaLabel: "Apply First",
     features: [
       "Everything in Independent Training Plan",
-      "Weekly written check-in and plan review",
-      "Monthly group coaching call",
-      "Move Well Membership included",
-      "Programming updated week to week when needed",
+      "More regular written check-ins",
+      "Support needs and expectations agreed up front",
+      "Clearer accountability around consistency and adaptation",
     ],
+    boundaries: [
+      "Does not include ongoing 1:1 messaging access",
+      "Does not include Move Well Membership by default",
+    ],
+    expectedNextStep:
+      "Apply with goals, health context, support needs, availability, and expectations.",
   },
   {
-    id: "coaching",
+    id: "one_to_one_coaching",
+    applicationTier: "coaching",
     name: "1:1 Coaching",
-    tagline: "The full picture, not just the training",
+    tagline: "The highest-touch support",
     description:
-      "Highest-touch support for clients who need strategic oversight, closer accountability, and a coaching relationship built around a complex body.",
-    priceLabel: "£350 / month",
-    priceNote: "Includes Move Well Membership and messaging support",
+      "For clients who need strategic oversight, closer accountability, and a coaching relationship built around a complex or fluctuating body.",
+    priceLabel: "£180 / month",
+    priceNote: "Application required before payment",
     supportLevel: "high",
-    purchaseModel: "application",
+    purchaseModel: "application_required",
     includesMembership: true,
-    ctaHref: "/coaching/apply?tier=coaching",
-    ctaLabel: "Apply Now",
+    ctaHref: "/coaching/apply?offer=one_to_one_coaching",
+    ctaLabel: "Apply First",
     features: [
-      "Everything in Coached Training Plan",
-      "Weekly written check-in and plan update",
+      "Everything in Guided Training Plan",
       "Monthly 1:1 coaching call with Shruti",
-      "Messaging support between sessions",
-      "Highest-touch, most personalised support",
+      "Messaging expectations agreed before payment",
+      "Move Well Membership included after successful payment",
+      "Highest-touch, most strategic support",
     ],
+    boundaries: [
+      "Coaching is not emergency, crisis, medical, or rehabilitation care",
+      "Move Well Membership starts only after verified payment",
+    ],
+    expectedNextStep: "Apply with complexity, call availability, and messaging expectations.",
   },
 ];
 
 export const personalProgrammeJourney: JourneyStep[] = [
   {
     step: 1,
-    title: "Choose your plan",
-    description: "Start with the Independent Training Plan and create your account.",
+    title: "Apply first",
+    description: "Share enough context for Shruti to confirm the offer is a good fit.",
   },
   {
     step: 2,
-    title: "Complete intake",
-    description: "Share your goals, symptom picture, training history, and current capacity.",
+    title: "Receive the right invite",
+    description: "If accepted, you receive the correct payment invitation for the agreed offer.",
   },
   {
     step: 3,
-    title: "Get set up in Everfit",
-    description: "Your programme, habits, and check-ins are delivered in the Everfit app.",
+    title: "Pay securely",
+    description: "Subscription checkout starts only from an accepted application.",
   },
   {
     step: 4,
-    title: "Train and review",
-    description: "Follow your plan, submit your monthly check-in, and get your next update.",
+    title: "Use Everfit",
+    description: "Programming, check-ins, and coaching communication happen in Everfit.",
   },
 ];
 
@@ -132,13 +185,14 @@ export const applicationJourney: JourneyStep[] = [
   },
   {
     step: 3,
-    title: "Onboarding",
-    description: "Complete intake, connect Everfit, and get your support rhythm set up.",
+    title: "Payment invite",
+    description: "If accepted, your payment link is tied to the approved offer and your account.",
   },
   {
     step: 4,
-    title: "Coached support begins",
-    description: "Regular check-ins, programme updates, and live support start from day one.",
+    title: "Everfit onboarding",
+    description:
+      "After verified payment, your Everfit setup starts or Shruti handles manual setup.",
   },
 ];
 
@@ -147,25 +201,31 @@ export const coachingFaqs: CoachingFaq[] = [
     slug: "which-tier",
     question: "How do I know which coaching tier is right for me?",
     answer:
-      "Independent Training Plan suits people who want expert programming with low-touch review. Coached Training Plan is for clients who want regular accountability and Move Well Membership included. 1:1 Coaching is the highest-touch option for more complex or fluctuating cases.",
+      "Apply for the closest fit. Guided Accountability is lighter-touch accountability, Independent Training Plan is bespoke programming with monthly review, Guided Training Plan adds more regular review, and 1:1 Coaching is the highest-touch option for more complex or fluctuating cases.",
   },
   {
     slug: "everfit",
     question: "Why is Everfit part of the coaching offer?",
     answer:
-      "Everfit is where your workouts, habit tracking, check-ins, and programme delivery live. The website remains the main service hub, while Everfit handles the day-to-day training experience.",
+      "Everfit is where programme delivery, check-ins, and coaching communication live. The website handles discovery, applications, payment invitations, billing, cancellation requests, status, and links into Everfit.",
   },
   {
     slug: "commitment",
     question: "Is there a minimum commitment?",
     answer:
-      "Yes. All coaching tiers are designed around a minimum 3-month commitment so there is time to build capacity, review how your body responds, and adapt the plan meaningfully.",
+      "Coaching is billed monthly after acceptance and payment. Cancellation requires one month's notice; depending on your billing date, the next payment after notice may be your final payment.",
   },
   {
     slug: "membership",
     question: "Do all coaching tiers include Move Well Membership?",
     answer:
-      "No. Move Well Membership is included with Coached Training Plan and 1:1 Coaching. The Independent Training Plan keeps classes optional so it stays lower-friction and more affordable.",
+      "No. 1:1 Coaching includes Move Well Membership immediately after successful payment. The other coaching offers do not include membership unless Shruti explicitly agrees an admin override.",
+  },
+  {
+    slug: "application-led",
+    question: "Can I buy coaching instantly?",
+    answer:
+      "No. Coaching places are application-led. Public offer cards take you to an application, and subscription checkout is only created after admin acceptance.",
   },
 ];
 

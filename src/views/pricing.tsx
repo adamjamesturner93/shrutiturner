@@ -474,12 +474,12 @@ export function PricingPage({ faqs }: PricingPageProps) {
       <MarketingSection className="section-wash" contentClassName="max-w-7xl">
         <SectionHeading
           eyebrow="Coaching"
-          title="Personal coaching tiers"
-          description="Choose the coaching model that matches how much structure, review, and live support you want around your training."
+          title="Application-led coaching offers"
+          description="Choose the closest offer, then apply. Subscription checkout is only created after admin acceptance."
           align="center"
         />
 
-        <div className="mt-12 grid gap-5 lg:grid-cols-3">
+        <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {coachingRows.map((tier) => (
             <article
               key={tier.id}

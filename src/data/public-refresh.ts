@@ -23,7 +23,8 @@ export const publicProofItems = [
   },
   {
     label: "Academic Depth",
-    detail: "Biomechanics and rehabilitation background informing every cue, progression, and regression.",
+    detail:
+      "Biomechanics and rehabilitation background informing every cue, progression, and regression.",
   },
   {
     label: "Adaptive Delivery",
@@ -31,7 +32,8 @@ export const publicProofItems = [
   },
   {
     label: "No Generic Advice",
-    detail: "Classes, programmes, and coaching built for complex bodies rather than retrofitted for them.",
+    detail:
+      "Classes, programmes, and coaching built for complex bodies rather than retrofitted for them.",
   },
 ] as const;
 
@@ -59,8 +61,8 @@ export const servicePathCards = [
   {
     title: "1:1 Coaching",
     description:
-      "Three levels of personal support, from tailored plans to high-touch coaching for more fluctuating or complex cases.",
-    detail: "From £60/month",
+      "Application-led support, from guided accountability to high-touch coaching for more fluctuating or complex cases.",
+    detail: "From £70/month",
     href: "/coaching",
     ctaLabel: "See coaching",
     badge: "Personal",

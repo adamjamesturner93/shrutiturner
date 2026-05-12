@@ -13,7 +13,10 @@ test("personal programme page shows the refreshed hero and delivery detail", asy
     })
   ).toBeVisible();
   await expect(page.getByText("Delivered in Everfit")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "A lower-touch route with real structure behind it." })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "A lower-touch route with real structure behind it." })
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Apply First" })).toBeVisible();
 });
 
 test("coaching application submits the selected tier and answers", async ({ page }) => {
@@ -32,7 +35,7 @@ test("coaching application submits the selected tier and answers", async ({ page
     });
   });
 
-  await page.goto("/coaching/apply?tier=coaching");
+  await page.goto("/coaching/apply?offer=one_to_one_coaching");
 
   await expect(page.getByRole("heading", { name: "Apply for higher-touch support" })).toBeVisible();
   await page.getByLabel("Name *").fill("Taylor Jordan");
@@ -50,10 +53,19 @@ test("coaching application submits the selected tier and answers", async ({ page
   await page
     .getByLabel("Anything we should know about your schedule, energy, or capacity? *")
     .fill("My energy is best in the mornings and worse after busy work weeks.");
+  await page
+    .getByLabel("What equipment or training access do you have? *")
+    .fill("Gym access plus resistance bands at home.");
   await page.locator("#membership").selectOption("new");
   await page
     .getByLabel("Why does higher-touch coaching feel relevant right now?")
     .fill("I need closer calibration and accountability while rebuilding trust in training.");
+  await page
+    .getByLabel("What availability do you usually have for a monthly 1:1 call? *")
+    .fill("Tuesday or Thursday mornings UK time.");
+  await page
+    .getByLabel("What would you expect from messaging support? *")
+    .fill("I would use it for form questions and flare-day adjustments, not urgent support.");
   await page.getByLabel(/I have read and agree to the/i).check();
 
   await page.getByRole("button", { name: "Submit Application" }).click();
@@ -72,7 +84,13 @@ test("coaching application submits the selected tier and answers", async ({ page
     trainingExperience: "I do a little yoga and walking, but I struggle to progress on my own.",
     supportLevel: "high",
     availability: "My energy is best in the mornings and worse after busy work weeks.",
+    equipment: "Gym access plus resistance bands at home.",
     membership: "new",
-    coachingContext: "I need closer calibration and accountability while rebuilding trust in training.",
+    coachingContext:
+      "I need closer calibration and accountability while rebuilding trust in training.",
+    callAvailability: "Tuesday or Thursday mornings UK time.",
+    messagingExpectations:
+      "I would use it for form questions and flare-day adjustments, not urgent support.",
+    offerKey: "one_to_one_coaching",
   });
 });

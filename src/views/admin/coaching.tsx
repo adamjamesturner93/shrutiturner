@@ -16,6 +16,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { AdminCoachingApplicationDto } from "@/lib/api/types";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
+import { coachingTiers } from "@/data/marketing";
 
 const tierLabels: Record<string, string> = {
   personal_programme: "Independent Training Plan",
@@ -23,6 +24,8 @@ const tierLabels: Record<string, string> = {
   coaching: "Coaching",
   unsure: "Unsure",
 };
+
+const offerLabels = Object.fromEntries(coachingTiers.map((offer) => [offer.id, offer.name]));
 
 const statusOptions = [
   "submitted",
@@ -162,9 +165,21 @@ export function AdminCoaching({
         ) : null}
 
         <AppMetricGrid className="lg:grid-cols-3">
-          <AppMetricCard label="Submitted" value={summary.submitted} detail="awaiting initial review" />
-          <AppMetricCard label="Under review" value={summary.underReview} detail="active decision queue" />
-          <AppMetricCard label="Approved / converted" value={summary.approved} detail="ready for onboarding or already active" />
+          <AppMetricCard
+            label="Submitted"
+            value={summary.submitted}
+            detail="awaiting initial review"
+          />
+          <AppMetricCard
+            label="Under review"
+            value={summary.underReview}
+            detail="active decision queue"
+          />
+          <AppMetricCard
+            label="Approved / converted"
+            value={summary.approved}
+            detail="ready for onboarding or already active"
+          />
         </AppMetricGrid>
 
         <Card>
@@ -236,7 +251,9 @@ export function AdminCoaching({
                         {application.status.replaceAll("_", " ")}
                       </Badge>
                       <Badge variant="outline">
-                        {tierLabels[application.tier] || application.tier}
+                        {application.offerKey
+                          ? offerLabels[application.offerKey]
+                          : tierLabels[application.tier] || application.tier}
                       </Badge>
                       {application.hasMoveWellMembershipSnapshot ? (
                         <Badge variant="outline">Move Well member</Badge>
@@ -261,14 +278,16 @@ export function AdminCoaching({
                       Application answers
                     </p>
                     <div className="space-y-3">
-                      {Object.entries(application.answers).map(([key, value]) => (
-                        <div key={key} className="rounded-lg border p-3">
-                          <p className="text-muted-foreground mb-1 text-xs tracking-wide uppercase">
-                            {key}
-                          </p>
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{value}</p>
-                        </div>
-                      ))}
+                      {Object.entries(application.answers)
+                        .filter(([key]) => key !== "offerKey")
+                        .map(([key, value]) => (
+                          <div key={key} className="rounded-lg border p-3">
+                            <p className="text-muted-foreground mb-1 text-xs tracking-wide uppercase">
+                              {key}
+                            </p>
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{value}</p>
+                          </div>
+                        ))}
                     </div>
                   </div>
 

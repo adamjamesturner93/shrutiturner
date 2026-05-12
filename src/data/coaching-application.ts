@@ -1,4 +1,6 @@
-export type CoachingApplicationTier = "coached-plan" | "coaching" | "unsure";
+import type { CoachingApplicationPayloadTier, CoachingOfferKey } from "@/data/marketing";
+
+export type CoachingApplicationTier = CoachingOfferKey;
 
 export type CoachingApplicationOption = {
   value: string;
@@ -20,21 +22,31 @@ export const coachingApplicationTierOptions: Array<{
   value: CoachingApplicationTier;
   title: string;
   description: string;
+  payloadTier: CoachingApplicationPayloadTier;
 }> = [
   {
-    value: "coached-plan",
-    title: "Coached Training Plan",
-    description: "Weekly written review, programming support, and Move Well Membership included.",
+    value: "guided_accountability",
+    title: "Guided Accountability",
+    description: "Lighter-touch accountability and review prompts for people with their own plan.",
+    payloadTier: "personal_programme",
   },
   {
-    value: "coaching",
+    value: "independent_training_plan",
+    title: "Independent Training Plan",
+    description: "Bespoke programme writing and monthly review inside Everfit.",
+    payloadTier: "personal_programme",
+  },
+  {
+    value: "guided_training_plan",
+    title: "Guided Training Plan",
+    description: "Bespoke programming plus closer written review and accountability.",
+    payloadTier: "coached_plan",
+  },
+  {
+    value: "one_to_one_coaching",
     title: "1:1 Coaching",
-    description: "Highest-touch support with programming, calls, review, and accountability.",
-  },
-  {
-    value: "unsure",
-    title: "I'm not sure yet",
-    description: "I want help deciding which level of support fits my body and life best.",
+    description: "Highest-touch support with a monthly 1:1 call and membership after payment.",
+    payloadTier: "coaching",
   },
 ];
 
@@ -84,6 +96,14 @@ export const coachingApplicationQuestions: CoachingApplicationQuestion[] = [
       "Let us know about work, care responsibilities, appointments, travel, fluctuating capacity, and when support is most realistic for you.",
   },
   {
+    id: "equipment",
+    label: "What equipment or training access do you have?",
+    type: "textarea",
+    required: true,
+    placeholder: "Gym access, home weights, bands, machines, space constraints...",
+    tiers: ["independent_training_plan", "guided_training_plan", "one_to_one_coaching"],
+  },
+  {
     id: "membership",
     label: "Do you currently attend Move Well Classes or hold membership?",
     type: "select",
@@ -93,14 +113,15 @@ export const coachingApplicationQuestions: CoachingApplicationQuestion[] = [
       { value: "credits", label: "Yes, I use credits or attend sometimes" },
       { value: "new", label: "No, I would be new to classes" },
     ],
+    tiers: ["one_to_one_coaching"],
   },
   {
     id: "coachedPlanContext",
-    label: "What would make a coached training plan feel useful and sustainable?",
+    label: "What would make this level of guidance feel useful and sustainable?",
     type: "textarea",
     placeholder:
       "Tell us what kind of review, accountability, or adaptation would help you stay consistent.",
-    tiers: ["coached-plan", "unsure"],
+    tiers: ["guided_accountability", "guided_training_plan"],
   },
   {
     id: "coachingContext",
@@ -108,7 +129,24 @@ export const coachingApplicationQuestions: CoachingApplicationQuestion[] = [
     type: "textarea",
     placeholder:
       "Tell us if you need closer oversight, strategy, accountability, more nuanced adaptation, or support around a particularly complex season.",
-    tiers: ["coaching", "unsure"],
+    tiers: ["guided_training_plan", "one_to_one_coaching"],
+  },
+  {
+    id: "callAvailability",
+    label: "What availability do you usually have for a monthly 1:1 call?",
+    type: "textarea",
+    required: true,
+    placeholder: "Days, time windows, timezone, and anything that changes month to month.",
+    tiers: ["one_to_one_coaching"],
+  },
+  {
+    id: "messagingExpectations",
+    label: "What would you expect from messaging support?",
+    type: "textarea",
+    required: true,
+    placeholder:
+      "Share what you might message about, what response time would feel useful, and any boundaries you need clear.",
+    tiers: ["one_to_one_coaching"],
   },
   {
     id: "anythingElse",

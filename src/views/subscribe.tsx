@@ -47,7 +47,7 @@ const LINKS = [
   {
     href: "/coaching",
     title: "1:1 Coaching and Training Plans",
-    subtitle: "Fully personalised support from £60/month",
+    subtitle: "Application-led support from £70/month",
     icon: Dumbbell,
     colorClass: "text-brand-plum bg-brand-plum/10",
   },

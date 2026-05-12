@@ -13,8 +13,8 @@ type CoachingApplicationBody = {
   agreedToCoachingAgreement?: unknown;
 };
 
-function isTier(value: unknown): value is "coached_plan" | "coaching" | "unsure" {
-  return value === "coached_plan" || value === "coaching" || value === "unsure";
+function isTier(value: unknown): value is "personal_programme" | "coached_plan" | "coaching" {
+  return value === "personal_programme" || value === "coached_plan" || value === "coaching";
 }
 
 export async function POST(request: Request) {

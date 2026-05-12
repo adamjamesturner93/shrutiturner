@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { buildAbsoluteUrl } from "@/lib/app-url";
 import { getNotificationInbox, sendPostmarkReactEmail } from "@/lib/postmark/client";
 import { CURRENT_COACHING_AGREEMENT_VERSION } from "@/data/legal-documents";
+import { coachingTiers, type CoachingOfferKey } from "@/data/marketing";
 import CoachingApplicationConfirmationEmail from "@/emails/coaching-application-confirmation";
 import CoachingApplicationNotificationEmail from "@/emails/coaching-application-notification";
 
@@ -33,9 +34,21 @@ function tierToLabel(tier: CoachingSupportTier) {
   }
 }
 
+function getOfferKeyFromAnswers(answers: CoachingApplicationAnswerMap): CoachingOfferKey | null {
+  const offerKey = answers.offerKey;
+  return coachingTiers.some((offer) => offer.id === offerKey)
+    ? (offerKey as CoachingOfferKey)
+    : null;
+}
+
+function offerKeyToLabel(offerKey: CoachingOfferKey | null, tier: CoachingSupportTier) {
+  if (!offerKey) return tierToLabel(tier);
+  return coachingTiers.find((offer) => offer.id === offerKey)?.name || tierToLabel(tier);
+}
+
 function summarizeAnswers(answers: CoachingApplicationAnswerMap) {
   return Object.entries(answers)
-    .filter(([, value]) => value.trim())
+    .filter(([key, value]) => key !== "offerKey" && value.trim())
     .slice(0, 4)
     .map(([key, value]) => `${key}: ${value.trim().slice(0, 160)}`);
 }
@@ -77,7 +90,8 @@ export async function submitCoachingApplication(input: {
     },
   });
 
-  const tierLabel = tierToLabel(input.tier);
+  const offerKey = getOfferKeyFromAnswers(answers);
+  const tierLabel = offerKeyToLabel(offerKey, input.tier);
   const dashboardUrl = buildAbsoluteUrl("/dashboard/coaching");
   const adminUrl = buildAbsoluteUrl("/admin/coaching");
   const summary = summarizeAnswers(answers);
@@ -179,6 +193,9 @@ export async function getMyCoachingState(userId: string): Promise<CoachingDashbo
       application: latestApplication
         ? {
             id: latestApplication.id,
+            offerKey: getOfferKeyFromAnswers(
+              latestApplication.answersJson as CoachingApplicationAnswerMap
+            ),
             status: latestApplication.status as NonNullable<
               CoachingDashboardDto["application"]
             >["status"],
@@ -199,6 +216,9 @@ export async function getMyCoachingState(userId: string): Promise<CoachingDashbo
       profile: null,
       application: {
         id: latestApplication.id,
+        offerKey: getOfferKeyFromAnswers(
+          latestApplication.answersJson as CoachingApplicationAnswerMap
+        ),
         status: latestApplication.status as NonNullable<
           CoachingDashboardDto["application"]
         >["status"],
@@ -248,21 +268,26 @@ export async function listAdminCoachingApplications(params?: { status?: string; 
     },
   });
 
-  return rows.map((row) => ({
-    id: row.id,
-    applicantName: `${row.applicantFirstName} ${row.applicantLastName}`.trim(),
-    applicantEmail: row.applicantEmail,
-    status: row.status,
-    tier: row.tier,
-    createdAt: row.createdAt.toISOString(),
-    reviewedAt: row.reviewedAt?.toISOString() || null,
-    approvedAt: row.approvedAt?.toISOString() || null,
-    userId: row.userId,
-    isLinkedUserCoachingClient: row.user?.isCoachingClient || false,
-    hasMoveWellMembershipSnapshot: row.hasMoveWellMembershipSnapshot,
-    answers: row.answersJson as CoachingApplicationAnswerMap,
-    adminNotes: row.adminNotes || "",
-  }));
+  return rows.map((row) => {
+    const answers = row.answersJson as CoachingApplicationAnswerMap;
+
+    return {
+      offerKey: getOfferKeyFromAnswers(answers),
+      id: row.id,
+      applicantName: `${row.applicantFirstName} ${row.applicantLastName}`.trim(),
+      applicantEmail: row.applicantEmail,
+      status: row.status,
+      tier: row.tier,
+      createdAt: row.createdAt.toISOString(),
+      reviewedAt: row.reviewedAt?.toISOString() || null,
+      approvedAt: row.approvedAt?.toISOString() || null,
+      userId: row.userId,
+      isLinkedUserCoachingClient: row.user?.isCoachingClient || false,
+      hasMoveWellMembershipSnapshot: row.hasMoveWellMembershipSnapshot,
+      answers,
+      adminNotes: row.adminNotes || "",
+    };
+  });
 }
 
 export async function updateAdminCoachingApplication(input: {
@@ -298,6 +323,9 @@ export async function updateAdminCoachingApplication(input: {
   });
 
   if (input.convertToClient && existing.userId) {
+    const offerKey = getOfferKeyFromAnswers(existing.answersJson as CoachingApplicationAnswerMap);
+    const includesMoveWellMembership = offerKey === "one_to_one_coaching";
+
     await db.coachingClientProfile.upsert({
       where: { userId: existing.userId },
       create: {
@@ -305,16 +333,14 @@ export async function updateAdminCoachingApplication(input: {
         applicationId: existing.id,
         tier: existing.tier === "unsure" ? "coaching" : existing.tier,
         status: "onboarding",
-        includesMoveWellMembership:
-          existing.tier === "coaching" || existing.tier === "coached_plan",
+        includesMoveWellMembership,
         nextCheckInDueAt: new Date(Date.now() + 7 * 86400000),
       },
       update: {
         applicationId: existing.id,
         tier: existing.tier === "unsure" ? "coaching" : existing.tier,
         status: "onboarding",
-        includesMoveWellMembership:
-          existing.tier === "coaching" || existing.tier === "coached_plan",
+        includesMoveWellMembership,
       },
     });
 

@@ -177,6 +177,12 @@ export type CoachingDashboardDto = {
   };
   application: null | {
     id: string;
+    offerKey:
+      | "guided_accountability"
+      | "independent_training_plan"
+      | "guided_training_plan"
+      | "one_to_one_coaching"
+      | null;
     status:
       | "submitted"
       | "under_review"
@@ -238,6 +244,12 @@ export type ReplayPlaybackAccessDto = {
 
 export type AdminCoachingApplicationDto = {
   id: string;
+  offerKey:
+    | "guided_accountability"
+    | "independent_training_plan"
+    | "guided_training_plan"
+    | "one_to_one_coaching"
+    | null;
   applicantName: string;
   applicantEmail: string;
   status: string;

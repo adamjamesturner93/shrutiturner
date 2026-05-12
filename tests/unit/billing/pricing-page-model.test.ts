@@ -13,14 +13,15 @@ describe("pricing page model", () => {
   it("exposes coaching tiers with prices, membership comparison, and CTAs", () => {
     const rows = getPricingCoachingRows();
 
-    expect(rows).toHaveLength(3);
+    expect(rows).toHaveLength(4);
     expect(rows.map((row) => row.priceLabel)).toEqual([
-      "£60 / month",
-      "£200 / month",
-      "£350 / month",
+      "£70 / month",
+      "£90 / month",
+      "£130 / month",
+      "£180 / month",
     ]);
-    expect(rows.map((row) => row.includesMembership)).toEqual([false, true, true]);
-    expect(rows.every((row) => row.ctaHref.startsWith("/coaching/"))).toBe(true);
+    expect(rows.map((row) => row.includesMembership)).toEqual([false, false, false, true]);
+    expect(rows.every((row) => row.ctaHref.startsWith("/coaching/apply?offer="))).toBe(true);
   });
 
   it("exposes small-group programme pricing with detail links", () => {

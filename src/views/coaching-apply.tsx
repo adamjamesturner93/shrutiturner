@@ -19,52 +19,68 @@ import {
   type CoachingApplicationTier,
 } from "@/data/coaching-application";
 
-const DEFAULT_TIER: CoachingApplicationTier = "coached-plan";
-const tierPayloadMap: Record<CoachingApplicationTier, "coached_plan" | "coaching" | "unsure"> = {
-  "coached-plan": "coached_plan",
-  coaching: "coaching",
-  unsure: "unsure",
-};
+const DEFAULT_TIER: CoachingApplicationTier = "guided_training_plan";
+const tierPayloadMap = Object.fromEntries(
+  coachingApplicationTierOptions.map((option) => [option.value, option.payloadTier])
+) as Record<CoachingApplicationTier, "personal_programme" | "coached_plan" | "coaching">;
 
 const tierHighlights: Record<
   CoachingApplicationTier,
   { eyebrow: string; heading: string; body: string; bullets: string[] }
 > = {
-  "coached-plan": {
-    eyebrow: "Coached Training Plan",
-    heading: "Apply for a coached plan",
-    body: "This route is for people who want tailored programming, regular written review, and structure that still leaves room for independent training.",
+  guided_accountability: {
+    eyebrow: "Guided Accountability",
+    heading: "Apply for accountability support",
+    body: "This route is for people who already have some direction and want a lighter coaching rhythm to support consistency and decision-making.",
     bullets: [
-      "Programming delivered with regular review and adaptation",
-      "Move Well Membership included",
-      "A lower-friction route than full 1:1 coaching",
+      "Application required before payment",
+      "Accountability and review prompts in Everfit",
+      "No instant checkout or automatic acceptance",
     ],
   },
-  coaching: {
+  independent_training_plan: {
+    eyebrow: "Independent Training Plan",
+    heading: "Apply for a tailored training plan",
+    body: "This route is for people who want bespoke programme writing and monthly review without higher-touch coaching.",
+    bullets: [
+      "Application required before payment",
+      "Programming and monthly review in Everfit",
+      "Move Well Membership is not included by default",
+    ],
+  },
+  guided_training_plan: {
+    eyebrow: "Guided Training Plan",
+    heading: "Apply for guided programming",
+    body: "This route is for people who want a tailored plan plus more regular review, accountability, and clearer support expectations.",
+    bullets: [
+      "Application required before payment",
+      "More regular review and accountability",
+      "Move Well Membership is not included by default",
+    ],
+  },
+  one_to_one_coaching: {
     eyebrow: "Coaching",
     heading: "Apply for higher-touch support",
     body: "This route is for people who need closer oversight, more strategic adaptation, and a steadier accountability rhythm.",
     bullets: [
+      "Application required before payment",
       "High-touch support and strategic review",
-      "Programming and closer accountability",
-      "Move Well Membership included",
-    ],
-  },
-  unsure: {
-    eyebrow: "Coaching Support",
-    heading: "Apply and we will help you decide",
-    body: "If you know you need more support but are not sure which level fits, this application gives enough context for a grounded recommendation.",
-    bullets: [
-      "Best if your needs are still taking shape",
-      "A calm, low-pressure recommendation process",
-      "Clear next steps within 48 hours",
+      "Move Well Membership starts after successful payment",
     ],
   },
 };
 
 function resolveTier(value: string | null): CoachingApplicationTier {
-  if (value === "coached-plan" || value === "coaching" || value === "unsure") {
-    return value;
+  const legacyTierMap: Record<string, CoachingApplicationTier> = {
+    "coached-plan": "guided_training_plan",
+    coaching: "one_to_one_coaching",
+    unsure: DEFAULT_TIER,
+  };
+  if (value && value in legacyTierMap) {
+    return legacyTierMap[value];
+  }
+  if (coachingApplicationTierOptions.some((option) => option.value === value)) {
+    return value as CoachingApplicationTier;
   }
   return DEFAULT_TIER;
 }
@@ -73,7 +89,7 @@ export function CoachingApplyPage() {
   const searchParams = useSearchParams();
   const { user, membership, isCoachingClient, isAuthenticated } = useAuth();
   const [selectedTier, setSelectedTier] = useState<CoachingApplicationTier>(() =>
-    resolveTier(searchParams.get("tier"))
+    resolveTier(searchParams.get("offer") || searchParams.get("tier"))
   );
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -84,7 +100,7 @@ export function CoachingApplyPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setSelectedTier(resolveTier(searchParams.get("tier")));
+    setSelectedTier(resolveTier(searchParams.get("offer") || searchParams.get("tier")));
   }, [searchParams]);
 
   useEffect(() => {
@@ -137,7 +153,10 @@ export function CoachingApplyPage() {
           applicantLastName,
           applicantEmail: email,
           tier: tierPayloadMap[selectedTier],
-          answers,
+          answers: {
+            ...answers,
+            offerKey: selectedTier,
+          },
           hasMoveWellMembershipSnapshot: Boolean(membership),
           isExistingCoachingClientSnapshot: isCoachingClient,
           agreedToCoachingAgreement,
@@ -283,20 +302,17 @@ export function CoachingApplyPage() {
             <div className="marketing-panel rounded-[1.85rem] p-6 md:p-7">
               <SectionHeading
                 eyebrow="Before You Apply"
-                title="Use this form when you want more than a self-serve plan."
-                description="If the Independent Training Plan is likely the better fit, I will say so clearly rather than nudging you into higher-touch support."
+                title="Use this form before any coaching payment."
+                description="Coaching is application-led. If another offer is a better fit, Shruti will say so before sending any payment invitation."
               />
             </div>
 
             <div className="border-brand-dark/10 bg-background rounded-[1.75rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
               <h2 className="text-2xl">What this application is for</h2>
               <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-                This form is for higher-touch coaching enquiries only. If you want the
-                lower-friction self-serve plan, use the{" "}
-                <Link href="/coaching/personal-programme" className="text-primary underline">
-                  Independent Training Plan
-                </Link>{" "}
-                route instead.
+                This form is for all coaching offers. Submitting it does not start a subscription,
+                reserve a place, or create a checkout session. Payment is invited only after admin
+                acceptance.
               </p>
             </div>
 
@@ -329,7 +345,8 @@ export function CoachingApplyPage() {
               <ol className="text-muted-foreground mt-5 space-y-3 text-sm leading-relaxed">
                 <li>1. I review your application personally.</li>
                 <li>2. I reply within 48 hours with the next best step.</li>
-                <li>3. If it feels like a fit, we move into onboarding and Everfit setup.</li>
+                <li>3. If it feels like a fit, you receive a secure payment invitation.</li>
+                <li>4. After verified payment, onboarding and Everfit setup begin.</li>
               </ol>
             </div>
           </div>
@@ -492,7 +509,7 @@ export function CoachingApplyPage() {
               </div>
               <p className="text-muted-foreground text-xs leading-relaxed">
                 This application is reviewed manually. It does not place you into a paid coaching
-                tier automatically.
+                offer automatically.
               </p>
             </div>
 
@@ -515,9 +532,8 @@ export function CoachingApplyPage() {
             <div className="text-muted-foreground flex items-start gap-2 text-sm leading-relaxed">
               <Shield className="mt-0.5 h-4 w-4 flex-shrink-0" />
               <p>
-                I aim to respond within 48 hours. If the Independent Training Plan is the better
-                fit, I will say so clearly rather than upselling you into more support than you
-                need.
+                I aim to respond within 48 hours. Application answers are used for fit, safety, and
+                support planning, not for Stripe metadata or analytics.
               </p>
             </div>
           </form>

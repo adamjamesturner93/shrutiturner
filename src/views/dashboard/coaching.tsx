@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { CoachingDashboardDto } from "@/lib/api/types";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
+import { coachingTiers } from "@/data/marketing";
 
 const tierLabels: Record<string, string> = {
   personal_programme: "Independent Training Plan",
@@ -25,6 +26,8 @@ const tierLabels: Record<string, string> = {
   coaching: "Coaching",
   unsure: "Coaching Support",
 };
+
+const offerLabels = Object.fromEntries(coachingTiers.map((offer) => [offer.id, offer.name]));
 
 const statusLabels: Record<string, string> = {
   submitted: "Submitted",
@@ -156,7 +159,9 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
           description="A single place for application status, onboarding, check-ins, and the next coaching action that matters."
           actions={
             <Badge
-              variant={statusVariant(data.profile?.status || data.application?.status || data.state)}
+              variant={statusVariant(
+                data.profile?.status || data.application?.status || data.state
+              )}
             >
               {statusLabels[data.profile?.status || data.application?.status || data.state] ||
                 "Coaching"}
@@ -168,21 +173,29 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
           <AppMetricCard
             label="Current state"
             value={statusLabels[data.state] || "Coaching"}
-            detail={data.profile ? tierLabels[data.profile.tier] : "Awaiting coaching profile"}
+            detail={
+              data.application?.offerKey
+                ? offerLabels[data.application.offerKey]
+                : data.profile
+                  ? tierLabels[data.profile.tier]
+                  : "Awaiting coaching profile"
+            }
           />
           <AppMetricCard
             label="Application"
             value={data.application ? statusLabels[data.application.status] : "Not submitted"}
             detail={
-              data.application ? tierLabels[data.application.tier] : "No coaching application on file"
+              data.application
+                ? data.application.offerKey
+                  ? offerLabels[data.application.offerKey]
+                  : tierLabels[data.application.tier]
+                : "No coaching application on file"
             }
           />
           <AppMetricCard
             label="Everfit"
             value={
-              data.profile
-                ? everfitLabels[data.profile.everfitConnectionStatus]
-                : "Not started"
+              data.profile ? everfitLabels[data.profile.everfitConnectionStatus] : "Not started"
             }
             detail={
               data.profile?.nextCheckInDueAt
@@ -234,7 +247,11 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
                 <p className="text-muted-foreground text-xs tracking-wide uppercase">
                   Support level
                 </p>
-                <p className="mt-1">{tierLabels[data.application.tier]}</p>
+                <p className="mt-1">
+                  {data.application.offerKey
+                    ? offerLabels[data.application.offerKey]
+                    : tierLabels[data.application.tier]}
+                </p>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs tracking-wide uppercase">Status</p>
@@ -310,16 +327,15 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
                   </div>
                 </div>
 
-                {data.profile.latestCoachResponseSummary ? (
-                  <div className="rounded-lg border p-4">
-                    <p className="text-muted-foreground mb-2 text-xs tracking-wide uppercase">
-                      Latest coach note
-                    </p>
-                    <p className="text-sm leading-relaxed">
-                      {data.profile.latestCoachResponseSummary}
-                    </p>
-                  </div>
-                ) : null}
+                <div className="rounded-lg border p-4">
+                  <p className="text-muted-foreground mb-2 text-xs tracking-wide uppercase">
+                    Coaching delivery
+                  </p>
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    Workouts, detailed check-ins, coach notes, and messages live in Everfit. This
+                    dashboard only shows high-level status and next actions.
+                  </p>
+                </div>
               </CardContent>
             </Card>
 
