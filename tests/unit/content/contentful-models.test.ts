@@ -51,4 +51,14 @@ describe("Contentful public content models", () => {
       expect.arrayContaining(["sendDate", "segmentation", "testMode"])
     );
   });
+
+  it("seeds multiple blog authors and at least one joint-authored post", () => {
+    const authorGroup = SEED_GROUPS.find((group) => group.contentType === "authorProfile");
+    const blogGroup = SEED_GROUPS.find((group) => group.contentType === "blogPost");
+    const seededBlogPosts = (blogGroup?.entries ?? []) as Array<{ authorSlugs?: string[] }>;
+
+    expect(authorGroup?.entries.length).toBeGreaterThanOrEqual(2);
+    expect(seededBlogPosts.length).toBeGreaterThanOrEqual(10);
+    expect(seededBlogPosts.some((post) => (post.authorSlugs?.length ?? 0) > 1)).toBe(true);
+  });
 });
