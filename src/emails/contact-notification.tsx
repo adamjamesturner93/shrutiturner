@@ -9,6 +9,8 @@ interface ContactNotificationEmailProps {
   message: string;
   conditions?: string;
   howFound?: string;
+  consentText?: string;
+  consentedAt?: string;
   replyToUrl?: string;
 }
 
@@ -19,6 +21,8 @@ export default function ContactNotificationEmail({
   message,
   conditions,
   howFound,
+  consentText,
+  consentedAt,
   replyToUrl = `mailto:${email}`,
 }: ContactNotificationEmailProps) {
   return (
@@ -53,6 +57,16 @@ export default function ContactNotificationEmail({
         {howFound ? (
           <Text style={bodyTextStyle}>
             <strong>How they found you:</strong> {howFound}
+          </Text>
+        ) : null}
+        {consentText ? (
+          <Text style={bodyTextStyle}>
+            <strong>Consent:</strong> {consentText}
+          </Text>
+        ) : null}
+        {consentedAt ? (
+          <Text style={bodyTextStyle}>
+            <strong>Consented at:</strong> {consentedAt}
           </Text>
         ) : null}
       </Section>

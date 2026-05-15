@@ -9,7 +9,8 @@ Configure Contentful to send publish, unpublish, archive, and delete events to:
 - `POST /api/contentful/webhook`
 - Legacy alias: `POST /api/webhooks/contentful`
 
-Set the `x-contentful-webhook-secret` header to the value in `CONTENTFUL_WEBHOOK_SECRET`.
+Set the `x-contentful-webhook-secret` header to the value in `CONTENTFUL_WEBHOOK_SECRET`. The
+webhook fails closed in deployed environments if `CONTENTFUL_WEBHOOK_SECRET` is missing.
 
 ## Blog Publishing
 

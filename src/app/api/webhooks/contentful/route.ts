@@ -3,8 +3,6 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { getBlogPostSlugByContentfulEntryId } from "@/lib/content";
 import { triggerContentfulPublishCampaign } from "@/lib/newsletter/campaign-automation";
 
-const WEBHOOK_SECRET = process.env.CONTENTFUL_WEBHOOK_SECRET;
-
 type ContentfulWebhookBody = {
   fields?: {
     slug?: unknown;
@@ -15,6 +13,19 @@ type ContentfulWebhookBody = {
     contentType?: { sys?: { id?: string } };
   };
 };
+
+function getWebhookSecret() {
+  return process.env.CONTENTFUL_WEBHOOK_SECRET?.trim() || "";
+}
+
+function isWebhookSecretRequired() {
+  return (
+    process.env.NODE_ENV === "production" ||
+    process.env.VERCEL_ENV === "production" ||
+    process.env.VERCEL_ENV === "preview" ||
+    process.env.VERCEL === "1"
+  );
+}
 
 function topicToTags(topic: string) {
   if (topic.includes("classDefinition")) return ["content:classes", "content:schedule"];
@@ -113,8 +124,12 @@ async function revalidateBlogPaths(input: {
 }
 
 export async function POST(req: NextRequest) {
+  const webhookSecret = getWebhookSecret();
   const provided = req.headers.get("x-contentful-webhook-secret");
-  if (WEBHOOK_SECRET && provided !== WEBHOOK_SECRET) {
+  if (!webhookSecret && isWebhookSecretRequired()) {
+    return NextResponse.json({ error: "webhook_secret_not_configured" }, { status: 503 });
+  }
+  if (webhookSecret && provided !== webhookSecret) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

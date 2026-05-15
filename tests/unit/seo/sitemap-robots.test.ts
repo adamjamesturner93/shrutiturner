@@ -82,5 +82,6 @@ describe("sitemap and robots", () => {
     expect(disallow).toEqual(
       expect.arrayContaining(["/admin", "/dashboard", "/api", "/instructor", "/email"])
     );
+    expect(disallow).not.toContain("/unsubscribe");
   });
 });

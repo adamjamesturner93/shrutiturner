@@ -12,6 +12,7 @@ export function NotFoundPage() {
       <SEO
         title="Page Not Found - Shruti Turner"
         description="The page you're looking for doesn't exist. Find your way back to Shruti Turner's strength and yoga coaching."
+        noIndex
       />
 
       <div className="container mx-auto flex min-h-[60vh] max-w-2xl flex-col items-center justify-center px-4 py-16 text-center">

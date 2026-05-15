@@ -164,25 +164,21 @@ export function AboutPage() {
             {
               title: "PhD Biomechanics",
               body: "Doctoral research informing how I think about human movement, loading, and musculoskeletal behaviour.",
-              footnote: "[Placeholder: University name and thesis title to be added]",
               icon: GraduationCap,
             },
             {
               title: "PGDip Rehabilitation",
               body: "Postgraduate rehabilitation training shaping how I approach recovery, capacity building, and clinical nuance.",
-              footnote: "[Placeholder: Institution to be added]",
               icon: Award,
             },
             {
               title: "650-Hour Yoga Training",
               body: "Extensive teacher training with emphasis on anatomy, therapeutic application, and adaptive practice.",
-              footnote: "[Placeholder: Training school and registration number to be added]",
               icon: Heart,
             },
             {
               title: "Level 4 Personal Trainer",
               body: "Advanced PT qualification supporting exercise referral, long-term condition awareness, and coaching practice.",
-              footnote: "[Placeholder: CIMSPA registration number to be added]",
               icon: Shield,
             },
           ].map((item) => {
@@ -197,7 +193,6 @@ export function AboutPage() {
                 </div>
                 <h3 className="mt-5 text-2xl">{item.title}</h3>
                 <p className="text-muted-foreground mt-4 leading-relaxed">{item.body}</p>
-                <p className="text-muted-foreground mt-4 text-sm italic">{item.footnote}</p>
               </article>
             );
           })}

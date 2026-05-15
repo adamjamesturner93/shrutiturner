@@ -12,6 +12,8 @@ type ContactBody = {
   conditions?: unknown;
   howFound?: unknown;
   message?: unknown;
+  contactConsent?: unknown;
+  contactConsentText?: unknown;
   turnstileToken?: unknown;
   honeypot?: unknown;
 };
@@ -55,6 +57,9 @@ export async function POST(request: Request) {
       conditions: typeof body.conditions === "string" ? body.conditions : "",
       howFound: typeof body.howFound === "string" ? body.howFound : "",
       message: typeof body.message === "string" ? body.message : "",
+      contactConsent: body.contactConsent === true,
+      contactConsentText:
+        typeof body.contactConsentText === "string" ? body.contactConsentText : undefined,
     });
 
     return NextResponse.json({ ok: true, id: submission.id });
@@ -64,7 +69,8 @@ export async function POST(request: Request) {
         error.message === "NAME_REQUIRED" ||
         error.message === "EMAIL_REQUIRED" ||
         error.message === "TOPIC_REQUIRED" ||
-        error.message === "MESSAGE_TOO_SHORT";
+        error.message === "MESSAGE_TOO_SHORT" ||
+        error.message === "CONSENT_REQUIRED";
       if (code) {
         return NextResponse.json(
           { message: "Please complete all required fields." },

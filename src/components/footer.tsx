@@ -8,6 +8,7 @@ import { submitNewsletterSignup } from "@/lib/newsletter-signup";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 import { IconHorizontal } from "./icon";
 import { usePlatformSettings } from "@/context/platform-settings-context";
+import { Label } from "@/components/ui/label";
 
 export function Footer() {
   const { businessName, supportEmail, contactEmail, instagramUrl } = usePlatformSettings();
@@ -73,7 +74,11 @@ export function Footer() {
               <p className="text-brand-white/75 mt-2 mb-3 text-sm">{signupCopy.hookText}</p>
               {!subscribed ? (
                 <form onSubmit={handleNewsletterSubmit} className="max-w-sm space-y-2">
+                  <Label htmlFor="footer-newsletter-first-name" className="sr-only">
+                    First name
+                  </Label>
                   <Input
+                    id="footer-newsletter-first-name"
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
@@ -82,7 +87,11 @@ export function Footer() {
                     className="border-brand-white/20 bg-brand-white/10 text-brand-white placeholder:text-brand-white/40"
                   />
                   <div className="flex flex-col gap-2 sm:flex-row">
+                    <Label htmlFor="footer-newsletter-email" className="sr-only">
+                      Email address
+                    </Label>
                     <Input
+                      id="footer-newsletter-email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -117,10 +126,13 @@ export function Footer() {
                   onChange={(e) => setConsent(e.target.checked)}
                   className="accent-brand-accent-light mt-0.5 h-3.5 w-3.5"
                   required
+                  aria-describedby="footer-newsletter-consent-copy"
                 />
                 <span>I want newsletter and update emails. I can unsubscribe anytime.</span>
               </label>
-              <p className="text-brand-white/70 mt-1 text-xs">{signupCopy.consentText}</p>
+              <p id="footer-newsletter-consent-copy" className="text-brand-white/70 mt-1 text-xs">
+                {signupCopy.consentText}
+              </p>
               {error ? <p className="mt-1 text-xs text-red-300">{error}</p> : null}
             </div>
 
@@ -157,7 +169,7 @@ export function Footer() {
           </div>
 
           {/* Services */}
-          <div>
+          <nav aria-label="Footer services">
             <h4 className="text-brand-accent-light mb-4">Services</h4>
             <ul className="text-brand-white/70 space-y-2">
               <li>
@@ -194,10 +206,10 @@ export function Footer() {
                 </Link>
               </li>
             </ul>
-          </div>
+          </nav>
 
           {/* Company */}
-          <div>
+          <nav aria-label="Footer company">
             <h4 className="text-brand-accent-light mb-4">Company</h4>
             <ul className="text-brand-white/70 space-y-2">
               <li>
@@ -243,12 +255,12 @@ export function Footer() {
                 </Link>
               </li>
             </ul>
-          </div>
+          </nav>
         </div>
 
         {/* Bottom bar */}
         <div className="border-brand-white/10 text-brand-white/50 mt-12 border-t pt-8 text-center text-sm">
-          <div className="mb-4 flex flex-wrap justify-center gap-6">
+          <nav aria-label="Footer legal" className="mb-4 flex flex-wrap justify-center gap-6">
             <Link href="/terms" className="hover:text-brand-accent-light transition-colors">
               Terms & Conditions
             </Link>
@@ -273,7 +285,7 @@ export function Footer() {
             >
               Acceptable Use Policy
             </Link>
-          </div>
+          </nav>
           <p>Copyright {businessName}. All rights reserved.</p>
         </div>
       </div>

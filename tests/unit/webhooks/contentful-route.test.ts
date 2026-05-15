@@ -27,6 +27,8 @@ describe("POST /api/webhooks/contentful", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.CONTENTFUL_WEBHOOK_SECRET = "contentful-secret";
+    delete process.env.VERCEL_ENV;
+    delete process.env.VERCEL;
     getBlogPostSlugByContentfulEntryIdMock.mockResolvedValue("resolved-blog-post");
     triggerContentfulPublishCampaignMock.mockResolvedValue({
       skipped: false,
@@ -49,6 +51,25 @@ describe("POST /api/webhooks/contentful", () => {
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toEqual({ error: "unauthorized" });
+  });
+
+  it("fails closed in deployed environments when the webhook secret is not configured", async () => {
+    delete process.env.CONTENTFUL_WEBHOOK_SECRET;
+    process.env.VERCEL_ENV = "production";
+    const route = await loadRoute();
+
+    const response = await route.POST(
+      new Request("http://localhost/api/webhooks/contentful", {
+        method: "POST",
+        headers: {
+          "x-contentful-topic": "ContentManagement.Entry.publish.blogPost",
+        },
+        body: "{}",
+      }) as never
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ error: "webhook_secret_not_configured" });
   });
 
   it("revalidates mapped tags and triggers publish automation for publish events", async () => {

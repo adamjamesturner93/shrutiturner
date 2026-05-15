@@ -1,16 +1,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "./ui/button";
-import {
-  Menu,
-  X,
-  ChevronDown,
-  Users,
-  CalendarDays,
-  User,
-  Mountain,
-  MessageCircle,
-} from "lucide-react";
+import { Menu, X, ChevronDown, Users, CalendarDays, User, Mountain } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/auth-context";
 import { IconHorizontal } from "./icon";
@@ -205,10 +196,10 @@ export function Header() {
             </Link>
           ) : (
             <>
-              <Link href="/contact">
+              <Link href="/classes">
                 <Button variant="ghost">
-                  <MessageCircle className="mr-1.5 h-4 w-4" />
-                  Get in Touch
+                  <CalendarDays className="mr-1.5 h-4 w-4" />
+                  Try a Class
                 </Button>
               </Link>
               <Link href="/login">
@@ -297,14 +288,11 @@ export function Header() {
                       Sign In
                     </Button>
                   </Link>
-                  <Link href="/contact" onClick={() => setMobileMenuPath(null)}>
+                  <Link href="/classes" onClick={() => setMobileMenuPath(null)}>
                     <Button variant="outline" className="w-full">
-                      <MessageCircle className="mr-1.5 h-4 w-4" />
-                      Get in Touch
+                      <CalendarDays className="mr-1.5 h-4 w-4" />
+                      Try a Class
                     </Button>
-                  </Link>
-                  <Link href="/login" onClick={() => setMobileMenuPath(null)}>
-                    <Button className="w-full">Sign In</Button>
                   </Link>
                 </>
               )}

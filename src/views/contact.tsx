@@ -79,6 +79,9 @@ const contactExpectations = [
   },
 ] as const;
 
+const CONTACT_CONSENT_TEXT =
+  "I consent to Shruti Turner using the information in this form to respond to my enquiry. I understand this may include health or accessibility context I choose to share.";
+
 export function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -92,11 +95,12 @@ export function ContactPage() {
     conditions: "",
     howFound: "",
     message: "",
+    contactConsent: false,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!turnstileToken) return;
+    if (!turnstileToken || !formData.contactConsent) return;
     setSubmitting(true);
     setError("");
 
@@ -108,6 +112,7 @@ export function ContactPage() {
         },
         body: JSON.stringify({
           ...formData,
+          contactConsentText: CONTACT_CONSENT_TEXT,
           turnstileToken,
           honeypot: "",
         }),
@@ -409,11 +414,28 @@ export function ContactPage() {
                 <TurnstileWidget onTokenChange={setTurnstileToken} />
               </div>
 
+              <label htmlFor="contactConsent" className="flex items-start gap-3 text-sm">
+                <input
+                  id="contactConsent"
+                  type="checkbox"
+                  checked={formData.contactConsent}
+                  onChange={(e) => setFormData({ ...formData, contactConsent: e.target.checked })}
+                  required
+                  aria-describedby="contact-consent-copy"
+                  className="accent-brand-accent mt-1 h-4 w-4 flex-shrink-0"
+                />
+                <span id="contact-consent-copy" className="text-muted-foreground leading-relaxed">
+                  {CONTACT_CONSENT_TEXT}
+                </span>
+              </label>
+
               <Button
                 type="submit"
                 size="lg"
                 className="w-full"
-                disabled={!formData.interest || !turnstileToken || submitting}
+                disabled={
+                  !formData.interest || !formData.contactConsent || !turnstileToken || submitting
+                }
               >
                 {submitting ? "Sending..." : "Send Enquiry"}
                 <ArrowRight className="h-4 w-4" />
