@@ -1,6 +1,4 @@
 import { blogAuthors, blogPosts } from "../../src/data/blog-data.ts";
-import { LEGAL_DOCUMENTS } from "../../src/data/legal-documents.ts";
-import { themedWeekPromos } from "../../src/data/marketing.ts";
 import { classDetails } from "../../src/data/schedule-data.ts";
 import { retreats } from "../../src/data/retreat-data.ts";
 import { smallGroupTemplates } from "../../src/data/small-group-programmes.ts";
@@ -32,19 +30,6 @@ function compactImageUrl(raw: string): string {
     return raw.slice(0, 255);
   }
 }
-
-export const GLOBAL_SEED = {
-  contentType: "globalContent",
-  entries: [
-    {
-      slug: "global",
-      siteName: "Shruti Turner",
-      siteTagline: "Strength & Yoga for Complex Bodies",
-      defaultSeoDescription:
-        "Science-backed strength and yoga coaching for adults with chronic illness, autoimmune conditions, and complex bodies.",
-    },
-  ],
-};
 
 export const CLASS_TEMPLATE_SEED = {
   contentType: "classDefinition",
@@ -129,21 +114,6 @@ export const TESTIMONIAL_SEED = {
   ],
 };
 
-export const THEMED_WEEK_PROMO_SEED = {
-  contentType: "themedWeekPromo",
-  entries: themedWeekPromos.map((item, index) => ({
-    slug: item.slug,
-    title: item.title,
-    shortDescription: item.shortDescription,
-    audience: item.audience,
-    ctaHref: item.ctaHref,
-    ctaLabel: item.ctaLabel,
-    status: item.status,
-    sortOrder: (index + 1) * 10,
-    active: true,
-  })),
-};
-
 export const SMALL_GROUP_PROGRAMME_SEED = {
   contentType: "smallGroupProgramme",
   entries: smallGroupTemplates.map((programme) => ({
@@ -225,26 +195,6 @@ export const RETREAT_TEMPLATE_SEED = {
   })),
 };
 
-export const RETREAT_INSTANCE_SEED = {
-  contentType: "retreatInstance",
-  entries: retreats.flatMap((retreat) =>
-    retreat.dates.map((date) => ({
-      slug: `${retreat.slug}-${date.id}`,
-      externalDateId: date.id,
-      templateSlug: retreat.slug,
-      startDate: date.startDate,
-      endDate: date.endDate,
-      availableSpaces: date.availableSpaces,
-      totalSpaces: date.totalSpaces,
-      earlyBirdPrice: retreat.earlyBirdPrice,
-      normalPrice: retreat.normalPrice,
-      earlyBirdDeadline: retreat.earlyBirdDeadline,
-      currency: retreat.currency,
-      roomOptions: date.roomOptions,
-    }))
-  ),
-};
-
 export const BLOG_SEED = {
   contentType: "blogPost",
   entries: blogPosts.map((p) => ({
@@ -278,19 +228,6 @@ export const AUTHOR_PROFILE_SEED = {
     instagramHandle: author.instagramHandle,
     isGuestContributor: author.isGuestContributor,
     active: author.active ?? true,
-  })),
-};
-
-export const LEGAL_DOCUMENT_SEED = {
-  contentType: "legalDocument",
-  entries: LEGAL_DOCUMENTS.map((document) => ({
-    slug: document.slug,
-    title: document.title,
-    version: document.version,
-    effectiveDate: document.effectiveDate,
-    body: document.body,
-    seoTitle: document.seoTitle,
-    seoDescription: document.seoDescription,
   })),
 };
 
@@ -399,51 +336,6 @@ export const FAQ_SEED = {
   ],
 };
 
-export const TRUST_BADGE_SEED = {
-  contentType: "trustBadge",
-  entries: [
-    {
-      slug: "trust-phd-biomechanics",
-      title: "PhD Biomechanics",
-      description: "Evidence-informed coaching from an academic and practitioner background.",
-      iconKey: "graduation-cap",
-    },
-    {
-      slug: "trust-lived-experience",
-      title: "Lived Experience",
-      description: "Coaching shaped by lived experience with psoriatic arthritis.",
-      iconKey: "heart",
-    },
-  ],
-};
-
-export const CONTACT_BLOCK_SEED = {
-  contentType: "contactBlock",
-  entries: [
-    {
-      slug: "primary-contact",
-      title: "Get in touch",
-      body: "Questions about classes, retreats, or coaching? Email anytime.",
-      email: "tech@thechronicyogini.com",
-      ctaLabel: "Contact Shruti",
-      ctaHref: "/contact",
-    },
-  ],
-};
-
-export const ANNOUNCEMENT_BANNER_SEED = {
-  contentType: "announcementBanner",
-  entries: [
-    {
-      slug: "default",
-      message: "New small-group programmes now open for booking.",
-      ctaLabel: "View schedule",
-      ctaHref: "/schedule",
-      active: false,
-    },
-  ],
-};
-
 export const LEAD_MAGNET_SEED = {
   contentType: "leadMagnet",
   entries: [
@@ -484,33 +376,6 @@ export const NEWSLETTER_SIGNUP_CONTENT_SEED = {
   ],
 };
 
-export const TRANSACTIONAL_EMAIL_TEMPLATE_SEED = {
-  contentType: "transactionalEmailTemplate",
-  entries: [
-    {
-      slug: "booking-confirmed",
-      templateKey: "bookingConfirmed",
-      subject: "Your booking is confirmed",
-      previewText: "Your class booking details are inside.",
-      htmlBody:
-        "<p>Hi {{firstName}},</p><p>Your booking for {{className}} is confirmed for {{date}} at {{time}}.</p>",
-      textBody:
-        "Hi {{firstName}}, your booking for {{className}} is confirmed for {{date}} at {{time}}.",
-      status: "draft",
-    },
-    {
-      slug: "class-cancelled",
-      templateKey: "classCancelled",
-      subject: "Class cancelled - important update",
-      previewText: "An update about your scheduled class.",
-      htmlBody:
-        "<p>Hi {{firstName}},</p><p>We are sorry, {{className}} on {{date}} has been cancelled.</p>",
-      textBody: "Hi {{firstName}}, {{className}} on {{date}} has been cancelled.",
-      status: "draft",
-    },
-  ],
-};
-
 export const NEWSLETTER_TEMPLATE_SEED = {
   contentType: "newsletterTemplate",
   entries: [
@@ -526,24 +391,16 @@ export const NEWSLETTER_TEMPLATE_SEED = {
 };
 
 export const SEED_GROUPS = [
-  GLOBAL_SEED,
   AUTHOR_PROFILE_SEED,
   INSTRUCTOR_PROFILE_SEED,
   CLASS_TEMPLATE_SEED,
-  THEMED_WEEK_PROMO_SEED,
   SMALL_GROUP_PROGRAMME_SEED,
   RETREAT_VENUE_SEED,
   RETREAT_TEMPLATE_SEED,
-  RETREAT_INSTANCE_SEED,
   BLOG_SEED,
   TESTIMONIAL_SEED,
-  LEGAL_DOCUMENT_SEED,
   FAQ_SEED,
-  TRUST_BADGE_SEED,
-  CONTACT_BLOCK_SEED,
-  ANNOUNCEMENT_BANNER_SEED,
   LEAD_MAGNET_SEED,
   NEWSLETTER_SIGNUP_CONTENT_SEED,
-  TRANSACTIONAL_EMAIL_TEMPLATE_SEED,
   NEWSLETTER_TEMPLATE_SEED,
 ];

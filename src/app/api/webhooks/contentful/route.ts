@@ -31,24 +31,13 @@ function topicToTags(topic: string) {
   if (topic.includes("classDefinition")) return ["content:classes", "content:schedule"];
   if (topic.includes("smallGroupProgramme")) return ["content:classes"];
   if (topic.includes("instructorProfile")) return ["content:classes", "content:schedule"];
-  if (
-    topic.includes("retreatTemplate") ||
-    topic.includes("retreatVenue") ||
-    topic.includes("retreatInstance")
-  )
+  if (topic.includes("retreatTemplate") || topic.includes("retreatVenue"))
     return ["content:retreats"];
   if (topic.includes("blogPost")) return ["content:blog"];
-  if (topic.includes("legalDocument")) return ["content:legal"];
   if (topic.includes("newsletterSignupContent")) return ["content:newsletter-signup"];
   if (topic.includes("leadMagnet")) return ["content:newsletter-signup", "content:emails"];
-  if (topic.includes("faqItem") || topic.includes("trustBadge") || topic.includes("contactBlock")) {
-    return ["content:global-blocks"];
-  }
-  if (topic.includes("announcementBanner")) return ["content:announcements"];
-  if (topic.includes("transactionalEmailTemplate") || topic.includes("newsletterTemplate")) {
-    return ["content:emails"];
-  }
-  if (topic.includes("globalContent")) return ["content:global"];
+  if (topic.includes("faqItem")) return ["content:global-blocks"];
+  if (topic.includes("newsletterTemplate")) return ["content:emails"];
   return ["content:all"];
 }
 

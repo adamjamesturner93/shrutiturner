@@ -15,7 +15,6 @@ import { getEntries, getEntryById, getEntryBySlug } from "./contentful-client";
 import type {
   BlogPostContent,
   ClassDefinitionContent,
-  ContactBlockContent,
   GlobalContent,
   InstructorProfileContent,
   LeadMagnetContent,
@@ -24,17 +23,13 @@ import type {
   NewsletterTemplateContent,
   PageContent,
   RetreatCombinedContent,
-  RetreatRoomOptionContent,
   RetreatInstanceContent,
   RetreatTemplateContent,
   RetreatVenueContent,
   SeoContent,
   SmallGroupTemplateContent,
-  AnnouncementBannerContent,
   FaqItemContent,
   TestimonialContent,
-  TransactionalEmailTemplateContent,
-  TrustBadgeContent,
   AuthorProfileContent,
 } from "./types";
 
@@ -335,19 +330,6 @@ function combineRetreats(
 }
 
 export async function getGlobalContent(): Promise<GlobalContent> {
-  if (prefersContentfulSource()) {
-    const entry = await getEntryBySlug<Record<string, unknown>>("globalContent", "global");
-    if (entry) {
-      return {
-        siteName: String(entry.fields.siteName || LOCAL_GLOBAL_CONTENT.siteName),
-        siteTagline: String(entry.fields.siteTagline || LOCAL_GLOBAL_CONTENT.siteTagline),
-        defaultSeoDescription: String(
-          entry.fields.defaultSeoDescription || LOCAL_GLOBAL_CONTENT.defaultSeoDescription
-        ),
-      };
-    }
-  }
-
   return LOCAL_GLOBAL_CONTENT;
 }
 
@@ -362,24 +344,6 @@ export async function getPageSeo(slug: string): Promise<SeoContent | null> {
 }
 
 export async function getLegalDocumentBySlug(slug: string): Promise<LegalDocumentContent | null> {
-  if (prefersContentfulSource()) {
-    const entry = await getEntryBySlug<Record<string, unknown>>("legalDocument", slug);
-    if (entry) {
-      return {
-        id: String(entry.sys.id),
-        slug,
-        title: String(entry.fields.title || slug),
-        version: String(entry.fields.version || "1.0"),
-        effectiveDate: entry.fields.effectiveDate ? String(entry.fields.effectiveDate) : undefined,
-        body: String(entry.fields.body || ""),
-        seoTitle: entry.fields.seoTitle ? String(entry.fields.seoTitle) : undefined,
-        seoDescription: entry.fields.seoDescription
-          ? String(entry.fields.seoDescription)
-          : undefined,
-      };
-    }
-  }
-
   return LOCAL_LEGAL_DOCUMENTS.find((doc) => doc.slug === slug) || null;
 }
 
@@ -544,81 +508,6 @@ export async function getFaqItemsFor(page: string, section?: string): Promise<Fa
   });
 
   return scoped.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-}
-
-export async function getTrustBadges(): Promise<TrustBadgeContent[]> {
-  if (!prefersContentfulSource()) {
-    return [];
-  }
-
-  const res = await getEntries<Record<string, unknown>>("trustBadge", { limit: 200 });
-  if (!res?.items?.length) return [];
-
-  return res.items.map((item) => ({
-    slug: String(item.fields.slug || item.sys.id),
-    title: String(item.fields.title || ""),
-    description: item.fields.description ? String(item.fields.description) : undefined,
-    iconKey: item.fields.iconKey ? String(item.fields.iconKey) : undefined,
-  }));
-}
-
-export async function getContactBlocks(): Promise<ContactBlockContent[]> {
-  if (!prefersContentfulSource()) {
-    return [];
-  }
-
-  const res = await getEntries<Record<string, unknown>>("contactBlock", { limit: 50 });
-  if (!res?.items?.length) return [];
-
-  return res.items.map((item) => ({
-    slug: String(item.fields.slug || item.sys.id),
-    title: String(item.fields.title || ""),
-    body: item.fields.body ? String(item.fields.body) : undefined,
-    email: item.fields.email ? String(item.fields.email) : undefined,
-    phone: item.fields.phone ? String(item.fields.phone) : undefined,
-    ctaLabel: item.fields.ctaLabel ? String(item.fields.ctaLabel) : undefined,
-    ctaHref: item.fields.ctaHref ? String(item.fields.ctaHref) : undefined,
-  }));
-}
-
-export async function getAnnouncementBanners(): Promise<AnnouncementBannerContent[]> {
-  if (!prefersContentfulSource()) {
-    return [];
-  }
-
-  const res = await getEntries<Record<string, unknown>>("announcementBanner", { limit: 20 });
-  if (!res?.items?.length) return [];
-
-  return res.items.map((item) => ({
-    slug: String(item.fields.slug || item.sys.id),
-    message: String(item.fields.message || ""),
-    ctaLabel: item.fields.ctaLabel ? String(item.fields.ctaLabel) : undefined,
-    ctaHref: item.fields.ctaHref ? String(item.fields.ctaHref) : undefined,
-    active: Boolean(item.fields.active),
-  }));
-}
-
-export async function getTransactionalEmailTemplates(): Promise<
-  TransactionalEmailTemplateContent[]
-> {
-  if (!prefersContentfulSource()) {
-    return [];
-  }
-
-  const res = await getEntries<Record<string, unknown>>("transactionalEmailTemplate", {
-    limit: 200,
-  });
-  if (!res?.items?.length) return [];
-
-  return res.items.map((item) => ({
-    slug: String(item.fields.slug || item.sys.id),
-    templateKey: String(item.fields.templateKey || ""),
-    subject: String(item.fields.subject || ""),
-    previewText: item.fields.previewText ? String(item.fields.previewText) : undefined,
-    htmlBody: String(item.fields.htmlBody || ""),
-    textBody: item.fields.textBody ? String(item.fields.textBody) : undefined,
-    status: item.fields.status === "approved" ? "approved" : "draft",
-  }));
 }
 
 export async function getNewsletterTemplates(): Promise<NewsletterTemplateContent[]> {
@@ -902,46 +791,6 @@ export async function getRetreatTemplates(): Promise<RetreatTemplateContent[]> {
 }
 
 export async function getRetreatInstances(): Promise<RetreatInstanceContent[]> {
-  if (prefersContentfulSource()) {
-    const res = await getEntries<Record<string, unknown>>("retreatInstance", {
-      limit: 200,
-      order: "fields.startDate",
-    });
-    if (res?.items?.length) {
-      return res.items.map((item) => ({
-        id: String(item.fields.externalDateId || item.fields.slug || item.sys.id),
-        templateSlug: String(item.fields.templateSlug || ""),
-        startDate: String(item.fields.startDate || ""),
-        endDate: String(item.fields.endDate || ""),
-        availableSpaces: Number(item.fields.availableSpaces || 0),
-        totalSpaces: Number(item.fields.totalSpaces || 0),
-        earlyBirdPrice: Number(item.fields.earlyBirdPrice || 0),
-        normalPrice: Number(item.fields.normalPrice || 0),
-        earlyBirdDeadline: String(item.fields.earlyBirdDeadline || ""),
-        currency: String(item.fields.currency || "GBP"),
-        roomOptions: parseObjectArray(item.fields.roomOptions, (room) => {
-          const id = room.id ? String(room.id) : "";
-          const label = room.label ? String(room.label) : "";
-          if (!id || !label) return null;
-          return {
-            id,
-            label,
-            description: String(room.description || ""),
-            type: String(room.type || "shared_twin") as RetreatRoomOptionContent["type"],
-            guestsIncluded: Number(room.guestsIncluded || 1),
-            capacity: Number(room.capacity || 0),
-            availableSpots: Number(room.availableSpots || 0),
-            earlyBirdPricePence:
-              room.earlyBirdPricePence === undefined ? undefined : Number(room.earlyBirdPricePence),
-            normalPricePence: Number(room.normalPricePence || 0),
-            depositPence: room.depositPence === undefined ? undefined : Number(room.depositPence),
-            isWaitlistOnly: room.isWaitlistOnly === true,
-          };
-        }),
-      }));
-    }
-  }
-
   return LOCAL_RETREAT_INSTANCES;
 }
 

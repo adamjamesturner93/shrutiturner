@@ -35,24 +35,13 @@ function getCacheTags(contentType?: string): string[] {
   if (contentType === "classDefinition") return [...base, "content:classes", "content:schedule"];
   if (contentType === "smallGroupProgramme") return [...base, "content:classes"];
   if (contentType === "instructorProfile") return [...base, "content:classes", "content:schedule"];
-  if (
-    contentType === "retreatTemplate" ||
-    contentType === "retreatVenue" ||
-    contentType === "retreatInstance"
-  ) {
+  if (contentType === "retreatTemplate" || contentType === "retreatVenue") {
     return [...base, "content:retreats"];
   }
-  if (contentType === "legalDocument") return [...base, "content:legal"];
   if (contentType === "newsletterSignupContent") return [...base, "content:newsletter-signup"];
   if (contentType === "leadMagnet") return [...base, "content:newsletter-signup", "content:emails"];
-  if (contentType === "faqItem" || contentType === "trustBadge" || contentType === "contactBlock") {
-    return [...base, "content:global-blocks"];
-  }
-  if (contentType === "announcementBanner") return [...base, "content:announcements"];
-  if (contentType === "transactionalEmailTemplate" || contentType === "newsletterTemplate") {
-    return [...base, "content:emails"];
-  }
-  if (contentType === "globalContent") return [...base, "content:global"];
+  if (contentType === "faqItem") return [...base, "content:global-blocks"];
+  if (contentType === "newsletterTemplate") return [...base, "content:emails"];
 
   return base;
 }

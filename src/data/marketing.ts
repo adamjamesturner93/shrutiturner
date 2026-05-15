@@ -228,13 +228,3 @@ export const coachingFaqs: CoachingFaq[] = [
       "No. Coaching places are application-led. Public offer cards take you to an application, and subscription checkout is only created after admin acceptance.",
   },
 ];
-
-export const themedWeekPromos: Array<{
-  slug: string;
-  title: string;
-  shortDescription: string;
-  audience: string;
-  ctaHref: string;
-  ctaLabel: string;
-  status: "draft" | "scheduled" | "active" | "archived";
-}> = [];

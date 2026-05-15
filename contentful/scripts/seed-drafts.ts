@@ -46,15 +46,9 @@ function buildAutoSlug(contentType: string, entry: Record<string, unknown>) {
     retreatVenue: typeof entry.name === "string" ? entry.name : undefined,
     retreatTemplate: typeof entry.title === "string" ? entry.title : undefined,
     blogPost: typeof entry.title === "string" ? entry.title : undefined,
-    legalDocument: typeof entry.title === "string" ? entry.title : undefined,
     faqItem: typeof entry.question === "string" ? entry.question : undefined,
-    trustBadge: typeof entry.title === "string" ? entry.title : undefined,
-    contactBlock: typeof entry.title === "string" ? entry.title : undefined,
-    announcementBanner: typeof entry.message === "string" ? entry.message : undefined,
     leadMagnet: typeof entry.title === "string" ? entry.title : undefined,
     newsletterTemplate: typeof entry.title === "string" ? entry.title : undefined,
-    transactionalEmailTemplate:
-      typeof entry.templateKey === "string" ? entry.templateKey : undefined,
   };
 
   const candidate = byType[contentType];
