@@ -49,16 +49,6 @@ export const servicePathCards = [
     icon: "heart",
   },
   {
-    title: "Small Group Programmes",
-    description:
-      "Focused cohorts for people who want more structure, more feedback, and a room full of people who understand the nuance.",
-    detail: "Structured 4 to 6 week cohorts",
-    href: "/classes/small-groups",
-    ctaLabel: "View programmes",
-    badge: "Limited",
-    icon: "users",
-  },
-  {
     title: "1:1 Coaching",
     description:
       "Application-led support, from guided accountability to high-touch coaching for more fluctuating or complex cases.",

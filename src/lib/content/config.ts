@@ -1,14 +1,10 @@
 import type { ContentSource } from "./types";
 import { env } from "@/lib/env";
 
-const DEFAULT_SOURCE: ContentSource = "local";
+const DEFAULT_SOURCE: ContentSource = "contentful";
 
 export function getContentSource(): ContentSource {
-  const source = env.CONTENT_SOURCE || DEFAULT_SOURCE;
-  if (source === "local" || source === "hybrid" || source === "contentful") {
-    return source;
-  }
-  return DEFAULT_SOURCE;
+  return env.CONTENT_SOURCE || DEFAULT_SOURCE;
 }
 
 export interface ContentfulConfig {

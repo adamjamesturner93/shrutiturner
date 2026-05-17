@@ -36,13 +36,75 @@ import type {
 type ScheduleDay = ReturnType<typeof getLocalScheduleByDay>[number];
 
 function prefersContentfulSource() {
-  const source = getContentSource();
-  return source === "contentful" || source === "hybrid";
+  return getContentSource() === "contentful";
 }
 
-function allowsLocalFallback() {
-  const source = getContentSource();
-  return source === "local" || source === "hybrid";
+function createMissingContentError(contentType: string, detail: string) {
+  return new Error(`CONTENTFUL_CONTENT_MISSING: ${contentType} ${detail}`);
+}
+
+function requireContentfulItems<T>(
+  contentType: string,
+  res: { items?: T[] } | null | undefined
+): T[] {
+  if (!res?.items?.length) {
+    throw createMissingContentError(contentType, "returned no published entries");
+  }
+
+  return res.items;
+}
+
+function requireStringField(
+  contentType: string,
+  item: { sys: { id: string }; fields: Record<string, unknown> },
+  field: string
+) {
+  const value = item.fields[field];
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  throw createMissingContentError(
+    contentType,
+    `entry "${item.sys.id}" is missing required field "${field}"`
+  );
+}
+
+function optionalStringField(fields: Record<string, unknown>, field: string) {
+  const value = fields[field];
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function requireNumberField(
+  contentType: string,
+  item: { sys: { id: string }; fields: Record<string, unknown> },
+  field: string
+) {
+  const value = Number(item.fields[field]);
+  if (Number.isFinite(value)) {
+    return value;
+  }
+
+  throw createMissingContentError(
+    contentType,
+    `entry "${item.sys.id}" is missing required numeric field "${field}"`
+  );
+}
+
+function requireRenderedField(
+  contentType: string,
+  item: { sys: { id: string }; fields: Record<string, unknown> },
+  field: string
+) {
+  const value = renderContentfulRichText(item.fields[field]);
+  if (value.trim()) {
+    return value;
+  }
+
+  throw createMissingContentError(
+    contentType,
+    `entry "${item.sys.id}" is missing required field "${field}"`
+  );
 }
 
 function parseStringArray(value: unknown): string[] {
@@ -177,15 +239,16 @@ function mapBlogPostContent(
     typeof item.fields.coverImage === "string" && item.fields.coverImage.trim()
       ? item.fields.coverImage.trim()
       : "";
+  const slug = requireStringField("blogPost", item, "slug");
 
   return {
-    id: String(item.fields.slug || item.sys.id),
-    title: String(item.fields.title || "Untitled"),
-    excerpt: String(item.fields.excerpt || ""),
-    content: renderContentfulRichText(item.fields.content),
+    id: slug,
+    title: requireStringField("blogPost", item, "title"),
+    excerpt: requireStringField("blogPost", item, "excerpt"),
+    content: requireRenderedField("blogPost", item, "content"),
     author: item.fields.authorName ? String(item.fields.authorName) : undefined,
     authors: mapBlogPostAuthors(item, includes.Entry),
-    date: String(item.fields.publishDate || ""),
+    date: requireStringField("blogPost", item, "publishDate"),
     tags: parseStringArray(item.fields.tags),
     readTime: String(item.fields.readTime || ""),
     coverImage: assetUrl
@@ -196,8 +259,8 @@ function mapBlogPostContent(
     coverAlt:
       readContentfulAssetAlt(coverImageAsset?.fields) ||
       (item.fields.coverAlt ? String(item.fields.coverAlt) : "Blog cover image"),
-    seoTitle: item.fields.seoTitle ? String(item.fields.seoTitle) : undefined,
-    seoDescription: item.fields.seoDescription ? String(item.fields.seoDescription) : undefined,
+    seoTitle: optionalStringField(item.fields, "seoTitle"),
+    seoDescription: optionalStringField(item.fields, "seoDescription"),
   };
 }
 
@@ -355,62 +418,46 @@ export async function getNewsletterSignupContent(): Promise<NewsletterSignupCont
       include: 2,
     });
     const entry = res?.items?.[0];
-    if (entry) {
-      const leadMagnetId = getLinkedEntryId(entry.fields.activeLeadMagnet);
-      const leadMagnetEntry = getIncludedEntryById(res.includes?.Entry, leadMagnetId);
-      const leadMagnetFields = leadMagnetEntry?.fields;
-
-      return normalizeNewsletterSignupContent({
-        slug: "default",
-        hookText: String(leadMagnetFields?.hookText || LOCAL_NEWSLETTER_SIGNUP_CONTENT.hookText),
-        formPlaceholder: String(
-          entry.fields.formPlaceholder || LOCAL_NEWSLETTER_SIGNUP_CONTENT.formPlaceholder
-        ),
-        buttonLabel: String(
-          leadMagnetFields?.ctaLabel ||
-            entry.fields.buttonLabel ||
-            LOCAL_NEWSLETTER_SIGNUP_CONTENT.buttonLabel
-        ),
-        successMessage: String(
-          entry.fields.successMessage || LOCAL_NEWSLETTER_SIGNUP_CONTENT.successMessage
-        ),
-        consentText: String(
-          entry.fields.consentText || LOCAL_NEWSLETTER_SIGNUP_CONTENT.consentText
-        ),
-        popupTitle: leadMagnetFields?.landingHeadline
-          ? String(leadMagnetFields.landingHeadline)
-          : entry.fields.popupTitle
-            ? String(entry.fields.popupTitle)
-            : LOCAL_NEWSLETTER_SIGNUP_CONTENT.popupTitle,
-        popupDescription: leadMagnetFields?.landingDescription
-          ? String(leadMagnetFields.landingDescription)
-          : entry.fields.popupDescription
-            ? String(entry.fields.popupDescription)
-            : LOCAL_NEWSLETTER_SIGNUP_CONTENT.popupDescription,
-        leadMagnetSlug: leadMagnetFields?.slug
-          ? String(leadMagnetFields.slug)
-          : LOCAL_NEWSLETTER_SIGNUP_CONTENT.leadMagnetSlug,
-        leadMagnetTitle: leadMagnetFields?.title
-          ? String(leadMagnetFields.title)
-          : LOCAL_NEWSLETTER_SIGNUP_CONTENT.leadMagnetTitle,
-        emailSubject: leadMagnetFields?.emailSubject
-          ? String(leadMagnetFields.emailSubject)
-          : LOCAL_NEWSLETTER_SIGNUP_CONTENT.emailSubject,
-        emailPreviewText: leadMagnetFields?.emailPreviewText
-          ? String(leadMagnetFields.emailPreviewText)
-          : LOCAL_NEWSLETTER_SIGNUP_CONTENT.emailPreviewText,
-        emailBody: leadMagnetFields?.emailBody
-          ? String(leadMagnetFields.emailBody)
-          : LOCAL_NEWSLETTER_SIGNUP_CONTENT.emailBody,
-        deliveryType:
-          leadMagnetFields?.deliveryType && String(leadMagnetFields.deliveryType) === "inline"
-            ? "inline"
-            : LOCAL_NEWSLETTER_SIGNUP_CONTENT.deliveryType,
-        assetUrl: leadMagnetFields?.assetUrl
-          ? String(leadMagnetFields.assetUrl)
-          : LOCAL_NEWSLETTER_SIGNUP_CONTENT.assetUrl,
-      });
+    if (!entry) {
+      throw createMissingContentError("newsletterSignupContent", "default entry was not found");
     }
+
+    const leadMagnetId = getLinkedEntryId(entry.fields.activeLeadMagnet);
+    const leadMagnetEntry = getIncludedEntryById(res.includes?.Entry, leadMagnetId);
+    const leadMagnetFields = leadMagnetEntry?.fields;
+    if (!leadMagnetFields) {
+      throw createMissingContentError(
+        "newsletterSignupContent",
+        "default entry is missing an included activeLeadMagnet"
+      );
+    }
+
+    return normalizeNewsletterSignupContent({
+      slug: "default",
+      hookText: requireStringField("leadMagnet", leadMagnetEntry, "hookText"),
+      formPlaceholder: requireStringField("newsletterSignupContent", entry, "formPlaceholder"),
+      buttonLabel:
+        optionalStringField(leadMagnetFields, "ctaLabel") ||
+        requireStringField("newsletterSignupContent", entry, "buttonLabel"),
+      successMessage: requireStringField("newsletterSignupContent", entry, "successMessage"),
+      consentText: requireStringField("newsletterSignupContent", entry, "consentText"),
+      popupTitle:
+        optionalStringField(leadMagnetFields, "landingHeadline") ||
+        optionalStringField(entry.fields, "popupTitle"),
+      popupDescription:
+        optionalStringField(leadMagnetFields, "landingDescription") ||
+        optionalStringField(entry.fields, "popupDescription"),
+      leadMagnetSlug: requireStringField("leadMagnet", leadMagnetEntry, "slug"),
+      leadMagnetTitle: requireStringField("leadMagnet", leadMagnetEntry, "title"),
+      emailSubject: requireStringField("leadMagnet", leadMagnetEntry, "emailSubject"),
+      emailPreviewText: optionalStringField(leadMagnetFields, "emailPreviewText"),
+      emailBody: requireStringField("leadMagnet", leadMagnetEntry, "emailBody"),
+      deliveryType:
+        requireStringField("leadMagnet", leadMagnetEntry, "deliveryType") === "inline"
+          ? "inline"
+          : "link",
+      assetUrl: optionalStringField(leadMagnetFields, "assetUrl"),
+    });
   }
 
   return normalizeNewsletterSignupContent(LOCAL_NEWSLETTER_SIGNUP_CONTENT);
@@ -422,28 +469,25 @@ export async function getLeadMagnetBySlug(slug: string): Promise<LeadMagnetConte
     if (entry) {
       return {
         id: String(entry.sys.id),
-        slug: String(entry.fields.slug || slug),
-        title: String(entry.fields.title || ""),
-        hookText: String(entry.fields.hookText || ""),
-        landingHeadline: entry.fields.landingHeadline
-          ? String(entry.fields.landingHeadline)
-          : undefined,
-        landingDescription: entry.fields.landingDescription
-          ? String(entry.fields.landingDescription)
-          : undefined,
-        ctaLabel: entry.fields.ctaLabel ? String(entry.fields.ctaLabel) : undefined,
-        emailSubject: String(entry.fields.emailSubject || ""),
-        emailPreviewText: entry.fields.emailPreviewText
-          ? String(entry.fields.emailPreviewText)
-          : undefined,
-        emailBody: String(entry.fields.emailBody || ""),
-        deliveryType: entry.fields.deliveryType === "inline" ? "inline" : "link",
-        assetUrl: entry.fields.assetUrl ? String(entry.fields.assetUrl) : undefined,
-        active: Boolean(entry.fields.active),
-        startAt: entry.fields.startAt ? String(entry.fields.startAt) : undefined,
-        endAt: entry.fields.endAt ? String(entry.fields.endAt) : undefined,
+        slug: requireStringField("leadMagnet", entry, "slug"),
+        title: requireStringField("leadMagnet", entry, "title"),
+        hookText: requireStringField("leadMagnet", entry, "hookText"),
+        landingHeadline: optionalStringField(entry.fields, "landingHeadline"),
+        landingDescription: optionalStringField(entry.fields, "landingDescription"),
+        ctaLabel: optionalStringField(entry.fields, "ctaLabel"),
+        emailSubject: requireStringField("leadMagnet", entry, "emailSubject"),
+        emailPreviewText: optionalStringField(entry.fields, "emailPreviewText"),
+        emailBody: requireStringField("leadMagnet", entry, "emailBody"),
+        deliveryType:
+          requireStringField("leadMagnet", entry, "deliveryType") === "inline" ? "inline" : "link",
+        assetUrl: optionalStringField(entry.fields, "assetUrl"),
+        active: entry.fields.active === undefined ? undefined : Boolean(entry.fields.active),
+        startAt: optionalStringField(entry.fields, "startAt"),
+        endAt: optionalStringField(entry.fields, "endAt"),
       };
     }
+
+    throw createMissingContentError("leadMagnet", `entry with slug "${slug}" was not found`);
   }
 
   if (slug === LOCAL_NEWSLETTER_SIGNUP_CONTENT.leadMagnetSlug) {
@@ -535,16 +579,12 @@ export async function getBlogPosts(): Promise<BlogPostContent[]> {
       limit: 200,
       include: 2,
     });
-    if (res?.items?.length) {
-      return res.items.map((item) => mapBlogPostContent(item, res.includes));
-    }
+    return requireContentfulItems("blogPost", res).map((item) =>
+      mapBlogPostContent(item, res?.includes)
+    );
   }
 
-  if (allowsLocalFallback()) {
-    return LOCAL_BLOG_POSTS;
-  }
-
-  return [];
+  return LOCAL_BLOG_POSTS;
 }
 
 export async function getBlogPostBySlug(slug: string): Promise<BlogPostContent | null> {
@@ -588,33 +628,36 @@ export async function getBlogPostSlugByContentfulEntryId(entryId: string): Promi
 export async function getClassDefinitions(): Promise<ClassDefinitionContent[]> {
   if (prefersContentfulSource()) {
     const res = await getEntries<Record<string, unknown>>("classDefinition", { limit: 300 });
-    if (res?.items?.length) {
-      return res.items.map((item) => ({
-        id: String(item.sys.id),
-        slug: String(item.fields.slug || item.sys.id),
-        name: String(item.fields.name || "Untitled class"),
-        type: String(item.fields.type || "Yoga") as "Yoga" | "Strength" | "HIIT",
-        classCategory: item.fields.classCategory
-          ? (String(item.fields.classCategory) as "yoga" | "strength" | "small-group")
-          : undefined,
-        day: String(item.fields.defaultDay || "Monday"),
-        time: String(item.fields.defaultTime || "09:00"),
-        duration: String(item.fields.duration || "60 min"),
-        level: String(item.fields.level || "All levels"),
-        maxSpaces: Number(item.fields.maxCapacity || 12),
-        shortDescription: String(item.fields.shortDescription || ""),
-        longDescription: String(item.fields.longDescription || ""),
-        whatToExpect: parseStringArray(item.fields.whatToExpect),
-        whoItsFor: parseStringArray(item.fields.whoItsFor),
-        equipment: parseStringArray(item.fields.equipment),
-        benefits: parseStringArray(item.fields.benefits),
-        instructor: String(item.fields.instructorName || "Shruti Turner"),
-        defaultInstructorProfileEntryId: getLinkedEntryId(item.fields.defaultInstructorProfile),
-        seoTitle: String(item.fields.seoTitle || item.fields.name || "Class"),
-        seoDescription: String(item.fields.seoDescription || item.fields.shortDescription || ""),
-        seoKeywords: String(item.fields.seoKeywords || ""),
-      }));
-    }
+    return requireContentfulItems("classDefinition", res).map((item) => ({
+      id: String(item.sys.id),
+      slug: requireStringField("classDefinition", item, "slug"),
+      name: requireStringField("classDefinition", item, "name"),
+      type: requireStringField("classDefinition", item, "type") as "Yoga" | "Strength" | "HIIT",
+      classCategory: requireStringField("classDefinition", item, "classCategory") as
+        | "yoga"
+        | "strength"
+        | "small-group",
+      day: optionalStringField(item.fields, "defaultDay") || "Monday",
+      time: optionalStringField(item.fields, "defaultTime") || "09:00",
+      duration: requireStringField("classDefinition", item, "duration"),
+      level: requireStringField("classDefinition", item, "level"),
+      maxSpaces: requireNumberField("classDefinition", item, "maxCapacity"),
+      shortDescription: requireStringField("classDefinition", item, "shortDescription"),
+      longDescription: requireStringField("classDefinition", item, "longDescription"),
+      whatToExpect: parseStringArray(item.fields.whatToExpect),
+      whoItsFor: parseStringArray(item.fields.whoItsFor),
+      equipment: parseStringArray(item.fields.equipment),
+      benefits: parseStringArray(item.fields.benefits),
+      instructor: optionalStringField(item.fields, "instructorName") || "Shruti Turner",
+      defaultInstructorProfileEntryId: getLinkedEntryId(item.fields.defaultInstructorProfile),
+      seoTitle:
+        optionalStringField(item.fields, "seoTitle") ||
+        requireStringField("classDefinition", item, "name"),
+      seoDescription:
+        optionalStringField(item.fields, "seoDescription") ||
+        requireStringField("classDefinition", item, "shortDescription"),
+      seoKeywords: optionalStringField(item.fields, "seoKeywords") || "",
+    }));
   }
 
   return LOCAL_CLASS_DEFINITIONS;
@@ -626,47 +669,39 @@ export async function getSmallGroupTemplates(): Promise<SmallGroupTemplateConten
       limit: 100,
       order: "fields.title",
     });
-    if (res?.items?.length) {
-      return res.items.map((item) => ({
-        id: String(item.sys.id),
-        slug: String(item.fields.slug || item.sys.id),
-        title: String(item.fields.title || "Small Group Programme"),
-        subtitle: item.fields.subtitle ? String(item.fields.subtitle) : undefined,
-        shortSummary: String(item.fields.shortSummary || ""),
-        fullDescription: item.fields.fullDescription
-          ? String(item.fields.fullDescription)
-          : undefined,
-        longDescription: item.fields.longDescription
-          ? String(item.fields.longDescription)
-          : undefined,
-        outcomes: parseStringArray(item.fields.outcomes),
-        durationLabel: String(item.fields.durationLabel || ""),
-        durationWeeks:
-          item.fields.durationWeeks === undefined ? undefined : Number(item.fields.durationWeeks),
-        cohortSize: Number(item.fields.cohortSize || 0),
-        sessionsPerWeek:
-          item.fields.sessionsPerWeek === undefined
-            ? undefined
-            : Number(item.fields.sessionsPerWeek),
-        defaultPricePence:
-          item.fields.defaultPricePence === undefined
-            ? undefined
-            : Number(item.fields.defaultPricePence),
-        whoItsFor: parseStringArray(item.fields.whoItsFor),
-        equipment: parseStringArray(item.fields.equipment),
-        inclusions: parseStringArray(item.fields.inclusions),
-        weekByWeek: parseObjectArray(item.fields.weekByWeek, (week) => {
-          const weekNumber = Number(week.weekNumber);
-          if (!Number.isFinite(weekNumber) || weekNumber <= 0) return null;
-          return {
-            weekNumber,
-            title: String(week.title || `Week ${weekNumber}`),
-            focus: week.focus ? String(week.focus) : undefined,
-            sessionTitles: parseStringArray(week.sessionTitles),
-          };
-        }),
-      }));
-    }
+    return requireContentfulItems("smallGroupProgramme", res).map((item) => ({
+      id: String(item.sys.id),
+      slug: requireStringField("smallGroupProgramme", item, "slug"),
+      title: requireStringField("smallGroupProgramme", item, "title"),
+      subtitle: optionalStringField(item.fields, "subtitle"),
+      shortSummary: requireStringField("smallGroupProgramme", item, "shortSummary"),
+      fullDescription: optionalStringField(item.fields, "fullDescription"),
+      longDescription: optionalStringField(item.fields, "longDescription"),
+      outcomes: parseStringArray(item.fields.outcomes),
+      durationLabel: requireStringField("smallGroupProgramme", item, "durationLabel"),
+      durationWeeks:
+        item.fields.durationWeeks === undefined ? undefined : Number(item.fields.durationWeeks),
+      cohortSize: requireNumberField("smallGroupProgramme", item, "cohortSize"),
+      sessionsPerWeek:
+        item.fields.sessionsPerWeek === undefined ? undefined : Number(item.fields.sessionsPerWeek),
+      defaultPricePence:
+        item.fields.defaultPricePence === undefined
+          ? undefined
+          : Number(item.fields.defaultPricePence),
+      whoItsFor: parseStringArray(item.fields.whoItsFor),
+      equipment: parseStringArray(item.fields.equipment),
+      inclusions: parseStringArray(item.fields.inclusions),
+      weekByWeek: parseObjectArray(item.fields.weekByWeek, (week) => {
+        const weekNumber = Number(week.weekNumber);
+        if (!Number.isFinite(weekNumber) || weekNumber <= 0) return null;
+        return {
+          weekNumber,
+          title: String(week.title || `Week ${weekNumber}`),
+          focus: week.focus ? String(week.focus) : undefined,
+          sessionTitles: parseStringArray(week.sessionTitles),
+        };
+      }),
+    }));
   }
 
   return LOCAL_SMALL_GROUP_PROGRAMMES;
@@ -685,23 +720,21 @@ export const getSmallGroupProgrammeBySlug = getSmallGroupTemplateBySlug;
 export async function getInstructorProfiles(): Promise<InstructorProfileContent[]> {
   if (prefersContentfulSource()) {
     const res = await getEntries<Record<string, unknown>>("instructorProfile", { limit: 300 });
-    if (res?.items?.length) {
-      return res.items.map((item) => ({
-        id: String(item.sys.id),
-        slug: String(item.fields.slug || item.sys.id),
-        name: String(item.fields.name || "Instructor"),
-        headline: item.fields.headline ? String(item.fields.headline) : undefined,
-        bio: String(item.fields.bio || ""),
-        credentials: parseStringArray(item.fields.credentials),
-        specialties: parseStringArray(item.fields.specialties),
-        avatarImageUrl: item.fields.avatarImageUrl ? String(item.fields.avatarImageUrl) : undefined,
-        avatarAlt: item.fields.avatarAlt ? String(item.fields.avatarAlt) : undefined,
-        featuredQuote: item.fields.featuredQuote ? String(item.fields.featuredQuote) : undefined,
-        seoTitle: item.fields.seoTitle ? String(item.fields.seoTitle) : undefined,
-        seoDescription: item.fields.seoDescription ? String(item.fields.seoDescription) : undefined,
-        active: item.fields.active === undefined ? true : Boolean(item.fields.active),
-      }));
-    }
+    return requireContentfulItems("instructorProfile", res).map((item) => ({
+      id: String(item.sys.id),
+      slug: requireStringField("instructorProfile", item, "slug"),
+      name: requireStringField("instructorProfile", item, "name"),
+      headline: optionalStringField(item.fields, "headline"),
+      bio: requireStringField("instructorProfile", item, "bio"),
+      credentials: parseStringArray(item.fields.credentials),
+      specialties: parseStringArray(item.fields.specialties),
+      avatarImageUrl: optionalStringField(item.fields, "avatarImageUrl"),
+      avatarAlt: optionalStringField(item.fields, "avatarAlt"),
+      featuredQuote: optionalStringField(item.fields, "featuredQuote"),
+      seoTitle: optionalStringField(item.fields, "seoTitle"),
+      seoDescription: optionalStringField(item.fields, "seoDescription"),
+      active: item.fields.active === undefined ? true : Boolean(item.fields.active),
+    }));
   }
 
   return [
@@ -748,7 +781,7 @@ export async function getClassDefinitionBySlug(
 
 export async function getScheduleByDayContent(): Promise<ScheduleDay[]> {
   // Backend schedule instances are source of truth. In this codebase that data is local mock.
-  if (allowsLocalFallback()) {
+  if (!prefersContentfulSource()) {
     return getLocalScheduleByDay();
   }
 
@@ -761,30 +794,28 @@ export async function getRetreatTemplates(): Promise<RetreatTemplateContent[]> {
       limit: 200,
       include: 1,
     });
-    if (res?.items?.length) {
-      return res.items.map((item) => ({
-        id: String(item.sys.id),
-        slug: String(item.fields.slug || item.sys.id),
-        title: String(item.fields.title || "Untitled retreat"),
-        subtitle: String(item.fields.subtitle || ""),
-        shortDescription: String(item.fields.shortDescription || ""),
-        fullDescription: String(item.fields.fullDescription || ""),
-        suitableFor: parseStringArray(item.fields.suitableFor),
-        included: parseStringArray(item.fields.included),
-        notIncluded: parseStringArray(item.fields.notIncluded),
-        seoTitle: item.fields.seoTitle ? String(item.fields.seoTitle) : undefined,
-        seoDescription: item.fields.seoDescription ? String(item.fields.seoDescription) : undefined,
-        venueId:
-          item.fields.venue &&
-          typeof item.fields.venue === "object" &&
-          item.fields.venue !== null &&
-          "sys" in item.fields.venue
-            ? String((item.fields.venue as { sys?: { id?: string } }).sys?.id || "")
-            : undefined,
-        // Backward compatibility for old local/content entries while migrating.
-        venueSlug: item.fields.venueSlug ? String(item.fields.venueSlug) : undefined,
-      }));
-    }
+    return requireContentfulItems("retreatTemplate", res).map((item) => ({
+      id: String(item.sys.id),
+      slug: requireStringField("retreatTemplate", item, "slug"),
+      title: requireStringField("retreatTemplate", item, "title"),
+      subtitle: requireStringField("retreatTemplate", item, "subtitle"),
+      shortDescription: requireStringField("retreatTemplate", item, "shortDescription"),
+      fullDescription: requireStringField("retreatTemplate", item, "fullDescription"),
+      suitableFor: parseStringArray(item.fields.suitableFor),
+      included: parseStringArray(item.fields.included),
+      notIncluded: parseStringArray(item.fields.notIncluded),
+      seoTitle: optionalStringField(item.fields, "seoTitle"),
+      seoDescription: optionalStringField(item.fields, "seoDescription"),
+      venueId:
+        item.fields.venue &&
+        typeof item.fields.venue === "object" &&
+        item.fields.venue !== null &&
+        "sys" in item.fields.venue
+          ? String((item.fields.venue as { sys?: { id?: string } }).sys?.id || "")
+          : undefined,
+      // Backward compatibility for old local/content entries while migrating.
+      venueSlug: optionalStringField(item.fields, "venueSlug"),
+    }));
   }
 
   return [];

@@ -1,4 +1,4 @@
-export type ContentSource = "local" | "hybrid" | "contentful";
+export type ContentSource = "local" | "contentful";
 
 export interface SeoContent {
   title: string;

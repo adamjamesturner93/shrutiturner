@@ -12,7 +12,6 @@ import {
   Dumbbell,
   GraduationCap,
   Heart,
-  MessageCircle,
   Shield,
   Sparkles,
   User,
@@ -37,8 +36,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { submitNewsletterSignup } from "@/lib/newsletter-signup";
 import { useNewsletterSignupCopy } from "@/lib/use-newsletter-signup-copy";
-import { blogPosts } from "@/data/blog-data";
-import { homepageTestimonials, publicProofItems, servicePathCards } from "@/data/public-refresh";
+import { publicProofItems, servicePathCards } from "@/data/public-refresh";
+import type { BlogPostContent, TestimonialContent } from "@/lib/content";
 
 const serviceIcons = {
   heart: Heart,
@@ -47,9 +46,13 @@ const serviceIcons = {
   sparkles: Sparkles,
 } as const;
 
-export function HomePage() {
+interface HomePageProps {
+  recentPosts: BlogPostContent[];
+  testimonials: TestimonialContent[];
+}
+
+export function HomePage({ recentPosts, testimonials }: HomePageProps) {
   const searchParams = useSearchParams();
-  const recentPosts = blogPosts.slice(0, 3);
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterFirstName, setNewsletterFirstName] = useState("");
   const [newsletterConsent, setNewsletterConsent] = useState(false);
@@ -377,52 +380,47 @@ export function HomePage() {
         </div>
       </MarketingSection>
 
-      <MarketingSection className="section-wash">
-        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-          <div>
+      {testimonials.length > 0 ? (
+        <MarketingSection className="section-wash">
+          <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
             <SectionHeading
               eyebrow="Client Voice"
               title="What people say when the coaching finally fits."
               description="The best response is not that classes feel easy. It is that they feel possible, specific, and worth coming back to."
             />
-            <div className="text-brand-dark mt-8 flex items-center gap-3 text-sm">
-              <MessageCircle className="h-4 w-4" />
-              Testimonials below use approved representative phrasing and should be replaced with
-              final client-approved quotes when available.
-            </div>
-          </div>
-          <div className="grid gap-5">
-            {homepageTestimonials.map((testimonial, index) => (
-              <blockquote
-                key={testimonial.quote}
-                className={`rounded-[1.65rem] border p-7 shadow-[0_18px_45px_rgba(46,31,51,0.06)] ${
-                  index === 1 ? "bg-brand-dark text-brand-white" : "bg-background"
-                }`}
-              >
-                <p className="text-xl leading-relaxed">{testimonial.quote}</p>
-                <footer
-                  className={`mt-5 text-xs tracking-[0.18em] uppercase ${
-                    index === 1 ? "text-brand-accent-light" : "text-brand-accent"
+            <div className="grid gap-5">
+              {testimonials.map((testimonial, index) => (
+                <blockquote
+                  key={testimonial.id}
+                  className={`rounded-[1.65rem] border p-7 shadow-[0_18px_45px_rgba(46,31,51,0.06)] ${
+                    index === 1 ? "bg-brand-dark text-brand-white" : "bg-background"
                   }`}
                 >
-                  {testimonial.attribution}
-                </footer>
-              </blockquote>
-            ))}
+                  <p className="text-xl leading-relaxed">{testimonial.quote}</p>
+                  <footer
+                    className={`mt-5 text-xs tracking-[0.18em] uppercase ${
+                      index === 1 ? "text-brand-accent-light" : "text-brand-accent"
+                    }`}
+                  >
+                    {[testimonial.authorName, testimonial.authorCondition]
+                      .filter(Boolean)
+                      .join(" - ")}
+                  </footer>
+                </blockquote>
+              ))}
+            </div>
           </div>
-        </div>
-      </MarketingSection>
+        </MarketingSection>
+      ) : null}
 
       <MarketingSection className="section-divider">
-        <div className="grid gap-10 lg:grid-cols-[0.84fr_1.16fr] lg:items-start">
-          <div>
-            <SectionHeading
-              eyebrow="Learn With Me"
-              title="Resources for people who like understanding the why."
-              description="If you are the kind of person who reads before they buy, start here. The writing is part of the offer, not an afterthought."
-            />
-          </div>
-          <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
+        <div className="space-y-10">
+          <SectionHeading
+            eyebrow="Learn With Me"
+            title="Resources for people who like understanding the why."
+            description="If you are the kind of person who reads before they buy, start here. The writing is part of the offer, not an afterthought."
+          />
+          <div className="grid gap-5 md:grid-cols-3">
             {recentPosts.map((post) => (
               <article
                 key={post.id}
@@ -431,7 +429,7 @@ export function HomePage() {
                 <p className="text-brand-accent text-xs tracking-[0.18em] uppercase">
                   {post.tags[0] || "Article"}
                 </p>
-                <h3 className="mt-4 text-[1.7rem] leading-[1.1] tracking-[-0.02em]">
+                <h3 className="mt-4 text-[clamp(1.35rem,2vw,1.9rem)] leading-tight [overflow-wrap:anywhere]">
                   {post.title}
                 </h3>
                 <p className="text-muted-foreground mt-4 flex-1 text-sm leading-relaxed">

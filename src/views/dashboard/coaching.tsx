@@ -6,6 +6,7 @@ import {
   ArrowRight,
   ClipboardList,
   Compass,
+  CreditCard,
   ExternalLink,
   MessageCircle,
   ShieldCheck,
@@ -75,6 +76,7 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
   const [data, setData] = useState<CoachingDashboardDto | null>(initialData || null);
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState("");
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   useEffect(() => {
     if (initialData) return;
@@ -113,6 +115,16 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
       };
     }
     if (data.state === "application_pending" && data.application) {
+      if (data.application.status === "approved") {
+        return {
+          title: "Application approved",
+          body: "Complete payment to open your coaching client profile and start onboarding.",
+          primaryHref: "",
+          primaryLabel: "Start Coaching Payment",
+          secondaryHref: "/contact",
+          secondaryLabel: "Ask a Question",
+        };
+      }
       return {
         title: "Application in review",
         body: "Your application is in the queue. You’ll hear back personally within 48 hours.",
@@ -131,6 +143,32 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
       secondaryLabel: "Contact Shruti",
     };
   }, [data]);
+
+  const startCoachingCheckout = async () => {
+    if (!data?.application?.id) return;
+    setCheckoutLoading(true);
+    setError("");
+    try {
+      const response = await fetch("/api/me/coaching/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ applicationId: data.application.id }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        checkoutUrl?: string;
+        message?: string;
+      } | null;
+      if (!response.ok || !payload?.checkoutUrl) {
+        throw new Error(payload?.message || "Failed to start coaching payment.");
+      }
+      window.location.href = payload.checkoutUrl;
+    } catch (checkoutError) {
+      setError(
+        checkoutError instanceof Error ? checkoutError.message : "Failed to start coaching payment."
+      );
+      setCheckoutLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -228,6 +266,11 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
                     {nextAction.primaryLabel}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
+                </Button>
+              ) : data.application?.status === "approved" ? (
+                <Button disabled={checkoutLoading} onClick={() => void startCoachingCheckout()}>
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  {checkoutLoading ? "Opening payment..." : nextAction?.primaryLabel}
                 </Button>
               ) : null}
             </div>

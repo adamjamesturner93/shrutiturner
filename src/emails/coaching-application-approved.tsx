@@ -1,0 +1,44 @@
+import { Section, Text, Link } from "@react-email/components";
+import { EmailLayout } from "./components/email-layout";
+import { bodyTextStyle, headingStyle, mutedTextStyle, buttonStyle, colors } from "./styles";
+
+interface CoachingApplicationApprovedEmailProps {
+  firstName: string;
+  tierLabel: string;
+  dashboardUrl: string;
+}
+
+export default function CoachingApplicationApprovedEmail({
+  firstName,
+  tierLabel,
+  dashboardUrl,
+}: CoachingApplicationApprovedEmailProps) {
+  return (
+    <EmailLayout preview="Your coaching application has been approved">
+      <Text style={headingStyle}>Your application is approved</Text>
+      <Text style={bodyTextStyle}>Hi {firstName},</Text>
+      <Text style={bodyTextStyle}>
+        Your application for {tierLabel} has been reviewed and approved. The next step is to sign in
+        to your Private Studio and complete the coaching payment.
+      </Text>
+      <Section
+        style={{
+          backgroundColor: colors.secondaryBg,
+          borderRadius: "8px",
+          padding: "24px",
+          margin: "20px 0",
+        }}
+      >
+        <Text style={bodyTextStyle}>What happens after payment:</Text>
+        <Text style={mutedTextStyle}>1. Your coaching client profile is opened.</Text>
+        <Text style={mutedTextStyle}>2. Shruti sets up the agreed Everfit support.</Text>
+        <Text style={mutedTextStyle}>3. Your onboarding status appears in your dashboard.</Text>
+      </Section>
+      <Section style={{ textAlign: "center" }}>
+        <Link href={dashboardUrl} style={buttonStyle}>
+          Continue to coaching dashboard
+        </Link>
+      </Section>
+    </EmailLayout>
+  );
+}

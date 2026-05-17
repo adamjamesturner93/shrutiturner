@@ -14,7 +14,7 @@ import {
 import { SEO } from "@/components/seo";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth-context";
-import { getPricingCoachingRows, getPricingProgrammeCards } from "@/lib/billing/pricing-page-model";
+import { getPricingCoachingRows } from "@/lib/billing/pricing-page-model";
 import type { PublicPricingDto } from "@/lib/api/types";
 import type { FaqItemContent } from "@/lib/content/types";
 
@@ -74,7 +74,6 @@ export function PricingPage({ faqs }: PricingPageProps) {
   const { isAuthenticated } = useAuth();
   const [pricing, setPricing] = useState<PublicPricingDto | null>(null);
   const coachingRows = useMemo(() => getPricingCoachingRows(), []);
-  const programmeCards = useMemo(() => getPricingProgrammeCards(), []);
 
   const activeFaqs = useMemo(
     () =>
@@ -568,59 +567,6 @@ export function PricingPage({ faqs }: PricingPageProps) {
               </tbody>
             </table>
           </div>
-        </div>
-      </MarketingSection>
-
-      <MarketingSection className="section-divider" contentClassName="max-w-7xl">
-        <SectionHeading
-          eyebrow="Small Group Programmes"
-          title="Focused programme blocks"
-          description="Small-group programmes give you a fixed cohort, live feedback, and a clearer progression when weekly classes are not quite enough."
-          align="center"
-        />
-
-        <div className="mt-12 grid gap-5 lg:grid-cols-3">
-          {programmeCards.map((programme) => (
-            <article
-              key={programme.id}
-              className="border-brand-dark/10 bg-background flex flex-col rounded-[1.75rem] border p-7 shadow-[0_20px_50px_rgba(46,31,51,0.06)]"
-            >
-              <div className="flex flex-wrap items-center gap-2 text-xs tracking-[0.16em] uppercase">
-                <span className="bg-brand-accent/8 text-brand-accent rounded-full px-3 py-1">
-                  {programme.durationLabel}
-                </span>
-                <span className="bg-brand-dark/6 text-brand-dark rounded-full px-3 py-1">
-                  {programme.sessionsPerWeek} sessions/week
-                </span>
-              </div>
-              <h3 className="mt-5 text-3xl leading-tight">{programme.title}</h3>
-              <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-                {programme.summary}
-              </p>
-              <div className="mt-6">
-                <p className="text-4xl" aria-label={`${programme.priceLabel} per programme`}>
-                  {programme.priceLabel}
-                </p>
-                <p className="text-muted-foreground mt-2 text-sm">
-                  Per programme, cohort capped at {programme.cohortSize}
-                </p>
-              </div>
-              <ul className="mt-7 flex-1 space-y-3">
-                {programme.inclusions.map((inclusion) => (
-                  <li key={inclusion} className="flex items-start gap-3 text-sm">
-                    <Check className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
-                    <span className="text-muted-foreground">{inclusion}</span>
-                  </li>
-                ))}
-              </ul>
-              <Button asChild size="lg" variant="outline" className="mt-8 w-full">
-                <Link href={programme.ctaHref}>
-                  View programme
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </article>
-          ))}
         </div>
       </MarketingSection>
 

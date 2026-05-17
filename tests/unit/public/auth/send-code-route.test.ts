@@ -84,7 +84,7 @@ describe("POST /api/auth/send-code", () => {
     });
   });
 
-  it("rejects unknown accounts", async () => {
+  it("issues a signup code when no account exists yet", async () => {
     userFindUniqueMock.mockResolvedValue(null);
 
     const response = await route.POST(
@@ -94,12 +94,24 @@ describe("POST /api/auth/send-code", () => {
       })
     );
 
-    expect(response.status).toBe(404);
+    expect(issueAuthChallengeMock).toHaveBeenCalledWith({
+      email: "reader@example.com",
+      userId: null,
+      purpose: "signup",
+      redirectTo: null,
+      ip: "",
+      metadata: {
+        source: "passwordless_signup",
+      },
+    });
+    expect(sendAuthCodeEmailMock).toHaveBeenCalledWith("reader@example.com", "123456", 10);
+    expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
-      success: false,
-      error: {
-        code: "NOT_FOUND",
-        message: "No account was found for that email.",
+      success: true,
+      data: {
+        sent: true,
+        expiresAt: "2026-04-19T12:00:00.000Z",
+        retryAfterSeconds: 0,
       },
     });
   });

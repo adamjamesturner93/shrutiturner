@@ -1,5 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { isKnownBlogPostSlug } from "@/lib/blog/post-validation";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/content/config", () => ({
+  getContentSource: () => "local",
+}));
+
+const { isKnownBlogPostSlug } = await import("@/lib/blog/post-validation");
 
 describe("blog post validation integration", () => {
   it("recognizes known local blog post slugs", async () => {

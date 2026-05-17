@@ -6,6 +6,7 @@ import { buildAbsoluteUrl } from "@/lib/app-url";
 import { getNotificationInbox, sendPostmarkReactEmail } from "@/lib/postmark/client";
 import { CURRENT_COACHING_AGREEMENT_VERSION } from "@/data/legal-documents";
 import { coachingTiers, type CoachingOfferKey } from "@/data/marketing";
+import CoachingApplicationApprovedEmail from "@/emails/coaching-application-approved";
 import CoachingApplicationConfirmationEmail from "@/emails/coaching-application-confirmation";
 import CoachingApplicationNotificationEmail from "@/emails/coaching-application-notification";
 
@@ -311,6 +312,7 @@ export async function updateAdminCoachingApplication(input: {
   if (!existing) throw new Error("NOT_FOUND");
 
   const nextStatus = input.status || existing.status;
+  const wasApproved = existing.status === "approved" || existing.status === "converted";
   const updated = await db.coachingApplication.update({
     where: { id: input.id },
     data: {
@@ -321,6 +323,31 @@ export async function updateAdminCoachingApplication(input: {
       convertedAt: input.convertToClient ? new Date() : undefined,
     },
   });
+
+  if (nextStatus === "approved" && !wasApproved) {
+    const offerKey = getOfferKeyFromAnswers(existing.answersJson as CoachingApplicationAnswerMap);
+    const tierLabel = offerKeyToLabel(offerKey, existing.tier);
+    const dashboardUrl = buildAbsoluteUrl("/dashboard/coaching");
+    await sendPostmarkReactEmail({
+      to: existing.applicantEmail,
+      subject: "Your coaching application has been approved",
+      react: CoachingApplicationApprovedEmail({
+        firstName: existing.applicantFirstName,
+        tierLabel,
+        dashboardUrl,
+      }),
+      textBody: `Hi ${existing.applicantFirstName},\n\nYour application for ${tierLabel} has been approved. Sign in to your Private Studio to complete payment and start onboarding.\n\nContinue: ${dashboardUrl}`,
+      tag: "coaching-application-approved",
+      templateKey: "coaching-application-approved",
+      metadata: {
+        applicationId: existing.id,
+        tier: existing.tier,
+      },
+      dispatchMode: "immediate_best_effort",
+    }).catch((error) => {
+      console.error("[coaching] failed to send approval email", error);
+    });
+  }
 
   if (input.convertToClient && existing.userId) {
     const offerKey = getOfferKeyFromAnswers(existing.answersJson as CoachingApplicationAnswerMap);

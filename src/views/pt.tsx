@@ -160,10 +160,6 @@ export function PTPage() {
               <Link href="/classes" className="text-primary underline">
                 group classes
               </Link>{" "}
-              or{" "}
-              <Link href="/classes/small-groups" className="text-primary underline">
-                small group programs
-              </Link>{" "}
               first. You can always upgrade later.
             </p>
           </div>

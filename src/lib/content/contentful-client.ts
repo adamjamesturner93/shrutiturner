@@ -57,12 +57,16 @@ async function cdaFetch<T>(
 ) {
   const cfg = getContentfulConfig();
   if (!cfg) {
-    return null;
+    throw new Error(
+      "CONTENTFUL_CONFIG_MISSING: CONTENTFUL_SPACE_ID and CONTENTFUL_DELIVERY_TOKEN are required"
+    );
   }
 
   const token = options.preview ? cfg.previewToken : cfg.deliveryToken;
   if (!token) {
-    return null;
+    throw new Error(
+      options.preview ? "CONTENTFUL_PREVIEW_TOKEN_MISSING" : "CONTENTFUL_DELIVERY_TOKEN_MISSING"
+    );
   }
 
   const qs = toQueryString(query);
@@ -90,14 +94,15 @@ async function cdaFetch<T>(
             },
           }),
     });
-  } catch {
-    return null;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown request failure";
+    throw new Error(`CONTENTFUL_REQUEST_FAILED: ${message}`);
   } finally {
     clearTimeout(timeout);
   }
 
   if (!res.ok) {
-    return null;
+    throw new Error(`CONTENTFUL_REQUEST_FAILED: ${res.status} ${res.statusText}`.trim());
   }
 
   return (await res.json()) as T;

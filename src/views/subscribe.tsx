@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   ArrowRight,
-  BookOpen,
   Calendar,
   Check,
   Download,
@@ -50,13 +49,6 @@ const LINKS = [
     subtitle: "Application-led support from £70/month",
     icon: Dumbbell,
     colorClass: "text-brand-plum bg-brand-plum/10",
-  },
-  {
-    href: "/classes/small-groups",
-    title: "Programmes and Themed Weeks",
-    subtitle: "Focused cohorts and structured progression",
-    icon: BookOpen,
-    colorClass: "text-bronze-text bg-bronze-text/10",
   },
   {
     href: "/blog",

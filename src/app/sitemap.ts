@@ -1,11 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getBaseSiteUrl } from "@/lib/app-url";
-import {
-  getBlogPosts,
-  getClassDefinitions,
-  getRetreatsCombined,
-  getSmallGroupTemplates,
-} from "@/lib/content";
+import { getBlogPosts, getClassDefinitions, getRetreatsCombined } from "@/lib/content";
 import { HOLDING_SITEMAP_PATHS, isHoldingStage } from "@/lib/site-stage";
 
 const STATIC_ROUTES = [
@@ -13,7 +8,6 @@ const STATIC_ROUTES = [
   "/about",
   "/blog",
   "/classes",
-  "/classes/small-groups",
   "/classes/strength",
   "/classes/yoga",
   "/coaching",
@@ -52,10 +46,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     url: toAbsoluteUrl(path),
   }));
 
-  const [postsResult, classesResult, smallGroupsResult, retreatsResult] = await Promise.allSettled([
+  const [postsResult, classesResult, retreatsResult] = await Promise.allSettled([
     getBlogPosts(),
     getClassDefinitions(),
-    getSmallGroupTemplates(),
     getRetreatsCombined(),
   ]);
 
@@ -74,13 +67,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }))
       : [];
 
-  const smallGroupEntries: MetadataRoute.Sitemap =
-    smallGroupsResult.status === "fulfilled"
-      ? smallGroupsResult.value.map((programme) => ({
-          url: toAbsoluteUrl(`/classes/small-groups/${programme.slug}`),
-        }))
-      : [];
-
   const retreatEntries: MetadataRoute.Sitemap =
     retreatsResult.status === "fulfilled"
       ? retreatsResult.value.map((retreat) => ({
@@ -88,11 +74,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }))
       : [];
 
-  return dedupeEntries([
-    ...staticEntries,
-    ...postEntries,
-    ...classEntries,
-    ...smallGroupEntries,
-    ...retreatEntries,
-  ]);
+  return dedupeEntries([...staticEntries, ...postEntries, ...classEntries, ...retreatEntries]);
 }

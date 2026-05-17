@@ -46,7 +46,7 @@ export function CoachingPage() {
     <Layout>
       <SEO
         title="Coaching - Shruti Turner"
-        description="Three tiers of personalised support for complex bodies, from tailored programming to high-touch 1:1 coaching."
+        description="Four tiers of personalised support for complex bodies, from tailored programming to high-touch 1:1 coaching."
         keywords="coaching chronic illness, personal training complex bodies, everfit coaching, training plan chronic pain"
         canonicalUrl="https://shrutiturner.co.uk/coaching"
       />
@@ -63,11 +63,6 @@ export function CoachingPage() {
         description="Every coaching place starts with an application so support, safety, boundaries, payment, and Everfit setup match the person in front of us."
         primaryCta={{ href: "#tiers", label: "Explore Coaching Tiers" }}
         secondaryCta={{ href: "/coaching/apply", label: "Apply Now" }}
-        stats={[
-          { value: "4", label: "Application-led offers" },
-          { value: "Everfit", label: "Training delivery and check-ins" },
-          { value: "No", label: "Instant coaching checkout" },
-        ]}
         metrics={[
           {
             label: "Best For",
@@ -342,8 +337,8 @@ export function CoachingPage() {
         </div>
       </MarketingSection>
 
-      <MarketingSection className="section-divider">
-        <div className="grid gap-12 lg:grid-cols-2">
+      <MarketingSection className="section-divider" contentClassName="max-w-7xl">
+        <div className="space-y-16">
           <div>
             <SectionHeading
               eyebrow="Application-Led Journey"
@@ -354,6 +349,7 @@ export function CoachingPage() {
               <JourneySection steps={personalProgrammeJourney} />
             </div>
           </div>
+
           <div>
             <SectionHeading
               eyebrow="Application Journey"

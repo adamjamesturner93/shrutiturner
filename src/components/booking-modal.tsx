@@ -10,6 +10,12 @@ import {
   isSessionUnavailableForBooking,
   resolveSessionStart,
 } from "@/lib/classes/session-bookability";
+import {
+  BOOKING_CHECKOUT_INTENT_STORAGE_KEY,
+  buildBookingCheckoutReturnPath,
+  createBookingCheckoutIntent,
+  parseBookingCheckoutIntent,
+} from "@/lib/classes/booking-checkout-intent";
 
 type CheckoutResult = {
   checkoutUrl: string;
@@ -24,7 +30,8 @@ function generateICS(
   day: string,
   time: string,
   durationMin: number,
-  startsAtUtc?: string
+  startsAtUtc?: string,
+  joinUrl = "https://shrutiturner.co.uk/dashboard/schedule"
 ): string {
   const startDate = resolveSessionStart({ startsAtUtc, day, time }) ?? new Date();
   const endDate = new Date(startDate.getTime() + durationMin * 60 * 1000);
@@ -42,8 +49,9 @@ function generateICS(
     `DTSTART:${fmt(startDate)}`,
     `DTEND:${fmt(endDate)}`,
     `SUMMARY:${title} — Shruti Turner`,
-    "DESCRIPTION:Join from your Private Studio: https://shrutiturner.co.uk/dashboard",
-    "URL:https://shrutiturner.co.uk/dashboard",
+    `DESCRIPTION:Join from your Private Studio: ${joinUrl}`,
+    "LOCATION:Private Studio (online)",
+    `URL:${joinUrl}`,
     "STATUS:CONFIRMED",
     `UID:${Date.now()}@shrutiturner.com`,
     "END:VEVENT",
@@ -56,10 +64,11 @@ function downloadICS(
   day: string,
   time: string,
   durationStr: string,
-  startsAtUtc?: string
+  startsAtUtc?: string,
+  joinUrl?: string
 ) {
   const durationMin = parseInt(durationStr) || 60;
-  const ics = generateICS(title, day, time, durationMin, startsAtUtc);
+  const ics = generateICS(title, day, time, durationMin, startsAtUtc, joinUrl);
   const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -80,6 +89,7 @@ interface BookingConfirmationProps {
   duration?: string;
   creditUsed: CreditItem;
   startsAtUtc?: string;
+  joinUrl?: string;
   onClose: () => void;
 }
 
@@ -90,6 +100,7 @@ export function BookingConfirmation({
   duration = "60 min",
   creditUsed,
   startsAtUtc,
+  joinUrl,
   onClose,
 }: BookingConfirmationProps) {
   const { fmtTimeStr } = useI18n();
@@ -120,7 +131,7 @@ export function BookingConfirmation({
           <Button
             size="lg"
             className="w-full"
-            onClick={() => downloadICS(className, day, time, duration, startsAtUtc)}
+            onClick={() => downloadICS(className, day, time, duration, startsAtUtc, joinUrl)}
           >
             <Download className="mr-2 h-4 w-4" />
             Download Calendar Event (.ics)
@@ -198,23 +209,21 @@ export function PurchaseModal({
     return <span>£{basePrice}</span>;
   };
 
-  const buildReturnPath = (checkoutStatus: "success" | "cancelled") => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("checkout", checkoutStatus);
-    if (checkoutStatus === "success") {
-      params.set("autobook", "1");
-      params.set("autobookClass", classSlug);
-      if (sessionId) {
-        params.set("autobookSessionId", sessionId);
-      }
-    } else {
-      params.delete("autobook");
-      params.delete("autobookClass");
-      params.delete("autobookSessionId");
-    }
+  const buildReturnPath = (checkoutStatus: "success" | "cancelled") =>
+    buildBookingCheckoutReturnPath({
+      pathname,
+      search: searchParams.toString(),
+      classSlug,
+      sessionId,
+      checkoutStatus,
+    });
 
-    const query = params.toString();
-    return query ? `${pathname}?${query}` : pathname;
+  const saveCheckoutIntent = () => {
+    const returnPath = buildReturnPath("success");
+    window.localStorage.setItem(
+      BOOKING_CHECKOUT_INTENT_STORAGE_KEY,
+      JSON.stringify(createBookingCheckoutIntent({ classSlug, sessionId, returnPath }))
+    );
   };
 
   const startCheckout = async (option: "dropin" | "3pack" | "10pack" | "membership") => {
@@ -223,6 +232,7 @@ export function PurchaseModal({
 
     try {
       if (option === "membership") {
+        saveCheckoutIntent();
         window.location.href = "/dashboard/membership?subscribe=1&interval=monthly&source=booking";
         return;
       }
@@ -233,6 +243,8 @@ export function PurchaseModal({
           bundleSize: option === "dropin" ? 1 : option === "3pack" ? 3 : 10,
           successPath: buildReturnPath("success"),
           cancelPath: buildReturnPath("cancelled"),
+          bookingClassSlug: classSlug,
+          bookingSessionId: sessionId,
         },
       };
 
@@ -252,6 +264,7 @@ export function PurchaseModal({
         ? payload.data
         : (payload as CheckoutResult);
       if (!result.checkoutUrl) throw new Error("Could not start checkout.");
+      saveCheckoutIntent();
       onSuccess();
       window.location.href = result.checkoutUrl;
     } catch (error) {
@@ -510,6 +523,7 @@ export function BookClassButton({
   const [showPurchase, setShowPurchase] = useState(false);
   const [confirmation, setConfirmation] = useState<{ creditUsed: CreditItem } | null>(null);
   const [bookingState, setBookingState] = useState<"idle" | "loading" | "leaving_waitlist">("idle");
+  const [autoBookingMessage, setAutoBookingMessage] = useState("");
   const [currentWaitlistPosition, setCurrentWaitlistPosition] = useState<number | null>(
     waitlistPosition ?? null
   );
@@ -524,6 +538,12 @@ export function BookClassButton({
 
   const effectiveSessionId = sessionId || resolvedSessionId || undefined;
   const booked = bookedOverride || isBookedProp;
+  const classJoinUrl =
+    typeof window === "undefined"
+      ? "https://shrutiturner.co.uk/dashboard/schedule"
+      : `${window.location.origin}/dashboard/classes/${encodeURIComponent(classSlug)}/join${
+          effectiveSessionId ? `?sessionId=${encodeURIComponent(effectiveSessionId)}` : ""
+        }`;
   const cutoffMinutes = emptyClassAutoCancelWindowMinutes ?? 180;
   const isCancelledDueToLowEnrollment = isSessionUnavailableForBooking({
     attendeeCount,
@@ -551,6 +571,7 @@ export function BookClassButton({
     params.delete("autobookClass");
     params.delete("autobookSessionId");
     const query = params.toString();
+    window.localStorage.removeItem(BOOKING_CHECKOUT_INTENT_STORAGE_KEY);
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
 
@@ -689,17 +710,24 @@ export function BookClassButton({
 
   useEffect(() => {
     const checkoutStatus = searchParams.get("checkout");
-    const shouldAutoBook = searchParams.get("autobook") === "1";
-    const targetClassSlug = searchParams.get("autobookClass");
-    const targetSessionId = searchParams.get("autobookSessionId") || undefined;
+    const storedIntent = parseBookingCheckoutIntent(
+      window.localStorage.getItem(BOOKING_CHECKOUT_INTENT_STORAGE_KEY)
+    );
+    const urlShouldAutoBook = searchParams.get("autobook") === "1";
+    const urlClassSlug = searchParams.get("autobookClass");
+    const urlSessionId = searchParams.get("autobookSessionId") || undefined;
+    const targetClassSlug = urlShouldAutoBook ? urlClassSlug : storedIntent?.classSlug;
+    const targetSessionId = urlShouldAutoBook ? urlSessionId : storedIntent?.sessionId;
 
     if (
       !isAuthenticated ||
       autoBookingAttemptedRef.current ||
       checkoutStatus !== "success" ||
-      !shouldAutoBook ||
       targetClassSlug !== classSlug
     ) {
+      if (checkoutStatus === "cancelled" && targetClassSlug === classSlug) {
+        clearCheckoutIntent();
+      }
       return;
     }
 
@@ -708,14 +736,26 @@ export function BookClassButton({
     }
 
     autoBookingAttemptedRef.current = true;
+    setAutoBookingMessage(
+      "Payment complete. Booking this class as soon as your credits are ready..."
+    );
 
     void (async () => {
-      for (let attempt = 0; attempt < 4; attempt += 1) {
+      let finalResult:
+        | "booked"
+        | "waitlisted"
+        | "limit_reached"
+        | "missing_session"
+        | "failed"
+        | null = null;
+
+      for (let attempt = 0; attempt < 20; attempt += 1) {
         await refreshMembershipState();
         const result = await attemptBooking({
           preferredSessionId: targetSessionId,
           openPurchaseModalOnLimit: false,
         });
+        finalResult = result;
 
         if (result === "booked" || result === "waitlisted" || result === "failed") {
           break;
@@ -725,10 +765,18 @@ export function BookClassButton({
           break;
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
       }
 
-      clearCheckoutIntent();
+      if (finalResult === "booked" || finalResult === "waitlisted" || finalResult === "failed") {
+        setAutoBookingMessage("");
+        clearCheckoutIntent();
+        return;
+      }
+
+      setAutoBookingMessage(
+        "This class is still saved. Credits are not available on your account yet, so leave this page open or refresh once Stripe has finished updating the payment."
+      );
     })();
   }, [
     attemptBooking,
@@ -813,6 +861,10 @@ export function BookClassButton({
         <ArrowRight className="ml-2 h-4 w-4" />
       </Button>
 
+      {autoBookingMessage ? (
+        <p className="text-muted-foreground max-w-xs text-sm">{autoBookingMessage}</p>
+      ) : null}
+
       {showPurchase && (
         <PurchaseModal
           classSlug={classSlug}
@@ -833,6 +885,7 @@ export function BookClassButton({
           duration={duration}
           creditUsed={confirmation.creditUsed}
           startsAtUtc={startsAtUtc}
+          joinUrl={classJoinUrl}
           onClose={() => setConfirmation(null)}
         />
       )}

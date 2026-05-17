@@ -591,6 +591,7 @@ export async function bookClassSession(
         id: true,
         status: true,
         startsAtUtc: true,
+        classDefinitionSlug: true,
         titleSnapshot: true,
         durationMinutes: true,
         capacity: true,
@@ -720,7 +721,12 @@ export async function bookClassSession(
           result.session.startsAtUtc.toISOString().slice(0, 10),
           result.session.startsAtUtc.toISOString().slice(11, 16),
           result.session.startsAtUtc,
-          result.session.durationMinutes
+          result.session.durationMinutes,
+          undefined,
+          {
+            classSlug: result.session.classDefinitionSlug,
+            sessionId: result.session.id,
+          }
         );
       }
 

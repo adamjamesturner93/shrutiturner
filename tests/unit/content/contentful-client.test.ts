@@ -27,7 +27,7 @@ describe("contentful client", () => {
     process.env.CONTENTFUL_REQUEST_TIMEOUT_MS = originalEnv.CONTENTFUL_REQUEST_TIMEOUT_MS;
   });
 
-  it("returns null when the upstream request aborts", async () => {
+  it("throws when the upstream request aborts", async () => {
     const fetchMock = vi
       .fn()
       .mockRejectedValue(new DOMException("The operation was aborted.", "AbortError"));
@@ -35,7 +35,7 @@ describe("contentful client", () => {
 
     const { getEntries } = await import("@/lib/content/contentful-client");
 
-    await expect(getEntries("classDefinition")).resolves.toBeNull();
+    await expect(getEntries("classDefinition")).rejects.toThrow("CONTENTFUL_REQUEST_FAILED");
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -59,14 +59,16 @@ describe("contentful client", () => {
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer preview_123");
   });
 
-  it("returns null for preview reads when no preview token is configured", async () => {
+  it("throws for preview reads when no preview token is configured", async () => {
     process.env.CONTENTFUL_PREVIEW_TOKEN = "";
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
     const { getEntries } = await import("@/lib/content/contentful-client");
 
-    await expect(getEntries("blogPost", { limit: 1 }, { preview: true })).resolves.toBeNull();
+    await expect(getEntries("blogPost", { limit: 1 }, { preview: true })).rejects.toThrow(
+      "CONTENTFUL_PREVIEW_TOKEN_MISSING"
+    );
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

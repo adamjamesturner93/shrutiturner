@@ -18,6 +18,8 @@ export const POST = handleApiRoute(
       promotionCode?: string;
       successPath?: string;
       cancelPath?: string;
+      bookingClassSlug?: string;
+      bookingSessionId?: string;
     }>(request);
     const bundleSize = body.bundleSize;
     if (bundleSize !== 1 && bundleSize !== 3 && bundleSize !== 10) {
@@ -34,6 +36,12 @@ export const POST = handleApiRoute(
         {
           successPath: sanitizeRedirectPath(body.successPath),
           cancelPath: sanitizeRedirectPath(body.cancelPath),
+          bookingIntent: {
+            classSlug:
+              typeof body.bookingClassSlug === "string" ? body.bookingClassSlug : undefined,
+            sessionId:
+              typeof body.bookingSessionId === "string" ? body.bookingSessionId : undefined,
+          },
         }
       );
       return apiOk(result);

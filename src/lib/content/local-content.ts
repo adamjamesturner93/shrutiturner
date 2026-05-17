@@ -49,7 +49,7 @@ export const LOCAL_PAGE_CONTENT: Record<string, PageContent> = {
     seo: {
       title: "Coaching",
       description:
-        "Three tiers of personalised coaching and training support for complex bodies, from independent programming to high-touch 1:1 coaching.",
+        "Four tiers of personalised coaching and training support for complex bodies, from independent programming to high-touch 1:1 coaching.",
     },
   },
   "coaching-apply": { slug: "coaching-apply", seo: { title: "Apply for Coaching" } },

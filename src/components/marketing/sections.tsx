@@ -518,18 +518,16 @@ interface JourneySectionProps {
 
 export function JourneySection({ steps, className }: JourneySectionProps) {
   return (
-    <div className={cn("grid gap-5 md:grid-cols-2 2xl:grid-cols-4", className)}>
+    <div className={cn("grid gap-5 md:grid-cols-2 xl:grid-cols-4", className)}>
       {steps.map((step, index) => (
         <article
           key={step.title}
-          className="border-brand-dark/10 bg-background flex h-full flex-col rounded-[1.5rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]"
+          className="border-brand-dark/10 bg-background text-foreground flex h-full flex-col rounded-[1.5rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]"
         >
           <div className="text-brand-accent mb-5 text-xs tracking-[0.22em] uppercase">
             Step {index + 1}
           </div>
-          <h3 className="max-w-[12ch] text-[clamp(1.7rem,2vw,2.15rem)] leading-[1.08] tracking-[-0.02em]">
-            {step.title}
-          </h3>
+          <h3 className="text-[clamp(1.45rem,1.7vw,1.85rem)] leading-tight">{step.title}</h3>
           <p className="text-muted-foreground mt-4 flex-1 text-sm leading-relaxed">
             {step.description}
           </p>

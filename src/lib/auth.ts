@@ -57,7 +57,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: createAppAuthAdapter(),
   secret: env.AUTH_SECRET,
   session: {
-    strategy: "database",
+    strategy: "jwt",
     maxAge: SESSION_MAX_AGE_SECONDS,
     updateAge: SESSION_UPDATE_AGE_SECONDS,
   },
@@ -143,14 +143,37 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const user = await db.user.findUnique({ where: { email } });
-        if (!user || user.deletedAt) {
+        const existingUser = await db.user.findUnique({ where: { email } });
+        if (existingUser?.deletedAt) {
           void recordFailedLoginAttempt({
             email,
             ip: requestIp,
-            reason: "user_not_found_or_deleted",
+            reason: "user_deleted",
           });
           return null;
+        }
+
+        const user =
+          existingUser ||
+          (await db.user.create({
+            data: {
+              email,
+              role: isAdminEmail(email) ? "owner_admin" : "student",
+              emailVerified: new Date(),
+            },
+          }));
+
+        if (!existingUser) {
+          await recordUserLifecycleEvent({
+            eventType: "user_created",
+            userId: user.id,
+            actorUserId: user.id,
+            payload: {
+              source: "passwordless_signup",
+            },
+          }).catch((error) => {
+            console.error("[auth][credentials] failed to record user creation", error);
+          });
         }
 
         return {
@@ -163,6 +186,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = String(user.id || token.sub || "");
+        token.role = (user.role as UserRole | undefined) || "member";
+      }
+      return token;
+    },
     async signIn({ user, account }) {
       if (!user.email) return true;
       const shouldBeAdmin = isAdminEmail(user.email);
@@ -172,6 +202,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             where: { email: user.email },
             data: { role: "owner_admin" },
           });
+          user.role = "owner_admin";
         } catch (error) {
           console.error("[auth][signIn] failed to promote admin role", error);
         }
@@ -200,10 +231,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       });
       return true;
     },
-    async session({ session, user }) {
+    async session({ session, user, token }) {
       if (session.user) {
-        session.user.id = String(user.id || "");
-        session.user.role = (user.role as UserRole) || "member";
+        session.user.id = String(token?.id || token?.sub || user?.id || "");
+        session.user.role = (token?.role as UserRole | undefined) || "member";
       }
       return session;
     },

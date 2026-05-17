@@ -10,7 +10,6 @@ import {
   MessageCircle,
   Sparkles,
   User,
-  Users,
   type LucideIcon,
 } from "lucide-react";
 import { Layout } from "@/components/layout";
@@ -58,7 +57,6 @@ const HOW_FOUND_OPTIONS = [
 
 const serviceIcons: Record<(typeof servicePathCards)[number]["icon"], LucideIcon> = {
   heart: Heart,
-  users: Users,
   user: User,
   sparkles: Sparkles,
 };

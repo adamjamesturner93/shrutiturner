@@ -113,7 +113,7 @@ describe("auth send-code integration", () => {
     expect(sendAuthCodeEmailMock).toHaveBeenCalledWith(email, expect.stringMatching(/^\d{6}$/), 10);
   });
 
-  it("returns 404 when no account exists for the email", async () => {
+  it("creates a signup challenge when no account exists for the email", async () => {
     const email = makeEmail("missing");
 
     const response = await route.POST(
@@ -123,8 +123,21 @@ describe("auth send-code integration", () => {
       })
     );
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(200);
     const challenge = await db.authChallenge.findFirst({ where: { email } });
-    expect(challenge).toBeNull();
+    expect(challenge).toMatchObject({
+      email,
+      userId: null,
+      purpose: "signup",
+      consumedAt: null,
+      attemptCount: 0,
+      metadataJson: {
+        source: "passwordless_signup",
+      },
+    });
+
+    const user = await db.user.findUnique({ where: { email } });
+    expect(user).toBeNull();
+    expect(sendAuthCodeEmailMock).toHaveBeenCalledWith(email, expect.stringMatching(/^\d{6}$/), 10);
   });
 });

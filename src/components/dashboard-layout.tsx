@@ -9,7 +9,6 @@ import { IconHorizontal, IconOnly } from "./icon";
 import {
   LayoutDashboard,
   Calendar,
-  Users,
   Mountain,
   CreditCard,
   Gift,
@@ -21,7 +20,6 @@ import {
   Shield,
   ArrowRight,
   Compass,
-  PlayCircle,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { SEO } from "./seo";
@@ -41,9 +39,7 @@ type LegalGuardModalProps = {
 const NAV_ITEMS = [
   { path: "/dashboard", label: "Studio Lobby", icon: LayoutDashboard, exact: true },
   { path: "/dashboard/schedule", label: "Schedule", icon: Calendar },
-  { path: "/dashboard/replays", label: "Programme Replays", icon: PlayCircle },
   { path: "/dashboard/coaching", label: "Coaching", icon: Compass },
-  { path: "/dashboard/small-groups", label: "Small Group Programmes", icon: Users },
   { path: "/dashboard/retreats", label: "Retreats", icon: Mountain },
   { path: "/dashboard/membership", label: "Membership", icon: CreditCard, memberOnly: true },
   { path: "/dashboard/referrals", label: "Referrals", icon: Gift, memberOnly: true },

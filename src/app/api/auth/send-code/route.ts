@@ -6,7 +6,6 @@ import {
   apiOk,
   badRequest,
   handleApiRoute,
-  notFound,
   parseJsonBody,
   tooManyRequests,
   upstreamFailure,
@@ -46,16 +45,23 @@ export const POST = handleApiRoute(async ({ request, requestIp }) => {
     where: { email },
     select: { id: true, deletedAt: true },
   });
-  if (!user || user.deletedAt) {
-    throw notFound("No account was found for that email.");
+  if (user?.deletedAt) {
+    throw badRequest("This account has been deleted and cannot be reused.");
   }
 
   const issued = await issueAuthChallenge({
     email,
-    userId: user.id,
-    purpose: AuthChallengePurpose.login,
+    userId: user?.id || null,
+    purpose: user ? AuthChallengePurpose.login : AuthChallengePurpose.signup,
     redirectTo: body.redirectTo || null,
     ip: requestIp,
+    ...(user
+      ? {}
+      : {
+          metadata: {
+            source: "passwordless_signup",
+          },
+        }),
   });
 
   if (!issued.ok) {

@@ -1,5 +1,9 @@
 # Strength and Yoga Coaching
 
+## Codex
+
+codex resume 019e35b4-8489-7fd2-8b39-18fffb998ad1
+
 This is a native Next.js App Router project for Strength and Yoga Coaching.
 The original design source is available at https://www.figma.com/design/3UJRjmwzRyNyxaqLWpD8ff/Strength-and-Yoga-Coaching.
 
@@ -88,8 +92,7 @@ Prisma note:
 - Public marketing/SEO routes are wired through `src/lib/content`.
 - Content source strategy is controlled by `CONTENT_SOURCE`:
   - `local`: use local fallback data only.
-  - `hybrid`: Contentful first with local fallback.
-  - `contentful`: Contentful only for CMS-managed data.
+  - `contentful`: Contentful only for CMS-managed data. This is the default. Missing Contentful config, failed CDA requests, and missing required CMS entries fail the request/build instead of falling back to local data.
 - CMS/public content API routes are available under `src/app/api/content/*`.
 - Contentful webhook revalidation endpoint:
   - `POST /api/webhooks/contentful`

@@ -14,9 +14,15 @@ const membershipSubscriptionFindFirstMock = vi.fn();
 const membershipSubscriptionFindManyMock = vi.fn();
 const membershipSubscriptionCountMock = vi.fn();
 const membershipSubscriptionUpdateMock = vi.fn();
+const membershipSubscriptionCreateMock = vi.fn();
 const creditLedgerEntryFindFirstMock = vi.fn();
 const referralLedgerEntryFindFirstMock = vi.fn();
 const billingCatalogItemFindFirstMock = vi.fn();
+const coachingApplicationFindFirstMock = vi.fn();
+const coachingApplicationFindUniqueMock = vi.fn();
+const coachingApplicationUpdateMock = vi.fn();
+const coachingClientProfileUpsertMock = vi.fn();
+const dbTransactionMock = vi.fn();
 
 const stripeCustomerCreateMock = vi.fn();
 const stripeCheckoutSessionCreateMock = vi.fn();
@@ -26,6 +32,7 @@ const resolvePromotionCodeDiscountMock = vi.fn();
 const computeReferralDiscountPenceMock = vi.fn();
 const consumeReferralDiscountMock = vi.fn();
 const addCreditsMock = vi.fn();
+const bookClassSessionMock = vi.fn();
 const startOrSwitchMembershipMock = vi.fn();
 const qualifyReferralMock = vi.fn();
 const processGiftPurchaseCheckoutCompletedMock = vi.fn();
@@ -62,6 +69,7 @@ vi.mock("@/lib/db", () => ({
       findMany: membershipSubscriptionFindManyMock,
       count: membershipSubscriptionCountMock,
       update: membershipSubscriptionUpdateMock,
+      create: membershipSubscriptionCreateMock,
     },
     creditLedgerEntry: {
       findFirst: creditLedgerEntryFindFirstMock,
@@ -72,6 +80,15 @@ vi.mock("@/lib/db", () => ({
     billingCatalogItem: {
       findFirst: billingCatalogItemFindFirstMock,
     },
+    coachingApplication: {
+      findFirst: coachingApplicationFindFirstMock,
+      findUnique: coachingApplicationFindUniqueMock,
+      update: coachingApplicationUpdateMock,
+    },
+    coachingClientProfile: {
+      upsert: coachingClientProfileUpsertMock,
+    },
+    $transaction: dbTransactionMock,
   },
 }));
 
@@ -103,6 +120,10 @@ vi.mock("@/lib/referrals/referral-discount-service", () => ({
 
 vi.mock("@/lib/credits/credit-service", () => ({
   addCredits: addCreditsMock,
+}));
+
+vi.mock("@/lib/classes/booking-service", () => ({
+  bookClassSession: bookClassSessionMock,
 }));
 
 vi.mock("@/lib/membership/membership-service", () => ({
@@ -139,8 +160,11 @@ vi.mock("@/lib/billing/dunning-service", () => ({
   recoverMembershipDunningCase: recoverMembershipDunningCaseMock,
 }));
 
-const { createMembershipCheckoutSession, processStripeWebhookEvent } =
-  await import("@/lib/billing/billing-service");
+const {
+  createCoachingCheckoutSession,
+  createMembershipCheckoutSession,
+  processStripeWebhookEvent,
+} = await import("@/lib/billing/billing-service");
 
 function event(input: { id: string; type: string; object: Record<string, unknown> }) {
   return {
@@ -203,8 +227,35 @@ describe("billing-service Stripe integration", () => {
     qualifyReferralMock.mockResolvedValue(undefined);
     consumeReferralDiscountMock.mockResolvedValue(undefined);
     addCreditsMock.mockResolvedValue(undefined);
+    bookClassSessionMock.mockResolvedValue({ status: "booked", bookingId: "booking_123" });
     startOrSwitchMembershipMock.mockResolvedValue({ id: "membership_123" });
     membershipSubscriptionUpdateMock.mockResolvedValue({ id: "membership_123" });
+    membershipSubscriptionCreateMock.mockResolvedValue({ id: "membership_123" });
+    coachingApplicationFindFirstMock.mockResolvedValue({
+      id: "application_123",
+      userId: "user_123",
+      tier: "coaching",
+      status: "approved",
+      answersJson: { offerKey: "one_to_one_coaching" },
+      approvedAt: new Date("2026-05-01T10:00:00.000Z"),
+    });
+    coachingApplicationFindUniqueMock.mockResolvedValue({
+      id: "application_123",
+      userId: "user_123",
+      tier: "coaching",
+      status: "approved",
+      answersJson: { offerKey: "one_to_one_coaching" },
+      approvedAt: new Date("2026-05-01T10:00:00.000Z"),
+    });
+    coachingApplicationUpdateMock.mockResolvedValue({ id: "application_123" });
+    coachingClientProfileUpsertMock.mockResolvedValue({ id: "profile_123" });
+    dbTransactionMock.mockImplementation(async (callback) =>
+      callback({
+        coachingApplication: { update: coachingApplicationUpdateMock },
+        coachingClientProfile: { upsert: coachingClientProfileUpsertMock },
+        user: { update: userUpdateMock },
+      })
+    );
     openMembershipDunningFromInvoiceMock.mockResolvedValue({ id: "dunning_123" });
     recoverMembershipDunningCaseMock.mockResolvedValue(null);
     billingCatalogItemFindFirstMock.mockResolvedValue({ key: "membership_movewell_monthly" });
@@ -223,6 +274,31 @@ describe("billing-service Stripe integration", () => {
         cancelPath: "/dashboard/membership",
         disclosureVersion: "2026-04-03",
         disclosureAcceptedAt: new Date("2026-04-03T10:00:00.000Z"),
+        immediateStartSummary: "Access starts immediately.",
+        complianceSnapshot: {
+          acceptanceStates: [
+            {
+              type: "terms",
+              policyVersionId: "policy_terms_v1",
+              acceptanceEventId: "acceptance_terms_v1",
+              version: "terms.v1",
+              surface: "membership_checkout",
+            },
+            {
+              type: "health_waiver",
+              policyVersionId: "policy_health_v1",
+              acceptanceEventId: "acceptance_health_v1",
+              version: "health.v1",
+              surface: "membership_checkout",
+            },
+          ],
+          immediateStartAcceptanceEventId: "acceptance_immediate_start_v1",
+          subscriptionDisclosure: {
+            version: "2026-04-03",
+            billingInterval: "monthly",
+            sections: "x".repeat(1800),
+          },
+        },
       }
     );
 
@@ -248,6 +324,43 @@ describe("billing-service Stripe integration", () => {
           plan: "movewell",
           billingInterval: "monthly",
           disclosureVersion: "2026-04-03",
+          immediateStartSummary: "Access starts immediately.",
+        }),
+      })
+    );
+    const checkoutPayload = stripeCheckoutSessionCreateMock.mock.calls[0]?.[0] as {
+      metadata?: Record<string, string>;
+    };
+    expect(checkoutPayload.metadata?.complianceSnapshotJson.length).toBeLessThanOrEqual(500);
+    expect(checkoutPayload.metadata?.complianceSnapshotJson).toContain(
+      "acceptance_immediate_start_v1"
+    );
+    expect(checkoutPayload.metadata?.complianceSnapshotJson).not.toContain("sections");
+  });
+
+  it("creates coaching checkout for an approved linked application", async () => {
+    getActiveCatalogItemMock.mockResolvedValueOnce({
+      stripePriceId: "price_coaching_1_1",
+      unitAmountPence: 18000,
+      currency: "GBP",
+    });
+
+    const result = await createCoachingCheckoutSession("user_123", "application_123");
+
+    expect(result.checkoutUrl).toBe("https://checkout.stripe.com/session");
+    expect(stripeCheckoutSessionCreateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: "subscription",
+        customer: "cus_new",
+        success_url: "http://localhost:3000/dashboard/coaching?checkout=success",
+        cancel_url: "http://localhost:3000/dashboard/coaching?checkout=cancelled",
+        line_items: [{ price: "price_coaching_1_1", quantity: 1 }],
+        metadata: expect.objectContaining({
+          userId: "user_123",
+          kind: "coaching",
+          applicationId: "application_123",
+          offerKey: "one_to_one_coaching",
+          includesMoveWellMembership: "1",
         }),
       })
     );
@@ -612,5 +725,96 @@ describe("billing-service Stripe integration", () => {
       referredUserId: "user_123",
       notes: "Auto-qualified on first paid purchase.",
     });
+  });
+
+  it("books the intended class after a credit checkout webhook grants credits", async () => {
+    billingEventFindUniqueMock.mockResolvedValue(null);
+
+    await processStripeWebhookEvent(
+      event({
+        id: "evt_checkout_booking_intent",
+        type: "checkout.session.completed",
+        object: {
+          id: "cs_credits_booking",
+          amount_total: 900,
+          payment_intent: "pi_booking",
+          metadata: {
+            userId: "user_123",
+            kind: "credits",
+            bundleSize: "1",
+            bookingClassSlug: "hiit-for-complex-bodies",
+            bookingSessionId: "session_123",
+          },
+        },
+      })
+    );
+
+    expect(addCreditsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user_123",
+        amount: 1,
+        stripeCheckoutSessionId: "cs_credits_booking",
+      })
+    );
+    expect(bookClassSessionMock).toHaveBeenCalledWith("session_123", "user_123");
+  });
+
+  it("converts an approved coaching application after coaching checkout payment", async () => {
+    billingEventFindUniqueMock.mockResolvedValue(null);
+    membershipSubscriptionFindFirstMock.mockResolvedValue(null);
+
+    await processStripeWebhookEvent(
+      event({
+        id: "evt_coaching_checkout",
+        type: "checkout.session.completed",
+        object: {
+          id: "cs_coaching",
+          amount_total: 18000,
+          subscription: "sub_coaching",
+          metadata: {
+            userId: "user_123",
+            kind: "coaching",
+            applicationId: "application_123",
+            offerKey: "one_to_one_coaching",
+            tier: "coaching",
+            includesMoveWellMembership: "1",
+          },
+        },
+      })
+    );
+
+    expect(coachingApplicationUpdateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "application_123" },
+        data: expect.objectContaining({ status: "converted" }),
+      })
+    );
+    expect(coachingClientProfileUpsertMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: "user_123" },
+        create: expect.objectContaining({
+          userId: "user_123",
+          applicationId: "application_123",
+          status: "onboarding",
+          includesMoveWellMembership: true,
+        }),
+      })
+    );
+    expect(userUpdateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "user_123" },
+        data: { isCoachingClient: true },
+      })
+    );
+    expect(membershipSubscriptionCreateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          userId: "user_123",
+          plan: "movewell",
+          status: MembershipStatus.active,
+          pricePence: 0,
+        }),
+      })
+    );
   });
 });

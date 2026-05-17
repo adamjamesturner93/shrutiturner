@@ -30,13 +30,16 @@ import {
   consumeReferralDiscount,
 } from "@/lib/referrals/referral-discount-service";
 import { addCredits } from "@/lib/credits/credit-service";
+import { bookClassSession } from "@/lib/classes/booking-service";
 import { startOrSwitchMembership } from "@/lib/membership/membership-service";
 import { qualifyReferral } from "@/lib/referrals/referral-service";
 import { processGiftPurchaseCheckoutCompleted } from "@/lib/gifts/service";
 import { processRetreatCheckoutCompleted } from "@/lib/retreats/service";
 import { processSmallGroupCheckoutCompleted } from "@/lib/small-groups/service";
+import { coachingTiers, type CoachingOfferKey } from "@/data/marketing";
 
 const APP_URL = getBaseSiteUrlFromEnv();
+const STRIPE_METADATA_VALUE_MAX_LENGTH = 500;
 
 function startOfUtcDay(date: Date) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
@@ -66,6 +69,59 @@ function extractPaidAmountPence(payloadJson: Prisma.JsonValue, type: string) {
     return typeof o.amount_total === "number" ? o.amount_total : 0;
   }
   return 0;
+}
+
+function compactMembershipComplianceSnapshot(snapshot?: Record<string, unknown>) {
+  if (!snapshot) return null;
+
+  const acceptanceStates = Array.isArray(snapshot.acceptanceStates)
+    ? snapshot.acceptanceStates
+        .filter((state): state is Record<string, unknown> => {
+          return Boolean(state) && typeof state === "object" && !Array.isArray(state);
+        })
+        .map((state) => ({
+          type: typeof state.type === "string" ? state.type : undefined,
+          acceptanceEventId:
+            typeof state.acceptanceEventId === "string" ? state.acceptanceEventId : undefined,
+          policyVersionId:
+            typeof state.policyVersionId === "string" ? state.policyVersionId : undefined,
+          version: typeof state.version === "string" ? state.version : undefined,
+        }))
+    : [];
+
+  const subscriptionDisclosure =
+    snapshot.subscriptionDisclosure &&
+    typeof snapshot.subscriptionDisclosure === "object" &&
+    !Array.isArray(snapshot.subscriptionDisclosure)
+      ? (snapshot.subscriptionDisclosure as Record<string, unknown>)
+      : null;
+
+  return {
+    acceptanceStates,
+    immediateStartAcceptanceEventId:
+      typeof snapshot.immediateStartAcceptanceEventId === "string"
+        ? snapshot.immediateStartAcceptanceEventId
+        : undefined,
+    disclosureVersion:
+      typeof subscriptionDisclosure?.version === "string"
+        ? subscriptionDisclosure.version
+        : undefined,
+    billingInterval:
+      typeof subscriptionDisclosure?.billingInterval === "string"
+        ? subscriptionDisclosure.billingInterval
+        : undefined,
+  };
+}
+
+function stringifyStripeMetadataJson(value: unknown) {
+  if (!value) return "";
+  const serialized = JSON.stringify(value);
+  return serialized.length <= STRIPE_METADATA_VALUE_MAX_LENGTH ? serialized : "";
+}
+
+function stripeMetadataValue(value: string | undefined | null) {
+  if (!value) return "";
+  return value.slice(0, STRIPE_METADATA_VALUE_MAX_LENGTH);
 }
 
 export async function recomputeBillingMetricDaily(day: Date) {
@@ -206,6 +262,110 @@ function planToCatalogKey(plan: "movewell", billingInterval: MembershipBillingIn
   return "membership_movewell_monthly" as const;
 }
 
+function coachingOfferToCatalogKey(offerKey: CoachingOfferKey) {
+  return `coaching_${offerKey}_monthly` as const;
+}
+
+function getCoachingOfferFromAnswers(answers: Prisma.JsonValue) {
+  if (!answers || typeof answers !== "object" || Array.isArray(answers)) return null;
+  const offerKey = (answers as Record<string, unknown>).offerKey;
+  return typeof offerKey === "string" && coachingTiers.some((tier) => tier.id === offerKey)
+    ? (offerKey as CoachingOfferKey)
+    : null;
+}
+
+function fallbackOfferForTier(tier: string): CoachingOfferKey {
+  if (tier === "coached_plan") return "guided_training_plan";
+  if (tier === "coaching") return "one_to_one_coaching";
+  return "independent_training_plan";
+}
+
+function coachingOfferIncludesMembership(offerKey: CoachingOfferKey) {
+  return coachingTiers.find((tier) => tier.id === offerKey)?.includesMembership === true;
+}
+
+async function grantIncludedCoachingMembership(userId: string) {
+  const latest = await db.membershipSubscription.findFirst({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+  });
+  const data = {
+    plan: "movewell" as const,
+    billingInterval: "monthly" as const,
+    status: MembershipStatus.active,
+    pricePence: 0,
+    currency: "GBP",
+    classesPerWeek: 99,
+    classesUsedThisWeek: 0,
+    renewsAt: null,
+    cancelAtPeriodEnd: false,
+  };
+
+  if (latest) {
+    await db.membershipSubscription.update({ where: { id: latest.id }, data });
+    return;
+  }
+
+  await db.membershipSubscription.create({ data: { userId, ...data } });
+}
+
+export async function createCoachingCheckoutSession(
+  userId: string,
+  applicationId: string,
+  options?: {
+    successPath?: string;
+    cancelPath?: string;
+  }
+) {
+  const application = await db.coachingApplication.findFirst({
+    where: {
+      id: applicationId,
+      userId,
+      status: { in: ["approved", "converted"] },
+    },
+  });
+  if (!application) throw new Error("COACHING_APPLICATION_NOT_APPROVED");
+
+  const offerKey =
+    getCoachingOfferFromAnswers(application.answersJson) || fallbackOfferForTier(application.tier);
+  const catalog = await getActiveCatalogItem(coachingOfferToCatalogKey(offerKey));
+  assertPriceConfigured(catalog.stripePriceId, `CATALOG_PRICE_COACHING_${offerKey}`);
+
+  const [customerId, referralDiscountPence] = await Promise.all([
+    getOrCreateStripeCustomer(userId),
+    computeReferralDiscountPence(userId, catalog.unitAmountPence),
+  ]);
+  const coupon = await createOneTimeCouponIfNeeded(referralDiscountPence);
+  const stripe = getStripeClient();
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    customer: customerId,
+    success_url: `${APP_URL}${options?.successPath || "/dashboard/coaching?checkout=success"}`,
+    cancel_url: `${APP_URL}${options?.cancelPath || "/dashboard/coaching?checkout=cancelled"}`,
+    line_items: [{ price: catalog.stripePriceId, quantity: 1 }],
+    discounts: coupon ? [{ coupon: coupon.id }] : undefined,
+    metadata: {
+      userId,
+      kind: "coaching",
+      applicationId: application.id,
+      offerKey,
+      tier: application.tier,
+      includesMoveWellMembership: coachingOfferIncludesMembership(offerKey) ? "1" : "0",
+      referralDiscountPence: referralDiscountPence > 0 ? String(referralDiscountPence) : "0",
+      discountSource: referralDiscountPence > 0 ? "referral" : "none",
+    },
+  });
+
+  if (!session.url) throw new Error("STRIPE_CHECKOUT_URL_MISSING");
+
+  return {
+    checkoutUrl: session.url,
+    sessionId: session.id,
+    discountPence: referralDiscountPence,
+    discountSource: referralDiscountPence > 0 ? ("referral" as const) : ("none" as const),
+  };
+}
+
 export async function createCreditCheckoutSession(
   userId: string,
   bundleSize: 1 | 3 | 10,
@@ -213,6 +373,10 @@ export async function createCreditCheckoutSession(
   options?: {
     successPath?: string;
     cancelPath?: string;
+    bookingIntent?: {
+      classSlug?: string;
+      sessionId?: string;
+    };
   }
 ) {
   const catalog = await getActiveCatalogItem(bundleToCatalogKey(bundleSize));
@@ -258,6 +422,8 @@ export async function createCreditCheckoutSession(
       referralDiscountPence: chosen.source === "referral" ? String(chosen.amountPence) : "0",
       promoCode: chosen.source === "promo" ? promoDiscount?.code || "" : "",
       discountSource: chosen.source,
+      bookingClassSlug: options?.bookingIntent?.classSlug || "",
+      bookingSessionId: options?.bookingIntent?.sessionId || "",
     },
   });
 
@@ -307,6 +473,9 @@ export async function createMembershipCheckoutSession(
     chosen.source === "referral" ? await createOneTimeCouponIfNeeded(chosen.amountPence) : null;
   const stripe = getStripeClient();
   const disclosureAcceptedAtIso = options?.disclosureAcceptedAt?.toISOString();
+  const complianceSnapshotMetadata = stringifyStripeMetadataJson(
+    compactMembershipComplianceSnapshot(options?.complianceSnapshot)
+  );
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
@@ -334,10 +503,8 @@ export async function createMembershipCheckoutSession(
       discountSource: chosen.source,
       disclosureVersion: options?.disclosureVersion || "",
       disclosureAcceptedAt: disclosureAcceptedAtIso || "",
-      immediateStartSummary: options?.immediateStartSummary || "",
-      complianceSnapshotJson: options?.complianceSnapshot
-        ? JSON.stringify(options.complianceSnapshot)
-        : "",
+      immediateStartSummary: stripeMetadataValue(options?.immediateStartSummary),
+      complianceSnapshotJson: complianceSnapshotMetadata,
     },
   });
 
@@ -427,6 +594,86 @@ async function processCheckoutCompleted(event: Stripe.Event, session: Stripe.Che
         stripePaymentIntentId:
           typeof session.payment_intent === "string" ? session.payment_intent : undefined,
       });
+    }
+
+    if (discountPence > 0) {
+      const applied = await db.referralLedgerEntry.findFirst({
+        where: {
+          userId,
+          stripeCheckoutSessionId: session.id,
+        },
+      });
+      if (!applied) {
+        await consumeReferralDiscount({
+          userId,
+          amountPence: discountPence,
+          description: `Referral credit applied to ${sourceRef}`,
+          stripeCheckoutSessionId: session.id,
+        });
+      }
+    }
+
+    const bookingSessionId = session.metadata?.bookingSessionId;
+    if (bookingSessionId) {
+      await bookClassSession(bookingSessionId, userId).catch((error) => {
+        console.error("[billing] failed to complete post-credit class booking", {
+          checkoutSessionId: session.id,
+          userId,
+          bookingSessionId,
+          error,
+        });
+      });
+    }
+  }
+
+  if (kind === "coaching") {
+    const applicationId = session.metadata?.applicationId;
+    const offerKey = session.metadata?.offerKey as CoachingOfferKey | undefined;
+    if (!applicationId || !offerKey || !coachingTiers.some((tier) => tier.id === offerKey)) return;
+
+    const application = await db.coachingApplication.findUnique({
+      where: { id: applicationId },
+    });
+    if (!application || application.userId !== userId) return;
+
+    const includesMoveWellMembership = coachingOfferIncludesMembership(offerKey);
+    await db.$transaction(async (tx) => {
+      await tx.coachingApplication.update({
+        where: { id: application.id },
+        data: {
+          status: "converted",
+          convertedAt: new Date(),
+          approvedAt: application.approvedAt || new Date(),
+        },
+      });
+      await tx.coachingClientProfile.upsert({
+        where: { userId },
+        create: {
+          userId,
+          applicationId: application.id,
+          tier: application.tier === "unsure" ? "coaching" : application.tier,
+          status: "onboarding",
+          includesMoveWellMembership,
+          startDate: new Date(),
+          nextCheckInDueAt: new Date(Date.now() + 7 * 86400000),
+        },
+        update: {
+          applicationId: application.id,
+          tier: application.tier === "unsure" ? "coaching" : application.tier,
+          status: "onboarding",
+          includesMoveWellMembership,
+          startDate: new Date(),
+          nextCheckInDueAt: new Date(Date.now() + 7 * 86400000),
+        },
+      });
+      await tx.user.update({
+        where: { id: userId },
+        data: { isCoachingClient: true },
+      });
+    });
+
+    if (includesMoveWellMembership) {
+      await grantIncludedCoachingMembership(userId);
     }
 
     if (discountPence > 0) {

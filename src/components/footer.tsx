@@ -183,14 +183,6 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/classes/small-groups"
-                  className="hover:text-brand-accent-light transition-colors"
-                >
-                  Small Group Programmes
-                </Link>
-              </li>
-              <li>
                 <Link href="/coaching" className="hover:text-brand-accent-light transition-colors">
                   Coaching
                 </Link>

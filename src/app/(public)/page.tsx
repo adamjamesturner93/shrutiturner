@@ -9,6 +9,7 @@ import {
 } from "@/lib/seo/structured-data";
 import { getExistingPlatformUrl, isHoldingStage } from "@/lib/site-stage";
 import { HoldingPage } from "@/views/holding-page";
+import { getBlogPosts, getTestimonials } from "@/lib/content";
 
 export async function generateMetadata(): Promise<Metadata> {
   if (isHoldingStage()) {
@@ -23,7 +24,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return buildPageMetadata("home", "Strength & Yoga for Complex Bodies");
 }
 
-export default function Page() {
+export default async function Page() {
   if (isHoldingStage()) {
     return (
       <>
@@ -40,6 +41,11 @@ export default function Page() {
     );
   }
 
+  const [blogPosts, testimonials] = await Promise.all([getBlogPosts(), getTestimonials()]);
+  const homepageTestimonials = testimonials
+    .filter((testimonial) => testimonial.featured || testimonial.service === "general")
+    .slice(0, 3);
+
   return (
     <>
       <JsonLd
@@ -54,7 +60,7 @@ export default function Page() {
           }),
         ]}
       />
-      <HomePage />
+      <HomePage recentPosts={blogPosts.slice(0, 3)} testimonials={homepageTestimonials} />
     </>
   );
 }

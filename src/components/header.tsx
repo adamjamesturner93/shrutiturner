@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "./ui/button";
-import { Menu, X, ChevronDown, Users, CalendarDays, User, Mountain } from "lucide-react";
+import { Menu, X, ChevronDown, CalendarDays, User, Mountain } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/auth-context";
 import { IconHorizontal } from "./icon";
@@ -68,15 +68,9 @@ export function Header() {
       icon: CalendarDays,
     },
     {
-      path: "/classes/small-groups",
-      label: "Small Group Programmes",
-      description: "Focused cohorts, max 6 people",
-      icon: Users,
-    },
-    {
       path: "/coaching",
       label: "Coaching",
-      description: "Three tiers of personalised support",
+      description: "Four tiers of personalised support",
       icon: User,
     },
     {

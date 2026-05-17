@@ -296,8 +296,8 @@ export function CoachingApplyPage() {
         }
       />
 
-      <MarketingSection id="application-form" className="section-wash">
-        <div className="grid gap-8 lg:grid-cols-[0.96fr_1.04fr] lg:gap-10">
+      <MarketingSection id="application-form" className="section-wash" contentClassName="max-w-5xl">
+        <div className="space-y-8">
           <div className="space-y-6">
             <div className="marketing-panel rounded-[1.85rem] p-6 md:p-7">
               <SectionHeading

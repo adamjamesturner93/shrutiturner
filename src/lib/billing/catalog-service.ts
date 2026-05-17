@@ -3,13 +3,15 @@ import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { db } from "@/lib/db";
 import { getStripeClient } from "@/lib/billing/stripe-client";
 import { CREDIT_BUNDLE_CONFIG, MEMBERSHIP_CONFIG } from "@/lib/billing/price-map";
+import { coachingTiers, type CoachingOfferKey } from "@/data/marketing";
 
 export type BillingCatalogKey =
   | "membership_movewell_monthly"
   | "membership_movewell_annual"
   | "credits_1"
   | "credits_3"
-  | "credits_10";
+  | "credits_10"
+  | `coaching_${CoachingOfferKey}_monthly`;
 
 const CATALOG_KEYS: BillingCatalogKey[] = [
   "membership_movewell_monthly",
@@ -17,9 +19,32 @@ const CATALOG_KEYS: BillingCatalogKey[] = [
   "credits_1",
   "credits_3",
   "credits_10",
+  "coaching_guided_accountability_monthly",
+  "coaching_independent_training_plan_monthly",
+  "coaching_guided_training_plan_monthly",
+  "coaching_one_to_one_coaching_monthly",
 ];
 
+function getCoachingTierForCatalogKey(key: BillingCatalogKey) {
+  const match = /^coaching_(.+)_monthly$/.exec(key);
+  if (!match) return null;
+  return coachingTiers.find((tier) => tier.id === match[1]) || null;
+}
+
+function parsePenceFromPriceLabel(priceLabel: string) {
+  const match = /£(\d+)/.exec(priceLabel);
+  return match ? Number(match[1]) * 100 : 0;
+}
+
 function defaultFromEnv(key: BillingCatalogKey) {
+  const coachingTier = getCoachingTierForCatalogKey(key);
+  if (coachingTier) {
+    return {
+      stripePriceId: "",
+      unitAmountPence: parsePenceFromPriceLabel(coachingTier.priceLabel),
+    };
+  }
+
   switch (key) {
     case "membership_movewell_monthly":
       return {
@@ -54,6 +79,15 @@ function defaultFromEnv(key: BillingCatalogKey) {
 function catalogMetaForKey(key: BillingCatalogKey) {
   const stripe = getStripeClient();
   void stripe;
+  const coachingTier = getCoachingTierForCatalogKey(key);
+  if (coachingTier) {
+    return {
+      name: `Coaching · ${coachingTier.name}`,
+      recurring: "month" as const,
+      fallbackPence: parsePenceFromPriceLabel(coachingTier.priceLabel),
+    };
+  }
+
   switch (key) {
     case "membership_movewell_monthly":
       return {

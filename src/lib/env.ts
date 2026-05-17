@@ -45,7 +45,7 @@ const schema = z.object({
   DAILY_API_KEY: optionalString,
   DAILY_API_BASE: optionalString,
   DAILY_WEBHOOK_SECRET: optionalString,
-  CONTENT_SOURCE: z.enum(["local", "hybrid", "contentful"]).default("local"),
+  CONTENT_SOURCE: z.enum(["local", "contentful"]).default("contentful"),
   CONTENTFUL_SPACE_ID: optionalString,
   CONTENTFUL_ENVIRONMENT: optionalString,
   CONTENTFUL_DELIVERY_TOKEN: optionalString,

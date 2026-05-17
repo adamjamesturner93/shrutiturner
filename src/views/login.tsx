@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Layout } from "../components/layout";
@@ -35,18 +34,6 @@ export function LoginPage({
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const referralClaimedRef = useRef(false);
-
-  const waitForSession = async () => {
-    for (let i = 0; i < 12; i += 1) {
-      const response = await fetch("/api/auth/session", { cache: "no-store" });
-      const data = (await response.json().catch(() => null)) as {
-        user?: { email?: string | null } | null;
-      } | null;
-      if (data?.user?.email) return true;
-      await new Promise((resolve) => setTimeout(resolve, 150));
-    }
-    return false;
-  };
 
   const buildPostLoginUrl = () => {
     const params = new URLSearchParams();
@@ -118,12 +105,7 @@ export function LoginPage({
         throw new Error("Invalid or expired code. Please request a new code.");
       }
 
-      const hasSession = await waitForSession();
-      if (!hasSession) {
-        throw new Error("Sign-in succeeded but session was not established. Please try again.");
-      }
-
-      router.replace(buildPostLoginUrl());
+      window.location.assign(buildPostLoginUrl());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to complete sign-in.");
     } finally {
@@ -393,14 +375,7 @@ export function LoginPage({
                   ) : null}
 
                   <p className="text-muted-foreground mt-8 text-center text-sm">
-                    Need an account?{" "}
-                    <Link
-                      href="/signup"
-                      className="text-brand-accent hover:text-brand-accent/80 underline"
-                    >
-                      Create one here
-                    </Link>
-                    .
+                    Use the same email whenever you come back.
                   </p>
                 </div>
               </div>

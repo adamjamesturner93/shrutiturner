@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getTypeColor } from "@/lib/classes/type-color";
 import { useI18n } from "@/lib/use-i18n";
-import type { ClassDefinitionContent } from "@/lib/content/types";
+import type { ClassDefinitionContent, InstructorProfileContent } from "@/lib/content/types";
 
 type UpcomingSession = {
   id: string;
@@ -44,6 +44,7 @@ type UpcomingSession = {
 interface ClassDetailPageProps {
   classDetail?: ClassDefinitionContent | null;
   allClasses?: ClassDefinitionContent[];
+  instructorProfile?: InstructorProfileContent | null;
 }
 
 function getSessionDateParts(startsAtUtc: string) {
@@ -80,6 +81,7 @@ function getSessionDateParts(startsAtUtc: string) {
 export function ClassDetailPage({
   classDetail: classDetailProp,
   allClasses,
+  instructorProfile,
 }: ClassDetailPageProps) {
   const searchParams = useSearchParams();
   const selectedSessionId = searchParams.get("session");
@@ -168,10 +170,9 @@ export function ClassDetailPage({
         ? "border-brand-copper/55 bg-brand-white/8 text-brand-white"
         : "border-brand-white/30 bg-brand-white/8 text-brand-white";
 
-  const instructorName = sessionInstructor?.name || classDetail.instructor;
-  const instructorBio =
-    sessionInstructor?.bio ||
-    "Strength and yoga coach specialising in rehabilitation-informed training for chronic illness and complex bodies. Living with psoriatic arthritis. PhD Biomechanics, PGDip Rehabilitation, 650hr Yoga Teacher Training, Level 4 Personal Trainer.";
+  const instructorName =
+    sessionInstructor?.name || instructorProfile?.name || classDetail.instructor;
+  const instructorBio = sessionInstructor?.bio || instructorProfile?.bio || null;
   const instructorInitials = instructorName
     .split(" ")
     .filter(Boolean)
@@ -388,12 +389,16 @@ export function ClassDetailPage({
                     </div>
                     <div>
                       <h3 className="text-2xl">{instructorName}</h3>
-                      <p className="text-muted-foreground mt-4 leading-relaxed">{instructorBio}</p>
+                      {instructorBio ? (
+                        <p className="text-muted-foreground mt-4 leading-relaxed">
+                          {instructorBio}
+                        </p>
+                      ) : null}
                       <Link
                         href="/coaching"
                         className="text-primary mt-5 inline-flex items-center gap-2 text-sm hover:underline"
                       >
-                        Explore coaching with Shruti
+                        Explore coaching
                         <Sparkles className="h-4 w-4" />
                       </Link>
                     </div>

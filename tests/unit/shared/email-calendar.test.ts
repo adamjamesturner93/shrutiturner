@@ -9,14 +9,18 @@ describe("buildCalendarInvite", () => {
       durationMinutes: 45,
       description: "Join from the private studio dashboard.",
       method: "REQUEST",
-      location: "Online (Daily.co)",
+      location: "Private Studio (online)",
+      url: "https://shrutiturner.co.uk/dashboard/classes/strength/join?sessionId=session_123",
     });
 
     expect(invite).toContain("METHOD:REQUEST");
     expect(invite).toContain("SUMMARY:Seeded Timetable Strength");
     expect(invite).toContain("DTSTART:20260325T180000Z");
     expect(invite).toContain("DTEND:20260325T184500Z");
-    expect(invite).toContain("LOCATION:Online (Daily.co)");
+    expect(invite).toContain("LOCATION:Private Studio (online)");
+    expect(invite).toContain(
+      "URL:https://shrutiturner.co.uk/dashboard/classes/strength/join?sessionId=session_123"
+    );
   });
 
   it("creates a CANCEL invite when the class is cancelled", () => {

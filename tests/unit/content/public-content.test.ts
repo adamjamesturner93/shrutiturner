@@ -122,4 +122,12 @@ describe("Contentful public content mapping", () => {
       { preview: true }
     );
   });
+
+  it("throws instead of falling back when Contentful has no published blog posts", async () => {
+    mocks.getEntries.mockResolvedValueOnce({ items: [] });
+
+    await expect(getBlogPosts()).rejects.toThrow(
+      "CONTENTFUL_CONTENT_MISSING: blogPost returned no published entries"
+    );
+  });
 });

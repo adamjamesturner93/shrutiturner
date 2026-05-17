@@ -24,7 +24,6 @@ import {
   Shield,
   HeartPulse,
   AlertTriangle,
-  Users,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import type { DashboardSummaryDto, OnboardingStateDto } from "@/lib/api/types";
@@ -744,19 +743,6 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
               </div>
               <p className="text-muted-foreground text-sm">
                 Browse this week&apos;s schedule and find your next session.
-              </p>
-            </Link>
-
-            <Link
-              href="/dashboard/small-groups"
-              className="bg-background rounded-lg border p-5 transition-shadow hover:shadow-md"
-            >
-              <div className="mb-2 flex items-center gap-3">
-                <Users className="text-primary h-5 w-5" />
-                <h3 className="text-lg">Small Group Programmes</h3>
-              </div>
-              <p className="text-muted-foreground text-sm">
-                Explore your small group programmes and longer-term training blocks.
               </p>
             </Link>
 

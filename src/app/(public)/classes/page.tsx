@@ -15,8 +15,6 @@ export async function generateMetadata(): Promise<Metadata> {
   return buildPageMetadata("classes", "Move Well Classes");
 }
 
-export const revalidate = 3600;
-
 function sortClasses(items: ClassDefinitionContent[]) {
   const dayOrder = new Map([
     ["Monday", 1],

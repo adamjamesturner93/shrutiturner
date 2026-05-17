@@ -72,11 +72,12 @@ export function buildCalendarInvite(params: {
   description: string;
   method?: "REQUEST" | "CANCEL";
   location?: string;
+  url?: string;
 }) {
   const { eventName, startTime, durationMinutes, description } = params;
   const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
   const method = params.method || "REQUEST";
-  const location = params.location || "Online (Daily.co)";
+  const location = params.location || "Private Studio (online)";
 
   const formatDate = (date: Date) => date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
 
@@ -93,6 +94,7 @@ DTEND:${formatDate(endTime)}
 SUMMARY:${eventName}
 DESCRIPTION:${description}
 LOCATION:${location}
+${params.url ? `URL:${params.url}\n` : ""}
 STATUS:CONFIRMED
 END:VEVENT
 END:VCALENDAR`.trim();
@@ -144,19 +146,29 @@ export async function sendBookingConfirmation(
   classDateObj: Date = new Date(),
   durationMinutes: number = 60,
   /** User's saved i18n preferences — controls how date/time appear in the email */
-  userPrefs: I18nPreferences = DEFAULT_PREFS
+  userPrefs: I18nPreferences = DEFAULT_PREFS,
+  options?: {
+    classSlug?: string;
+    sessionId?: string;
+  }
 ) {
   try {
     const settings = await getClassOperationalSettings();
     // Format date & time using the user's saved preferences
     const formattedDate = formatDate(classDateObj, userPrefs);
     const formattedTime = formatTime(classDateObj, userPrefs);
+    const classUrl =
+      options?.classSlug && options.sessionId
+        ? `${APP_URL}/dashboard/classes/${encodeURIComponent(options.classSlug)}/join?sessionId=${encodeURIComponent(options.sessionId)}`
+        : `${APP_URL}/dashboard/schedule`;
 
     const invite = buildCalendarInvite({
       eventName: className,
       startTime: classDateObj,
       durationMinutes,
-      description: `Join link: ${APP_URL}/dashboard/schedule`,
+      description: `Join from your Private Studio: ${classUrl}`,
+      location: "Private Studio (online)",
+      url: classUrl,
       method: "REQUEST",
     });
     const react = ClassBookingEmail({
@@ -165,8 +177,8 @@ export async function sendBookingConfirmation(
       classDate: formattedDate,
       classTime: formattedTime,
       classDuration: `${durationMinutes} minutes`,
-      classLocation: "Online (Daily.co)",
-      manageBookingUrl: `${APP_URL}/dashboard/schedule`,
+      classLocation: "Private Studio (online)",
+      manageBookingUrl: classUrl,
       creditRefundWindowLabel: toMinutesLabel(settings.creditRefundWindowMinutes),
       preJoinWindowLabel: toMinutesLabel(settings.preJoinWindowMinutes),
       lateJoinCutoffLabel: toMinutesLabel(settings.lateJoinCutoffMinutes),

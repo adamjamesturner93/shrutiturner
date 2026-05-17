@@ -53,6 +53,28 @@ function badgeVariant(status: string): "default" | "secondary" | "outline" | "de
   return "secondary";
 }
 
+function getOperationalNextStep(application: AdminCoachingApplicationDto) {
+  if (!application.userId) {
+    return "Ask the applicant to sign in with this email so payment and onboarding can attach to their account.";
+  }
+  if (application.status === "submitted" || application.status === "under_review") {
+    return "Review the application. If it is a fit, set status to approved and save review.";
+  }
+  if (application.status === "follow_up_needed") {
+    return "Send follow-up questions before approving or declining.";
+  }
+  if (application.status === "approved") {
+    return "Approval email is sent. Client can now sign in, open Coaching, and complete payment.";
+  }
+  if (application.status === "converted" || application.isLinkedUserCoachingClient) {
+    return "Client is converted. Track Everfit setup, onboarding, and check-ins from the coaching profile.";
+  }
+  if (application.status === "declined") {
+    return "Application is declined. Keep internal notes clear for future context.";
+  }
+  return "Review the current status and choose the next admin action.";
+}
+
 export function AdminCoaching({
   initialData,
 }: {
@@ -261,6 +283,9 @@ export function AdminCoaching({
                       {application.isLinkedUserCoachingClient ? (
                         <Badge variant="default">Linked coaching client</Badge>
                       ) : null}
+                      {!application.userId ? (
+                        <Badge variant="outline">No linked account</Badge>
+                      ) : null}
                     </div>
                   </div>
                   <div className="text-muted-foreground text-sm md:text-right">
@@ -292,6 +317,15 @@ export function AdminCoaching({
                   </div>
 
                   <div className="space-y-4">
+                    <div className="bg-secondary/20 rounded-lg border p-4">
+                      <p className="text-muted-foreground mb-1 text-xs tracking-wide uppercase">
+                        Next operational step
+                      </p>
+                      <p className="text-sm leading-relaxed">
+                        {getOperationalNextStep(application)}
+                      </p>
+                    </div>
+
                     <div>
                       <p className="text-muted-foreground mb-2 text-xs tracking-wide uppercase">
                         Status
@@ -338,7 +372,10 @@ export function AdminCoaching({
                         onClick={() => void saveApplication(application.id)}
                       >
                         <ClipboardList className="mr-2 h-4 w-4" />
-                        Save review
+                        {statusDrafts[application.id] === "approved" &&
+                        application.status !== "approved"
+                          ? "Approve and email client"
+                          : "Save review"}
                       </Button>
                       <Button
                         variant="outline"
