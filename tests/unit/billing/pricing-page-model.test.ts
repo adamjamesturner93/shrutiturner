@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  filterCoachingPricingFaqs,
   formatPenceAsPounds,
   getPricingCoachingRows,
   getPricingProgrammeCards,
@@ -10,32 +11,56 @@ describe("pricing page model", () => {
     expect(formatPenceAsPounds(16500)).toBe("£165");
   });
 
-  it("exposes coaching tiers with prices, membership comparison, and CTAs", () => {
+  it("exposes 1:1 offers with Canva comparison copy, prices and CTAs", () => {
     const rows = getPricingCoachingRows();
 
     expect(rows).toHaveLength(4);
+    expect(rows.map((row) => row.name)).toEqual([
+      "Guided Accountability",
+      "Independent Training Plan",
+      "Guided Training Plan",
+      "1:1 Coaching",
+    ]);
     expect(rows.map((row) => row.priceLabel)).toEqual([
       "£70 / month",
-      "£90 / month",
+      "£95 / month",
       "£130 / month",
       "£180 / month",
     ]);
-    expect(rows.map((row) => row.includesMembership)).toEqual([false, false, false, true]);
     expect(rows.every((row) => row.ctaHref.startsWith("/coaching/apply?offer="))).toBe(true);
+    expect(rows[0].whatItIs).toContain("Regular check-ins and guidance");
+    expect(rows[1].bestFor).toContain("Independent training");
+    expect(rows.flatMap((row) => row.features).join(" ")).not.toContain("Move Well");
   });
 
-  it("exposes small-group programme pricing with detail links", () => {
+  it("filters dormant class, membership, creditand retreat FAQs from coaching pricing", () => {
+    const faqs = filterCoachingPricingFaqs([
+      {
+        slug: "coaching-payment",
+        question: "Can I pay for coaching immediately?",
+        answer: "Payment opens after application acceptance.",
+        sortOrder: 1,
+      },
+      {
+        slug: "credits-any-class",
+        question: "Can I use credits on any class?",
+        answer: "Credits were used for live classes.",
+        sortOrder: 2,
+      },
+      {
+        slug: "retreat-balance",
+        question: "How do retreat balances work?",
+        answer: "Retreat payment terms.",
+        sortOrder: 3,
+      },
+    ]);
+
+    expect(faqs.map((faq) => faq.slug)).toEqual(["coaching-payment"]);
+  });
+
+  it("does not expose local small-group programme pricing", () => {
     const cards = getPricingProgrammeCards();
 
-    expect(cards).toHaveLength(3);
-    expect(cards.map((card) => card.priceLabel)).toEqual(["£165", "£180", "£120"]);
-    expect(cards[0]).toMatchObject({
-      title: "Shoulder Resilience & Mobility",
-      ctaHref: "/classes/small-groups/shoulder-resilience",
-      durationLabel: "6 weeks",
-      sessionsPerWeek: 2,
-      cohortSize: 6,
-    });
-    expect(cards.every((card) => card.inclusions.length > 0)).toBe(true);
+    expect(cards).toEqual([]);
   });
 });

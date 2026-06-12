@@ -1,5 +1,5 @@
-import { AdminClasses } from "@/views/admin/classes";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <AdminClasses />;
+  redirect("/admin/coaching");
 }

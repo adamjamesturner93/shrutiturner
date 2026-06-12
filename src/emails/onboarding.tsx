@@ -14,14 +14,12 @@ interface OnboardingEmailProps {
   firstName?: string;
   membershipUrl?: string;
   scheduleUrl?: string;
-  freeTrialDays?: string;
 }
 
 export default function OnboardingEmail({
   firstName = "there",
-  membershipUrl = "https://shrutiturner.co.uk/pricing",
-  scheduleUrl = "https://shrutiturner.co.uk/schedule",
-  freeTrialDays = "7",
+  membershipUrl = "https://shrutiturner.co.uk/#work-with-me",
+  scheduleUrl = "https://shrutiturner.co.uk/coaching/apply",
 }: OnboardingEmailProps) {
   return (
     <EmailLayout preview={`Getting the most from your account, ${firstName}`}>
@@ -33,13 +31,13 @@ export default function OnboardingEmail({
           marginBottom: "24px",
         }}
       >
-        Make the most of your practice
+        Make the most of your coaching account
       </Text>
 
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
       <Text style={bodyTextStyle}>
-        {"You've"} been here for a few days now, and I wanted to share a few things that will help
+        {"You've"} been here for a few days now and I wanted to share a few things that will help
         you get the most out of your account.
       </Text>
 
@@ -80,7 +78,7 @@ export default function OnboardingEmail({
               marginBottom: "8px",
             }}
           >
-            Try a free membership trial
+            Compare coaching options
           </Text>
           <Text
             style={{
@@ -90,8 +88,8 @@ export default function OnboardingEmail({
               marginBottom: "16px",
             }}
           >
-            Get {freeTrialDays} days of full access to every class — no commitment needed. {"It's"}{" "}
-            the best way to see what works for your body.
+            Review the current coaching options and the kind of support each one offers before you
+            apply.
           </Text>
           <Link
             href={membershipUrl}
@@ -103,7 +101,7 @@ export default function OnboardingEmail({
               textDecoration: "underline",
             }}
           >
-            {"Start your free trial \u2192"}
+            {"Compare options \u2192"}
           </Link>
         </Section>
 
@@ -137,7 +135,7 @@ export default function OnboardingEmail({
               marginBottom: "8px",
             }}
           >
-            View the schedule
+            Apply before payment
           </Text>
           <Text
             style={{
@@ -147,8 +145,8 @@ export default function OnboardingEmail({
               marginBottom: "16px",
             }}
           >
-            Browse upcoming classes by type, time, and level. Whether you prefer morning flow or an
-            evening stretch, {"there's"} something that fits.
+            Coaching starts with an application so Shruti can confirm the best fit before any
+            payment opens.
           </Text>
           <Link
             href={scheduleUrl}
@@ -160,7 +158,7 @@ export default function OnboardingEmail({
               textDecoration: "underline",
             }}
           >
-            {"See what\u2019s coming up \u2192"}
+            {"Apply for coaching \u2192"}
           </Link>
         </Section>
 
@@ -194,7 +192,7 @@ export default function OnboardingEmail({
               marginBottom: "8px",
             }}
           >
-            Book your first class
+            Complete your account details
           </Text>
           <Text
             style={{
@@ -204,8 +202,8 @@ export default function OnboardingEmail({
               marginBottom: "16px",
             }}
           >
-            Found something you like? Book straight from the schedule — {"you'll"}
-            get a confirmation email with everything you need to know.
+            If your application is accepted, payment happens through the website after you sign in
+            and accept the relevant terms.
           </Text>
           <Link
             href={scheduleUrl}
@@ -217,22 +215,22 @@ export default function OnboardingEmail({
               textDecoration: "underline",
             }}
           >
-            {"Book a class \u2192"}
+            {"Open the application \u2192"}
           </Link>
         </Section>
       </Section>
 
       <Section style={{ textAlign: "center" as const, marginTop: "20px", marginBottom: "28px" }}>
         <Link href={scheduleUrl} style={buttonStyle}>
-          Explore classes
+          Apply for coaching
         </Link>
       </Section>
 
       <Hr style={dividerStyle} />
 
       <Text style={{ ...mutedTextStyle, fontSize: "14px" }}>
-        If you have any questions about classes, membership, or just want some guidance on where to
-        start — simply reply to this email. {"I'm"} here to help.
+        If you have any questions about coaching options or just want some guidance on where to
+        start, simply reply to this email. {"I'm"} here to help.
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>

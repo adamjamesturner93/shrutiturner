@@ -5,7 +5,7 @@ import { createServiceSchema, createWebPageSchema } from "@/lib/seo/structured-d
 import { CoachingPage } from "@/views/coaching";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return buildPageMetadata("coaching", "Coaching");
+  return buildPageMetadata("coaching", "1:1 Offers");
 }
 
 export default function Page() {
@@ -14,17 +14,17 @@ export default function Page() {
       <JsonLd
         data={[
           createWebPageSchema({
-            name: "Coaching",
+            name: "1:1 Offers",
             path: "/coaching",
             description:
-              "Personalised strength and yoga coaching for complex bodies and fluctuating capacity.",
+              "Personalised movement and wellbeing support for bodies with fluctuating capacity.",
           }),
           createServiceSchema({
-            name: "Strength and Yoga Coaching",
+            name: "Shruti Turner 1:1 Offers",
             path: "/coaching",
             description:
-              "Personalised training and coaching support for chronic illness, pain, hypermobility, and complex bodies.",
-            serviceType: "Health coaching",
+              "Personalised training, guidance and 1:1 coaching support for chronic illness, pain, hypermobility and fluctuating capacity.",
+            serviceType: "Personal training and wellbeing support",
           }),
         ]}
       />

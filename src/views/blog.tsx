@@ -184,11 +184,10 @@ export function BlogPage({ posts }: BlogPageProps) {
                 Blog & Resources
               </p>
               <h1 className="mt-4 text-4xl leading-[1.08] tracking-[-0.03em] md:text-5xl">
-                Evidence-based writing for people training with more context.
+                Evidence based health and movement posts
               </h1>
               <p className="text-brand-white/80 mt-5 max-w-2xl text-lg leading-relaxed md:text-[1.35rem]">
-                Strength training, yoga, pain, hypermobility, pacing, and chronic-illness-aware
-                decision-making without generic wellness language.
+                Making science accessible without the jargon or fluff, just clear explanations to empower you to understand your body.
               </p>
             </div>
 
@@ -198,10 +197,10 @@ export function BlogPage({ posts }: BlogPageProps) {
               </p>
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 {[
-                  "Training decisions for fluctuating bodies",
-                  "Adaptation-first strength and yoga guidance",
-                  "Practical breakdowns of pain, pacing, and progression",
-                  "Clearer thinking for people tired of oversimplified advice",
+                  "Answers to the movement myths that make training feel more confusing than it needs to be.",
+                  "Rehabilitation research translated into practical choices you can use in real life.",
+                  "Tips for catering training to your energy, symptoms and changing capacity.",
+                  "Inclusive, evidence-informed thinking for chronic illness, autoimmune conditions, injury recovery and prevention.",
                 ].map((item) => (
                   <div
                     key={item}
@@ -375,7 +374,7 @@ export function BlogPage({ posts }: BlogPageProps) {
           <SectionHeading
             eyebrow="Newsletter"
             title="Get new articles in your inbox."
-            description="Get new articles, class updates, and practical training insights for chronic illness support."
+            description="Get new articles, coaching notes and practical training insights for chronic illness support."
             align="center"
           />
           <div className="mt-8">

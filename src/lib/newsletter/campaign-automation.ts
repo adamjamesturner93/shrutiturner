@@ -49,56 +49,73 @@ function readStringField(fields: Record<string, unknown>, key: string) {
   return "";
 }
 
-function readBooleanField(fields: Record<string, unknown>, key: string) {
-  const value = fields[key];
-  if (typeof value === "boolean") return value;
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    const localized = Object.values(value).find((item) => typeof item === "boolean");
-    return typeof localized === "boolean" ? localized : false;
+function stringifyContentValue(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value.map((item) => stringifyContentValue(item)).join(" ");
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (typeof record.value === "string") return record.value;
+    if (typeof record.nodeType === "string" && Array.isArray(record.content)) {
+      return record.content.map((item) => stringifyContentValue(item)).join(" ");
+    }
+    return Object.values(record)
+      .map((item) => stringifyContentValue(item))
+      .join(" ");
   }
-  return false;
+  return "";
 }
 
-function readDateField(fields: Record<string, unknown>, key: string) {
-  const raw = readStringField(fields, key);
-  if (!raw) return null;
-  const date = new Date(raw);
-  return Number.isNaN(date.getTime()) ? null : date;
+function readTextField(fields: Record<string, unknown>, key: string) {
+  const value = fields[key];
+  if (typeof value === "string") return value.trim();
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    if (typeof record.nodeType === "string" && Array.isArray(record.content)) {
+      return stringifyContentValue(value).trim();
+    }
+    const localized = Object.values(value).find((item) => stringifyContentValue(item).trim());
+    return localized
+      ? stringifyContentValue(localized).trim()
+      : stringifyContentValue(value).trim();
+  }
+  return stringifyContentValue(value).trim();
+}
+
+function stripMarkup(input: string) {
+  return input
+    .replace(/<[^>]*>/g, " ")
+    .replace(/[#*_>`~[\]()]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function truncateWords(input: string, maxWords: number) {
+  const words = stripMarkup(input).split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return words.join(" ");
+  return `${words.slice(0, maxWords).join(" ")}...`;
 }
 
 function getEntrySubject(contentType: SupportedContentType, fields: Record<string, unknown>) {
   const subject = readStringField(fields, "subject");
   if (subject) return subject;
   const title = readStringField(fields, "title");
-  if (title) return title;
+  if (title) return contentType === "blogPost" ? `New blog post: ${title}` : title;
   return contentType === "blogPost" ? "Blog campaign" : "Newsletter campaign";
 }
 
 function getPublishReadiness(input: {
   contentType: SupportedContentType;
   fields: Record<string, unknown>;
-  now: Date;
 }) {
-  const status = readStringField(input.fields, "status").toLowerCase();
-  if (status === "draft") {
-    return { ready: false as const, reason: "draft_status" };
-  }
-  if (readBooleanField(input.fields, "testMode")) {
-    return { ready: false as const, reason: "test_mode" };
-  }
-
   if (input.contentType === "newsletterTemplate") {
     if (!readStringField(input.fields, "subject") || !readStringField(input.fields, "body")) {
       return { ready: false as const, reason: "missing_required_fields" };
     }
+  }
 
-    const scheduledAt = readDateField(input.fields, "sendDate");
-    if (scheduledAt && scheduledAt.getTime() > input.now.getTime()) {
-      return {
-        ready: false as const,
-        reason: "scheduled_for_future",
-        scheduledAt,
-      };
+  if (input.contentType === "blogPost") {
+    if (!readStringField(input.fields, "title") || !readStringField(input.fields, "slug")) {
+      return { ready: false as const, reason: "missing_required_fields" };
     }
   }
 
@@ -109,8 +126,10 @@ async function loadEntry(contentType: SupportedContentType, entryId: string) {
   const res = await getEntries<Record<string, unknown>>(contentType, {
     "sys.id": entryId,
     limit: 1,
+    include: 2,
   });
-  return res?.items?.[0] || null;
+  const entry = res?.items?.[0];
+  return entry ? { ...entry, includes: res?.includes } : null;
 }
 
 async function getAudienceEmails() {
@@ -152,17 +171,44 @@ async function getAudienceEmails() {
   return Array.from(deduped.values());
 }
 
+function getLinkedId(value: unknown) {
+  if (!value || typeof value !== "object" || !("sys" in value)) return "";
+  const id = (value as { sys?: { id?: unknown } }).sys?.id;
+  return typeof id === "string" ? id : "";
+}
+
+function readAssetUrl(fields: Record<string, unknown> | undefined) {
+  const file = fields?.file;
+  if (!file || typeof file !== "object" || Array.isArray(file)) return "";
+  const url = (file as { url?: unknown }).url;
+  if (typeof url !== "string" || !url.trim()) return "";
+  return url.startsWith("//") ? `https:${url}` : url.trim();
+}
+
+function readBlogCoverImageUrl(entry: NonNullable<CampaignEntry>) {
+  const directUrl = readStringField(entry.fields, "coverImageUrl");
+  if (directUrl) return directUrl;
+
+  const assetId = getLinkedId(entry.fields.coverImageAsset);
+  const asset = entry.includes?.Asset?.find((item) => item.sys.id === assetId);
+  return readAssetUrl(asset?.fields);
+}
+
 async function renderCampaignMessage(
   contentType: SupportedContentType,
-  fields: Record<string, unknown>,
+  entry: NonNullable<CampaignEntry>,
   firstName: string,
   unsubscribeUrl: string
 ) {
+  const fields = entry.fields;
   if (contentType === "blogPost") {
     const postTitle = readStringField(fields, "title") || "New blog post";
-    const postExcerpt = readStringField(fields, "excerpt");
+    const postExcerpt = truncateWords(
+      readTextField(fields, "excerpt") || readTextField(fields, "content") || postTitle,
+      100
+    );
     const slug = readStringField(fields, "slug");
-    const postImageUrl = readStringField(fields, "coverImage") || undefined;
+    const postImageUrl = readBlogCoverImageUrl(entry) || undefined;
     const tags = Array.isArray(fields.tags)
       ? fields.tags.filter((x): x is string => typeof x === "string")
       : [];
@@ -178,17 +224,17 @@ async function renderCampaignMessage(
         unsubscribeUrl,
       })
     );
-    const subject = postTitle;
+    const subject = `New blog post: ${postTitle}`;
     return {
       subject,
       html,
-      text: `${postTitle}\n\n${postExcerpt}\n\nUnsubscribe: ${unsubscribeUrl}`,
+      text: `${subject}\n\n${postExcerpt}\n\n${postUrl || getBaseSiteUrlFromEnv()}/blog\n\nUnsubscribe: ${unsubscribeUrl}`,
     };
   }
 
   const subject =
     readStringField(fields, "subject") || readStringField(fields, "title") || "Newsletter";
-  const body = readStringField(fields, "body");
+  const body = readTextField(fields, "body").replace(/\{\{\s*firstName\s*\}\}/gi, firstName);
   const html = await render(
     NewsletterEmail({
       firstName,
@@ -304,7 +350,7 @@ async function runCampaign(params: {
         )}`;
         const rendered = await renderCampaignMessage(
           params.contentType,
-          entry.fields,
+          entry,
           recipient.firstName,
           unsubscribeUrl
         );
@@ -405,51 +451,23 @@ export async function triggerContentfulPublishCampaign(input: {
   const readiness = getPublishReadiness({
     contentType,
     fields: entry.fields,
-    now: input.now || new Date(),
   });
   const audienceType = mapAudience(contentType);
-  const providerCampaignId = `contentful:${contentType}:${input.contentfulEntryId}:${input.contentfulVersion || "latest"}:${audienceType}`;
+  const providerCampaignId =
+    contentType === "blogPost"
+      ? `contentful:${contentType}:${input.contentfulEntryId}:${audienceType}`
+      : `contentful:${contentType}:${input.contentfulEntryId}:${input.contentfulVersion || "latest"}:${audienceType}`;
 
   const existing = await db.emailCampaign.findUnique({
     where: { providerCampaignId },
     select: { id: true, status: true },
   });
+
   if (existing?.status === "sent") {
     return { skipped: true as const, reason: "already_sent", campaignId: existing.id };
   }
 
   if (!readiness.ready) {
-    if (readiness.reason === "scheduled_for_future") {
-      const campaign = existing
-        ? await db.emailCampaign.update({
-            where: { id: existing.id },
-            data: {
-              subject: getEntrySubject(contentType, entry.fields),
-              status: "scheduled",
-              scheduledAt: readiness.scheduledAt,
-              errorSummary: null,
-            },
-          })
-        : await db.emailCampaign.create({
-            data: {
-              providerCampaignId,
-              subject: getEntrySubject(contentType, entry.fields),
-              stream: POSTMARK_STREAM,
-              status: "scheduled",
-              audienceType,
-              triggeredBy: "contentful_publish",
-              contentfulEntryId: input.contentfulEntryId,
-              contentfulContentType: contentType,
-              scheduledAt: readiness.scheduledAt,
-              metadataJson: toJsonValue({ reason: readiness.reason }),
-            },
-          });
-      return {
-        skipped: true as const,
-        reason: readiness.reason,
-        campaignId: campaign.id,
-      };
-    }
     return { skipped: true as const, reason: readiness.reason };
   }
 

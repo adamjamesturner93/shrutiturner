@@ -54,7 +54,7 @@ describe("membership refund service", () => {
       id: "membership_123",
       userId: "user_123",
       latestInvoiceId: "in_123",
-      latestInvoiceAmountPence: 2900,
+      latestInvoiceAmountPence: 3500,
     });
     refundAggregateMock.mockResolvedValue({ _sum: { amountPence: 0 } });
     refundCreateMock.mockResolvedValue({
@@ -69,7 +69,7 @@ describe("membership refund service", () => {
   });
 
   it("prevents refunds above the remaining membership invoice amount", async () => {
-    refundAggregateMock.mockResolvedValue({ _sum: { amountPence: 2500 } });
+    refundAggregateMock.mockResolvedValue({ _sum: { amountPence: 3300 } });
 
     await expect(
       createMembershipRefund({

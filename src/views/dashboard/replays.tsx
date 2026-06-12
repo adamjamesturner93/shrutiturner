@@ -65,7 +65,7 @@ export function DashboardReplays({ initialData }: { initialData: ReplayAssetSumm
           <h1 className="text-3xl">Replays</h1>
           <p className="text-muted-foreground mt-2 max-w-3xl">
             Watch available class and small-group programme recordings here. Access ends at the
-            relevant replay cutoff, and the recording is then queued for deletion.
+            relevant replay cutoff and the recording is then queued for deletion.
           </p>
         </div>
 

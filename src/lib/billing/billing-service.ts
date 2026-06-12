@@ -36,7 +36,10 @@ import { qualifyReferral } from "@/lib/referrals/referral-service";
 import { processGiftPurchaseCheckoutCompleted } from "@/lib/gifts/service";
 import { processRetreatCheckoutCompleted } from "@/lib/retreats/service";
 import { processSmallGroupCheckoutCompleted } from "@/lib/small-groups/service";
+import { getNotificationInbox, sendPostmarkReactEmail } from "@/lib/postmark/client";
 import { coachingTiers, type CoachingOfferKey } from "@/data/marketing";
+import CoachingPaymentNotificationEmail from "@/emails/coaching-payment-notification";
+import CoachingCancellationNotificationEmail from "@/emails/coaching-cancellation-notification";
 
 const APP_URL = getBaseSiteUrlFromEnv();
 const STRIPE_METADATA_VALUE_MAX_LENGTH = 500;
@@ -228,6 +231,123 @@ export async function createBillingPortalSession(
   };
 }
 
+function addStripeBillingInterval(
+  date: Date,
+  interval: NonNullable<Stripe.Price.Recurring["interval"]>,
+  intervalCount: number
+) {
+  const next = new Date(date);
+  const count = Math.max(1, intervalCount);
+  if (interval === "year") {
+    next.setUTCFullYear(next.getUTCFullYear() + count);
+  } else if (interval === "month") {
+    next.setUTCMonth(next.getUTCMonth() + count);
+  } else if (interval === "week") {
+    next.setUTCDate(next.getUTCDate() + count * 7);
+  } else {
+    next.setUTCDate(next.getUTCDate() + count);
+  }
+  return next;
+}
+
+async function getConfiguredCoachingPriceIds() {
+  const priceIds = await Promise.all(
+    coachingTiers.map(async (tier) => {
+      try {
+        const catalog = await getActiveCatalogItem(coachingOfferToCatalogKey(tier.id));
+        return catalog.stripePriceId || null;
+      } catch (error) {
+        if (error instanceof Error && error.message.startsWith("MISSING_STRIPE_PRICE:")) {
+          return null;
+        }
+        throw error;
+      }
+    })
+  );
+  return new Set(priceIds.filter((priceId): priceId is string => Boolean(priceId)));
+}
+
+function subscriptionUsesPrice(subscription: Stripe.Subscription, priceIds: Set<string>) {
+  return subscription.items.data.some((item) => {
+    const priceId = item.price?.id;
+    return priceId ? priceIds.has(priceId) : false;
+  });
+}
+
+function isOpenSubscriptionStatus(status: Stripe.Subscription.Status) {
+  return (
+    status === "active" || status === "trialing" || status === "past_due" || status === "unpaid"
+  );
+}
+
+export async function scheduleCoachingCancellationAfterNextPayment(userId: string) {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { stripeCustomerId: true },
+  });
+  if (!user?.stripeCustomerId) throw new Error("COACHING_SUBSCRIPTION_NOT_FOUND");
+
+  const coachingPriceIds = await getConfiguredCoachingPriceIds();
+  if (coachingPriceIds.size === 0) throw new Error("MISSING_STRIPE_PRICE:coaching");
+
+  const stripe = getStripeClient();
+  const subscriptions = await stripe.subscriptions.list({
+    customer: user.stripeCustomerId,
+    status: "all",
+    limit: 100,
+  });
+  const subscription = subscriptions.data
+    .filter((item) => isOpenSubscriptionStatus(item.status))
+    .find((item) => subscriptionUsesPrice(item, coachingPriceIds));
+  if (!subscription) throw new Error("COACHING_SUBSCRIPTION_NOT_FOUND");
+
+  const firstCoachingItem = subscription.items.data.find((item) =>
+    item.price?.id ? coachingPriceIds.has(item.price.id) : false
+  );
+  const recurring = firstCoachingItem?.price?.recurring;
+  if (!recurring?.interval) throw new Error("COACHING_SUBSCRIPTION_NOT_FOUND");
+
+  const currentPeriodEndSeconds = getStripeSubscriptionPeriodEnd(subscription);
+  if (!currentPeriodEndSeconds) throw new Error("COACHING_SUBSCRIPTION_NOT_FOUND");
+
+  const nextPaymentAt = new Date(currentPeriodEndSeconds * 1000);
+  const endsAt = addStripeBillingInterval(
+    nextPaymentAt,
+    recurring.interval,
+    recurring.interval_count || 1
+  );
+  const updated = await stripe.subscriptions.update(subscription.id, {
+    cancel_at: Math.floor(endsAt.getTime() / 1000),
+    metadata: {
+      ...subscription.metadata,
+      cancellationPolicy: "next_payment_final",
+      cancellationRequestedAt: new Date().toISOString(),
+    },
+  });
+  const updatedCancelAt = updated.cancel_at ? new Date(updated.cancel_at * 1000) : endsAt;
+  await db.coachingClientProfile.updateMany({
+    where: { userId },
+    data: {
+      stripeSubscriptionId: subscription.id,
+      billingCancellationRequestedAt: new Date(),
+      billingFinalPaymentAt: nextPaymentAt,
+      billingEndsAt: updatedCancelAt,
+    },
+  });
+
+  await sendCoachingCancellationNotification({
+    userId,
+    nextPaymentAt: nextPaymentAt.toISOString(),
+    endsAt: updatedCancelAt.toISOString(),
+  });
+
+  return {
+    subscriptionId: updated.id,
+    nextPaymentAt: nextPaymentAt.toISOString(),
+    endsAt: updatedCancelAt.toISOString(),
+  };
+}
+
 async function createOneTimeCouponIfNeeded(discountPence: number) {
   if (discountPence <= 0) return null;
   const stripe = getStripeClient();
@@ -280,33 +400,78 @@ function fallbackOfferForTier(tier: string): CoachingOfferKey {
   return "independent_training_plan";
 }
 
-function coachingOfferIncludesMembership(offerKey: CoachingOfferKey) {
-  return coachingTiers.find((tier) => tier.id === offerKey)?.includesMembership === true;
+function formatEmailDateTime(value: string | Date) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/London",
+  }).format(typeof value === "string" ? new Date(value) : value);
 }
 
-async function grantIncludedCoachingMembership(userId: string) {
-  const latest = await db.membershipSubscription.findFirst({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
+async function sendCoachingPaymentReceivedNotification(input: {
+  clientName: string;
+  clientEmail: string;
+  tierLabel: string;
+  applicationId: string;
+}) {
+  const adminUrl = `${APP_URL}/admin/coaching`;
+  await sendPostmarkReactEmail({
+    to: getNotificationInbox("COACHING_PAYMENT_NOTIFICATION_EMAIL"),
+    subject: `Coaching payment received: ${input.clientName}`,
+    react: CoachingPaymentNotificationEmail({
+      clientName: input.clientName,
+      clientEmail: input.clientEmail,
+      tierLabel: input.tierLabel,
+      adminUrl,
+    }),
+    textBody: `Coaching payment received from ${input.clientName}\nEmail: ${input.clientEmail}\nTier: ${input.tierLabel}\n\nCreate or update the client manually in Everfit, then update their setup status in admin.\n\nAdmin: ${adminUrl}`,
+    tag: "coaching-payment-received",
+    templateKey: "coaching-payment-received",
+    metadata: { applicationId: input.applicationId },
+    dispatchMode: "immediate_best_effort",
+  }).catch((error) => {
+    console.error("[billing] failed to send coaching payment notification", error);
   });
-  const data = {
-    plan: "movewell" as const,
-    billingInterval: "monthly" as const,
-    status: MembershipStatus.active,
-    pricePence: 0,
-    currency: "GBP",
-    classesPerWeek: 99,
-    classesUsedThisWeek: 0,
-    renewsAt: null,
-    cancelAtPeriodEnd: false,
-  };
+}
 
-  if (latest) {
-    await db.membershipSubscription.update({ where: { id: latest.id }, data });
-    return;
-  }
+async function sendCoachingCancellationNotification(input: {
+  userId: string;
+  nextPaymentAt: string;
+  endsAt: string;
+}) {
+  const user = await db.user.findUnique({
+    where: { id: input.userId },
+    select: { firstName: true, lastName: true, name: true, email: true },
+  });
+  if (!user) return;
 
-  await db.membershipSubscription.create({ data: { userId, ...data } });
+  const clientName =
+    user.name || `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
+  const adminUrl = `${APP_URL}/admin/coaching`;
+  const nextPaymentLabel = formatEmailDateTime(input.nextPaymentAt);
+  const endsAtLabel = formatEmailDateTime(input.endsAt);
+
+  await sendPostmarkReactEmail({
+    to: getNotificationInbox("COACHING_CANCELLATION_NOTIFICATION_EMAIL"),
+    subject: `Coaching cancellation scheduled: ${clientName}`,
+    react: CoachingCancellationNotificationEmail({
+      clientName,
+      clientEmail: user.email,
+      nextPaymentAt: nextPaymentLabel,
+      endsAt: endsAtLabel,
+      adminUrl,
+    }),
+    textBody: `Coaching cancellation scheduled for ${clientName}\nEmail: ${user.email}\nFinal payment: ${nextPaymentLabel}\nBilling/access end: ${endsAtLabel}\n\nPlan the Everfit handover and access changes manually.\n\nAdmin: ${adminUrl}`,
+    tag: "coaching-cancellation-scheduled",
+    templateKey: "coaching-cancellation-scheduled",
+    metadata: { userId: input.userId },
+    dispatchMode: "immediate_best_effort",
+  }).catch((error) => {
+    console.error("[billing] failed to send coaching cancellation notification", error);
+  });
 }
 
 export async function createCoachingCheckoutSession(
@@ -350,7 +515,6 @@ export async function createCoachingCheckoutSession(
       applicationId: application.id,
       offerKey,
       tier: application.tier,
-      includesMoveWellMembership: coachingOfferIncludesMembership(offerKey) ? "1" : "0",
       referralDiscountPence: referralDiscountPence > 0 ? String(referralDiscountPence) : "0",
       discountSource: referralDiscountPence > 0 ? "referral" : "none",
     },
@@ -363,6 +527,92 @@ export async function createCoachingCheckoutSession(
     sessionId: session.id,
     discountPence: referralDiscountPence,
     discountSource: referralDiscountPence > 0 ? ("referral" as const) : ("none" as const),
+  };
+}
+
+function coachingOfferToTier(offerKey: CoachingOfferKey) {
+  return coachingTiers.find((tier) => tier.id === offerKey)?.applicationTier || "coaching";
+}
+
+export async function confirmCoachingPackageChangeRequest(
+  userId: string,
+  packageChangeRequestId: string
+) {
+  const request = await db.coachingPackageChangeRequest.findFirst({
+    where: {
+      id: packageChangeRequestId,
+      userId,
+      status: "pending_client_confirmation",
+    },
+    include: {
+      profile: true,
+    },
+  });
+  if (!request) throw new Error("COACHING_PACKAGE_CHANGE_NOT_FOUND");
+
+  const offerKey = request.toOfferKey as CoachingOfferKey;
+  const offer = coachingTiers.find((tier) => tier.id === offerKey);
+  if (!offer) throw new Error("INVALID_COACHING_OFFER");
+
+  if (!request.profile.stripeSubscriptionId) {
+    throw new Error("COACHING_SUBSCRIPTION_NOT_FOUND");
+  }
+
+  const catalog = await getActiveCatalogItem(coachingOfferToCatalogKey(offerKey));
+  assertPriceConfigured(catalog.stripePriceId, `CATALOG_PRICE_COACHING_${offerKey}`);
+
+  const stripe = getStripeClient();
+  const subscription = await stripe.subscriptions.retrieve(request.profile.stripeSubscriptionId);
+  const coachingPriceIds = await getConfiguredCoachingPriceIds();
+  const subscriptionItem =
+    subscription.items.data.find((item) =>
+      item.price?.id ? coachingPriceIds.has(item.price.id) : false
+    ) || subscription.items.data[0];
+  if (!subscriptionItem?.id) throw new Error("COACHING_SUBSCRIPTION_NOT_FOUND");
+
+  const updatedSubscription = await stripe.subscriptions.update(subscription.id, {
+    items: [
+      {
+        id: subscriptionItem.id,
+        price: catalog.stripePriceId,
+      },
+    ],
+    proration_behavior: request.effectiveMode === "immediate" ? "create_prorations" : "none",
+    metadata: {
+      ...subscription.metadata,
+      coachingPackageChangeRequestId: request.id,
+      coachingOfferKey: offerKey,
+      coachingPackageChangeConfirmedAt: new Date().toISOString(),
+      coachingPackageChangeEffectiveMode: request.effectiveMode,
+    },
+  });
+
+  const appliedAt = new Date();
+  const profile = await db.$transaction(async (tx) => {
+    await tx.coachingPackageChangeRequest.update({
+      where: { id: request.id },
+      data: {
+        status: "applied",
+        clientConfirmedAt: appliedAt,
+        appliedAt,
+        stripeSubscriptionId: updatedSubscription.id,
+      },
+    });
+    return tx.coachingClientProfile.update({
+      where: { id: request.profileId },
+      data: {
+        tier: coachingOfferToTier(offerKey),
+        stripeSubscriptionId: updatedSubscription.id,
+      },
+    });
+  });
+
+  return {
+    packageChangeRequestId: request.id,
+    subscriptionId: updatedSubscription.id,
+    tier: profile.tier,
+    offerKey,
+    effectiveMode: request.effectiveMode,
   };
 }
 
@@ -630,13 +880,16 @@ async function processCheckoutCompleted(event: Stripe.Event, session: Stripe.Che
     const applicationId = session.metadata?.applicationId;
     const offerKey = session.metadata?.offerKey as CoachingOfferKey | undefined;
     if (!applicationId || !offerKey || !coachingTiers.some((tier) => tier.id === offerKey)) return;
+    const subscriptionId =
+      typeof session.subscription === "string"
+        ? session.subscription
+        : (session.subscription?.id ?? null);
 
     const application = await db.coachingApplication.findUnique({
       where: { id: applicationId },
     });
     if (!application || application.userId !== userId) return;
 
-    const includesMoveWellMembership = coachingOfferIncludesMembership(offerKey);
     await db.$transaction(async (tx) => {
       await tx.coachingApplication.update({
         where: { id: application.id },
@@ -653,7 +906,7 @@ async function processCheckoutCompleted(event: Stripe.Event, session: Stripe.Che
           applicationId: application.id,
           tier: application.tier === "unsure" ? "coaching" : application.tier,
           status: "onboarding",
-          includesMoveWellMembership,
+          stripeSubscriptionId: subscriptionId,
           startDate: new Date(),
           nextCheckInDueAt: new Date(Date.now() + 7 * 86400000),
         },
@@ -661,7 +914,7 @@ async function processCheckoutCompleted(event: Stripe.Event, session: Stripe.Che
           applicationId: application.id,
           tier: application.tier === "unsure" ? "coaching" : application.tier,
           status: "onboarding",
-          includesMoveWellMembership,
+          stripeSubscriptionId: subscriptionId,
           startDate: new Date(),
           nextCheckInDueAt: new Date(Date.now() + 7 * 86400000),
         },
@@ -672,9 +925,14 @@ async function processCheckoutCompleted(event: Stripe.Event, session: Stripe.Che
       });
     });
 
-    if (includesMoveWellMembership) {
-      await grantIncludedCoachingMembership(userId);
-    }
+    await sendCoachingPaymentReceivedNotification({
+      clientName:
+        `${application.applicantFirstName} ${application.applicantLastName}`.trim() ||
+        application.applicantEmail,
+      clientEmail: application.applicantEmail,
+      tierLabel: coachingTiers.find((tier) => tier.id === offerKey)?.name || application.tier,
+      applicationId: application.id,
+    });
 
     if (discountPence > 0) {
       const applied = await db.referralLedgerEntry.findFirst({
@@ -923,12 +1181,38 @@ async function processInvoicePaymentFailed(invoice: Stripe.Invoice) {
   await openMembershipDunningFromInvoice(invoice);
 }
 
+async function processCoachingSubscriptionUpdated(subscription: Stripe.Subscription) {
+  const existingProfile = await db.coachingClientProfile.findUnique({
+    where: { stripeSubscriptionId: subscription.id },
+    select: { id: true },
+  });
+  if (!existingProfile) return false;
+
+  const cancelAt = subscription.cancel_at ? unixToDate(subscription.cancel_at) : null;
+  const currentPeriodEnd = unixToDate(getStripeSubscriptionPeriodEnd(subscription));
+  const isCancelled = subscription.status === "canceled";
+  await db.coachingClientProfile.update({
+    where: { id: existingProfile.id },
+    data: {
+      billingFinalPaymentAt: cancelAt ? currentPeriodEnd : undefined,
+      billingEndsAt: cancelAt,
+      status: isCancelled ? "completed" : undefined,
+      completedAt: isCancelled ? new Date() : undefined,
+    },
+  });
+
+  return true;
+}
+
 async function processSubscriptionUpdated(subscription: Stripe.Subscription) {
   const user = await db.user.findUnique({
     where: { stripeCustomerId: String(subscription.customer) },
     select: { id: true },
   });
   if (!user) return;
+
+  const handledCoaching = await processCoachingSubscriptionUpdated(subscription);
+  if (handledCoaching) return;
 
   const existing = await db.membershipSubscription.findFirst({
     where: { userId: user.id },

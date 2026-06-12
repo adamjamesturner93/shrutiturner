@@ -13,7 +13,7 @@ describe("EmailLayout categories", () => {
     );
 
     expect(html).toContain("/logos/logo-white-horizontal-transparent.svg");
-    expect(html).toContain('alt="Shruti Turner Private Studio"');
+    expect(html).toContain('alt="Shruti Turner"');
   });
 
   it("does not render unsubscribe content for transactional emails", async () => {
@@ -38,5 +38,24 @@ describe("EmailLayout categories", () => {
 
     expect(html).toContain("Unsubscribe");
     expect(html).toContain("signed up at shrutiturner.co.uk");
+  });
+
+  it("renders newsletter markdown and images from the Contentful body", async () => {
+    const html = await render(
+      NewsletterEmail({
+        firstName: "Taylor",
+        subject: "Monthly note",
+        bodyContent:
+          "## A useful note\n\nThis is **bold** and [linked](https://example.com).\n\n![Recovery caption](https://example.com/recovery.jpg)\n\n- First point\n- Second point",
+      })
+    );
+
+    expect(html).toContain("A useful note");
+    expect(html).toContain("<strong");
+    expect(html).toContain("https://example.com");
+    expect(html).toContain("https://example.com/recovery.jpg");
+    expect(html).toContain("Recovery caption");
+    expect(html).not.toContain("Bonnie taking some time");
+    expect(html).not.toContain("Private Studio");
   });
 });

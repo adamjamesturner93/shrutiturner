@@ -36,7 +36,7 @@ export const PATCH = handleApiRoute(
       reason?: string;
     }>(request);
     if (!body.dunningCaseId || !body.graceExtendedUntil || !body.reason?.trim()) {
-      throw badRequest("Dunning case, extension date, and reason are required.");
+      throw badRequest("Dunning case, extension date and reason are required.");
     }
     const graceExtendedUntil = new Date(body.graceExtendedUntil);
     if (Number.isNaN(graceExtendedUntil.getTime())) {

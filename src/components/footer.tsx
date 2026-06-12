@@ -62,8 +62,9 @@ export function Footer() {
               <IconHorizontal tone="white" className="h-12 w-auto" />
             </div>
             <p className="text-brand-white/70 max-w-md leading-relaxed">
-              Science-backed strength and yoga coaching for people with chronic illness, autoimmune
-              conditions, and complex bodies. PhD Biomechanics. Living with psoriatic arthritis.
+              Science-backed individual movement support for adults with chronic illness,
+              autoimmune conditions and injury recovery. PhD rehabilitation. Living with psoriatic
+              arthritis.
             </p>
 
             {/* Newsletter in footer */}
@@ -172,45 +173,20 @@ export function Footer() {
           <nav aria-label="Footer services">
             <h4 className="text-brand-accent-light mb-4">Services</h4>
             <ul className="text-brand-white/70 space-y-2">
-              <li>
-                <Link href="/classes" className="hover:text-brand-accent-light transition-colors">
-                  Move Well Classes
-                </Link>
-              </li>
-              <li>
-                <Link href="/schedule" className="hover:text-brand-accent-light transition-colors">
-                  Schedule
-                </Link>
-              </li>
-              <li>
-                <Link href="/coaching" className="hover:text-brand-accent-light transition-colors">
-                  Coaching
-                </Link>
-              </li>
-              <li>
-                <Link href="/retreats" className="hover:text-brand-accent-light transition-colors">
-                  Retreats
-                </Link>
-              </li>
-              <li>
-                <Link href="/pricing" className="hover:text-brand-accent-light transition-colors">
-                  Pricing
-                </Link>
-              </li>
-            </ul>
-          </nav>
+	              <li>
+	                <Link href="/coaching" className="hover:text-brand-accent-light transition-colors">
+                  1:1 Offers
+	                </Link>
+	              </li>
+	            </ul>
+	          </nav>
 
           {/* Company */}
           <nav aria-label="Footer company">
             <h4 className="text-brand-accent-light mb-4">Company</h4>
             <ul className="text-brand-white/70 space-y-2">
-              <li>
-                <Link href="/about" className="hover:text-brand-accent-light transition-colors">
-                  About Shruti
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog" className="hover:text-brand-accent-light transition-colors">
+	              <li>
+	                <Link href="/blog" className="hover:text-brand-accent-light transition-colors">
                   Blog & Resources
                 </Link>
               </li>

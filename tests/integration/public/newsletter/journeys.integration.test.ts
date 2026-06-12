@@ -84,7 +84,8 @@ describe("newsletter public journeys integration", () => {
     verifyTurnstileTokenMock.mockResolvedValue(true);
     getNewsletterSignupContentMock.mockResolvedValue({
       slug: "default",
-      hookText: 'Get "Why Some Bodies Need Strength Before More Stretching" - free:',
+      hookText:
+        'Get the free guide to your inbox - "Why Some Bodies Need Strength Before More Stretching"',
       formPlaceholder: "your.email@example.com",
       buttonLabel: "Subscribe",
       successMessage: "Please check your inbox to confirm your email address.",

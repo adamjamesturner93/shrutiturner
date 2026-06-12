@@ -11,11 +11,11 @@ const pricingPayload = {
   currency: "GBP",
   source: "fallback" as const,
   membership: {
-    movewell: 29,
+    movewell: 35,
   },
   membershipDisplay: {
-    movewellMonthly: 29,
-    movewellAnnual: 290,
+    movewellMonthly: 35,
+    movewellAnnual: 350,
     trialDays: 14,
   },
   credits: {
@@ -50,7 +50,7 @@ function createMembershipState(options?: {
       classesPerWeek: 99,
       classesUsedThisWeek: 2,
       classesRemaining: 97,
-      pricePence: 2900,
+      pricePence: 3500,
       cancelAtPeriodEnd: options?.cancelAtPeriodEnd ?? false,
       accessActive: active,
       compliance: {
@@ -203,7 +203,7 @@ test("membership page opens the billing portal from the active membership state"
           createdAt: "2026-03-20T12:00:00.000Z",
           kind: "membership_charge",
           description: "Move Well Membership",
-          amountPence: 2900,
+          amountPence: 3500,
           status: "paid",
         },
       ],

@@ -3,6 +3,11 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 type CreditBundleKey = "1" | "3" | "10";
+type CoachingPriceKey =
+  | "guided_accountability"
+  | "independent_training_plan"
+  | "guided_training_plan"
+  | "one_to_one_coaching";
 
 type SeedItem = {
   key: string;
@@ -20,13 +25,20 @@ type SeedItem = {
 
 const STRIPE_API_VERSION: Stripe.LatestApiVersion = "2025-08-27.basil";
 
-const MEMBERSHIP_MONTHLY_AMOUNT_GBP = 2900;
-const MEMBERSHIP_ANNUAL_AMOUNT_GBP = 29000;
+const MEMBERSHIP_MONTHLY_AMOUNT_GBP = 3500;
+const MEMBERSHIP_ANNUAL_AMOUNT_GBP = 35000;
 
 const CREDIT_BUNDLE_AMOUNTS_GBP: Record<CreditBundleKey, number> = {
   1: 900,
   3: 2400,
   10: 7000,
+};
+
+const COACHING_AMOUNTS_GBP: Record<CoachingPriceKey, number> = {
+  guided_accountability: 7000,
+  independent_training_plan: 9500,
+  guided_training_plan: 13000,
+  one_to_one_coaching: 18000,
 };
 
 const CURRENCY = "gbp";
@@ -120,10 +132,63 @@ const CREDIT_ITEMS: SeedItem[] = [
   },
 ];
 
+const COACHING_ITEMS: SeedItem[] = [
+  {
+    key: "coaching_guided_accountability_monthly",
+    envVar: "STRIPE_PRICE_COACHING_GUIDED_ACCOUNTABILITY_MONTHLY",
+    productName: "Coaching - Guided Accountability",
+    productDescription: "Monthly Guided Accountability coaching subscription.",
+    productSku: `${APP_PREFIX}_coaching_guided_accountability`,
+    lookupKey: `${APP_PREFIX}_coaching_guided_accountability_monthly`,
+    unitAmount: COACHING_AMOUNTS_GBP.guided_accountability,
+    currency: CURRENCY,
+    recurring: { interval: "month" },
+  },
+  {
+    key: "coaching_independent_training_plan_monthly",
+    envVar: "STRIPE_PRICE_COACHING_INDEPENDENT_TRAINING_PLAN_MONTHLY",
+    productName: "Coaching - Personalised Training Plan",
+    productDescription: "Monthly Personalised Training Plan coaching subscription.",
+    productSku: `${APP_PREFIX}_coaching_independent_training_plan`,
+    lookupKey: `${APP_PREFIX}_coaching_independent_training_plan_monthly`,
+    unitAmount: COACHING_AMOUNTS_GBP.independent_training_plan,
+    currency: CURRENCY,
+    recurring: { interval: "month" },
+  },
+  {
+    key: "coaching_guided_training_plan_monthly",
+    envVar: "STRIPE_PRICE_COACHING_GUIDED_TRAINING_PLAN_MONTHLY",
+    productName: "Coaching - Guided Training Plan",
+    productDescription: "Monthly Guided Training Plan coaching subscription.",
+    productSku: `${APP_PREFIX}_coaching_guided_training_plan`,
+    lookupKey: `${APP_PREFIX}_coaching_guided_training_plan_monthly`,
+    unitAmount: COACHING_AMOUNTS_GBP.guided_training_plan,
+    currency: CURRENCY,
+    recurring: { interval: "month" },
+  },
+  {
+    key: "coaching_one_to_one_coaching_monthly",
+    envVar: "STRIPE_PRICE_COACHING_ONE_TO_ONE_COACHING_MONTHLY",
+    productName: "Coaching - 1:1 Coaching",
+    productDescription: "Monthly 1:1 Coaching subscription.",
+    productSku: `${APP_PREFIX}_coaching_one_to_one_coaching`,
+    lookupKey: `${APP_PREFIX}_coaching_one_to_one_coaching_monthly`,
+    unitAmount: COACHING_AMOUNTS_GBP.one_to_one_coaching,
+    currency: CURRENCY,
+    recurring: { interval: "month" },
+  },
+];
+
 async function findOrCreateProduct(stripe: Stripe, item: SeedItem) {
   const products = await stripe.products.list({ active: true, limit: 100 });
   const existing = products.data.find((product) => product.metadata?.sku === item.productSku);
   if (existing) {
+    if (existing.name !== item.productName || existing.description !== item.productDescription) {
+      return stripe.products.update(existing.id, {
+        name: item.productName,
+        description: item.productDescription,
+      });
+    }
     return existing;
   }
 
@@ -195,7 +260,7 @@ async function main() {
     typescript: true,
   });
 
-  const seedItems = [...MEMBERSHIP_ITEMS, ...CREDIT_ITEMS];
+  const seedItems = [...MEMBERSHIP_ITEMS, ...CREDIT_ITEMS, ...COACHING_ITEMS];
   const envOutput: Array<{ envVar: string; priceId: string }> = [];
 
   for (const item of seedItems) {

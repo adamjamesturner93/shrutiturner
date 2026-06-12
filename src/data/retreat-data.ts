@@ -41,17 +41,17 @@ export const retreats: Retreat[] = [
   {
     id: "1",
     title: "Sankalpa",
-    subtitle: "A Yoga Retreat for Bodies That Require Nuance",
+    subtitle: "A Yoga Retreat for Inclusive Movement and Recovery",
     slug: "sankalpa",
     location: "Portuguese Countryside",
     imageUrl: "yoga retreat portugal countryside",
     shortDescription:
-      "Five days of rehabilitation-informed yoga, strength work, and community for people with chronic illness, autoimmune conditions, and complex bodies.",
+      "Five days of rehabilitation-informed yoga, strength work and community for people with chronic illness, autoimmune conditions and injury recovery needs.",
     fullDescription: `This is not a mainstream yoga retreat. This is a carefully designed experience for people whose bodies require intelligent, evidence-based approaches to movement.
 
-Sankalpa means "intention" in Sanskrit. This retreat is about setting intentions that honour your body's reality, building capacity without bypassing limitations, and learning in a space where fluctuating symptoms are expected rather than awkward.
+Sankalpa means "intention" in Sanskrit. This retreat is about setting intentions that honour your body's reality, building capacity without bypassing limitations and learning in a space where fluctuating symptoms are expected rather than awkward.
 
-You'll practise rehabilitation-informed yoga, learn about strength training principles for complex bodies, connect with others who understand chronic illness, and rest in the Portuguese countryside.
+You'll practise rehabilitation-informed yoga, learn about strength training principles for chronic illness, autoimmune conditions and injury recovery, connect with others who understand chronic illness and rest in the Portuguese countryside.
 
 This is for people who are tired of pretending their bodies are simple.`,
     dates: [
@@ -156,7 +156,7 @@ This is for people who are tired of pretending their bodies are simple.`,
       "Five nights shared accommodation",
       "All meals, tailored to dietary requirements",
       "Daily yoga sessions (morning and evening)",
-      "Strength workshop for complex bodies",
+      "Strength workshop for chronic illness, autoimmune conditions and injury recovery",
       "Movement workshops and education",
       "Pool and outdoor space access",
       "Airport transfers from Lisbon",
@@ -200,7 +200,7 @@ This is for people who are tired of pretending their bodies are simple.`,
       },
     ],
     accommodation:
-      "A traditional Portuguese villa with shared twin rooms, a small number of private rooms, and one private double option for two guests. Ensuite bathrooms, pool, and calm outdoor space included.",
+      "A traditional Portuguese villa with shared twin rooms, a small number of private rooms and one private double option for two guests. Ensuite bathrooms, pool and calm outdoor space included.",
     suitableFor: [
       "People with chronic illness or autoimmune conditions",
       "Anyone with psoriatic arthritis, rheumatoid arthritis, or chronic pain",
@@ -212,17 +212,17 @@ This is for people who are tired of pretending their bodies are simple.`,
   {
     id: "2",
     title: "Strength & Stillness",
-    subtitle: "Winter Retreat for Complex Bodies",
+    subtitle: "Winter Retreat for Inclusive Movement and Recovery",
     slug: "strength-stillness-winter",
     location: "Scottish Highlands",
     imageUrl: "scottish highlands winter retreat",
     shortDescription:
-      "Four days of strength training, restorative yoga, and community in the Scottish Highlands for people managing chronic conditions.",
-    fullDescription: `A winter retreat designed specifically for people with complex bodies who want to build strength and find stillness.
+      "Four days of strength training, restorative yoga and community in the Scottish Highlands for people managing chronic conditions.",
+    fullDescription: `A winter retreat designed for people living with chronic illness, autoimmune conditions, or injury recovery who want to build strength and find stillness.
 
-This retreat combines evidence-based strength training principles with restorative yoga practices, all adapted for people managing chronic illness, autoimmune conditions, and chronic pain.
+This retreat combines evidence-based strength training principles with restorative yoga practices, all adapted for people managing chronic illness, autoimmune conditions and chronic pain.
 
-Set in the Scottish Highlands, you'll have space to rest, move intelligently, and connect with others who understand the reality of living with chronic conditions.
+Set in the Scottish Highlands, you'll have space to rest, move intelligently and connect with others who understand the reality of living with chronic conditions.
 
 Small group, led by Shruti Turner with a guest physiotherapist.`,
     dates: [
@@ -294,7 +294,7 @@ Small group, led by Shruti Turner with a guest physiotherapist.`,
         activities: [
           "Morning strength training session",
           "Breakfast",
-          "Workshop: programming for complex bodies",
+          "Workshop: programming for chronic illness, autoimmune conditions and injury recovery",
           "Lunch and rest time",
           "Afternoon restorative yoga or optional walk",
           "Evening session and reflection",
@@ -307,7 +307,7 @@ Small group, led by Shruti Turner with a guest physiotherapist.`,
       },
     ],
     accommodation:
-      "A comfortable lodge with twin rooms, a small number of private rooms, communal spaces, and easy access to equipment and outdoor rest areas.",
+      "A comfortable lodge with twin rooms, a small number of private rooms, communal spaces and easy access to equipment and outdoor rest areas.",
     suitableFor: [
       "People wanting to learn strength training for chronic conditions",
       "Those managing autoimmune arthritis or chronic pain",
@@ -319,17 +319,17 @@ Small group, led by Shruti Turner with a guest physiotherapist.`,
   {
     id: "3",
     title: "Virtual Immersion Weekend",
-    subtitle: "An Online Retreat for Bodies That Can't Travel",
+    subtitle: "An Online Retreat for People Who Cannot Travel",
     slug: "virtual-immersion",
     location: "Online (Live via Video)",
     imageUrl: "online yoga class laptop home",
     shortDescription:
-      "A two-day live online retreat bringing the retreat experience home — adaptive yoga, strength workshops, community connection, and rest.",
+      "A two-day live online retreat bringing the retreat experience home — adaptive yoga, strength workshops, community connection and rest.",
     fullDescription: `Not everyone can travel to a retreat. Whether it's finances, health limitations, caring responsibilities, or simply that travelling triggers your symptoms, you deserve a retreat experience too.
 
 Virtual Immersion Weekend is a fully live, interactive two-day online retreat that brings the depth and community of an in-person retreat into your home. This is not a set of pre-recorded videos. Every session is live, every interaction is real.
 
-You'll move through adaptive yoga, learn strength training principles, connect with a small group who understand chronic illness, and have genuine rest built into the schedule.`,
+You'll move through adaptive yoga, learn strength training principles, connect with a small group who understand chronic illness and have genuine rest built into the schedule.`,
     dates: [
       {
         id: "3a",
@@ -394,7 +394,7 @@ You'll move through adaptive yoga, learn strength training principles, connect w
         activities: [
           "10:00 Welcome circle and introductions",
           "10:30 Adaptive Yoga Flow",
-          "12:00 Strength workshop: foundations for complex bodies",
+          "12:00 Strength workshop: foundations for chronic illness, autoimmune conditions and injury recovery",
           "14:15 Movement exploration",
           "15:30 Restorative yoga",
         ],
@@ -411,7 +411,7 @@ You'll move through adaptive yoga, learn strength training principles, connect w
       },
     ],
     accommodation:
-      "Your own home. A printable setup guide is included so you can create a calmer space with props, a chair, and whatever support you already have.",
+      "Your own home. A printable setup guide is included so you can create a calmer space with props, a chairand whatever support you already have.",
     suitableFor: [
       "People who cannot travel to in-person retreats",
       "Anyone managing chronic illness, autoimmune conditions, or chronic pain",

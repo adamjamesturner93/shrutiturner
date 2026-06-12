@@ -24,52 +24,6 @@ const tierPayloadMap = Object.fromEntries(
   coachingApplicationTierOptions.map((option) => [option.value, option.payloadTier])
 ) as Record<CoachingApplicationTier, "personal_programme" | "coached_plan" | "coaching">;
 
-const tierHighlights: Record<
-  CoachingApplicationTier,
-  { eyebrow: string; heading: string; body: string; bullets: string[] }
-> = {
-  guided_accountability: {
-    eyebrow: "Guided Accountability",
-    heading: "Apply for accountability support",
-    body: "This route is for people who already have some direction and want a lighter coaching rhythm to support consistency and decision-making.",
-    bullets: [
-      "Application required before payment",
-      "Accountability and review prompts in Everfit",
-      "No instant checkout or automatic acceptance",
-    ],
-  },
-  independent_training_plan: {
-    eyebrow: "Independent Training Plan",
-    heading: "Apply for a tailored training plan",
-    body: "This route is for people who want bespoke programme writing and monthly review without higher-touch coaching.",
-    bullets: [
-      "Application required before payment",
-      "Programming and monthly review in Everfit",
-      "Move Well Membership is not included by default",
-    ],
-  },
-  guided_training_plan: {
-    eyebrow: "Guided Training Plan",
-    heading: "Apply for guided programming",
-    body: "This route is for people who want a tailored plan plus more regular review, accountability, and clearer support expectations.",
-    bullets: [
-      "Application required before payment",
-      "More regular review and accountability",
-      "Move Well Membership is not included by default",
-    ],
-  },
-  one_to_one_coaching: {
-    eyebrow: "Coaching",
-    heading: "Apply for higher-touch support",
-    body: "This route is for people who need closer oversight, more strategic adaptation, and a steadier accountability rhythm.",
-    bullets: [
-      "Application required before payment",
-      "High-touch support and strategic review",
-      "Move Well Membership starts after successful payment",
-    ],
-  },
-};
-
 function resolveTier(value: string | null): CoachingApplicationTier {
   const legacyTierMap: Record<string, CoachingApplicationTier> = {
     "coached-plan": "guided_training_plan",
@@ -87,7 +41,7 @@ function resolveTier(value: string | null): CoachingApplicationTier {
 
 export function CoachingApplyPage() {
   const searchParams = useSearchParams();
-  const { user, membership, isCoachingClient, isAuthenticated } = useAuth();
+  const { user, isCoachingClient, isAuthenticated } = useAuth();
   const [selectedTier, setSelectedTier] = useState<CoachingApplicationTier>(() =>
     resolveTier(searchParams.get("offer") || searchParams.get("tier"))
   );
@@ -126,14 +80,20 @@ export function CoachingApplyPage() {
     ) &&
     agreedToCoachingAgreement;
 
-  const memberNotice = membership
-    ? "You already have Move Well Membership. If you move into a coaching tier that includes it, we will handle that transition for you."
-    : null;
-
   const coachingClientNotice = isCoachingClient
-    ? "Your account is already marked as a coaching client. Use this form only if you are asking to change support level or restart coaching."
+    ? "Your account is already marked as a 1:1 client. Use this form only if you are asking to change support level or restart support."
     : null;
-  const highlight = tierHighlights[selectedTier];
+  const staticHero = {
+    eyebrow: "1:1 Application",
+    heading: "Apply to work with Shruti.",
+    body:
+      "Use one form for all 1:1 offers. Choose the closest fit in the application and Shruti will confirm the right next step before any payment opens.",
+    bullets: [
+      "Application required before payment",
+      "Reviewed personally within 48 hours",
+      "Payment only opens after acceptance",
+    ],
+  };
 
   const submitApplication = async () => {
     if (!requiredComplete || isSubmitting) return;
@@ -157,7 +117,6 @@ export function CoachingApplyPage() {
             ...answers,
             offerKey: selectedTier,
           },
-          hasMoveWellMembershipSnapshot: Boolean(membership),
           isExistingCoachingClientSnapshot: isCoachingClient,
           agreedToCoachingAgreement,
         }),
@@ -182,8 +141,8 @@ export function CoachingApplyPage() {
     return (
       <Layout>
         <SEO
-          title="Coaching Application Received - Shruti Turner"
-          description="Your coaching application has been received."
+          title="1:1 Application Received - Shruti Turner"
+          description="Your 1:1 application has been received."
           canonicalUrl="https://shrutiturner.co.uk/coaching/apply"
         />
 
@@ -197,8 +156,9 @@ export function CoachingApplyPage() {
                   </p>
                   <h1 className="mt-5 text-4xl leading-tight md:text-5xl">Thank you.</h1>
                   <p className="text-brand-white/80 mt-5 max-w-xl text-lg leading-relaxed">
-                    Your application is in. I will review it personally and reply with either the
-                    next step or a couple of clarifying questions.
+                    Thanks for requesting to work with Shruti to support your health and wellbeing.
+                    Look out for an email from Shruti within the next 48 hours. Don’t forget to
+                    check your spam.
                   </p>
                   <div className="mt-8 grid gap-3 sm:grid-cols-3">
                     {["Reviewed manually", "Reply within 48 hours", "No automatic upsell"].map(
@@ -221,19 +181,19 @@ export function CoachingApplyPage() {
                 </div>
                 <h2 className="mt-6 text-3xl md:text-4xl">What happens next</h2>
                 <ol className="text-muted-foreground mt-5 space-y-4 text-sm leading-relaxed">
-                  <li>1. I review the context you shared and the level of support you selected.</li>
-                  <li>2. If needed, I follow up with a few clarifying questions.</li>
-                  <li>3. If the fit looks right, I outline onboarding and Everfit setup.</li>
+                  <li>1. Shruti reviews the context you shared and the support you selected.</li>
+                  <li>2. You receive a personal reply within 48 hours.</li>
+                  <li>3. If it feels like a fit, your next step is explained clearly.</li>
                 </ol>
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                   <Button asChild>
                     <Link href="/coaching">
-                      Back to Coaching
+                      Back to 1:1 Offers
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>
                   <Button asChild variant="outline">
-                    <Link href="/classes">Explore Move Well Classes</Link>
+                    <Link href="/blog">Read the Blog</Link>
                   </Button>
                 </div>
               </div>
@@ -247,18 +207,18 @@ export function CoachingApplyPage() {
   return (
     <Layout>
       <SEO
-        title="Apply for Coaching - Shruti Turner"
-        description="Apply for coached support with Shruti Turner, from coached training plans to high-touch 1:1 coaching."
+        title="Apply for 1:1 Support - Shruti Turner"
+        description="Apply for Shruti Turner's 1:1 offers, from training plans to high-touch 1:1 coaching."
         canonicalUrl="https://shrutiturner.co.uk/coaching/apply"
       />
 
       <EditorialHero
-        eyebrow={highlight.eyebrow}
+        eyebrow={staticHero.eyebrow}
         size="compact"
-        title={highlight.heading}
-        description={highlight.body}
+        title={staticHero.heading}
+        description={staticHero.body}
         primaryCta={{ href: "#application-form", label: "Open Application" }}
-        secondaryCta={{ href: "/coaching", label: "Back to Coaching" }}
+        secondaryCta={{ href: "/coaching", label: "Back to 1:1 Offers" }}
         metrics={[
           {
             label: "Good For",
@@ -272,7 +232,7 @@ export function CoachingApplyPage() {
           {
             label: "Tone",
             detail:
-              "Low pressure, clear recommendations, and no pushing you into more support than you need.",
+              "Low pressure, clear recommendations and no pushing you into more support than you need.",
           },
         ]}
         aside={
@@ -282,7 +242,7 @@ export function CoachingApplyPage() {
                 This support includes
               </p>
               <div className="mt-5 space-y-3">
-                {highlight.bullets.map((bullet) => (
+                {staticHero.bullets.map((bullet) => (
                   <div
                     key={bullet}
                     className="border-brand-white/10 bg-brand-white/8 text-brand-white/84 rounded-[1.2rem] border px-4 py-4 text-sm leading-relaxed"
@@ -302,15 +262,15 @@ export function CoachingApplyPage() {
             <div className="marketing-panel rounded-[1.85rem] p-6 md:p-7">
               <SectionHeading
                 eyebrow="Before You Apply"
-                title="Use this form before any coaching payment."
-                description="Coaching is application-led. If another offer is a better fit, Shruti will say so before sending any payment invitation."
+                title="Use this form before any 1:1 payment."
+                description="1:1 support is application-led. If another offer is a better fit, Shruti will say so before sending any payment invitation."
               />
             </div>
 
             <div className="border-brand-dark/10 bg-background rounded-[1.75rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
               <h2 className="text-2xl">What this application is for</h2>
               <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-                This form is for all coaching offers. Submitting it does not start a subscription,
+                This form is for all 1:1 offers. Submitting it does not start a subscription,
                 reserve a place, or create a checkout session. Payment is invited only after admin
                 acceptance.
               </p>
@@ -328,12 +288,6 @@ export function CoachingApplyPage() {
               </div>
             ) : null}
 
-            {memberNotice ? (
-              <div className="rounded-[1.75rem] border border-emerald-200 bg-emerald-50 p-6">
-                <p className="text-sm leading-relaxed text-emerald-900">{memberNotice}</p>
-              </div>
-            ) : null}
-
             {coachingClientNotice ? (
               <div className="rounded-[1.75rem] border border-amber-200 bg-amber-50 p-6">
                 <p className="text-sm leading-relaxed text-amber-900">{coachingClientNotice}</p>
@@ -346,7 +300,7 @@ export function CoachingApplyPage() {
                 <li>1. I review your application personally.</li>
                 <li>2. I reply within 48 hours with the next best step.</li>
                 <li>3. If it feels like a fit, you receive a secure payment invitation.</li>
-                <li>4. After verified payment, onboarding and Everfit setup begin.</li>
+                <li>4. After verified payment, your 1:1 support begins through Everfit.</li>
               </ol>
             </div>
           </div>
@@ -368,11 +322,10 @@ export function CoachingApplyPage() {
                 {coachingApplicationTierOptions.map((option) => (
                   <label
                     key={option.value}
-                    className={`cursor-pointer rounded-[1.5rem] border p-4 transition-colors ${
-                      selectedTier === option.value
-                        ? "border-brand-accent bg-brand-accent/5"
-                        : "border-border hover:bg-secondary/30"
-                    }`}
+                    className={`cursor-pointer rounded-[1.5rem] border p-4 transition-colors ${selectedTier === option.value
+                      ? "border-brand-accent bg-brand-accent/5"
+                      : "border-border hover:bg-secondary/30"
+                      }`}
                   >
                     <input
                       type="radio"
@@ -390,11 +343,10 @@ export function CoachingApplyPage() {
                         </p>
                       </div>
                       <span
-                        className={`mt-1 h-4 w-4 rounded-full border ${
-                          selectedTier === option.value
-                            ? "border-brand-accent bg-brand-accent"
-                            : "border-muted-foreground/40"
-                        }`}
+                        className={`mt-1 h-4 w-4 rounded-full border ${selectedTier === option.value
+                          ? "border-brand-accent bg-brand-accent"
+                          : "border-muted-foreground/40"
+                          }`}
                       />
                     </div>
                   </label>
@@ -423,8 +375,8 @@ export function CoachingApplyPage() {
               <div>
                 <h3 className="text-xl">Application details</h3>
                 <p className="text-muted-foreground mt-2 text-sm">
-                  Tell me what you need from training, what feels complex right now, and what kind
-                  of support would help.
+                  Tell me what you need from training, what your week looks like and what kind of
+                  support would help.
                 </p>
               </div>
               {visibleQuestions.map((question) => (
@@ -486,7 +438,7 @@ export function CoachingApplyPage() {
                     className="text-primary underline"
                     target="_blank"
                   >
-                    Coaching Agreement
+                    1:1 Agreement
                   </Link>
                   . I also understand this application sits alongside the{" "}
                   <Link href="/terms" className="text-primary underline" target="_blank">
@@ -500,7 +452,7 @@ export function CoachingApplyPage() {
                   >
                     Health & Liability Waiver
                   </Link>
-                  , and{" "}
+                  and{" "}
                   <Link href="/privacy" className="text-primary underline" target="_blank">
                     Privacy Policy
                   </Link>
@@ -508,8 +460,8 @@ export function CoachingApplyPage() {
                 </label>
               </div>
               <p className="text-muted-foreground text-xs leading-relaxed">
-                This application is reviewed manually. It does not place you into a paid coaching
-                offer automatically.
+                This application is reviewed manually. It does not place you into a paid 1:1 offer
+                automatically.
               </p>
             </div>
 
@@ -532,7 +484,7 @@ export function CoachingApplyPage() {
             <div className="text-muted-foreground flex items-start gap-2 text-sm leading-relaxed">
               <Shield className="mt-0.5 h-4 w-4 flex-shrink-0" />
               <p>
-                I aim to respond within 48 hours. Application answers are used for fit, safety, and
+                I aim to respond within 48 hours. Application answers are used for fit, safety and
                 support planning, not for Stripe metadata or analytics.
               </p>
             </div>

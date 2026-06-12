@@ -122,7 +122,7 @@ export default function ClassCancellationEmail({
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>
-        Apologies again, and thank you for understanding.
+        Apologies again and thank you for understanding.
         <br />
         <br />
         Shruti

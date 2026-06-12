@@ -6,10 +6,6 @@ const mocks = vi.hoisted(() => ({
   getEntryBySlug: vi.fn(),
 }));
 
-vi.mock("@/lib/content/config", () => ({
-  getContentSource: () => "contentful",
-}));
-
 vi.mock("@/lib/content/contentful-client", () => ({
   getEntries: mocks.getEntries,
   getEntryById: mocks.getEntryById,
@@ -49,17 +45,16 @@ const richTextDocument = {
 const blogPostResponse = {
   items: [
     {
-      sys: { id: "entry_blog" },
+      sys: { id: "entry_blog", publishedAt: "2026-04-01T09:30:00.000Z" },
       fields: {
         slug: "contentful-post",
         title: "Contentful Post",
         excerpt: "Post excerpt",
         content: richTextDocument,
         authors: [{ sys: { id: "author_1" } }],
-        publishDate: "2026-04-01",
         tags: ["Strength Training"],
         readTime: "4 min read",
-        coverImage: { sys: { id: "asset_1" } },
+        coverImageAsset: { sys: { id: "asset_1" } },
       },
     },
   ],
@@ -94,13 +89,15 @@ describe("Contentful public content mapping", () => {
     mocks.getEntries.mockResolvedValue(blogPostResponse);
   });
 
-  it("maps Contentful blog rich text, linked authors, and optimised asset images", async () => {
+  it("maps Contentful blog rich text, linked authors and optimised asset images", async () => {
     const posts = await getBlogPosts();
 
     expect(posts[0]).toMatchObject({
       id: "contentful-post",
       title: "Contentful Post",
       content: expect.stringContaining("## Main idea"),
+      date: "2026-04-01T09:30:00.000Z",
+      author: "Guest Author",
       coverImage: "https://images.ctfassets.net/space/image.jpg?w=1200&fm=webp&q=80",
       coverAlt: "Coach demonstrating a movement",
       authors: [expect.objectContaining({ name: "Guest Author" })],

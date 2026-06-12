@@ -44,8 +44,8 @@ export default function WinBackEmail({
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
       <Text style={bodyTextStyle}>
-        {"It's"} been a little while since your last class, and I just wanted to gently check in.
-        Life gets full, bodies have seasons, and {"there's"} absolutely no pressure here.
+        {"It's"} been a little while since your last class and I just wanted to gently check in.
+        Life gets full, bodies have seasons and {"there's"} absolutely no pressure here.
       </Text>
 
       <Text style={bodyTextStyle}>
@@ -185,7 +185,7 @@ export default function WinBackEmail({
           }}
         >
           Sometimes inspiration comes before action. Browse evidence-based articles on training with
-          chronic conditions, building strength gently, and more.
+          chronic conditions, building strength gently and more.
         </Text>
         <Link
           href={blogUrl}

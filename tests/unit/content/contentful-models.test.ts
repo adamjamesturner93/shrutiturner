@@ -42,13 +42,25 @@ describe("Contentful public content models", () => {
     expect(seededTypes).toEqual([...retainedContentTypes].sort());
   });
 
-  it("keeps newsletter scheduling and test-mode fields in the Contentful model", () => {
+  it("keeps newsletter publishing controlled by Contentful publish state", () => {
     const newsletterModel = PUBLIC_CONTENT_MODELS.find(
       (model) => model.id === "newsletterTemplate"
     );
+    const fieldIds = newsletterModel?.fields.map((field) => field.id) ?? [];
 
-    expect(newsletterModel?.fields.map((field) => field.id)).toEqual(
-      expect.arrayContaining(["sendDate", "segmentation", "testMode"])
+    expect(fieldIds).toEqual(expect.arrayContaining(["slug", "title", "subject", "body"]));
+    expect(fieldIds).not.toEqual(expect.arrayContaining(["sendDate", "status", "testMode"]));
+  });
+
+  it("keeps blog author and publish date derived from linked profiles and Contentful metadata", () => {
+    const blogModel = PUBLIC_CONTENT_MODELS.find((model) => model.id === "blogPost");
+    const fieldIds = blogModel?.fields.map((field) => field.id) ?? [];
+
+    expect(fieldIds).toEqual(
+      expect.arrayContaining(["coverImageAsset", "coverImageUrl", "authors"])
+    );
+    expect(fieldIds).not.toEqual(
+      expect.arrayContaining(["authorName", "publishDate", "isNewsletter"])
     );
   });
 

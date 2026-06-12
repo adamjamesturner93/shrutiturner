@@ -6,12 +6,14 @@ interface CoachingApplicationApprovedEmailProps {
   firstName: string;
   tierLabel: string;
   dashboardUrl: string;
+  decisionReason?: string | null;
 }
 
 export default function CoachingApplicationApprovedEmail({
   firstName,
   tierLabel,
   dashboardUrl,
+  decisionReason,
 }: CoachingApplicationApprovedEmailProps) {
   return (
     <EmailLayout preview="Your coaching application has been approved">
@@ -21,6 +23,19 @@ export default function CoachingApplicationApprovedEmail({
         Your application for {tierLabel} has been reviewed and approved. The next step is to sign in
         to your Private Studio and complete the coaching payment.
       </Text>
+      {decisionReason ? (
+        <Section
+          style={{
+            backgroundColor: colors.secondaryBg,
+            borderRadius: "8px",
+            padding: "24px",
+            margin: "20px 0",
+          }}
+        >
+          <Text style={bodyTextStyle}>A note from Shruti:</Text>
+          <Text style={mutedTextStyle}>{decisionReason}</Text>
+        </Section>
+      ) : null}
       <Section
         style={{
           backgroundColor: colors.secondaryBg,
@@ -31,7 +46,7 @@ export default function CoachingApplicationApprovedEmail({
       >
         <Text style={bodyTextStyle}>What happens after payment:</Text>
         <Text style={mutedTextStyle}>1. Your coaching client profile is opened.</Text>
-        <Text style={mutedTextStyle}>2. Shruti sets up the agreed Everfit support.</Text>
+        <Text style={mutedTextStyle}>2. Shruti sets up the agreed support in Everfit.</Text>
         <Text style={mutedTextStyle}>3. Your onboarding status appears in your dashboard.</Text>
       </Section>
       <Section style={{ textAlign: "center" }}>

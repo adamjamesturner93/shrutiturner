@@ -29,7 +29,7 @@ describe("account journeys integration", () => {
     await cleanupAccountRows();
   });
 
-  it("persists account profile fields, preferences, and explicit prefer-not-to-say values", async () => {
+  it("persists account profile fields, preferences and explicit prefer-not-to-say values", async () => {
     const email = createAccountTestEmail("profile", "member");
     const user = await db.user.create({
       data: {
@@ -85,11 +85,11 @@ describe("account journeys integration", () => {
       source: "account",
       surface: "account_notifications",
       wordingText:
-        "I want to receive marketing emails, newsletter updates, and occasional offers from Shruti Turner. I can unsubscribe at any time.",
+        "I want to receive marketing emails, newsletter updates and occasional offers from Shruti Turner. I can unsubscribe at any time.",
     });
   });
 
-  it("persists onboarding profile, legal, source, and health data for later account views", async () => {
+  it("persists onboarding profile, legal, source and health data for later account views", async () => {
     const email = createAccountTestEmail("onboarding", "member");
     const user = await db.user.create({
       data: {

@@ -91,7 +91,7 @@ export const HEALTH_CATEGORIES: HealthCategory[] = [
   {
     id: "neurodivergence",
     title: "Neurodivergence",
-    description: "This helps Shruti adapt communication, pacing, and sensory environment.",
+    description: "This helps Shruti adapt communication, pacing and sensory environment.",
     icon: "sparkles",
     items: [
       { key: "adhd", label: "ADHD" },
@@ -196,7 +196,7 @@ export const MEMBER_HEALTH_PROFILES: Record<string, HealthProfile> = {
     },
     tracksFlareCheckIns: true,
     additionalNotes:
-      "Proprioception is poor — benefits from mirror/visual feedback. Needs slower tempo for complex movements.",
+      "Proprioception is poor — benefits from mirror/visual feedback. Needs slower tempo for layered movements.",
     lastConfirmedAt: "2026-02-01",
     lastUpdated: "2026-02-01",
     needsReview: false,

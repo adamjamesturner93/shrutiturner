@@ -1,11 +1,4 @@
-import type { ContentSource } from "./types";
 import { env } from "@/lib/env";
-
-const DEFAULT_SOURCE: ContentSource = "contentful";
-
-export function getContentSource(): ContentSource {
-  return env.CONTENT_SOURCE || DEFAULT_SOURCE;
-}
 
 export interface ContentfulConfig {
   spaceId: string;

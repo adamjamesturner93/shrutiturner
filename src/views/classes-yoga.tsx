@@ -21,8 +21,8 @@ export function ClassesYogaPage({
   return (
     <Layout>
       <SEO
-        title="Online Yoga Classes - Adaptive Yoga for Complex Bodies - Shruti Turner"
-        description="Live online adaptive yoga classes for chronic illness, autoimmune conditions, and hypermobility. Rehabilitation-informed yoga that prioritizes safety, stability, and nervous system regulation."
+        title="Online Yoga Classes - Inclusive Adaptive Yoga - Shruti Turner"
+        description="Live online adaptive yoga classes for chronic illness, autoimmune conditions and hypermobility. Rehabilitation-informed yoga that prioritizes safety, stability and nervous system regulation."
         keywords="online yoga classes UK, adaptive yoga online, yoga for chronic illness, yoga for hypermobility, rehabilitation yoga online, therapeutic yoga classes"
         canonicalUrl="https://shrutiturner.co.uk/classes/yoga"
       />
@@ -32,7 +32,7 @@ export function ClassesYogaPage({
         <div className="container mx-auto max-w-4xl px-4 text-center">
           <h1 className="mb-6 text-4xl leading-tight md:text-6xl">Online Yoga Classes</h1>
           <p className="mb-8 text-xl leading-relaxed text-[#B5C49B] md:text-2xl">
-            Rehabilitation-informed yoga for bodies that need intelligent, adaptive practice—not
+            Rehabilitation-informed yoga for people who need intelligent, adaptive practice, not
             just modifications.
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
@@ -77,7 +77,7 @@ export function ClassesYogaPage({
               <p className="text-muted-foreground leading-relaxed">
                 Most yoga modifications are just "easier versions" of poses designed for different
                 bodies. Adaptive yoga starts with a different premise: what does <em>this</em> body
-                need, and how do we work with its reality?
+                need and how do we work with its reality?
               </p>
               <p className="text-muted-foreground leading-relaxed">
                 If you have chronic pain, arthritis, hypermobility, or fatigue, standard yoga can do
@@ -101,7 +101,7 @@ export function ClassesYogaPage({
               <p className="text-muted-foreground leading-relaxed">
                 For people with chronic conditions, nervous system dysregulation is common.
                 Practices are designed to help your nervous system find regulation, which has real
-                impacts on pain perception, fatigue, and symptom management.
+                impacts on pain perception, fatigue and symptom management.
               </p>
             </div>
 
@@ -169,7 +169,7 @@ export function ClassesYogaPage({
           <h2 className="mb-3 text-center text-3xl md:text-5xl">Class Styles</h2>
           <p className="text-muted-foreground mx-auto mb-12 max-w-3xl text-center">
             These are the yoga formats currently running in the timetable. Each session is adapted
-            live for symptom changes, pain levels, and energy fluctuations.
+            live for symptom changes, pain levels and energy fluctuations.
           </p>
 
           {classDefinitions.length > 0 ? (
@@ -245,7 +245,7 @@ export function ClassesYogaPage({
               </div>
               <h3 className="text-xl">Improved Stability</h3>
               <p className="text-muted-foreground leading-relaxed">
-                Especially important for hypermobile bodies that need strength and control more than
+                Especially important when hypermobility means strength and control matter more than
                 flexibility.
               </p>
             </div>
@@ -325,7 +325,7 @@ export function ClassesYogaPage({
       <PreFooterCtaSection
         layout="centered"
         title="Ready to Experience Yoga That Works With Your Body?"
-        description="Join live classes with clear pacing, thoughtful teaching, and room to adapt. All levels welcome, all bodies respected."
+        description="Join live classes with clear pacing, thoughtful teaching and room to adapt. All levels welcome, all bodies respected."
         actions={[
           {
             href: "/schedule",
@@ -340,7 +340,7 @@ export function ClassesYogaPage({
         ]}
       >
         <p className="text-sm opacity-70">
-          Single class £9 · 3-pack £24 · Membership from £29/month
+          Single class £9 · 3-pack £24 · Membership from £35/month
         </p>
       </PreFooterCtaSection>
     </Layout>

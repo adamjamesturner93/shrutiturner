@@ -375,7 +375,7 @@ export function AdminClassDetail() {
             <DialogHeader>
               <DialogTitle>Cancel this class?</DialogTitle>
               <DialogDescription>
-                This will cancel the session, email all booked participants, and close any Daily
+                This will cancel the session, email all booked participants and close any Daily
                 room already created for it.
               </DialogDescription>
             </DialogHeader>
@@ -455,9 +455,9 @@ export function AdminClassDetail() {
         ) : null}
 
         {!session.dailyRoomUrl &&
-        session.roomSetupStatus === "pending" &&
-        session.status !== "draft" &&
-        session.status !== "cancelled" ? (
+          session.roomSetupStatus === "pending" &&
+          session.status !== "draft" &&
+          session.status !== "cancelled" ? (
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm">Daily room pending</p>

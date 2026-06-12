@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Facebook, Instagram, Mail, Youtube } from "lucide-react";
+import { Facebook, Instagram, Mail, Youtube } from "lucide-react";
 import { HoldingNewsletterForm } from "@/components/holding-newsletter-form";
 import { IconVertical } from "@/components/icon";
 
@@ -31,7 +31,8 @@ const SOCIAL_LINKS = [
   },
 ] as const;
 
-export function HoldingPage({ existingPlatformUrl }: HoldingPageProps) {
+export function HoldingPage({ existingPlatformUrl: _existingPlatformUrl }: HoldingPageProps) {
+  void _existingPlatformUrl;
   return (
     <div className="relative isolate min-h-screen overflow-hidden bg-[#3c2c42] text-white">
       <Image
@@ -63,27 +64,17 @@ export function HoldingPage({ existingPlatformUrl }: HoldingPageProps) {
                 Something new is coming
               </h1>
               <p className="mt-5 max-w-xl text-base leading-relaxed text-white/82 sm:text-[1.12rem] sm:leading-[1.6] lg:max-w-2xl lg:text-[1.22rem]">
-                A new home for evidence-based coaching, movement classes, and community launching{" "}
+                A new home for evidence-based coaching and resources launching{" "}
                 <span className="text-brand-accent-light">early summer 2026</span>.
               </p>
               <p className="mt-4 max-w-lg text-sm leading-relaxed text-white/62 sm:text-[0.96rem] lg:max-w-xl">
-                Join the list for launch updates and a free guide now, or head to the existing
-                platform for current online classes.
+                Join the list for launch updates and a free guide now.
               </p>
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row md:flex-col md:items-start lg:flex-row">
-                <a
-                  href={existingPlatformUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex h-11 min-w-[220px] items-center justify-center gap-2 rounded-xl bg-[#4b5b32] px-5 text-sm font-medium whitespace-nowrap text-white transition hover:bg-[#55683a]"
-                >
-                  Visit The Chronic Yogini
-                  <ArrowRight className="h-4 w-4" />
-                </a>
                 <p className="max-w-sm text-sm leading-relaxed text-white/58">
-                  Current live online classes remain available on the existing platform while the
-                  new site is being built.
+                  Coaching applications, resources and newsletter updates will live here when the
+                  new site opens.
                 </p>
               </div>
             </div>

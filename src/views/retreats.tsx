@@ -98,11 +98,11 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
         size="compact"
         title={
           <>
-            Retreats for complex bodies that need
+            Retreats for people who need
             <span className="text-brand-accent-light"> rest with intelligence.</span>
           </>
         }
-        description="These are not mainstream wellness retreats. They are small, thoughtful experiences for people who want movement, community, and breathing room without being pushed past what their body can realistically hold."
+        description="These are not mainstream wellness retreats. They are small, thoughtful experiences for people who want movement, community and breathing room without being pushed past what their body can realistically hold."
         primaryCta={{ href: "#retreats", label: "View Upcoming Retreats" }}
         secondaryCta={{ href: "/contact", label: "Ask About Accessibility" }}
         stats={[
@@ -113,12 +113,12 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
           {
             label: "For",
             detail:
-              "People with chronic illness, pain, hypermobility, autoimmune conditions, or more complex recovery needs.",
+              "People with chronic illness, pain, hypermobility, autoimmune conditions, or injury recovery needs.",
           },
           {
             label: "Includes",
             detail:
-              "Movement sessions, community, thoughtful pacing, and room to rest without guilt.",
+              "Movement sessions, community, thoughtful pacing and room to rest without guilt.",
           },
           {
             label: "Difference",
@@ -163,7 +163,7 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
         items={[
           {
             label: "Pacing",
-            detail: "Sessions are optional, adaptable, and balanced with genuine downtime.",
+            detail: "Sessions are optional, adaptable andd balanced with genuine downtime.",
           },
           {
             label: "Teaching",
@@ -184,11 +184,11 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
       <StorySplit
         eyebrow="Retreat Philosophy"
         title="These are not mainstream retreats."
-        description="The aim is not to pack the schedule. It is to create a thoughtful container where movement, rest, and community can all feel safe enough to matter."
+        description="The aim is not to pack the schedule. It is to create a thoughtful container where movement, restand community can all feel safe enough to matter."
         body={
           <div className="space-y-6">
             <p className="text-muted-foreground text-lg leading-relaxed">
-              Many retreat spaces quietly reward people who can do the most, stay the longest, and
+              Many retreat spaces quietly reward people who can do the most, stay the longestand
               bounce back the fastest. That is not the standard here.
             </p>
             <div className="grid gap-4 md:grid-cols-2">
@@ -196,7 +196,7 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
                 "Sessions are adaptable and optional.",
                 "Rest is treated as part of the experience, not a sign you are missing it.",
                 "Small groups make it easier to adjust without disappearing into the room.",
-                "The teaching respects complex health needs rather than asking you to minimise them.",
+                "The teaching respects chronic illness, autoimmune conditions and injury recovery rather than asking you to minimise them.",
               ].map((item) => (
                 <div key={item} className="marketing-panel rounded-[1.3rem] px-5 py-5">
                   <p className="text-sm leading-relaxed">{item}</p>
@@ -233,7 +233,7 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
         <SectionHeading
           eyebrow="Upcoming Retreats"
           title="Current dates and locations"
-          description="Each retreat has its own atmosphere, but they all share the same commitment to adaptation, pacing, and intelligent teaching."
+          description="Each retreat has its own atmosphere, but they all share the same commitment to adaptation, pacing and intelligent teaching."
           align="center"
         />
 

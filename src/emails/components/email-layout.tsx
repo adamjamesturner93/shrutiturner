@@ -64,7 +64,7 @@ export function EmailLayout({
           >
             <Img
               src={`${websiteUrl}/logos/logo-white-horizontal-transparent.svg`}
-              alt="Shruti Turner Private Studio"
+              alt="Shruti Turner"
               width="240"
               height="61"
               style={{
@@ -92,7 +92,7 @@ export function EmailLayout({
           {/* Footer */}
           <Section style={{ padding: "0 40px 40px" }}>
             <Hr style={dividerStyle} />
-            <Text style={footerTextStyle}>Shruti Turner | Private Studio</Text>
+            <Text style={footerTextStyle}>Shruti Turner</Text>
             <Text style={footerTextStyle}>
               <Link
                 href={websiteUrl}

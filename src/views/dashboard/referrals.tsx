@@ -71,7 +71,7 @@ export function DashboardReferrals() {
       <AppPageHeader
         eyebrow="Member referrals"
         title="Refer a Friend"
-        description="Share your link. Your friend gets one free class gift, and you receive £10 after their first paid purchase."
+        description="Share your link. Your friend gets one free class giftand you receive £10 after their first paid purchase."
         className="mb-8"
       />
 
@@ -130,7 +130,7 @@ export function DashboardReferrals() {
           </Button>
         </div>
         <p className="text-muted-foreground mt-3 text-xs">
-          Share this link with friends. They get a free class gift right away, and you get £10 when
+          Share this link with friends. They get a free class gift right away and you get £10 when
           they complete their first paid purchase.
         </p>
         {referralCode ? (
@@ -184,9 +184,8 @@ export function DashboardReferrals() {
               summary.history.map((item, index) => (
                 <div
                   key={item.id}
-                  className={`flex items-center justify-between py-2 ${
-                    index < summary.history.length - 1 ? "border-b" : ""
-                  }`}
+                  className={`flex items-center justify-between py-2 ${index < summary.history.length - 1 ? "border-b" : ""
+                    }`}
                 >
                   <div>
                     <p>{item.friend}</p>

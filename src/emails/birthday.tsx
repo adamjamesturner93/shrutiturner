@@ -58,7 +58,7 @@ export default function BirthdayEmail({
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
       <Text style={bodyTextStyle}>
-        Wishing you a genuinely wonderful birthday. I hope today brings you rest, joy, and whatever
+        Wishing you a genuinely wonderful birthday. I hope today brings you rest, joy and whatever
         your body needs.
       </Text>
 

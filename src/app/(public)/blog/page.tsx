@@ -19,7 +19,7 @@ export default async function Page() {
             name: "Blog",
             path: "/blog",
             type: "CollectionPage",
-            description: "Articles on strength, yoga, chronic illness, and complex bodies.",
+            description: "Science-backed articles about movement, healthy living, chronic conditions and preventing/recovering from injury.",
           }),
           createBlogSchema({ posts }),
         ]}

@@ -86,7 +86,7 @@ describe("admin newsletter reporting service", () => {
     vi.useRealTimers();
   });
 
-  it("filters, paginates, and derives campaign reporting rates", async () => {
+  it("filters, paginates and derives campaign reporting rates", async () => {
     const summary = await getAdminNewsletterSummary({
       campaignStatus: "failed_partial",
       campaignDateRange: "7d",

@@ -123,7 +123,7 @@ export function LoginPage({
     <Layout>
       <SEO
         title="Login - Shruti Turner"
-        description="Sign in to your Private Studio to access classes, coaching, health details, and account tools."
+        description="Sign in to your Private Studio to access classes, coaching, health details and account tools."
         canonicalUrl="https://shrutiturner.co.uk/login"
         noIndex
       />
@@ -148,7 +148,7 @@ export function LoginPage({
                       Sign in to the part of the studio built around your actual life.
                     </h1>
                     <p className="text-brand-white/78 text-lg leading-relaxed">
-                      Book classes, check your plan, update health details, and keep everything in
+                      Book classes, check your plan, update health details and keep everything in
                       one calmer place.
                     </p>
                   </div>
@@ -175,7 +175,7 @@ export function LoginPage({
                     {[
                       { value: "Live", label: "Classes and bookings in one place" },
                       { value: "Clear", label: "No hard-sell onboarding flow" },
-                      { value: "Safe", label: "Built for complex bodies and real context" },
+                      { value: "Safe", label: "Built for inclusive coaching and real context" },
                     ].map((item) => (
                       <div key={item.label}>
                         <p className="text-brand-accent-light text-sm tracking-[0.18em] uppercase">

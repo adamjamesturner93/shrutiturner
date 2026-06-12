@@ -108,7 +108,7 @@ export function UnsubscribePage() {
                   no longer receive launch updates, newsletters, or promotional emails.
                 </p>
                 <div className="bg-secondary/20 text-muted-foreground mx-auto mt-6 max-w-md rounded-[1.4rem] border p-4 text-left text-sm">
-                  Transactional emails about bookings, payments, account access, and important
+                  Transactional emails about bookings, payments, account access and important
                   service updates will still be sent when needed.
                 </div>
                 <p className="text-muted-foreground mt-5 text-sm">
@@ -160,7 +160,7 @@ export function UnsubscribePage() {
                   <p className="text-muted-foreground text-sm">You&apos;ll no longer receive:</p>
                   <ul className="text-muted-foreground space-y-2 text-sm">
                     <li>Launch announcements and newsletter emails</li>
-                    <li>Updates about classes, programmes, retreats, and offers</li>
+                    <li>Updates about classes, programmes, retreats and offers</li>
                     <li>Occasional practical training notes from Shruti</li>
                   </ul>
                 </div>
@@ -225,7 +225,7 @@ export function UnsubscribePage() {
                   </label>
 
                   <div className="bg-secondary/20 text-muted-foreground rounded-[1.3rem] border p-4 text-left text-sm">
-                    This only affects marketing emails, including newsletters, launch updates, and
+                    This only affects marketing emails, including newsletters, launch updates and
                     occasional offers.
                   </div>
 

@@ -167,17 +167,110 @@ describe("triggerContentfulPublishCampaign", () => {
     );
   });
 
-  it("records a scheduled campaign without sending when the Contentful send date is in the future", async () => {
+  it("sends newly published blog posts once with a New blog post subject and excerpt", async () => {
+    getEntriesMock.mockResolvedValue({
+      items: [
+        {
+          sys: { id: "blog_123" },
+          fields: {
+            title: "Training Around Flares",
+            slug: "training-around-flares",
+            excerpt:
+              "A practical article about adapting training around flare days without turning every week into a full restart.",
+          },
+        },
+      ],
+    });
+
+    await expect(
+      triggerContentfulPublishCampaign({
+        contentType: "blogPost",
+        contentfulEntryId: "blog_123",
+        contentfulVersion: "7",
+      })
+    ).resolves.toEqual({ skipped: false, campaignId: "campaign_123" });
+
+    expect(emailCampaignFindUniqueMock).toHaveBeenCalledWith({
+      where: { providerCampaignId: "contentful:blogPost:blog_123:blog" },
+      select: { id: true, status: true },
+    });
+    expect(emailCampaignCreateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          providerCampaignId: "contentful:blogPost:blog_123:blog",
+          subject: "New blog post: Training Around Flares",
+          audienceType: "blog",
+        }),
+      })
+    );
+    expect(emailDeliveryCreateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          subject: "New blog post: Training Around Flares",
+          templateKey: "contentful-blogPost",
+          payloadJson: expect.objectContaining({
+            textBody: expect.stringContaining(
+              "A practical article about adapting training around flare days"
+            ),
+          }),
+        }),
+      })
+    );
+    expect(sendEmailBatchMock).toHaveBeenCalledWith([
+      expect.objectContaining({
+        Subject: "New blog post: Training Around Flares",
+        TextBody: expect.stringContaining("https://shrutiturner.test/blog/training-around-flares"),
+      }),
+    ]);
+  });
+
+  it("does not resend a blog campaign when the same post is republished with a new Contentful version", async () => {
+    emailCampaignFindUniqueMock.mockResolvedValueOnce({
+      id: "campaign_sent",
+      status: "sent",
+    });
+    getEntriesMock.mockResolvedValue({
+      items: [
+        {
+          sys: { id: "blog_123" },
+          fields: {
+            title: "Training Around Flares",
+            slug: "training-around-flares",
+            excerpt: "Updated excerpt.",
+          },
+        },
+      ],
+    });
+
+    await expect(
+      triggerContentfulPublishCampaign({
+        contentType: "blogPost",
+        contentfulEntryId: "blog_123",
+        contentfulVersion: "8",
+      })
+    ).resolves.toEqual({
+      skipped: true,
+      reason: "already_sent",
+      campaignId: "campaign_sent",
+    });
+
+    expect(emailCampaignFindUniqueMock).toHaveBeenCalledWith({
+      where: { providerCampaignId: "contentful:blogPost:blog_123:blog" },
+      select: { id: true, status: true },
+    });
+    expect(emailCampaignCreateMock).not.toHaveBeenCalled();
+    expect(sendEmailBatchMock).not.toHaveBeenCalled();
+  });
+
+  it("sends a newsletter when Contentful publishes it without status or test-mode gates", async () => {
     getEntriesMock.mockResolvedValue({
       items: [
         {
           sys: { id: "entry_123" },
           fields: {
-            title: "May newsletter",
-            subject: "May newsletter",
-            body: "Scheduled update.",
-            status: "scheduled",
-            sendDate: "2026-05-15T10:00:00.000Z",
+            title: "Published newsletter",
+            subject: "Published newsletter",
+            body: "Ready to send.",
           },
         },
       ],
@@ -188,35 +281,27 @@ describe("triggerContentfulPublishCampaign", () => {
         contentType: "newsletterTemplate",
         contentfulEntryId: "entry_123",
         contentfulVersion: "10",
-        now: new Date("2026-05-01T10:00:00.000Z"),
       })
-    ).resolves.toEqual({
-      skipped: true,
-      reason: "scheduled_for_future",
-      campaignId: "campaign_123",
-    });
+    ).resolves.toEqual({ skipped: false, campaignId: "campaign_123" });
 
     expect(emailCampaignCreateMock).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          status: "scheduled",
-          scheduledAt: new Date("2026-05-15T10:00:00.000Z"),
+          status: "sending",
         }),
       })
     );
-    expect(sendEmailBatchMock).not.toHaveBeenCalled();
+    expect(sendEmailBatchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("skips draft or test-mode newsletter templates before creating a campaign", async () => {
+  it("skips newsletter templates that are missing required send fields", async () => {
     getEntriesMock.mockResolvedValue({
       items: [
         {
           sys: { id: "entry_123" },
           fields: {
-            title: "Draft newsletter",
-            subject: "Draft newsletter",
-            body: "Not ready.",
-            status: "draft",
+            title: "Incomplete newsletter",
+            subject: "Incomplete newsletter",
           },
         },
       ],
@@ -227,7 +312,7 @@ describe("triggerContentfulPublishCampaign", () => {
         contentType: "newsletterTemplate",
         contentfulEntryId: "entry_123",
       })
-    ).resolves.toEqual({ skipped: true, reason: "draft_status" });
+    ).resolves.toEqual({ skipped: true, reason: "missing_required_fields" });
 
     expect(emailCampaignCreateMock).not.toHaveBeenCalled();
     expect(sendEmailBatchMock).not.toHaveBeenCalled();

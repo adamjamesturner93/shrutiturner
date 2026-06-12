@@ -100,7 +100,7 @@ export function AdminBlogComments({ initialData }: { initialData?: AdminBlogComm
         <AppPageHeader
           eyebrow="Community moderation"
           title="Blog Comments"
-          description="Review the live comment stream, hide threads when needed, and remove spam or duplicate replies."
+          description="Review the live comment stream, hide threads when needed and remove spam or duplicate replies."
           actions={
             <Button variant="outline" onClick={() => void loadComments()}>
               <RefreshCcw className="mr-2 h-4 w-4" />

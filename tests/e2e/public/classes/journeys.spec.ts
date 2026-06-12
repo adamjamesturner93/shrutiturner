@@ -5,27 +5,27 @@ test.beforeEach(async () => {
   await cleanupE2eThemedWeeks();
 });
 
-test("home page shows the updated hero and coaching philosophy section", async ({ page }) => {
+test("home page shows the updated hero and working philosophy section", async ({ page }) => {
   await page.goto("/");
 
   await expect(
     page.getByRole("heading", {
-      name: /Build strength that listens to your body, not against it\./i,
+      name: /Movement that works with your body, not against it\./i,
     })
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Explore Move Well Classes" }).first()
-  ).toHaveAttribute("href", "/classes");
-  await expect(page.getByText("The coaching philosophy")).toBeVisible();
+    page.getByRole("link", { name: "Explore 1:1 Offers" }).first()
+  ).toHaveAttribute("href", "/coaching");
+  await expect(page.getByText("The working philosophy")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Understand first" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Build capacity" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Build strength" })).toBeVisible();
 });
 
 test("classes page shows the updated hero and yoga plus strength section", async ({ page }) => {
   await page.goto("/classes");
 
   await expect(
-    page.getByRole("heading", { name: "Live classes for bodies that need nuance, not noise." })
+    page.getByRole("heading", { name: "Live classes for people who need nuance, not noise." })
   ).toBeVisible();
   await expect(
     page.getByText("Adaptive yoga and intelligent strength training taught live online.")
@@ -107,9 +107,7 @@ test("class detail page renders upcoming sessions and booking CTAs", async ({ pa
   await expect(upcomingSessions.getByRole("heading", { name: "Upcoming Sessions" })).toBeVisible();
   await expect(upcomingSessions.getByText("6/15 spots")).toBeVisible();
   await expect(upcomingSessions.getByText("15/15 spots")).toBeVisible();
-  await expect(
-    upcomingSessions.getByRole("button", { name: /Book 21 March 2026/i })
-  ).toBeVisible();
+  await expect(upcomingSessions.getByRole("button", { name: /Book 21 March 2026/i })).toBeVisible();
   await expect(page.getByRole("link", { name: "Full Schedule" }).first()).toHaveAttribute(
     "href",
     "/schedule"

@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/content/config", () => ({
-  getContentSource: () => "local",
+vi.mock("@/lib/content", () => ({
+  getBlogPostBySlug: (slug: string) =>
+    Promise.resolve(slug === "strength-training-chronic-illness" ? { id: slug } : null),
 }));
 
 const { isKnownBlogPostSlug } = await import("@/lib/blog/post-validation");

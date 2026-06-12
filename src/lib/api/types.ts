@@ -161,19 +161,48 @@ export type CoachingApplicationResponseDto = {
 };
 
 export type CoachingDashboardDto = {
-  state: "not_a_client" | "application_pending" | "onboarding" | "active" | "paused" | "completed";
+  state:
+    | "not_a_client"
+    | "application_pending"
+    | "waitlisted"
+    | "withdrawn"
+    | "onboarding"
+    | "active"
+    | "paused"
+    | "completed";
   hasProfile: boolean;
   isCoachingClient: boolean;
   profile: null | {
     id: string;
     tier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
     status: "application_pending" | "onboarding" | "active" | "paused" | "completed";
-    includesMoveWellMembership: boolean;
     everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue";
     nextCheckInDueAt: string | null;
     nextCheckInStatus: "due" | "submitted" | "reviewed" | "overdue" | null;
     nextSessionStartsAt: string | null;
     latestCoachResponseSummary: string | null;
+    billingCancellationRequestedAt: string | null;
+    billingFinalPaymentAt: string | null;
+    billingEndsAt: string | null;
+    pendingPackageChange: null | {
+      id: string;
+      fromTier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
+      toTier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
+      fromOfferKey:
+        | "guided_accountability"
+        | "independent_training_plan"
+        | "guided_training_plan"
+        | "one_to_one_coaching"
+        | null;
+      toOfferKey:
+        | "guided_accountability"
+        | "independent_training_plan"
+        | "guided_training_plan"
+        | "one_to_one_coaching";
+      effectiveMode: "next_invoice" | "immediate" | "manual";
+      note: string | null;
+      createdAt: string;
+    };
   };
   application: null | {
     id: string;
@@ -187,11 +216,16 @@ export type CoachingDashboardDto = {
       | "submitted"
       | "under_review"
       | "follow_up_needed"
+      | "waitlisted"
       | "approved"
       | "declined"
-      | "converted";
+      | "converted"
+      | "withdrawn";
+    decisionReason: string | null;
     tier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
     createdAt: string;
+    waitlistedAt: string | null;
+    waitlistLeftAt: string | null;
   };
 };
 
@@ -257,11 +291,41 @@ export type AdminCoachingApplicationDto = {
   createdAt: string;
   reviewedAt: string | null;
   approvedAt: string | null;
+  waitlistedAt: string | null;
+  waitlistLeftAt: string | null;
   userId: string | null;
   isLinkedUserCoachingClient: boolean;
-  hasMoveWellMembershipSnapshot: boolean;
+  decisionReason: string;
   answers: Record<string, string>;
   adminNotes: string;
+  coachingProfile: null | {
+    id: string;
+    status: "application_pending" | "onboarding" | "active" | "paused" | "completed";
+    everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue";
+    billingCancellationRequestedAt: string | null;
+    billingFinalPaymentAt: string | null;
+    billingEndsAt: string | null;
+    tier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
+    pendingPackageChange: null | {
+      id: string;
+      fromTier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
+      toTier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
+      fromOfferKey:
+        | "guided_accountability"
+        | "independent_training_plan"
+        | "guided_training_plan"
+        | "one_to_one_coaching"
+        | null;
+      toOfferKey:
+        | "guided_accountability"
+        | "independent_training_plan"
+        | "guided_training_plan"
+        | "one_to_one_coaching";
+      effectiveMode: "next_invoice" | "immediate" | "manual";
+      note: string | null;
+      createdAt: string;
+    };
+  };
 };
 
 export type AdminRetreatSummaryDto = {

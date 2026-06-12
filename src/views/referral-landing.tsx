@@ -56,7 +56,7 @@ export function ReferralLandingPage() {
           },
           {
             label: "Applies To",
-            detail: "Live yoga, strength, and cardio classes.",
+            detail: "Live yoga, strengthand cardio classes.",
           },
           {
             label: "Commitment",
@@ -118,9 +118,9 @@ export function ReferralLandingPage() {
             Terms
           </Link>{" "}
           and{" "}
-            <Link href="/privacy" className="underline">
-              Privacy Policy
-            </Link>
+          <Link href="/privacy" className="underline">
+            Privacy Policy
+          </Link>
           .
         </p>
       </PreFooterCtaSection>

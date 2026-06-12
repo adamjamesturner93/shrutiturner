@@ -92,7 +92,7 @@ export async function sendLeadMagnetDeliveryEmail(input: {
         downloadUrl={downloadUrl}
         ctaLabel="Download your guide"
         welcomeCopy={
-          "Thanks for confirming your email.\n\nYour free guide is ready below, and future updates will only arrive when there is something genuinely useful to share."
+          "Thanks for confirming your email.\n\nYour free guide is ready below and future updates will only arrive when there is something genuinely useful to share."
         }
         classesUrl={buildAbsoluteUrl("/classes")}
         aboutUrl={buildAbsoluteUrl("/about")}

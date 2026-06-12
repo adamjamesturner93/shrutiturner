@@ -563,7 +563,7 @@ async function seedScenarioUsers(
       plan: MembershipPlan.movewell,
       billingInterval: MembershipBillingInterval.monthly,
       status: MembershipStatus.active,
-      pricePence: 2900,
+      pricePence: 3500,
       classesPerWeek: 99,
       classesUsedThisWeek: 2,
       startsAt: datePlus(-30),
@@ -579,7 +579,7 @@ async function seedScenarioUsers(
       plan: MembershipPlan.movewell,
       billingInterval: MembershipBillingInterval.monthly,
       status: MembershipStatus.active,
-      pricePence: 2900,
+      pricePence: 3500,
       currency: "GBP",
       classesPerWeek: 99,
       classesUsedThisWeek: 2,
@@ -1051,7 +1051,7 @@ async function main() {
   console.log("Running existing billing/class seed dataset...");
   runSeedBillingDataset();
 
-  console.log("Seeding local bootstrap users, policy versions, and legal acceptance history...");
+  console.log("Seeding local bootstrap users, policy versions and legal acceptance history...");
   await seedAdminUsers();
   const policies = await ensurePolicyVersions();
   const legacyPolicies = new Map(

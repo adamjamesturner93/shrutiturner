@@ -271,9 +271,11 @@ enum CoachingApplicationStatus {
   submitted
   under_review
   follow_up_needed
+  waitlisted
   approved
   declined
   converted
+  withdrawn
 }
 
 enum CoachingClientStatus {
@@ -282,6 +284,18 @@ enum CoachingClientStatus {
   active
   paused
   completed
+}
+
+enum CoachingPackageChangeStatus {
+  pending_client_confirmation
+  applied
+  cancelled
+}
+
+enum CoachingPackageChangeEffectiveMode {
+  next_invoice
+  immediate
+  manual
 }
 
 enum EverfitConnectionStatus {
@@ -453,6 +467,8 @@ model User {
   retreatBookingsAttending              RetreatBooking[]                          @relation("RetreatBookingAttendee")
   coachingApplications                  CoachingApplication[]
   coachingProfile                       CoachingClientProfile?
+  coachingPackageChangeRequests         CoachingPackageChangeRequest[]            @relation("CoachingPackageChangeClient")
+  requestedCoachingPackageChanges       CoachingPackageChangeRequest[]            @relation("CoachingPackageChangeRequester")
   blogComments                          BlogComment[]
   blogReactions                         BlogReaction[]
   smallGroupEnrollments                 SmallGroupProgrammeEnrollment[]
@@ -1750,14 +1766,16 @@ model CoachingApplication {
   applicantEmail                   String
   tier                             CoachingSupportTier
   answersJson                      Json
-  hasMoveWellMembershipSnapshot    Boolean                   @default(false)
   isExistingCoachingClientSnapshot Boolean                   @default(false)
   source                           String?
   coachingAgreementVersion         String?
   coachingAgreementAcceptedAt      DateTime
   status                           CoachingApplicationStatus @default(submitted)
   adminNotes                       String?
+  decisionReason                   String?
   reviewedAt                       DateTime?
+  waitlistedAt                     DateTime?
+  waitlistLeftAt                   DateTime?
   approvedAt                       DateTime?
   convertedAt                      DateTime?
   createdAt                        DateTime                  @default(now())
@@ -1767,35 +1785,68 @@ model CoachingApplication {
   clientProfile CoachingClientProfile?
 
   @@index([status, createdAt])
+  @@index([status, waitlistedAt])
   @@index([tier, createdAt])
   @@index([userId, createdAt])
   @@index([applicantEmail, createdAt])
 }
 
 model CoachingClientProfile {
-  id                         String                  @id @default(cuid())
-  userId                     String                  @unique
-  applicationId              String?                 @unique
-  tier                       CoachingSupportTier
-  status                     CoachingClientStatus    @default(onboarding)
-  includesMoveWellMembership Boolean                 @default(false)
-  everfitConnectionStatus    EverfitConnectionStatus @default(not_started)
-  onboardingChecklistJson    Json?
-  nextCheckInDueAt           DateTime?
-  latestCoachResponseSummary String?
-  startDate                  DateTime?
-  pausedAt                   DateTime?
-  completedAt                DateTime?
-  createdAt                  DateTime                @default(now())
-  updatedAt                  DateTime                @updatedAt
+  id                             String                  @id @default(cuid())
+  userId                         String                  @unique
+  applicationId                  String?                 @unique
+  tier                           CoachingSupportTier
+  status                         CoachingClientStatus    @default(onboarding)
+  everfitConnectionStatus        EverfitConnectionStatus @default(not_started)
+  stripeSubscriptionId           String?                 @unique
+  billingCancellationRequestedAt DateTime?
+  billingFinalPaymentAt          DateTime?
+  billingEndsAt                  DateTime?
+  onboardingChecklistJson        Json?
+  nextCheckInDueAt               DateTime?
+  latestCoachResponseSummary     String?
+  startDate                      DateTime?
+  pausedAt                       DateTime?
+  completedAt                    DateTime?
+  createdAt                      DateTime                @default(now())
+  updatedAt                      DateTime                @updatedAt
 
   user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   application CoachingApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
   sessions    CoachingSession[]
   checkIns    CoachingCheckIn[]
+  packageChangeRequests CoachingPackageChangeRequest[]
 
   @@index([status, updatedAt])
   @@index([tier, updatedAt])
+}
+
+model CoachingPackageChangeRequest {
+  id                   String                             @id @default(cuid())
+  userId               String
+  profileId            String
+  requestedByUserId    String?
+  fromTier             CoachingSupportTier
+  toTier               CoachingSupportTier
+  fromOfferKey         String?
+  toOfferKey           String
+  effectiveMode        CoachingPackageChangeEffectiveMode @default(next_invoice)
+  status               CoachingPackageChangeStatus        @default(pending_client_confirmation)
+  note                 String?
+  stripeSubscriptionId String?
+  clientConfirmedAt    DateTime?
+  appliedAt            DateTime?
+  cancelledAt          DateTime?
+  createdAt            DateTime                           @default(now())
+  updatedAt            DateTime                           @updatedAt
+
+  user        User                  @relation("CoachingPackageChangeClient", fields: [userId], references: [id], onDelete: Cascade)
+  requestedBy User?                 @relation("CoachingPackageChangeRequester", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  profile     CoachingClientProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, createdAt])
+  @@index([profileId, status, createdAt])
+  @@index([toOfferKey, status])
 }
 
 model CoachingSession {

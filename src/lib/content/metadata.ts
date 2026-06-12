@@ -6,7 +6,7 @@ import { getRuntimePlatformSettings } from "@/lib/platform/runtime-settings";
 const DEFAULT_SEO_KEYWORDS = [
   "strength training chronic illness",
   "adaptive yoga",
-  "complex bodies fitness",
+  "inclusive movement coaching",
   "chronic pain exercise",
   "hypermobility strength",
   "rehabilitation informed training",

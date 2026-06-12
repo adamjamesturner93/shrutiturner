@@ -38,7 +38,7 @@ describe("getBillingHistory", () => {
           data: {
             object: {
               id: "in_paid",
-              amount_paid: 2900,
+              amount_paid: 3500,
               hosted_invoice_url: "https://pay.stripe.com/invoice/in_paid",
             },
           },
@@ -52,7 +52,7 @@ describe("getBillingHistory", () => {
           data: {
             object: {
               id: "in_failed",
-              amount_due: 2900,
+              amount_due: 3500,
               hosted_invoice_url: "https://pay.stripe.com/invoice/in_failed",
             },
           },
@@ -66,7 +66,7 @@ describe("getBillingHistory", () => {
       {
         id: "invoice_paid_event_paid",
         kind: "membership_charge",
-        amountPence: 2900,
+        amountPence: 3500,
         status: "paid",
         stripeInvoiceId: "in_paid",
         invoiceUrl: "https://pay.stripe.com/invoice/in_paid",
@@ -74,7 +74,7 @@ describe("getBillingHistory", () => {
       {
         id: "billing_event_failed",
         kind: "payment_failed",
-        amountPence: 2900,
+        amountPence: 3500,
         status: "failed",
         stripeInvoiceId: "in_failed",
         invoiceUrl: "https://pay.stripe.com/invoice/in_failed",

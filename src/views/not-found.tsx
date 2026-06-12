@@ -34,10 +34,10 @@ export function NotFoundPage() {
             </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/classes">Browse Move Well Classes</Link>
+            <Link href="/coaching">Explore Coaching</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/schedule">View Schedule</Link>
+            <Link href="/blog">Read the Blog</Link>
           </Button>
         </div>
       </div>

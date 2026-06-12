@@ -321,7 +321,7 @@ export function AdminNewsletter() {
         <AppPageHeader
           eyebrow="Marketing audience"
           title="Marketing Email Audience"
-          description="Unified marketing consent, unsubscribe trends, and recent Postmark campaign results."
+          description="Unified marketing consent, unsubscribe trends and recent Postmark campaign results."
           actions={
             <Button
               variant="outline"
@@ -379,7 +379,7 @@ export function AdminNewsletter() {
                 <div>
                   <h2 className="text-lg">Subscriber growth and source attribution</h2>
                   <p className="text-muted-foreground text-sm">
-                    New, verified, unsubscribed, bounce, and complaint trends by signup source.
+                    New, verified, unsubscribed, bounce andd complaint trends by signup source.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -646,7 +646,7 @@ export function AdminNewsletter() {
               <div>
                 <h2 className="text-lg">Campaign reporting</h2>
                 <p className="text-muted-foreground text-sm">
-                  Delivered, opened, clicked, bounced, unsubscribed, and complaint outcomes.
+                  Delivered, opened, clicked, bounced, unsubscribed and complaint outcomes.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -712,9 +712,8 @@ export function AdminNewsletter() {
                 <Link
                   key={campaign.id}
                   href={`/admin/newsletter/${campaign.id}`}
-                  className={`hover:bg-secondary/40 block rounded-lg border p-4 transition-colors ${
-                    campaignNeedsAttention(campaign) ? "border-red-300 bg-red-50/60" : ""
-                  }`}
+                  className={`hover:bg-secondary/40 block rounded-lg border p-4 transition-colors ${campaignNeedsAttention(campaign) ? "border-red-300 bg-red-50/60" : ""
+                    }`}
                 >
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>

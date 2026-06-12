@@ -16,7 +16,6 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 import {
-  Dumbbell,
   User,
   Mail,
   Shield,
@@ -27,20 +26,11 @@ import {
   Calendar,
   Info,
   Check,
-  History,
   Settings,
   ArrowRight,
-  PersonStanding,
-  Zap,
 } from "lucide-react";
 import { getTimezoneOptions } from "../lib/date-i18n";
-import type {
-  AccountActivityDto,
-  AccountDto,
-  DashboardSummaryDto,
-  OnboardingStateDto,
-  PostClassFeelingDto,
-} from "@/lib/api/types";
+import type { AccountDto, OnboardingStateDto } from "@/lib/api/types";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 import { getApiErrorMessage, isApiSuccess } from "@/lib/api/client";
 
@@ -72,12 +62,11 @@ const DATE_FORMAT_OPTIONS = [
   { value: "YYYY-MM-DD", label: "YYYY-MM-DD (2026-01-31)" },
 ];
 
-type AccountTab = "profile" | "preferences" | "activity" | "notifications";
+type AccountTab = "profile" | "preferences" | "notifications";
 
 const TABS: { key: AccountTab; label: string; icon: typeof User }[] = [
   { key: "profile", label: "Profile", icon: User },
   { key: "preferences", label: "Preferences", icon: Settings },
-  { key: "activity", label: "Activity", icon: History },
   { key: "notifications", label: "Notifications", icon: Bell },
 ];
 
@@ -122,56 +111,7 @@ function fromSelectValue(value: string) {
   return value === UNANSWERED_VALUE ? null : value;
 }
 
-function formatActivityDateTime(startsAtUtc: string) {
-  const startsAt = new Date(startsAtUtc);
-  return `${startsAt.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  })} · ${startsAt.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-  })}`;
-}
-
-function getFeelingBadge(feeling: PostClassFeelingDto) {
-  switch (feeling) {
-    case "great":
-      return { label: "great", className: "bg-brand-accent/10 text-brand-accent" };
-    case "good":
-      return { label: "good", className: "bg-blue-50 text-blue-700" };
-    case "okay":
-      return { label: "okay", className: "bg-secondary text-muted-foreground" };
-    case "tough":
-      return { label: "tough", className: "bg-amber-50 text-amber-700" };
-    case "too-much":
-      return { label: "too much", className: "bg-red-50 text-red-700" };
-  }
-}
-
-function getActivityTypeIcon(classType: string) {
-  const normalized = classType.toLowerCase();
-  if (normalized.includes("yoga")) {
-    return <HeartPulse className="text-brand-accent h-4 w-4" />;
-  }
-  if (normalized.includes("toning") || normalized.includes("mobility")) {
-    return <PersonStanding className="h-4 w-4 text-sky-700" />;
-  }
-  if (normalized.includes("hiit")) {
-    return <Zap className="h-4 w-4 text-rose-700" />;
-  }
-  return <Dumbbell className="h-4 w-4 text-amber-700" />;
-}
-
-export function AccountPage({
-  initialAccount,
-  initialDashboardSummary,
-  initialActivity,
-}: {
-  initialAccount: AccountDto;
-  initialDashboardSummary: DashboardSummaryDto;
-  initialActivity: AccountActivityDto;
-}) {
+export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) {
   const { logout, acceptTermsAndHealth, refreshAccountProfile } = useAuth();
 
   const [activeTab, setActiveTab] = useState<AccountTab>("profile");
@@ -470,21 +410,21 @@ export function AccountPage({
       <AppPageHeader
         eyebrow="Account"
         title="Account Settings"
-        description="Manage your profile, preferences, and notifications."
+        description="Manage your profile, preferences and notifications."
         className="mb-6"
       />
       {error ? <p className="mb-6 text-sm text-red-600">{error}</p> : null}
 
       <AppMetricGrid className="mb-8 lg:grid-cols-3">
         <AppMetricCard
-          label="Upcoming classes"
-          value={initialDashboardSummary.upcomingClasses.length}
-          detail="booked sessions"
+          label="Profile"
+          value={firstName && lastName ? "Complete" : "Review"}
+          detail="name and contact details"
         />
         <AppMetricCard
-          label="Credits"
-          value={initialDashboardSummary.credits.balance}
-          detail="available on your account"
+          label="Notifications"
+          value={notifications.marketingEmails ? "On" : "Off"}
+          detail="marketing email preference"
         />
         <AppMetricCard
           label="Legal status"
@@ -508,7 +448,7 @@ export function AccountPage({
                 </span>
               </div>
               <p className="text-sm leading-relaxed">
-                Finish the remaining setup steps so your studio account, legal agreements, and
+                Finish the remaining setup steps so your studio account, legal agreements and
                 health profile stay complete.
               </p>
               <div className="flex flex-wrap gap-2">
@@ -535,11 +475,10 @@ export function AccountPage({
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`relative px-4 py-2.5 text-sm whitespace-nowrap transition-colors ${
-                  activeTab === tab.key
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+                className={`relative px-4 py-2.5 text-sm whitespace-nowrap transition-colors ${activeTab === tab.key
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+                  }`}
               >
                 <span className="flex items-center gap-2">
                   <Icon className="h-4 w-4" />
@@ -643,7 +582,7 @@ export function AccountPage({
                   <div>
                     <p className="text-sm font-medium text-red-800">Delete account</p>
                     <p className="mt-1 text-xs text-red-700">
-                      This anonymises personal data, revokes active sessions, and keeps only the
+                      This anonymises personal data, revokes active sessions and keeps only the
                       records that must be retained for audit, disputes, or finance.
                     </p>
                   </div>
@@ -916,85 +855,16 @@ export function AccountPage({
             </div>
           ) : null}
 
-          {activeTab === "activity" ? (
-            <div className="bg-background space-y-4 rounded-lg border p-6">
-              <div className="mb-2 flex items-center gap-3">
-                <History className="text-primary h-5 w-5" />
-                <h2 className="text-xl">Recent Activity</h2>
-              </div>
-              {initialActivity.items.length === 0 ? (
-                <div className="space-y-4 py-4 text-center">
-                  <p className="text-muted-foreground text-sm">
-                    No attended classes yet. Book your first class to start building your history
-                    here.
-                  </p>
-                  <Link href="/dashboard/schedule">
-                    <Button variant="outline">Browse Schedule</Button>
-                  </Link>
-                </div>
-              ) : (
-                <>
-                  <div className="text-muted-foreground flex items-center justify-between text-sm">
-                    <p>Latest attended classes and how they felt afterwards.</p>
-                    <p>{initialActivity.attendedCount} total attended</p>
-                  </div>
-                  <div className="divide-y rounded-lg border">
-                    {initialActivity.items.map((item) => (
-                      <div
-                        key={item.bookingId}
-                        className="flex items-center justify-between gap-4 px-4 py-3"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="bg-secondary flex h-9 w-9 items-center justify-center rounded-lg">
-                            {getActivityTypeIcon(item.classType)}
-                          </div>
-                          <div>
-                            <p className="text-sm">{item.className}</p>
-                            <p className="text-muted-foreground text-xs">
-                              {formatActivityDateTime(item.startsAtUtc)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center justify-end gap-2">
-                          {item.flareToday ? (
-                            <span className="rounded-md bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
-                              Flare day
-                            </span>
-                          ) : null}
-                          {item.postClassFeeling ? (
-                            <span
-                              className={`rounded-md px-2 py-0.5 text-xs ${
-                                getFeelingBadge(item.postClassFeeling).className
-                              }`}
-                            >
-                              {getFeelingBadge(item.postClassFeeling).label}
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {initialActivity.totalCount > initialActivity.items.length ? (
-                    <p className="text-muted-foreground text-center text-xs">
-                      Showing {initialActivity.items.length} of {initialActivity.totalCount}{" "}
-                      attended classes
-                    </p>
-                  ) : null}
-                </>
-              )}
-            </div>
-          ) : null}
-
           {activeTab === "notifications" ? (
             <div className="space-y-8">
               <div className="bg-background space-y-4 rounded-lg border p-6">
                 <div className="mb-2 flex items-center gap-3">
                   <Bell className="text-primary h-5 w-5" />
-                  <h2 className="text-xl">Class Notifications</h2>
+                  <h2 className="text-xl">Coaching & Resource Notifications</h2>
                 </div>
                 <div className="space-y-3">
                   <label className="flex items-center justify-between py-2">
-                    <span className="text-sm">Class reminders (2 hours before)</span>
+                    <span className="text-sm">Coaching reminders</span>
                     <input
                       type="checkbox"
                       checked={notifications.classReminders}
@@ -1008,7 +878,7 @@ export function AccountPage({
                     />
                   </label>
                   <label className="flex items-center justify-between py-2">
-                    <span className="text-sm">New class schedule updates</span>
+                    <span className="text-sm">New article and resource updates</span>
                     <input
                       type="checkbox"
                       checked={notifications.scheduleUpdates}
@@ -1048,7 +918,7 @@ export function AccountPage({
                     <div>
                       <span className="text-sm">Newsletter & Updates</span>
                       <p className="text-muted-foreground text-xs">
-                        Articles, class updates, and training insights
+                        Articles, coaching updates and training insights
                       </p>
                     </div>
                     <input

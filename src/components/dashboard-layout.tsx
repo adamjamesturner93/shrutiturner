@@ -8,10 +8,6 @@ import { ScrollToTop } from "./scroll-to-top";
 import { IconHorizontal, IconOnly } from "./icon";
 import {
   LayoutDashboard,
-  Calendar,
-  Mountain,
-  CreditCard,
-  Gift,
   Settings,
   LogOut,
   Menu,
@@ -38,11 +34,7 @@ type LegalGuardModalProps = {
 
 const NAV_ITEMS = [
   { path: "/dashboard", label: "Studio Lobby", icon: LayoutDashboard, exact: true },
-  { path: "/dashboard/schedule", label: "Schedule", icon: Calendar },
   { path: "/dashboard/coaching", label: "Coaching", icon: Compass },
-  { path: "/dashboard/retreats", label: "Retreats", icon: Mountain },
-  { path: "/dashboard/membership", label: "Membership", icon: CreditCard, memberOnly: true },
-  { path: "/dashboard/referrals", label: "Referrals", icon: Gift, memberOnly: true },
   { path: "/dashboard/health", label: "Health Profile", icon: HeartPulse },
   { path: "/dashboard/account", label: "Account", icon: Settings },
 ];
@@ -71,11 +63,10 @@ function LegalGuardModal({
           </div>
           <div className="space-y-3">
             <label
-              className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${
-                legalTermsChecked
+              className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${legalTermsChecked
                   ? "border-brand-accent bg-brand-accent/5"
                   : "border-border hover:bg-secondary/30"
-              }`}
+                }`}
             >
               <input
                 type="checkbox"
@@ -95,11 +86,10 @@ function LegalGuardModal({
               </span>
             </label>
             <label
-              className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${
-                legalHealthChecked
+              className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${legalHealthChecked
                   ? "border-brand-accent bg-brand-accent/5"
                   : "border-border hover:bg-secondary/30"
-              }`}
+                }`}
             >
               <input
                 type="checkbox"
@@ -112,7 +102,7 @@ function LegalGuardModal({
                 <Link href="/health-declaration" className="text-primary underline" target="_blank">
                   Health & Liability Waiver
                 </Link>
-                , and I understand that I participate in all classes and programmes at my own risk
+                and I understand that I participate in all classes and programmes at my own risk
               </span>
             </label>
           </div>
@@ -143,9 +133,6 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
     user,
     logout,
     membership,
-    totalCredits,
-    membershipClassesRemaining,
-    referralBalance,
     isAdmin,
     isAuthenticated,
     acceptTermsAndHealth,
@@ -237,7 +224,7 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
     );
   }
 
-  const filteredNavItems = NAV_ITEMS.filter((item) => !item.memberOnly || !isAdmin);
+  const filteredNavItems = NAV_ITEMS;
 
   const isActive = (path: string, exact?: boolean) => {
     if (exact) return pathname === path;
@@ -292,11 +279,10 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
               <li key={item.path}>
                 <Link
                   href={item.path}
-                  className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${
-                    isActive(item.path, item.exact)
+                  className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${isActive(item.path, item.exact)
                       ? "bg-brand-accent-light/20 text-brand-accent-light"
                       : "text-brand-white/70 hover:bg-brand-white/5 hover:text-brand-white"
-                  }`}
+                    }`}
                 >
                   <item.icon className="h-4 w-4 flex-shrink-0" />
                   <span>{item.label}</span>
@@ -305,38 +291,6 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
             ))}
           </ul>
         </nav>
-
-        {/* Credit summary */}
-        {!isAdmin && (
-          <div className="border-brand-white/10 border-t p-4">
-            <div className="text-brand-white/60 space-y-2 text-xs">
-              {membership && membership.plan !== "instructor" && (
-                <div className="flex justify-between">
-                  <span>Weekly classes left</span>
-                  <span className="text-brand-accent-light">{membershipClassesRemaining}</span>
-                </div>
-              )}
-              {totalCredits > 0 && (
-                <div className="flex justify-between">
-                  <span>Class credits</span>
-                  <span className="text-brand-accent-light">{totalCredits}</span>
-                </div>
-              )}
-              {referralBalance > 0 && (
-                <div className="flex justify-between">
-                  <span>Referral balance</span>
-                  <span className="text-brand-accent-light">£{referralBalance}</span>
-                </div>
-              )}
-              {!membership && totalCredits === 0 && referralBalance === 0 && (
-                <div className="flex justify-between">
-                  <span>Credits</span>
-                  <span className="text-brand-white/40">0</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Admin link (instructor only) */}
         {isAdmin && (
@@ -421,11 +375,10 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
                     <Link
                       href={item.path}
                       onClick={() => setSidebarOpen(false)}
-                      className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${
-                        isActive(item.path, item.exact)
+                      className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${isActive(item.path, item.exact)
                           ? "bg-brand-accent-light/20 text-brand-accent-light"
                           : "text-brand-white/70 hover:bg-brand-white/5"
-                      }`}
+                        }`}
                     >
                       <item.icon className="h-4 w-4" />
                       <span>{item.label}</span>

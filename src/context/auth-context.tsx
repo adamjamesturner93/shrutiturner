@@ -286,8 +286,8 @@ type AccountAndReferralResponse = {
 /* ──────────── Pricing config ──────────── */
 
 export const PLAN_PRICES: Record<string, number> = {
-  movewell: 29,
-  annual: 290,
+  movewell: 35,
+  annual: 350,
 };
 
 export const BUNDLE_PRICES: Record<number, number> = {

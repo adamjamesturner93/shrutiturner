@@ -770,11 +770,10 @@ export function VideoRoom({
             <button
               onClick={() => void toggleCommunityMode()}
               disabled={!isInstructor}
-              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs transition-colors ${
-                communityMode
-                  ? "bg-brand-accent text-white"
-                  : "bg-white/5 text-white/60 hover:bg-white/10"
-              } ${!isInstructor ? "cursor-default" : ""}`}
+              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs transition-colors ${communityMode
+                ? "bg-brand-accent text-white"
+                : "bg-white/5 text-white/60 hover:bg-white/10"
+                } ${!isInstructor ? "cursor-default" : ""}`}
               title={communityMode ? "Community mode enabled" : "Focus mode enabled"}
             >
               {communityMode ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
@@ -799,7 +798,7 @@ export function VideoRoom({
               <span>
                 {communityMode
                   ? "Community mode is on. Participants can see one another."
-                  : "Focus mode is on. Only the instructor can see participant video, and you can still turn your camera off."}
+                  : "Focus mode is on. Only the instructor can see participant video and you can still turn your camera off."}
               </span>
               <Badge
                 className={
@@ -937,13 +936,12 @@ function ControlButton({
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center gap-1 rounded-lg p-2 transition-colors sm:px-3 sm:py-2 ${
-        danger
-          ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
-          : active
-            ? "bg-white/10 text-white hover:bg-white/15"
-            : "bg-white/5 text-white/50 hover:bg-white/10"
-      }`}
+      className={`flex flex-col items-center gap-1 rounded-lg p-2 transition-colors sm:px-3 sm:py-2 ${danger
+        ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+        : active
+          ? "bg-white/10 text-white hover:bg-white/15"
+          : "bg-white/5 text-white/50 hover:bg-white/10"
+        }`}
       title={label}
     >
       <Icon className="h-5 w-5" />

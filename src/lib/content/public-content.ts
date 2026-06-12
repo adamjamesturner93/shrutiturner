@@ -1,16 +1,5 @@
-import { blogAuthors as LOCAL_BLOG_AUTHORS, blogPosts as LOCAL_BLOG_POSTS } from "@/data/blog-data";
 import { normalizeNewsletterSignupContent } from "@/lib/newsletter/lead-magnet";
-import {
-  LOCAL_CLASS_DEFINITIONS,
-  LOCAL_GLOBAL_CONTENT,
-  LOCAL_LEGAL_DOCUMENTS,
-  LOCAL_NEWSLETTER_SIGNUP_CONTENT,
-  LOCAL_PAGE_CONTENT,
-  LOCAL_RETREAT_INSTANCES,
-  LOCAL_SMALL_GROUP_PROGRAMMES,
-  getLocalScheduleByDay,
-} from "./local-content";
-import { getContentSource } from "./config";
+import { LEGAL_DOCUMENTS } from "@/data/legal-documents";
 import { getEntries, getEntryById, getEntryBySlug } from "./contentful-client";
 import type {
   BlogPostContent,
@@ -33,11 +22,10 @@ import type {
   AuthorProfileContent,
 } from "./types";
 
-type ScheduleDay = ReturnType<typeof getLocalScheduleByDay>[number];
-
-function prefersContentfulSource() {
-  return getContentSource() === "contentful";
-}
+type ScheduleDay = {
+  day: string;
+  classes: ClassDefinitionContent[];
+};
 
 function createMissingContentError(contentType: string, detail: string) {
   return new Error(`CONTENTFUL_CONTENT_MISSING: ${contentType} ${detail}`);
@@ -225,30 +213,53 @@ function renderContentfulRichText(value: unknown) {
     .trim();
 }
 
+type ContentfulMappedEntry = {
+  sys: {
+    id: string;
+    publishedAt?: string;
+    updatedAt?: string;
+    createdAt?: string;
+  };
+  fields: Record<string, unknown>;
+};
+
+function getContentfulPublishedDate(contentType: string, item: ContentfulMappedEntry) {
+  const value = item.sys.publishedAt || item.sys.updatedAt || item.sys.createdAt;
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  throw createMissingContentError(
+    contentType,
+    `entry "${item.sys.id}" is missing Contentful publish metadata`
+  );
+}
+
 function mapBlogPostContent(
-  item: { sys: { id: string }; fields: Record<string, unknown> },
+  item: ContentfulMappedEntry,
   includes: {
     Entry?: Array<{ sys: { id: string }; fields: Record<string, unknown> }>;
     Asset?: Array<{ sys: { id: string }; fields: Record<string, unknown> }>;
   } = {}
 ): BlogPostContent {
-  const coverImageAssetId = getLinkedEntryId(item.fields.coverImage);
+  const coverImageAssetId = getLinkedEntryId(item.fields.coverImageAsset);
   const coverImageAsset = getIncludedAssetById(includes.Asset, coverImageAssetId);
   const assetUrl = readContentfulAssetUrl(coverImageAsset?.fields);
   const stringCoverImage =
-    typeof item.fields.coverImage === "string" && item.fields.coverImage.trim()
-      ? item.fields.coverImage.trim()
+    typeof item.fields.coverImageUrl === "string" && item.fields.coverImageUrl.trim()
+      ? item.fields.coverImageUrl.trim()
       : "";
   const slug = requireStringField("blogPost", item, "slug");
+  const authors = mapBlogPostAuthors(item, includes.Entry);
 
   return {
     id: slug,
     title: requireStringField("blogPost", item, "title"),
     excerpt: requireStringField("blogPost", item, "excerpt"),
     content: requireRenderedField("blogPost", item, "content"),
-    author: item.fields.authorName ? String(item.fields.authorName) : undefined,
-    authors: mapBlogPostAuthors(item, includes.Entry),
-    date: requireStringField("blogPost", item, "publishDate"),
+    author: authors.map((author) => author.name).join(", ") || undefined,
+    authors,
+    date: getContentfulPublishedDate("blogPost", item),
     tags: parseStringArray(item.fields.tags),
     readTime: String(item.fields.readTime || ""),
     coverImage: assetUrl
@@ -263,11 +274,6 @@ function mapBlogPostContent(
     seoDescription: optionalStringField(item.fields, "seoDescription"),
   };
 }
-
-const localBlogAuthorBySlug = new Map(LOCAL_BLOG_AUTHORS.map((author) => [author.slug, author]));
-const localBlogAuthorByName = new Map(
-  LOCAL_BLOG_AUTHORS.map((author) => [author.name.toLowerCase(), author])
-);
 
 function mapAuthorProfile(
   id: string,
@@ -295,47 +301,28 @@ function mapAuthorProfile(
   };
 }
 
-function resolveLegacyAuthor(name: string): AuthorProfileContent {
-  const localMatch = localBlogAuthorByName.get(name.toLowerCase());
-  if (localMatch) return localMatch;
-
-  return {
-    id: slugify(name) || name,
-    slug: slugify(name) || name,
-    name,
-    role: "Contributor",
-    bio: "",
-    avatarImageUrl: createFallbackAvatar(name),
-    avatarAlt: `${name} avatar`,
-    isGuestContributor: false,
-    active: true,
-  };
-}
-
 function mapBlogPostAuthors(
-  item: { sys: { id: string }; fields: Record<string, unknown> },
+  item: ContentfulMappedEntry,
   includes: Array<{ sys: { id: string }; fields: Record<string, unknown> }> | undefined
 ) {
   const linkedAuthors = Array.isArray(item.fields.authors)
     ? item.fields.authors
-        .map((authorRef) => {
-          const authorId = getLinkedEntryId(authorRef);
-          const localAuthor = authorId ? localBlogAuthorBySlug.get(authorId) : undefined;
-          if (localAuthor) return localAuthor;
-          const linkedEntry = getIncludedEntryById(includes, authorId);
-          return mapAuthorProfile(authorId || "", linkedEntry?.fields);
-        })
-        .filter((author): author is AuthorProfileContent => Boolean(author))
+      .map((authorRef) => {
+        const authorId = getLinkedEntryId(authorRef);
+        const linkedEntry = getIncludedEntryById(includes, authorId);
+        return mapAuthorProfile(authorId || "", linkedEntry?.fields);
+      })
+      .filter((author): author is AuthorProfileContent => Boolean(author))
     : [];
 
   if (linkedAuthors.length > 0) {
     return linkedAuthors;
   }
 
-  const legacyAuthorName = item.fields.authorName
-    ? String(item.fields.authorName)
-    : "Shruti Turner";
-  return [resolveLegacyAuthor(legacyAuthorName)];
+  throw createMissingContentError(
+    "blogPost",
+    `entry "${item.sys.id}" is missing linked authorProfile entries`
+  );
 }
 
 function combineRetreats(
@@ -393,12 +380,41 @@ function combineRetreats(
 }
 
 export async function getGlobalContent(): Promise<GlobalContent> {
-  return LOCAL_GLOBAL_CONTENT;
+  return {
+    siteName: "Shruti Turner",
+    siteTagline: "Inclusive movement coaching",
+    defaultSeoDescription:
+      "Inclusive movement coaching for chronic illness, autoimmune conditions, wellbeing and injury recovery or prevention.",
+  };
 }
 
 export async function getPageContent(slug: string): Promise<PageContent | null> {
-  // Generic page metadata is intentionally local-defined.
-  return LOCAL_PAGE_CONTENT[slug] || null;
+  const pageSeo: Record<string, SeoContent> = {
+    home: {
+      title: "Inclusive Movement Coaching",
+      description:
+        "Inclusive movement coaching for adults living with chronic illness, autoimmune conditions and injury recovery or prevention.",
+    },
+    coaching: {
+      title: "Coaching",
+      description:
+        "Personalised movement coaching for chronic illness, autoimmune conditions, wellbeing and injury recovery or prevention.",
+    },
+    "coaching-apply": { title: "Apply for Coaching" },
+    "coaching-personal-programme": { title: "Independent Training Plan" },
+    blog: { title: "Blog" },
+    about: { title: "About" },
+    contact: { title: "Contact" },
+    terms: { title: "Terms & Conditions" },
+    privacy: { title: "Privacy Policy" },
+    cookies: { title: "Cookie Policy" },
+    "health-declaration": { title: "Health & Liability Waiver" },
+    "refund-policy": { title: "Refund & Cancellation Policy" },
+    "acceptable-use": { title: "Acceptable Use Policy" },
+    "coaching-agreement": { title: "Coaching Agreement" },
+  };
+  const seo = pageSeo[slug];
+  return seo ? { slug, seo } : null;
 }
 
 export async function getPageSeo(slug: string): Promise<SeoContent | null> {
@@ -407,115 +423,85 @@ export async function getPageSeo(slug: string): Promise<SeoContent | null> {
 }
 
 export async function getLegalDocumentBySlug(slug: string): Promise<LegalDocumentContent | null> {
-  return LOCAL_LEGAL_DOCUMENTS.find((doc) => doc.slug === slug) || null;
+  return LEGAL_DOCUMENTS.find((doc) => doc.slug === slug) || null;
 }
 
 export async function getNewsletterSignupContent(): Promise<NewsletterSignupContent> {
-  if (prefersContentfulSource()) {
-    const res = await getEntries<Record<string, unknown>>("newsletterSignupContent", {
-      "fields.slug": "default",
-      limit: 1,
-      include: 2,
-    });
-    const entry = res?.items?.[0];
-    if (!entry) {
-      throw createMissingContentError("newsletterSignupContent", "default entry was not found");
-    }
-
-    const leadMagnetId = getLinkedEntryId(entry.fields.activeLeadMagnet);
-    const leadMagnetEntry = getIncludedEntryById(res.includes?.Entry, leadMagnetId);
-    const leadMagnetFields = leadMagnetEntry?.fields;
-    if (!leadMagnetFields) {
-      throw createMissingContentError(
-        "newsletterSignupContent",
-        "default entry is missing an included activeLeadMagnet"
-      );
-    }
-
-    return normalizeNewsletterSignupContent({
-      slug: "default",
-      hookText: requireStringField("leadMagnet", leadMagnetEntry, "hookText"),
-      formPlaceholder: requireStringField("newsletterSignupContent", entry, "formPlaceholder"),
-      buttonLabel:
-        optionalStringField(leadMagnetFields, "ctaLabel") ||
-        requireStringField("newsletterSignupContent", entry, "buttonLabel"),
-      successMessage: requireStringField("newsletterSignupContent", entry, "successMessage"),
-      consentText: requireStringField("newsletterSignupContent", entry, "consentText"),
-      popupTitle:
-        optionalStringField(leadMagnetFields, "landingHeadline") ||
-        optionalStringField(entry.fields, "popupTitle"),
-      popupDescription:
-        optionalStringField(leadMagnetFields, "landingDescription") ||
-        optionalStringField(entry.fields, "popupDescription"),
-      leadMagnetSlug: requireStringField("leadMagnet", leadMagnetEntry, "slug"),
-      leadMagnetTitle: requireStringField("leadMagnet", leadMagnetEntry, "title"),
-      emailSubject: requireStringField("leadMagnet", leadMagnetEntry, "emailSubject"),
-      emailPreviewText: optionalStringField(leadMagnetFields, "emailPreviewText"),
-      emailBody: requireStringField("leadMagnet", leadMagnetEntry, "emailBody"),
-      deliveryType:
-        requireStringField("leadMagnet", leadMagnetEntry, "deliveryType") === "inline"
-          ? "inline"
-          : "link",
-      assetUrl: optionalStringField(leadMagnetFields, "assetUrl"),
-    });
+  const res = await getEntries<Record<string, unknown>>("newsletterSignupContent", {
+    "fields.slug": "default",
+    limit: 1,
+    include: 2,
+  });
+  const entry = res?.items?.[0];
+  if (!entry) {
+    throw createMissingContentError("newsletterSignupContent", "default entry was not found");
   }
 
-  return normalizeNewsletterSignupContent(LOCAL_NEWSLETTER_SIGNUP_CONTENT);
+  const leadMagnetId = getLinkedEntryId(entry.fields.activeLeadMagnet);
+  const leadMagnetEntry = getIncludedEntryById(res.includes?.Entry, leadMagnetId);
+  const leadMagnetFields = leadMagnetEntry?.fields;
+  if (!leadMagnetFields) {
+    throw createMissingContentError(
+      "newsletterSignupContent",
+      "default entry is missing an included activeLeadMagnet"
+    );
+  }
+
+  return normalizeNewsletterSignupContent({
+    slug: "default",
+    hookText: requireStringField("leadMagnet", leadMagnetEntry, "hookText"),
+    formPlaceholder: requireStringField("newsletterSignupContent", entry, "formPlaceholder"),
+    buttonLabel:
+      optionalStringField(leadMagnetFields, "ctaLabel") ||
+      requireStringField("newsletterSignupContent", entry, "buttonLabel"),
+    successMessage: requireStringField("newsletterSignupContent", entry, "successMessage"),
+    consentText: requireStringField("newsletterSignupContent", entry, "consentText"),
+    popupTitle:
+      optionalStringField(leadMagnetFields, "landingHeadline") ||
+      optionalStringField(entry.fields, "popupTitle"),
+    popupDescription:
+      optionalStringField(leadMagnetFields, "landingDescription") ||
+      optionalStringField(entry.fields, "popupDescription"),
+    leadMagnetSlug: requireStringField("leadMagnet", leadMagnetEntry, "slug"),
+    leadMagnetTitle: requireStringField("leadMagnet", leadMagnetEntry, "title"),
+    emailSubject: requireStringField("leadMagnet", leadMagnetEntry, "emailSubject"),
+    emailPreviewText: optionalStringField(leadMagnetFields, "emailPreviewText"),
+    emailBody: requireStringField("leadMagnet", leadMagnetEntry, "emailBody"),
+    deliveryType:
+      requireStringField("leadMagnet", leadMagnetEntry, "deliveryType") === "inline"
+        ? "inline"
+        : "link",
+    assetUrl: optionalStringField(leadMagnetFields, "assetUrl"),
+  });
 }
 
 export async function getLeadMagnetBySlug(slug: string): Promise<LeadMagnetContent | null> {
-  if (prefersContentfulSource()) {
-    const entry = await getEntryBySlug<Record<string, unknown>>("leadMagnet", slug);
-    if (entry) {
-      return {
-        id: String(entry.sys.id),
-        slug: requireStringField("leadMagnet", entry, "slug"),
-        title: requireStringField("leadMagnet", entry, "title"),
-        hookText: requireStringField("leadMagnet", entry, "hookText"),
-        landingHeadline: optionalStringField(entry.fields, "landingHeadline"),
-        landingDescription: optionalStringField(entry.fields, "landingDescription"),
-        ctaLabel: optionalStringField(entry.fields, "ctaLabel"),
-        emailSubject: requireStringField("leadMagnet", entry, "emailSubject"),
-        emailPreviewText: optionalStringField(entry.fields, "emailPreviewText"),
-        emailBody: requireStringField("leadMagnet", entry, "emailBody"),
-        deliveryType:
-          requireStringField("leadMagnet", entry, "deliveryType") === "inline" ? "inline" : "link",
-        assetUrl: optionalStringField(entry.fields, "assetUrl"),
-        active: entry.fields.active === undefined ? undefined : Boolean(entry.fields.active),
-        startAt: optionalStringField(entry.fields, "startAt"),
-        endAt: optionalStringField(entry.fields, "endAt"),
-      };
-    }
-
-    throw createMissingContentError("leadMagnet", `entry with slug "${slug}" was not found`);
-  }
-
-  if (slug === LOCAL_NEWSLETTER_SIGNUP_CONTENT.leadMagnetSlug) {
+  const entry = await getEntryBySlug<Record<string, unknown>>("leadMagnet", slug);
+  if (entry) {
     return {
-      id: `local-${slug}`,
-      slug,
-      title: LOCAL_NEWSLETTER_SIGNUP_CONTENT.leadMagnetTitle || slug,
-      hookText: LOCAL_NEWSLETTER_SIGNUP_CONTENT.hookText,
-      landingHeadline: LOCAL_NEWSLETTER_SIGNUP_CONTENT.popupTitle,
-      landingDescription: LOCAL_NEWSLETTER_SIGNUP_CONTENT.popupDescription,
-      ctaLabel: LOCAL_NEWSLETTER_SIGNUP_CONTENT.buttonLabel,
-      emailSubject: LOCAL_NEWSLETTER_SIGNUP_CONTENT.emailSubject || "",
-      emailPreviewText: LOCAL_NEWSLETTER_SIGNUP_CONTENT.emailPreviewText,
-      emailBody: LOCAL_NEWSLETTER_SIGNUP_CONTENT.emailBody || "",
-      deliveryType: LOCAL_NEWSLETTER_SIGNUP_CONTENT.deliveryType || "link",
-      assetUrl: LOCAL_NEWSLETTER_SIGNUP_CONTENT.assetUrl,
-      active: true,
+      id: String(entry.sys.id),
+      slug: requireStringField("leadMagnet", entry, "slug"),
+      title: requireStringField("leadMagnet", entry, "title"),
+      hookText: requireStringField("leadMagnet", entry, "hookText"),
+      landingHeadline: optionalStringField(entry.fields, "landingHeadline"),
+      landingDescription: optionalStringField(entry.fields, "landingDescription"),
+      ctaLabel: optionalStringField(entry.fields, "ctaLabel"),
+      emailSubject: requireStringField("leadMagnet", entry, "emailSubject"),
+      emailPreviewText: optionalStringField(entry.fields, "emailPreviewText"),
+      emailBody: requireStringField("leadMagnet", entry, "emailBody"),
+      deliveryType:
+        requireStringField("leadMagnet", entry, "deliveryType") === "inline" ? "inline" : "link",
+      assetUrl: optionalStringField(entry.fields, "assetUrl"),
+      active: entry.fields.active === undefined ? undefined : Boolean(entry.fields.active),
+      startAt: optionalStringField(entry.fields, "startAt"),
+      endAt: optionalStringField(entry.fields, "endAt"),
     };
   }
 
-  return null;
+  throw createMissingContentError("leadMagnet", `entry with slug "${slug}" was not found`);
 }
 
 export async function getFaqItems(): Promise<FaqItemContent[]> {
-  if (!prefersContentfulSource()) {
-    return [];
-  }
-
   const res = await getEntries<Record<string, unknown>>("faqItem", {
     limit: 300,
     order: "fields.sortOrder",
@@ -555,10 +541,6 @@ export async function getFaqItemsFor(page: string, section?: string): Promise<Fa
 }
 
 export async function getNewsletterTemplates(): Promise<NewsletterTemplateContent[]> {
-  if (!prefersContentfulSource()) {
-    return [];
-  }
-
   const res = await getEntries<Record<string, unknown>>("newsletterTemplate", { limit: 200 });
   if (!res?.items?.length) return [];
 
@@ -568,23 +550,18 @@ export async function getNewsletterTemplates(): Promise<NewsletterTemplateConten
     subject: String(item.fields.subject || ""),
     previewText: item.fields.previewText ? String(item.fields.previewText) : undefined,
     body: String(item.fields.body || ""),
-    status: item.fields.status === "approved" ? "approved" : "draft",
   }));
 }
 
 export async function getBlogPosts(): Promise<BlogPostContent[]> {
-  if (prefersContentfulSource()) {
-    const res = await getEntries<Record<string, unknown>>("blogPost", {
-      order: "-fields.publishDate",
-      limit: 200,
-      include: 2,
-    });
-    return requireContentfulItems("blogPost", res).map((item) =>
-      mapBlogPostContent(item, res?.includes)
-    );
-  }
-
-  return LOCAL_BLOG_POSTS;
+  const res = await getEntries<Record<string, unknown>>("blogPost", {
+    order: "-sys.publishedAt",
+    limit: 200,
+    include: 2,
+  });
+  return requireContentfulItems("blogPost", res).map((item) =>
+    mapBlogPostContent(item, res?.includes)
+  );
 }
 
 export async function getBlogPostBySlug(slug: string): Promise<BlogPostContent | null> {
@@ -593,10 +570,6 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPostContent |
 }
 
 export async function getBlogPostPreviewBySlug(slug: string): Promise<BlogPostContent | null> {
-  if (!prefersContentfulSource()) {
-    return null;
-  }
-
   const res = await getEntries<Record<string, unknown>>(
     "blogPost",
     {
@@ -616,7 +589,7 @@ export async function getBlogPostStaticParams(): Promise<Array<{ slug: string }>
 }
 
 export async function getBlogPostSlugByContentfulEntryId(entryId: string): Promise<string | null> {
-  if (!entryId || !prefersContentfulSource()) {
+  if (!entryId) {
     return null;
   }
 
@@ -626,85 +599,77 @@ export async function getBlogPostSlugByContentfulEntryId(entryId: string): Promi
 }
 
 export async function getClassDefinitions(): Promise<ClassDefinitionContent[]> {
-  if (prefersContentfulSource()) {
-    const res = await getEntries<Record<string, unknown>>("classDefinition", { limit: 300 });
-    return requireContentfulItems("classDefinition", res).map((item) => ({
-      id: String(item.sys.id),
-      slug: requireStringField("classDefinition", item, "slug"),
-      name: requireStringField("classDefinition", item, "name"),
-      type: requireStringField("classDefinition", item, "type") as "Yoga" | "Strength" | "HIIT",
-      classCategory: requireStringField("classDefinition", item, "classCategory") as
-        | "yoga"
-        | "strength"
-        | "small-group",
-      day: optionalStringField(item.fields, "defaultDay") || "Monday",
-      time: optionalStringField(item.fields, "defaultTime") || "09:00",
-      duration: requireStringField("classDefinition", item, "duration"),
-      level: requireStringField("classDefinition", item, "level"),
-      maxSpaces: requireNumberField("classDefinition", item, "maxCapacity"),
-      shortDescription: requireStringField("classDefinition", item, "shortDescription"),
-      longDescription: requireStringField("classDefinition", item, "longDescription"),
-      whatToExpect: parseStringArray(item.fields.whatToExpect),
-      whoItsFor: parseStringArray(item.fields.whoItsFor),
-      equipment: parseStringArray(item.fields.equipment),
-      benefits: parseStringArray(item.fields.benefits),
-      instructor: optionalStringField(item.fields, "instructorName") || "Shruti Turner",
-      defaultInstructorProfileEntryId: getLinkedEntryId(item.fields.defaultInstructorProfile),
-      seoTitle:
-        optionalStringField(item.fields, "seoTitle") ||
-        requireStringField("classDefinition", item, "name"),
-      seoDescription:
-        optionalStringField(item.fields, "seoDescription") ||
-        requireStringField("classDefinition", item, "shortDescription"),
-      seoKeywords: optionalStringField(item.fields, "seoKeywords") || "",
-    }));
-  }
-
-  return LOCAL_CLASS_DEFINITIONS;
+  const res = await getEntries<Record<string, unknown>>("classDefinition", { limit: 300 });
+  return requireContentfulItems("classDefinition", res).map((item) => ({
+    id: String(item.sys.id),
+    slug: requireStringField("classDefinition", item, "slug"),
+    name: requireStringField("classDefinition", item, "name"),
+    type: requireStringField("classDefinition", item, "type") as "Yoga" | "Strength" | "HIIT",
+    classCategory: requireStringField("classDefinition", item, "classCategory") as
+      | "yoga"
+      | "strength"
+      | "small-group",
+    day: optionalStringField(item.fields, "defaultDay") || "Monday",
+    time: optionalStringField(item.fields, "defaultTime") || "09:00",
+    duration: requireStringField("classDefinition", item, "duration"),
+    level: requireStringField("classDefinition", item, "level"),
+    maxSpaces: requireNumberField("classDefinition", item, "maxCapacity"),
+    shortDescription: requireStringField("classDefinition", item, "shortDescription"),
+    longDescription: requireStringField("classDefinition", item, "longDescription"),
+    whatToExpect: parseStringArray(item.fields.whatToExpect),
+    whoItsFor: parseStringArray(item.fields.whoItsFor),
+    equipment: parseStringArray(item.fields.equipment),
+    benefits: parseStringArray(item.fields.benefits),
+    instructor: optionalStringField(item.fields, "instructorName") || "Shruti Turner",
+    defaultInstructorProfileEntryId: getLinkedEntryId(item.fields.defaultInstructorProfile),
+    seoTitle:
+      optionalStringField(item.fields, "seoTitle") ||
+      requireStringField("classDefinition", item, "name"),
+    seoDescription:
+      optionalStringField(item.fields, "seoDescription") ||
+      requireStringField("classDefinition", item, "shortDescription"),
+    seoKeywords: optionalStringField(item.fields, "seoKeywords") || "",
+  }));
 }
 
 export async function getSmallGroupTemplates(): Promise<SmallGroupTemplateContent[]> {
-  if (prefersContentfulSource()) {
-    const res = await getEntries<Record<string, unknown>>("smallGroupProgramme", {
-      limit: 100,
-      order: "fields.title",
-    });
-    return requireContentfulItems("smallGroupProgramme", res).map((item) => ({
-      id: String(item.sys.id),
-      slug: requireStringField("smallGroupProgramme", item, "slug"),
-      title: requireStringField("smallGroupProgramme", item, "title"),
-      subtitle: optionalStringField(item.fields, "subtitle"),
-      shortSummary: requireStringField("smallGroupProgramme", item, "shortSummary"),
-      fullDescription: optionalStringField(item.fields, "fullDescription"),
-      longDescription: optionalStringField(item.fields, "longDescription"),
-      outcomes: parseStringArray(item.fields.outcomes),
-      durationLabel: requireStringField("smallGroupProgramme", item, "durationLabel"),
-      durationWeeks:
-        item.fields.durationWeeks === undefined ? undefined : Number(item.fields.durationWeeks),
-      cohortSize: requireNumberField("smallGroupProgramme", item, "cohortSize"),
-      sessionsPerWeek:
-        item.fields.sessionsPerWeek === undefined ? undefined : Number(item.fields.sessionsPerWeek),
-      defaultPricePence:
-        item.fields.defaultPricePence === undefined
-          ? undefined
-          : Number(item.fields.defaultPricePence),
-      whoItsFor: parseStringArray(item.fields.whoItsFor),
-      equipment: parseStringArray(item.fields.equipment),
-      inclusions: parseStringArray(item.fields.inclusions),
-      weekByWeek: parseObjectArray(item.fields.weekByWeek, (week) => {
-        const weekNumber = Number(week.weekNumber);
-        if (!Number.isFinite(weekNumber) || weekNumber <= 0) return null;
-        return {
-          weekNumber,
-          title: String(week.title || `Week ${weekNumber}`),
-          focus: week.focus ? String(week.focus) : undefined,
-          sessionTitles: parseStringArray(week.sessionTitles),
-        };
-      }),
-    }));
-  }
-
-  return LOCAL_SMALL_GROUP_PROGRAMMES;
+  const res = await getEntries<Record<string, unknown>>("smallGroupProgramme", {
+    limit: 100,
+    order: "fields.title",
+  });
+  return requireContentfulItems("smallGroupProgramme", res).map((item) => ({
+    id: String(item.sys.id),
+    slug: requireStringField("smallGroupProgramme", item, "slug"),
+    title: requireStringField("smallGroupProgramme", item, "title"),
+    subtitle: optionalStringField(item.fields, "subtitle"),
+    shortSummary: requireStringField("smallGroupProgramme", item, "shortSummary"),
+    fullDescription: optionalStringField(item.fields, "fullDescription"),
+    longDescription: optionalStringField(item.fields, "longDescription"),
+    outcomes: parseStringArray(item.fields.outcomes),
+    durationLabel: requireStringField("smallGroupProgramme", item, "durationLabel"),
+    durationWeeks:
+      item.fields.durationWeeks === undefined ? undefined : Number(item.fields.durationWeeks),
+    cohortSize: requireNumberField("smallGroupProgramme", item, "cohortSize"),
+    sessionsPerWeek:
+      item.fields.sessionsPerWeek === undefined ? undefined : Number(item.fields.sessionsPerWeek),
+    defaultPricePence:
+      item.fields.defaultPricePence === undefined
+        ? undefined
+        : Number(item.fields.defaultPricePence),
+    whoItsFor: parseStringArray(item.fields.whoItsFor),
+    equipment: parseStringArray(item.fields.equipment),
+    inclusions: parseStringArray(item.fields.inclusions),
+    weekByWeek: parseObjectArray(item.fields.weekByWeek, (week) => {
+      const weekNumber = Number(week.weekNumber);
+      if (!Number.isFinite(weekNumber) || weekNumber <= 0) return null;
+      return {
+        weekNumber,
+        title: String(week.title || `Week ${weekNumber}`),
+        focus: week.focus ? String(week.focus) : undefined,
+        sessionTitles: parseStringArray(week.sessionTitles),
+      };
+    }),
+  }));
 }
 
 export async function getSmallGroupTemplateBySlug(
@@ -718,37 +683,22 @@ export const getSmallGroupProgrammes = getSmallGroupTemplates;
 export const getSmallGroupProgrammeBySlug = getSmallGroupTemplateBySlug;
 
 export async function getInstructorProfiles(): Promise<InstructorProfileContent[]> {
-  if (prefersContentfulSource()) {
-    const res = await getEntries<Record<string, unknown>>("instructorProfile", { limit: 300 });
-    return requireContentfulItems("instructorProfile", res).map((item) => ({
-      id: String(item.sys.id),
-      slug: requireStringField("instructorProfile", item, "slug"),
-      name: requireStringField("instructorProfile", item, "name"),
-      headline: optionalStringField(item.fields, "headline"),
-      bio: requireStringField("instructorProfile", item, "bio"),
-      credentials: parseStringArray(item.fields.credentials),
-      specialties: parseStringArray(item.fields.specialties),
-      avatarImageUrl: optionalStringField(item.fields, "avatarImageUrl"),
-      avatarAlt: optionalStringField(item.fields, "avatarAlt"),
-      featuredQuote: optionalStringField(item.fields, "featuredQuote"),
-      seoTitle: optionalStringField(item.fields, "seoTitle"),
-      seoDescription: optionalStringField(item.fields, "seoDescription"),
-      active: item.fields.active === undefined ? true : Boolean(item.fields.active),
-    }));
-  }
-
-  return [
-    {
-      id: "local-shruti",
-      slug: "shruti-turner",
-      name: "Shruti Turner",
-      headline: "Strength and Yoga Coach",
-      bio: "Evidence-based coaching for complex bodies.",
-      credentials: [],
-      specialties: [],
-      active: true,
-    },
-  ];
+  const res = await getEntries<Record<string, unknown>>("instructorProfile", { limit: 300 });
+  return requireContentfulItems("instructorProfile", res).map((item) => ({
+    id: String(item.sys.id),
+    slug: requireStringField("instructorProfile", item, "slug"),
+    name: requireStringField("instructorProfile", item, "name"),
+    headline: optionalStringField(item.fields, "headline"),
+    bio: requireStringField("instructorProfile", item, "bio"),
+    credentials: parseStringArray(item.fields.credentials),
+    specialties: parseStringArray(item.fields.specialties),
+    avatarImageUrl: optionalStringField(item.fields, "avatarImageUrl"),
+    avatarAlt: optionalStringField(item.fields, "avatarAlt"),
+    featuredQuote: optionalStringField(item.fields, "featuredQuote"),
+    seoTitle: optionalStringField(item.fields, "seoTitle"),
+    seoDescription: optionalStringField(item.fields, "seoDescription"),
+    active: item.fields.active === undefined ? true : Boolean(item.fields.active),
+  }));
 }
 
 export async function getInstructorProfilesByIds(
@@ -780,78 +730,64 @@ export async function getClassDefinitionBySlug(
 }
 
 export async function getScheduleByDayContent(): Promise<ScheduleDay[]> {
-  // Backend schedule instances are source of truth. In this codebase that data is local mock.
-  if (!prefersContentfulSource()) {
-    return getLocalScheduleByDay();
-  }
-
   return [];
 }
 
 export async function getRetreatTemplates(): Promise<RetreatTemplateContent[]> {
-  if (prefersContentfulSource()) {
-    const res = await getEntries<Record<string, unknown>>("retreatTemplate", {
-      limit: 200,
-      include: 1,
-    });
-    return requireContentfulItems("retreatTemplate", res).map((item) => ({
-      id: String(item.sys.id),
-      slug: requireStringField("retreatTemplate", item, "slug"),
-      title: requireStringField("retreatTemplate", item, "title"),
-      subtitle: requireStringField("retreatTemplate", item, "subtitle"),
-      shortDescription: requireStringField("retreatTemplate", item, "shortDescription"),
-      fullDescription: requireStringField("retreatTemplate", item, "fullDescription"),
-      suitableFor: parseStringArray(item.fields.suitableFor),
-      included: parseStringArray(item.fields.included),
-      notIncluded: parseStringArray(item.fields.notIncluded),
-      seoTitle: optionalStringField(item.fields, "seoTitle"),
-      seoDescription: optionalStringField(item.fields, "seoDescription"),
-      venueId:
-        item.fields.venue &&
+  const res = await getEntries<Record<string, unknown>>("retreatTemplate", {
+    limit: 200,
+    include: 1,
+  });
+  return requireContentfulItems("retreatTemplate", res).map((item) => ({
+    id: String(item.sys.id),
+    slug: requireStringField("retreatTemplate", item, "slug"),
+    title: requireStringField("retreatTemplate", item, "title"),
+    subtitle: requireStringField("retreatTemplate", item, "subtitle"),
+    shortDescription: requireStringField("retreatTemplate", item, "shortDescription"),
+    fullDescription: requireStringField("retreatTemplate", item, "fullDescription"),
+    suitableFor: parseStringArray(item.fields.suitableFor),
+    included: parseStringArray(item.fields.included),
+    notIncluded: parseStringArray(item.fields.notIncluded),
+    seoTitle: optionalStringField(item.fields, "seoTitle"),
+    seoDescription: optionalStringField(item.fields, "seoDescription"),
+    venueId:
+      item.fields.venue &&
         typeof item.fields.venue === "object" &&
         item.fields.venue !== null &&
         "sys" in item.fields.venue
-          ? String((item.fields.venue as { sys?: { id?: string } }).sys?.id || "")
-          : undefined,
-      // Backward compatibility for old local/content entries while migrating.
-      venueSlug: optionalStringField(item.fields, "venueSlug"),
-    }));
-  }
-
-  return [];
+        ? String((item.fields.venue as { sys?: { id?: string } }).sys?.id || "")
+        : undefined,
+    venueSlug: optionalStringField(item.fields, "venueSlug"),
+  }));
 }
 
 export async function getRetreatInstances(): Promise<RetreatInstanceContent[]> {
-  return LOCAL_RETREAT_INSTANCES;
+  return [];
 }
 
 export async function getRetreatVenues(): Promise<RetreatVenueContent[]> {
-  if (prefersContentfulSource()) {
-    const res = await getEntries<Record<string, unknown>>("retreatVenue", { limit: 100 });
-    if (res?.items?.length) {
-      return res.items.map((item) => ({
-        id: String(item.sys.id),
-        slug: String(item.fields.slug || item.sys.id),
-        name: String(item.fields.name || "Venue"),
-        displayLocation: String(item.fields.displayLocation || item.fields.name || "Venue"),
-        description: item.fields.description ? String(item.fields.description) : undefined,
-        address: item.fields.address ? String(item.fields.address) : undefined,
-        accommodationOptions: parseStringArray(item.fields.accommodationOptions),
-        travelInformation: item.fields.travelInformation
-          ? String(item.fields.travelInformation)
-          : undefined,
-        accommodationType: item.fields.accommodationType
-          ? String(item.fields.accommodationType)
-          : undefined,
-        facilities: parseStringArray(item.fields.facilities),
-        accessibilityNotes: item.fields.accessibilityNotes
-          ? String(item.fields.accessibilityNotes)
-          : undefined,
-      }));
-    }
-  }
+  const res = await getEntries<Record<string, unknown>>("retreatVenue", { limit: 100 });
+  if (!res?.items?.length) return [];
 
-  return [];
+  return res.items.map((item) => ({
+    id: String(item.sys.id),
+    slug: String(item.fields.slug || item.sys.id),
+    name: String(item.fields.name || "Venue"),
+    displayLocation: String(item.fields.displayLocation || item.fields.name || "Venue"),
+    description: item.fields.description ? String(item.fields.description) : undefined,
+    address: item.fields.address ? String(item.fields.address) : undefined,
+    accommodationOptions: parseStringArray(item.fields.accommodationOptions),
+    travelInformation: item.fields.travelInformation
+      ? String(item.fields.travelInformation)
+      : undefined,
+    accommodationType: item.fields.accommodationType
+      ? String(item.fields.accommodationType)
+      : undefined,
+    facilities: parseStringArray(item.fields.facilities),
+    accessibilityNotes: item.fields.accessibilityNotes
+      ? String(item.fields.accessibilityNotes)
+      : undefined,
+  }));
 }
 
 export async function getRetreatsCombined(): Promise<RetreatCombinedContent[]> {
@@ -867,10 +803,6 @@ export async function getRetreatsCombined(): Promise<RetreatCombinedContent[]> {
 export async function getTestimonials(
   service?: "yoga" | "strength" | "pt" | "retreat" | "small-group" | "general"
 ): Promise<TestimonialContent[]> {
-  if (!prefersContentfulSource()) {
-    return [];
-  }
-
   const query: Record<string, string | number | boolean | undefined> = {
     limit: 200,
   };
@@ -890,12 +822,12 @@ export async function getTestimonials(
     authorCondition: item.fields.authorCondition ? String(item.fields.authorCondition) : undefined,
     service: item.fields.service
       ? (String(item.fields.service) as
-          | "yoga"
-          | "strength"
-          | "pt"
-          | "retreat"
-          | "small-group"
-          | "general")
+        | "yoga"
+        | "strength"
+        | "pt"
+        | "retreat"
+        | "small-group"
+        | "general")
       : undefined,
     featured: Boolean(item.fields.featured),
   }));

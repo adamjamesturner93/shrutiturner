@@ -18,7 +18,8 @@ export default function CoachingApplicationConfirmationEmail({
       <Text style={headingStyle}>Application received</Text>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
-        Thanks for applying for {tierLabel}. Your application is in and will be reviewed personally.
+        Thanks for requesting to work with Shruti to support your health and wellbeing. Your
+        application for {tierLabel} is in and will be reviewed personally.
       </Text>
       <Section
         style={{
@@ -30,9 +31,11 @@ export default function CoachingApplicationConfirmationEmail({
       >
         <Text style={bodyTextStyle}>What happens next:</Text>
         <Text style={mutedTextStyle}>1. Your context and goals are reviewed.</Text>
-        <Text style={mutedTextStyle}>2. You will hear back within 48 hours.</Text>
         <Text style={mutedTextStyle}>
-          3. If it looks like a fit, the next onboarding step will be outlined clearly.
+          2. Look out for an email from Shruti within the next 48 hours.
+        </Text>
+        <Text style={mutedTextStyle}>
+          3. Don’t forget to check your spam folder if you cannot see the reply.
         </Text>
       </Section>
       <Section style={{ textAlign: "center" }}>

@@ -190,7 +190,7 @@ export function PurchaseModal({
   }, []);
 
   const moveWellMonthlyPrice =
-    pricing?.membershipDisplay?.movewellMonthly ?? pricing?.membership.movewell ?? 29;
+    pricing?.membershipDisplay?.movewellMonthly ?? pricing?.membership.movewell ?? 35;
   const credits1Price = pricing?.credits[1] ?? 9;
   const credits3Price = pricing?.credits[3] ?? 24;
   const credits10Price = pricing?.credits[10] ?? 70;

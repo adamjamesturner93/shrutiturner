@@ -170,10 +170,10 @@ export function HealthProfilePage({ initialProfile }: { initialProfile?: HealthP
         <AppPageHeader
           eyebrow="Health and safety"
           title="Health Profile"
-          description="Help Shruti understand your body so sessions can be adapted for you."
+          description="Help Shruti understand your body so sessions can be tailored for you."
           meta={
             <p className="max-w-xl text-sm leading-relaxed">
-              The health information you share is used to assess suitability, tailor training, and
+              The health information you share is used to assess suitability, tailor training and
               deliver sessions safely.
             </p>
           }

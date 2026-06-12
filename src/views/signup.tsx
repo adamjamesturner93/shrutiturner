@@ -176,7 +176,7 @@ export function SignupPage() {
     <Layout>
       <SEO
         title="Sign Up - Shruti Turner"
-        description="Create your account to access personalised training programmes, online classes, and expert coaching."
+        description="Create your account to access personalised training programmes, online classes and expert coaching."
         canonicalUrl="https://shrutiturner.co.uk/signup"
         noIndex
       />
@@ -201,14 +201,14 @@ export function SignupPage() {
                       Create an account that starts with context, not pressure.
                     </h1>
                     <p className="text-brand-white/78 text-lg leading-relaxed">
-                      Join classes, coaching, and future bookings through a setup that respects
-                      health history, capacity, and adult responsibility.
+                      Join classes, coaching and future bookings through a setup that respects
+                      health history, capacity and adult responsibility.
                     </p>
                   </div>
 
                   <div className="mt-7 grid gap-3 sm:grid-cols-3 lg:mt-auto">
                     {[
-                      "Personalised programmes for complex bodies",
+                      "Personalised programmes for chronic illness and injury recovery",
                       "Online and in-person yoga plus strength classes",
                       "Supportive community without generic wellness language",
                     ].map((item) => (
@@ -227,7 +227,7 @@ export function SignupPage() {
                   <div className="border-brand-white/12 mt-6 grid gap-3 border-t pt-5 sm:grid-cols-3">
                     {[
                       { value: "18+", label: "Adult-only registration for insurance cover" },
-                      { value: "Live", label: "Classes, bookings, and coaching in one login" },
+                      { value: "Live", label: "Classes, bookings and coaching in one login" },
                       { value: "Clear", label: "Verification before anything goes live" },
                     ].map((item) => (
                       <div key={item.label}>
@@ -269,7 +269,7 @@ export function SignupPage() {
                     </h2>
                     <p className="text-muted-foreground mt-3 leading-relaxed">
                       Start with a simple setup. We collect the basics we need for insurance,
-                      booking, and safer support.
+                      booking and safer support.
                     </p>
                   </div>
                   <div className="bg-bronze/60 mb-8 h-px w-16 rounded-full" />
@@ -462,7 +462,7 @@ export function SignupPage() {
                               >
                                 Health & Liability Waiver
                               </Link>
-                              , and I understand that I participate in all classes and programmes at
+                              and I understand that I participate in all classes and programmes at
                               my own risk
                             </label>
                           </div>

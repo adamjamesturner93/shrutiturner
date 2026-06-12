@@ -4,7 +4,7 @@ This release connects Contentful publish events to static blog revalidation and 
 
 ## Webhook Endpoints
 
-Configure Contentful to send publish, unpublish, archive, and delete events to:
+Configure Contentful to send publish, unpublish, archive and delete events to:
 
 - `POST /api/contentful/webhook`
 - Legacy alias: `POST /api/webhooks/contentful`
@@ -45,7 +45,7 @@ Allowed `status` values:
 - `approved`: send on publish.
 - `published`: send on publish.
 
-All broadcast emails are sent only to active newsletter subscribers, include a signed unsubscribe link, and persist `EmailCampaign`, `EmailDelivery`, and `EmailDeliveryAttempt` records for reporting. Postmark webhook events then attach delivery, open, click, bounce, complaint, and unsubscribe events back to those campaign records.
+All broadcast emails are sent only to active newsletter subscribers, include a signed unsubscribe link and persist `EmailCampaign`, `EmailDelivery`and `EmailDeliveryAttempt` records for reporting. Postmark webhook events then attach delivery, open, click, bounce, complaintand unsubscribe events back to those campaign records.
 
 ## Scheduled Sends
 

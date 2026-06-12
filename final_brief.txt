@@ -3,7 +3,7 @@ Final launch-readiness audit brief
 Perform a final implementation and launch-readiness audit of the completed platform.
 
 This is a verification audit, not a planning exercise.
-Assess the current codebase, schema, services, routes, UI, emails, scheduled jobs, admin tooling, and user journeys against the final user requirements, compliance obligations, and UX expectations.
+Assess the current codebase, schema, services, routes, UI, emails, scheduled jobs, admin tooling and user journeys against the final user requirements, compliance obligations and UX expectations.
 
 Be strict. Do not assume a control exists unless it is evidenced in code or active operational wiring.
 
@@ -26,12 +26,12 @@ Critical launch blockers
 High-risk compliance gaps
 UX friction and trust issues
 Operational weaknesses
-Contradictions between code, UI, emails, and policy-linked wording
+Contradictions between code, UI, emails and policy-linked wording
 Security and privacy weaknesses
 Accessibility gaps
 Performance/reliability concerns
 Final launch recommendation: Not ready / Ready with caveats / Ready
-1. Authority, access control, and instructor scoping
+1. Authority, access control and instructor scoping
 
 Audit the authority model end to end.
 
@@ -40,7 +40,7 @@ Contentful instructor profiles are treated as public-content only
 operational authority comes only from Prisma role plus explicit assignment
 a Contentful instructor profile alone never grants instructor/admin capability
 owner_admin has intended global authority
-guest instructors only access sessions, runs, and dates they are explicitly assigned to
+guest instructors only access sessions, runs and dates they are explicitly assigned to
 guest instructors cannot enumerate, search, or infer users outside their assignment scope
 guest instructors cannot access:
 privacy tooling
@@ -68,7 +68,7 @@ session-level override for a cover week
 permission transfer after reassignment
 old instructor loses scoped authority
 public instructor snapshot/history remains correct after reassignment
-2. Legal acceptance, consent, acknowledgement, and gating
+2. Legal acceptance, consent, acknowledgementand gating
 
 Audit immutable acceptance history and server-side enforcement.
 
@@ -98,9 +98,9 @@ consistent structure
 all required routes use it
 supports redirect-and-retry UX correctly
 
-Because health data is special category data, verify that the implementation clearly supports both a lawful basis under Article 6 and a separate Article 9 condition, and that explicit consent is correctly captured where relied upon.
+Because health data is special category data, verify that the implementation clearly supports both a lawful basis under Article 6 and a separate Article 9 condition and that explicit consent is correctly captured where relied upon.
 
-3. Health data handling, minimisation, instructor visibility, retention, and rights
+3. Health data handling, minimisation, instructor visibility, retention and rights
 
 Audit health data end to end.
 
@@ -121,13 +121,13 @@ Verify DSAR/export and deletion against rights expectations
 
 Audit whether:
 
-access/export is complete, readable, and auditable
+access/export is complete, readable and auditable
 deletion/anonymisation removes what should be removed
 preserved records are justified and non-identifying where possible
 
 This should be checked against ICO expectations for access and erasure handling.
 
-4. Recording, replay, deletion, and playback access
+4. Recording, replay, deletion and playback access
 
 Audit replay against the actual product rule:
 
@@ -156,13 +156,13 @@ replay entitlement is tied to the enrolled user and programme
 assigned instructor replay access is limited to sessions/runs they taught or are assigned to
 owner_admin replay controls are properly scoped and audited
 playback access ends on time
-Daily deletion is triggered, retried on failure, and audited
+Daily deletion is triggered, retried on failure and audited
 local replay state remains correct if Daily sync or deletion fails
 no public or permanent replay URLs are exposed
 
-Also verify that the copy shown to users, the config, the entitlement logic, and the deletion job all derive from the same authoritative path.
+Also verify that the copy shown to users, the config, the entitlement logic and the deletion job all derive from the same authoritative path.
 
-5. Checkout, trial, cancellation, refunds, and confirmation flows
+5. Checkout, trial, cancellation, refunds and confirmation flows
 
 Audit all product families:
 
@@ -188,7 +188,7 @@ small groups are fixed-fee only, with no hidden deposit/balance logic
 self-serve cancellation and refund actions respect legal gating and dispute states
 replay access changes correctly when cancellation/refund/dispute changes entitlement
 
-Audit this against UK distance-selling / digital-content guidance on cancellation information and immediate supply. GOV.UK says streamed/downloaded digital content requires confirmation before supply starts, agreement to immediate supply, and inclusion of this in the contract confirmation; if the required information is not given, cancellation rights can persist longer.
+Audit this against UK distance-selling / digital-content guidance on cancellation information and immediate supply. GOV.UK says streamed/downloaded digital content requires confirmation before supply starts, agreement to immediate supply and inclusion of this in the contract confirmation; if the required information is not given, cancellation rights can persist longer.
 
 Also verify readiness against the new UK subscription-contract regime direction under the Digital Markets, Competition and Consumers Act implementation work, especially around reminders and subscription transparency.
 
@@ -207,7 +207,7 @@ Be strict. If a message contains promotional content, product upsell, or direct 
 
 Transactional / service emails to audit
 
-Verify trigger, recipient, copy, and logging for:
+Verify trigger, recipient, copy and logging for:
 
 passwordless sign-in / auth code
 account verification / onboarding
@@ -232,7 +232,7 @@ deletion request update/completion
 dispute / refund operational notices
 Marketing emails to audit
 
-Verify consent, suppression, and audience for:
+Verify consent, suppression and audience for:
 
 newsletter sends
 new blog post announcement emails
@@ -252,11 +252,11 @@ whether transactional emails still send when the user has opted out of marketing
 whether delivery metadata is logged for evidence
 whether any “transactional” email contains promotional copy that would reclassify it as marketing
 
-Under ICO PECR guidance, unsolicited email marketing to individuals usually requires specific consent unless a narrow soft opt-in applies. Consent must be freely given, and making email marketing consent a condition of purchase is unlikely to be valid.
+Under ICO PECR guidance, unsolicited email marketing to individuals usually requires specific consent unless a narrow soft opt-in applies. Consent must be freely given and making email marketing consent a condition of purchase is unlikely to be valid.
 
 7. Newsletter audit
 
-Audit newsletter compliance, editorial workflow, and analytics.
+Audit newsletter compliance, editorial workflow and analytics.
 
 Verify:
 newsletter signup captures valid marketing consent where required
@@ -288,18 +288,18 @@ moderation actions are logged
 comment/report states are auditable
 comments/reactions are handled correctly in export/deletion flows
 blog-related announcement emails are correctly classified as marketing
-9. Disputes, holds, overrides, and evidence
+9. Disputes, holds, overrides and evidence
 
 Audit dispute and evidence handling end to end.
 
 Verify:
 Stripe dispute webhooks are handled correctly
-dispute cases are created, updated, and closed correctly
+dispute cases are created, updated and closed correctly
 dispute hold applies only to the disputed entitlement/product by default
 wider account restriction requires explicit owner_admin action
 guest instructors have no visibility into dispute existence or state
 replay/refund/self-serve actions behave correctly while under review
-owner_admin override actions are logged with actor, reason, and before/after values
+owner_admin override actions are logged with actor, reason and before/after values
 replay revoke/delete actions are logged
 evidence views can reconstruct:
 what was bought/booked
@@ -308,7 +308,7 @@ what legal versions were accepted
 whether recording/replay notice applied
 whether user attended
 what notices were shown and sent
-what overrides, incidents, moderation actions, and disputes occurred
+what overrides, incidents, moderation actions and disputes occurred
 
 Be strict here. This is your complaint-defence surface.
 
@@ -349,7 +349,7 @@ owner_admin manual rerun
 rerun auditing
 output counters and summaries
 safe behaviour if dependent external APIs fail
-12. Public schedule, booking journeys, and UX readiness
+12. Public schedule, booking journeys and UX readiness
 
 Audit these journeys end to end:
 
@@ -366,7 +366,7 @@ join class
 cancel before and after cutoff
 Journey B — user joins a recorded small group
 discover programme
-understand replay clearly
+underst and replay clearly
 accept legal docs and recording acknowledgement
 purchase fixed-fee enrolment
 join session
@@ -384,7 +384,7 @@ Journey D — guest instructor cover week
 owner_admin assigns cover instructor
 cover instructor accesses only assigned session/run/date
 sees only minimum participant data
-can run the room, moderate, and log incidents
+can run the room, moderate and log incidents
 cannot access broader admin surfaces
 Journey E — privacy and complaint journey
 user requests export
@@ -469,7 +469,7 @@ Audit:
 
 retry behaviour
 idempotency
-external dependency failure handling for Stripe, Daily, Postmark, and Contentful
+external dependency failure handling for Stripe, Daily, Postmark and Contentful
 state recovery after partial failure
 replay sync/deletion robustness
 consistency between UI state and backend truth

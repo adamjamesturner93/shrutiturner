@@ -161,7 +161,7 @@ export function ScheduleClassModal({
           <DialogDescription>
             {step === 1
               ? "Select a class template from Contentful, then define the weekly slot that should repeat."
-              : "Set the first date, weekly time, and capacity for this recurring class slot. Saving creates private draft weeks that can be edited before publishing."}
+              : "Set the first date, weekly time and capacity for this recurring class slot. Saving creates private draft weeks that can be edited before publishing."}
           </DialogDescription>
         </DialogHeader>
 
@@ -171,7 +171,7 @@ export function ScheduleClassModal({
             <div className="text-muted-foreground bg-secondary/50 mb-3 flex items-center gap-2 rounded-md p-2 text-xs">
               <Info className="h-3.5 w-3.5 flex-shrink-0" />
               <span>
-                Class descriptions, equipment lists, and SEO content are managed in Contentful. Here
+                Class descriptions, equipment lists and SEO content are managed in Contentful. Here
                 you create the weekly timetable slot and the next 8 weeks of draft sessions for
                 admin review.
               </span>

@@ -122,7 +122,7 @@ export function CreateProgrammeModal({ open, onOpenChange, onCreate }: CreatePro
         <DialogHeader>
           <DialogTitle>Create Programme</DialogTitle>
           <DialogDescription>
-            Set up a new small group programme with sessions, capacity, and pricing.
+            Set up a new small group programme with sessions, capacity and pricing.
           </DialogDescription>
         </DialogHeader>
 
@@ -143,7 +143,7 @@ export function CreateProgrammeModal({ open, onOpenChange, onCreate }: CreatePro
             <Label htmlFor="prog-desc">Description</Label>
             <Textarea
               id="prog-desc"
-              placeholder="Brief description of the programme, who it's for, and what participants will gain..."
+              placeholder="Brief description of the programme, who it's for and what participants will gain..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -219,10 +219,10 @@ export function CreateProgrammeModal({ open, onOpenChange, onCreate }: CreatePro
               <div className="bg-secondary/30 text-muted-foreground flex h-9 items-center rounded-md border px-3 text-sm">
                 {endDate
                   ? new Date(endDate).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
                   : "Set start date & duration"}
               </div>
               <p className="text-muted-foreground text-xs">

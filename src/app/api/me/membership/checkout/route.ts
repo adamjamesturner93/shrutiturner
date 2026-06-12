@@ -66,8 +66,8 @@ export const POST = handleApiRoute(
       const disclosureAcceptedAt = new Date();
       const pricing = await getPublicPricing();
       const disclosureSnapshot = buildMembershipDisclosure(billingInterval, {
-        monthlyPricePence: Math.round((pricing.membershipDisplay.movewellMonthly || 29) * 100),
-        annualPricePence: Math.round((pricing.membershipDisplay.movewellAnnual || 290) * 100),
+        monthlyPricePence: Math.round((pricing.membershipDisplay.movewellMonthly || 35) * 100),
+        annualPricePence: Math.round((pricing.membershipDisplay.movewellAnnual || 350) * 100),
       });
       const immediateStartSummary =
         "Membership access begins immediately after checkout confirmation. If you use the service during a cooling-off period, any refund rights are subject to the immediate-start terms shown at checkout.";

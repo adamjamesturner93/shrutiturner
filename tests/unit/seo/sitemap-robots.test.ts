@@ -76,7 +76,7 @@ describe("sitemap and robots", () => {
     ]);
   });
 
-  it("disallows admin, app, API, instructor, and email surfaces in robots.txt", () => {
+  it("disallows admin, app, API, instructor and email surfaces in robots.txt", () => {
     const disallow = flattenDisallow(robots().rules);
 
     expect(disallow).toEqual(

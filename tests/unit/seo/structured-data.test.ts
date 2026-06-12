@@ -55,7 +55,7 @@ describe("structured data helpers", () => {
     });
   });
 
-  it("builds class, blog, retreat, FAQ, and breadcrumb schemas", () => {
+  it("builds class, blog, retreat, FAQ and breadcrumb schemas", () => {
     expect(
       createClassCourseSchema({
         id: "class_1",

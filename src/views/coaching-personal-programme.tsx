@@ -18,7 +18,8 @@ const independentTier = coachingTiers.find((tier) => tier.id === "independent_tr
 const independentPlanProof = [
   {
     label: "Format",
-    detail: "Programming lives in Everfit so your workouts, habits, and notes stay in one place.",
+    detail:
+      "Programming is delivered through Everfit so your workouts, habits and notes stay in one place.",
   },
   {
     label: "Support",
@@ -31,7 +32,7 @@ const independentPlanProof = [
   },
   {
     label: "Pacing",
-    detail: "Programming is designed for good days, average days, and flare days from the outset.",
+    detail: "Programming is designed for good days, average days and flare days from the outset.",
   },
 ] as const;
 
@@ -42,7 +43,7 @@ export function CoachingPersonalProgrammePage() {
     <Layout>
       <SEO
         title="Independent Training Plan - Shruti Turner"
-        description="Tailored training delivered through Everfit for complex bodies that need smart structure without weekly live coaching."
+        description="Tailored training delivered through Everfit for chronic illness, autoimmune conditions, wellbeing and injury recovery without weekly live coaching."
         canonicalUrl="https://shrutiturner.co.uk/coaching/personal-programme"
       />
 
@@ -55,9 +56,9 @@ export function CoachingPersonalProgrammePage() {
             <span className="text-brand-accent-light"> structure without weekly calls.</span>
           </>
         }
-        description="The Independent Training Plan is the lower-friction coaching route: tailored programming, monthly review, and clearer training decisions inside Everfit."
-        primaryCta={{ href: "/pricing#coaching", label: "View Pricing" }}
-        secondaryCta={{ href: "/coaching", label: "Compare All Coaching Tiers" }}
+        description="The Independent Training Plan is the lower-friction coaching route: tailored programming, monthly review and clearer training decisions delivered through Everfit."
+        primaryCta={{ href: "/#work-with-me", label: "Compare Options" }}
+        secondaryCta={{ href: "/coaching", label: "Explore Coaching" }}
         stats={[
           { value: independentTier.priceLabel, label: "Monthly investment" },
           { value: "Apply", label: "Required before payment" },
@@ -74,10 +75,10 @@ export function CoachingPersonalProgrammePage() {
                   Delivered in Everfit
                 </p>
                 <h2 className="mt-3 text-3xl leading-tight">
-                  Your plan, check-ins, and training rhythm in one place.
+                  Your plan, check-ins and training rhythm in one place.
                 </h2>
                 <p className="text-brand-white/82 mt-4 text-sm leading-relaxed">
-                  You get personalised programming, habits, and review notes without needing to
+                  You get personalised programming, habits and review notes without needing to
                   coordinate weekly live sessions.
                 </p>
                 <div className="mt-6 space-y-3">
@@ -168,7 +169,7 @@ export function CoachingPersonalProgrammePage() {
         <SectionHeading
           eyebrow="How It Works"
           title="Apply first, then move into Everfit after payment."
-          description="The process keeps subscription checkout behind admin acceptance so the offer, boundaries, and setup are agreed first."
+          description="The process keeps subscription checkout behind admin acceptance so the offer, boundaries and setup are agreed first."
           align="center"
         />
         <div className="mt-12">
@@ -187,8 +188,8 @@ export function CoachingPersonalProgrammePage() {
         description="Start here if you want specialist programming now and the option to step into more support later."
         actions={[
           {
-            href: "/pricing#coaching",
-            label: "View Pricing",
+            href: "/#work-with-me",
+            label: "Compare Options",
             icon: ArrowRight,
           },
           {

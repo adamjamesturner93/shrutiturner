@@ -37,10 +37,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { servicePathCards } from "@/data/public-refresh";
 
 const INTEREST_OPTIONS = [
-  { value: "group-classes", label: "Move Well Classes (yoga, strength, cardio)" },
-  { value: "1-1-training", label: "1:1 personal training" },
-  { value: "small-group", label: "Small group programmes" },
-  { value: "retreat", label: "Retreats" },
+  { value: "coaching", label: "Coaching" },
+  { value: "pricing", label: "Pricing or payment question" },
   { value: "general", label: "General question" },
   { value: "sliding-scale", label: "Sliding scale enquiry" },
   { value: "other", label: "Other" },
@@ -73,7 +71,7 @@ const contactExpectations = [
   {
     label: "Useful Detail",
     detail:
-      "Accessibility, symptoms, uncertainty, and past bad experiences are all relevant context.",
+      "Accessibility, symptoms, uncertainty and past bad experiences are all relevant context.",
   },
 ] as const;
 
@@ -205,8 +203,8 @@ export function ContactPage() {
 
                   <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                     <Button asChild>
-                      <Link href="/classes">
-                        Explore Move Well Classes
+                      <Link href="/coaching">
+                        Explore Coaching
                         <ArrowRight className="h-4 w-4" />
                       </Link>
                     </Button>
@@ -227,7 +225,7 @@ export function ContactPage() {
     <Layout>
       <SEO
         title="Contact & Enquiry - Shruti Turner"
-        description="Get in touch to discuss 1:1 coaching, group classes, retreat information, or general questions. No hard sell, just honest conversation."
+        description="Get in touch to discuss coaching fit, pricing, access needs, or general questions. No hard sell, just honest conversation."
         keywords="contact Shruti Turner, fitness enquiry, coaching consultation, strength training enquiry"
         canonicalUrl="https://shrutiturner.co.uk/contact"
       />
@@ -241,9 +239,9 @@ export function ContactPage() {
             <span className="text-brand-accent-light"> not a sales call.</span>
           </>
         }
-        description="If you want help choosing between classes, coaching, programmes, or retreats, tell me what feels unclear. You do not need to know the right service name before you reach out."
+        description="If you want help choosing a coaching route, understanding pricing, or explaining access needs, tell me what feels unclear. You do not need to know the right service name before you reach out."
         primaryCta={{ href: "#contact-form", label: "Open Enquiry Form" }}
-        secondaryCta={{ href: "/pricing", label: "View Pricing First" }}
+        secondaryCta={{ href: "/#work-with-me", label: "Compare Coaching Options" }}
         metrics={[
           {
             label: "Best For",
@@ -252,7 +250,7 @@ export function ContactPage() {
           },
           {
             label: "Tone",
-            detail: "Direct, low-pressure, and grounded in what your body actually needs.",
+            detail: "Direct, low-pressure and grounded in what your body actually needs.",
           },
           {
             label: "Reply",
@@ -275,7 +273,7 @@ export function ContactPage() {
                     Expect
                   </p>
                   <p className="text-brand-white/84 mt-2 text-sm leading-relaxed">
-                    Clarity on fit, pricing, and the next best route if you are still deciding.
+                    Clarity on fit, pricing and the next best route if you are still deciding.
                   </p>
                 </div>
                 <div className="bg-brand-accent-light/12 rounded-[1.15rem] p-4 backdrop-blur-sm">
@@ -401,7 +399,7 @@ export function ContactPage() {
                 <Textarea
                   id="message"
                   rows={6}
-                  placeholder="Tell me a bit about what you are looking for, what feels difficult right now, and what would be useful help."
+                  placeholder="Tell me a bit about what you are looking for, what feels difficult right now and what would be useful help."
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                   required
@@ -505,8 +503,8 @@ export function ContactPage() {
               </p>
               <div className="mt-5 grid gap-3">
                 <Button asChild variant="outline" className="justify-between">
-                  <Link href="/classes">
-                    Explore Move Well Classes
+                  <Link href="/#work-with-me">
+                    Compare Coaching Options
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>

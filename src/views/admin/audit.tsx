@@ -63,7 +63,7 @@ export function AdminAuditPage() {
         <AppPageHeader
           eyebrow="Admin audit"
           title="Audit Log"
-          description="Append-only record of admin actions, privacy operations, and platform setting changes."
+          description="Append-only record of admin actions, privacy operations and platform setting changes."
         />
 
         <Card>

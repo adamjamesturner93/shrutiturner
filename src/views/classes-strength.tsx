@@ -21,7 +21,7 @@ export function ClassesStrengthPage({
   return (
     <Layout>
       <SEO
-        title="Online Strength Training Classes - Adaptive Strength for Complex Bodies - Shruti Turner"
+        title="Online Strength Training Classes - Inclusive Adaptive Strength - Shruti Turner"
         description="Live online strength training classes designed for chronic illness and autoimmune conditions. Progressive, evidence-based resistance training that builds capacity without burnout."
         keywords="online strength training UK, strength training chronic illness, adaptive strength classes, bodyweight strength progression, strength training autoimmune"
         canonicalUrl="https://shrutiturner.co.uk/classes/strength"
@@ -32,7 +32,7 @@ export function ClassesStrengthPage({
         <div className="container mx-auto max-w-4xl px-4 text-center">
           <h1 className="mb-6 text-4xl leading-tight md:text-6xl">Online Strength Training</h1>
           <p className="mb-8 text-xl leading-relaxed text-[#B5C49B] md:text-2xl">
-            Progressive resistance training designed for bodies that need intelligent programming,
+            Progressive resistance training designed for people who need intelligent programming,
             not generic workouts.
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
@@ -67,7 +67,7 @@ export function ClassesStrengthPage({
           </div>
 
           <h2 className="mb-12 text-center text-3xl md:text-5xl">
-            Intelligent Strength Training for Complex Bodies
+            Intelligent Strength Training for Inclusive Movement
           </h2>
 
           <div className="mx-auto max-w-3xl space-y-8">
@@ -77,7 +77,7 @@ export function ClassesStrengthPage({
                 inflammation flares unpredictably, or when "just push through" causes crashes.
               </p>
               <p className="text-muted-foreground text-lg leading-relaxed">
-                These classes use evidence-based progressive overload adapted for bodies that need
+                These classes use evidence-based progressive overload adapted for people who need
                 symptom-responsive programming. You'll build genuine capacity without aggravating
                 your conditions.
               </p>
@@ -263,7 +263,7 @@ export function ClassesStrengthPage({
               </div>
               <h3 className="text-xl">Metabolic Health</h3>
               <p className="text-muted-foreground leading-relaxed">
-                Muscle mass improves insulin sensitivity, metabolic rate, and overall metabolic
+                Muscle mass improves insulin sensitivity, metabolic rate and overall metabolic
                 health.
               </p>
             </div>
@@ -285,7 +285,7 @@ export function ClassesStrengthPage({
               </div>
               <h3 className="text-xl">Resilience</h3>
               <p className="text-muted-foreground leading-relaxed">
-                Greater capacity to handle life stress, symptom flares, and unexpected challenges.
+                Greater capacity to handle life stress, symptom flares and unexpected challenges.
               </p>
             </div>
           </div>
@@ -323,7 +323,7 @@ export function ClassesStrengthPage({
       <PreFooterCtaSection
         layout="centered"
         title="Ready to Build Genuine Strength?"
-        description="Join live classes designed for bodies that need intelligent programming, not generic workouts."
+        description="Join live classes designed for chronic illness, autoimmune conditions, wellbeing and injury recovery, not generic workouts."
         actions={[
           {
             href: "/schedule",
@@ -338,7 +338,7 @@ export function ClassesStrengthPage({
         ]}
       >
         <p className="text-sm opacity-70">
-          Single class £9 · 3-pack £24 · Membership from £29/month
+          Single class £9 · 3-pack £24 · Membership from £35/month
         </p>
       </PreFooterCtaSection>
     </Layout>

@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-Studio Foundations needs one source of truth for third-party integrations, their operational boundaries, and the runtime contracts the app uses to talk to them.
+Studio Foundations needs one source of truth for third-party integrations, their operational boundaries and the runtime contracts the app uses to talk to them.
 
 ## Decisions
 
@@ -15,7 +15,7 @@ Studio Foundations needs one source of truth for third-party integrations, their
 - Postmark handles transactional email and marketing email delivery.
   - Transactional stream: `transactional`
   - Marketing stream: `broadcast` or the configured marketing stream alias
-- Stripe handles payments, subscriptions, portal access, and webhook processing.
+- Stripe handles payments, subscriptions, portal access and webhook processing.
 - Daily handles live rooms and meeting tokens for classes and coaching calls.
 - Contentful handles CMS-managed marketing and editorial content.
 - Everfit remains a manual downstream delivery tool in v1.

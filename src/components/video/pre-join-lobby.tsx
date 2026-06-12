@@ -97,11 +97,10 @@ export function PreJoinLobby({
               <button
                 type="button"
                 onClick={() => setIsMuted(!isMuted)}
-                className={`rounded-full p-3 transition-colors ${
-                  isMuted
-                    ? "bg-red-500/20 text-red-400"
-                    : "bg-white/10 text-white hover:bg-white/15"
-                }`}
+                className={`rounded-full p-3 transition-colors ${isMuted
+                  ? "bg-red-500/20 text-red-400"
+                  : "bg-white/10 text-white hover:bg-white/15"
+                  }`}
                 aria-label={isMuted ? "Turn microphone on" : "Turn microphone off"}
               >
                 {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
@@ -109,11 +108,10 @@ export function PreJoinLobby({
               <button
                 type="button"
                 onClick={() => setIsCameraOn(!isCameraOn)}
-                className={`rounded-full p-3 transition-colors ${
-                  !isCameraOn
-                    ? "bg-red-500/20 text-red-400"
-                    : "bg-white/10 text-white hover:bg-white/15"
-                }`}
+                className={`rounded-full p-3 transition-colors ${!isCameraOn
+                  ? "bg-red-500/20 text-red-400"
+                  : "bg-white/10 text-white hover:bg-white/15"
+                  }`}
                 aria-label={isCameraOn ? "Turn camera off" : "Turn camera on"}
               >
                 {isCameraOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
@@ -122,7 +120,7 @@ export function PreJoinLobby({
                 type="button"
                 onClick={() => setShowDeviceSelector(true)}
                 className="rounded-full bg-white/10 p-3 text-white transition-colors hover:bg-white/15"
-                aria-label="Choose microphone, camera, and speaker devices"
+                aria-label="Choose microphone, camera and speaker devices"
               >
                 <Settings className="h-5 w-5" />
               </button>
@@ -174,7 +172,7 @@ export function PreJoinLobby({
                 <div>
                   <p className="text-white">Safety reminder</p>
                   <p className="mt-1 text-white/60">
-                    Work within your limits, stop if pain increases, and make sure your space and
+                    Work within your limits, stop if pain increases and make sure your space and
                     equipment feel safe before class starts.
                   </p>
                 </div>

@@ -23,6 +23,13 @@ type DunningMembership = Prisma.MembershipDunningCaseGetPayload<{
   };
 }>;
 
+async function hasMembershipDunningCaseTable() {
+  const rows = await db.$queryRaw<Array<{ table_name: string | null }>>`
+    SELECT to_regclass('public."MembershipDunningCase"')::text AS table_name
+  `;
+  return Boolean(rows[0]?.table_name);
+}
+
 function addDays(date: Date, days: number) {
   return new Date(date.getTime() + days * 86400000);
 }
@@ -140,6 +147,15 @@ export async function openMembershipDunningFromInvoice(invoice: Stripe.Invoice) 
   });
   if (!membership) return null;
 
+  await db.membershipSubscription.update({
+    where: { id: membership.id },
+    data: { status: MembershipStatus.past_due },
+  });
+
+  if (!(await hasMembershipDunningCaseTable())) {
+    return null;
+  }
+
   const failedAt = new Date();
   const openCase = await db.membershipDunningCase.findFirst({
     where: {
@@ -184,11 +200,6 @@ export async function openMembershipDunningFromInvoice(invoice: Stripe.Invoice) 
         },
       });
 
-  await db.membershipSubscription.update({
-    where: { id: membership.id },
-    data: { status: MembershipStatus.past_due },
-  });
-
   if (!dunningCase.day0NoticeSentAt) {
     await sendDunningNotice({ dunningCase, kind: "initial", eventAt: failedAt });
     await db.membershipDunningCase.update({
@@ -205,6 +216,10 @@ export async function recoverMembershipDunningCase(input: {
   membershipId: string;
   stripeInvoiceId?: string | null;
 }) {
+  if (!(await hasMembershipDunningCaseTable())) {
+    return null;
+  }
+
   const dunningCase = await db.membershipDunningCase.findFirst({
     where: {
       userId: input.userId,
@@ -241,6 +256,10 @@ export async function recoverMembershipDunningCase(input: {
 }
 
 export async function processDueMembershipDunningCases(now = new Date()) {
+  if (!(await hasMembershipDunningCaseTable())) {
+    return { scanned: 0, remindersSent: 0, suspended: 0 };
+  }
+
   const cases = await db.membershipDunningCase.findMany({
     where: {
       status: { in: [MembershipDunningStatus.open, MembershipDunningStatus.suspended] },
@@ -311,6 +330,10 @@ export async function processDueMembershipDunningCases(now = new Date()) {
 }
 
 export async function getActiveDunningCaseForMembership(membershipId: string) {
+  if (!(await hasMembershipDunningCaseTable())) {
+    return null;
+  }
+
   return db.membershipDunningCase.findFirst({
     where: {
       membershipId,
@@ -321,6 +344,10 @@ export async function getActiveDunningCaseForMembership(membershipId: string) {
 }
 
 export async function listMembershipDunningCases() {
+  if (!(await hasMembershipDunningCaseTable())) {
+    return [];
+  }
+
   return db.membershipDunningCase.findMany({
     where: {
       status: { in: [MembershipDunningStatus.open, MembershipDunningStatus.suspended] },

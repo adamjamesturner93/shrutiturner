@@ -19,9 +19,9 @@ export const DEFAULT_RUNTIME_PLATFORM_SETTINGS: RuntimePlatformSettings = {
   supportEmail: null,
   contactEmail: null,
   instagramUrl: "https://instagram.com/shrutiturner",
-  defaultSeoTitle: "Shruti Turner - Strength & Yoga Coaching for Complex Bodies",
+  defaultSeoTitle: "Shruti Turner - Inclusive Movement Coaching",
   defaultSeoDescription:
-    "Science-backed strength and yoga coaching for adults with chronic illness, autoimmune conditions, and complex bodies.",
+    "Science-backed movement coaching for adults with chronic illness, autoimmune conditions, wellbeing and injury recovery or prevention.",
   gaMeasurementId: null,
 };
 
@@ -98,8 +98,8 @@ export async function buildRootMetadata(): Promise<Metadata> {
     },
     other: gaMeasurementId
       ? {
-          "google-analytics-measurement-id": gaMeasurementId,
-        }
+        "google-analytics-measurement-id": gaMeasurementId,
+      }
       : undefined,
     icons: {
       icon: [

@@ -21,12 +21,17 @@ const billingCatalogItemFindFirstMock = vi.fn();
 const coachingApplicationFindFirstMock = vi.fn();
 const coachingApplicationFindUniqueMock = vi.fn();
 const coachingApplicationUpdateMock = vi.fn();
+const coachingClientProfileFindUniqueMock = vi.fn();
+const coachingClientProfileUpdateMock = vi.fn();
 const coachingClientProfileUpsertMock = vi.fn();
+const coachingClientProfileUpdateManyMock = vi.fn();
 const dbTransactionMock = vi.fn();
 
 const stripeCustomerCreateMock = vi.fn();
 const stripeCheckoutSessionCreateMock = vi.fn();
 const stripeSubscriptionRetrieveMock = vi.fn();
+const stripeSubscriptionListMock = vi.fn();
+const stripeSubscriptionUpdateMock = vi.fn();
 const getActiveCatalogItemMock = vi.fn();
 const resolvePromotionCodeDiscountMock = vi.fn();
 const computeReferralDiscountPenceMock = vi.fn();
@@ -43,6 +48,7 @@ const sendRenewalCoolingOffNoticeMock = vi.fn();
 const processStripeDisputeEventMock = vi.fn();
 const openMembershipDunningFromInvoiceMock = vi.fn();
 const recoverMembershipDunningCaseMock = vi.fn();
+const sendPostmarkReactEmailMock = vi.fn();
 
 vi.mock("@/lib/env", () => ({
   getBaseSiteUrlFromEnv: () => "http://localhost:3000",
@@ -86,7 +92,10 @@ vi.mock("@/lib/db", () => ({
       update: coachingApplicationUpdateMock,
     },
     coachingClientProfile: {
+      findUnique: coachingClientProfileFindUniqueMock,
+      update: coachingClientProfileUpdateMock,
       upsert: coachingClientProfileUpsertMock,
+      updateMany: coachingClientProfileUpdateManyMock,
     },
     $transaction: dbTransactionMock,
   },
@@ -104,6 +113,8 @@ vi.mock("@/lib/billing/stripe-client", () => ({
     },
     subscriptions: {
       retrieve: stripeSubscriptionRetrieveMock,
+      list: stripeSubscriptionListMock,
+      update: stripeSubscriptionUpdateMock,
     },
   }),
 }));
@@ -111,6 +122,11 @@ vi.mock("@/lib/billing/stripe-client", () => ({
 vi.mock("@/lib/billing/catalog-service", () => ({
   getActiveCatalogItem: getActiveCatalogItemMock,
   resolvePromotionCodeDiscount: resolvePromotionCodeDiscountMock,
+}));
+
+vi.mock("@/lib/postmark/client", () => ({
+  getNotificationInbox: () => "shruti@example.com",
+  sendPostmarkReactEmail: sendPostmarkReactEmailMock,
 }));
 
 vi.mock("@/lib/referrals/referral-discount-service", () => ({
@@ -164,6 +180,7 @@ const {
   createCoachingCheckoutSession,
   createMembershipCheckoutSession,
   processStripeWebhookEvent,
+  scheduleCoachingCancellationAfterNextPayment,
 } = await import("@/lib/billing/billing-service");
 
 function event(input: { id: string; type: string; object: Record<string, unknown> }) {
@@ -190,7 +207,7 @@ describe("billing-service Stripe integration", () => {
 
     getActiveCatalogItemMock.mockResolvedValue({
       stripePriceId: "price_membership_monthly",
-      unitAmountPence: 2900,
+      unitAmountPence: 3500,
       currency: "GBP",
     });
     resolvePromotionCodeDiscountMock.mockResolvedValue(null);
@@ -209,6 +226,11 @@ describe("billing-service Stripe integration", () => {
       items: {
         data: [{ price: { id: "price_membership_monthly" } }],
       },
+    });
+    stripeSubscriptionListMock.mockResolvedValue({ data: [] });
+    stripeSubscriptionUpdateMock.mockResolvedValue({
+      id: "sub_123",
+      cancel_at: 1772582400,
     });
     userFindUniqueMock.mockResolvedValue({
       id: "user_123",
@@ -242,13 +264,20 @@ describe("billing-service Stripe integration", () => {
     coachingApplicationFindUniqueMock.mockResolvedValue({
       id: "application_123",
       userId: "user_123",
+      applicantFirstName: "Taylor",
+      applicantLastName: "Member",
+      applicantEmail: "taylor@example.com",
       tier: "coaching",
       status: "approved",
       answersJson: { offerKey: "one_to_one_coaching" },
       approvedAt: new Date("2026-05-01T10:00:00.000Z"),
     });
     coachingApplicationUpdateMock.mockResolvedValue({ id: "application_123" });
+    coachingClientProfileFindUniqueMock.mockResolvedValue(null);
+    coachingClientProfileUpdateMock.mockResolvedValue({ id: "profile_123" });
     coachingClientProfileUpsertMock.mockResolvedValue({ id: "profile_123" });
+    coachingClientProfileUpdateManyMock.mockResolvedValue({ count: 1 });
+    sendPostmarkReactEmailMock.mockResolvedValue({ id: "email_123" });
     dbTransactionMock.mockImplementation(async (callback) =>
       callback({
         coachingApplication: { update: coachingApplicationUpdateMock },
@@ -360,10 +389,84 @@ describe("billing-service Stripe integration", () => {
           kind: "coaching",
           applicationId: "application_123",
           offerKey: "one_to_one_coaching",
-          includesMoveWellMembership: "1",
         }),
       })
     );
+  });
+
+  it("schedules coaching cancellation after the next coaching payment period", async () => {
+    userFindUniqueMock.mockResolvedValueOnce({
+      stripeCustomerId: "cus_existing",
+    });
+    getActiveCatalogItemMock.mockImplementation(async (key: string) => ({
+      stripePriceId:
+        key === "coaching_one_to_one_coaching_monthly" ? "price_coaching_1_1" : `price_${key}`,
+      unitAmountPence: 18000,
+      currency: "GBP",
+    }));
+    stripeSubscriptionListMock.mockResolvedValue({
+      data: [
+        {
+          id: "sub_coaching",
+          status: "active",
+          current_period_end: 1772323200,
+          metadata: { existing: "kept" },
+          items: {
+            data: [
+              {
+                price: {
+                  id: "price_coaching_1_1",
+                  recurring: { interval: "month", interval_count: 1 },
+                },
+              },
+            ],
+          },
+        } as unknown as Stripe.Subscription,
+      ],
+    });
+    stripeSubscriptionUpdateMock.mockResolvedValue({
+      id: "sub_coaching",
+      cancel_at: 1775001600,
+    });
+
+    const result = await scheduleCoachingCancellationAfterNextPayment("user_123");
+
+    expect(stripeSubscriptionListMock).toHaveBeenCalledWith({
+      customer: "cus_existing",
+      status: "all",
+      limit: 100,
+    });
+    expect(stripeSubscriptionUpdateMock).toHaveBeenCalledWith(
+      "sub_coaching",
+      expect.objectContaining({
+        cancel_at: 1775001600,
+        metadata: expect.objectContaining({
+          existing: "kept",
+          cancellationPolicy: "next_payment_final",
+        }),
+      })
+    );
+    expect(coachingClientProfileUpdateManyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: "user_123" },
+        data: expect.objectContaining({
+          stripeSubscriptionId: "sub_coaching",
+          billingFinalPaymentAt: new Date("2026-03-01T00:00:00.000Z"),
+          billingEndsAt: new Date("2026-04-01T00:00:00.000Z"),
+        }),
+      })
+    );
+    expect(sendPostmarkReactEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "shruti@example.com",
+        tag: "coaching-cancellation-scheduled",
+      })
+    );
+    expect(result).toEqual({
+      subscriptionId: "sub_coaching",
+      nextPaymentAt: "2026-03-01T00:00:00.000Z",
+      endsAt: "2026-04-01T00:00:00.000Z",
+    });
   });
 
   it("does not reprocess a webhook event already marked as processed", async () => {
@@ -448,7 +551,7 @@ describe("billing-service Stripe integration", () => {
         object: {
           id: "in_failed",
           customer: "cus_123",
-          amount_due: 2900,
+          amount_due: 3500,
         },
       })
     );
@@ -466,7 +569,7 @@ describe("billing-service Stripe integration", () => {
       expect.objectContaining({
         id: "in_failed",
         customer: "cus_123",
-        amount_due: 2900,
+        amount_due: 3500,
       })
     );
     expect(billingEventUpdateMock).toHaveBeenLastCalledWith({
@@ -496,7 +599,7 @@ describe("billing-service Stripe integration", () => {
         object: {
           id: "in_paid",
           customer: "cus_123",
-          amount_paid: 2900,
+          amount_paid: 3500,
           metadata: {},
           lines: {
             data: [
@@ -526,7 +629,7 @@ describe("billing-service Stripe integration", () => {
         where: { id: "membership_123" },
         data: expect.objectContaining({
           latestInvoiceId: "in_paid",
-          latestInvoiceAmountPence: 2900,
+          latestInvoiceAmountPence: 3500,
           latestInvoicePaidAt: expect.any(Date),
         }),
       })
@@ -548,7 +651,7 @@ describe("billing-service Stripe integration", () => {
     membershipSubscriptionFindFirstMock.mockResolvedValue({
       id: "membership_123",
       billingInterval: "monthly",
-      pricePence: 2900,
+      pricePence: 3500,
       stripePriceId: "price_membership_monthly",
     });
 
@@ -574,7 +677,7 @@ describe("billing-service Stripe integration", () => {
       data: expect.objectContaining({
         status: MembershipStatus.cancelled,
         billingInterval: "monthly",
-        pricePence: 2900,
+        pricePence: 3500,
         stripePriceId: "price_membership_monthly",
         cancelAtPeriodEnd: false,
         endsAt: expect.any(Date),
@@ -598,7 +701,7 @@ describe("billing-service Stripe integration", () => {
     const trialEndsAt = new Date("2026-04-17T10:00:00.000Z");
     startOrSwitchMembershipMock.mockResolvedValue({
       id: "membership_annual",
-      pricePence: 29000,
+      pricePence: 35000,
       trialEndsAt,
     });
     userFindUniqueMock.mockResolvedValue({
@@ -648,7 +751,7 @@ describe("billing-service Stripe integration", () => {
       email: "taylor@example.com",
       firstName: "Taylor",
       billingInterval: "annual",
-      pricePence: 29000,
+      pricePence: 35000,
       trialEndsAt,
       immediateStartSummary: null,
     });
@@ -742,7 +845,7 @@ describe("billing-service Stripe integration", () => {
             userId: "user_123",
             kind: "credits",
             bundleSize: "1",
-            bookingClassSlug: "hiit-for-complex-bodies",
+            bookingClassSlug: "adaptive-hiit",
             bookingSessionId: "session_123",
           },
         },
@@ -777,7 +880,6 @@ describe("billing-service Stripe integration", () => {
             applicationId: "application_123",
             offerKey: "one_to_one_coaching",
             tier: "coaching",
-            includesMoveWellMembership: "1",
           },
         },
       })
@@ -796,8 +898,15 @@ describe("billing-service Stripe integration", () => {
           userId: "user_123",
           applicationId: "application_123",
           status: "onboarding",
-          includesMoveWellMembership: true,
+          stripeSubscriptionId: "sub_coaching",
         }),
+      })
+    );
+    expect(sendPostmarkReactEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "shruti@example.com",
+        subject: "Coaching payment received: Taylor Member",
+        tag: "coaching-payment-received",
       })
     );
     expect(userUpdateMock).toHaveBeenCalledWith(
@@ -806,15 +915,6 @@ describe("billing-service Stripe integration", () => {
         data: { isCoachingClient: true },
       })
     );
-    expect(membershipSubscriptionCreateMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          userId: "user_123",
-          plan: "movewell",
-          status: MembershipStatus.active,
-          pricePence: 0,
-        }),
-      })
-    );
+    expect(membershipSubscriptionCreateMock).not.toHaveBeenCalled();
   });
 });

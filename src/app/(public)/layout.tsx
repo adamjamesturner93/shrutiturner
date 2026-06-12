@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     template: "%s | Shruti Turner",
   },
   description:
-    "Science-backed strength and yoga coaching for adults with chronic illness, autoimmune conditions, and complex bodies.",
+    "Science-backed movement coaching for adults with chronic illness, autoimmune conditions and recovering from injury.",
 };
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {

@@ -21,10 +21,10 @@ vi.mock("@/lib/billing/dispute-service", () => ({
 }));
 
 vi.mock("@/lib/billing/subscription-disclosure", () => ({
-  SUBSCRIPTION_DISCLOSURE_VERSION: "2026-04-03",
+  SUBSCRIPTION_DISCLOSURE_VERSION: "2026-05-24",
   buildMembershipDisclosure: vi.fn(() => ({
-    version: "2026-04-03",
-    keyItems: ["Price: £290.00 per year."],
+    version: "2026-05-24",
+    keyItems: ["Price: £350.00 per year."],
     fullItems: [],
   })),
 }));
@@ -36,8 +36,8 @@ vi.mock("@/lib/billing/subscription-compliance", () => ({
 vi.mock("@/lib/billing/public-pricing", () => ({
   getPublicPricing: vi.fn(async () => ({
     membershipDisplay: {
-      movewellMonthly: 29,
-      movewellAnnual: 290,
+      movewellMonthly: 35,
+      movewellAnnual: 350,
     },
   })),
 }));
@@ -100,7 +100,7 @@ describe("POST /api/me/membership/checkout", () => {
         plan: "movewell",
         billingInterval: "monthly",
         disclosureAccepted: false,
-        disclosureVersion: "2026-04-03",
+        disclosureVersion: "2026-05-24",
       })
     );
 
@@ -148,7 +148,7 @@ describe("POST /api/me/membership/checkout", () => {
         successPath: "/dashboard/membership?checkout=success",
         cancelPath: "/dashboard/membership",
         disclosureAccepted: true,
-        disclosureVersion: "2026-04-03",
+        disclosureVersion: "2026-05-24",
       })
     );
 
@@ -181,7 +181,7 @@ describe("POST /api/me/membership/checkout", () => {
       expect.objectContaining({
         successPath: "/dashboard/membership?checkout=success",
         cancelPath: "/dashboard/membership",
-        disclosureVersion: "2026-04-03",
+        disclosureVersion: "2026-05-24",
         disclosureAcceptedAt: expect.any(Date),
         complianceSnapshot: expect.objectContaining({
           acceptanceStates: [
@@ -237,7 +237,7 @@ describe("POST /api/me/membership/checkout", () => {
         plan: "movewell",
         billingInterval: "monthly",
         disclosureAccepted: true,
-        disclosureVersion: "2026-04-03",
+        disclosureVersion: "2026-05-24",
       })
     );
 

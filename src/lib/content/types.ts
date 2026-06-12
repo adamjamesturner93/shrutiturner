@@ -1,5 +1,3 @@
-export type ContentSource = "local" | "contentful";
-
 export interface SeoContent {
   title: string;
   description?: string;
@@ -138,7 +136,6 @@ export interface NewsletterTemplateContent {
   subject: string;
   previewText?: string;
   body: string;
-  status?: "draft" | "approved";
 }
 
 export interface BlogPostContent {

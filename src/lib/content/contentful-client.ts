@@ -1,6 +1,14 @@
 import { getContentfulConfig } from "./config";
 
-type EntryEnvelope<T> = { sys: { id: string }; fields: T };
+type EntryEnvelope<T> = {
+  sys: {
+    id: string;
+    publishedAt?: string;
+    updatedAt?: string;
+    createdAt?: string;
+  };
+  fields: T;
+};
 
 type EntriesResponse<T> = {
   items: Array<EntryEnvelope<T>>;

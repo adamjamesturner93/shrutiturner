@@ -8,7 +8,6 @@ type CoachingApplicationBody = {
   applicantEmail?: unknown;
   tier?: unknown;
   answers?: unknown;
-  hasMoveWellMembershipSnapshot?: unknown;
   isExistingCoachingClientSnapshot?: unknown;
   agreedToCoachingAgreement?: unknown;
 };
@@ -31,7 +30,7 @@ export async function POST(request: Request) {
   }
 
   if (!isTier(body.tier)) {
-    return NextResponse.json({ message: "Invalid support tier." }, { status: 400 });
+    return NextResponse.json({ message: "Invalid coaching option." }, { status: 400 });
   }
 
   const session = await auth();
@@ -48,7 +47,6 @@ export async function POST(request: Request) {
         body.answers && typeof body.answers === "object" && !Array.isArray(body.answers)
           ? (body.answers as Record<string, string>)
           : {},
-      hasMoveWellMembershipSnapshot: body.hasMoveWellMembershipSnapshot === true,
       isExistingCoachingClientSnapshot: body.isExistingCoachingClientSnapshot === true,
     });
 

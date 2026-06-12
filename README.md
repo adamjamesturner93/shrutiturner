@@ -74,11 +74,11 @@ Useful commands:
 ### Seed datasets
 
 - `pnpm run prisma:seed:local`
-  - Bootstraps the local app with admin users, current legal documents, local member scenarios, retreat inventory, and small-group fixtures.
+  - Bootstraps the local app with admin users, current legal documents, local member scenarios, retreat inventory and small-group fixtures.
 - `pnpm run prisma:seed:preview`
-  - Creates preview-safe owner/member/instructor fixtures, a booked dashboard session, and an active membership using clearly fake `*.preview.invalid` email addresses.
+  - Creates preview-safe owner/member/instructor fixtures, a booked dashboard session and an active membership using clearly fake `*.preview.invalid` email addresses.
 - `pnpm run prisma:seed:billing`
-  - Adds deterministic class, membership, credit, and themed-week fixtures that support billing and timetable flows.
+  - Adds deterministic class, membership, credit and themed-week fixtures that support billing and timetable flows.
 - Use `pnpm run db:reset:local` when you want a clean local rebuild from migrations plus the local seed.
 - Use `PREVIEW_FIXTURE_NAMESPACE=<label> pnpm run prisma:seed:preview` to reseed preview/test environments without colliding with other fixture sets.
 
@@ -92,7 +92,7 @@ Prisma note:
 - Public marketing/SEO routes are wired through `src/lib/content`.
 - Content source strategy is controlled by `CONTENT_SOURCE`:
   - `local`: use local fallback data only.
-  - `contentful`: Contentful only for CMS-managed data. This is the default. Missing Contentful config, failed CDA requests, and missing required CMS entries fail the request/build instead of falling back to local data.
+  - `contentful`: Contentful only for CMS-managed data. This is the default. Missing Contentful config, failed CDA requests and missing required CMS entries fail the request/build instead of falling back to local data.
 - CMS/public content API routes are available under `src/app/api/content/*`.
 - Contentful webhook revalidation endpoint:
   - `POST /api/webhooks/contentful`

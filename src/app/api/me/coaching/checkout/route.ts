@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
+import { AcceptanceType } from "@prisma/client";
 import { requireSessionUser } from "@/lib/api/auth-user";
 import { createCoachingCheckoutSession } from "@/lib/billing/billing-service";
+import {
+  assertCurrentAcceptances,
+  isAcceptanceRequiredError,
+} from "@/lib/legal/acceptance-service";
 
 type Body = {
   applicationId?: unknown;
@@ -13,6 +18,11 @@ export async function POST(request: Request) {
     if (!body || typeof body.applicationId !== "string") {
       return NextResponse.json({ message: "Application id is required." }, { status: 400 });
     }
+
+    await assertCurrentAcceptances(user.id, [
+      { type: AcceptanceType.terms, surface: "coaching_checkout" },
+      { type: AcceptanceType.health_waiver, surface: "coaching_checkout" },
+    ]);
 
     const checkout = await createCoachingCheckoutSession(user.id, body.applicationId, {
       successPath: "/dashboard/coaching?checkout=success",
@@ -27,6 +37,15 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.message === "COACHING_APPLICATION_NOT_APPROVED") {
       return NextResponse.json(
         { message: "This coaching application is not ready for payment yet." },
+        { status: 409 }
+      );
+    }
+    if (isAcceptanceRequiredError(error)) {
+      return NextResponse.json(
+        {
+          message: "Current legal acceptance is required before coaching checkout.",
+          details: error.details,
+        },
         { status: 409 }
       );
     }

@@ -33,7 +33,7 @@ export function formatAuthorList(post: BlogPostContent) {
   const authors = getPostAuthors(post).map((author) => author.name);
   if (authors.length <= 1) return authors[0] || "Shruti Turner";
   if (authors.length === 2) return `${authors[0]} and ${authors[1]}`;
-  return `${authors.slice(0, -1).join(", ")}, and ${authors[authors.length - 1]}`;
+  return `${authors.slice(0, -1).join(", ")}and ${authors[authors.length - 1]}`;
 }
 
 export function getRelatedPosts(post: BlogPostContent, posts: BlogPostContent[]) {
@@ -48,15 +48,6 @@ export function getRelatedPosts(post: BlogPostContent, posts: BlogPostContent[])
 export function getBlogPostContextualCta(post: BlogPostContent): BlogPostContextualCta {
   const topic = `${post.title} ${post.tags.join(" ")}`.toLowerCase();
 
-  if (topic.includes("yoga") || topic.includes("adaptive")) {
-    return {
-      title: "Practise with support",
-      body: "Join live online classes built for complex bodies, with options that respect fluctuating symptoms.",
-      href: "/classes",
-      label: "View classes",
-    };
-  }
-
   if (
     topic.includes("strength") ||
     topic.includes("training") ||
@@ -65,7 +56,7 @@ export function getBlogPostContextualCta(post: BlogPostContent): BlogPostContext
   ) {
     return {
       title: "Want help applying this?",
-      body: "Get coaching that adapts strength work around pain, fatigue, flares, and real-life capacity.",
+      body: "Get coaching that adapts strength work around pain, fatigue, flares and real-life capacity.",
       href: "/coaching",
       label: "Explore coaching",
     };
@@ -73,7 +64,7 @@ export function getBlogPostContextualCta(post: BlogPostContent): BlogPostContext
 
   return {
     title: "Build a steadier movement practice",
-    body: "Explore coaching, classes, and resources designed for bodies that do not fit generic plans.",
+    body: "Explore coaching, classes and resources designed for chronic illness, autoimmune conditions, wellbeing and injury recovery.",
     href: "/contact",
     label: "Ask a question",
   };

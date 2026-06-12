@@ -16,12 +16,12 @@ export async function generateMetadata(): Promise<Metadata> {
     return buildSeoMetadata({
       title: "Something new is coming",
       description:
-        "A new home for evidence-based coaching, movement classes, and community is launching in early summer 2026.",
+        "A new home for evidence-based coaching and resources is launching in early summer 2026.",
       canonicalUrl: "https://shrutiturner.co.uk",
     });
   }
 
-  return buildPageMetadata("home", "Strength & Yoga for Complex Bodies");
+  return buildPageMetadata("home", "Science-backed movement coaching for adults with chronic illness, autoimmune conditions and recovering from injury");
 }
 
 export default async function Page() {
@@ -33,7 +33,7 @@ export default async function Page() {
             name: "Shruti Turner",
             path: "/",
             description:
-              "A new home for evidence-based coaching, movement classes, and community is launching in early summer 2026.",
+              "A new home for evidence-based coaching and resources is launching in early summer 2026.",
           })}
         />
         <HoldingPage existingPlatformUrl={getExistingPlatformUrl()} />
@@ -53,10 +53,10 @@ export default async function Page() {
           createWebSiteSchema(),
           createOrganizationSchema(),
           createWebPageSchema({
-            name: "Strength & Yoga for Complex Bodies",
+            name: "Inclusive movement coaching",
             path: "/",
             description:
-              "Science-backed strength and yoga coaching for adults with chronic illness, autoimmune conditions, and complex bodies.",
+              "Science-backed movement coaching for adults with chronic illness, autoimmune conditions and recovering from injury.",
           }),
         ]}
       />

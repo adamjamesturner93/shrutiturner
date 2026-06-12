@@ -104,9 +104,8 @@ export async function sendWelcomeEmail(email: string, firstName: string) {
   try {
     const react = OnboardingEmail({
       firstName,
-      membershipUrl: `${APP_URL}/pricing`,
-      scheduleUrl: `${APP_URL}/schedule`,
-      freeTrialDays: "7",
+      membershipUrl: `${APP_URL}/#work-with-me`,
+      scheduleUrl: `${APP_URL}/coaching/apply`,
     });
 
     await sendPostmarkReactEmail({
@@ -118,8 +117,8 @@ export async function sendWelcomeEmail(email: string, firstName: string) {
         `Hi ${firstName || "there"},`,
         "",
         "Your studio account is ready.",
-        `Explore classes: ${APP_URL}/schedule`,
-        `Membership options: ${APP_URL}/pricing`,
+        `Compare coaching options: ${APP_URL}/#work-with-me`,
+        `Apply for coaching: ${APP_URL}/coaching/apply`,
       ].join("\n"),
       tag: "account-welcome",
       templateKey: "account-welcome",
@@ -672,17 +671,11 @@ export async function sendNewsletter(
   markdownContent: string // Content from Contentful
 ) {
   try {
-    const bodyContent = markdownContent
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => `<p>${line}</p>`)
-      .join("");
     await render(
       NewsletterEmail({
         firstName: "there",
         subject,
-        bodyContent,
+        bodyContent: markdownContent,
       })
     );
     console.log(`[Mock Email Service] Sending Newsletter to ${email}`);

@@ -1,14 +1,15 @@
 import { coachingTiers } from "@/data/marketing";
-import { smallGroupTemplates } from "@/data/small-group-programmes";
+import type { FaqItemContent } from "@/lib/content/types";
 
 export interface PricingCoachingRow {
   id: string;
   name: string;
   tagline: string;
   description: string;
+  bestFor: string;
+  whatItIs: string;
   priceLabel: string;
   priceNote: string;
-  includesMembership: boolean;
   ctaHref: string;
   ctaLabel: string;
   features: string[];
@@ -36,25 +37,41 @@ export function getPricingCoachingRows(): PricingCoachingRow[] {
     name: tier.name,
     tagline: tier.tagline,
     description: tier.description,
+    bestFor: tier.bestFor,
+    whatItIs: tier.whatItIs,
     priceLabel: tier.priceLabel,
     priceNote: tier.priceNote,
-    includesMembership: tier.includesMembership,
     ctaHref: tier.ctaHref,
     ctaLabel: tier.ctaLabel,
     features: tier.features,
   }));
 }
 
+export function filterCoachingPricingFaqs(faqs: FaqItemContent[]): FaqItemContent[] {
+  const hiddenTerms = [
+    "credit",
+    "credits",
+    "class",
+    "classes",
+    "schedule",
+    "retreat",
+    "retreats",
+    "workshop",
+    "workshops",
+    "small group",
+    "membership",
+    "move well",
+  ];
+
+  return faqs.filter((faq) => {
+    const searchable = [faq.slug, faq.question, faq.answer, faq.targetPage, faq.targetSection]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return !hiddenTerms.some((term) => searchable.includes(term));
+  });
+}
+
 export function getPricingProgrammeCards(): PricingProgrammeCard[] {
-  return smallGroupTemplates.map((programme) => ({
-    id: programme.id,
-    title: programme.title,
-    summary: programme.shortSummary,
-    durationLabel: programme.durationLabel,
-    sessionsPerWeek: programme.sessionsPerWeek,
-    cohortSize: programme.cohortSize,
-    priceLabel: formatPenceAsPounds(programme.defaultPricePence),
-    ctaHref: `/classes/small-groups/${programme.slug}`,
-    inclusions: programme.inclusions.slice(0, 3),
-  }));
+  return [];
 }

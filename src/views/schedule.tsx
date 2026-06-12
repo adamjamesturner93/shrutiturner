@@ -48,10 +48,10 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
   const { fmtTimeStr, tzAbbr, londonOffset } = useI18n();
   const themedWeekDateLabel = themedWeek?.startDate
     ? new Intl.DateTimeFormat("en-GB", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      }).format(new Date(themedWeek.startDate))
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(new Date(themedWeek.startDate))
     : null;
   const todayScheduleLabel = new Intl.DateTimeFormat("en-GB", {
     weekday: "long",
@@ -110,7 +110,7 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
                 Weekly class times that make it easier to find the right session.
               </h1>
               <p className="text-brand-white/80 mt-5 max-w-2xl text-lg leading-relaxed md:text-[1.35rem]">
-                Live online classes every week, designed for real bodies, fluctuating energy, and
+                Live online classes every week, designed for real bodies, fluctuating energy and
                 long-term joint health.
               </p>
               <div className="mt-6 flex flex-col gap-4 sm:flex-row">
@@ -238,7 +238,7 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
                 <table className="w-full min-w-[920px] border-collapse text-left">
                   <caption className="sr-only">
                     Weekly class timetable with day, time, class details, instructor, available
-                    spaces, and booking actions.
+                    spaces and booking actions.
                   </caption>
                   <thead>
                     <tr className="border-brand-dark/10 border-b">
@@ -266,9 +266,8 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
                     {scheduleRows.map((classItem) => (
                       <tr
                         key={classItem.rowKey}
-                        className={`border-brand-dark/10 border-b align-top last:border-b-0 ${
-                          classItem.isToday ? "bg-brand-accent/5" : ""
-                        }`}
+                        className={`border-brand-dark/10 border-b align-top last:border-b-0 ${classItem.isToday ? "bg-brand-accent/5" : ""
+                          }`}
                       >
                         <th scope="row" className="px-5 py-5 text-sm font-normal">
                           <span>{classItem.dayLabel}</span>
@@ -336,9 +335,8 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
                 <section
                   key={daySchedule.day}
                   aria-labelledby={`schedule-${daySchedule.day.replace(/[^a-z0-9]+/gi, "-")}`}
-                  className={`md:hidden ${
-                    isToday ? "border-brand-accent/20 bg-brand-accent/5 rounded-2xl border p-4" : ""
-                  }`}
+                  className={`md:hidden ${isToday ? "border-brand-accent/20 bg-brand-accent/5 rounded-2xl border p-4" : ""
+                    }`}
                 >
                   <h2 className="border-brand-dark/10 mb-6 border-b pb-3 text-2xl md:text-3xl">
                     <span id={`schedule-${daySchedule.day.replace(/[^a-z0-9]+/gi, "-")}`}>
@@ -436,7 +434,7 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
             </div>
             <h3 className="text-lg">Adaptive Yoga</h3>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Rehabilitation-informed yoga prioritising stability, nervous system regulation, and
+              Rehabilitation-informed yoga prioritising stability, nervous system regulation and
               joint safety. Not mainstream yoga with modifications — a fundamentally different
               approach.
             </p>
@@ -552,7 +550,7 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
           </div>
           <div className="bg-brand-white/10 rounded-lg p-6">
             <p className="text-brand-white/90 mb-2 text-sm">Unlimited classes</p>
-            <p className="mb-2 text-3xl">£29</p>
+            <p className="mb-2 text-3xl">£35</p>
             <p className="text-sm opacity-90">per month</p>
           </div>
         </div>

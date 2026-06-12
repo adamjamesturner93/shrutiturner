@@ -226,10 +226,10 @@ export function ClassDetailPage({
               <span>
                 {selectedSessionStartsAt
                   ? selectedSessionStartsAt.toLocaleDateString("en-GB", {
-                      weekday: "long",
-                      day: "numeric",
-                      month: "short",
-                    })
+                    weekday: "long",
+                    day: "numeric",
+                    month: "short",
+                  })
                   : `${classDetail.day}s`}
               </span>
             </div>
@@ -238,9 +238,9 @@ export function ClassDetailPage({
               <span>
                 {selectedSessionStartsAt
                   ? selectedSessionStartsAt.toLocaleTimeString("en-GB", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
                   : fmtTimeStr(classDetail.time)}{" "}
                 ·{" "}
                 {selectedSession ? `${selectedSession.durationMinutes} min` : classDetail.duration}
@@ -372,7 +372,7 @@ export function ClassDetailPage({
                     ))}
                   </ul>
                   <p className="text-muted-foreground mt-6 border-t pt-4 text-sm leading-relaxed">
-                    Do not have everything? That is fine. Household substitutions work well, and
+                    Do not have everything? That is fine. Household substitutions work well and
                     alternatives are cued at the start of class.
                   </p>
                 </div>
@@ -599,7 +599,7 @@ export function ClassDetailPage({
               priceCurrency: "GBP",
               availability: "https://schema.org/InStock",
               url: "https://shrutiturner.co.uk/pricing",
-              description: "Drop-in from £9. 3-pack £24. Membership from £29/month.",
+              description: "Drop-in from £9. 3-pack £24. Membership from £35/month.",
             },
           }),
         }}

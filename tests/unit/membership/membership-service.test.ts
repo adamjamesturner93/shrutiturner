@@ -42,7 +42,7 @@ const currentMembership = {
   plan: "movewell",
   billingInterval: "monthly",
   status: "active",
-  pricePence: 2900,
+  pricePence: 3500,
   classesPerWeek: 999,
   classesUsedThisWeek: 2,
   startsAt: new Date("2026-01-01T00:00:00.000Z"),
@@ -65,7 +65,7 @@ describe("changeMembershipPlan", () => {
     getActiveCatalogItemMock.mockResolvedValue({
       key: "membership_movewell_annual",
       stripePriceId: "price_annual",
-      unitAmountPence: 29000,
+      unitAmountPence: 35000,
     });
     stripeSubscriptionRetrieveMock.mockResolvedValue({
       id: "sub_123",
@@ -119,13 +119,13 @@ describe("changeMembershipPlan", () => {
     membershipFindFirstMock.mockResolvedValue({
       ...currentMembership,
       billingInterval: "annual",
-      pricePence: 29000,
+      pricePence: 35000,
       stripePriceId: "price_annual",
     });
     getActiveCatalogItemMock.mockResolvedValue({
       key: "membership_movewell_monthly",
       stripePriceId: "price_monthly",
-      unitAmountPence: 2900,
+      unitAmountPence: 3500,
     });
     stripeSubscriptionRetrieveMock.mockResolvedValue({
       id: "sub_123",

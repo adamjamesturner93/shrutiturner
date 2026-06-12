@@ -27,7 +27,7 @@ const programmeBenefits = [
   },
   {
     title: "A smaller cohort",
-    body: "Capped numbers leave more room for feedback, adaptation, and actual accountability inside the group.",
+    body: "Capped numbers leave more room for feedback, adaptation and actual accountability inside the group.",
     icon: Users,
   },
   {
@@ -62,7 +62,7 @@ export function ClassesSmallGroupsPage({ programmes = [] }: ClassesSmallGroupsPa
     <Layout>
       <SEO
         title="Small Group Programmes - Shruti Turner"
-        description="Focused multi-week programme blocks with a clear outcome, a fixed cohort, and more accountability than the regular class rhythm."
+        description="Focused multi-week programme blocks with a clear outcome, a fixed cohortand more accountability than the regular class rhythm."
         canonicalUrl="https://shrutiturner.co.uk/classes/small-groups"
       />
 
@@ -75,7 +75,7 @@ export function ClassesSmallGroupsPage({ programmes = [] }: ClassesSmallGroupsPa
             <span className="text-brand-accent-light"> more structure and follow-through.</span>
           </>
         }
-        description="Programmes sit between drop-in classes and 1:1 coaching: a smaller cohort, a clearer outcome, and enough repetition to build momentum without feeling swallowed by a huge commitment."
+        description="Programmes sit between drop-in classes and 1:1 coaching: a smaller cohort, a clearer outcome and enough repetition to build momentum without feeling swallowed by a huge commitment."
         primaryCta={{
           href: "#current-programmes",
           label: programmes.length > 0 ? "View Current Programmes" : "See Upcoming Intakes",
@@ -104,12 +104,12 @@ export function ClassesSmallGroupsPage({ programmes = [] }: ClassesSmallGroupsPa
           {
             label: "Best For",
             detail:
-              "People who want more repetition, accountability, and shared momentum than the weekly class flow offers.",
+              "People who want more repetition, accountability and shared momentum than the weekly class flow offers.",
           },
           {
             label: "Rhythm",
             detail:
-              "A fixed group, a clearer build, and a stronger sense of where each week is leading.",
+              "A fixed group, a clearer build and a stronger sense of where each week is leading.",
           },
           {
             label: "Difference",
@@ -164,7 +164,7 @@ export function ClassesSmallGroupsPage({ programmes = [] }: ClassesSmallGroupsPa
 
       <ProofBand
         title="Why programmes feel different from the regular class rhythm"
-        description="The point is not just more sessions. It is more continuity, more specific progression, and more room to stay with one outcome for long enough that it compounds."
+        description="The point is not just more sessions. It is more continuity, more specific progression and more room to stay with one outcome for long enough that it compounds."
         items={[
           {
             label: "Specific goal",
@@ -174,7 +174,7 @@ export function ClassesSmallGroupsPage({ programmes = [] }: ClassesSmallGroupsPa
           {
             label: "Repeat exposure",
             detail:
-              "You revisit the work often enough to build familiarity, confidence, and better self-trust.",
+              "You revisit the work often enough to build familiarity, confidence and better self-trust.",
           },
           {
             label: "Smaller group",
@@ -193,7 +193,7 @@ export function ClassesSmallGroupsPage({ programmes = [] }: ClassesSmallGroupsPa
         <SectionHeading
           eyebrow="Why Programmes"
           title="The focused season between weekly classes and 1:1 coaching."
-          description="Move Well Classes are the ongoing practice. Programmes are the tighter container for a specific goal when you want more repetition, more accountability, and a clearer build."
+          description="Move Well Classes are the ongoing practice. Programmes are the tighter container for a specific goal when you want more repetition, more accountability and a clearer build."
           align="center"
         />
 
@@ -359,7 +359,7 @@ export function ClassesSmallGroupsPage({ programmes = [] }: ClassesSmallGroupsPa
             </p>
             <h3 className="mt-3 text-2xl">Get programme dates before they go public.</h3>
             <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-              Expect early notice for new programme blocks, related articles, and occasional offers.
+              Expect early notice for new programme blocks, related articles and occasional offers.
             </p>
             <div className="mt-6">
               <NewsletterInline />

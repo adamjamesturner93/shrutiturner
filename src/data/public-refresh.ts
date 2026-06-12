@@ -7,11 +7,11 @@ export const homepageTestimonials = [
   {
     quote:
       "This is the first online class space where adaptations feel intelligent instead of patronising.",
-    attribution: "Move Well member with hEDS",
+    attribution: "1:1 client with hEDS",
   },
   {
     quote:
-      "Small group coaching gave me accountability without the usual pressure to push through a flare.",
+      "Small group support gave me accountability without the usual pressure to push through a flare.",
     attribution: "Programme client with chronic fatigue",
   },
 ] as const;
@@ -19,53 +19,54 @@ export const homepageTestimonials = [
 export const publicProofItems = [
   {
     label: "Lived Reality",
-    detail: "Coaching shaped by training and teaching while living with psoriatic arthritis.",
-  },
-  {
-    label: "Academic Depth",
     detail:
-      "Biomechanics and rehabilitation background informing every cue, progression, and regression.",
+      "Support shaped by lived experience of training and teaching with psoriatic arthritis, asthma and hypermobility.",
   },
   {
-    label: "Adaptive Delivery",
-    detail: "Programming designed around optimal-day, moderate-day, and survival-day capacity.",
+    label: "Rehab Research",
+    detail:
+      "A PhD in musculoskeletal rehabilitation and biomedical engineering background inform how training is reasoned, adapted and progressed.",
+  },
+  {
+    label: "Strength + Yoga",
+    detail:
+      "Personal training, exercise referral, strength and conditioning, yoga and trauma-informed training brought together in one integrated approach.",
   },
   {
     label: "No Generic Advice",
-    detail:
-      "Classes, programmes, and coaching built for complex bodies rather than retrofitted for them.",
+    detail: "Support built around your body, goals, health context and real-life capacity.",
   },
 ] as const;
 
 export const servicePathCards = [
   {
-    title: "Move Well Classes",
+    title: "1:1 Offers",
     description:
-      "Live weekly classes for yoga, mobility, strength, and conditioning, with real-time adaptation when your body is not having a textbook day.",
-    detail: "From £29/month with a 14-day trial",
-    href: "/classes",
-    ctaLabel: "Explore classes",
-    badge: "Weekly",
+      "Application-led individual support for strength, confidence and better decision-making around your body.",
+    detail: "From £70/month",
+    href: "/coaching",
+    ctaLabel: "See 1:1 offers",
+    badge: "Application-led",
     icon: "heart",
   },
   {
-    title: "1:1 Coaching",
+    title: "Compare Offers",
     description:
-      "Application-led support, from guided accountability to high-touch coaching for more fluctuating or complex cases.",
-    detail: "From £70/month",
-    href: "/coaching",
-    ctaLabel: "See coaching",
-    badge: "Personal",
+      "Compare guided accountability, training plans and 1:1 coaching before choosing the closest fit.",
+    detail: "Four application-led options",
+    href: "/#work-with-me",
+    ctaLabel: "Compare options",
+    badge: "Transparent",
     icon: "user",
   },
   {
-    title: "Retreats",
+    title: "Resources",
     description:
-      "Multi-day in-person experiences that combine movement, recovery, conversation, and proper space to rest without guilt.",
-    detail: "Small groups and thoughtful pacing",
-    href: "/retreats",
-    ctaLabel: "See retreats",
-    badge: "Immersive",
+      "Research-literate writing for people who want the reasoning behind movement, recovery and training decisions.",
+    detail: "Read before you apply",
+    href: "/blog",
+    ctaLabel: "Read the blog",
+    badge: "Learn",
     icon: "sparkles",
   },
 ] as const;
@@ -77,7 +78,7 @@ export const classesProofItems = [
   },
   {
     label: "Weekly Rhythm",
-    detail: "Yoga, mobility, strength, and conditioning in a schedule built for consistency.",
+    detail: "Yoga, mobility, strengthand conditioning in a schedule built for consistency.",
   },
   {
     label: "Flare Friendly",
@@ -92,18 +93,19 @@ export const classesProofItems = [
 export const coachingProofItems = [
   {
     label: "Delivery",
-    detail: "Everfit handles workouts, habits, check-ins, and day-to-day structure.",
+    detail: "Everfit handles workouts, habits, check-ins and day-to-day structure. Messaging is included where applicable.",
   },
   {
     label: "Programming",
-    detail: "Plans account for good days, average days, and flare days from the outset.",
+    detail: "Personalised programmes are build around your goals, lifestyle and injuries.",
   },
   {
     label: "Support",
-    detail: "Choose low-touch, guided, or high-touch support depending on complexity.",
+    detail:
+      "Choose low touch, guided, or high touch 1:1 support depending on your needs.",
   },
   {
-    label: "Fit",
-    detail: "Best for people who want strategy, not generic templates or motivation fluff.",
+    label: "Investment",
+    detail: "Chose the option that best suits your life, health and financial circumstances.",
   },
 ] as const;

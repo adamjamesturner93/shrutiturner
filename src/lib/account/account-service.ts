@@ -22,7 +22,7 @@ import { recordUserLifecycleEvent } from "@/lib/user-lifecycle";
 import type { HealthDeclarationStatusDto } from "@/lib/api/types";
 
 const ACCOUNT_MARKETING_CONSENT_WORDING =
-  "I want to receive marketing emails, newsletter updates, and occasional offers from Shruti Turner. I can unsubscribe at any time.";
+  "I want to receive marketing emails, newsletter updates and occasional offers from Shruti Turner. I can unsubscribe at any time.";
 
 const DATE_FORMATS = new Set(["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"]);
 

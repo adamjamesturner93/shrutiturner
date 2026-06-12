@@ -160,8 +160,8 @@ export function MembershipPage({
   const totalCredits = state?.credits.balance || 0;
   const referralBalance = Math.floor((state?.referral.balancePence || 0) / 100);
 
-  const monthlyPrice = pricing?.membershipDisplay?.movewellMonthly ?? 29;
-  const annualPrice = pricing?.membershipDisplay?.movewellAnnual ?? 290;
+  const monthlyPrice = pricing?.membershipDisplay?.movewellMonthly ?? 35;
+  const annualPrice = pricing?.membershipDisplay?.movewellAnnual ?? 350;
   const trialDays = pricing?.membershipDisplay?.trialDays ?? 14;
   const credits1Price = pricing?.credits[1] ?? 9;
   const credits3Price = pricing?.credits[3] ?? 24;
@@ -177,9 +177,9 @@ export function MembershipPage({
   const membershipUsagePercent =
     membership && membership.classesPerWeek > 0
       ? Math.min(
-          100,
-          Math.round((membership.classesUsedThisWeek / membership.classesPerWeek) * 100)
-        )
+        100,
+        Math.round((membership.classesUsedThisWeek / membership.classesPerWeek) * 100)
+      )
       : 0;
 
   const creditExpiryInfo = useMemo(() => {
@@ -498,6 +498,36 @@ export function MembershipPage({
       }),
     [annualPrice, monthlyPrice, pendingInterval, preferredInterval]
   );
+  const visibleComplianceHistory = useMemo(() => {
+    if (!state?.complianceHistory) return [];
+    const seen = new Set<string>();
+    return state.complianceHistory.filter((item) => {
+      const key = [
+        item.kind,
+        item.status,
+        item.channel,
+        item.summary,
+        item.eventAt.slice(0, 10),
+      ].join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [state?.complianceHistory]);
+  const trialEndsAt = membership?.compliance.trialEndsAt || null;
+  const initialCoolingOffEndsAt =
+    membership?.compliance.inInitialCoolingOff && membership.compliance.initialCoolingOffEndsAt
+      ? membership.compliance.initialCoolingOffEndsAt
+      : null;
+  const showCombinedTrialCoolingOffNotice =
+    Boolean(trialEndsAt) &&
+    Boolean(initialCoolingOffEndsAt) &&
+    trialEndsAt === initialCoolingOffEndsAt &&
+    !membership?.cancelAtPeriodEnd;
+  const showTrialNotice =
+    Boolean(trialEndsAt) && !membership?.cancelAtPeriodEnd && !showCombinedTrialCoolingOffNotice;
+  const showInitialCoolingOffNotice =
+    Boolean(initialCoolingOffEndsAt) && !showCombinedTrialCoolingOffNotice;
 
   if (loading) {
     return (
@@ -520,7 +550,7 @@ export function MembershipPage({
       <AppPageHeader
         eyebrow="Billing"
         title="Membership & Credits"
-        description="Manage your plan, purchase credits, and view billing."
+        description="Manage your plan, purchase credits and view billing."
         className="mb-8"
       />
 
@@ -559,7 +589,7 @@ export function MembershipPage({
             ? `Membership checkout completed. Stripe will confirm your ${checkoutInterval} membership and the dashboard will refresh with your access details.`
             : checkoutPurchase === "credits"
               ? `Credit checkout completed. Your ${checkoutBundle || "class"} credits will appear here as soon as Stripe confirms the payment.`
-              : "Checkout completed. Your membership, credits, and billing history will refresh automatically."}
+              : "Checkout completed. Your membership, credits and billing history will refresh automatically."}
         </div>
       ) : null}
 
@@ -568,7 +598,7 @@ export function MembershipPage({
           {checkoutPurchase === "membership"
             ? "Membership checkout was cancelled. Your current access was left unchanged and you can restart checkout below."
             : checkoutPurchase === "credits"
-              ? "Credit checkout was cancelled. No credits were added or charged, and you can choose a pack below."
+              ? "Credit checkout was cancelled. No credits were added or charged and you can choose a pack below."
               : "Checkout was cancelled. Your current membership and credits were left unchanged."}
         </div>
       ) : null}
@@ -660,24 +690,30 @@ export function MembershipPage({
               </div>
             ) : null}
 
-            {membership.compliance.trialEndsAt && !membership.cancelAtPeriodEnd ? (
+            {showCombinedTrialCoolingOffNotice ? (
               <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
-                Your free trial is active and is due to end on {membership.compliance.trialEndsAt}.
-                If you do not cancel before then, the paid subscription starts automatically.
+                Your free trial and initial 14-day cooling-off window are open until {trialEndsAt}.
+                If you cancel before then, the paid subscription will not start and your membership
+                ends immediately.
               </div>
             ) : null}
 
-            {membership.compliance.inInitialCoolingOff &&
-            membership.compliance.initialCoolingOffEndsAt ? (
+            {showTrialNotice ? (
+              <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+                Your free trial is active and is due to end on {trialEndsAt}. If you do not cancel
+                before then, the paid subscription starts automatically.
+              </div>
+            ) : null}
+
+            {showInitialCoolingOffNotice ? (
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-                Your initial 14-day cooling-off window is open until{" "}
-                {membership.compliance.initialCoolingOffEndsAt}. If you cancel before then, your
-                subscription ends immediately.
+                Your initial 14-day cooling-off window is open until {initialCoolingOffEndsAt}. If
+                you cancel before then, your subscription ends immediately.
               </div>
             ) : null}
 
             {membership.compliance.inRenewalCoolingOff &&
-            membership.compliance.renewalCoolingOffEndsAt ? (
+              membership.compliance.renewalCoolingOffEndsAt ? (
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
                 Your renewal cooling-off window is open until{" "}
                 {membership.compliance.renewalCoolingOffEndsAt}. If you cancel before then, we will
@@ -833,9 +869,8 @@ export function MembershipPage({
 
           <div className="grid gap-5 md:grid-cols-2">
             <div
-              className={`space-y-4 rounded-lg border p-5 ${
-                preferredInterval === "monthly" ? "border-brand-accent/30 bg-brand-accent/5" : ""
-              }`}
+              className={`space-y-4 rounded-lg border p-5 ${preferredInterval === "monthly" ? "border-brand-accent/30 bg-brand-accent/5" : ""
+                }`}
             >
               <div>
                 <p className="text-muted-foreground mb-1 text-xs">Monthly</p>
@@ -888,11 +923,10 @@ export function MembershipPage({
             </div>
 
             <div
-              className={`relative space-y-4 rounded-lg border-2 p-5 ${
-                preferredInterval === "annual"
-                  ? "border-brand-accent bg-brand-accent/5"
-                  : "border-brand-accent/30"
-              }`}
+              className={`relative space-y-4 rounded-lg border-2 p-5 ${preferredInterval === "annual"
+                ? "border-brand-accent bg-brand-accent/5"
+                : "border-brand-accent/30"
+                }`}
             >
               <div className="absolute -top-3 right-4">
                 <span className="bg-brand-accent text-micro inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-white">
@@ -1069,8 +1103,8 @@ export function MembershipPage({
             </p>
 
             {creditExpiryInfo.date &&
-            creditExpiryInfo.daysLeft !== null &&
-            creditExpiryInfo.daysLeft <= 14 ? (
+              creditExpiryInfo.daysLeft !== null &&
+              creditExpiryInfo.daysLeft <= 14 ? (
               <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
                 <p className="text-sm text-amber-800">
@@ -1123,8 +1157,8 @@ export function MembershipPage({
           </div>
 
           {creditExpiryInfo.date &&
-          creditExpiryInfo.daysLeft !== null &&
-          creditExpiryInfo.daysLeft <= 14 ? (
+            creditExpiryInfo.daysLeft !== null &&
+            creditExpiryInfo.daysLeft <= 14 ? (
             <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
               <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
               <p className="text-sm text-amber-800">
@@ -1220,62 +1254,12 @@ export function MembershipPage({
         </div>
       )}
 
-      <div className="bg-background mb-8 rounded-lg border p-6">
-        <h2 className="mb-4 text-xl">Subscription Notices</h2>
-        {membership ? (
-          <div className="mb-5 space-y-2 text-sm">
-            <p className="text-muted-foreground">
-              Disclosure version: {membership.compliance.disclosureVersion || "Not recorded yet"}
-            </p>
-            {membership.compliance.disclosureAcceptedAt ? (
-              <p className="text-muted-foreground">
-                Disclosure acknowledged on {membership.compliance.disclosureAcceptedAt.slice(0, 10)}
-              </p>
-            ) : null}
-            {membership.compliance.trialEndsAt ? (
-              <p className="text-muted-foreground">
-                Trial end: {membership.compliance.trialEndsAt}
-              </p>
-            ) : null}
-            {membership.compliance.renewalCoolingOffEndsAt ? (
-              <p className="text-muted-foreground">
-                Renewal cooling-off ends: {membership.compliance.renewalCoolingOffEndsAt}
-              </p>
-            ) : null}
-          </div>
-        ) : (
-          <p className="text-muted-foreground mb-5 text-sm">
-            Subscription notices and acknowledgements will appear here after you start a membership.
-          </p>
-        )}
-
-        <div className="space-y-3 text-sm">
-          {state.complianceHistory.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No subscription notices recorded yet.</p>
-          ) : (
-            state.complianceHistory.map((item) => (
-              <div
-                key={item.id}
-                className="flex flex-col gap-1 border-b py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <p className="text-foreground">{item.summary}</p>
-                  <p className="text-muted-foreground text-xs">
-                    {item.eventAt.slice(0, 10)} · {item.channel} · {item.status}
-                  </p>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
       <div className="bg-background rounded-lg border p-6">
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl">Billing History</h2>
             <p className="text-muted-foreground mt-1 text-sm">
-              Charges, credits, refunds, and referral discounts from Stripe and internal records.
+              Charges, credits, refunds and referral discounts from Stripe and internal records.
             </p>
           </div>
           <Badge variant="outline">{history.length} shown</Badge>
@@ -1325,12 +1309,64 @@ export function MembershipPage({
         ) : null}
       </div>
 
+      <details className="bg-background mt-8 rounded-lg border p-6">
+        <summary className="text-brand-dark cursor-pointer text-xl">
+          Subscription Records
+        </summary>
+        {membership ? (
+          <div className="mt-5 space-y-2 text-sm">
+            <p className="text-muted-foreground">
+              Disclosure version: {membership.compliance.disclosureVersion || "Not recorded yet"}
+            </p>
+            {membership.compliance.disclosureAcceptedAt ? (
+              <p className="text-muted-foreground">
+                Disclosure acknowledged on {membership.compliance.disclosureAcceptedAt.slice(0, 10)}
+              </p>
+            ) : null}
+            {membership.compliance.trialEndsAt ? (
+              <p className="text-muted-foreground">
+                Trial end: {membership.compliance.trialEndsAt}
+              </p>
+            ) : null}
+            {membership.compliance.renewalCoolingOffEndsAt ? (
+              <p className="text-muted-foreground">
+                Renewal cooling-off ends: {membership.compliance.renewalCoolingOffEndsAt}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="text-muted-foreground mt-5 text-sm">
+            Subscription notices and acknowledgements will appear here after you start a membership.
+          </p>
+        )}
+
+        <div className="mt-5 space-y-3 text-sm">
+          {visibleComplianceHistory.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No subscription records yet.</p>
+          ) : (
+            visibleComplianceHistory.map((item) => (
+              <div
+                key={item.id}
+                className="flex flex-col gap-1 border-b py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <p className="text-foreground">{item.summary}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {item.eventAt.slice(0, 10)} · {item.channel} · {item.status}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </details>
+
       <Dialog open={showDisclosure} onOpenChange={setShowDisclosure}>
         <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Review subscription terms before checkout</DialogTitle>
             <DialogDescription>
-              This summary is shown separately so the automatic renewal, reminder, cancellation, and
+              This summary is shown separately so the automatic renewal, reminder, cancellation and
               cooling-off terms are clear before you enter the contract.
             </DialogDescription>
           </DialogHeader>

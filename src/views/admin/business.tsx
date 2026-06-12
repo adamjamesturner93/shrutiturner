@@ -25,7 +25,7 @@ export function AdminBusiness() {
     Array<{ stripePromotionCodeId: string; code: string; active: boolean; type: string }>
   >([]);
   const [newPriceKey, setNewPriceKey] = useState("membership_movewell_monthly");
-  const [newPriceAmount, setNewPriceAmount] = useState("2900");
+  const [newPriceAmount, setNewPriceAmount] = useState("3500");
   const [newCode, setNewCode] = useState("");
   const [newCodeType, setNewCodeType] = useState<"percent" | "amount">("percent");
   const [newCodeValue, setNewCodeValue] = useState("10");
@@ -231,7 +231,7 @@ export function AdminBusiness() {
                   <div>
                     <h2 className="text-brand-dark text-lg">Platform Settings</h2>
                     <p className="text-muted-foreground mt-1 text-sm">
-                      Business details, default SEO metadata, and analytics identifiers.
+                      Business details, default SEO metadata and analytics identifiers.
                     </p>
                   </div>
 
@@ -622,6 +622,18 @@ export function AdminBusiness() {
                       <option value="credits_1">Credits 1</option>
                       <option value="credits_3">Credits 3</option>
                       <option value="credits_10">Credits 10</option>
+                      <option value="coaching_guided_accountability_monthly">
+                        Coaching Guided Accountability
+                      </option>
+                      <option value="coaching_independent_training_plan_monthly">
+                        Coaching Independent Training Plan
+                      </option>
+                      <option value="coaching_guided_training_plan_monthly">
+                        Coaching Guided Training Plan
+                      </option>
+                      <option value="coaching_one_to_one_coaching_monthly">
+                        Coaching 1:1 Offers
+                      </option>
                     </select>
                     <Input
                       value={newPriceAmount}
@@ -694,15 +706,15 @@ export function AdminBusiness() {
                         const payload =
                           newCodeType === "percent"
                             ? {
-                                code: newCode,
-                                type: "percent",
-                                percentOff: Number(newCodeValue || 0),
-                              }
+                              code: newCode,
+                              type: "percent",
+                              percentOff: Number(newCodeValue || 0),
+                            }
                             : {
-                                code: newCode,
-                                type: "amount",
-                                amountOffPence: Number(newCodeValue || 0),
-                              };
+                              code: newCode,
+                              type: "amount",
+                              amountOffPence: Number(newCodeValue || 0),
+                            };
                         const res = await fetch("/api/admin/business/discounts", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
@@ -759,7 +771,7 @@ export function AdminBusiness() {
                   <div>
                     <h2 className="text-brand-dark text-lg">Class Timing Rules</h2>
                     <p className="text-muted-foreground mt-1 text-sm">
-                      These settings control when members can join, when credits are refunded, and
+                      These settings control when members can join, when credits are refunded and
                       when empty classes auto-cancel.
                     </p>
                   </div>

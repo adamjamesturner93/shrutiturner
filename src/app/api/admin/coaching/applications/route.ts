@@ -10,6 +10,7 @@ type PatchBody = {
   id?: unknown;
   status?: unknown;
   adminNotes?: unknown;
+  decisionReason?: unknown;
   convertToClient?: unknown;
 };
 
@@ -48,9 +49,11 @@ export async function PATCH(request: Request) {
         "submitted",
         "under_review",
         "follow_up_needed",
+        "waitlisted",
         "approved",
         "declined",
         "converted",
+        "withdrawn",
       ].includes(body.status)
         ? (body.status as CoachingApplicationStatus)
         : undefined;
@@ -58,6 +61,7 @@ export async function PATCH(request: Request) {
       id: body.id,
       status,
       adminNotes: typeof body.adminNotes === "string" ? body.adminNotes : undefined,
+      decisionReason: typeof body.decisionReason === "string" ? body.decisionReason : undefined,
       convertToClient: body.convertToClient === true,
       actorUserId: adminUser.id,
       requestId: request.headers.get("x-request-id"),
@@ -76,6 +80,12 @@ export async function PATCH(request: Request) {
     }
     if (error instanceof Error && error.message === "NOT_FOUND") {
       return NextResponse.json({ message: "Application not found." }, { status: 404 });
+    }
+    if (error instanceof Error && error.message === "DECISION_REASON_REQUIRED") {
+      return NextResponse.json(
+        { message: "Add a client-facing reason before rejecting this application." },
+        { status: 400 }
+      );
     }
     console.error("PATCH /api/admin/coaching/applications failed", error);
     return NextResponse.json({ message: "Failed to update application." }, { status: 500 });

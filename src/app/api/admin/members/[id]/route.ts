@@ -35,6 +35,16 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       statusRaw && ["active", "paused", "cancelled", "expired", "past_due"].includes(statusRaw)
         ? (statusRaw as MembershipStatus)
         : undefined;
+    const isRemovingCoachingClient = body.isCoachingClient === false;
+    if (
+      isRemovingCoachingClient &&
+      body.confirmCoachingRemoval !== "REMOVE_COACHING_CLIENT"
+    ) {
+      return NextResponse.json(
+        { message: "Confirm coaching client removal before saving." },
+        { status: 400 }
+      );
+    }
 
     const member = await updateAdminMember(
       id,

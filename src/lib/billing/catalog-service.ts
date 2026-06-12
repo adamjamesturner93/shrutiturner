@@ -39,8 +39,9 @@ function parsePenceFromPriceLabel(priceLabel: string) {
 function defaultFromEnv(key: BillingCatalogKey) {
   const coachingTier = getCoachingTierForCatalogKey(key);
   if (coachingTier) {
+    const envKey = `STRIPE_PRICE_COACHING_${coachingTier.id.toUpperCase()}_MONTHLY`;
     return {
-      stripePriceId: "",
+      stripePriceId: process.env[envKey] || "",
       unitAmountPence: parsePenceFromPriceLabel(coachingTier.priceLabel),
     };
   }

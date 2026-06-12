@@ -2,14 +2,18 @@ import { MembershipDunningStatus, MembershipStatus } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const dunningFindManyMock = vi.fn();
+const dunningFindFirstMock = vi.fn();
 const dunningUpdateMock = vi.fn();
 const membershipUpdateMock = vi.fn();
+const queryRawMock = vi.fn();
 const sendSubscriptionNoticeEmailMock = vi.fn();
 const recordSubscriptionComplianceEventMock = vi.fn();
 
 vi.mock("@/lib/db", () => ({
   db: {
+    $queryRaw: queryRawMock,
     membershipDunningCase: {
+      findFirst: dunningFindFirstMock,
       findMany: dunningFindManyMock,
       update: dunningUpdateMock,
     },
@@ -35,8 +39,11 @@ vi.mock("@/lib/billing/subscription-compliance", () => ({
   recordSubscriptionComplianceEvent: recordSubscriptionComplianceEventMock,
 }));
 
-const { processDueMembershipDunningCases, membershipDunningAccessActive } =
-  await import("@/lib/billing/dunning-service");
+const {
+  getActiveDunningCaseForMembership,
+  processDueMembershipDunningCases,
+  membershipDunningAccessActive,
+} = await import("@/lib/billing/dunning-service");
 
 describe("membership dunning service", () => {
   beforeEach(() => {
@@ -44,6 +51,7 @@ describe("membership dunning service", () => {
     sendSubscriptionNoticeEmailMock.mockResolvedValue({ success: true });
     recordSubscriptionComplianceEventMock.mockResolvedValue({});
     membershipUpdateMock.mockResolvedValue({});
+    queryRawMock.mockResolvedValue([{ table_name: "MembershipDunningCase" }]);
   });
 
   it("suspends overdue dunning cases after the grace period", async () => {
@@ -53,7 +61,7 @@ describe("membership dunning service", () => {
       userId: "user_123",
       membershipId: "membership_123",
       status: MembershipDunningStatus.open,
-      amountDuePence: 2900,
+      amountDuePence: 3500,
       stripeInvoiceId: "in_123",
       invoiceUrl: "https://pay.stripe.com/invoice/in_123",
       firstFailedAt: new Date("2026-04-20T09:00:00.000Z"),
@@ -126,5 +134,13 @@ describe("membership dunning service", () => {
         now: new Date("2026-04-29T09:00:00.000Z"),
       })
     ).toBe(false);
+  });
+
+  it("omits payment issue state when the dunning table has not been migrated yet", async () => {
+    queryRawMock.mockResolvedValueOnce([{ table_name: null }]);
+
+    await expect(getActiveDunningCaseForMembership("membership_123")).resolves.toBeNull();
+
+    expect(dunningFindFirstMock).not.toHaveBeenCalled();
   });
 });

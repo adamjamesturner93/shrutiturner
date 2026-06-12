@@ -124,7 +124,12 @@ export function DashboardSchedule({
 
   useEffect(() => {
     const initialMatches = weekOffset === initialWeekOffset;
-    if (initialMatches) return;
+    if (initialMatches) {
+      setScheduleData(initialSchedule);
+      setLoadedWeekOffset(initialWeekOffset);
+      setIsWeekLoading(false);
+      return;
+    }
     const { start: fetchStart, end: fetchEnd } = getScheduleWindow(weekOffset);
     let active = true;
     void (async () => {
@@ -184,7 +189,7 @@ export function DashboardSchedule({
       <AppPageHeader
         eyebrow="Training schedule"
         title="Class Schedule"
-        description="Browse, filter, and book your classes. Start with what feels manageable."
+        description="Browse, filter and book your classes. Start with what feels manageable."
         meta={
           <>
             <span className="flex items-center gap-1.5">
@@ -304,21 +309,19 @@ export function DashboardSchedule({
                   return (
                     <div
                       key={cls.sessionId || `${cls.slug}-${cls.day}-${cls.time}-${idx}`}
-                      className={`bg-background rounded-lg border p-5 transition-shadow hover:shadow-md ${
-                        booked ? "border-brand-accent bg-brand-accent/5" : ""
-                      }`}
+                      className={`bg-background rounded-lg border p-5 transition-shadow hover:shadow-md ${booked ? "border-brand-accent bg-brand-accent/5" : ""
+                        }`}
                     >
                       <div className="flex flex-col gap-4 md:flex-row md:items-center">
                         {/* Time + Type */}
                         <div className="flex items-center gap-3 md:min-w-[160px]">
                           <div
-                            className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                              cls.type === "Yoga"
+                            className={`flex h-10 w-10 items-center justify-center rounded-lg ${cls.type === "Yoga"
                                 ? "bg-brand-accent/10 text-brand-accent"
                                 : cls.type === "HIIT"
                                   ? "bg-orange-100 text-orange-600"
                                   : "bg-primary/10 text-primary"
-                            }`}
+                              }`}
                           >
                             {typeIcon(cls.type)}
                           </div>

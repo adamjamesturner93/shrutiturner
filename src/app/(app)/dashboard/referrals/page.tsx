@@ -1,5 +1,5 @@
-import { DashboardReferrals } from "@/views/dashboard/referrals";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <DashboardReferrals />;
+  redirect("/dashboard/coaching");
 }

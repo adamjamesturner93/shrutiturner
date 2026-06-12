@@ -36,7 +36,7 @@ export function HoldingPrivacyPage() {
                 <p className="mt-3">
                   When you join the holding-page mailing list, we collect your first name, email
                   address, consent confirmation, consent timing, verification status, unsubscribe
-                  status, and limited delivery metadata needed to send and manage those emails.
+                  status and limited delivery metadata needed to send and manage those emails.
                 </p>
               </section>
 
@@ -44,7 +44,7 @@ export function HoldingPrivacyPage() {
                 <h2 className="font-heading text-2xl text-white">Why we collect it</h2>
                 <p className="mt-3">
                   We use this information to send launch updates, confirm your double opt-in
-                  request, deliver the free guide after verification, and maintain a suppression
+                  request, deliver the free guide after verification and maintain a suppression
                   record if you unsubscribe.
                 </p>
               </section>
@@ -61,7 +61,7 @@ export function HoldingPrivacyPage() {
                 <h2 className="font-heading text-2xl text-white">Who processes it</h2>
                 <p className="mt-3">
                   We use Postmark to send verification and follow-up emails, Cloudflare Turnstile to
-                  reduce form abuse, and our application database to store your subscription status
+                  reduce form abuse and our application database to store your subscription status
                   and email preference history.
                 </p>
               </section>

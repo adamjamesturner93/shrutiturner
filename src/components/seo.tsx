@@ -14,7 +14,7 @@ interface SEOProps {
 export function SEO({
   title,
   description,
-  keywords = "strength training chronic illness, yoga autoimmune disease, adaptive yoga, chronic pain exercise, rheumatoid arthritis coaching, psoriatic arthritis training, hypermobility strength, complex bodies fitness, rehabilitation informed training",
+  keywords = "strength training chronic illness, yoga autoimmune disease, adaptive yoga, chronic pain exercise, rheumatoid arthritis coaching, psoriatic arthritis training, hypermobility strength, inclusive fitness, rehabilitation informed training",
   ogImage = "/og-image.jpg",
   ogType = "website",
   canonicalUrl,
@@ -22,13 +22,11 @@ export function SEO({
 }: SEOProps) {
   const platformSettings = usePlatformSettings();
   const resolvedTitle =
-    title ||
-    platformSettings.defaultSeoTitle ||
-    "Shruti Turner - Strength & Yoga Coaching for Complex Bodies";
+    title || platformSettings.defaultSeoTitle || "Shruti Turner - Inclusive Movement Coaching";
   const resolvedDescription =
     description ||
     platformSettings.defaultSeoDescription ||
-    "Science-backed strength and yoga coaching for adults with chronic illness, autoimmune conditions, and complex bodies. Rehabilitation-informed training that builds capacity without pretending your body is simple.";
+    "Science-backed movement coaching for adults with chronic illness, autoimmune conditions, wellbeing and injury recovery or prevention. Rehabilitation-informed training that builds capacity with care.";
 
   useEffect(() => {
     // Set title
