@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
 import "../styles/index.css";
 import { Providers } from "./providers";
 
@@ -32,6 +33,7 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
         <Providers>{children}</Providers>
+        <Analytics />
       </body>
     </html>
   );
