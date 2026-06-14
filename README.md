@@ -116,6 +116,32 @@ publish, unpublish, archive and delete events for public content types such as `
 `authorProfile`, `newsletterSignupContent`, `leadMagnet`, `faqItem`, `newsletterTemplate` and
 `testimonial`.
 
+## Stripe Webhooks
+
+Production Stripe webhook endpoint:
+
+- `POST https://shrutiturner.co.uk/api/webhooks/stripe`
+
+Configure the Stripe endpoint with API version `2026-05-27.dahlia` and set its signing secret in
+`STRIPE_WEBHOOK_SECRET`. This app currently uses the main Stripe account webhook scope, not a Stripe
+Connect connected-accounts endpoint.
+
+Required Stripe events:
+
+- `checkout.session.completed`
+- `invoice.paid`
+- `invoice.payment_failed`
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+- `customer.created`
+- `customer.updated`
+- `customer.deleted`
+- `promotion_code.updated`
+- `charge.dispute.created`
+- `charge.dispute.updated`
+- `charge.dispute.closed`
+
 ### Code-first CMS tooling
 
 - Content model definitions:

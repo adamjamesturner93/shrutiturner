@@ -6,7 +6,8 @@ This release connects Contentful publish events to static blog revalidation and 
 
 Configure Contentful to send publish, unpublish, archive and delete events to:
 
-- `POST /api/webhooks/contentful`
+- Production: `POST https://shrutiturner.co.uk/api/webhooks/contentful`
+- Relative path: `POST /api/webhooks/contentful`
 
 The compatibility alias `POST /api/contentful/webhook` remains available, but new Contentful
 webhooks should use `/api/webhooks/contentful`.

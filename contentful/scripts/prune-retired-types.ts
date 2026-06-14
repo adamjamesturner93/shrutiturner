@@ -58,7 +58,7 @@ async function pruneContentType(contentType: ContentTypeLike) {
 }
 
 async function run() {
-  const client = createClient({ accessToken: managementToken });
+  const client = createClient({ accessToken: managementToken }, { type: "legacy" });
   const space = await client.getSpace(spaceId);
   const environment = (await space.getEnvironment(environmentId)) as ContentfulEnvironment;
 

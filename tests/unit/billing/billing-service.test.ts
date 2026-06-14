@@ -685,6 +685,48 @@ describe("billing-service Stripe integration", () => {
     });
   });
 
+  it("syncs membership entitlement from a subscription created webhook", async () => {
+    billingEventFindUniqueMock.mockResolvedValue(null);
+    userFindUniqueMock.mockResolvedValue({ id: "user_123" });
+    membershipSubscriptionFindFirstMock.mockResolvedValue({
+      id: "membership_123",
+      billingInterval: "monthly",
+      pricePence: 3500,
+      stripePriceId: "price_membership_monthly",
+    });
+
+    await processStripeWebhookEvent(
+      event({
+        id: "evt_subscription_created",
+        type: "customer.subscription.created",
+        object: {
+          id: "sub_123",
+          customer: "cus_123",
+          status: "active",
+          cancel_at_period_end: false,
+          current_period_end: 1770000000,
+          items: {
+            data: [{ price: { id: "price_membership_monthly" } }],
+          },
+        },
+      })
+    );
+
+    expect(membershipSubscriptionUpdateMock).toHaveBeenCalledWith({
+      where: { id: "membership_123" },
+      data: expect.objectContaining({
+        status: MembershipStatus.active,
+        billingInterval: "monthly",
+        pricePence: 3500,
+        stripePriceId: "price_membership_monthly",
+        cancelAtPeriodEnd: false,
+        stripeCurrentPeriodEnd: expect.any(Date),
+        renewsAt: expect.any(Date),
+        endsAt: null,
+      }),
+    });
+  });
+
   it("creates membership entitlement from a completed subscription checkout webhook", async () => {
     billingEventFindUniqueMock.mockResolvedValue(null);
     billingCatalogItemFindFirstMock.mockResolvedValue({ key: "membership_movewell_annual" });

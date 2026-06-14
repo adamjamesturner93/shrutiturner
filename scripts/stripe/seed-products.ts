@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { STRIPE_API_VERSION } from "../../src/lib/billing/stripe-config";
 
 type CreditBundleKey = "1" | "3" | "10";
 type CoachingPriceKey =
@@ -22,8 +23,6 @@ type SeedItem = {
     interval: "month" | "year";
   };
 };
-
-const STRIPE_API_VERSION: Stripe.LatestApiVersion = "2025-08-27.basil";
 
 const MEMBERSHIP_MONTHLY_AMOUNT_GBP = 3500;
 const MEMBERSHIP_ANNUAL_AMOUNT_GBP = 35000;

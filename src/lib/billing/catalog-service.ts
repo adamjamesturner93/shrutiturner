@@ -279,7 +279,10 @@ export async function createPromotionCode(input: {
   );
 
   const promo = await stripe.promotionCodes.create({
-    coupon: coupon.id,
+    promotion: {
+      type: "coupon",
+      coupon: coupon.id,
+    },
     code: input.code,
     max_redemptions: input.maxRedemptions,
     expires_at: input.expiresAt
@@ -387,11 +390,21 @@ export async function resolvePromotionCodeDiscount(code: string, amountPence: nu
   const trimmed = code.trim();
   if (!trimmed) return null;
   const stripe = getStripeClient();
-  const list = await stripe.promotionCodes.list({ code: trimmed, active: true, limit: 1 });
+  const list = await stripe.promotionCodes.list({
+    code: trimmed,
+    active: true,
+    limit: 1,
+    expand: ["data.promotion.coupon"],
+  });
   const promo = list.data[0];
-  if (!promo || !promo.coupon || typeof promo.coupon !== "object") return null;
+  if (!promo) return null;
 
-  const coupon = promo.coupon;
+  const promotionCoupon = promo.promotion.coupon;
+  const coupon =
+    typeof promotionCoupon === "string"
+      ? await stripe.coupons.retrieve(promotionCoupon)
+      : promotionCoupon;
+  if (!coupon) return null;
   const percentOff = coupon.percent_off || 0;
   const amountOff = coupon.amount_off || 0;
   const computed = percentOff > 0 ? Math.floor((amountPence * percentOff) / 100) : amountOff;

@@ -5,7 +5,7 @@ import { getContentfulScriptEnv } from "./env.ts";
 const { spaceId, environmentId, managementToken } = getContentfulScriptEnv();
 const { createClient } = contentfulManagement;
 
-const client = createClient({ accessToken: managementToken });
+const client = createClient({ accessToken: managementToken }, { type: "legacy" });
 
 type ContentfulEntry = {
   sys: { id: string };

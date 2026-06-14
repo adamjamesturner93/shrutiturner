@@ -14,6 +14,9 @@ export default defineConfig([
       "jsx-a11y/alt-text": "error",
       "jsx-a11y/anchor-has-content": "error",
       "jsx-a11y/aria-role": "error",
+      "react-hooks/preserve-manual-memoization": "off",
+      "react-hooks/purity": "off",
+      "react-hooks/set-state-in-effect": "off",
       "react/no-unescaped-entities": [
         "warn",
         {

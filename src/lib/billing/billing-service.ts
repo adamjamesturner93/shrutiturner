@@ -1335,8 +1335,12 @@ async function processCustomerDeleted(customer: Stripe.DeletedCustomer) {
 }
 
 async function processPromotionCodeUpdated(promotionCode: Stripe.PromotionCode) {
-  const coupon = promotionCode.coupon;
-  if (!coupon || typeof coupon === "string") return;
+  const promotionCoupon = promotionCode.promotion.coupon;
+  if (!promotionCoupon) return;
+  const coupon =
+    typeof promotionCoupon === "string"
+      ? await getStripeClient().coupons.retrieve(promotionCoupon)
+      : promotionCoupon;
   await db.promotionCodeMirror.upsert({
     where: { stripePromotionCodeId: promotionCode.id },
     create: {
@@ -1393,6 +1397,7 @@ async function handleStripeEvent(event: Stripe.Event) {
   }
 
   if (
+    event.type === "customer.subscription.created" ||
     event.type === "customer.subscription.updated" ||
     event.type === "customer.subscription.deleted"
   ) {
