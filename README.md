@@ -96,6 +96,25 @@ Prisma note:
 - CMS/public content API routes are available under `src/app/api/content/*`.
 - Contentful webhook revalidation endpoint:
   - `POST /api/webhooks/contentful`
+- Published Contentful delivery reads are ISR-cached with a 60 second default TTL. Set `CONTENTFUL_REVALIDATE_SECONDS` to change that fallback window; Contentful webhooks still revalidate paths/tags immediately.
+
+Vercel production/preview environment variables:
+
+- `NEXT_PUBLIC_APP_URL`
+- `NEXT_PUBLIC_SITE_URL`
+- `CONTENTFUL_SPACE_ID`
+- `CONTENTFUL_ENVIRONMENT` (default: `master`)
+- `CONTENTFUL_DELIVERY_TOKEN`
+- `CONTENTFUL_PREVIEW_TOKEN` (optional, required for admin previews)
+- `CONTENTFUL_MANAGEMENT_TOKEN` (required for publish-triggered newsletter campaign automation)
+- `CONTENTFUL_WEBHOOK_SECRET`
+- `CONTENTFUL_REVALIDATE_SECONDS` (optional, default `60`)
+
+Configure the Contentful webhook to call `https://shrutiturner.co.uk/api/webhooks/contentful`
+with an `x-contentful-webhook-secret` header matching `CONTENTFUL_WEBHOOK_SECRET`. Enable entry
+publish, unpublish, archive and delete events for public content types such as `blogPost`,
+`authorProfile`, `newsletterSignupContent`, `leadMagnet`, `faqItem`, `newsletterTemplate` and
+`testimonial`.
 
 ### Code-first CMS tooling
 
@@ -118,6 +137,7 @@ Required environment variables:
 - `CONTENTFUL_MANAGEMENT_TOKEN`
 - `CONTENTFUL_PREVIEW_TOKEN` (optional)
 - `CONTENTFUL_WEBHOOK_SECRET` (for webhook endpoint)
+- `CONTENTFUL_REVALIDATE_SECONDS` (optional, default `60`)
 
 ## Marketing Lead + Email Management
 

@@ -93,7 +93,8 @@ export const classesProofItems = [
 export const coachingProofItems = [
   {
     label: "Delivery",
-    detail: "Everfit handles workouts, habits, check-ins and day-to-day structure. Messaging is included where applicable.",
+    detail:
+      "Everfit handles workouts, habits, check-ins and day-to-day structure. Messaging is included where applicable.",
   },
   {
     label: "Programming",
@@ -101,8 +102,7 @@ export const coachingProofItems = [
   },
   {
     label: "Support",
-    detail:
-      "Choose low touch, guided, or high touch 1:1 support depending on your needs.",
+    detail: "Choose low touch, guided or high touch 1:1 support depending on your needs.",
   },
   {
     label: "Investment",

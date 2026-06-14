@@ -59,9 +59,12 @@ describe("sitemap and robots", () => {
     const urls = (await sitemap()).map((entry) => entry.url);
 
     expect(urls).toContain("https://shrutiturner.co.uk/blog/blog-post");
-    expect(urls).toContain("https://shrutiturner.co.uk/classes/adaptive-strength");
-    expect(urls).toContain("https://shrutiturner.co.uk/classes/small-groups/six-week-reset");
-    expect(urls).toContain("https://shrutiturner.co.uk/retreats/spring-retreat");
+    expect(urls).not.toContain("https://shrutiturner.co.uk/classes/adaptive-strength");
+    expect(urls).not.toContain("https://shrutiturner.co.uk/classes/small-groups/six-week-reset");
+    expect(urls).not.toContain("https://shrutiturner.co.uk/retreats/spring-retreat");
+    expect(mocks.getClassDefinitions).not.toHaveBeenCalled();
+    expect(mocks.getSmallGroupTemplates).not.toHaveBeenCalled();
+    expect(mocks.getRetreatsCombined).not.toHaveBeenCalled();
     expect(urls).not.toContain("https://shrutiturner.co.uk/admin");
     expect(urls).not.toContain("https://shrutiturner.co.uk/api");
     expect(urls).not.toContain("https://shrutiturner.co.uk/login");

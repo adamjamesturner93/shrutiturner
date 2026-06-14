@@ -307,12 +307,12 @@ function mapBlogPostAuthors(
 ) {
   const linkedAuthors = Array.isArray(item.fields.authors)
     ? item.fields.authors
-      .map((authorRef) => {
-        const authorId = getLinkedEntryId(authorRef);
-        const linkedEntry = getIncludedEntryById(includes, authorId);
-        return mapAuthorProfile(authorId || "", linkedEntry?.fields);
-      })
-      .filter((author): author is AuthorProfileContent => Boolean(author))
+        .map((authorRef) => {
+          const authorId = getLinkedEntryId(authorRef);
+          const linkedEntry = getIncludedEntryById(includes, authorId);
+          return mapAuthorProfile(authorId || "", linkedEntry?.fields);
+        })
+        .filter((author): author is AuthorProfileContent => Boolean(author))
     : [];
 
   if (linkedAuthors.length > 0) {
@@ -565,8 +565,13 @@ export async function getBlogPosts(): Promise<BlogPostContent[]> {
 }
 
 export async function getBlogPostBySlug(slug: string): Promise<BlogPostContent | null> {
-  const posts = await getBlogPosts();
-  return posts.find((p) => p.id === slug) || null;
+  const res = await getEntries<Record<string, unknown>>("blogPost", {
+    "fields.slug": slug,
+    limit: 1,
+    include: 2,
+  });
+  const entry = res?.items?.[0];
+  return entry ? mapBlogPostContent(entry, res.includes) : null;
 }
 
 export async function getBlogPostPreviewBySlug(slug: string): Promise<BlogPostContent | null> {
@@ -752,9 +757,9 @@ export async function getRetreatTemplates(): Promise<RetreatTemplateContent[]> {
     seoDescription: optionalStringField(item.fields, "seoDescription"),
     venueId:
       item.fields.venue &&
-        typeof item.fields.venue === "object" &&
-        item.fields.venue !== null &&
-        "sys" in item.fields.venue
+      typeof item.fields.venue === "object" &&
+      item.fields.venue !== null &&
+      "sys" in item.fields.venue
         ? String((item.fields.venue as { sys?: { id?: string } }).sys?.id || "")
         : undefined,
     venueSlug: optionalStringField(item.fields, "venueSlug"),
@@ -822,12 +827,12 @@ export async function getTestimonials(
     authorCondition: item.fields.authorCondition ? String(item.fields.authorCondition) : undefined,
     service: item.fields.service
       ? (String(item.fields.service) as
-        | "yoga"
-        | "strength"
-        | "pt"
-        | "retreat"
-        | "small-group"
-        | "general")
+          | "yoga"
+          | "strength"
+          | "pt"
+          | "retreat"
+          | "small-group"
+          | "general")
       : undefined,
     featured: Boolean(item.fields.featured),
   }));

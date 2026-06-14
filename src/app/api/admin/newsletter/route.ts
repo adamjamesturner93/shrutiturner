@@ -3,8 +3,9 @@ import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { getAdminNewsletterSummary } from "@/lib/admin/newsletter-service";
 
 export async function GET(request: Request) {
+  await connection();
+
   try {
-    await connection();
     await requireStaffAdminUser();
     const url = new URL(request.url);
     const summary = await getAdminNewsletterSummary({

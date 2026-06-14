@@ -74,11 +74,9 @@ export const coachingTiers: CoachingTierMarketing[] = [
     applicationTier: "personal_programme",
     name: "Independent Training Plan",
     tagline: "Personalised structure and progression",
-    description:
-      "Independent training with personalised structure and progression.",
+    description: "Independent training with personalised structure and progression.",
     bestFor: "Independent training with personalised structure and progression.",
-    whatItIs:
-      "A personalised gym or home training programme with monthly support.",
+    whatItIs: "A personalised gym or home training programme with monthly support.",
     priceLabel: "£95 / month",
     priceNote: "Application required before payment",
     supportLevel: "programme",
@@ -99,8 +97,7 @@ export const coachingTiers: CoachingTierMarketing[] = [
     applicationTier: "coached_plan",
     name: "Guided Training Plan",
     tagline: "Weekly review and progression support",
-    description:
-      "For people wanting more regular guidance and progression support.",
+    description: "For people wanting more regular guidance and progression support.",
     bestFor: "People wanting more regular guidance and progression support.",
     whatItIs:
       "A personalised home or gym training programme with weekly review and ongoing progression support.",
@@ -144,7 +141,7 @@ export const coachingTiers: CoachingTierMarketing[] = [
       "Reactive adjustments as needed",
       "Monthly coaching call",
     ],
-    boundaries: ["Coaching is not emergency, crisis, medical, or rehabilitation care"],
+    boundaries: ["Coaching is not emergency, crisis, medical or rehabilitation care"],
     expectedNextStep: "Apply with health context, call availability and messaging expectations.",
   },
 ];

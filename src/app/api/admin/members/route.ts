@@ -3,8 +3,9 @@ import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { listAdminMembers } from "@/lib/admin/members-service";
 
 export async function GET(request: Request) {
+  await connection();
+
   try {
-    await connection();
     await requireStaffAdminUser();
     const url = new URL(request.url);
     const data = await listAdminMembers({

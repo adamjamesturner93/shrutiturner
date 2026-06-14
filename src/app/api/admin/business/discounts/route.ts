@@ -3,8 +3,9 @@ import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { createPromotionCode, listPromotionCodes } from "@/lib/billing/catalog-service";
 
 export async function GET() {
+  await connection();
+
   try {
-    await connection();
     await requireStaffAdminUser();
     const rows = await listPromotionCodes();
     return NextResponse.json(rows);

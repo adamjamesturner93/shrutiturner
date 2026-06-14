@@ -12,7 +12,8 @@ vi.mock("@/lib/content/contentful-client", () => ({
   getEntryBySlug: mocks.getEntryBySlug,
 }));
 
-const { getBlogPostPreviewBySlug, getBlogPosts } = await import("@/lib/content/public-content");
+const { getBlogPostBySlug, getBlogPostPreviewBySlug, getBlogPosts } =
+  await import("@/lib/content/public-content");
 
 const richTextDocument = {
   nodeType: "document",
@@ -118,6 +119,23 @@ describe("Contentful public content mapping", () => {
       },
       { preview: true }
     );
+  });
+
+  it("loads published blog posts by slug without fetching the whole listing", async () => {
+    const post = await getBlogPostBySlug("contentful-post");
+
+    expect(post?.id).toBe("contentful-post");
+    expect(mocks.getEntries).toHaveBeenCalledWith("blogPost", {
+      "fields.slug": "contentful-post",
+      limit: 1,
+      include: 2,
+    });
+  });
+
+  it("returns null when a published blog slug is missing", async () => {
+    mocks.getEntries.mockResolvedValueOnce({ items: [] });
+
+    await expect(getBlogPostBySlug("missing-post")).resolves.toBeNull();
   });
 
   it("throws instead of falling back when Contentful has no published blog posts", async () => {

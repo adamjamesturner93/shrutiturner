@@ -6,6 +6,7 @@ describe("contentful client", () => {
     CONTENTFUL_DELIVERY_TOKEN: process.env.CONTENTFUL_DELIVERY_TOKEN,
     CONTENTFUL_ENVIRONMENT: process.env.CONTENTFUL_ENVIRONMENT,
     CONTENTFUL_PREVIEW_TOKEN: process.env.CONTENTFUL_PREVIEW_TOKEN,
+    CONTENTFUL_REVALIDATE_SECONDS: process.env.CONTENTFUL_REVALIDATE_SECONDS,
     CONTENTFUL_REQUEST_TIMEOUT_MS: process.env.CONTENTFUL_REQUEST_TIMEOUT_MS,
   };
 
@@ -15,6 +16,7 @@ describe("contentful client", () => {
     process.env.CONTENTFUL_DELIVERY_TOKEN = "token_123";
     process.env.CONTENTFUL_ENVIRONMENT = "master";
     process.env.CONTENTFUL_PREVIEW_TOKEN = "preview_123";
+    process.env.CONTENTFUL_REVALIDATE_SECONDS = "120";
     process.env.CONTENTFUL_REQUEST_TIMEOUT_MS = "1000";
   });
 
@@ -24,6 +26,7 @@ describe("contentful client", () => {
     process.env.CONTENTFUL_DELIVERY_TOKEN = originalEnv.CONTENTFUL_DELIVERY_TOKEN;
     process.env.CONTENTFUL_ENVIRONMENT = originalEnv.CONTENTFUL_ENVIRONMENT;
     process.env.CONTENTFUL_PREVIEW_TOKEN = originalEnv.CONTENTFUL_PREVIEW_TOKEN;
+    process.env.CONTENTFUL_REVALIDATE_SECONDS = originalEnv.CONTENTFUL_REVALIDATE_SECONDS;
     process.env.CONTENTFUL_REQUEST_TIMEOUT_MS = originalEnv.CONTENTFUL_REQUEST_TIMEOUT_MS;
   });
 
@@ -57,6 +60,29 @@ describe("contentful client", () => {
     expect(init.cache).toBe("no-store");
     expect(init.next).toBeUndefined();
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer preview_123");
+  });
+
+  it("uses the delivery API with ISR revalidation and content tags", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ items: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { getEntries } = await import("@/lib/content/contentful-client");
+
+    await expect(getEntries("blogPost", { limit: 1 })).resolves.toEqual({ items: [] });
+
+    const [url, init] = fetchMock.mock.calls[0] as [
+      string,
+      RequestInit & { next?: { revalidate?: number; tags?: string[] } },
+    ];
+    expect(url).toContain("https://cdn.contentful.com/spaces/space_123/environments/master");
+    expect(init.cache).toBeUndefined();
+    expect(init.next).toEqual({
+      revalidate: 120,
+      tags: ["content:all", "content:blog"],
+    });
   });
 
   it("throws for preview reads when no preview token is configured", async () => {

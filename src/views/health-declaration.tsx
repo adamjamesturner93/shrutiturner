@@ -52,7 +52,7 @@ export function HealthDeclarationPage() {
               </li>
               <li>
                 Shruti Turner is not a medical professional and does not provide medical advice,
-                diagnosis, or treatment
+                diagnosis or treatment
               </li>
               <li>
                 I am responsible for consulting with my healthcare provider before beginning any new
@@ -79,8 +79,8 @@ export function HealthDeclarationPage() {
                 participate against medical advice and accept full responsibility for this decision
               </li>
               <li>
-                I will inform my coach of any changes to my medical status, medications, or
-                treatment plan
+                I will inform my coach of any changes to my medical status, medications or treatment
+                plan
               </li>
             </ul>
           </section>
@@ -97,7 +97,7 @@ export function HealthDeclarationPage() {
               <li>Pain patterns and limitations</li>
               <li>Recent flares or acute symptoms</li>
               <li>Pregnancy or potential pregnancy</li>
-              <li>Any cardiovascular, respiratory, or neurological conditions</li>
+              <li>Any cardiovascular, respiratory or neurological conditions</li>
               <li>Mental health conditions that may affect participation</li>
               <li>Any other relevant medical information</li>
             </ul>
@@ -114,7 +114,7 @@ export function HealthDeclarationPage() {
               including but not limited to:
             </p>
             <ul className="list-disc space-y-2 pl-6">
-              <li>Muscle soreness, strains, or sprains</li>
+              <li>Muscle soreness, strains or sprains</li>
               <li>Joint pain or inflammation</li>
               <li>Fatigue or post-exertional malaise</li>
               <li>Symptom flares of chronic conditions</li>
@@ -136,7 +136,7 @@ export function HealthDeclarationPage() {
               <li>I am responsible for monitoring my own body and symptoms during activities</li>
               <li>
                 I will immediately stop any activity that causes pain, dizziness, shortness of
-                breath, or other concerning symptoms
+                breath or other concerning symptoms
               </li>
               <li>I will communicate honestly about my experience, symptoms and limitations</li>
               <li>I will not push beyond my current capacity in a way that feels unsafe</li>
@@ -193,7 +193,7 @@ export function HealthDeclarationPage() {
               <li>Ensure safety during activities</li>
               <li>Respond to emergencies</li>
               <li>
-                Understand anonymised, grouped patterns for research, education, or public posts
+                Understand anonymised grouped patterns for research, education or public posts
               </li>
             </ul>
             <p className="mt-4">
@@ -214,14 +214,14 @@ export function HealthDeclarationPage() {
               held liable for:
             </p>
             <ul className="list-disc space-y-2 pl-6">
-              <li>Any injuries, illness, or health complications arising from participation</li>
+              <li>Any injuries, illness or health complications arising from participation</li>
               <li>Aggravation or flaring of pre-existing conditions</li>
               <li>Outcomes of exercise programming (positive or negative)</li>
               <li>Medical emergencies or health events during activities</li>
             </ul>
             <p className="mt-4">
               This waiver applies to the fullest extent permitted by law. It does not exclude
-              liability for death or personal injury caused by negligence, fraud, or anything else
+              liability for death or personal injury caused by negligence, fraud or anything else
               that cannot be lawfully excluded.
             </p>
           </section>
@@ -242,7 +242,7 @@ export function HealthDeclarationPage() {
           <section>
             <h2 className="text-foreground mb-4 text-2xl">11. Photography & Media</h2>
             <p>
-              I understand that photos or videos may be taken during group classes, retreats, or
+              I understand that photos or videos may be taken during group classes, retreats or
               workshops. I can opt out at any time by informing the instructor. See separate media
               consent form for details on use of images.
             </p>

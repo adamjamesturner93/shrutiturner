@@ -1,0 +1,534 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model ListItem {
+  id        String       @id @default(cuid())
+  type      ListItemType
+  value     String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model User {
+  id                        String              @id @default(cuid())
+  name                      String?
+  email                     String              @unique
+  emailVerified             DateTime?
+  dob                       DateTime?
+  gender                    String?
+  ethnicity                 String?
+  image                     String?
+  terms                     Boolean?
+  terms_signed_on           String?
+  waiver                    Boolean?
+  waiver_signed_on          String?
+  medical_consent           Boolean?
+  medical_consent_signed_on String?
+  marketing                 Boolean?
+  marketing_signed_on       String?
+  stripeCustomerId          String?             @unique
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+  country                   String?             @default("gbr")
+  in_person_user            Boolean             @default(false)
+  authCode                  String?
+  timezone                  String?
+  dateFormat                String?             @default("24-hour")
+  authCodeExpiry            DateTime?
+  last_login                DateTime?
+  accounts                  Account[]
+  favourites                FavouritedClasses[]
+  goals                     Goals[]
+  health                    Health[]
+  InPersonMember            InPersonMember[]
+  Invoices                  Invoices[]
+  OnDemandWatchLog          OnDemandWatchLog[]
+  Schedule                  Schedule[]
+  sessions                  Session[]
+  subscriptions             Subscriptions[]
+  Permissions               UserPermission[]
+  credits                   Credit[]
+  RetreatBooking            RetreatBooking[]
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  feature     String           @unique
+  createdAt   DateTime         @default(now())
+  type        PermissionType   @default(subscription)
+  Permissions UserPermission[]
+}
+
+model UserPermission {
+  id           String     @id @default(cuid())
+  userId       String
+  permissionId String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  Permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  User         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Subscriptions {
+  stripe_subscription_id    String   @id
+  stripe_price_id           String
+  stripe_current_period_end DateTime
+  status                    String
+  stripe_sub_type           String
+  userId                    String
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  User                      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model Health {
+  id                          String   @id @default(cuid())
+  createdAt                   DateTime @default(now())
+  userId                      String
+  ankle_pain_injury           Boolean?
+  knee_pain_injury            Boolean?
+  hip_pain_injury             Boolean?
+  back_pain_injury            Boolean?
+  neck_pain_injury            Boolean?
+  shoulder_pain_injury        Boolean?
+  elbow_pain_injury           Boolean?
+  wrist_pain_injury           Boolean?
+  asthma                      Boolean?
+  low_blood_pressure          Boolean?
+  high_blood_pressure         Boolean?
+  osteoarthritis              Boolean?
+  autoimmune                  Boolean?
+  autoimmune_details          String?
+  physical_other              Boolean?
+  physical_other_details      String?
+  diabetes                    Boolean?
+  heart_condition             Boolean?
+  pregnant                    Boolean?
+  postpartum                  Boolean?
+  diastasis_recti             Boolean?
+  ptsd                        Boolean?
+  anxiety                     Boolean?
+  depression                  Boolean?
+  stress_burnout              Boolean?
+  seasonal_affective_disorder Boolean?
+  mental_other                Boolean?
+  mental_other_details        String?
+  limb_difference             Boolean?
+  limb_difference_details     String?
+  adhd                        Boolean?
+  asd                         Boolean?
+  bipolar                     Boolean?
+  bpd                         Boolean?
+  ds                          Boolean?
+  dyscalculia                 Boolean?
+  dyslexia                    Boolean?
+  dyspraxia                   Boolean?
+  epilepsy                    Boolean?
+  neuro_other                 Boolean?
+  neuro_other_details         String?
+  ocd                         Boolean?
+  tourettes                   Boolean?
+  user                        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Goals {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  userId          String
+  me_time         Boolean?
+  balance         Boolean?
+  calm            Boolean?
+  empowered       Boolean?
+  energy          Boolean?
+  flexibililty    Boolean?
+  healthCondition Boolean?
+  quad            Boolean?
+  recovery        Boolean?
+  sleep           Boolean?
+  strength        Boolean?
+  stress          Boolean?
+  weight          Boolean?
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model OnDemandClass {
+  id                String              @id @default(cuid())
+  name              String
+  length            Int
+  intent            ClassIntent
+  description       String
+  style             String
+  bodyFocus         String[]
+  props             String[]
+  playbackId        String
+  thumbnailUrl      String
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  liveAt            DateTime            @default(now())
+  FavouritedClasses FavouritedClasses[]
+  OnDemandWatchLog  OnDemandWatchLog[]
+}
+
+model FavouritedClasses {
+  userId          String
+  onDemandClassId String
+  favouritedAt    DateTime      @default(now())
+  onDemandClass   OnDemandClass @relation(fields: [onDemandClassId], references: [id], onDelete: Cascade)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, onDemandClassId])
+}
+
+model OnDemandWatchLog {
+  id              String        @id @default(cuid())
+  onDemandClassId String
+  userId          String
+  watchedAt       DateTime      @default(now())
+  class           OnDemandClass @relation(fields: [onDemandClassId], references: [id], onDelete: Cascade)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LiveOnlineClass {
+  id           String              @id @default(cuid())
+  name         String
+  length       Int
+  intent       ClassIntent
+  description  String
+  style        String
+  props        String[]
+  thumbnailUrl String
+  roomId       String
+  date         DateTime            @default(now())
+  cancelledAt  DateTime?
+  cancelReason String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  type         LiveOnlineClassType @default(FREE_FLOWING)
+  attendees    Schedule[]
+}
+
+model RetreatBooking {
+  id                      String               @id @default(cuid())
+  attendeeId              String
+  retreatId               String
+  name                    String
+  email                   String
+  isEarlybird             Boolean              @default(false)
+  bookedOn                DateTime             @default(now())
+  isGift                  Boolean              @default(false)
+  status                  RetreatBookingStatus @default(draft)
+  statusUpdatedAt         DateTime             @default(now())
+  stripeCheckoutSessionId String               @unique
+  stripePaymentIntentId   String?              @unique
+  giftMessage             String?
+  emailBuyer              Boolean              @default(true)
+  emailAttendee           Boolean              @default(false)
+
+  retreat  Retreat @relation(fields: [retreatId], references: [id], onDelete: Cascade)
+  attendee User    @relation(fields: [attendeeId], references: [id], onDelete: Cascade)
+
+  @@unique([attendeeId, retreatId])
+  @@index([retreatId, status])
+}
+
+model Retreat {
+  id                String           @id @default(cuid())
+  name              String // e.g., "Sankalpa: Reset & Reconnect"
+  slug              String // e.g., "sankalpa" - root-level page slug (e.g., /sankalpa)
+  retreatType       String           @default("Sankalpa") // Added to group instances by type (e.g., "Sankalpa", "Solar Salutations")
+  title             String // e.g., "New Year Reset"
+  date              DateTime // Workshop date
+  startTime         String // e.g., "09:30"
+  endTime           String // e.g., "12:00"
+  timezone          String           @default("Europe/London")
+  price             Int // Full price in pence
+  earlyBirdPrice    Int // Early bird price in pence
+  earlyBirdDeadline DateTime // When early bird expires
+  discountCoupon    String? // Stripe discount coupon ID (e.g., 'nlKnh1sx')
+  promoCode         String? // Stripe promo code ID (e.g., 'promo_1SbfscCfhvaMN5vyNLX4668h')
+  stripePriceId     String? // Stripe price id used for checkout
+  maxAttendees      Int              @default(50)
+  description       String           @db.Text
+  isActive          Boolean          @default(true) // Show on public page
+  roomId            String? // Daily.co room ID
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  bookings          RetreatBooking[]
+}
+
+model Schedule {
+  id                   String    @id @default(cuid())
+  userId               String
+  liveOnlineClassId    String?
+  bookedAt             DateTime  @default(now())
+  joinedAt             DateTime?
+  cancelledAt          DateTime?
+  inPersonClassId      String?
+  paymentPending       Boolean   @default(false)
+  invoiceId            String?
+  bookedWithMembership Boolean   @default(true)
+  creditUsed           Int? // Number of credits used for this booking
+  creditTransactionId  String? // Reference to the credit transaction
+
+  InPersonClass   InPersonClass?   @relation(fields: [inPersonClassId], references: [id], onDelete: Cascade)
+  invoice         Invoices?        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  LiveOnlineClass LiveOnlineClass? @relation(fields: [liveOnlineClassId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, liveOnlineClassId])
+  @@unique([userId, inPersonClassId])
+}
+
+model MembershipPrices {
+  id                String         @id @default(cuid())
+  price             Decimal
+  title             String
+  stripe_price_id   String         @unique
+  stripe_product_id String
+  icon              String
+  type              MembershipType
+  billing_period    String
+  benefits          String[]
+  credits           Int?
+  role              String
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  country_exclusion String[]
+  ordinal           Int            @default(0)
+  isCreditBundle    Boolean        @default(false)
+  creditExpireDays  Int?           @default(90) // Days until credits expire
+}
+
+model Product {
+  id                String      @id @default(cuid())
+  type              ProductType
+  price             Decimal
+  title             String
+  stripe_price_id   String      @unique
+  stripe_product_id String
+  sizes             String[]
+  colours           String[]
+  images            String
+  description       String
+}
+
+model Payments {
+  id                  String   @id @default(cuid())
+  stripe_id           String
+  customer_id         String
+  amount              Int
+  amount_captured     Int
+  amount_refunded     Int
+  currency            String
+  status              String
+  refunded            Boolean
+  receipt_url         String
+  balance_transaction String
+  stripe_created      Int
+  created             DateTime @default(now())
+}
+
+model InPersonVenue {
+  id                    String           @id @default(cuid())
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  name                  String
+  address               String
+  url                   String?
+  wheelchair_accessible Boolean
+  max_attendees         Int
+  block_size            Int
+  block_cost            Int
+  single_cost           Int
+  thumbnailUrl          String
+  InPersonClass         InPersonClass[]
+  InPersonMember        InPersonMember[]
+}
+
+model InPersonMember {
+  userId          String
+  inPersonVenueId String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  venue           InPersonVenue @relation(fields: [inPersonVenueId], references: [id], onDelete: Cascade)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, inPersonVenueId])
+}
+
+model InPersonClass {
+  id              String        @id @default(cuid())
+  name            String
+  length          Int
+  style           String
+  date            DateTime      @default(now())
+  cancelledAt     DateTime?
+  cancelReason    String?
+  inPersonVenueId String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  venue           InPersonVenue @relation(fields: [inPersonVenueId], references: [id], onDelete: Cascade)
+  attendees       Schedule[]
+}
+
+model Invoices {
+  id          String     @id @default(cuid())
+  amount      Int
+  invoiceDate DateTime   @default(now())
+  userId      String
+  paidAt      DateTime?
+  expiredAt   DateTime?
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Schedule    Schedule[]
+}
+
+model Newsletter {
+  id        String   @id @default(cuid())
+  subject   String
+  content   String   @db.Text
+  sentAt    DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Credit {
+  id              String       @id @default(cuid())
+  userId          String
+  amount          Int
+  remainingAmount Int
+  issuedAt        DateTime     @default(now())
+  expiresAt       DateTime
+  isExpired       Boolean      @default(false)
+  reason          CreditReason
+  bundleId        String? // Groups credits from the same purchase
+  stripePaymentId String? // Reference to Stripe payment for refunds
+
+  // Relations
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions CreditTransaction[]
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([bundleId])
+}
+
+enum CreditReason {
+  CANCELLATION
+  PURCHASE
+  BUNDLE_PURCHASE
+  SINGLE_CLASS_PURCHASE
+  ADMIN
+  PROMOTIONAL
+  REFUNDED
+}
+
+model CreditTransaction {
+  id          String                @id @default(cuid())
+  creditId    String
+  amount      Int
+  type        CreditTransactionType
+  createdAt   DateTime              @default(now())
+  bookingId   String? // Reference to the booking this transaction is related to
+  description String
+
+  // Relations
+  credit Credit @relation(fields: [creditId], references: [id], onDelete: Cascade)
+
+  @@index([creditId])
+  @@index([createdAt])
+}
+
+enum CreditTransactionType {
+  ISSUED
+  USED
+  EXPIRED
+  REFUNDED
+}
+
+enum ClassIntent {
+  build
+  explore
+  mindfulness
+}
+
+enum ListItemType {
+  class_style
+  body_focus
+  props
+}
+
+enum PermissionType {
+  subscription
+  one_off
+}
+
+enum LiveOnlineClassType {
+  FREE_FLOWING
+  CHARITY
+}
+
+enum MembershipType {
+  subscription
+  payment
+  credit_bundle
+}
+
+enum ProductType {
+  gift_card
+}
+
+enum ProductGender {
+  male_unisex
+  female
+}
+
+enum RetreatBookingStatus {
+  draft
+  paid
+  failed
+  abandoned
+}

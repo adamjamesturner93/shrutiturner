@@ -3,8 +3,9 @@ import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { getAdminRetreatDetail } from "@/lib/retreats/service";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+  await connection();
+
   try {
-    await connection();
     await requireStaffAdminUser();
     const { id } = await context.params;
     const detail = await getAdminRetreatDetail(id);

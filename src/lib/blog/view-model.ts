@@ -33,7 +33,7 @@ export function formatAuthorList(post: BlogPostContent) {
   const authors = getPostAuthors(post).map((author) => author.name);
   if (authors.length <= 1) return authors[0] || "Shruti Turner";
   if (authors.length === 2) return `${authors[0]} and ${authors[1]}`;
-  return `${authors.slice(0, -1).join(", ")}and ${authors[authors.length - 1]}`;
+  return `${authors.slice(0, -1).join(", ")} and ${authors[authors.length - 1]}`;
 }
 
 export function getRelatedPosts(post: BlogPostContent, posts: BlogPostContent[]) {
@@ -56,15 +56,15 @@ export function getBlogPostContextualCta(post: BlogPostContent): BlogPostContext
   ) {
     return {
       title: "Want help applying this?",
-      body: "Get coaching that adapts strength work around pain, fatigue, flares and real-life capacity.",
+      body: "Get 1:1 support that adapts strength work around pain, fatigue, flares and real-life capacity.",
       href: "/coaching",
-      label: "Explore coaching",
+      label: "Explore 1:1 offers",
     };
   }
 
   return {
     title: "Build a steadier movement practice",
-    body: "Explore coaching, classes and resources designed for chronic illness, autoimmune conditions, wellbeing and injury recovery.",
+    body: "Explore 1:1 support and resources designed for chronic illness, autoimmune conditions, wellbeing and injury recovery.",
     href: "/contact",
     label: "Ask a question",
   };

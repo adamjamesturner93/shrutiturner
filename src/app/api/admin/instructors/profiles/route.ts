@@ -3,8 +3,9 @@ import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { getInstructorProfiles } from "@/lib/content";
 
 export async function GET() {
+  await connection();
+
   try {
-    await connection();
     await requireStaffAdminUser();
     const profiles = await getInstructorProfiles();
     return NextResponse.json(

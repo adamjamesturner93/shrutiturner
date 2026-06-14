@@ -14,9 +14,6 @@ import {
   GraduationCap,
   Heart,
   Shield,
-  Sparkles,
-  User,
-  Users,
 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
@@ -35,16 +32,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { submitNewsletterSignup } from "@/lib/newsletter-signup";
 import { useNewsletterSignupCopy } from "@/lib/use-newsletter-signup-copy";
-import { publicProofItems, servicePathCards } from "@/data/public-refresh";
+import { publicProofItems } from "@/data/public-refresh";
 import { getPricingCoachingRows } from "@/lib/billing/pricing-page-model";
 import type { BlogPostContent, TestimonialContent } from "@/lib/content";
-
-const serviceIcons = {
-  heart: Heart,
-  users: Users,
-  user: User,
-  sparkles: Sparkles,
-} as const;
 
 interface HomePageProps {
   recentPosts: BlogPostContent[];
@@ -128,27 +118,30 @@ export function HomePage({ recentPosts, testimonials }: HomePageProps) {
         size="compact"
         title={
           <>
-            Movement that works <span className="text-brand-accent-light">with your body</span>,
-            not against it.
+            Movement that works <span className="text-brand-accent-light">with your body</span>, not
+            against it.
           </>
         }
-        description="Evidence-informed 1:1 support for building strength, confidence and capacity when health, energy, pain, or injury history mean generic plans fall short."
+        description="Evidence-informed 1:1 support for building strength, confidence and capacity when health, energy, pain or injury history mean generic plans fall short."
         primaryCta={{ href: "/coaching", label: "Explore 1:1 Offers" }}
         secondaryCta={{ href: "/coaching/apply", label: "Apply to Work Together" }}
         stats={[
           { value: "PhD", label: "Musculoskeletal rehabilitation" },
           { value: "460+", label: "Completed yoga and trauma-informed training hours" },
-          { value: "L4", label: "Strength, nutrition, obesity, diabetes, low back pain and exercise referral" },
+          {
+            value: "L4",
+            label: "Strength, nutrition, obesity, diabetes, low back pain and exercise referral",
+          },
         ]}
         metrics={[
           {
             label: "Built For",
-            detail: "People tired of trying to stick to standard fitness advice that doesn't work for them.",
+            detail:
+              "People tired of trying to stick to standard fitness advice that doesn't work for them.",
           },
           {
             label: "Approach",
-            detail:
-              "Tailored movement, intelligent strength and better decision-making.",
+            detail: "Tailored movement, intelligent strength and better decision-making.",
           },
           {
             label: "Difference",
@@ -185,7 +178,8 @@ export function HomePage({ recentPosts, testimonials }: HomePageProps) {
         body={
           <div className="space-y-6">
             <p className="text-muted-foreground text-lg leading-relaxed">
-              Generic programmes often fail because they don't account for fluctuating health circumstances, which can lead to an unhealthy relationship with movement.
+              Generic programmes often fail because they don't account for fluctuating health
+              circumstances, which can lead to an unhealthy relationship with movement.
             </p>
             <div className="grid gap-4 sm:grid-cols-2">
               {[
@@ -258,7 +252,7 @@ export function HomePage({ recentPosts, testimonials }: HomePageProps) {
         <SectionHeading
           eyebrow="Who This Is For"
           title="For people who want strength, capacity and longevity in their lives."
-          description="You might be managing long-term conditions, pain, fatigue, or recovering from injury. You are ready to understand your body, move with purpose and build strength with individual support that takes your circumstances seriously."
+          description="You might be managing long-term conditions, pain, fatigue or recovering from injury. You are ready to understand your body, move with purpose and build strength with individual support that takes your circumstances seriously."
           align="center"
         />
         <div className="mt-12 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -325,8 +319,8 @@ export function HomePage({ recentPosts, testimonials }: HomePageProps) {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[820px] border-collapse text-left text-sm">
                 <caption className="sr-only">
-                  1:1 offer comparison showing who each offer is for, what it is, inclusions,
-                  and investment.
+                  1:1 offer comparison showing who each offer is for, what it is, inclusions, and
+                  investment.
                 </caption>
                 <thead className="bg-brand-white/10 text-brand-white">
                   <tr>
@@ -375,25 +369,23 @@ export function HomePage({ recentPosts, testimonials }: HomePageProps) {
         </div>
       </MarketingSection>
 
-
       {testimonials.length > 0 ? (
         <MarketingSection className="section-wash">
           <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-            <SectionHeading
-              eyebrow="Client Voice"
-              title="What people say about working with me."
-            />
+            <SectionHeading eyebrow="Client Voice" title="What people say about working with me." />
             <div className="grid gap-5">
               {testimonials.map((testimonial, index) => (
                 <blockquote
                   key={testimonial.id}
-                  className={`rounded-[1.65rem] border p-7 shadow-[0_18px_45px_rgba(46,31,51,0.06)] ${index === 1 ? "bg-brand-dark text-brand-white" : "bg-background"
-                    }`}
+                  className={`rounded-[1.65rem] border p-7 shadow-[0_18px_45px_rgba(46,31,51,0.06)] ${
+                    index === 1 ? "bg-brand-dark text-brand-white" : "bg-background"
+                  }`}
                 >
                   <p className="text-xl leading-relaxed">{testimonial.quote}</p>
                   <footer
-                    className={`mt-5 text-xs tracking-[0.18em] uppercase ${index === 1 ? "text-brand-accent-light" : "text-brand-accent"
-                      }`}
+                    className={`mt-5 text-xs tracking-[0.18em] uppercase ${
+                      index === 1 ? "text-brand-accent-light" : "text-brand-accent"
+                    }`}
                   >
                     {[testimonial.authorName, testimonial.authorCondition]
                       .filter(Boolean)
@@ -500,7 +492,8 @@ export function HomePage({ recentPosts, testimonials }: HomePageProps) {
           <div className="flex items-start gap-3">
             <GraduationCap className="text-brand-accent-light mt-1 h-5 w-5" />
             <p className="text-brand-white/84 text-sm leading-relaxed">
-              Expect evidence based thoughts on movement, pacing, chronic illness and strength training.
+              Expect evidence based thoughts on movement, pacing, chronic illness and strength
+              training.
             </p>
           </div>
           <div className="flex items-start gap-3">
@@ -512,7 +505,8 @@ export function HomePage({ recentPosts, testimonials }: HomePageProps) {
           <div className="flex items-start gap-3">
             <CalendarDays className="text-brand-accent-light mt-1 h-5 w-5" />
             <p className="text-brand-white/84 text-sm leading-relaxed">
-              A touchpoint to keep up with latest blog posts, monthly developments and exclusive offers.
+              A touchpoint to keep up with latest blog posts, monthly developments and exclusive
+              offers.
             </p>
           </div>
         </div>

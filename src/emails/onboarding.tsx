@@ -31,7 +31,7 @@ export default function OnboardingEmail({
           marginBottom: "24px",
         }}
       >
-        Make the most of your coaching account
+        Make the most of your 1:1 account
       </Text>
 
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
@@ -78,7 +78,7 @@ export default function OnboardingEmail({
               marginBottom: "8px",
             }}
           >
-            Compare coaching options
+            Compare 1:1 offers
           </Text>
           <Text
             style={{
@@ -88,8 +88,7 @@ export default function OnboardingEmail({
               marginBottom: "16px",
             }}
           >
-            Review the current coaching options and the kind of support each one offers before you
-            apply.
+            Review the current 1:1 offers and the kind of support each one offers before you apply.
           </Text>
           <Link
             href={membershipUrl}
@@ -145,7 +144,7 @@ export default function OnboardingEmail({
               marginBottom: "16px",
             }}
           >
-            Coaching starts with an application so Shruti can confirm the best fit before any
+            1:1 support starts with an application so Shruti can confirm the best fit before any
             payment opens.
           </Text>
           <Link
@@ -158,7 +157,7 @@ export default function OnboardingEmail({
               textDecoration: "underline",
             }}
           >
-            {"Apply for coaching \u2192"}
+            {"Apply for 1:1 support \u2192"}
           </Link>
         </Section>
 
@@ -222,15 +221,15 @@ export default function OnboardingEmail({
 
       <Section style={{ textAlign: "center" as const, marginTop: "20px", marginBottom: "28px" }}>
         <Link href={scheduleUrl} style={buttonStyle}>
-          Apply for coaching
+          Apply for 1:1 support
         </Link>
       </Section>
 
       <Hr style={dividerStyle} />
 
       <Text style={{ ...mutedTextStyle, fontSize: "14px" }}>
-        If you have any questions about coaching options or just want some guidance on where to
-        start, simply reply to this email. {"I'm"} here to help.
+        If you have any questions about 1:1 offers or just want some guidance on where to start,
+        simply reply to this email. {"I'm"} here to help.
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>

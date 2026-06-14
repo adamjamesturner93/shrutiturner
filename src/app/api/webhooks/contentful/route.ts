@@ -27,18 +27,44 @@ function isWebhookSecretRequired() {
   );
 }
 
-function topicToTags(topic: string) {
-  if (topic.includes("classDefinition")) return ["content:classes", "content:schedule"];
-  if (topic.includes("smallGroupProgramme")) return ["content:classes"];
-  if (topic.includes("instructorProfile")) return ["content:classes", "content:schedule"];
-  if (topic.includes("retreatTemplate") || topic.includes("retreatVenue"))
+function contentTypeToTags(contentType: string) {
+  if (contentType === "classDefinition") return ["content:classes", "content:schedule"];
+  if (contentType === "smallGroupProgramme") return ["content:classes"];
+  if (contentType === "instructorProfile") return ["content:classes", "content:schedule"];
+  if (contentType === "retreatTemplate" || contentType === "retreatVenue") {
     return ["content:retreats"];
-  if (topic.includes("blogPost")) return ["content:blog"];
-  if (topic.includes("newsletterSignupContent")) return ["content:newsletter-signup"];
-  if (topic.includes("leadMagnet")) return ["content:newsletter-signup", "content:emails"];
-  if (topic.includes("faqItem")) return ["content:global-blocks"];
-  if (topic.includes("newsletterTemplate")) return ["content:emails"];
+  }
+  if (contentType === "blogPost") return ["content:blog"];
+  if (contentType === "authorProfile") return ["content:blog"];
+  if (contentType === "newsletterSignupContent") return ["content:newsletter-signup"];
+  if (contentType === "leadMagnet") return ["content:newsletter-signup", "content:emails"];
+  if (contentType === "faqItem") return ["content:global-blocks"];
+  if (contentType === "newsletterTemplate") return ["content:emails"];
+  if (contentType === "testimonial") return ["content:testimonials"];
   return ["content:all"];
+}
+
+function topicToTags(topic: string) {
+  const contentTypes = [
+    "classDefinition",
+    "smallGroupProgramme",
+    "instructorProfile",
+    "retreatTemplate",
+    "retreatVenue",
+    "blogPost",
+    "authorProfile",
+    "newsletterSignupContent",
+    "leadMagnet",
+    "faqItem",
+    "newsletterTemplate",
+    "testimonial",
+  ];
+  const matched = contentTypes.find((contentType) => topic.includes(contentType));
+  return matched ? contentTypeToTags(matched) : ["content:all"];
+}
+
+function getRevalidationTags(contentType: string, topic: string) {
+  return contentType ? contentTypeToTags(contentType) : topicToTags(topic);
 }
 
 function readSlugField(value: unknown): string | null {
@@ -132,7 +158,7 @@ export async function POST(req: NextRequest) {
   const resolvedContentType =
     (body?.sys?.contentType?.sys?.id ? String(body.sys.contentType.sys.id) : "") || contentType;
 
-  const tags = topicToTags(topic);
+  const tags = getRevalidationTags(resolvedContentType, topic);
   for (const tag of tags) {
     revalidateTag(tag, "max");
   }

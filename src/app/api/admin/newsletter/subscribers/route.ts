@@ -5,8 +5,9 @@ import { listAdminSubscribers, type SubscriptionType } from "@/lib/admin/newslet
 const validTypes = new Set(["all", "subscribed", "unsubscribed"]);
 
 export async function GET(req: Request) {
+  await connection();
+
   try {
-    await connection();
     await requireStaffAdminUser();
     const { searchParams } = new URL(req.url);
     const rawType = searchParams.get("type") || "all";

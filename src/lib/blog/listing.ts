@@ -15,7 +15,10 @@ export function filterAndSortPosts(
   let filtered = [...posts];
 
   if (selectedTag !== "all") {
-    filtered = filtered.filter((post) => post.tags.includes(selectedTag));
+    const selectedTagLower = selectedTag.toLowerCase();
+    filtered = filtered.filter((post) =>
+      post.tags.some((tag) => tag.toLowerCase() === selectedTagLower)
+    );
   }
 
   const query = searchQuery.trim().toLowerCase();

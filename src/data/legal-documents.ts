@@ -40,9 +40,9 @@ export const LEGAL_DOCUMENTS: LegalDocumentSeed[] = [
       "Terms and conditions covering memberships, classes, coaching, retreats, payments, bookings and service use.",
     body: `1. About these terms
 
-These Terms & Conditions govern your use of the Shruti Turner website, your account and any services you buy, book, or access through the platform. This includes Move Well Classes, memberships, credit packs, small group programmes, retreats, digital contet andd coaching services.
+These Terms & Conditions govern your use of the Shruti Turner website, your account and any services you buy, book or access through the platform. This includes Move Well Classes, memberships, credit packs, small group programmes, retreats, digital content and 1:1 services.
 
-By creating an account, booking a service, or using the website, you agree to these terms.
+By creating an account, booking a service or using the website, you agree to these terms.
 
 2. Who we are
 
@@ -54,7 +54,7 @@ For general enquiries, email tech@thechronicyogini.com.
 
 You must be 18 or over to create an account or buy services through this website.
 
-You must provide accurate information when you create an account, complete health forms, book services, or make payments.
+You must provide accurate information when you create an account, complete health forms, book services or make payments.
 
 You are responsible for keeping your login details secure and for activity that happens through your account.
 
@@ -73,16 +73,16 @@ Specific service details, inclusions and prices are shown on the relevant page a
 
 5. Health and safety
 
-Our services are educational and coaching services. They are not medical diagnosis, treatment, emergency care, or a substitute for advice from your GP, consultant, physiotherapist, or other healthcare professional.
+Our services are educational movement, training and support services. They are not medical diagnosis, treatment, emergency care or a substitute for advice from your GP, consultant, physiotherapist or other healthcare professional.
 
 You are responsible for:
 - deciding whether participation is appropriate for you
 - seeking medical advice where needed
 - providing accurate health information
 - stopping any activity that feels unsafe
-- telling us if your symptoms, diagnosis, medication, or capacity changes
+- telling us if your symptoms, diagnosis, medication or capacity changes
 
-We may refuse, limit, pause, or end participation where we reasonably believe a service is unsafe or unsuitable without further medical input.
+We may refuse, limit, pause or end participation where we reasonably believe a service is unsafe or unsuitable without further medical input.
 
 6. Health & Liability Waiver
 
@@ -92,9 +92,9 @@ Where a service requires additional health or screening information, you agree t
 
 7. Accounts, access and platform use
 
-You may not impersonate another person, share access to paid services inappropriately, or attempt to interfere with the security or operation of the platform.
+You may not impersonate another person, share access to paid services inappropriately or attempt to interfere with the security or operation of the platform.
 
-We may suspend or restrict access where we reasonably suspect misuse, fraud, abuse, or behaviour that creates risk for other clients, instructors, or the business.
+We may suspend or restrict access where we reasonably suspect misuse, fraud, abuse or behaviour that creates risk for other clients, instructors or the business.
 
 8. Memberships
 
@@ -139,12 +139,12 @@ We may record attendance, room joins, room leaves, moderator actions and related
 During live classes, events and coaching calls, you must behave respectfully toward instructors and other participants.
 
 You must not:
-- harass, intimidate, or disrupt others
+- harass, intimidate or disrupt others
 - record or redistribute sessions without permission
-- misuse chat, video, audio, or moderation features
+- misuse chat, video, audio or moderation features
 - attempt to gain access to rooms or controls you are not entitled to use
 
-We may mute, remove, suspend, or restrict participants where conduct is unsafe or disruptive.
+We may mute, remove, suspend or restrict participants where conduct is unsafe or disruptive.
 
 12. Coaching services
 
@@ -152,11 +152,11 @@ Coaching services may include programming, check-ins, calls, reviews, messaging,
 
 Response times, review cadence and inclusions vary by tier. The specific package or agreement you purchase governs what is included.
 
-Coaching services are not unlimited medical support, crisis support, or emergency communication channels.
+1:1 services are not unlimited medical support, crisis support or emergency communication channels.
 
 13. Retreats, workshops and events
 
-Retreats and in-person or hybrid events may require additional forms, screening, waiver acceptance, or travel information.
+Retreats and in-person or hybrid events may require additional forms, screening, waiver acceptance or travel information.
 
 You are responsible for arranging your own travel, insurance and any personal requirements unless the event page expressly states otherwise.
 
@@ -168,7 +168,7 @@ Payments are processed securely by Stripe or another named payment provider. We 
 
 You must pay all charges due at the point required by the relevant service.
 
-If payment fails, we may suspend access, cancel a booking, or prevent further bookings until payment is resolved.
+If payment fails, we may suspend access, cancel a booking or prevent further bookings until payment is resolved.
 
 15. Refunds and cancellations
 
@@ -182,7 +182,7 @@ All website content, class materials, programme materials, videos, recordings, c
 
 You receive a personal, non-transferable licence to use purchased materials for your own personal use only.
 
-You must not copy, resell, distribute, upload, or commercially exploit these materials without written permission.
+You must not copy, resell, distribute, upload or commercially exploit these materials without written permission.
 
 17. Acceptable use
 
@@ -192,7 +192,7 @@ Your use of the website and services is also subject to the Acceptable Use Polic
 
 Nothing in these terms excludes or limits liability that cannot lawfully be excluded or limited under applicable law.
 
-Subject to that, we are not liable for indirect or consequential loss, loss of profit, loss of opportunity, or losses arising from circumstances outside our reasonable control.
+Subject to that, we are not liable for indirect or consequential loss, loss of profit, loss of opportunity or losses arising from circumstances outside our reasonable control.
 
 Our total liability in relation to any claim connected with paid services will, to the fullest extent permitted by law, be limited to the amount paid by you for the relevant service giving rise to the claim.
 
@@ -231,8 +231,8 @@ This policy explains how we collect, use, store, share and protect personal data
 - visit the website
 - create an account
 - subscribe to emails
-- book classes, memberships, credits, programmes, retreats, or coaching
-- complete health, coaching, retreat, or support forms
+- book classes, memberships, credits, programmes, retreats or 1:1 services
+- complete health, 1:1, retreat or support forms
 - contact us directly
 
 3. Personal data we collect
@@ -244,7 +244,7 @@ Depending on how you use the website or services, we may collect:
 - referral and promotion activity
 - contact and support messages
 - newsletter and marketing preferences
-- coaching, retreat, or application form responses
+- 1:1, retreat or application form responses
 - device, browser, IP and security information
 - cookie, localStorage and sessionStorage related information described in the Cookie Policy
 
@@ -322,7 +322,7 @@ We keep personal data only for as long as necessary for the purposes described i
 Retention periods vary by data type. For example:
 - account and transactional records may be kept for several years to meet tax and accounting obligations
 - if you request account deletion, the account is first soft-deleted so access stops immediately while certain health declarations and legal acceptance records are retained for up to 6 months for safety, dispute handling and legal protection
-- legal hold may extend that retention where there is an active dispute, complaint, or claim
+- legal hold may extend that retention where there is an active dispute, complaint or claim
 - marketing preferences are kept until you unsubscribe or ask us to stop
 - security and operational logs are retained for a limited period appropriate to fraud prevention and service reliability
 
@@ -386,7 +386,7 @@ Strictly necessary technologies are used to operate the website and services you
 
 Examples used by this platform may include:
 - authentication and session cookies used by the sign-in system
-- CSRF, security, or verification related cookies
+- CSRF, security or verification related cookies
 - payment and checkout continuity cookies where required by the payment provider
 - anti-spam or challenge state set by Cloudflare Turnstile
 
@@ -430,7 +430,7 @@ If additional analytics or advertising technologies are added in future, this po
 
 You can manage cookies through your browser settings and clear local or session storage from your browser at any time.
 
-Be aware that disabling necessary cookies or clearing key storage may affect sign-in, checkout, booking, live-room, or other site functionality.
+Be aware that disabling necessary cookies or clearing key storage may affect sign-in, checkout, booking, live-room or other site functionality.
 
 If we introduce optional analytics or marketing technologies in future, we will provide the relevant controls and update this policy accordingly.`,
   },
@@ -447,7 +447,7 @@ If we introduce optional analytics or marketing technologies in future, we will 
 
 I understand that Shruti Turner's services may include strength training, yoga, movement coaching, classes, programmes, retreats and related physical activity.
 
-I understand that these services are educational and coaching services. They are not medical diagnosis, treatment, rehabilitation, or emergency care.
+I understand that these services are educational movement, training and support services. They are not medical diagnosis, treatment, rehabilitation or emergency care.
 
 2. My responsibilities
 
@@ -456,9 +456,9 @@ I confirm that I am responsible for:
 - seeking medical advice where needed
 - disclosing relevant health information honestly
 - stopping or modifying activity if I feel unsafe
-- informing my coach or instructor about changes in symptoms, diagnosis, medication, or capacity
+- informing my coach or instructor about changes in symptoms, diagnosis, medication or capacity
 
-I understand that my body may fluctuate and that choosing rest, adaptation, or a lower-intensity option is valid.
+I understand that my body may fluctuate and that choosing rest, adaptation or a lower-intensity option is valid.
 
 3. Assumption of risk
 
@@ -468,13 +468,13 @@ I voluntarily choose to participate and accept responsibility for the risks that
 
 4. Limitation of liability
 
-To the fullest extent permitted by law, I agree that Shruti Turner and anyone acting on her behalf will not be liable for loss, injury, illness, or damage arising from my participation except where liability cannot lawfully be excluded, including liability for death or personal injury caused by negligence.
+To the fullest extent permitted by law, I agree that Shruti Turner and anyone acting on her behalf will not be liable for loss, injury, illness or damage arising from my participation except where liability cannot lawfully be excluded, including liability for death or personal injury caused by negligence.
 
 5. Consent and acknowledgement
 
 By accepting this waiver, I confirm that I have read and understood it, that I have had the opportunity to seek medical advice if needed and that I choose to participate on this basis.
 
-I also understand that additional health questions or screening may be required for specific services such as retreats, coaching, or other health-sensitive offers.`,
+I also understand that additional health questions or screening may be required for specific services such as retreats, 1:1 support or other health-sensitive offers.`,
   },
   {
     id: "legal-refund-policy",
@@ -509,7 +509,7 @@ Credit packs do not auto-renew and cannot usually be refunded once purchased unl
 
 Where a class booking is cancelled within the permitted cancellation window, the credit used for that booking will normally be returned to your account.
 
-If you miss a class, join too late to attend, or cancel outside the permitted cancellation window, the credit or entitlement may be treated as used.
+If you miss a class, join too late to attend or cancel outside the permitted cancellation window, the credit or entitlement may be treated as used.
 
 4. Small group programmes and coaching services
 
@@ -532,13 +532,13 @@ Unless a more specific page states otherwise, retreat bookings are normally non-
 
 We recognise that chronic illness and pain can be unpredictable.
 
-If you need to cancel or pause because of illness, flare, or another genuine health issue, please contact us as early as possible. Where we reasonably can, we will try to find a fair solution. However, this does not create an automatic right to a refund outside the published terms.
+If you need to cancel or pause because of illness, flare or another genuine health issue, please contact us as early as possible. Where we reasonably can, we will try to find a fair solution. However, this does not create an automatic right to a refund outside the published terms.
 
 7. Consumer rights and contact
 
 Nothing in this policy limits any legal rights you may have under applicable consumer law.
 
-If you have a cancellation or refund question, contact tech@thechronicyogini.com as soon as possible and include the relevant service, booking, or order details.`,
+If you have a cancellation or refund question, contact tech@thechronicyogini.com as soon as possible and include the relevant service, booking or order details.`,
   },
   {
     id: "legal-acceptable-use",
@@ -557,34 +557,34 @@ This Acceptable Use Policy explains the standards expected when using the websit
 
 You must treat instructors, staff, contractors and other users respectfully.
 
-You must not engage in harassment, bullying, discrimination, abuse, intimidation, or threatening behaviour.
+You must not engage in harassment, bullying, discrimination, abuse, intimidation or threatening behaviour.
 
 3. Honest and safe participation
 
-You must provide accurate information when creating an account, completing forms, booking services, or disclosing health information.
+You must provide accurate information when creating an account, completing forms, booking services or disclosing health information.
 
-You must not knowingly misrepresent your identity, eligibility, payment information, or health-related information relevant to safe participation.
+You must not knowingly misrepresent your identity, eligibility, payment information or health-related information relevant to safe participation.
 
 4. Platform and account misuse
 
 You must not:
-- try to access data, rooms, or systems you are not authorised to access
-- interfere with the website, payment flows, booking flows, or live-room systems
+- try to access data, rooms or systems you are not authorised to access
+- interfere with the website, payment flows, booking flows or live-room systems
 - share access in a way that circumvents pricing or account rules
-- upload or transmit malware, spam, or abusive content
-- scrape, copy, or automate access to the site in a way that harms the service
+- upload or transmit malware, spam or abusive content
+- scrape, copy or automate access to the site in a way that harms the service
 
 5. Live classes and coaching spaces
 
-When using live rooms, chat, audio, or video features, you must not:
+When using live rooms, chat, audio or video features, you must not:
 - disrupt the class or coaching session
 - record or redistribute sessions without permission
-- use offensive, abusive, sexually explicit, or unlawful content
+- use offensive, abusive, sexually explicit or unlawful content
 - misuse moderator or community features
 
 6. Consequences
 
-If we reasonably believe this policy has been breached, we may remove content, cancel bookings, suspend access, restrict live-room access, close accounts, or take any other proportionate steps needed to protect people and the platform.
+If we reasonably believe this policy has been breached, we may remove content, cancel bookings, suspend access, restrict live-room access, close accounts or take any other proportionate steps needed to protect people and the platform.
 
 7. Reporting concerns
 
@@ -593,15 +593,15 @@ If you experience or witness misuse of the service, contact tech@thechronicyogin
   {
     id: "legal-coaching-agreement",
     slug: "coaching-agreement",
-    title: "Coaching Agreement",
+    title: "1:1 Agreement",
     version: VERSION,
     effectiveDate: EFFECTIVE_DATE,
-    seoTitle: "Coaching Agreement - Shruti Turner",
+    seoTitle: "1:1 Agreement - Shruti Turner",
     seoDescription:
       "The coaching-specific agreement covering scope, communication, check-ins, Everfit and client responsibilities.",
     body: `1. Purpose of this agreement
 
-This Coaching Agreement explains the basis on which coaching services are discussed, offered and delivered by Shruti Turner.
+This 1:1 Agreement explains the basis on which 1:1 services are discussed, offered and delivered by Shruti Turner.
 
 It applies to coaching applications and, where you become a client, forms part of the expectations around the working relationship.
 
@@ -609,7 +609,7 @@ It applies to coaching applications and, where you become a client, forms part o
 
 Coaching may include programming, written review, check-ins, calls, messaging, Everfit delivery, education and accountability support depending on the tier agreed.
 
-Coaching is collaborative. It is not crisis support, psychotherapy, emergency medical support, or a guarantee of specific results.
+1:1 support is collaborative. It is not crisis support, psychotherapy, emergency medical support or a guarantee of specific results.
 
 3. Client responsibilities
 
@@ -624,7 +624,7 @@ As a coaching client or applicant, you agree to:
 
 Coaching relies on regular check-ins. Depending on your tier, these may be weekly or monthly.
 
-If you do not complete check-ins or provide the information needed for review, programming updates and coaching guidance may be limited, delayed, or less precise.
+If you do not complete check-ins or provide the information needed for review, programming updates and coaching guidance may be limited, delayed or less precise.
 
 5. Everfit and connected tools
 
@@ -638,21 +638,21 @@ Response times vary by tier and are not 24/7.
 
 Coaching communication is for service delivery only and must not be used for emergencies. If you need urgent medical help, contact an appropriate healthcare or emergency service.
 
-7. Coaching option changes
+7. 1:1 service changes
 
-Coaching is billed separately from any current or future class membership, credit, workshop, or retreat offer.
+1:1 services are billed separately from any current or future class membership, credit, workshop or retreat offer.
 
-If your coaching option changes, your billing and service entitlement may also change. Shruti will confirm the timing and any payment impact before the change is applied.
+If your 1:1 service changes, your billing and service entitlement may also change. Shruti will confirm the timing and any payment impact before the change is applied.
 
 8. No guarantee of outcomes
 
 Bodies are variable, especially in the context of chronic illness, pain and fatigue.
 
-Coaching aims to support safer, more confident, more consistent training, but no specific physical, medical, or performance outcome is guaranteed.
+1:1 support aims to support safer, more confident and more consistent training, but no specific physical, medical or performance outcome is guaranteed.
 
 9. Agreement acknowledgement
 
-By ticking the Coaching Agreement box during the application flow, you confirm that you have read this agreement and understand how coaching is structured before you proceed with an application or enquiry.`,
+By ticking the 1:1 Agreement box during the application flow, you confirm that you have read this agreement and understand how 1:1 support is structured before you proceed with an application or enquiry.`,
   },
 ];
 

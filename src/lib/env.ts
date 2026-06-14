@@ -50,6 +50,7 @@ const schema = z.object({
   CONTENTFUL_DELIVERY_TOKEN: optionalString,
   CONTENTFUL_PREVIEW_TOKEN: optionalString,
   CONTENTFUL_MANAGEMENT_TOKEN: optionalString,
+  CONTENTFUL_REVALIDATE_SECONDS: z.coerce.number().int().min(1).default(60),
   CONTENTFUL_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(1000).default(4000),
   GA4_MEASUREMENT_ID: optionalString,
   TURNSTILE_SECRET_KEY: optionalString,

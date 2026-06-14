@@ -1,5 +1,7 @@
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 
-export default function Page() {
+export default async function Page() {
+  await connection();
   redirect("/dashboard/coaching");
 }

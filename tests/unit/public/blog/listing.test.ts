@@ -6,7 +6,7 @@ describe("blog listing helpers", () => {
   const allTags = Array.from(new Set(blogPosts.flatMap((post) => post.tags))).sort();
 
   it("resolves a valid tag case-insensitively", () => {
-    expect(resolveSelectedTag("yoga", allTags)).toBe("Yoga");
+    expect(resolveSelectedTag("strength training", allTags)).toBe("Strength Training");
   });
 
   it("falls back to all for an invalid tag", () => {
@@ -27,9 +27,15 @@ describe("blog listing helpers", () => {
   });
 
   it("filters posts by tag before sorting", () => {
-    const posts = filterAndSortPosts(blogPosts, "Yoga", "newest");
+    const posts = filterAndSortPosts(blogPosts, "Hypermobility", "newest");
     expect(posts).toHaveLength(1);
-    expect(posts[0]?.id).toBe("adaptive-yoga-vs-mainstream");
+    expect(posts[0]?.id).toBe("hypermobility-strength-training");
+  });
+
+  it("filters posts by tag case-insensitively", () => {
+    const posts = filterAndSortPosts(blogPosts, "hypermobility", "newest");
+    expect(posts).toHaveLength(1);
+    expect(posts[0]?.id).toBe("hypermobility-strength-training");
   });
 
   it("searches posts by title, excerpt, content, or tag", () => {

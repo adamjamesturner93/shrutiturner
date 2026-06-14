@@ -139,8 +139,8 @@ export function HealthProfileEditor({
           <p>
             This information is only visible to Shruti and is used to tailor sessions for your body.
             You can update or remove anything at any time. Individual details are never sold or
-            shared for marketing; anonymised, grouped patterns may be used for research, education,
-            or public posts.
+            shared for marketing; anonymised grouped patterns may be used for research, education or
+            public posts.
           </p>
         </div>
       </div>
@@ -155,7 +155,8 @@ export function HealthProfileEditor({
           />
           <span className="text-muted-foreground leading-relaxed">
             I agree to Shruti Turner using the health information I provide to assess suitability,
-            tailor training and deliver sessions safely.
+            tailor training, deliver sessions safely and understand anonymised grouped patterns for
+            research, education or public posts.
           </span>
         </label>
       ) : null}
@@ -213,10 +214,11 @@ export function HealthProfileEditor({
       ) : null}
 
       <label
-        className={`flex items-start gap-3 rounded-lg border p-4 text-sm ${nothingToDeclareDisabled
-          ? "bg-secondary/10 text-muted-foreground cursor-not-allowed opacity-70"
-          : "bg-secondary/20 cursor-pointer"
-          }`}
+        className={`flex items-start gap-3 rounded-lg border p-4 text-sm ${
+          nothingToDeclareDisabled
+            ? "bg-secondary/10 text-muted-foreground cursor-not-allowed opacity-70"
+            : "bg-secondary/20 cursor-pointer"
+        }`}
       >
         <input
           type="checkbox"
@@ -258,7 +260,8 @@ export function HealthProfileEditor({
             size="sm"
             className="bg-brand-accent hover:bg-brand-accent/90"
             disabled={
-              (requireConsentAcknowledgement && !consentAccepted) || declarationStatus === "incomplete"
+              (requireConsentAcknowledgement && !consentAccepted) ||
+              declarationStatus === "incomplete"
             }
           >
             {saved ? (

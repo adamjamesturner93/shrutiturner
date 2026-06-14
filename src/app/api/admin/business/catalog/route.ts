@@ -3,8 +3,9 @@ import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { listBillingCatalog } from "@/lib/billing/catalog-service";
 
 export async function GET() {
+  await connection();
+
   try {
-    await connection();
     await requireStaffAdminUser();
     const rows = await listBillingCatalog();
     return NextResponse.json(rows.filter(Boolean));

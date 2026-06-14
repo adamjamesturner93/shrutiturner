@@ -86,8 +86,7 @@ export function CoachingApplyPage() {
   const staticHero = {
     eyebrow: "1:1 Application",
     heading: "Apply to work with Shruti.",
-    body:
-      "Use one form for all 1:1 offers. Choose the closest fit in the application and Shruti will confirm the right next step before any payment opens.",
+    body: "Use one form for all 1:1 offers. Choose the closest fit in the application and Shruti will confirm the right next step before any payment opens.",
     bullets: [
       "Application required before payment",
       "Reviewed personally within 48 hours",
@@ -223,7 +222,7 @@ export function CoachingApplyPage() {
           {
             label: "Good For",
             detail:
-              "People who need more nuance, more review, or help choosing the right support level.",
+              "People who need more nuance, more review or help choosing the right support level.",
           },
           {
             label: "Response",
@@ -271,7 +270,7 @@ export function CoachingApplyPage() {
               <h2 className="text-2xl">What this application is for</h2>
               <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
                 This form is for all 1:1 offers. Submitting it does not start a subscription,
-                reserve a place, or create a checkout session. Payment is invited only after admin
+                reserve a place or create a checkout session. Payment is invited only after admin
                 acceptance.
               </p>
             </div>
@@ -322,10 +321,11 @@ export function CoachingApplyPage() {
                 {coachingApplicationTierOptions.map((option) => (
                   <label
                     key={option.value}
-                    className={`cursor-pointer rounded-[1.5rem] border p-4 transition-colors ${selectedTier === option.value
-                      ? "border-brand-accent bg-brand-accent/5"
-                      : "border-border hover:bg-secondary/30"
-                      }`}
+                    className={`cursor-pointer rounded-[1.5rem] border p-4 transition-colors ${
+                      selectedTier === option.value
+                        ? "border-brand-accent bg-brand-accent/5"
+                        : "border-border hover:bg-secondary/30"
+                    }`}
                   >
                     <input
                       type="radio"
@@ -343,10 +343,11 @@ export function CoachingApplyPage() {
                         </p>
                       </div>
                       <span
-                        className={`mt-1 h-4 w-4 rounded-full border ${selectedTier === option.value
-                          ? "border-brand-accent bg-brand-accent"
-                          : "border-muted-foreground/40"
-                          }`}
+                        className={`mt-1 h-4 w-4 rounded-full border ${
+                          selectedTier === option.value
+                            ? "border-brand-accent bg-brand-accent"
+                            : "border-muted-foreground/40"
+                        }`}
                       />
                     </div>
                   </label>

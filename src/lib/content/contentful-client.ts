@@ -22,6 +22,8 @@ type ContentfulFetchOptions = {
   preview?: boolean;
 };
 
+const DEFAULT_CONTENTFUL_REVALIDATE_SECONDS = 60;
+
 function toQueryString(query: Record<string, string | number | boolean | undefined>) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
@@ -50,8 +52,19 @@ function getCacheTags(contentType?: string): string[] {
   if (contentType === "leadMagnet") return [...base, "content:newsletter-signup", "content:emails"];
   if (contentType === "faqItem") return [...base, "content:global-blocks"];
   if (contentType === "newsletterTemplate") return [...base, "content:emails"];
+  if (contentType === "testimonial") return [...base, "content:testimonials"];
 
   return base;
+}
+
+function getContentfulRevalidateSeconds() {
+  const value = Number(
+    process.env.CONTENTFUL_REVALIDATE_SECONDS || DEFAULT_CONTENTFUL_REVALIDATE_SECONDS
+  );
+  if (!Number.isFinite(value) || value < 1) {
+    return DEFAULT_CONTENTFUL_REVALIDATE_SECONDS;
+  }
+  return Math.floor(value);
 }
 
 function getContentfulRequestTimeoutMs() {
@@ -95,7 +108,7 @@ async function cdaFetch<T>(
         ? { cache: "no-store" as const }
         : {
             next: {
-              revalidate: 60,
+              revalidate: getContentfulRevalidateSeconds(),
               tags: getCacheTags(
                 typeof query.content_type === "string" ? query.content_type : undefined
               ),

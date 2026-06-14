@@ -7,6 +7,7 @@ import {
   ClipboardList,
   GraduationCap,
   MessageCircle,
+  X,
   Smartphone,
   Sparkles,
   Users,
@@ -64,12 +65,12 @@ export function CoachingPage() {
           },
           {
             label: "Delivery",
-            detail:
-              "Programming, check-ins and support communication live in Everfit.",
+            detail: "Programming, check-ins and support communication live in Everfit.",
           },
           {
             label: "Difference",
-            detail: "Support varies by your chosen option, not by how seriously your body is taken.",
+            detail:
+              "Support varies by your chosen option, not by how seriously your body is taken.",
           },
         ]}
         aside={
@@ -99,9 +100,16 @@ export function CoachingPage() {
         description="Every plan is built for your body, your life and your goals."
         body={
           <div className="space-y-6">
-            <p className="text-muted-foreground text-lg leading-relaxed">
-              My 1:1 offers are designed to support you as much as you need. Whether you want accountability to guide your routine and support decision-making, a workout plan with check-ins to support your progression, or more collaborative day-to-day coaching for how movement fits into your lifestyle, there are different options to help you find what works for you.
-            </p>
+            <div className="text-muted-foreground space-y-4 text-lg leading-relaxed">
+              <p>My 1:1 offers are designed to support you as much as you need.</p>
+              <p>
+                You might want accountability to guide your routine and support decision-making. You
+                might want a workout plan with check-ins to support your progression. Or you might
+                want more collaborative day-to-day coaching for how movement fits into your
+                lifestyle.
+              </p>
+              <p>There are different options to help you find what works for you.</p>
+            </div>
             <div className="grid gap-4 md:grid-cols-2">
               {[
                 "The programme evolves with you, adjusting to your body, confidence and goals.",
@@ -116,9 +124,7 @@ export function CoachingPage() {
         }
         aside={
           <div className="border-brand-dark/10 bg-brand-warm rounded-[1.8rem] border p-7">
-            <h3 className="mt-4 text-3xl">
-              How it happens
-            </h3>
+            <h3 className="mt-4 text-3xl">How it happens</h3>
             <div className="mt-7 space-y-4">
               {[
                 {
@@ -164,12 +170,13 @@ export function CoachingPage() {
             return (
               <article
                 key={tier.id}
-                className={`relative flex flex-col rounded-[1.9rem] border-2 p-7 shadow-[0_20px_50px_rgba(46,31,51,0.06)] ${highlighted
-                  ? "border-brand-accent/30 bg-brand-accent/6"
-                  : highest
-                    ? "border-brand-dark/20 bg-brand-dark text-brand-white"
-                    : "border-brand-dark/10 bg-background"
-                  }`}
+                className={`relative flex flex-col rounded-[1.9rem] border-2 p-7 shadow-[0_20px_50px_rgba(46,31,51,0.06)] ${
+                  highlighted
+                    ? "border-brand-accent/30 bg-brand-accent/6"
+                    : highest
+                      ? "border-brand-dark/20 bg-brand-dark text-brand-white"
+                      : "border-brand-dark/10 bg-background"
+                }`}
               >
                 {highlighted ? (
                   <span className="bg-brand-accent text-brand-white absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs tracking-[0.16em] uppercase">
@@ -183,12 +190,13 @@ export function CoachingPage() {
                 ) : null}
 
                 <div
-                  className={`mb-6 flex h-12 w-12 items-center justify-center rounded-2xl ${highest
-                    ? "bg-brand-white/10 text-brand-accent-light"
-                    : highlighted
-                      ? "bg-brand-accent text-brand-white"
-                      : "bg-brand-accent/10 text-brand-accent"
-                    }`}
+                  className={`mb-6 flex h-12 w-12 items-center justify-center rounded-2xl ${
+                    highest
+                      ? "bg-brand-white/10 text-brand-accent-light"
+                      : highlighted
+                        ? "bg-brand-accent text-brand-white"
+                        : "bg-brand-accent/10 text-brand-accent"
+                  }`}
                 >
                   <Icon className="h-5 w-5" />
                 </div>
@@ -196,8 +204,9 @@ export function CoachingPage() {
                 <div>
                   <h3 className="text-2xl">{tier.name}</h3>
                   <p
-                    className={`mt-2 text-sm italic ${highest ? "text-brand-white/65" : "text-muted-foreground"
-                      }`}
+                    className={`mt-2 text-sm italic ${
+                      highest ? "text-brand-white/65" : "text-muted-foreground"
+                    }`}
                   >
                     {tier.tagline}
                   </p>
@@ -206,16 +215,18 @@ export function CoachingPage() {
                 <div className="mt-6">
                   <p className="text-3xl">{tier.priceLabel}</p>
                   <p
-                    className={`mt-2 text-xs ${highest ? "text-brand-white/60" : "text-muted-foreground"
-                      }`}
+                    className={`mt-2 text-xs ${
+                      highest ? "text-brand-white/60" : "text-muted-foreground"
+                    }`}
                   >
                     {tier.priceNote}
                   </p>
                 </div>
 
                 <p
-                  className={`mt-5 text-sm leading-relaxed ${highest ? "text-brand-white/78" : "text-muted-foreground"
-                    }`}
+                  className={`mt-5 text-sm leading-relaxed ${
+                    highest ? "text-brand-white/78" : "text-muted-foreground"
+                  }`}
                 >
                   {tier.description}
                 </p>
@@ -239,14 +250,27 @@ export function CoachingPage() {
                 </div>
 
                 <ul className="mt-6 flex-1 space-y-3">
-                  {[...tier.features, ...tier.boundaries].map((feature) => (
+                  {tier.features.map((feature) => (
                     <li key={feature} className="flex items-start gap-3 text-sm">
                       <Check
-                        className={`mt-0.5 h-4 w-4 flex-shrink-0 ${highest ? "text-brand-accent-light" : "text-brand-accent"
-                          }`}
+                        className={`mt-0.5 h-4 w-4 flex-shrink-0 ${
+                          highest ? "text-brand-accent-light" : "text-brand-accent"
+                        }`}
                       />
                       <span className={highest ? "text-brand-white/80" : "text-muted-foreground"}>
                         {feature}
+                      </span>
+                    </li>
+                  ))}
+                  {tier.boundaries.map((boundary) => (
+                    <li key={boundary} className="flex items-start gap-3 text-sm">
+                      <X
+                        className={`mt-0.5 h-4 w-4 flex-shrink-0 ${
+                          highest ? "text-brand-white/45" : "text-muted-foreground/60"
+                        }`}
+                      />
+                      <span className={highest ? "text-brand-white/65" : "text-muted-foreground"}>
+                        {boundary}
                       </span>
                     </li>
                   ))}
@@ -256,12 +280,13 @@ export function CoachingPage() {
                   asChild
                   size="lg"
                   variant={highest ? "secondary" : highlighted ? "default" : "outline"}
-                  className={`mt-8 ${highest
-                    ? "bg-brand-white text-brand-dark hover:bg-brand-white/92"
-                    : highlighted
-                      ? "bg-brand-accent hover:bg-brand-accent/90 text-brand-white"
-                      : ""
-                    }`}
+                  className={`mt-8 ${
+                    highest
+                      ? "bg-brand-white text-brand-dark hover:bg-brand-white/92"
+                      : highlighted
+                        ? "bg-brand-accent hover:bg-brand-accent/90 text-brand-white"
+                        : ""
+                  }`}
                 >
                   <Link href={tier.ctaHref}>
                     <MessageCircle className="h-4 w-4" />
@@ -273,7 +298,6 @@ export function CoachingPage() {
           })}
         </div>
       </MarketingSection>
-
 
       <MarketingSection className="bg-brand-warm">
         <SectionHeading

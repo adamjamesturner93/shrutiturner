@@ -15,8 +15,9 @@ type PatchBody = {
 };
 
 export async function GET(request: Request) {
+  await connection();
+
   try {
-    await connection();
     await requireStaffAdminUser();
     const url = new URL(request.url);
     const applications = await listAdminCoachingApplications({

@@ -109,6 +109,27 @@ describe("POST /api/webhooks/contentful", () => {
     });
   });
 
+  it("maps revalidation tags from the resolved content type when the topic is generic", async () => {
+    const route = await loadRoute();
+
+    const response = await route.POST(
+      new Request("http://localhost/api/webhooks/contentful", {
+        method: "POST",
+        headers: {
+          "x-contentful-webhook-secret": "contentful-secret",
+          "x-contentful-topic": "ContentManagement.Entry.publish",
+          "x-contentful-content-type": "authorProfile",
+          "x-contentful-id": "author_123",
+        },
+        body: "{}",
+      }) as never
+    );
+
+    expect(response.status).toBe(200);
+    expect(revalidateTagMock).toHaveBeenCalledWith("content:blog", "max");
+    expect(revalidateTagMock).not.toHaveBeenCalledWith("content:all", "max");
+  });
+
   it("does not trigger campaign automation for non-publish events", async () => {
     const route = await loadRoute();
 
