@@ -41,6 +41,11 @@ vi.mock("@/lib/health/health-service", () => ({
 
 vi.mock("@/lib/legal/acceptance-service", () => ({
   assertCurrentAcceptances: assertCurrentAcceptancesMock,
+  getPhysicalServiceAcceptanceRequirements: (surface: string) => [
+    { type: "terms", surface },
+    { type: "health_waiver", surface, maxAgeDays: 365 },
+    { type: "health_data", surface },
+  ],
   isAcceptanceRequiredError: isAcceptanceRequiredErrorMock,
 }));
 
@@ -170,10 +175,15 @@ describe("POST /api/classes/sessions/[id]/room-token", () => {
       code: "LEGAL_ACCEPTANCE_REQUIRED",
       requiredAcceptances,
     });
+    expect(assertCurrentAcceptancesMock).toHaveBeenCalledWith("user_123", [
+      { type: "terms", surface: "class_join" },
+      { type: "health_waiver", surface: "class_join", maxAgeDays: 365 },
+      { type: "health_data", surface: "class_join" },
+    ]);
     expect(getRoomTokenAccessMock).not.toHaveBeenCalled();
   });
 
-  it("does not expose replay metadata for standard classes even when legacy recording flags exist", async () => {
+  it("returns the recording flag for recorded class sessions", async () => {
     getSessionAccessContextMock.mockResolvedValue({
       session: {
         endsAtUtc: "2026-03-24T19:00:00.000Z",
@@ -205,7 +215,7 @@ describe("POST /api/classes/sessions/[id]/room-token", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
       token: "token_123",
-      isRecorded: false,
+      isRecorded: true,
     });
   });
 });

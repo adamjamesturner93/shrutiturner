@@ -56,7 +56,7 @@ export default function NewsletterVerificationEmail({
 
       <Text style={bodyTextStyle}>
         By confirming, you agree to receive launch updates and occasional emails about classes,
-        coaching, and offers. You can unsubscribe at any time.
+        coaching and offers. You can unsubscribe at any time.
       </Text>
 
       <Text style={bodyTextStyle}>

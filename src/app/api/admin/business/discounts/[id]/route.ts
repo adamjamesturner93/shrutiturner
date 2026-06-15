@@ -4,14 +4,23 @@ import { setPromotionCodeActive } from "@/lib/billing/catalog-service";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    await requireStaffAdminUser();
+    const adminUser = await requireStaffAdminUser();
     const { id } = await context.params;
     const body = (await request.json().catch(() => ({}))) as { active?: boolean };
     if (typeof body.active !== "boolean") {
       return NextResponse.json({ message: "active boolean is required" }, { status: 400 });
     }
 
-    const result = await setPromotionCodeActive(id, body.active);
+    const result = await setPromotionCodeActive({
+      id,
+      active: body.active,
+      actorUserId: adminUser.id,
+      requestId: request.headers.get("x-request-id"),
+      requestPath: new URL(request.url).pathname,
+      requestIp:
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        request.headers.get("x-real-ip"),
+    });
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {

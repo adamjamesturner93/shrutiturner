@@ -1,5 +1,10 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { AcceptanceType, ClassBookingStatus, ClassSessionStatus, CreditEntryType } from "@prisma/client";
+import {
+  AcceptanceType,
+  ClassBookingStatus,
+  ClassSessionStatus,
+  CreditEntryType,
+} from "@prisma/client";
 import { CURRENT_HEALTH_DATA_CONSENT_VERSION } from "@/data/legal-documents";
 import { db } from "@/lib/db";
 import { addCredits, getCreditBalance } from "@/lib/credits/credit-service";
@@ -11,12 +16,16 @@ const {
   sendClassUnbookingMock,
   sendClassReminderMock,
   sendInstructorNotificationMock,
+  sendWaitlistJoinedEmailMock,
+  sendWaitlistPromotedEmailMock,
 } = vi.hoisted(() => ({
   sendBookingConfirmationMock: vi.fn().mockResolvedValue({ success: true }),
   sendClassCancellationMock: vi.fn().mockResolvedValue({ success: true }),
   sendClassUnbookingMock: vi.fn().mockResolvedValue({ success: true }),
   sendClassReminderMock: vi.fn().mockResolvedValue({ success: true }),
   sendInstructorNotificationMock: vi.fn().mockResolvedValue({ success: true }),
+  sendWaitlistJoinedEmailMock: vi.fn().mockResolvedValue({ success: true }),
+  sendWaitlistPromotedEmailMock: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 vi.mock("@/lib/email", () => ({
@@ -25,6 +34,8 @@ vi.mock("@/lib/email", () => ({
   sendClassUnbooking: sendClassUnbookingMock,
   sendClassReminder: sendClassReminderMock,
   sendInstructorNotification: sendInstructorNotificationMock,
+  sendWaitlistJoinedEmail: sendWaitlistJoinedEmailMock,
+  sendWaitlistPromotedEmail: sendWaitlistPromotedEmailMock,
 }));
 
 import { bookClassSession, cancelOwnBooking } from "@/lib/classes/booking-service";

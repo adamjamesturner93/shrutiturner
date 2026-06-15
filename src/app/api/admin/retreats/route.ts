@@ -3,8 +3,9 @@ import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { getAdminRetreatSummaries } from "@/lib/retreats/service";
 
 export async function GET() {
+  await connection();
+
   try {
-    await connection();
     await requireStaffAdminUser();
     const data = await getAdminRetreatSummaries();
     return NextResponse.json(data);

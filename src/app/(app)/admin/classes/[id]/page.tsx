@@ -1,5 +1,7 @@
-import { AdminClassDetail } from "@/views/admin/class-detail";
+import { connection } from "next/server";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return <AdminClassDetail />;
+export default async function Page() {
+  await connection();
+  redirect("/admin/coaching");
 }

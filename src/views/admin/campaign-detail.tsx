@@ -66,15 +66,31 @@ export function AdminCampaignDetail() {
             <div>
               <h1 className="text-brand-dark text-2xl">{campaign.subject}</h1>
               <p className="text-muted-foreground text-sm">
-                {new Date(campaign.sentDate).toLocaleString("en-GB")}
+                {new Date(campaign.sentDate).toLocaleString("en-GB")} · {campaign.status} ·{" "}
+                {campaign.sourceSystem}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               <Metric label="Recipients" value={campaign.totalRecipients} />
+              <Metric label="Delivery rate" value={`${campaign.deliveryRate}%`} />
               <Metric label="Open rate" value={`${campaign.openRate}%`} />
               <Metric label="Click rate" value={`${campaign.clickRate}%`} />
               <Metric label="CTOR" value={`${campaign.clickToOpenRate}%`} />
+              <Metric label="Bounce rate" value={`${campaign.bounceRate}%`} />
+              <Metric label="Unsubscribe rate" value={`${campaign.unsubscribeRate}%`} />
+              <Metric label="Spam complaints" value={campaign.spamComplaints} />
             </div>
+            <Card>
+              <CardContent className="space-y-3 pt-6">
+                <h2 className="text-brand-dark text-lg">Delivery outcomes</h2>
+                <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
+                  <Outcome label="Delivered" value={campaign.delivered} />
+                  <Outcome label="Bounced" value={campaign.bounced} />
+                  <Outcome label="Unsubscribed" value={campaign.unsubscribed} />
+                  <Outcome label="Failed sends" value={campaign.failedSends} />
+                </div>
+              </CardContent>
+            </Card>
             <Card>
               <CardContent className="space-y-2 pt-6">
                 <h2 className="text-brand-dark text-lg">Top Links</h2>
@@ -93,10 +109,39 @@ export function AdminCampaignDetail() {
                 )}
               </CardContent>
             </Card>
+            <Card>
+              <CardContent className="space-y-2 pt-6">
+                <h2 className="text-brand-dark text-lg">Event timeline</h2>
+                {campaign.eventTimeline.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">No dated events recorded.</p>
+                ) : (
+                  campaign.eventTimeline.map((event) => (
+                    <div
+                      key={event.date}
+                      className="grid grid-cols-4 gap-3 rounded border p-2 text-sm"
+                    >
+                      <span>{event.date}</span>
+                      <span>Open {event.opened}</span>
+                      <span>Click {event.clicked}</span>
+                      <span>Bounce {event.bounced}</span>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
           </>
         ) : null}
       </div>
     </AdminLayout>
+  );
+}
+
+function Outcome({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded border p-3">
+      <p className="text-brand-dark text-lg">{value}</p>
+      <p className="text-muted-foreground text-xs">{label}</p>
+    </div>
   );
 }
 

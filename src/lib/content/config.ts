@@ -1,14 +1,4 @@
-import type { ContentSource } from "./types";
-
-const DEFAULT_SOURCE: ContentSource = "local";
-
-export function getContentSource(): ContentSource {
-  const source = (process.env.CONTENT_SOURCE || DEFAULT_SOURCE).toLowerCase();
-  if (source === "local" || source === "hybrid" || source === "contentful") {
-    return source;
-  }
-  return DEFAULT_SOURCE;
-}
+import { env } from "@/lib/env";
 
 export interface ContentfulConfig {
   spaceId: string;
@@ -19,8 +9,8 @@ export interface ContentfulConfig {
 }
 
 export function getContentfulConfig(): ContentfulConfig | null {
-  const spaceId = process.env.CONTENTFUL_SPACE_ID;
-  const deliveryToken = process.env.CONTENTFUL_DELIVERY_TOKEN;
+  const spaceId = env.CONTENTFUL_SPACE_ID;
+  const deliveryToken = env.CONTENTFUL_DELIVERY_TOKEN;
 
   if (!spaceId || !deliveryToken) {
     return null;
@@ -28,9 +18,9 @@ export function getContentfulConfig(): ContentfulConfig | null {
 
   return {
     spaceId,
-    environment: process.env.CONTENTFUL_ENVIRONMENT || "master",
+    environment: env.CONTENTFUL_ENVIRONMENT || "master",
     deliveryToken,
-    previewToken: process.env.CONTENTFUL_PREVIEW_TOKEN,
-    managementToken: process.env.CONTENTFUL_MANAGEMENT_TOKEN,
+    previewToken: env.CONTENTFUL_PREVIEW_TOKEN,
+    managementToken: env.CONTENTFUL_MANAGEMENT_TOKEN,
   };
 }

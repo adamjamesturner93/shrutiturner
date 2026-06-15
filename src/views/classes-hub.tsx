@@ -25,7 +25,7 @@ import { SEO } from "@/components/seo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { classesProofItems } from "@/data/public-refresh";
-import type { ClassDefinitionContent } from "@/lib/content";
+import type { ClassDefinitionContent } from "@/lib/content/types";
 import type { PublicThemedWeek } from "@/lib/themed-weeks/service";
 
 interface ClassesHubPageProps {
@@ -41,7 +41,7 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
     <Layout>
       <SEO
         title="Move Well Classes - Adaptive Yoga & Strength Training - Shruti Turner"
-        description="Move Well Classes are live online adaptive yoga and intelligent strength sessions for complex bodies. Evidence-based classes that build capacity without burnout."
+        description="Move Well Classes are live online adaptive yoga and intelligent strength sessions for chronic illness, autoimmune conditions, wellbeing and injury recovery. Evidence-based classes that build capacity without burnout."
         keywords="move well classes, online yoga classes, online strength training, adaptive yoga, intelligent training, yoga for chronic illness"
         canonicalUrl="https://shrutiturner.co.uk/classes"
       />
@@ -51,11 +51,11 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
         size="compact"
         title={
           <>
-            Live classes for bodies that need
+            Live classes for people who need
             <span className="text-brand-accent-light"> nuance, not noise.</span>
           </>
         }
-        description="Adaptive yoga and intelligent strength training taught live online. Built for fluctuating capacity, careful progression, and people who still want to feel strong."
+        description="Adaptive yoga and intelligent strength training taught live online. Built for fluctuating capacity, careful progression and people who still want to feel strong."
         primaryCta={{ href: "/schedule", label: "View Schedule" }}
         secondaryCta={{ href: "/pricing", label: "See Pricing" }}
         stats={[
@@ -66,15 +66,15 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
         metrics={[
           {
             label: "Yoga",
-            detail: "Awareness, regulation, mobility, and steadier movement options.",
+            detail: "Awareness, regulation, mobility and steadier movement options.",
           },
           {
             label: "Strength",
-            detail: "Load tolerance, confidence, and more support for daily life.",
+            detail: "Load tolerance, confidence and more support for daily life.",
           },
           {
             label: "Delivery",
-            detail: "Join from home with options for flare days, average days, and stronger days.",
+            detail: "Join from home with options for flare days, average days and stronger days.",
           },
         ]}
         aside={
@@ -84,7 +84,7 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
                 <div className="aspect-[4/5] overflow-hidden rounded-[1.4rem]">
                   <ImageWithFallback
                     src="https://images.unsplash.com/photo-1630225758612-8c511aad6c00?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtYXR1cmUlMjB3b21hbiUyMHlvZ2ElMjBtYXQlMjBhZGFwdGl2ZXxlbnwxfHx8fDE3NzE1Mjk4Njh8MA&ixlib=rb-4.1.0&q=80&w=1080"
-                    alt="Adaptive yoga class designed for complex bodies"
+                    alt="Adaptive yoga class designed for inclusive movement"
                     className="h-full w-full object-cover"
                   />
                 </div>
@@ -103,7 +103,7 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
                       Membership mood
                     </p>
                     <p className="text-brand-white/84 mt-3 text-sm leading-relaxed">
-                      Consistency, not punishment. Good teaching, good pacing, and no performance
+                      Consistency, not punishment. Good teaching, good pacing and no performance
                       theatre.
                     </p>
                   </div>
@@ -152,12 +152,12 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
             {[
               {
                 title: "Rehab-informed",
-                body: "The class design starts from joint behaviour, regulation, and symptom variability, not aesthetics.",
+                body: "The class design starts from joint behaviour, regulation and symptom variability, not aesthetics.",
                 icon: Heart,
               },
               {
                 title: "Evidence-based",
-                body: "Biomechanics, pain science, and strength principles are translated into teaching that still feels human.",
+                body: "Biomechanics, pain science and strength principles are translated into teaching that still feels human.",
                 icon: TrendingUp,
               },
               {
@@ -250,8 +250,9 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
                 Adaptive practice, not mainstream yoga with edits.
               </h2>
               <p className="text-muted-foreground mt-5 text-lg leading-relaxed">
-                These sessions prioritise joint safety, proprioception, regulation, and movement
-                options that make sense for complex bodies.
+                These sessions prioritise joint safety, proprioception, regulation and movement
+                options that make sense for chronic illness, autoimmune conditions and injury
+                recovery.
               </p>
               <ul className="mt-6 space-y-3">
                 {[
@@ -311,14 +312,14 @@ export function ClassesHubPage({ yogaClasses, strengthClasses, themedWeeks }: Cl
                 Strength that makes daily life feel less fragile.
               </h2>
               <p className="text-muted-foreground mt-5 text-lg leading-relaxed">
-                Classes focus on progressive load tolerance, pacing, and clearer movement choices so
+                Classes focus on progressive load tolerance, pacing and clearer movement choices so
                 you can build confidence instead of bracing for the next setback.
               </p>
               <ul className="mt-6 space-y-3">
                 {[
                   "Progressive loading that respects symptom variability",
                   "Options for limited equipment and home setups",
-                  "Clear cueing around effort, pacing, and recovery",
+                  "Clear cueing around effort, pacing and recovery",
                   "A stronger, less fearful relationship with resistance work",
                 ].map((item) => (
                   <li

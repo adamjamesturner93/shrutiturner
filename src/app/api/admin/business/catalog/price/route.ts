@@ -11,11 +11,15 @@ const validKeys = new Set([
   "credits_1",
   "credits_3",
   "credits_10",
+  "coaching_guided_accountability_monthly",
+  "coaching_independent_training_plan_monthly",
+  "coaching_guided_training_plan_monthly",
+  "coaching_one_to_one_coaching_monthly",
 ]);
 
 export async function POST(request: Request) {
   try {
-    await requireStaffAdminUser();
+    const adminUser = await requireStaffAdminUser();
     const body = (await request.json().catch(() => ({}))) as {
       key?: string;
       unitAmountPence?: number;
@@ -33,6 +37,12 @@ export async function POST(request: Request) {
       key: body.key as BillingCatalogKey,
       unitAmountPence: Math.floor(amount),
       currency: body.currency,
+      actorUserId: adminUser.id,
+      requestId: request.headers.get("x-request-id"),
+      requestPath: new URL(request.url).pathname,
+      requestIp:
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        request.headers.get("x-real-ip"),
     });
     return NextResponse.json(result);
   } catch (error) {

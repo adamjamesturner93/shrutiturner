@@ -89,7 +89,7 @@ export function DashboardRetreats({
         <div>
           <h1 className="text-3xl">Your Retreats</h1>
           <p className="text-muted-foreground mt-2 max-w-2xl">
-            View booking status, balance payments, and the essentials for any retreat you have
+            View booking status, balance payments and the essentials for any retreat you have
             booked through the studio.
           </p>
         </div>
@@ -169,10 +169,10 @@ export function DashboardRetreats({
                           Balance due
                           {booking.balanceDueAt
                             ? ` by ${new Intl.DateTimeFormat("en-GB", {
-                                day: "numeric",
-                                month: "long",
-                                year: "numeric",
-                              }).format(new Date(booking.balanceDueAt))}`
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                            }).format(new Date(booking.balanceDueAt))}`
                             : ""}
                           .
                         </div>

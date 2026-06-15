@@ -1,5 +1,5 @@
-import { connection, NextResponse } from "next/server";
-import { requireSessionUser } from "@/lib/api/auth-user";
+import { connection } from "next/server";
+import { apiOk, handleApiRoute } from "@/lib/api/route";
 import { isOwnerAdminRole } from "@/lib/authz/roles";
 import {
   ensureInstructorMembership,
@@ -7,10 +7,10 @@ import {
   syncMembershipFromStripe,
 } from "@/lib/membership/membership-service";
 
-export async function GET() {
-  try {
+export const GET = handleApiRoute(
+  async ({ sessionUser }) => {
     await connection();
-    const user = await requireSessionUser();
+    const user = sessionUser!;
     if (isOwnerAdminRole(user.role)) {
       await ensureInstructorMembership(user.id);
     } else {
@@ -22,12 +22,7 @@ export async function GET() {
       });
     }
     const state = await getMembershipState(user.id);
-    return NextResponse.json(state);
-  } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
-    console.error("GET /api/me/membership failed", error);
-    return NextResponse.json({ message: "Failed to load membership state" }, { status: 500 });
-  }
-}
+    return apiOk(state);
+  },
+  { auth: "user" }
+);

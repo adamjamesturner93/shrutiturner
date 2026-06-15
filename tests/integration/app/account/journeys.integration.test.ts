@@ -1,4 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { AcceptanceType } from "@prisma/client";
 import { db } from "@/lib/db";
 import {
   getAccount,
@@ -28,7 +29,7 @@ describe("account journeys integration", () => {
     await cleanupAccountRows();
   });
 
-  it("persists account profile fields, preferences, and explicit prefer-not-to-say values", async () => {
+  it("persists account profile fields, preferences and explicit prefer-not-to-say values", async () => {
     const email = createAccountTestEmail("profile", "member");
     const user = await db.user.create({
       data: {
@@ -84,11 +85,11 @@ describe("account journeys integration", () => {
       source: "account",
       surface: "account_notifications",
       wordingText:
-        "I want to receive marketing emails, newsletter updates, and occasional offers from Shruti Turner. I can unsubscribe at any time.",
+        "I want to receive marketing emails, newsletter updates and occasional offers from Shruti Turner. I can unsubscribe at any time.",
     });
   });
 
-  it("persists onboarding profile, legal, source, and health data for later account views", async () => {
+  it("persists onboarding profile, legal, source and health data for later account views", async () => {
     const email = createAccountTestEmail("onboarding", "member");
     const user = await db.user.create({
       data: {
@@ -142,6 +143,51 @@ describe("account journeys integration", () => {
       details: { autoimmune: "Most noticeable after midday." },
       additionalNotes: "Needs longer warmups after travel.",
     });
+  });
+
+  it("requires annual health waiver re-acceptance for physical services", async () => {
+    const email = createAccountTestEmail("health-waiver-expiry", "member");
+    const user = await db.user.create({
+      data: {
+        email,
+      },
+    });
+
+    await updateAccount(user.id, {
+      hasAgreedToHealth: true,
+    });
+
+    const expiredAt = new Date(Date.now() - 366 * 24 * 60 * 60 * 1000);
+    await db.$transaction([
+      db.user.update({
+        where: { id: user.id },
+        data: { healthAgreedAt: expiredAt },
+      }),
+      db.acceptanceEvent.updateMany({
+        where: { userId: user.id, type: AcceptanceType.health_waiver },
+        data: { acceptedAt: expiredAt },
+      }),
+    ]);
+
+    const expiredAccount = await getAccount(user.id, "http://localhost:3000");
+    expect(expiredAccount.profile).toMatchObject({
+      hasAgreedToHealth: false,
+      needsHealthWaiverReacceptance: true,
+    });
+
+    await updateAccount(user.id, {
+      hasAgreedToHealth: true,
+    });
+
+    const refreshedAccount = await getAccount(user.id, "http://localhost:3000");
+    const healthWaiverEvents = await db.acceptanceEvent.count({
+      where: { userId: user.id, type: AcceptanceType.health_waiver },
+    });
+    expect(refreshedAccount.profile).toMatchObject({
+      hasAgreedToHealth: true,
+      needsHealthWaiverReacceptance: false,
+    });
+    expect(healthWaiverEvents).toBe(2);
   });
 
   it("persists display preferences that can be reused by member-facing date formatting", async () => {

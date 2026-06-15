@@ -76,11 +76,13 @@ async function sendGiftDeliveryEmail(giftId: string) {
         ? `${gift.purchaserFirstName} ${gift.purchaserLastName} has sent you a gift for ${gift.productTitleSnapshot}.\nRedeem it here: ${redemptionUrl}`
         : `Your gift link for ${gift.productTitleSnapshot} is ready.\nOpen it here: ${redemptionUrl}`,
     tag: "gift-delivery",
+    templateKey: "gift-delivery",
     metadata: {
       giftPurchaseId: gift.id,
       giftType: gift.type,
       code: gift.code,
     },
+    dispatchMode: "immediate_best_effort",
   });
 }
 

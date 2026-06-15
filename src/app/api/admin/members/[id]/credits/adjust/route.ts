@@ -23,6 +23,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       adminUserId: adminUser.id,
       delta,
       reason,
+      requestId: request.headers.get("x-request-id"),
+      requestPath: new URL(request.url).pathname,
+      requestIp:
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        request.headers.get("x-real-ip"),
     });
 
     if (!member) {

@@ -307,7 +307,7 @@ Site-wide content fragments used across multiple pages.
 | Field                       | Type       | Notes                                                                                                                  |
 | --------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `siteName`                  | Short Text | "Shruti Turner"                                                                                                        |
-| `siteTagline`               | Short Text | "Strength & Yoga for Complex Bodies"                                                                                   |
+| `siteTagline`               | Short Text | "Strength & Yoga for ies"                                                                                   |
 | `defaultSeoDescription`     | Long Text  | Fallback meta description.                                                                                             |
 | `headerNavItems`            | JSON       | `[{ label, href, children?: [{ label, href }] }]`                                                                      |
 | `footerContent`             | Rich Text  | Footer blurb text.                                                                                                     |

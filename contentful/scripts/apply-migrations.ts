@@ -5,7 +5,7 @@ import { getContentfulScriptEnv } from "./env.ts";
 const { spaceId, environmentId, managementToken } = getContentfulScriptEnv();
 const { createClient } = contentfulManagement;
 
-const client = createClient({ accessToken: managementToken });
+const client = createClient({ accessToken: managementToken }, { type: "legacy" });
 const CMA_BASE_URL = `https://api.contentful.com/spaces/${spaceId}/environments/${environmentId}`;
 
 type ContentTypeLike = {
@@ -203,7 +203,6 @@ async function run() {
   await configureSlugEditor("authorProfile", "name");
   await configureSlugEditor("blogPost", "title");
   await configureSlugEditor("instructorProfile", "name");
-  await configureSlugEditor("legalDocument", "title");
   await configureSlugEditor("leadMagnet", "title");
   await configureSlugEditor("newsletterTemplate", "title");
 }

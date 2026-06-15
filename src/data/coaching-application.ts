@@ -1,4 +1,6 @@
-export type CoachingApplicationTier = "coached-plan" | "coaching" | "unsure";
+import type { CoachingApplicationPayloadTier, CoachingOfferKey } from "@/data/marketing";
+
+export type CoachingApplicationTier = CoachingOfferKey;
 
 export type CoachingApplicationOption = {
   value: string;
@@ -20,100 +22,85 @@ export const coachingApplicationTierOptions: Array<{
   value: CoachingApplicationTier;
   title: string;
   description: string;
+  payloadTier: CoachingApplicationPayloadTier;
 }> = [
-  {
-    value: "coached-plan",
-    title: "Coached Training Plan",
-    description: "Weekly written review, programming support, and Move Well Membership included.",
-  },
-  {
-    value: "coaching",
-    title: "1:1 Coaching",
-    description: "Highest-touch support with programming, calls, review, and accountability.",
-  },
-  {
-    value: "unsure",
-    title: "I'm not sure yet",
-    description: "I want help deciding which level of support fits my body and life best.",
-  },
-];
+    {
+      value: "guided_accountability",
+      title: "Guided Accountability",
+      description: "Lighter-touch accountability and review prompts for people with their own plan.",
+      payloadTier: "personal_programme",
+    },
+    {
+      value: "independent_training_plan",
+      title: "Independent Training Plan",
+      description: "Tailored programme writing and monthly review delivered through Everfit.",
+      payloadTier: "personal_programme",
+    },
+    {
+      value: "guided_training_plan",
+      title: "Guided Training Plan",
+      description: "Bespoke programming plus closer written review and accountability.",
+      payloadTier: "coached_plan",
+    },
+    {
+      value: "one_to_one_coaching",
+      title: "1:1 Offers",
+      description: "Highest-touch coaching with messaging, reactive adjustments and a monthly call.",
+      payloadTier: "coaching",
+    },
+  ];
 
 export const coachingApplicationQuestions: CoachingApplicationQuestion[] = [
   {
-    id: "goals",
-    label: "What do you want training or coaching to support right now?",
+    id: "trainingEvent",
+    label: "Do you have a life or sporting event you are training for?",
     type: "textarea",
     required: true,
-    placeholder:
-      "Tell us what you want more of: confidence, strength, consistency, fewer flare-related setbacks, a better relationship with movement, or something else.",
+    placeholder: "For example: wedding, 10K race, HYROX, hiking trip, surgery prep, or something else.",
   },
   {
     id: "conditions",
-    label: "What symptoms, conditions, injuries, or complexity should we know about?",
+    label:
+      "Please share any chronic or acute injuries or conditions you are living with to help me tailor support for you.",
     type: "textarea",
     required: true,
     placeholder:
-      "Share anything relevant to pain, fatigue, hypermobility, autoimmune disease, flare patterns, injuries, medication changes, or other context that affects how you train.",
+      "Share anything relevant to pain, fatigue, hypermobility, autoimmune disease, flare patterns, recent injuries, medication changes, or other context that affects how you train.",
   },
   {
-    id: "trainingExperience",
-    label: "What is your current training experience?",
+    id: "typicalWeek",
+    label: "What does a typical week of activity/work look like for you?",
     type: "textarea",
     required: true,
     placeholder:
-      "What are you doing now, what has or has not worked before, and how confident do you feel training independently?",
+      "Include work patterns, movement, sport, classes, rest, care responsibilities, commuting, or anything that shapes your week.",
   },
   {
-    id: "supportLevel",
-    label: "What level of support feels most helpful right now?",
-    type: "select",
-    required: true,
-    options: [
-      { value: "light", label: "Light-touch structure and review" },
-      { value: "moderate", label: "Regular guidance and accountability" },
-      { value: "high", label: "Close oversight and ongoing calibration" },
-      { value: "unsure", label: "I'm not sure yet" },
-    ],
-  },
-  {
-    id: "availability",
-    label: "Anything we should know about your schedule, energy, or capacity?",
+    id: "scheduleConsiderations",
+    label: "Are there any schedule considerations I should take into account when supporting you?",
     type: "textarea",
     required: true,
     placeholder:
-      "Let us know about work, care responsibilities, appointments, travel, fluctuating capacity, and when support is most realistic for you.",
+      "Tell me about shift patterns, appointments, travel, school runs, energy fluctuations, preferred training days, or time constraints.",
   },
   {
-    id: "membership",
-    label: "Do you currently attend Move Well Classes or hold membership?",
-    type: "select",
+    id: "equipment",
+    label: "What equipment or training access do you have?",
+    type: "textarea",
     required: true,
-    options: [
-      { value: "member", label: "Yes, I have membership" },
-      { value: "credits", label: "Yes, I use credits or attend sometimes" },
-      { value: "new", label: "No, I would be new to classes" },
-    ],
-  },
-  {
-    id: "coachedPlanContext",
-    label: "What would make a coached training plan feel useful and sustainable?",
-    type: "textarea",
-    placeholder:
-      "Tell us what kind of review, accountability, or adaptation would help you stay consistent.",
-    tiers: ["coached-plan", "unsure"],
-  },
-  {
-    id: "coachingContext",
-    label: "Why does higher-touch coaching feel relevant right now?",
-    type: "textarea",
-    placeholder:
-      "Tell us if you need closer oversight, strategy, accountability, more nuanced adaptation, or support around a particularly complex season.",
-    tiers: ["coaching", "unsure"],
+    placeholder: "Gym access, home weights, bands, machines, space constraints...",
   },
   {
     id: "anythingElse",
-    label: "Anything else you want us to know before we review your application?",
+    label: "Anything else you would like me to know?",
     type: "textarea",
     placeholder: "Optional, but useful if there is context not covered above.",
+  },
+  {
+    id: "heardAbout",
+    label: "How did you hear about me?",
+    type: "textarea",
+    required: true,
+    placeholder: "Instagram, Google, referral, class, event, newsletter, another practitioner...",
   },
 ];

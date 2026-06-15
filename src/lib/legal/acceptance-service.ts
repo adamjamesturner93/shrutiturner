@@ -5,6 +5,7 @@ import { getCurrentPolicyVersion, getCurrentPolicyVersions } from "@/lib/legal/p
 export type AcceptanceRequirement = {
   type: AcceptanceType;
   surface: string;
+  maxAgeDays?: number;
 };
 
 export type AcceptanceRequirementState = {
@@ -12,10 +13,43 @@ export type AcceptanceRequirementState = {
   surface: string;
   currentVersion: string;
   acceptedVersion: string | null;
+  acceptedAt: string | null;
+  expiresAt: string | null;
   policyVersionId: string;
   acceptanceEventId: string | null;
   isCurrent: boolean;
+  staleReason: "missing" | "version" | "expired" | null;
 };
+
+export const PHYSICAL_SERVICE_HEALTH_WAIVER_MAX_AGE_DAYS = 365;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export function isAcceptanceDateFresh(
+  acceptedAt: Date | string | null | undefined,
+  maxAgeDays?: number,
+  now = new Date()
+) {
+  if (!acceptedAt) return false;
+  if (!maxAgeDays) return true;
+
+  const acceptedDate = typeof acceptedAt === "string" ? new Date(acceptedAt) : acceptedAt;
+  if (Number.isNaN(acceptedDate.getTime())) return false;
+
+  return now.getTime() - acceptedDate.getTime() < maxAgeDays * DAY_MS;
+}
+
+export function getPhysicalServiceAcceptanceRequirements(surface: string): AcceptanceRequirement[] {
+  return [
+    { type: AcceptanceType.terms, surface },
+    {
+      type: AcceptanceType.health_waiver,
+      surface,
+      maxAgeDays: PHYSICAL_SERVICE_HEALTH_WAIVER_MAX_AGE_DAYS,
+    },
+    { type: AcceptanceType.health_data, surface },
+  ];
+}
 
 export class AcceptanceRequiredError extends Error {
   details: {
@@ -125,15 +159,32 @@ export async function getAcceptanceRequirementStates(
   return requirements.map((requirement, index) => {
     const policy = policies[index];
     const accepted = latestByType.get(requirement.type) || null;
+    const hasCurrentVersion = accepted?.version === policy.version;
+    const isFresh = isAcceptanceDateFresh(accepted?.acceptedAt, requirement.maxAgeDays);
+    const expiresAt =
+      accepted?.acceptedAt && requirement.maxAgeDays
+        ? new Date(accepted.acceptedAt.getTime() + requirement.maxAgeDays * DAY_MS)
+        : null;
+    const isCurrent = hasCurrentVersion && isFresh;
+    const staleReason: AcceptanceRequirementState["staleReason"] = !accepted
+      ? "missing"
+      : !hasCurrentVersion
+        ? "version"
+        : !isFresh
+          ? "expired"
+          : null;
 
     return {
       type: requirement.type,
       surface: requirement.surface,
       currentVersion: policy.version,
       acceptedVersion: accepted?.version || null,
+      acceptedAt: accepted?.acceptedAt.toISOString() || null,
+      expiresAt: expiresAt?.toISOString() || null,
       policyVersionId: policy.id,
       acceptanceEventId: accepted?.id || null,
-      isCurrent: accepted?.version === policy.version,
+      isCurrent,
+      staleReason,
     };
   });
 }

@@ -13,7 +13,10 @@ test("personal programme page shows the refreshed hero and delivery detail", asy
     })
   ).toBeVisible();
   await expect(page.getByText("Delivered in Everfit")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "A lower-touch route with real structure behind it." })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "A lower-touch route with real structure behind it." })
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Apply First" })).toBeVisible();
 });
 
 test("coaching application submits the selected tier and answers", async ({ page }) => {
@@ -32,28 +35,34 @@ test("coaching application submits the selected tier and answers", async ({ page
     });
   });
 
-  await page.goto("/coaching/apply?tier=coaching");
+  await page.goto("/coaching/apply?offer=one_to_one_coaching");
 
-  await expect(page.getByRole("heading", { name: "Apply for higher-touch support" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Apply to work with Shruti." })).toBeVisible();
   await page.getByLabel("Name *").fill("Taylor Jordan");
   await page.getByLabel("Email *").fill("taylor@example.com");
   await page
-    .getByLabel("What do you want training or coaching to support right now? *")
-    .fill("I want more confidence training consistently without flare setbacks.");
+    .getByLabel("Do you have a life or sporting event you are training for? *")
+    .fill("A 10K race and a hiking trip.");
   await page
-    .getByLabel("What symptoms, conditions, injuries, or complexity should we know about? *")
-    .fill("Psoriatic arthritis, fatigue, and a history of overdoing it on better days.");
+    .getByLabel(
+      "Please share any chronic or acute injuries or conditions you are living with to help me tailor support for you. *"
+    )
+    .fill("Psoriatic arthritis, fatigue and a history of overdoing it on better days.");
   await page
-    .getByLabel("What is your current training experience? *")
-    .fill("I do a little yoga and walking, but I struggle to progress on my own.");
-  await page.locator("#supportLevel").selectOption("high");
+    .getByLabel("What does a typical week of activity/work look like for you? *")
+    .fill("I work at a desk, walk most days and do one yoga class when energy allows.");
   await page
-    .getByLabel("Anything we should know about your schedule, energy, or capacity? *")
+    .getByLabel(
+      "Are there any schedule considerations I should take into account when supporting you? *"
+    )
     .fill("My energy is best in the mornings and worse after busy work weeks.");
-  await page.locator("#membership").selectOption("new");
   await page
-    .getByLabel("Why does higher-touch coaching feel relevant right now?")
-    .fill("I need closer calibration and accountability while rebuilding trust in training.");
+    .getByLabel("What equipment or training access do you have? *")
+    .fill("Gym access plus resistance bands at home.");
+  await page
+    .getByLabel("Anything else you would like me to know?")
+    .fill("I want support that keeps me consistent without pushing through warning signs.");
+  await page.getByLabel("How did you hear about me? *").fill("Instagram.");
   await page.getByLabel(/I have read and agree to the/i).check();
 
   await page.getByRole("button", { name: "Submit Application" }).click();
@@ -67,12 +76,14 @@ test("coaching application submits the selected tier and answers", async ({ page
     agreedToCoachingAgreement: true,
   });
   expect(requestBody?.answers).toMatchObject({
-    goals: "I want more confidence training consistently without flare setbacks.",
-    conditions: "Psoriatic arthritis, fatigue, and a history of overdoing it on better days.",
-    trainingExperience: "I do a little yoga and walking, but I struggle to progress on my own.",
-    supportLevel: "high",
-    availability: "My energy is best in the mornings and worse after busy work weeks.",
-    membership: "new",
-    coachingContext: "I need closer calibration and accountability while rebuilding trust in training.",
+    trainingEvent: "A 10K race and a hiking trip.",
+    conditions: "Psoriatic arthritis, fatigue and a history of overdoing it on better days.",
+    typicalWeek: "I work at a desk, walk most days and do one yoga class when energy allows.",
+    scheduleConsiderations: "My energy is best in the mornings and worse after busy work weeks.",
+    equipment: "Gym access plus resistance bands at home.",
+    anythingElse:
+      "I want support that keeps me consistent without pushing through warning signs.",
+    heardAbout: "Instagram.",
+    offerKey: "one_to_one_coaching",
   });
 });

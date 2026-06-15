@@ -4,6 +4,11 @@ const requireOwnerAdminUserMock = vi.fn();
 const createPrivacyExportRequestMock = vi.fn();
 const listBillingDisputeCasesMock = vi.fn();
 const listScheduledJobRunsMock = vi.fn();
+const authMock = vi.fn();
+
+vi.mock("@/lib/auth", () => ({
+  auth: authMock,
+}));
 
 vi.mock("@/lib/api/auth-user", () => ({
   requireOwnerAdminUser: requireOwnerAdminUserMock,
@@ -30,6 +35,7 @@ const jobsRoute = await import("@/app/api/admin/jobs/route");
 describe("owner-admin route guards", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    authMock.mockResolvedValue({ user: { id: "staff_123", role: "member" } });
     requireOwnerAdminUserMock.mockRejectedValue(new Error("FORBIDDEN"));
   });
 
@@ -52,10 +58,13 @@ describe("owner-admin route guards", () => {
   });
 
   it("hides scheduled-job tooling from non-owner-admin users", async () => {
-    const response = await jobsRoute.GET();
+    const response = await jobsRoute.GET(new Request("http://localhost/api/admin/jobs"));
 
     expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toEqual({ message: "Forbidden" });
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      error: { code: "FORBIDDEN", message: "Forbidden" },
+    });
     expect(listScheduledJobRunsMock).not.toHaveBeenCalled();
   });
 });

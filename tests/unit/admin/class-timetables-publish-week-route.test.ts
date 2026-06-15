@@ -39,6 +39,7 @@ describe("POST /api/admin/classes/timetables/publish-week", () => {
     expect(response.status).toBe(200);
     expect(publishActiveClassTimetablesForWeekMock).toHaveBeenCalledWith({
       weekStart: "2026-04-06",
+      actorUserId: "admin_123",
     });
   });
 

@@ -35,3 +35,5 @@ coverage
 # OS/editor noise
 .DS_Store
 test-results/
+
+/prisma/legacy.sql

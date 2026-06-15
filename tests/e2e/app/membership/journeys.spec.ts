@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { db } from "@/lib/db";
+import { db } from "../../helpers/db";
 import {
   CURRENT_HEALTH_DATA_CONSENT_VERSION,
   CURRENT_HEALTH_WAIVER_VERSION,
@@ -11,11 +11,11 @@ const pricingPayload = {
   currency: "GBP",
   source: "fallback" as const,
   membership: {
-    movewell: 29,
+    movewell: 35,
   },
   membershipDisplay: {
-    movewellMonthly: 29,
-    movewellAnnual: 290,
+    movewellMonthly: 35,
+    movewellAnnual: 350,
     trialDays: 14,
   },
   credits: {
@@ -50,7 +50,7 @@ function createMembershipState(options?: {
       classesPerWeek: 99,
       classesUsedThisWeek: 2,
       classesRemaining: 97,
-      pricePence: 2900,
+      pricePence: 3500,
       cancelAtPeriodEnd: options?.cancelAtPeriodEnd ?? false,
       accessActive: active,
       compliance: {
@@ -203,7 +203,7 @@ test("membership page opens the billing portal from the active membership state"
           createdAt: "2026-03-20T12:00:00.000Z",
           kind: "membership_charge",
           description: "Move Well Membership",
-          amountPence: 2900,
+          amountPence: 3500,
           status: "paid",
         },
       ],
@@ -261,6 +261,7 @@ test("membership page can cancel and resume a scheduled cancellation", async ({ 
   await page.goto("/dashboard/membership");
 
   await page.getByRole("button", { name: "Cancel membership" }).click();
+  await page.getByLabel("Reason for cancelling").selectOption("schedule_changed");
   await page.getByRole("dialog").getByRole("button", { name: "Cancel Membership" }).click();
   await expect(page.getByText("scheduled to end on 2026-05-01")).toBeVisible();
 
@@ -392,9 +393,8 @@ test("membership checkout can recover from a legal acceptance conflict", async (
   });
 
   await loginWithEmail(page, email);
-  await page.goto("/dashboard/membership");
+  await page.goto("/dashboard/membership?subscribe=1&interval=monthly");
 
-  await page.getByRole("button", { name: /Start Monthly/i }).click();
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Acknowledge and continue" }).click();
   await expect(page.getByText("Updated agreements are required before checkout.")).toBeVisible();

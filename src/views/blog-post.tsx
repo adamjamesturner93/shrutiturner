@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import { Layout } from "../components/layout";
 import { useI18n } from "../lib/use-i18n";
 import { Button } from "../components/ui/button";
@@ -10,10 +11,17 @@ import { ArrowLeft, ArrowRight, Globe, Instagram } from "lucide-react";
 import Link from "next/link";
 import { BlogReactions } from "@/components/blog-reactions";
 import { BlogComments } from "@/components/blog-comments";
-import type { BlogPostContent } from "@/lib/content";
+import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
+import type { BlogPostContent } from "@/lib/content/types";
 import { BlogShare } from "../components/blog-share";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
-import { formatAuthorList, getPostAuthors, getRelatedPosts } from "@/lib/blog/view-model";
+import {
+  formatAuthorList,
+  getBlogPostContextualCta,
+  getPostAuthors,
+  getRelatedPosts,
+  type BlogPostContextualCta,
+} from "@/lib/blog/view-model";
 
 interface BlogPostPageProps {
   post: BlogPostContent;
@@ -26,6 +34,7 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
   const relatedPosts = getRelatedPosts(post, posts);
   const authors = getPostAuthors(post);
   const authorHeading = authors.length > 1 ? "About the Authors" : "About the Author";
+  const contextualCta = getBlogPostContextualCta(post);
   const articleSchemaAuthors = authors.map((author) => ({
     "@type": "Person",
     name: author.name,
@@ -54,6 +63,16 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Blog
               </Link>
+
+              <PublicBreadcrumbs
+                inverted
+                className="mt-6"
+                items={[
+                  { name: "Home", href: "/" },
+                  { name: "Blog", href: "/blog" },
+                  { name: post.title, href: `/blog/${post.id}` },
+                ]}
+              />
 
               <div className="mt-6 flex flex-wrap gap-2">
                 {post.tags.map((tag) => (
@@ -144,8 +163,43 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
                 if (index === 0) {
                   const lines = section.split("\n").filter((line) => line.trim());
                   return (
-                    <div key={index} className="space-y-4">
-                      {lines.slice(1).map((line, lineIndex) => {
+                    <Fragment key={index}>
+                      <div className="space-y-4">
+                        {lines.slice(1).map((line, lineIndex) => {
+                          if (line.startsWith("### ")) {
+                            return (
+                              <h3 key={lineIndex} className="mt-8 mb-4 text-2xl">
+                                {line.replace("### ", "")}
+                              </h3>
+                            );
+                          }
+                          if (line.match(/^\d+\.\s/)) {
+                            return (
+                              <p key={lineIndex} className="ml-4">
+                                {line}
+                              </p>
+                            );
+                          }
+                          if (line.startsWith("- ")) {
+                            return (
+                              <p key={lineIndex} className="ml-4">
+                                {line}
+                              </p>
+                            );
+                          }
+                          return <p key={lineIndex}>{line}</p>;
+                        })}
+                      </div>
+                    </Fragment>
+                  );
+                }
+
+                const [heading, ...content] = section.split("\n").filter((line) => line.trim());
+                return (
+                  <Fragment key={index}>
+                    <div className="space-y-4">
+                      <h2 className="mt-12 mb-6 text-3xl">{heading}</h2>
+                      {content.map((line, lineIndex) => {
                         if (line.startsWith("### ")) {
                           return (
                             <h3 key={lineIndex} className="mt-8 mb-4 text-2xl">
@@ -170,38 +224,8 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
                         return <p key={lineIndex}>{line}</p>;
                       })}
                     </div>
-                  );
-                }
-
-                const [heading, ...content] = section.split("\n").filter((line) => line.trim());
-                return (
-                  <div key={index} className="space-y-4">
-                    <h2 className="mt-12 mb-6 text-3xl">{heading}</h2>
-                    {content.map((line, lineIndex) => {
-                      if (line.startsWith("### ")) {
-                        return (
-                          <h3 key={lineIndex} className="mt-8 mb-4 text-2xl">
-                            {line.replace("### ", "")}
-                          </h3>
-                        );
-                      }
-                      if (line.match(/^\d+\.\s/)) {
-                        return (
-                          <p key={lineIndex} className="ml-4">
-                            {line}
-                          </p>
-                        );
-                      }
-                      if (line.startsWith("- ")) {
-                        return (
-                          <p key={lineIndex} className="ml-4">
-                            {line}
-                          </p>
-                        );
-                      }
-                      return <p key={lineIndex}>{line}</p>;
-                    })}
-                  </div>
+                    {index === 1 ? <ContextualPostCta cta={contextualCta} /> : null}
+                  </Fragment>
                 );
               })}
             </div>
@@ -399,9 +423,51 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
               "@type": "WebPage",
               "@id": `https://shrutiturner.co.uk/blog/${post.id}`,
             },
+            breadcrumb: {
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                {
+                  "@type": "ListItem",
+                  position: 1,
+                  name: "Home",
+                  item: "https://shrutiturner.co.uk",
+                },
+                {
+                  "@type": "ListItem",
+                  position: 2,
+                  name: "Blog",
+                  item: "https://shrutiturner.co.uk/blog",
+                },
+                {
+                  "@type": "ListItem",
+                  position: 3,
+                  name: post.title,
+                  item: `https://shrutiturner.co.uk/blog/${post.id}`,
+                },
+              ],
+            },
           }),
         }}
       />
     </Layout>
+  );
+}
+
+function ContextualPostCta({ cta }: { cta: BlogPostContextualCta }) {
+  return (
+    <aside className="border-brand-accent/20 bg-brand-warm/35 not-prose my-10 rounded-2xl border p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <h2 className="text-brand-dark text-2xl">{cta.title}</h2>
+          <p className="text-muted-foreground leading-relaxed">{cta.body}</p>
+        </div>
+        <Button asChild className="shrink-0">
+          <Link href={cta.href}>
+            {cta.label}
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
+        </Button>
+      </div>
+    </aside>
   );
 }

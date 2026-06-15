@@ -3,6 +3,7 @@ import { PrivacyRequestStatus, PrivacyRequestType, Prisma } from "@prisma/client
 import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { db } from "@/lib/db";
 import { createZipArchive } from "@/lib/privacy/zip";
+import { recordUserLifecycleEvent } from "@/lib/user-lifecycle";
 
 function buildChecksum(value: string) {
   return createHash("sha256").update(value).digest("hex");
@@ -10,6 +11,12 @@ function buildChecksum(value: string) {
 
 function anonymizedEmail(userId: string) {
   return `deleted+${userId}@redacted.invalid`;
+}
+
+function addMonths(date: Date, months: number) {
+  const next = new Date(date);
+  next.setUTCMonth(next.getUTCMonth() + months);
+  return next;
 }
 
 function toJsonString(value: unknown) {
@@ -184,9 +191,17 @@ function getPrivacyExportSections(exportData: PrivacyExportData) {
     { key: "class-bookings", fileName: "class-bookings.json", data: exportData.classBookings },
     { key: "attendance", fileName: "attendance.json", data: exportData.attendance },
     { key: "health-profile", fileName: "health-profile.json", data: exportData.healthProfile },
-    { key: "health-revisions", fileName: "health-revisions.json", data: exportData.healthRevisions },
+    {
+      key: "health-revisions",
+      fileName: "health-revisions.json",
+      data: exportData.healthRevisions,
+    },
     { key: "consent-history", fileName: "consent-history.json", data: exportData.consentHistory },
-    { key: "retreat-bookings", fileName: "retreat-bookings.json", data: exportData.retreatBookings },
+    {
+      key: "retreat-bookings",
+      fileName: "retreat-bookings.json",
+      data: exportData.retreatBookings,
+    },
     {
       key: "small-group-enrolments",
       fileName: "small-group-enrolments.json",
@@ -373,8 +388,7 @@ export async function downloadPrivacyExportRequest(requestId: string) {
       (Array.isArray(request.exportSectionsJson)
         ? request.exportSectionsJson.map((section) => String(section))
         : metadata.includedSections) || metadata.includedSections,
-    rowCounts:
-      (request.exportRowCountsJson as Record<string, number> | null) || metadata.rowCounts,
+    rowCounts: (request.exportRowCountsJson as Record<string, number> | null) || metadata.rowCounts,
   });
 
   return {
@@ -386,7 +400,7 @@ export async function downloadPrivacyExportRequest(requestId: string) {
 }
 
 export async function previewPrivacyDeletion(userId: string) {
-  const [openDisputes, sessions, healthProfile, retreatBookings, programmeEnrollments] =
+  const [openDisputes, sessions, healthProfile, retreatBookings, programmeEnrollments, user] =
     await Promise.all([
       db.billingDisputeCase.count({
         where: {
@@ -405,24 +419,26 @@ export async function previewPrivacyDeletion(userId: string) {
         },
       }),
       db.smallGroupProgrammeEnrollment.count({ where: { userId } }),
+      db.user.findUnique({
+        where: { id: userId },
+        select: { legalHoldUntil: true },
+      }),
     ]);
+
+  const activeLegalHold =
+    user?.legalHoldUntil && user.legalHoldUntil.getTime() > Date.now() ? "Active legal hold" : null;
 
   return {
     userId,
-    blocked: openDisputes > 0,
-    blockReason: openDisputes > 0 ? "Active dispute hold" : null,
+    blocked: openDisputes > 0 || Boolean(activeLegalHold),
+    blockReason: activeLegalHold || (openDisputes > 0 ? "Active dispute hold" : null),
     summary: {
       authSessions: sessions,
       hasHealthProfile: Boolean(healthProfile),
       retreatBookings,
       programmeEnrollments,
     },
-    deletes: [
-      "Active Auth.js sessions",
-      "Health profile revisions",
-      "Structured health condition selections",
-      "Live health profile record",
-    ],
+    deletes: ["Active Auth.js sessions", "Immediate account access and live sessions"],
     anonymises: [
       "Core account profile fields",
       "Retreat booking personal and health fields",
@@ -432,6 +448,8 @@ export async function previewPrivacyDeletion(userId: string) {
       "Newsletter subscriber identity",
     ],
     preserves: [
+      "Health declarations and revisions for up to 6 months after deletion",
+      "Legal acceptance records for up to 6 months after deletion",
       "Finance and payment records",
       "Dispute and audit trails",
       "Membership and booking identifiers",
@@ -467,27 +485,10 @@ export async function executePrivacyDeletion(actorUserId: string, userId: string
 
   const replacementEmail = anonymizedEmail(userId);
   const executedAt = new Date();
+  const retainedUntil = addMonths(executedAt, 6);
 
   await db.$transaction(async (tx) => {
     await tx.session.deleteMany({
-      where: { userId },
-    });
-
-    await tx.healthProfileRevision.deleteMany({
-      where: {
-        profile: {
-          userId,
-        },
-      },
-    });
-    await tx.healthConditionSelection.deleteMany({
-      where: {
-        profile: {
-          userId,
-        },
-      },
-    });
-    await tx.healthProfile.deleteMany({
       where: { userId },
     });
 
@@ -563,6 +564,7 @@ export async function executePrivacyDeletion(actorUserId: string, userId: string
         lastName: null,
         name: "Deleted User",
         email: replacementEmail,
+        deletedAt: executedAt,
         image: null,
         dob: null,
         gender: null,
@@ -593,8 +595,19 @@ export async function executePrivacyDeletion(actorUserId: string, userId: string
     metadataJson: {
       userId,
       replacementEmail,
+      retainedUntil: retainedUntil.toISOString(),
+      retainedData: ["acceptance_events", "health_profile"],
     },
   });
+
+  await recordUserLifecycleEvent({
+    eventType: "user_deleted",
+    userId,
+    actorUserId,
+    payload: {
+      replacementEmail,
+    },
+  }).catch(() => null);
 
   return db.privacyRequest.findUniqueOrThrow({
     where: { id: request.id },

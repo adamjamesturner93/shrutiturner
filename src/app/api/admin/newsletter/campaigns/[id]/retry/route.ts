@@ -2,11 +2,19 @@ import { NextResponse } from "next/server";
 import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { retryContentfulCampaign } from "@/lib/newsletter/campaign-automation";
 
-export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    await requireStaffAdminUser();
+    const adminUser = await requireStaffAdminUser();
     const { id } = await context.params;
-    const result = await retryContentfulCampaign(id);
+    const result = await retryContentfulCampaign({
+      campaignId: id,
+      actorUserId: adminUser.id,
+      requestId: request.headers.get("x-request-id"),
+      requestPath: new URL(request.url).pathname,
+      requestIp:
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        request.headers.get("x-real-ip"),
+    });
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {

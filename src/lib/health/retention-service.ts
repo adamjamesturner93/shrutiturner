@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
+import { recordUserLifecycleEvent } from "@/lib/user-lifecycle";
 
-const DEFAULT_RETENTION_MONTHS = 24;
+const DEFAULT_RETENTION_MONTHS = 6;
 
 function subtractMonths(date: Date, months: number) {
   const next = new Date(date);
@@ -13,7 +14,7 @@ export async function processHealthDataRetention(now = new Date()) {
   const profiles = await db.healthProfile.findMany({
     include: {
       user: {
-        select: { id: true },
+        select: { id: true, legalHoldUntil: true, deletedAt: true },
       },
       revisions: {
         select: { id: true },
@@ -24,8 +25,17 @@ export async function processHealthDataRetention(now = new Date()) {
   let deletedProfiles = 0;
   let clearedRetreatBookings = 0;
   let clearedCoachingCheckIns = 0;
+  let purgedDeletedUsers = 0;
+  let purgedAcceptanceEvents = 0;
 
   for (const profile of profiles) {
+    if (profile.user.legalHoldUntil && profile.user.legalHoldUntil > now) {
+      continue;
+    }
+    if (profile.user.deletedAt) {
+      continue;
+    }
+
     const latestAttendance = await db.classBooking.findFirst({
       where: {
         userId: profile.userId,
@@ -107,10 +117,71 @@ export async function processHealthDataRetention(now = new Date()) {
     clearedCoachingCheckIns += updated.count;
   }
 
+  const deletedUsers = await db.user.findMany({
+    where: {
+      deletedAt: {
+        lte: cutoff,
+      },
+      OR: [{ legalHoldUntil: null }, { legalHoldUntil: { lte: now } }],
+    },
+    select: {
+      id: true,
+      deletedAt: true,
+    },
+  });
+
+  for (const user of deletedUsers) {
+    const purgeResult = await db.$transaction(async (tx) => {
+      const acceptanceEvents = await tx.acceptanceEvent.deleteMany({
+        where: { userId: user.id },
+      });
+
+      await tx.healthProfileRevision.deleteMany({
+        where: {
+          profile: {
+            userId: user.id,
+          },
+        },
+      });
+      await tx.healthConditionSelection.deleteMany({
+        where: {
+          profile: {
+            userId: user.id,
+          },
+        },
+      });
+      const profiles = await tx.healthProfile.deleteMany({
+        where: { userId: user.id },
+      });
+
+      return {
+        acceptanceEvents: acceptanceEvents.count,
+        profiles: profiles.count,
+      };
+    });
+
+    purgedDeletedUsers += 1;
+    purgedAcceptanceEvents += purgeResult.acceptanceEvents;
+    deletedProfiles += purgeResult.profiles;
+
+    await recordUserLifecycleEvent({
+      eventType: "user_retention_purged",
+      userId: user.id,
+      payload: {
+        deletedAt: user.deletedAt?.toISOString() || null,
+        purgedAt: now.toISOString(),
+        acceptanceEventsDeleted: purgeResult.acceptanceEvents,
+        healthProfilesDeleted: purgeResult.profiles,
+      },
+    }).catch(() => null);
+  }
+
   return {
     retentionMonths: DEFAULT_RETENTION_MONTHS,
     deletedProfiles,
     clearedRetreatBookings,
     clearedCoachingCheckIns,
+    purgedDeletedUsers,
+    purgedAcceptanceEvents,
   };
 }

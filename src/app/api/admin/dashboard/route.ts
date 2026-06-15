@@ -3,8 +3,9 @@ import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { getAdminDashboardSummary } from "@/lib/admin/dashboard-service";
 
 export async function GET() {
+  await connection();
+
   try {
-    await connection();
     await requireStaffAdminUser();
     const summary = await getAdminDashboardSummary();
     return NextResponse.json(summary);

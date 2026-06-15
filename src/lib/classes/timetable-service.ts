@@ -1,5 +1,6 @@
 import { ClassRoomSetupStatus, ClassSessionStatus, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { getClassDefinitions } from "@/lib/content";
 import {
   getClassSessionRoomMode,
@@ -18,6 +19,32 @@ import type {
 const DEFAULT_TIMEZONE = "Europe/London";
 const DEFAULT_DRAFT_HORIZON_WEEKS = 8;
 const DEFAULT_PUBLISH_HORIZON_WEEKS = 4;
+
+async function logClassTimetableAction(input: {
+  actorUserId?: string | null;
+  actionType: string;
+  targetType: "class_timetable_rule" | "class_session";
+  targetId?: string | null;
+  reason?: string | null;
+  oldValueJson?: Prisma.InputJsonValue;
+  newValueJson?: Prisma.InputJsonValue;
+  metadataJson?: Prisma.InputJsonValue;
+}) {
+  if (!input.actorUserId) {
+    return;
+  }
+
+  await createAdminActionLog({
+    actorUserId: input.actorUserId,
+    actionType: input.actionType,
+    targetType: input.targetType,
+    targetId: input.targetId,
+    reason: input.reason,
+    oldValueJson: input.oldValueJson,
+    newValueJson: input.newValueJson,
+    metadataJson: input.metadataJson,
+  });
+}
 
 function toDateOnlyUtc(dateString: string) {
   return new Date(`${dateString}T00:00:00.000Z`);
@@ -345,6 +372,27 @@ export async function createClassTimetableRule(
     return created;
   });
 
+  await logClassTimetableAction({
+    actorUserId: createdByUserId,
+    actionType: "class_timetable_rule_created",
+    targetType: "class_timetable_rule",
+    targetId: rule.id,
+    newValueJson: {
+      classDefinitionSlug: input.classDefinitionSlug,
+      weekday: input.weekday,
+      startsAtLocal: input.startsAtLocal,
+      durationMinutes: input.durationMinutes,
+      timezone,
+      defaultCapacity: input.defaultCapacity,
+      instructorUserId: input.instructorUserId,
+      instructorProfileEntryId: input.instructorProfileEntryId || null,
+      startsOn: input.startsOn,
+      endsOn,
+      active: input.active ?? true,
+      exclusionDates,
+    },
+  });
+
   return rule;
 }
 
@@ -452,7 +500,7 @@ async function createMissingSessionsForRule(
 
 export async function generateDraftSessionsForTimetableRule(
   timetableRuleId: string,
-  options?: { fromDate?: Date; untilDate?: string; horizonWeeks?: number }
+  options?: { fromDate?: Date; untilDate?: string; horizonWeeks?: number; actorUserId?: string }
 ): Promise<DraftTimetableResultDto> {
   const rule = await db.classTimetableRule.findUnique({
     where: { id: timetableRuleId },
@@ -473,6 +521,20 @@ export async function generateDraftSessionsForTimetableRule(
     status: ClassSessionStatus.draft,
   });
 
+  await logClassTimetableAction({
+    actorUserId: options?.actorUserId,
+    actionType: "class_timetable_drafts_generated",
+    targetType: "class_timetable_rule",
+    targetId: timetableRuleId,
+    metadataJson: {
+      createdSessionIds: result.createdSessionIds,
+      createdCount: result.createdSessionIds.length,
+      skippedExistingCount: result.skippedExistingCount,
+      untilDate: options?.untilDate || null,
+      horizonWeeks: options?.horizonWeeks || DEFAULT_DRAFT_HORIZON_WEEKS,
+    },
+  });
+
   return {
     createdSessionIds: result.createdSessionIds,
     createdCount: result.createdSessionIds.length,
@@ -482,7 +544,8 @@ export async function generateDraftSessionsForTimetableRule(
 
 export async function updateClassTimetableRule(
   timetableRuleId: string,
-  input: Partial<ClassTimetableRuleInput>
+  input: Partial<ClassTimetableRuleInput>,
+  options?: { actorUserId?: string }
 ) {
   const existing = await db.classTimetableRule.findUnique({
     where: { id: timetableRuleId },
@@ -553,12 +616,65 @@ export async function updateClassTimetableRule(
 
     await replaceExclusions(tx, timetableRuleId, exclusionDates);
   });
+
+  await logClassTimetableAction({
+    actorUserId: options?.actorUserId,
+    actionType: "class_timetable_rule_updated",
+    targetType: "class_timetable_rule",
+    targetId: timetableRuleId,
+    oldValueJson: {
+      classDefinitionSlug: existing.classDefinitionSlug,
+      weekday: existing.weekday,
+      startsAtLocal: existing.startsAtLocal,
+      durationMinutes: existing.durationMinutes,
+      timezone: existing.timezone,
+      defaultCapacity: existing.defaultCapacity,
+      instructorUserId: existing.instructorUserId,
+      instructorProfileEntryId: existing.instructorProfileEntryId,
+      startsOn: toDateOnlyString(existing.startsOn),
+      endsOn: existing.endsOn ? toDateOnlyString(existing.endsOn) : null,
+      active: existing.active,
+      notes: existing.notes,
+    },
+    newValueJson: {
+      classDefinitionSlug: nextClassSlug,
+      weekday: nextWeekday,
+      startsAtLocal: nextStartsAtLocal,
+      durationMinutes: input.durationMinutes ?? existing.durationMinutes,
+      timezone: input.timezone ?? existing.timezone,
+      defaultCapacity: input.defaultCapacity ?? existing.defaultCapacity,
+      instructorUserId: nextInstructorUserId,
+      instructorProfileEntryId: nextInstructorProfileEntryId || null,
+      startsOn: nextStartsOn,
+      endsOn: nextEndsOn,
+      active: input.active ?? existing.active,
+      notes: input.notes !== undefined ? input.notes || null : existing.notes,
+      exclusionDates,
+    },
+  });
 }
 
-export async function deleteClassTimetableRule(timetableRuleId: string) {
+export async function deleteClassTimetableRule(
+  timetableRuleId: string,
+  options?: { actorUserId?: string }
+) {
   const existing = await db.classTimetableRule.findUnique({
     where: { id: timetableRuleId },
-    select: { id: true },
+    select: {
+      id: true,
+      classDefinitionSlug: true,
+      weekday: true,
+      startsAtLocal: true,
+      durationMinutes: true,
+      timezone: true,
+      defaultCapacity: true,
+      instructorUserId: true,
+      instructorProfileEntryId: true,
+      startsOn: true,
+      endsOn: true,
+      active: true,
+      notes: true,
+    },
   });
   if (!existing) {
     throw new Error("TIMETABLE_NOT_FOUND");
@@ -566,6 +682,27 @@ export async function deleteClassTimetableRule(timetableRuleId: string) {
 
   await db.classTimetableRule.delete({
     where: { id: timetableRuleId },
+  });
+
+  await logClassTimetableAction({
+    actorUserId: options?.actorUserId,
+    actionType: "class_timetable_rule_deleted",
+    targetType: "class_timetable_rule",
+    targetId: timetableRuleId,
+    oldValueJson: {
+      classDefinitionSlug: existing.classDefinitionSlug,
+      weekday: existing.weekday,
+      startsAtLocal: existing.startsAtLocal,
+      durationMinutes: existing.durationMinutes,
+      timezone: existing.timezone,
+      defaultCapacity: existing.defaultCapacity,
+      instructorUserId: existing.instructorUserId,
+      instructorProfileEntryId: existing.instructorProfileEntryId,
+      startsOn: toDateOnlyString(existing.startsOn),
+      endsOn: existing.endsOn ? toDateOnlyString(existing.endsOn) : null,
+      active: existing.active,
+      notes: existing.notes,
+    },
   });
 }
 
@@ -672,6 +809,29 @@ export async function endClassTimetableRule(params: {
     }
   }
 
+  await logClassTimetableAction({
+    actorUserId: params.endedByUserId,
+    actionType: "class_timetable_rule_ended",
+    targetType: "class_timetable_rule",
+    targetId: params.timetableRuleId,
+    reason,
+    oldValueJson: {
+      endsOn: rule.endsOn ? toDateOnlyString(rule.endsOn) : null,
+      active: rule.active,
+    },
+    newValueJson: {
+      endsOn: toDateOnlyString(nextEndsOn),
+      active: nextActive,
+    },
+    metadataJson: {
+      mode: params.mode,
+      lastClassDate,
+      cancelledCount,
+      skippedCount,
+      cancelledSessionIds: sessionsToCancel.map((session) => session.id),
+    },
+  });
+
   return {
     mode: params.mode,
     lastClassDate,
@@ -683,7 +843,7 @@ export async function endClassTimetableRule(params: {
 
 export async function publishClassTimetableRule(
   timetableRuleId: string,
-  options?: { fromDate?: Date; untilDate?: string; horizonWeeks?: number }
+  options?: { fromDate?: Date; untilDate?: string; horizonWeeks?: number; actorUserId?: string }
 ): Promise<PublishTimetableResultDto> {
   const rule = await db.classTimetableRule.findUnique({
     where: { id: timetableRuleId },
@@ -731,6 +891,22 @@ export async function publishClassTimetableRule(
     });
   }
 
+  await logClassTimetableAction({
+    actorUserId: options?.actorUserId,
+    actionType: "class_timetable_rule_published",
+    targetType: "class_timetable_rule",
+    targetId: timetableRuleId,
+    metadataJson: {
+      draftCreatedSessionIds: draftResult.createdSessionIds,
+      publishedSessionIds: draftSessions.map((session) => session.id),
+      draftCreatedCount: draftResult.createdSessionIds.length,
+      publishedCount: draftSessions.length,
+      skippedExistingCount: draftResult.skippedExistingCount,
+      untilDate: options?.untilDate || null,
+      horizonWeeks: options?.horizonWeeks || null,
+    },
+  });
+
   return {
     draftCreatedSessionIds: draftResult.createdSessionIds,
     publishedSessionIds: draftSessions.map((session) => session.id),
@@ -745,6 +921,7 @@ export async function publishClassTimetableRule(
 export async function generateDraftSessionsForActiveClassTimetables(params: {
   generateUntil: string;
   fromDate?: Date;
+  actorUserId?: string;
 }) {
   const now = params.fromDate || new Date();
   validateGenerateUntilDate(params.generateUntil, now);
@@ -761,6 +938,7 @@ export async function generateDraftSessionsForActiveClassTimetables(params: {
       result: await generateDraftSessionsForTimetableRule(rule.id, {
         fromDate: now,
         untilDate: params.generateUntil,
+        actorUserId: params.actorUserId,
       }),
     });
   }
@@ -778,6 +956,7 @@ export async function publishActiveClassTimetables(options?: {
   fromDate?: Date;
   untilDate?: string;
   horizonWeeks?: number;
+  actorUserId?: string;
 }) {
   const now = options?.fromDate || new Date();
   const publishUntil = options?.untilDate || getPublishLimitDate(now);
@@ -795,6 +974,7 @@ export async function publishActiveClassTimetables(options?: {
         fromDate: now,
         untilDate: publishUntil,
         horizonWeeks: options?.horizonWeeks,
+        actorUserId: options?.actorUserId,
       }),
     });
   }
@@ -811,6 +991,7 @@ export async function publishActiveClassTimetables(options?: {
 export async function publishActiveClassTimetablesForWeek(params: {
   weekStart: string;
   fromDate?: Date;
+  actorUserId?: string;
 }) {
   const now = params.fromDate || new Date();
   const { localToday, publishLimitDate } = validatePublishWeekStart(params.weekStart, now);
@@ -831,6 +1012,7 @@ export async function publishActiveClassTimetablesForWeek(params: {
       result: await publishClassTimetableRule(rule.id, {
         fromDate: toDateOnlyUtc(publishFrom),
         untilDate: weekUntil,
+        actorUserId: params.actorUserId,
       }),
     });
   }

@@ -13,6 +13,12 @@ enum UserRole {
   owner_admin
 }
 
+enum AuthChallengePurpose {
+  login
+  signup
+  email_change
+}
+
 enum AcceptanceType {
   terms
   health_waiver
@@ -76,6 +82,13 @@ enum MembershipStatus {
   past_due
 }
 
+enum MembershipDunningStatus {
+  open
+  suspended
+  recovered
+  cancelled
+}
+
 enum SubscriptionComplianceEventKind {
   disclosure_acknowledged
   trial_reminder
@@ -86,6 +99,15 @@ enum SubscriptionComplianceEventKind {
   membership_cancelled
   cooling_off_cancellation
   refund_issued
+  payment_failure_notice
+  payment_recovery_notice
+}
+
+enum BillingRefundStatus {
+  pending
+  succeeded
+  failed
+  credited
 }
 
 enum CreditEntryType {
@@ -181,6 +203,20 @@ enum NewsletterSubscriberStatus {
   unsubscribed
 }
 
+enum EmailDeliveryStatus {
+  queued
+  sending
+  sent
+  failed
+  dead_letter
+}
+
+enum EmailDeliveryAttemptStatus {
+  started
+  sent
+  failed
+}
+
 enum RetreatDateStatus {
   open
   sold_out
@@ -235,9 +271,11 @@ enum CoachingApplicationStatus {
   submitted
   under_review
   follow_up_needed
+  waitlisted
   approved
   declined
   converted
+  withdrawn
 }
 
 enum CoachingClientStatus {
@@ -246,6 +284,18 @@ enum CoachingClientStatus {
   active
   paused
   completed
+}
+
+enum CoachingPackageChangeStatus {
+  pending_client_confirmation
+  applied
+  cancelled
+}
+
+enum CoachingPackageChangeEffectiveMode {
+  next_invoice
+  immediate
+  manual
 }
 
 enum EverfitConnectionStatus {
@@ -346,6 +396,7 @@ model User {
   lastName                         String?
   name                             String?
   email                            String    @unique
+  pendingEmail                     String?
   emailVerified                    DateTime?
   image                            String?
   role                             UserRole  @default(student)
@@ -374,6 +425,9 @@ model User {
   referredByUserId                 String?
   authCode                         String?
   authCodeExpiry                   DateTime?
+  deletedAt                        DateTime?
+  legalHoldUntil                   DateTime?
+  legalHoldReason                  String?
   createdAt                        DateTime  @default(now())
   updatedAt                        DateTime  @updatedAt
 
@@ -386,6 +440,9 @@ model User {
   referralEventsReceived                ReferralEvent[]                           @relation("ReferredEvents")
   referralLedgerEntries                 ReferralLedgerEntry[]
   membershipSubscriptions               MembershipSubscription[]
+  membershipDunningCases                MembershipDunningCase[]
+  billingRefunds                        BillingRefund[]                          @relation("BillingRefundUser")
+  billingRefundActions                  BillingRefund[]                          @relation("BillingRefundActor")
   subscriptionComplianceEvents          SubscriptionComplianceEvent[]
   creditLedgerEntries                   CreditLedgerEntry[]
   billingEvents                         BillingEvent[]                            @relation("UserBillingEvents")
@@ -399,6 +456,7 @@ model User {
   createdClassTimetableRules            ClassTimetableRule[]                      @relation("ClassTimetableCreatedBy")
   classBookings                         ClassBooking[]
   classWaitlistEntries                  ClassWaitlistEntry[]
+  emailDeliveries                       EmailDelivery[]
   emailEvents                           EmailEvent[]
   attendanceOverrides                   ClassBooking[]                            @relation("AttendanceMarkedBy")
   classAttendanceEvents                 ClassAttendanceEvent[]
@@ -409,6 +467,8 @@ model User {
   retreatBookingsAttending              RetreatBooking[]                          @relation("RetreatBookingAttendee")
   coachingApplications                  CoachingApplication[]
   coachingProfile                       CoachingClientProfile?
+  coachingPackageChangeRequests         CoachingPackageChangeRequest[]            @relation("CoachingPackageChangeClient")
+  requestedCoachingPackageChanges       CoachingPackageChangeRequest[]            @relation("CoachingPackageChangeRequester")
   blogComments                          BlogComment[]
   blogReactions                         BlogReaction[]
   smallGroupEnrollments                 SmallGroupProgrammeEnrollment[]
@@ -428,6 +488,10 @@ model User {
   privacyRequestsForSubject             PrivacyRequest[]                          @relation("PrivacyRequestSubject")
   privacyRequestsActed                  PrivacyRequest[]                          @relation("PrivacyRequestActor")
   adminActionLogs                       AdminActionLog[]                          @relation("AdminActionActor")
+  authChallenges                        AuthChallenge[]
+  lifecycleEvents                       UserLifecycleEvent[]                      @relation("UserLifecycleSubject")
+  lifecycleActions                      UserLifecycleEvent[]                      @relation("UserLifecycleActor")
+  platformSettingsUpdates               PlatformSetting[]                         @relation("PlatformSettingUpdatedBy")
   billingDisputeCases                   BillingDisputeCase[]                      @relation("BillingDisputeUser")
   moderationActionsTaken                ParticipantModerationAction[]             @relation("ModerationActor")
   moderationActionsReceived             ParticipantModerationAction[]             @relation("ModerationSubject")
@@ -610,6 +674,9 @@ model AdminActionLog {
   targetType   String
   targetId     String?
   reason       String?
+  requestId    String?
+  requestPath  String?
+  requestIp    String?
   oldValueJson Json?
   newValueJson Json?
   metadataJson Json?
@@ -620,6 +687,64 @@ model AdminActionLog {
   @@index([actorUserId, createdAt])
   @@index([targetType, targetId, createdAt])
   @@index([actionType, createdAt])
+}
+
+model AuthChallenge {
+  id            String               @id @default(cuid())
+  email         String
+  userId        String?
+  purpose       AuthChallengePurpose
+  codeHash      String
+  expiresAt     DateTime
+  attemptCount  Int                  @default(0)
+  maxAttempts   Int                  @default(3)
+  sentAt        DateTime             @default(now())
+  sentIp        String?
+  lastAttemptAt DateTime?
+  lastAttemptIp String?
+  redirectTo    String?
+  consumedAt    DateTime?
+  metadataJson  Json?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email, purpose, expiresAt])
+  @@index([userId, purpose, expiresAt])
+  @@index([consumedAt, expiresAt])
+}
+
+model UserLifecycleEvent {
+  id          String   @id @default(cuid())
+  eventType   String
+  userId      String?
+  actorUserId String?
+  payloadJson Json?
+  createdAt   DateTime @default(now())
+
+  user  User? @relation("UserLifecycleSubject", fields: [userId], references: [id], onDelete: SetNull)
+  actor User? @relation("UserLifecycleActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([eventType, createdAt])
+  @@index([userId, createdAt])
+  @@index([actorUserId, createdAt])
+}
+
+model PlatformSetting {
+  id                    String   @id @default("default")
+  businessName          String   @default("Shruti Turner")
+  supportEmail          String?
+  contactEmail          String?
+  instagramUrl          String?
+  defaultSeoTitle       String?
+  defaultSeoDescription String?
+  gaMeasurementId       String?
+  updatedByUserId       String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  updatedBy User? @relation("PlatformSettingUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 }
 
 model ScheduledJobRun {
@@ -744,6 +869,8 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -836,9 +963,42 @@ model MembershipSubscription {
 
   user             User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
   complianceEvents SubscriptionComplianceEvent[]
+  dunningCases     MembershipDunningCase[]
+  billingRefunds   BillingRefund[]
 
   @@index([userId, status])
   @@index([stripeSubscriptionId])
+}
+
+model MembershipDunningCase {
+  id                  String                  @id @default(cuid())
+  userId              String
+  membershipId        String
+  status              MembershipDunningStatus @default(open)
+  stripeInvoiceId     String?
+  amountDuePence      Int                     @default(0)
+  invoiceUrl          String?
+  firstFailedAt       DateTime
+  lastFailedAt        DateTime
+  graceEndsAt         DateTime
+  day0NoticeSentAt    DateTime?
+  day3ReminderSentAt  DateTime?
+  day6ReminderSentAt  DateTime?
+  suspendedAt         DateTime?
+  recoveredAt         DateTime?
+  cancelledAt         DateTime?
+  graceExtendedUntil  DateTime?
+  manualExtensionNote String?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  membership MembershipSubscription @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([membershipId, status])
+  @@index([status, graceEndsAt])
+  @@index([stripeInvoiceId])
 }
 
 model SubscriptionComplianceEvent {
@@ -913,6 +1073,31 @@ model BillingMetricDaily {
   churnedMembersCount Int      @default(0)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+}
+
+model BillingRefund {
+  id              String              @id @default(cuid())
+  userId          String
+  membershipId    String
+  actorUserId     String?
+  status          BillingRefundStatus @default(pending)
+  amountPence     Int
+  reason          String
+  refundedAsCredit Boolean            @default(false)
+  stripeRefundId  String?             @unique
+  stripeInvoiceId String?
+  paymentIntentId String?
+  metadataJson    Json?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  user       User                   @relation("BillingRefundUser", fields: [userId], references: [id], onDelete: Cascade)
+  actor      User?                  @relation("BillingRefundActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  membership MembershipSubscription @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([membershipId, createdAt])
+  @@index([stripeInvoiceId])
 }
 
 model HealthProfile {
@@ -1182,10 +1367,64 @@ model EmailCampaign {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
-  emailEvents EmailEvent[]
+  emailDeliveries EmailDelivery[]
+  emailEvents     EmailEvent[]
 
   @@index([status, sentAt])
   @@index([contentfulEntryId, contentfulContentType])
+}
+
+model EmailDelivery {
+  id                String              @id @default(cuid())
+  toEmail           String
+  userId            String?
+  campaignId        String?
+  templateKey       String
+  category          String              @default("transactional")
+  provider          String              @default("postmark")
+  subject           String
+  tag               String
+  messageStream     String?
+  status            EmailDeliveryStatus @default(queued)
+  retryable         Boolean             @default(true)
+  attemptCount      Int                 @default(0)
+  maxAttempts       Int                 @default(5)
+  nextRetryAt       DateTime?
+  lastError         String?
+  providerMessageId String?
+  sentAt            DateTime?
+  payloadJson       Json
+  metadataJson      Json?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  user     User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  campaign EmailCampaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  attempts EmailDeliveryAttempt[]
+  events   EmailEvent[]
+
+  @@index([status, nextRetryAt])
+  @@index([userId, createdAt])
+  @@index([templateKey, createdAt])
+  @@index([providerMessageId])
+}
+
+model EmailDeliveryAttempt {
+  id                String                     @id @default(cuid())
+  deliveryId        String
+  attemptNumber     Int
+  status            EmailDeliveryAttemptStatus @default(started)
+  providerMessageId String?
+  errorMessage      String?
+  responseJson      Json?
+  startedAt         DateTime                   @default(now())
+  finishedAt        DateTime?
+  createdAt         DateTime                   @default(now())
+
+  delivery EmailDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@unique([deliveryId, attemptNumber])
+  @@index([deliveryId, attemptNumber])
 }
 
 model EmailEvent {
@@ -1197,16 +1436,19 @@ model EmailEvent {
   email           String
   userId          String?
   campaignId      String?
+  deliveryId      String?
   eventAt         DateTime
   metadataJson    Json?
   createdAt       DateTime @default(now())
 
   user     User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   campaign EmailCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  delivery EmailDelivery? @relation(fields: [deliveryId], references: [id], onDelete: SetNull)
 
   @@index([email, eventAt])
   @@index([type, eventAt])
   @@index([campaignId, eventAt])
+  @@index([deliveryId, eventAt])
   @@index([userId, eventAt])
 }
 
@@ -1524,14 +1766,16 @@ model CoachingApplication {
   applicantEmail                   String
   tier                             CoachingSupportTier
   answersJson                      Json
-  hasMoveWellMembershipSnapshot    Boolean                   @default(false)
   isExistingCoachingClientSnapshot Boolean                   @default(false)
   source                           String?
   coachingAgreementVersion         String?
   coachingAgreementAcceptedAt      DateTime
   status                           CoachingApplicationStatus @default(submitted)
   adminNotes                       String?
+  decisionReason                   String?
   reviewedAt                       DateTime?
+  waitlistedAt                     DateTime?
+  waitlistLeftAt                   DateTime?
   approvedAt                       DateTime?
   convertedAt                      DateTime?
   createdAt                        DateTime                  @default(now())
@@ -1541,35 +1785,68 @@ model CoachingApplication {
   clientProfile CoachingClientProfile?
 
   @@index([status, createdAt])
+  @@index([status, waitlistedAt])
   @@index([tier, createdAt])
   @@index([userId, createdAt])
   @@index([applicantEmail, createdAt])
 }
 
 model CoachingClientProfile {
-  id                         String                  @id @default(cuid())
-  userId                     String                  @unique
-  applicationId              String?                 @unique
-  tier                       CoachingSupportTier
-  status                     CoachingClientStatus    @default(onboarding)
-  includesMoveWellMembership Boolean                 @default(false)
-  everfitConnectionStatus    EverfitConnectionStatus @default(not_started)
-  onboardingChecklistJson    Json?
-  nextCheckInDueAt           DateTime?
-  latestCoachResponseSummary String?
-  startDate                  DateTime?
-  pausedAt                   DateTime?
-  completedAt                DateTime?
-  createdAt                  DateTime                @default(now())
-  updatedAt                  DateTime                @updatedAt
+  id                             String                  @id @default(cuid())
+  userId                         String                  @unique
+  applicationId                  String?                 @unique
+  tier                           CoachingSupportTier
+  status                         CoachingClientStatus    @default(onboarding)
+  everfitConnectionStatus        EverfitConnectionStatus @default(not_started)
+  stripeSubscriptionId           String?                 @unique
+  billingCancellationRequestedAt DateTime?
+  billingFinalPaymentAt          DateTime?
+  billingEndsAt                  DateTime?
+  onboardingChecklistJson        Json?
+  nextCheckInDueAt               DateTime?
+  latestCoachResponseSummary     String?
+  startDate                      DateTime?
+  pausedAt                       DateTime?
+  completedAt                    DateTime?
+  createdAt                      DateTime                @default(now())
+  updatedAt                      DateTime                @updatedAt
 
   user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   application CoachingApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
   sessions    CoachingSession[]
   checkIns    CoachingCheckIn[]
+  packageChangeRequests CoachingPackageChangeRequest[]
 
   @@index([status, updatedAt])
   @@index([tier, updatedAt])
+}
+
+model CoachingPackageChangeRequest {
+  id                   String                             @id @default(cuid())
+  userId               String
+  profileId            String
+  requestedByUserId    String?
+  fromTier             CoachingSupportTier
+  toTier               CoachingSupportTier
+  fromOfferKey         String?
+  toOfferKey           String
+  effectiveMode        CoachingPackageChangeEffectiveMode @default(next_invoice)
+  status               CoachingPackageChangeStatus        @default(pending_client_confirmation)
+  note                 String?
+  stripeSubscriptionId String?
+  clientConfirmedAt    DateTime?
+  appliedAt            DateTime?
+  cancelledAt          DateTime?
+  createdAt            DateTime                           @default(now())
+  updatedAt            DateTime                           @updatedAt
+
+  user        User                  @relation("CoachingPackageChangeClient", fields: [userId], references: [id], onDelete: Cascade)
+  requestedBy User?                 @relation("CoachingPackageChangeRequester", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  profile     CoachingClientProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, createdAt])
+  @@index([profileId, status, createdAt])
+  @@index([toOfferKey, status])
 }
 
 model CoachingSession {

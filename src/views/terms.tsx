@@ -10,7 +10,7 @@ export function TermsPage() {
     <Layout>
       <SEO
         title="Terms & Conditions - Shruti Turner"
-        description="Terms and conditions for Shruti Turner's coaching services, retreats, and online classes."
+        description="Terms and conditions for Shruti Turner's coaching services, retreats and online classes."
         canonicalUrl="https://shrutiturner.co.uk/terms"
       />
 
@@ -32,7 +32,7 @@ export function TermsPage() {
             <p>
               These Terms and Conditions govern your use of services provided by Shruti Turner,
               including but not limited to: one-to-one coaching, group classes, online courses,
-              retreats, and digital content.
+              retreats and digital content.
             </p>
             <p>
               By booking any service or using this website, you agree to be bound by these terms.
@@ -43,7 +43,7 @@ export function TermsPage() {
             <h2 className="text-foreground mb-4 text-2xl">2. Services Provided</h2>
             <p>
               Services include rehabilitation-informed strength coaching, yoga instruction, online
-              classes, retreats, and educational content. All services are provided for educational
+              classes, retreats and educational content. All services are provided for educational
               and wellness purposes and do not constitute medical advice.
             </p>
           </section>
@@ -108,7 +108,7 @@ export function TermsPage() {
           <section>
             <h2 className="text-foreground mb-4 text-2xl">6. Intellectual Property</h2>
             <p>
-              All content, including but not limited to videos, written materials, programmes, and
+              All content, including but not limited to videos, written materials, programmes and
               educational resources, are the intellectual property of Shruti Turner and are
               protected by copyright.
             </p>
@@ -127,7 +127,7 @@ export function TermsPage() {
               service, you acknowledge and accept these risks.
             </p>
             <p>
-              Shruti Turner, her employees, and contractors shall not be liable for any injuries,
+              Shruti Turner, her employees and contractors shall not be liable for any injuries,
               losses, or damages arising from participation in services, except where liability
               cannot be excluded by law.
             </p>

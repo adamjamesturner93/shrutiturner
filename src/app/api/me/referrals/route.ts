@@ -1,25 +1,20 @@
-import { connection, NextResponse } from "next/server";
-import { requireSessionUser } from "@/lib/api/auth-user";
+import { connection } from "next/server";
+import { apiOk, handleApiRoute } from "@/lib/api/route";
+import { getBaseSiteUrlFromEnv } from "@/lib/env";
 import { getReferralSummary } from "@/lib/referrals/referral-service";
 
 function siteUrlFromRequest(request: Request) {
-  const env = process.env.NEXT_PUBLIC_SITE_URL;
-  if (env) return env;
+  const configured = getBaseSiteUrlFromEnv();
+  if (configured !== "http://localhost:3000") return configured;
   const url = new URL(request.url);
   return `${url.protocol}//${url.host}`;
 }
 
-export async function GET(request: Request) {
-  try {
+export const GET = handleApiRoute(
+  async ({ request, sessionUser }) => {
     await connection();
-    const user = await requireSessionUser();
-    const summary = await getReferralSummary(user.id, siteUrlFromRequest(request));
-    return NextResponse.json(summary);
-  } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
-    console.error("GET /api/me/referrals failed", error);
-    return NextResponse.json({ message: "Failed to load referrals" }, { status: 500 });
-  }
-}
+    const summary = await getReferralSummary(sessionUser!.id, siteUrlFromRequest(request));
+    return apiOk(summary);
+  },
+  { auth: "user" }
+);

@@ -2,14 +2,14 @@ import type { Page } from "@playwright/test";
 
 const NEWSLETTER_SIGNUP_COPY = {
   slug: "default",
-  hookText: 'Get "Why Some Bodies Need Strength Before More Stretching" - free:',
+  hookText: 'Get the free guide to your inbox - "Why Some Bodies Need Strength Before More Stretching"',
   formPlaceholder: "your.email@example.com",
   buttonLabel: "Subscribe",
   successMessage: "Please check your inbox to confirm your email address.",
   consentText: "No spam. Unsubscribe anytime.",
   popupTitle: "Get Evidence-Based Insights",
   popupDescription:
-    "Join the mailing list for launch updates, practical strength guidance, and occasional offers. No spam, unsubscribe anytime.",
+    "Join the mailing list for launch updates, practical strength guidance and occasional offers. No spam, unsubscribe anytime.",
 };
 
 export async function mockNewsletterSignupCopy(page: Page) {

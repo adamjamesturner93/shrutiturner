@@ -1,13 +1,17 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+const authMock = vi.fn();
 const sendAuthCodeEmailMock = vi.fn();
 const verifyTurnstileTokenMock = vi.fn();
+
+vi.mock("@/lib/auth", () => ({
+  auth: authMock,
+}));
 
 vi.mock("@/lib/auth-code", async () => {
   const actual = await vi.importActual<typeof import("@/lib/auth-code")>("@/lib/auth-code");
   return {
     ...actual,
-    generateAuthCode: vi.fn(() => "654321"),
     sendAuthCodeEmail: sendAuthCodeEmailMock,
   };
 });
@@ -16,7 +20,6 @@ vi.mock("@/lib/turnstile", async () => {
   const actual = await vi.importActual<typeof import("@/lib/turnstile")>("@/lib/turnstile");
   return {
     ...actual,
-    getClientIp: vi.fn(() => "127.0.0.1"),
     verifyTurnstileToken: verifyTurnstileTokenMock,
   };
 });
@@ -37,6 +40,14 @@ function makeEmail(label: string) {
 }
 
 async function cleanupAuthRows() {
+  await db.authChallenge.deleteMany({
+    where: {
+      email: {
+        startsWith: "integration-auth-",
+      },
+    },
+  });
+
   await db.user.deleteMany({
     where: {
       email: {
@@ -49,6 +60,7 @@ async function cleanupAuthRows() {
 describe("auth send-code integration", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    authMock.mockResolvedValue(null);
     verifyTurnstileTokenMock.mockResolvedValue(true);
     sendAuthCodeEmailMock.mockResolvedValue(undefined);
     await cleanupAuthRows();
@@ -58,27 +70,7 @@ describe("auth send-code integration", () => {
     await cleanupAuthRows();
   });
 
-  it("creates a new user shell when none exists", async () => {
-    const email = makeEmail("new-user");
-
-    const response = await route.POST(
-      createRequest({
-        email,
-        turnstileToken: "token",
-      })
-    );
-
-    expect(response.status).toBe(200);
-    const user = await db.user.findUnique({ where: { email } });
-    expect(user).toMatchObject({
-      email,
-      role: "student",
-      authCode: "654321",
-    });
-    expect(sendAuthCodeEmailMock).toHaveBeenCalledWith(email, "654321", 10);
-  });
-
-  it("refreshes the auth code for an existing user without overwriting profile fields", async () => {
+  it("creates a login challenge for an existing user", async () => {
     const email = makeEmail("existing");
     const existing = await db.user.create({
       data: {
@@ -96,13 +88,56 @@ describe("auth send-code integration", () => {
     );
 
     expect(response.status).toBe(200);
+
+    const challenge = await db.authChallenge.findFirst({
+      where: { email },
+      orderBy: { sentAt: "desc" },
+    });
+
+    expect(challenge).toMatchObject({
+      email,
+      userId: existing.id,
+      purpose: "login",
+      consumedAt: null,
+      attemptCount: 0,
+    });
+
     const user = await db.user.findUnique({ where: { id: existing.id } });
     expect(user).toMatchObject({
       id: existing.id,
       email,
       firstName: "Jordan",
       lastName: "Reader",
-      authCode: "654321",
     });
+
+    expect(sendAuthCodeEmailMock).toHaveBeenCalledWith(email, expect.stringMatching(/^\d{6}$/), 10);
+  });
+
+  it("creates a signup challenge when no account exists for the email", async () => {
+    const email = makeEmail("missing");
+
+    const response = await route.POST(
+      createRequest({
+        email,
+        turnstileToken: "token",
+      })
+    );
+
+    expect(response.status).toBe(200);
+    const challenge = await db.authChallenge.findFirst({ where: { email } });
+    expect(challenge).toMatchObject({
+      email,
+      userId: null,
+      purpose: "signup",
+      consumedAt: null,
+      attemptCount: 0,
+      metadataJson: {
+        source: "passwordless_signup",
+      },
+    });
+
+    const user = await db.user.findUnique({ where: { email } });
+    expect(user).toBeNull();
+    expect(sendAuthCodeEmailMock).toHaveBeenCalledWith(email, expect.stringMatching(/^\d{6}$/), 10);
   });
 });

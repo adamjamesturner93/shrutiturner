@@ -1,17 +1,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "./ui/button";
-import {
-  Menu,
-  X,
-  ChevronDown,
-  Users,
-  CalendarDays,
-  User,
-  Mountain,
-  MessageCircle,
-} from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { Menu, X } from "lucide-react";
+import { useState } from "react";
 import { useAuth } from "../context/auth-context";
 import { IconHorizontal } from "./icon";
 
@@ -19,11 +10,7 @@ export function Header() {
   const pathname = usePathname();
   const { isAuthenticated, user } = useAuth();
   const [mobileMenuPath, setMobileMenuPath] = useState<string | null>(null);
-  const [servicesDropdownPath, setServicesDropdownPath] = useState<string | null>(null);
-  const servicesDropdownRef = useRef<HTMLDivElement>(null);
-  const servicesTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mobileMenuOpen = mobileMenuPath === pathname;
-  const servicesDropdownOpen = servicesDropdownPath === pathname;
 
   const isActive = (path: string) => {
     if (path === "/") {
@@ -32,74 +19,9 @@ export function Header() {
     return pathname.startsWith(path);
   };
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        servicesDropdownRef.current &&
-        !servicesDropdownRef.current.contains(event.target as Node)
-      ) {
-        setServicesDropdownPath(null);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setServicesDropdownPath(null);
-        setMobileMenuPath(null);
-      }
-    }
-
-    window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
-  }, []);
-
-  const handleServicesMouseEnter = () => {
-    if (servicesTimeoutRef.current) clearTimeout(servicesTimeoutRef.current);
-    setServicesDropdownPath(pathname);
-  };
-
-  const handleServicesMouseLeave = () => {
-    servicesTimeoutRef.current = setTimeout(() => {
-      setServicesDropdownPath(null);
-    }, 150);
-  };
-
-  const servicesLinks = [
-    {
-      path: "/classes",
-      label: "Move Well Classes",
-      description: "Adaptive yoga and intelligent strength",
-      icon: CalendarDays,
-    },
-    {
-      path: "/classes/small-groups",
-      label: "Small Group Programmes",
-      description: "Focused cohorts, max 6 people",
-      icon: Users,
-    },
-    {
-      path: "/coaching",
-      label: "Coaching",
-      description: "Three tiers of personalised support",
-      icon: User,
-    },
-    {
-      path: "/retreats",
-      label: "Retreats",
-      description: "Immersive multi-day experiences",
-      icon: Mountain,
-    },
-  ];
-
   const navLinks = [
-    { path: "/pricing", label: "Pricing" },
+    { path: "/coaching", label: "1:1 Offers" },
     { path: "/blog", label: "Blog" },
-    { path: "/about", label: "About" },
   ];
 
   return (
@@ -113,75 +35,6 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden items-center space-x-6 lg:flex" aria-label="Main navigation">
-          {/* Services Dropdown */}
-          <div
-            ref={servicesDropdownRef}
-            className="relative"
-            onMouseEnter={handleServicesMouseEnter}
-            onMouseLeave={handleServicesMouseLeave}
-          >
-            <button
-              onClick={() => setServicesDropdownPath(servicesDropdownOpen ? null : pathname)}
-              aria-expanded={servicesDropdownOpen}
-              aria-haspopup="true"
-              aria-label="Toggle services menu"
-              className={`hover:text-primary flex items-center gap-1 transition-colors ${
-                isActive("/classes") ||
-                isActive("/schedule") ||
-                isActive("/coaching") ||
-                isActive("/retreats")
-                  ? "text-primary"
-                  : "text-foreground"
-              }`}
-            >
-              Services
-              <ChevronDown
-                className={`h-4 w-4 transition-transform ${
-                  servicesDropdownOpen ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-
-            {servicesDropdownOpen && (
-              <div className="absolute top-full left-1/2 w-80 -translate-x-1/2 pt-2">
-                <div className="bg-background space-y-1 rounded-lg border p-2 shadow-lg">
-                  {servicesLinks.map((link) => (
-                    <Link
-                      key={link.path}
-                      href={link.path}
-                      className="hover:bg-secondary group flex items-start gap-3 rounded-md px-3 py-2.5 transition-colors"
-                    >
-                      <div className="bg-primary/10 group-hover:bg-primary/20 mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md transition-colors">
-                        <link.icon className="text-primary h-4 w-4" />
-                      </div>
-                      <div>
-                        <span className="text-foreground text-sm">{link.label}</span>
-                        <p className="text-muted-foreground mt-0.5 text-xs">{link.description}</p>
-                      </div>
-                    </Link>
-                  ))}
-
-                  <div className="bg-border mx-2 h-px" />
-
-                  <Link
-                    href="/schedule"
-                    className="hover:bg-secondary group flex items-start gap-3 rounded-md px-3 py-2.5 transition-colors"
-                  >
-                    <div className="bg-primary/10 group-hover:bg-primary/20 mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md transition-colors">
-                      <CalendarDays className="text-primary h-4 w-4" />
-                    </div>
-                    <div>
-                      <span className="text-foreground text-sm">Schedule</span>
-                      <p className="text-muted-foreground mt-0.5 text-xs">
-                        View the weekly timetable
-                      </p>
-                    </div>
-                  </Link>
-                </div>
-              </div>
-            )}
-          </div>
-
           {navLinks.map((link) => (
             <Link
               key={link.path}
@@ -205,11 +58,8 @@ export function Header() {
             </Link>
           ) : (
             <>
-              <Link href="/contact">
-                <Button variant="ghost">
-                  <MessageCircle className="mr-1.5 h-4 w-4" />
-                  Get in Touch
-                </Button>
+              <Link href="/coaching/apply">
+                <Button variant="ghost">Apply for 1:1 Support</Button>
               </Link>
               <Link href="/login">
                 <Button>Sign In</Button>
@@ -234,44 +84,6 @@ export function Header() {
       {mobileMenuOpen && (
         <div id="mobile-main-menu" className="bg-background border-t lg:hidden">
           <nav className="container mx-auto flex flex-col space-y-1 px-4 py-4">
-            {/* Services section */}
-            <div className="space-y-1">
-              <Link
-                href="/classes"
-                onClick={() => setMobileMenuPath(null)}
-                className={`hover:bg-secondary block rounded-md px-3 py-2 transition-colors ${
-                  pathname === "/classes" ? "text-primary bg-secondary" : "text-foreground"
-                }`}
-              >
-                Services
-              </Link>
-              <div className="space-y-1 pl-4">
-                {servicesLinks.map((link) => (
-                  <Link
-                    key={link.path}
-                    href={link.path}
-                    onClick={() => setMobileMenuPath(null)}
-                    className={`hover:bg-secondary flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
-                      isActive(link.path) ? "text-primary bg-secondary" : "text-muted-foreground"
-                    }`}
-                  >
-                    <link.icon className="h-4 w-4" />
-                    {link.label}
-                  </Link>
-                ))}
-                <Link
-                  href="/schedule"
-                  onClick={() => setMobileMenuPath(null)}
-                  className={`hover:bg-secondary flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
-                    isActive("/schedule") ? "text-primary bg-secondary" : "text-muted-foreground"
-                  }`}
-                >
-                  <CalendarDays className="h-4 w-4" />
-                  Schedule
-                </Link>
-              </div>
-            </div>
-
             {navLinks.map((link) => (
               <Link
                 key={link.path}
@@ -297,14 +109,10 @@ export function Header() {
                       Sign In
                     </Button>
                   </Link>
-                  <Link href="/contact" onClick={() => setMobileMenuPath(null)}>
+                  <Link href="/coaching/apply" onClick={() => setMobileMenuPath(null)}>
                     <Button variant="outline" className="w-full">
-                      <MessageCircle className="mr-1.5 h-4 w-4" />
-                      Get in Touch
+                      Apply for 1:1 Support
                     </Button>
-                  </Link>
-                  <Link href="/login" onClick={() => setMobileMenuPath(null)}>
-                    <Button className="w-full">Sign In</Button>
                   </Link>
                 </>
               )}

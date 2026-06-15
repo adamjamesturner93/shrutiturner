@@ -1,19 +1,19 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import type { UserRole } from "@prisma/client";
+import { AuthChallengePurpose, type UserRole } from "@prisma/client";
 import NextAuth from "next-auth";
+import type { Adapter } from "next-auth/adapters";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { redirect } from "next/navigation";
+import { verifyAuthChallenge } from "@/lib/auth-challenge";
+import { recordFailedLoginAttempt } from "@/lib/auth-security";
 import { db } from "@/lib/db";
+import { env, getAdminEmailAllowlist } from "@/lib/env";
 import { isOwnerAdminRole, isStaffAdminRole } from "@/lib/authz/roles";
+import { recordUserLifecycleEvent } from "@/lib/user-lifecycle";
 
-const ADMIN_EMAILS = (
-  process.env.ADMIN_EMAILS || "tech@thechronicyogini.com,shruti@shrutiturner.com"
-)
-  .split(",")
-  .map((email) => email.trim().toLowerCase())
-  .filter(Boolean);
-const SESSION_MAX_AGE_DAYS = Number(process.env.AUTH_SESSION_MAX_AGE_DAYS || "30");
+const ADMIN_EMAILS = getAdminEmailAllowlist();
+const SESSION_MAX_AGE_DAYS = env.AUTH_SESSION_MAX_AGE_DAYS;
 const SESSION_MAX_AGE_SECONDS = Math.max(1, Math.floor(SESSION_MAX_AGE_DAYS * 24 * 60 * 60));
 const SESSION_UPDATE_AGE_SECONDS = 24 * 60 * 60;
 
@@ -26,9 +26,36 @@ function normalizeAuthCode(value: string): string {
   return value.replace(/\D/g, "").slice(0, 6);
 }
 
+function createAppAuthAdapter(): Adapter {
+  const adapter = PrismaAdapter(db);
+
+  return {
+    ...adapter,
+    async createSession(session) {
+      if (!adapter.createSession) {
+        throw new Error("Auth adapter is missing createSession.");
+      }
+
+      const created = await adapter.createSession(session);
+      const sessions = await db.session.findMany({
+        where: { userId: session.userId },
+        orderBy: [{ createdAt: "desc" }],
+        select: { id: true },
+      });
+      const overflow = sessions.slice(env.AUTH_SESSION_MAX_CONCURRENT);
+      if (overflow.length) {
+        await db.session.deleteMany({
+          where: { id: { in: overflow.map((item) => item.id) } },
+        });
+      }
+      return created;
+    },
+  };
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(db),
-  secret: process.env.AUTH_SECRET,
+  adapter: createAppAuthAdapter(),
+  secret: env.AUTH_SECRET,
   session: {
     strategy: "jwt",
     maxAge: SESSION_MAX_AGE_SECONDS,
@@ -38,11 +65,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/login",
   },
   providers: [
-    ...(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
+    ...(env.AUTH_GOOGLE_ID && env.AUTH_GOOGLE_SECRET
       ? [
           Google({
-            clientId: process.env.AUTH_GOOGLE_ID,
-            clientSecret: process.env.AUTH_GOOGLE_SECRET,
+            clientId: env.AUTH_GOOGLE_ID,
+            clientSecret: env.AUTH_GOOGLE_SECRET,
             allowDangerousEmailAccountLinking: true,
             profile(profile) {
               const email = profile.email;
@@ -63,48 +90,90 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         authCode: { label: "Code", type: "text" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const email = String(credentials?.email || "")
           .trim()
           .toLowerCase();
         const authCode = normalizeAuthCode(String(credentials?.authCode || ""));
+        const requestIp =
+          request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+          request.headers.get("x-real-ip") ||
+          null;
         if (!email || !authCode) {
-          if (process.env.NODE_ENV === "development") {
+          void recordFailedLoginAttempt({
+            email,
+            ip: requestIp,
+            reason: "missing_email_or_code",
+          });
+          if (env.NODE_ENV === "development") {
             console.info("[auth][credentials] rejected: missing email or code");
           }
           return null;
         }
         if (authCode.length !== 6) {
-          if (process.env.NODE_ENV === "development") {
+          void recordFailedLoginAttempt({
+            email,
+            ip: requestIp,
+            reason: "invalid_code_length",
+          });
+          if (env.NODE_ENV === "development") {
             console.info("[auth][credentials] rejected: code is not 6 digits", { email });
           }
           return null;
         }
 
-        const user = await db.user.findUnique({ where: { email } });
-        if (!user || !user.authCode || !user.authCodeExpiry) {
-          if (process.env.NODE_ENV === "development") {
-            console.info("[auth][credentials] rejected: user/code/expiry missing", {
+        const verification = await verifyAuthChallenge({
+          email,
+          code: authCode,
+          purposes: [AuthChallengePurpose.login, AuthChallengePurpose.signup],
+          ip: requestIp,
+        });
+        if (!verification.ok) {
+          void recordFailedLoginAttempt({
+            email,
+            ip: requestIp,
+            reason: `challenge_${verification.reason}`,
+          });
+          if (env.NODE_ENV === "development") {
+            console.info("[auth][credentials] rejected: challenge verification failed", {
               email,
-              hasUser: Boolean(user),
-              hasCode: Boolean(user?.authCode),
-              hasExpiry: Boolean(user?.authCodeExpiry),
+              reason: verification.reason,
             });
           }
           return null;
         }
-        const storedCode = normalizeAuthCode(user.authCode);
-        if (storedCode !== authCode) {
-          if (process.env.NODE_ENV === "development") {
-            console.info("[auth][credentials] rejected: code mismatch", { email });
-          }
+
+        const existingUser = await db.user.findUnique({ where: { email } });
+        if (existingUser?.deletedAt) {
+          void recordFailedLoginAttempt({
+            email,
+            ip: requestIp,
+            reason: "user_deleted",
+          });
           return null;
         }
-        if (user.authCodeExpiry < new Date()) {
-          if (process.env.NODE_ENV === "development") {
-            console.info("[auth][credentials] rejected: code expired", { email });
-          }
-          return null;
+
+        const user =
+          existingUser ||
+          (await db.user.create({
+            data: {
+              email,
+              role: isAdminEmail(email) ? "owner_admin" : "student",
+              emailVerified: new Date(),
+            },
+          }));
+
+        if (!existingUser) {
+          await recordUserLifecycleEvent({
+            eventType: "user_created",
+            userId: user.id,
+            actorUserId: user.id,
+            payload: {
+              source: "passwordless_signup",
+            },
+          }).catch((error) => {
+            console.error("[auth][credentials] failed to record user creation", error);
+          });
         }
 
         return {
@@ -117,6 +186,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = String(user.id || token.sub || "");
+        token.role = (user.role as UserRole | undefined) || "member";
+      }
+      return token;
+    },
     async signIn({ user, account }) {
       if (!user.email) return true;
       const shouldBeAdmin = isAdminEmail(user.email);
@@ -126,6 +202,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             where: { email: user.email },
             data: { role: "owner_admin" },
           });
+          user.role = "owner_admin";
         } catch (error) {
           console.error("[auth][signIn] failed to promote admin role", error);
         }
@@ -135,36 +212,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           await db.user.update({
             where: { id: String(user.id) },
-            data: { authCode: null, authCodeExpiry: null },
+            data: { authCode: null, authCodeExpiry: null, emailVerified: new Date() },
           });
         } catch (error) {
           console.error("[auth][signIn] failed to clear auth code", error);
         }
       }
+
+      await recordUserLifecycleEvent({
+        eventType: "user_logged_in",
+        userId: typeof user.id === "string" ? user.id : null,
+        actorUserId: typeof user.id === "string" ? user.id : null,
+        payload: {
+          provider: account?.provider || "unknown",
+        },
+      }).catch((error) => {
+        console.error("[auth][signIn] failed to record lifecycle event", error);
+      });
       return true;
     },
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.role = (user.role as UserRole) || "member";
-      }
-
-      if ((!token.role || !token.id) && token.email) {
-        const dbUser = await db.user.findUnique({
-          where: { email: String(token.email).toLowerCase() },
-          select: { id: true, role: true },
-        });
-        if (dbUser) {
-          token.id = dbUser.id;
-          token.role = dbUser.role;
-        }
-      }
-      return token;
-    },
-    async session({ session, token }) {
+    async session({ session, user, token }) {
       if (session.user) {
-        session.user.id = String(token.id || "");
-        session.user.role = (token.role as UserRole) || "member";
+        session.user.id = String(token?.id || token?.sub || user?.id || "");
+        session.user.role = (token?.role as UserRole | undefined) || "member";
       }
       return session;
     },

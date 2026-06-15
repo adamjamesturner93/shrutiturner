@@ -1,6 +1,7 @@
 import { render } from "@react-email/render";
-import WelcomeEmail from "../emails/welcome";
+import OnboardingEmail from "../emails/onboarding";
 import ClassBookingEmail from "../emails/class-booking";
+import ClassWaitlistEmail from "../emails/class-waitlist";
 import ClassReminderEmail from "../emails/class-reminder";
 import PurchaseConfirmationEmail from "../emails/purchase-confirmation";
 import InstructorNotificationEmail from "../emails/instructor-notification";
@@ -8,6 +9,7 @@ import ClassCancellationEmail from "../emails/class-cancellation";
 import ClassUnbookingEmail from "../emails/class-unbooking";
 import SubscriptionNoticeEmail from "../emails/subscription-notice";
 import NewsletterEmail from "../emails/newsletter";
+import { getBaseSiteUrlFromEnv } from "@/lib/env";
 import { sendPostmarkReactEmail } from "@/lib/postmark/client";
 import { getClassOperationalSettings } from "@/lib/classes/settings-service";
 import {
@@ -23,8 +25,37 @@ import {
 // Do not expose your API key in the frontend bundle.
 const POSTMARK_API_KEY = process.env.POSTMARK_API_KEY || "POSTMARK_API_TEST";
 void POSTMARK_API_KEY;
-const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const APP_URL = getBaseSiteUrlFromEnv();
+
+type ClassLifecycleDeliveryOptions = {
+  category: "transactional";
+  dispatchMode: "immediate_best_effort";
+  retryable: true;
+  metadata: Record<string, string>;
+};
+
+function getClassLifecycleDeliveryOptions(params: {
+  emailType: string;
+  className: string;
+  startsAt?: Date;
+  classDate?: string;
+}): ClassLifecycleDeliveryOptions {
+  return {
+    category: "transactional",
+    dispatchMode: "immediate_best_effort",
+    retryable: true,
+    metadata: {
+      className: params.className,
+      emailType: params.emailType,
+      ...(params.startsAt ? { classStartsAtUtc: params.startsAt.toISOString() } : {}),
+      ...(params.classDate ? { classDate: params.classDate } : {}),
+    },
+  };
+}
+
+function getClassLifecycleSupportLine() {
+  return `Need help? Contact Shruti: ${APP_URL}/contact`;
+}
 
 function toMinutesLabel(minutes: number) {
   if (minutes % 60 === 0) {
@@ -41,11 +72,12 @@ export function buildCalendarInvite(params: {
   description: string;
   method?: "REQUEST" | "CANCEL";
   location?: string;
+  url?: string;
 }) {
   const { eventName, startTime, durationMinutes, description } = params;
   const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
   const method = params.method || "REQUEST";
-  const location = params.location || "Online (Daily.co)";
+  const location = params.location || "Private Studio (online)";
 
   const formatDate = (date: Date) => date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
 
@@ -62,6 +94,7 @@ DTEND:${formatDate(endTime)}
 SUMMARY:${eventName}
 DESCRIPTION:${description}
 LOCATION:${location}
+${params.url ? `URL:${params.url}\n` : ""}
 STATUS:CONFIRMED
 END:VEVENT
 END:VCALENDAR`.trim();
@@ -69,8 +102,32 @@ END:VCALENDAR`.trim();
 
 export async function sendWelcomeEmail(email: string, firstName: string) {
   try {
-    await render(WelcomeEmail({ firstName }));
-    console.log(`[Mock Email Service] Sending Welcome Email to ${email}`);
+    const react = OnboardingEmail({
+      firstName,
+      membershipUrl: `${APP_URL}/#work-with-me`,
+      scheduleUrl: `${APP_URL}/coaching/apply`,
+    });
+
+    await sendPostmarkReactEmail({
+      to: email,
+      subject: "Your studio account is ready",
+      category: "transactional",
+      react,
+      textBody: [
+        `Hi ${firstName || "there"},`,
+        "",
+        "Your studio account is ready.",
+        `Compare 1:1 offers: ${APP_URL}/#work-with-me`,
+        `Apply for 1:1 support: ${APP_URL}/coaching/apply`,
+      ].join("\n"),
+      tag: "account-welcome",
+      templateKey: "account-welcome",
+      metadata: {
+        emailType: "account-welcome",
+      },
+      dispatchMode: "immediate_best_effort",
+    });
+
     return { success: true };
   } catch (error) {
     console.error("Failed to send welcome email", error);
@@ -88,19 +145,29 @@ export async function sendBookingConfirmation(
   classDateObj: Date = new Date(),
   durationMinutes: number = 60,
   /** User's saved i18n preferences — controls how date/time appear in the email */
-  userPrefs: I18nPreferences = DEFAULT_PREFS
+  userPrefs: I18nPreferences = DEFAULT_PREFS,
+  options?: {
+    classSlug?: string;
+    sessionId?: string;
+  }
 ) {
   try {
     const settings = await getClassOperationalSettings();
     // Format date & time using the user's saved preferences
     const formattedDate = formatDate(classDateObj, userPrefs);
     const formattedTime = formatTime(classDateObj, userPrefs);
+    const classUrl =
+      options?.classSlug && options.sessionId
+        ? `${APP_URL}/dashboard/classes/${encodeURIComponent(options.classSlug)}/join?sessionId=${encodeURIComponent(options.sessionId)}`
+        : `${APP_URL}/dashboard/schedule`;
 
     const invite = buildCalendarInvite({
       eventName: className,
       startTime: classDateObj,
       durationMinutes,
-      description: `Join link: ${APP_URL}/dashboard/schedule`,
+      description: `Join from your Private Studio: ${classUrl}`,
+      location: "Private Studio (online)",
+      url: classUrl,
       method: "REQUEST",
     });
     const react = ClassBookingEmail({
@@ -109,22 +176,25 @@ export async function sendBookingConfirmation(
       classDate: formattedDate,
       classTime: formattedTime,
       classDuration: `${durationMinutes} minutes`,
-      classLocation: "Online (Daily.co)",
-      manageBookingUrl: `${APP_URL}/dashboard/schedule`,
+      classLocation: "Private Studio (online)",
+      manageBookingUrl: classUrl,
       creditRefundWindowLabel: toMinutesLabel(settings.creditRefundWindowMinutes),
+      preJoinWindowLabel: toMinutesLabel(settings.preJoinWindowMinutes),
+      lateJoinCutoffLabel: toMinutesLabel(settings.lateJoinCutoffMinutes),
     });
 
     await sendPostmarkReactEmail({
       to: email,
       subject: `Booking confirmed: ${className}`,
-      category: "transactional",
       react,
-      textBody: `Hi ${firstName},\n\nYour booking is confirmed for ${className} on ${formattedDate} at ${formattedTime}.\n\nManage your booking: ${APP_URL}/dashboard/schedule`,
+      textBody: `Hi ${firstName},\n\nYour booking is confirmed for ${className} on ${formattedDate} at ${formattedTime}.\n\nThe online studio opens ${toMinutesLabel(settings.preJoinWindowMinutes)} before class. First-time joins close ${toMinutesLabel(settings.lateJoinCutoffMinutes)} after the start time.\n\nManage your booking: ${APP_URL}/dashboard/schedule\n\n${getClassLifecycleSupportLine()}`,
       tag: "class-booking-confirmation",
-      metadata: {
-        className,
+      templateKey: "class-booking-confirmation",
+      ...getClassLifecycleDeliveryOptions({
         emailType: "class-booking-confirmation",
-      },
+        className,
+        startsAt: classDateObj,
+      }),
       attachments: [
         {
           name: "invite.ics",
@@ -140,6 +210,119 @@ export async function sendBookingConfirmation(
   }
 }
 
+export async function sendWaitlistJoinedEmail(
+  email: string,
+  firstName: string,
+  className: string,
+  classDate: string,
+  classTime: string,
+  classDateObj: Date = new Date(),
+  durationMinutes: number = 60,
+  position?: number,
+  userPrefs: I18nPreferences = DEFAULT_PREFS
+) {
+  try {
+    const formattedDate = formatDate(classDateObj, userPrefs);
+    const formattedTime = formatTime(classDateObj, userPrefs);
+    const react = ClassWaitlistEmail({
+      firstName,
+      className,
+      classDate: formattedDate,
+      classTime: formattedTime,
+      classDuration: `${durationMinutes} minutes`,
+      manageBookingUrl: `${APP_URL}/dashboard/schedule`,
+      position,
+      variant: "joined",
+    });
+
+    await sendPostmarkReactEmail({
+      to: email,
+      subject: `Waitlist joined: ${className}`,
+      react,
+      textBody: [
+        `Hi ${firstName},`,
+        "",
+        `You are on the waitlist for ${className} on ${formattedDate} at ${formattedTime}.`,
+        position ? `Your current waitlist position is #${position}.` : "",
+        "",
+        `View your schedule: ${APP_URL}/dashboard/schedule`,
+        "",
+        getClassLifecycleSupportLine(),
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      tag: "class-waitlist-joined",
+      templateKey: "class-waitlist-joined",
+      ...getClassLifecycleDeliveryOptions({
+        emailType: "class-waitlist-joined",
+        className,
+        startsAt: classDateObj,
+      }),
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send waitlist joined email", error);
+    return { success: false, error };
+  }
+}
+
+export async function sendWaitlistPromotedEmail(
+  email: string,
+  firstName: string,
+  className: string,
+  classDate: string,
+  classTime: string,
+  classDateObj: Date = new Date(),
+  durationMinutes: number = 60,
+  userPrefs: I18nPreferences = DEFAULT_PREFS
+) {
+  try {
+    const formattedDate = formatDate(classDateObj, userPrefs);
+    const formattedTime = formatTime(classDateObj, userPrefs);
+    const invite = buildCalendarInvite({
+      eventName: className,
+      startTime: classDateObj,
+      durationMinutes,
+      description: `Join link: ${APP_URL}/dashboard/schedule`,
+      method: "REQUEST",
+    });
+    const react = ClassWaitlistEmail({
+      firstName,
+      className,
+      classDate: formattedDate,
+      classTime: formattedTime,
+      classDuration: `${durationMinutes} minutes`,
+      manageBookingUrl: `${APP_URL}/dashboard/schedule`,
+      variant: "promoted",
+    });
+
+    await sendPostmarkReactEmail({
+      to: email,
+      subject: `Waitlist confirmed: ${className}`,
+      react,
+      textBody: `Hi ${firstName},\n\nA space opened up and your booking is now confirmed for ${className} on ${formattedDate} at ${formattedTime}.\n\nManage your booking: ${APP_URL}/dashboard/schedule\n\n${getClassLifecycleSupportLine()}`,
+      tag: "class-waitlist-promoted",
+      templateKey: "class-waitlist-promoted",
+      ...getClassLifecycleDeliveryOptions({
+        emailType: "class-waitlist-promoted",
+        className,
+        startsAt: classDateObj,
+      }),
+      attachments: [
+        {
+          name: "invite.ics",
+          content: Buffer.from(invite).toString("base64"),
+          contentType: "text/calendar",
+        },
+      ],
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send waitlist promoted email", error);
+    return { success: false, error };
+  }
+}
+
 export async function sendClassReminder(
   email: string,
   firstName: string,
@@ -150,11 +333,14 @@ export async function sendClassReminder(
   userPrefs: I18nPreferences = DEFAULT_PREFS,
   options?: {
     preJoinWindowMinutes?: number;
+    lateJoinCutoffMinutes?: number;
   }
 ) {
   try {
     const preJoinWindowMinutes =
       options?.preJoinWindowMinutes ?? (await getClassOperationalSettings()).preJoinWindowMinutes;
+    const lateJoinCutoffMinutes =
+      options?.lateJoinCutoffMinutes ?? (await getClassOperationalSettings()).lateJoinCutoffMinutes;
     const formattedTime = formatTimeString(classTime, userPrefs);
     const react = ClassReminderEmail({
       firstName,
@@ -162,19 +348,20 @@ export async function sendClassReminder(
       classTime: formattedTime,
       joinLink: joinLink || `${APP_URL}/dashboard/schedule`,
       preJoinWindowLabel: toMinutesLabel(preJoinWindowMinutes),
+      lateJoinCutoffLabel: toMinutesLabel(lateJoinCutoffMinutes),
     });
 
     await sendPostmarkReactEmail({
       to: email,
       subject: `Reminder: ${className} starts soon`,
-      category: "transactional",
       react,
-      textBody: `Hi ${firstName},\n\nThis is a reminder that ${className} begins at ${formattedTime}.\n\nJoin class: ${joinLink || `${APP_URL}/dashboard/schedule`}`,
+      textBody: `Hi ${firstName},\n\nThis is a reminder that ${className} begins at ${formattedTime}.\n\nThe studio opens ${toMinutesLabel(preJoinWindowMinutes)} before class. First-time joins close ${toMinutesLabel(lateJoinCutoffMinutes)} after the start time.\n\nJoin class: ${joinLink || `${APP_URL}/dashboard/schedule`}\n\n${getClassLifecycleSupportLine()}`,
       tag: "class-reminder",
-      metadata: {
-        className,
+      templateKey: "class-reminder",
+      ...getClassLifecycleDeliveryOptions({
         emailType: "class-reminder",
-      },
+        className,
+      }),
     });
     return { success: true };
   } catch (error) {
@@ -193,17 +380,38 @@ export async function sendPurchaseConfirmation(
   userPrefs: I18nPreferences = DEFAULT_PREFS
 ) {
   try {
-    await render(
-      PurchaseConfirmationEmail({
-        firstName,
+    const react = PurchaseConfirmationEmail({
+      firstName,
+      purchaseDescription,
+      amount,
+      invoiceId,
+      date: formatDate(new Date(), userPrefs),
+      scheduleUrl: `${APP_URL}/dashboard/schedule`,
+    });
+
+    await sendPostmarkReactEmail({
+      to: email,
+      subject: "Purchase confirmed",
+      category: "transactional",
+      react,
+      textBody: [
+        `Hi ${firstName},`,
+        "",
+        `Thanks for your purchase: ${purchaseDescription}.`,
+        `Amount: ${amount}`,
+        `Invoice: ${invoiceId}`,
+        `Manage your schedule: ${APP_URL}/dashboard/schedule`,
+      ].join("\n"),
+      tag: "purchase-confirmation",
+      templateKey: "purchase-confirmation",
+      metadata: {
         purchaseDescription,
-        amount,
         invoiceId,
-        date: formatDate(new Date(), userPrefs),
-        scheduleUrl: "https://shrutiturner.co.uk/dashboard/schedule",
-      })
-    );
-    console.log(`[Mock Email Service] Sending Purchase Confirmation to ${email}`);
+        emailType: "purchase-confirmation",
+      },
+      dispatchMode: "immediate_best_effort",
+    });
+
     return { success: true };
   } catch (error) {
     console.error("Failed to send purchase confirmation", error);
@@ -251,6 +459,8 @@ export async function sendSubscriptionNoticeEmail(params: {
         emailType: params.tag,
         ...(params.metadata || {}),
       },
+      templateKey: params.tag,
+      dispatchMode: "immediate_best_effort",
     });
 
     return { success: true };
@@ -311,14 +521,16 @@ export async function sendInstructorNotification(
           : type === "no-attendance-cancelled"
             ? `Class cancelled: ${className}`
             : `Class empty: ${className}`,
-      category: "transactional",
       react,
-      textBody: `${className}\nDate: ${formattedDate}\nTime: ${formattedTime}\nAttendees: ${attendeeCount}\nRoster: ${APP_URL}/admin/classes`,
+      textBody: `${className}\nDate: ${formattedDate}\nTime: ${formattedTime}\nAttendees: ${attendeeCount}\nRoster: ${APP_URL}/admin/classes\n\n${getClassLifecycleSupportLine()}`,
       tag: `instructor-${type}`,
-      metadata: {
-        className,
+      templateKey: `instructor-${type}`,
+      ...getClassLifecycleDeliveryOptions({
         emailType: `instructor-${type}`,
-      },
+        className,
+        startsAt,
+        classDate,
+      }),
       attachments:
         invite && type === "first-signup"
           ? [
@@ -373,14 +585,15 @@ export async function sendClassCancellation(
     await sendPostmarkReactEmail({
       to: email,
       subject: `Class cancelled: ${className}`,
-      category: "transactional",
       react,
-      textBody: `Hi ${firstName},\n\n${className} on ${formattedDate} at ${formattedTime} has been cancelled.\n\nView available classes: ${APP_URL}/schedule`,
+      textBody: `Hi ${firstName},\n\n${className} on ${formattedDate} at ${formattedTime} has been cancelled.\n\nView available classes: ${APP_URL}/schedule\n\n${getClassLifecycleSupportLine()}`,
       tag: "class-cancellation",
-      metadata: {
-        className,
+      templateKey: "class-cancellation",
+      ...getClassLifecycleDeliveryOptions({
         emailType: "class-cancellation",
-      },
+        className,
+        startsAt,
+      }),
       attachments: [
         {
           name: "class-cancel.ics",
@@ -427,15 +640,16 @@ export async function sendClassUnbooking(
     await sendPostmarkReactEmail({
       to: email,
       subject: `Booking cancelled: ${className}`,
-      category: "transactional",
       react,
-      textBody: `Hi ${firstName},\n\nYour booking for ${className} on ${formattedDate} at ${formattedTime} has been cancelled.\n\nBrowse upcoming classes: ${APP_URL}/dashboard/schedule`,
+      textBody: `Hi ${firstName},\n\nYour booking for ${className} on ${formattedDate} at ${formattedTime} has been cancelled.\n\nBrowse upcoming classes: ${APP_URL}/dashboard/schedule\n\n${getClassLifecycleSupportLine()}`,
       tag: "class-unbooking",
-      metadata: {
-        className,
+      templateKey: "class-unbooking",
+      ...getClassLifecycleDeliveryOptions({
         emailType: "class-unbooking",
+        className,
+        startsAt: classDateObj,
         classDate,
-      },
+      }),
       attachments: [
         {
           name: "class-unbook.ics",
@@ -457,17 +671,11 @@ export async function sendNewsletter(
   markdownContent: string // Content from Contentful
 ) {
   try {
-    const bodyContent = markdownContent
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => `<p>${line}</p>`)
-      .join("");
     await render(
       NewsletterEmail({
         firstName: "there",
         subject,
-        bodyContent,
+        bodyContent: markdownContent,
       })
     );
     console.log(`[Mock Email Service] Sending Newsletter to ${email}`);

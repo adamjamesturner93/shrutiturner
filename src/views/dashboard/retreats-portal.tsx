@@ -218,8 +218,8 @@ export function DashboardRetreatDetail({
                   </p>
                   <p className="mt-1">
                     {booking.dietaryRequirements ||
-                    booking.mobilityNeeds ||
-                    booking.medicalConditions
+                      booking.mobilityNeeds ||
+                      booking.medicalConditions
                       ? "Yes"
                       : "None provided"}
                   </p>
@@ -260,8 +260,8 @@ export function DashboardRetreatDetail({
                   </div>
                 ) : null}
                 {!booking.dietaryRequirements &&
-                !booking.mobilityNeeds &&
-                !booking.medicalConditions ? (
+                  !booking.mobilityNeeds &&
+                  !booking.medicalConditions ? (
                   <p className="text-muted-foreground">
                     No additional health or accessibility notes have been saved with this booking.
                   </p>
@@ -275,7 +275,7 @@ export function DashboardRetreatDetail({
               </CardHeader>
               <CardContent className="space-y-3 text-sm leading-relaxed">
                 <p className="text-muted-foreground">
-                  Keep an eye on your inbox for travel details, arrival guidance, and any
+                  Keep an eye on your inbox for travel details, arrival guidance and any
                   pre-retreat notes. If your access or health needs change before the retreat,
                   please update Shruti as early as possible.
                 </p>
@@ -354,7 +354,7 @@ export function DashboardRetreatDetail({
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <p className="text-muted-foreground">
-                  This dashboard keeps your booking, payment status, and key details in one place.
+                  This dashboard keeps your booking, payment status and key details in one place.
                   If you need a fresh balance link or want to change anything on file, get in touch
                   and we can sort it manually.
                 </p>

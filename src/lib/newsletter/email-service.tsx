@@ -54,11 +54,15 @@ export async function sendNewsletterVerificationEmail(input: {
       `Unsubscribe: ${unsubscribeUrl}`,
     ].join("\n"),
     tag: "newsletter-verification",
+    templateKey: "newsletter-verification",
     category: "transactional",
     metadata: {
       source: input.source,
       subscriberId: input.subscriberId,
     },
+    retryable: false,
+    maxAttempts: 1,
+    dispatchMode: "immediate_required",
   });
 }
 
@@ -88,7 +92,7 @@ export async function sendLeadMagnetDeliveryEmail(input: {
         downloadUrl={downloadUrl}
         ctaLabel="Download your guide"
         welcomeCopy={
-          "Thanks for confirming your email.\n\nYour free guide is ready below, and future updates will only arrive when there is something genuinely useful to share."
+          "Thanks for confirming your email.\n\nYour free guide is ready below and future updates will only arrive when there is something genuinely useful to share."
         }
         classesUrl={buildAbsoluteUrl("/classes")}
         aboutUrl={buildAbsoluteUrl("/about")}
@@ -106,10 +110,14 @@ export async function sendLeadMagnetDeliveryEmail(input: {
       `Unsubscribe: ${unsubscribeUrl}`,
     ].join("\n"),
     tag: "newsletter-lead-magnet",
+    templateKey: "newsletter-lead-magnet",
     category: "marketing",
     metadata: {
       subscriberId: input.subscriberId,
     },
+    retryable: true,
+    maxAttempts: 5,
+    dispatchMode: "immediate_best_effort",
   });
 }
 

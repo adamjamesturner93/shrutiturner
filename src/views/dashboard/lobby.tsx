@@ -9,29 +9,14 @@ import { HealthProfileEditor } from "../../components/health-profile-editor";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
-import {
-  AppEmptyState,
-  AppMetricCard,
-  AppMetricGrid,
-  AppPageHeader,
-} from "@/components/app-surface";
-import {
-  Calendar,
-  CreditCard,
-  Gift,
-  ArrowRight,
-  CheckCircle,
-  Shield,
-  HeartPulse,
-  AlertTriangle,
-  Users,
-} from "lucide-react";
+import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
+import { ArrowRight, CheckCircle, Shield, HeartPulse, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import type { DashboardSummaryDto, OnboardingStateDto } from "@/lib/api/types";
 import { EMPTY_HEALTH_PROFILE, type HealthProfile } from "@/data/health-profile-data";
+import { getApiErrorMessage } from "@/lib/api/client";
 import { getGreeting } from "@/components/greeting";
 import {
-  getDashboardAccessCard,
   shouldPromptForHealthProfile,
   shouldPromptForHealthReview,
 } from "@/views/dashboard/dashboard-view-model";
@@ -160,8 +145,8 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
       });
 
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-        throw new Error(payload?.message || "Could not save profile details.");
+        const payload = (await response.json().catch(() => null)) as unknown;
+        throw new Error(getApiErrorMessage(payload, "Could not save profile details."));
       }
 
       const account = await refreshAccountProfile();
@@ -226,12 +211,12 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
     setSummary((prev) =>
       prev
         ? {
-            ...prev,
-            hasHealthProfile: true,
-            healthDeclarationStatus: savedProfile.declarationStatus,
-            healthDeclarationLastConfirmedAt: savedProfile.lastConfirmedAt,
-            healthDeclarationNeedsReview: false,
-          }
+          ...prev,
+          hasHealthProfile: true,
+          healthDeclarationStatus: savedProfile.declarationStatus,
+          healthDeclarationLastConfirmedAt: savedProfile.lastConfirmedAt,
+          healthDeclarationNeedsReview: false,
+        }
         : prev
     );
   };
@@ -247,10 +232,10 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
       setSummary((prev) =>
         prev
           ? {
-              ...prev,
-              healthDeclarationLastConfirmedAt: payload.lastConfirmedAt,
-              healthDeclarationNeedsReview: false,
-            }
+            ...prev,
+            healthDeclarationLastConfirmedAt: payload.lastConfirmedAt,
+            healthDeclarationNeedsReview: false,
+          }
           : prev
       );
       await refreshAccountProfile();
@@ -283,9 +268,6 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
     );
   }
 
-  const totalCredits = summary.credits.balance;
-  const referralBalance = Math.floor(summary.referral.balancePence / 100);
-  const accessCard = getDashboardAccessCard(summary.membership, totalCredits);
   const shouldShowHealthPrompt = shouldPromptForHealthProfile(
     summary.healthDeclarationStatus,
     user?.hasConsentedToHealthData,
@@ -294,12 +276,6 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
   const shouldShowHealthReviewPrompt = shouldPromptForHealthReview(
     summary.healthDeclarationNeedsReview
   );
-
-  const entitlementLabel = (value: "membership" | "credit" | "manual") => {
-    if (value === "membership") return "Membership";
-    if (value === "credit") return "Credit";
-    return "Booked";
-  };
 
   return (
     <DashboardLayout title="Studio Lobby - Shruti Turner">
@@ -420,7 +396,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                       >
                         Health & Liability Waiver
                       </Link>
-                      , and I understand that I participate at my own risk
+                      and I understand that I participate at my own risk
                     </span>
                   </label>
                 </div>
@@ -453,15 +429,15 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                 <div className="bg-secondary/30 text-muted-foreground space-y-3 rounded-lg p-4 text-left text-sm">
                   <p className="flex items-start gap-2">
                     <CheckCircle className="text-primary mt-0.5 h-4 w-4 flex-shrink-0" />
-                    <span>Book any yoga, strength, or cardio class from your schedule</span>
+                    <span>Track coaching status and next actions from one dashboard</span>
                   </p>
                   <p className="flex items-start gap-2">
                     <CheckCircle className="text-primary mt-0.5 h-4 w-4 flex-shrink-0" />
-                    <span>Credits are used when you book</span>
+                    <span>Keep your health profile and account details up to date</span>
                   </p>
                   <p className="flex items-start gap-2">
                     <CheckCircle className="text-primary mt-0.5 h-4 w-4 flex-shrink-0" />
-                    <span>Classes adapt to how you feel on the day</span>
+                    <span>Use Everfit for coaching delivery once Shruti has set you up</span>
                   </p>
                 </div>
                 <Button className="w-full" onClick={() => void finishOnboarding()}>
@@ -568,10 +544,10 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
               {getGreeting()}, {user?.firstName || "there"}.
             </>
           }
-          description="Here's your training overview for this week."
+          description="Use this area to manage coaching, health details and your account."
           meta={
             <Badge className="border-white/15 bg-white/10 text-[rgba(250,250,248,0.96)] shadow-none">
-              {accessCard.statusBadgeLabel}
+              Coaching dashboard
             </Badge>
           }
         />
@@ -580,7 +556,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
           <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-sm text-amber-900">
-                Complete your health declaration before you book or join classes.
+                Complete your health declaration before coaching starts.
               </p>
               <p className="mt-1 text-xs text-amber-800">
                 You can tell Shruti about relevant context, or confirm that there is nothing
@@ -617,166 +593,69 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
           </div>
         ) : null}
 
-        {referralBalance > 0 ? (
-          <div className="border-brand-accent/20 bg-brand-accent/5 flex items-start gap-3 rounded-lg border p-4">
-            <Gift className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
-            <div>
-              <p className="text-sm">
-                You have <span className="text-brand-accent">£{referralBalance}</span> referral
-                balance.
-              </p>
-              <p className="text-muted-foreground mt-1 text-xs">
-                {summary.membership
-                  ? "Applies to your next renewal"
-                  : "Applies to your next purchase"}
-              </p>
-            </div>
-          </div>
-        ) : null}
-
         <AppMetricGrid>
           <AppMetricCard
-            label="Upcoming classes"
-            value={summary.upcomingClasses.length}
-            detail="scheduled"
+            label="Coaching"
+            value="Dashboard"
+            detail="applications, billing and status"
           />
           <AppMetricCard
-            label="Weekly bookings"
-            value={summary.attendance.thisWeekBookedCount}
-            detail="this week"
+            label="Health profile"
+            value={summary.healthDeclarationStatus === "incomplete" ? "Needed" : "Ready"}
+            detail="context for coaching decisions"
           />
           <AppMetricCard
-            label={accessCard.label}
-            value={accessCard.value}
-            detail={accessCard.detail}
-          />
-          <AppMetricCard
-            label="Referral balance"
-            value={`£${referralBalance}`}
-            detail={referralBalance > 0 ? "available now" : "share your link to earn credit"}
+            label="Account"
+            value="Private"
+            detail="registration and contact details"
           />
         </AppMetricGrid>
-
-        <section className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl">Upcoming Classes</h2>
-              <p className="text-muted-foreground mt-1 text-sm">
-                Your booked sessions and quickest route back into the schedule.
-              </p>
-            </div>
-            <Link href="/dashboard/schedule">
-              <Button variant="ghost" size="sm">
-                View Full Schedule
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-
-          {summary.upcomingClasses.length === 0 ? (
-            <AppEmptyState
-              title="Your schedule is clear"
-              description="Browse the schedule and book your next class. Start with whatever feels manageable."
-              action={
-                <div className="flex flex-col justify-center gap-3 sm:flex-row">
-                  <Link href="/dashboard/schedule">
-                    <Button>
-                      Browse Schedule
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                  {shouldShowHealthPrompt ? (
-                    <Link href="/dashboard/health">
-                      <Button variant="outline">Complete Health Profile</Button>
-                    </Link>
-                  ) : null}
-                </div>
-              }
-            />
-          ) : (
-            <div className="space-y-3">
-              {summary.upcomingClasses.map((booking) => (
-                <Link
-                  key={booking.bookingId}
-                  href={`/dashboard/classes/${booking.classSlug}?sessionId=${encodeURIComponent(booking.sessionId)}`}
-                  className="bg-background hover:bg-secondary/20 hover:border-brand-accent/30 block rounded-lg border p-4 transition-colors"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <p>{booking.className}</p>
-                      <p className="text-muted-foreground text-xs">
-                        {new Date(booking.startsAtUtc).toLocaleString("en-GB", {
-                          weekday: "short",
-                          day: "2-digit",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {entitlementLabel(booking.entitlementType)}
-                    </Badge>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
 
         <section className="space-y-4">
           <div>
             <h2 className="text-xl">Quick Actions</h2>
             <p className="text-muted-foreground mt-1 text-sm">
-              Jump straight to the parts of the studio you use most.
+              Jump straight to your current coaching tools.
             </p>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Link
-              href="/dashboard/schedule"
+              href="/dashboard/coaching"
               className="bg-background rounded-lg border p-5 transition-shadow hover:shadow-md"
             >
               <div className="mb-2 flex items-center gap-3">
-                <Calendar className="text-primary h-5 w-5" />
-                <h3 className="text-lg">Book Next Class</h3>
+                <HeartPulse className="text-primary h-5 w-5" />
+                <h3 className="text-lg">Coaching Dashboard</h3>
               </div>
               <p className="text-muted-foreground text-sm">
-                Browse this week&apos;s schedule and find your next session.
+                Review your application, onboarding, billing and cancellation options.
               </p>
             </Link>
 
             <Link
-              href="/dashboard/small-groups"
+              href="/dashboard/health"
               className="bg-background rounded-lg border p-5 transition-shadow hover:shadow-md"
             >
               <div className="mb-2 flex items-center gap-3">
-                <Users className="text-primary h-5 w-5" />
-                <h3 className="text-lg">Small Group Programmes</h3>
+                <Shield className="text-primary h-5 w-5" />
+                <h3 className="text-lg">Health Profile</h3>
               </div>
               <p className="text-muted-foreground text-sm">
-                Explore your small group programmes and longer-term training blocks.
+                Keep relevant injuries, conditions and consent details current.
               </p>
             </Link>
 
             <Link
-              href={summary.membership ? "/dashboard/referrals" : "/dashboard/membership"}
+              href="/dashboard/account"
               className="bg-background rounded-lg border p-5 transition-shadow hover:shadow-md"
             >
               <div className="mb-2 flex items-center gap-3">
-                {summary.membership ? (
-                  <Gift className="text-primary h-5 w-5" />
-                ) : (
-                  <CreditCard className="text-primary h-5 w-5" />
-                )}
-                <h3 className="text-lg">
-                  {summary.membership ? "Refer a Friend" : "View Memberships"}
-                </h3>
+                <Shield className="text-primary h-5 w-5" />
+                <h3 className="text-lg">Account Details</h3>
               </div>
               <p className="text-muted-foreground text-sm">
-                {summary.membership
-                  ? "Give £10, get £10. Share your referral link."
-                  : "Compare monthly, annual, and credit options for the studio."}
+                Manage contact details and core registration information.
               </p>
             </Link>
           </div>

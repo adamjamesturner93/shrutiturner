@@ -1,6 +1,7 @@
+import { env } from "@/lib/env";
+
 const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
-const TURNSTILE_SECRET_KEY =
-  process.env.TURNSTILE_SECRET_KEY || "1x0000000000000000000000000000000AA";
+const TURNSTILE_SECRET_KEY = env.TURNSTILE_SECRET_KEY || "1x0000000000000000000000000000000AA";
 
 interface TurnstileVerifyResponse {
   success: boolean;
@@ -9,7 +10,7 @@ interface TurnstileVerifyResponse {
 
 export async function verifyTurnstileToken(token: string, remoteIp?: string): Promise<boolean> {
   if (!token) return false;
-  if (process.env.NEXT_PUBLIC_E2E_TEST_MODE === "1" && token === "e2e-turnstile-token") {
+  if (env.NEXT_PUBLIC_E2E_TEST_MODE === "1" && token === "e2e-turnstile-token") {
     return true;
   }
 

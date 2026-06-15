@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { db } from "@/lib/db";
+import { db } from "../../helpers/db";
 import { loginWithEmail, makeE2eAuthEmail } from "../../helpers/auth";
 
 async function seedMemberWithSession(email: string, startsAt: Date) {

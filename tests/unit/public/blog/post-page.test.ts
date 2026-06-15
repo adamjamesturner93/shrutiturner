@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const notFoundMock = vi.fn();
 const getBlogPostBySlugMock = vi.fn();
+const getBlogPostStaticParamsMock = vi.fn();
 const getBlogPostsMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
@@ -10,6 +11,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/content", () => ({
   getBlogPostBySlug: getBlogPostBySlugMock,
+  getBlogPostStaticParams: getBlogPostStaticParamsMock,
   getBlogPosts: getBlogPostsMock,
 }));
 
@@ -26,6 +28,12 @@ describe("/blog/[slug] page", () => {
       throw new Error("NEXT_NOT_FOUND");
     });
     getBlogPostsMock.mockResolvedValue([]);
+    getBlogPostStaticParamsMock.mockResolvedValue([{ slug: "known-post" }]);
+  });
+
+  it("exposes static params for published blog posts", async () => {
+    await expect(page.generateStaticParams()).resolves.toEqual([{ slug: "known-post" }]);
+    expect(getBlogPostStaticParamsMock).toHaveBeenCalledTimes(1);
   });
 
   it("calls notFound for unknown slugs", async () => {

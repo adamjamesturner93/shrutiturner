@@ -38,7 +38,7 @@ export function DashboardSmallGroupsPage({
         <AppPageHeader
           eyebrow="Small-group training"
           title="Small Group Programmes"
-          description="A clearer view of your current programme runs, what is coming next, and what is currently open for registration."
+          description="A clearer view of your current programme runs, what is coming nextand what is currently open for registration."
           actions={
             <Button asChild variant="outline">
               <Link href="/classes/small-groups">View public programmes</Link>
@@ -123,7 +123,7 @@ export function DashboardSmallGroupsPage({
         ) : (
           <AppEmptyState
             title="You are not enrolled in a programme yet"
-            description="When you join a small group programme, your sessions, progress, and next steps will appear here."
+            description="When you join a small group programme, your sessions, progress and next steps will appear here."
             action={
               <Button asChild>
                 <Link href="/classes/small-groups">Explore current programmes</Link>

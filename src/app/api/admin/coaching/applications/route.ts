@@ -10,12 +10,14 @@ type PatchBody = {
   id?: unknown;
   status?: unknown;
   adminNotes?: unknown;
+  decisionReason?: unknown;
   convertToClient?: unknown;
 };
 
 export async function GET(request: Request) {
+  await connection();
+
   try {
-    await connection();
     await requireStaffAdminUser();
     const url = new URL(request.url);
     const applications = await listAdminCoachingApplications({
@@ -37,7 +39,7 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    await requireStaffAdminUser();
+    const adminUser = await requireStaffAdminUser();
     const body = (await request.json().catch(() => null)) as PatchBody | null;
     if (!body || typeof body.id !== "string") {
       return NextResponse.json({ message: "Application id is required." }, { status: 400 });
@@ -48,9 +50,11 @@ export async function PATCH(request: Request) {
         "submitted",
         "under_review",
         "follow_up_needed",
+        "waitlisted",
         "approved",
         "declined",
         "converted",
+        "withdrawn",
       ].includes(body.status)
         ? (body.status as CoachingApplicationStatus)
         : undefined;
@@ -58,7 +62,14 @@ export async function PATCH(request: Request) {
       id: body.id,
       status,
       adminNotes: typeof body.adminNotes === "string" ? body.adminNotes : undefined,
+      decisionReason: typeof body.decisionReason === "string" ? body.decisionReason : undefined,
       convertToClient: body.convertToClient === true,
+      actorUserId: adminUser.id,
+      requestId: request.headers.get("x-request-id"),
+      requestPath: new URL(request.url).pathname,
+      requestIp:
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        request.headers.get("x-real-ip"),
     });
     return NextResponse.json(updated);
   } catch (error) {
@@ -70,6 +81,12 @@ export async function PATCH(request: Request) {
     }
     if (error instanceof Error && error.message === "NOT_FOUND") {
       return NextResponse.json({ message: "Application not found." }, { status: 404 });
+    }
+    if (error instanceof Error && error.message === "DECISION_REASON_REQUIRED") {
+      return NextResponse.json(
+        { message: "Add a client-facing reason before rejecting this application." },
+        { status: 400 }
+      );
     }
     console.error("PATCH /api/admin/coaching/applications failed", error);
     return NextResponse.json({ message: "Failed to update application." }, { status: 500 });

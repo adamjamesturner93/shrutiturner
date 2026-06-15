@@ -1,12 +1,19 @@
-import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { AuthChallengePurpose } from "@prisma/client";
+import { sendAuthCodeEmail } from "@/lib/auth-code";
+import { issueAuthChallenge, normalizeEmail } from "@/lib/auth-challenge";
+import { enforceAuthEndpointRateLimit, enforceTrustedAuthOrigin } from "@/lib/auth-security";
 import {
-  generateAuthCode,
-  normalizeEmail,
-  saveAuthCodeForEmail,
-  sendAuthCodeEmail,
-} from "@/lib/auth-code";
-import { getClientIp, verifyTurnstileToken } from "@/lib/turnstile";
+  apiOk,
+  badRequest,
+  handleApiRoute,
+  parseJsonBody,
+  tooManyRequests,
+  upstreamFailure,
+} from "@/lib/api/route";
+import { db } from "@/lib/db";
+import { claimReferralCode } from "@/lib/referrals/referral-service";
+import { verifyTurnstileToken } from "@/lib/turnstile";
+import { recordUserLifecycleEvent } from "@/lib/user-lifecycle";
 
 type RegisterBody = {
   firstName?: string;
@@ -31,106 +38,135 @@ function calculateAge(dob: Date): number {
   return age;
 }
 
-export async function POST(req: Request) {
-  const body = (await req.json().catch(() => null)) as RegisterBody | null;
+export const POST = handleApiRoute(async ({ request, requestIp }) => {
+  const body = await parseJsonBody<RegisterBody>(request);
+  enforceTrustedAuthOrigin(request);
 
-  const firstName = (body?.firstName || "").trim();
-  const lastName = (body?.lastName || "").trim();
-  const email = normalizeEmail(body?.email || "");
-  const dobRaw = (body?.dob || "").trim();
-  const timezone = (body?.timezone || "Europe/London").trim();
-  const dateFormat = (body?.dateFormat || "DD/MM/YYYY").trim();
-  const turnstileToken = (body?.turnstileToken || "").trim();
-  const agreeToTerms = body?.agreeToTerms === true;
-  const agreeToHealth = body?.agreeToHealth === true;
-  const ip = getClientIp(req);
+  const firstName = (body.firstName || "").trim();
+  const lastName = (body.lastName || "").trim();
+  const email = normalizeEmail(body.email || "");
+  const dobRaw = (body.dob || "").trim();
+  const timezone = (body.timezone || "Europe/London").trim();
+  const dateFormat = (body.dateFormat || "DD/MM/YYYY").trim();
+  const turnstileToken = (body.turnstileToken || "").trim();
+  const agreeToTerms = body.agreeToTerms === true;
+  const agreeToHealth = body.agreeToHealth === true;
 
   if (!firstName || !lastName) {
-    return NextResponse.json({ message: "First and last name are required." }, { status: 400 });
+    throw badRequest("First and last name are required.");
   }
 
   if (!email || !email.includes("@")) {
-    return NextResponse.json({ message: "Valid email is required." }, { status: 400 });
+    throw badRequest("Valid email is required.");
   }
+
+  enforceAuthEndpointRateLimit({
+    route: "register",
+    email,
+    requestIp,
+  });
 
   const dob = new Date(dobRaw);
   if (!dobRaw || Number.isNaN(dob.getTime())) {
-    return NextResponse.json({ message: "Valid date of birth is required." }, { status: 400 });
+    throw badRequest("Valid date of birth is required.");
   }
 
   if (calculateAge(dob) < 18) {
-    return NextResponse.json(
-      { message: "You must be 18 or over to create an account." },
-      { status: 400 }
-    );
+    throw badRequest("You must be 18 or over to create an account.");
   }
 
   if (!agreeToTerms || !agreeToHealth) {
-    return NextResponse.json(
-      { message: "You must accept Terms and Health Declaration to create an account." },
-      { status: 400 }
-    );
+    throw badRequest("You must accept Terms and Health Declaration to create an account.");
   }
 
-  const turnstileValid = await verifyTurnstileToken(turnstileToken, ip);
+  const turnstileValid = await verifyTurnstileToken(turnstileToken, requestIp);
   if (!turnstileValid) {
-    return NextResponse.json(
-      { message: "Verification failed. Please try again." },
-      { status: 400 }
-    );
+    throw badRequest("Verification failed. Please try again.");
   }
 
   const now = new Date();
-  const code = generateAuthCode();
-  const expiry = new Date(now.getTime() + 10 * 60 * 1000);
+  const existingUser = await db.user.findUnique({ where: { email } });
+  if (existingUser?.deletedAt) {
+    throw badRequest("This account has been deleted and cannot be reused.");
+  }
 
-  const existingUser = await db.user.findUnique({ where: { email }, select: { id: true } });
+  const user = existingUser
+    ? await db.user.update({
+        where: { id: existingUser.id },
+        data: {
+          firstName,
+          lastName,
+          name: `${firstName} ${lastName}`.trim(),
+          dob,
+          timezone,
+          dateFormat,
+          hasAgreedToTerms: true,
+          hasAgreedToHealth: true,
+          termsAgreedAt: existingUser.termsAgreedAt || now,
+          healthAgreedAt: existingUser.healthAgreedAt || now,
+          deletedAt: null,
+        },
+      })
+    : await db.user.create({
+        data: {
+          firstName,
+          lastName,
+          name: `${firstName} ${lastName}`.trim(),
+          email,
+          dob,
+          timezone,
+          dateFormat,
+          role: "student",
+          hasAgreedToTerms: true,
+          hasAgreedToHealth: true,
+          termsAgreedAt: now,
+          healthAgreedAt: now,
+        },
+      });
 
-  if (existingUser) {
-    await db.user.update({
-      where: { id: existingUser.id },
-      data: {
-        firstName,
-        lastName,
-        name: `${firstName} ${lastName}`.trim(),
-        dob,
-        timezone,
-        dateFormat,
-        hasAgreedToTerms: true,
-        hasAgreedToHealth: true,
-        termsAgreedAt: new Date(),
-        healthAgreedAt: new Date(),
+  if (!existingUser) {
+    await recordUserLifecycleEvent({
+      eventType: "user_created",
+      userId: user.id,
+      actorUserId: user.id,
+      payload: {
+        source: "self_serve_signup",
       },
     });
+  }
 
-    await saveAuthCodeForEmail(email, code, expiry);
-  } else {
-    await db.user.create({
-      data: {
-        firstName,
-        lastName,
-        name: `${firstName} ${lastName}`.trim(),
-        email,
-        dob,
-        timezone,
-        dateFormat,
-        role: "student",
-        authCode: code,
-        authCodeExpiry: expiry,
-        hasAgreedToTerms: true,
-        hasAgreedToHealth: true,
-        termsAgreedAt: now,
-        healthAgreedAt: now,
-      },
+  if (body.refCode?.trim()) {
+    await claimReferralCode(user.id, body.refCode.trim()).catch(() => null);
+  }
+
+  const issued = await issueAuthChallenge({
+    email,
+    userId: user.id,
+    purpose: AuthChallengePurpose.signup,
+    ip: requestIp,
+    metadata: {
+      source: "register",
+      timezone,
+      dateFormat,
+    },
+  });
+
+  if (!issued.ok) {
+    throw tooManyRequests("Please wait before requesting another code.", {
+      retryAfterSeconds: issued.retryAfterSeconds,
     });
   }
 
   try {
-    await sendAuthCodeEmail(email, code, 10);
+    await sendAuthCodeEmail(email, issued.code, issued.expiryMinutes);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to send verification email.";
-    return NextResponse.json({ message }, { status: 502 });
+    throw upstreamFailure(message);
   }
 
-  return NextResponse.json({ ok: true, refCodeApplied: Boolean(body?.refCode) });
-}
+  return apiOk({
+    created: !existingUser,
+    expiresAt: issued.expiresAt.toISOString(),
+    refCodeApplied: Boolean(body.refCode?.trim()),
+  });
+});

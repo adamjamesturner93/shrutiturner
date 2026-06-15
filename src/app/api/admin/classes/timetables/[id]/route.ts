@@ -7,7 +7,7 @@ import {
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    await requireStaffAdminUser();
+    const adminUser = await requireStaffAdminUser();
     const { id } = await context.params;
     const body = (await request.json()) as {
       classDefinitionSlug?: string;
@@ -25,21 +25,25 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       exclusionDates?: string[];
     };
 
-    await updateClassTimetableRule(id, {
-      classDefinitionSlug: body.classDefinitionSlug,
-      weekday: body.weekday,
-      startsAtLocal: body.startsAtLocal,
-      durationMinutes: body.durationMinutes,
-      timezone: body.timezone,
-      defaultCapacity: body.defaultCapacity,
-      instructorUserId: body.instructorUserId,
-      instructorProfileEntryId: body.instructorProfileEntryId,
-      startsOn: body.startsOn,
-      endsOn: body.endsOn,
-      active: body.active,
-      notes: body.notes,
-      exclusionDates: Array.isArray(body.exclusionDates) ? body.exclusionDates : undefined,
-    });
+    await updateClassTimetableRule(
+      id,
+      {
+        classDefinitionSlug: body.classDefinitionSlug,
+        weekday: body.weekday,
+        startsAtLocal: body.startsAtLocal,
+        durationMinutes: body.durationMinutes,
+        timezone: body.timezone,
+        defaultCapacity: body.defaultCapacity,
+        instructorUserId: body.instructorUserId,
+        instructorProfileEntryId: body.instructorProfileEntryId,
+        startsOn: body.startsOn,
+        endsOn: body.endsOn,
+        active: body.active,
+        notes: body.notes,
+        exclusionDates: Array.isArray(body.exclusionDates) ? body.exclusionDates : undefined,
+      },
+      { actorUserId: adminUser.id }
+    );
 
     return NextResponse.json({ ok: true });
   } catch (error) {
@@ -72,9 +76,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
 export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    await requireStaffAdminUser();
+    const adminUser = await requireStaffAdminUser();
     const { id } = await context.params;
-    await deleteClassTimetableRule(id);
+    await deleteClassTimetableRule(id, { actorUserId: adminUser.id });
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {

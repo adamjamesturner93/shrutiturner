@@ -1,5 +1,7 @@
-import { DashboardReferrals } from "@/views/dashboard/referrals";
+import { connection } from "next/server";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return <DashboardReferrals />;
+export default async function Page() {
+  await connection();
+  redirect("/dashboard/coaching");
 }

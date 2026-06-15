@@ -11,16 +11,48 @@ const FEELING_TO_DTO: Record<PostClassFeeling, PostClassFeelingDto> = {
   too_much: "too-much",
 };
 
+type AccountActivityCursor = {
+  startsAtUtc: string;
+  bookingId: string;
+};
+
 function mapFeeling(feeling: PostClassFeeling | null): PostClassFeelingDto | null {
   if (!feeling) return null;
   return FEELING_TO_DTO[feeling];
 }
 
+function clampLimit(limit: number | undefined) {
+  return Math.min(50, Math.max(1, limit ?? 15));
+}
+
+function encodeCursor(cursor: AccountActivityCursor) {
+  return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
+}
+
+function decodeCursor(cursor: string | undefined): AccountActivityCursor | null {
+  if (!cursor) return null;
+  try {
+    const parsed = JSON.parse(
+      Buffer.from(cursor, "base64url").toString("utf8")
+    ) as Partial<AccountActivityCursor>;
+    if (typeof parsed.startsAtUtc !== "string" || typeof parsed.bookingId !== "string") {
+      return null;
+    }
+    return {
+      startsAtUtc: parsed.startsAtUtc,
+      bookingId: parsed.bookingId,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function getAccountActivity(
   userId: string,
-  options?: { limit?: number }
+  options?: { limit?: number; cursor?: string }
 ): Promise<AccountActivityDto> {
-  const limit = Math.max(1, options?.limit ?? 15);
+  const limit = clampLimit(options?.limit);
+  const cursor = decodeCursor(options?.cursor);
 
   const [totalCount, rows] = await Promise.all([
     db.classBooking.count({
@@ -48,14 +80,28 @@ export async function getAccountActivity(
     }),
   ]);
 
-  const items = rows
-    .sort((left, right) => right.session.startsAtUtc.getTime() - left.session.startsAtUtc.getTime())
-    .slice(0, limit);
+  const sortedRows = rows.sort((left, right) => {
+    const dateDiff = right.session.startsAtUtc.getTime() - left.session.startsAtUtc.getTime();
+    if (dateDiff !== 0) return dateDiff;
+    return right.id.localeCompare(left.id);
+  });
+
+  const filteredRows = cursor
+    ? sortedRows.filter((row) => {
+        const rowStartsAt = row.session.startsAtUtc.toISOString();
+        if (rowStartsAt < cursor.startsAtUtc) return true;
+        if (rowStartsAt > cursor.startsAtUtc) return false;
+        return row.id.localeCompare(cursor.bookingId) < 0;
+      })
+    : sortedRows;
+  const pageRows = filteredRows.slice(0, limit + 1);
+  const visibleRows = pageRows.slice(0, limit);
+  const lastVisible = visibleRows.at(-1);
 
   return {
     attendedCount: totalCount,
     totalCount,
-    items: items.map((row) => ({
+    items: visibleRows.map((row) => ({
       bookingId: row.id,
       sessionId: row.session.id,
       classSlug: row.session.classDefinitionSlug,
@@ -65,5 +111,14 @@ export async function getAccountActivity(
       flareToday: Boolean(row.preClassFlareToday),
       postClassFeeling: mapFeeling(row.postClassFeeling),
     })),
+    pageInfo: {
+      nextCursor:
+        pageRows.length > limit && lastVisible
+          ? encodeCursor({
+              startsAtUtc: lastVisible.session.startsAtUtc.toISOString(),
+              bookingId: lastVisible.id,
+            })
+          : null,
+    },
   };
 }

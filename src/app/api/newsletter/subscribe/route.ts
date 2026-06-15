@@ -147,7 +147,7 @@ export async function POST(req: Request) {
       surface: `newsletter_signup_${source}`,
       wordingText:
         signupContent.consentText ||
-        "I want to receive marketing emails, newsletter updates, and occasional offers from Shruti Turner. I can unsubscribe at any time.",
+        "I want to receive marketing emails, newsletter updates and occasional offers from Shruti Turner. I can unsubscribe at any time.",
     });
 
     if (result.state === "subscribed") {

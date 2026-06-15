@@ -6,48 +6,33 @@ import { isOwnerAdminRole } from "@/lib/authz/roles";
 import { claimReferralCode } from "@/lib/referrals/referral-service";
 import { sanitizeRedirectPath } from "@/lib/navigation/safe-redirect";
 import { createCreditCheckoutSession } from "@/lib/billing/billing-service";
+import {
+  buildCreditCheckoutReturnPaths,
+  buildPricingFallbackPath,
+  firstSearchParam,
+} from "@/lib/billing/checkout-flow";
 
 interface PostLoginPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
-}
-
-function first(value: string | string[] | undefined): string {
-  if (Array.isArray(value)) return value[0] || "";
-  return value || "";
-}
-
-function buildPricingFallbackPath(params: Record<string, string | string[] | undefined>) {
-  const nextParams = new URLSearchParams({ checkout: "retry" });
-  const kind = first(params.kind);
-
-  if (kind === "membership") {
-    const interval = first(params.interval) === "annual" ? "annual" : "monthly";
-    nextParams.set("interval", interval);
-  }
-
-  if (kind === "credits") {
-    const bundle = first(params.bundle);
-    if (bundle === "1" || bundle === "3" || bundle === "10") {
-      nextParams.set("bundle", bundle);
-    }
-  }
-
-  nextParams.set("checkoutError", "1");
-  return `/dashboard/membership?${nextParams.toString()}`;
 }
 
 async function resolvePricingCheckout(
   userId: string,
   params: Record<string, string | string[] | undefined>
 ) {
-  const kind = first(params.kind);
+  const kind = firstSearchParam(params.kind);
 
   if (kind === "credits") {
-    const bundleValue = first(params.bundle);
+    const bundleValue = firstSearchParam(params.bundle);
     const bundle =
       bundleValue === "1" ? 1 : bundleValue === "3" ? 3 : bundleValue === "10" ? 10 : null;
     if (bundle) {
-      return createCreditCheckoutSession(userId, bundle);
+      return createCreditCheckoutSession(
+        userId,
+        bundle,
+        undefined,
+        buildCreditCheckoutReturnPaths(bundle)
+      );
     }
   }
 
@@ -63,18 +48,18 @@ async function PostLoginRedirect({ searchParams }: PostLoginPageProps) {
   }
 
   const role = session.user.role;
-  const redirectParam = sanitizeRedirectPath(first(params.redirect));
-  const onboarding = first(params.onboarding) === "1";
-  const refCode = first(params.ref);
-  const intent = first(params.intent);
+  const redirectParam = sanitizeRedirectPath(firstSearchParam(params.redirect));
+  const onboarding = firstSearchParam(params.onboarding) === "1";
+  const refCode = firstSearchParam(params.ref);
+  const intent = firstSearchParam(params.intent);
 
   if (refCode) {
     await claimReferralCode(session.user.id, refCode).catch(() => null);
   }
 
   if (intent === "pricing-checkout") {
-    if (first(params.kind) === "membership") {
-      const interval = first(params.interval) === "annual" ? "annual" : "monthly";
+    if (firstSearchParam(params.kind) === "membership") {
+      const interval = firstSearchParam(params.interval) === "annual" ? "annual" : "monthly";
       redirect(`/dashboard/membership?subscribe=1&interval=${interval}&source=pricing`);
     }
     try {

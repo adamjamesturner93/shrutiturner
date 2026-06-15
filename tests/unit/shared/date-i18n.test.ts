@@ -39,7 +39,7 @@ describe("date-i18n", () => {
     expect(formatDate("2026-07-15T00:30:00.000Z", ISO_PREFS)).toBe("15 juli 2026");
   });
 
-  it("formats short, medium, time, and datetime values for UK and US users", () => {
+  it("formats short, medium, time and datetime values for UK and US users", () => {
     expect(formatDateShort("2026-07-15T14:30:00.000Z", GB_PREFS)).toBe("15 Jul");
     expect(formatDateMedium("2026-07-15T14:30:00.000Z", US_PREFS)).toBe("Jul 15, 2026");
     expect(formatTime("2026-07-15T14:30:00.000Z", GB_PREFS)).toBe("15:30");

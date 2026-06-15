@@ -10,7 +10,7 @@ export function PrivacyPage() {
     <Layout>
       <SEO
         title="Privacy Policy - Shruti Turner"
-        description="Privacy policy explaining how Shruti Turner collects, uses, and protects your personal information."
+        description="Privacy policy explaining how Shruti Turner collects, uses and protects your personal information."
         canonicalUrl="https://shrutiturner.co.uk/privacy"
       />
 
@@ -24,12 +24,12 @@ export function PrivacyPage() {
             <h2 className="text-foreground mb-4 text-2xl">1. Introduction</h2>
             <p>
               Shruti Turner (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;) provides strength,
-              yoga, retreat, and coaching services. This policy explains what personal information
-              we collect, why we use it, who can access it, and how long we keep it.
+              yoga, retreatand coaching services. This policy explains what personal information
+              we collect, why we use it, who can access itand how long we keep it.
             </p>
             <p>
               We are the data controller for the personal information processed through this
-              platform. We work to the UK GDPR, the Data Protection Act 2018, and related UK privacy
+              platform. We work to the UK GDPR, the Data Protection Act 2018and related UK privacy
               and electronic marketing rules.
             </p>
           </section>
@@ -44,12 +44,12 @@ export function PrivacyPage() {
               </li>
               <li>
                 <strong>Newsletter signup information:</strong> First name, email address, consent
-                wording, consent timestamp, verification status, unsubscribe status, and related
+                wording, consent timestamp, verification status, unsubscribe status and related
                 delivery metadata when you join the mailing list or request a lead magnet
               </li>
               <li>
                 <strong>Health and participation information:</strong> Context you choose to share
-                so we can adapt movement, class, retreat, and coaching delivery more safely
+                so we can adapt movement, class, retreatand coaching delivery more safely
               </li>
               <li>
                 <strong>Emergency contact details:</strong> For retreat bookings and other in-person
@@ -88,18 +88,18 @@ export function PrivacyPage() {
             <p>We use your information to:</p>
             <ul className="list-disc space-y-2 pl-6">
               <li>
-                <strong>Provide services:</strong> Deliver coaching, classes, retreats, and other
+                <strong>Provide services:</strong> Deliver coaching, classes, retreats and other
                 services you've purchased
               </li>
               <li>
-                <strong>Adapt delivery safely:</strong> Adjust classes, programmes, retreats, and
+                <strong>Adapt delivery safely:</strong> Adjust classes, programmes, retreats and
                 coaching based on the minimum relevant information you share with us
               </li>
               <li>
                 <strong>Process payments:</strong> Handle billing and transactions
               </li>
               <li>
-                <strong>Communicate:</strong> Send booking confirmations, program details, and
+                <strong>Communicate:</strong> Send booking confirmations, program details and
                 service updates
               </li>
               <li>
@@ -124,7 +124,7 @@ export function PrivacyPage() {
             <ul className="list-disc space-y-2 pl-6">
               <li>
                 <strong>Contract:</strong> To set up and deliver the memberships, bookings,
-                retreats, programmes, gifts, and coaching services you request
+                retreats, programmes, gifts and coaching services you request
               </li>
               <li>
                 <strong>Consent:</strong> For marketing emails and, where relied upon, for
@@ -134,7 +134,7 @@ export function PrivacyPage() {
               </li>
               <li>
                 <strong>Legitimate interests:</strong> To run and improve the platform, prevent
-                misuse, and keep appropriate operational records
+                misuse and keep appropriate operational records
               </li>
               <li>
                 <strong>Legal obligation:</strong> To comply with legal requirements
@@ -154,7 +154,7 @@ export function PrivacyPage() {
             <ul className="list-disc space-y-2 pl-6">
               <li>
                 <strong>Service providers:</strong> Stripe (payment processing), email service
-                providers including Postmark, website hosting, and Contentful for controlled content
+                providers including Postmark, website hosting and Contentful for controlled content
                 and newsletter campaign operations
               </li>
               <li>
@@ -173,7 +173,7 @@ export function PrivacyPage() {
             <h2 className="text-foreground mb-4 text-2xl">6. Sensitive Personal Data</h2>
             <p>
               We only ask for health information that is relevant to safer participation,
-              adaptation, safeguarding, and operational support. We do not collect health
+              adaptation, safeguarding and operational support. We do not collect health
               information to diagnose, monitor, or treat you as a patient.
             </p>
             <p>
@@ -206,13 +206,13 @@ export function PrivacyPage() {
             <ul className="list-disc space-y-2 pl-6">
               <li>
                 <strong>Health and special-category service information:</strong> Health profiles,
-                retreat health details, and coaching check-in answers are retained for up to 24
+                retreat health details and coaching check-in answers are retained for up to 24
                 months after they are last needed operationally, then deleted or cleared from the
                 live service
               </li>
               <li>
-                <strong>Billing, account, and legal records:</strong> Core account, booking,
-                transaction, and compliance records may be kept for longer where needed for tax,
+                <strong>Billing, accountand legal records:</strong> Core account, booking,
+                transaction and compliance records may be kept for longer where needed for tax,
                 accounting, dispute handling, fraud prevention, or legal obligations
               </li>
               <li>
@@ -268,21 +268,21 @@ export function PrivacyPage() {
           <section>
             <h2 className="text-foreground mb-4 text-2xl">10. Marketing Emails</h2>
             <p>
-              We send newsletters, launch updates, lead magnet delivery emails, and occasional
+              We send newsletters, launch updates, lead magnet delivery emails and occasional
               promotional emails only where you have actively opted in or completed a double opt-in
               confirmation step under UK marketing rules.
             </p>
             <p>
               For the holding-page launch, we collect your first name, email address, consent
-              wording, consent timestamp, verification status, and unsubscribe status so we can send
-              the requested guide, keep an audit trail of permission, and suppress future marketing
+              wording, consent timestamp, verification status and unsubscribe status so we can send
+              the requested guide, keep an audit trail of permission and suppress future marketing
               emails if you opt out.
             </p>
             <p>
               You can unsubscribe at any time using the link in the email or by contacting us
               directly. Verification links expire after a limited period and no launch marketing
               emails are sent before confirmation. Transactional emails such as sign-in codes,
-              booking confirmations, payment notices, and operational service messages are sent
+              booking confirmations, payment notices and operational service messages are sent
               separately from marketing emails.
             </p>
           </section>

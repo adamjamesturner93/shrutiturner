@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { NewsletterSignupContent } from "@/lib/content";
+import type { NewsletterSignupContent } from "@/lib/content/types";
 import { CANONICAL_LEAD_MAGNET } from "@/lib/newsletter/lead-magnet";
 
 const DEFAULT_SIGNUP_COPY: NewsletterSignupContent = {
@@ -13,7 +13,7 @@ const DEFAULT_SIGNUP_COPY: NewsletterSignupContent = {
   consentText: "No spam. Unsubscribe anytime.",
   popupTitle: "Get Evidence-Based Insights",
   popupDescription:
-    "Join the mailing list for launch updates, practical strength guidance, and occasional offers. No spam, unsubscribe anytime.",
+    "Join the mailing list for launch updates, practical strength guidance and occasional offers. No spam, unsubscribe anytime.",
 };
 
 export function useNewsletterSignupCopy() {

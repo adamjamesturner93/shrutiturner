@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Layout } from "../components/layout";
@@ -35,18 +34,6 @@ export function LoginPage({
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const referralClaimedRef = useRef(false);
-
-  const waitForSession = async () => {
-    for (let i = 0; i < 12; i += 1) {
-      const response = await fetch("/api/auth/session", { cache: "no-store" });
-      const data = (await response.json().catch(() => null)) as {
-        user?: { email?: string | null } | null;
-      } | null;
-      if (data?.user?.email) return true;
-      await new Promise((resolve) => setTimeout(resolve, 150));
-    }
-    return false;
-  };
 
   const buildPostLoginUrl = () => {
     const params = new URLSearchParams();
@@ -97,9 +84,11 @@ export function LoginPage({
           body: JSON.stringify({ email, turnstileToken }),
         });
 
-        const data = (await response.json().catch(() => ({}))) as { message?: string };
+        const data = (await response.json().catch(() => ({}))) as {
+          error?: { message?: string };
+        };
         if (!response.ok) {
-          throw new Error(data.message || "Failed to send verification code.");
+          throw new Error(data.error?.message || "Failed to send verification code.");
         }
 
         setCodeSent(true);
@@ -116,12 +105,7 @@ export function LoginPage({
         throw new Error("Invalid or expired code. Please request a new code.");
       }
 
-      const hasSession = await waitForSession();
-      if (!hasSession) {
-        throw new Error("Sign-in succeeded but session was not established. Please try again.");
-      }
-
-      router.replace(buildPostLoginUrl());
+      window.location.assign(buildPostLoginUrl());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to complete sign-in.");
     } finally {
@@ -139,7 +123,7 @@ export function LoginPage({
     <Layout>
       <SEO
         title="Login - Shruti Turner"
-        description="Sign in to your Private Studio to access classes, coaching, health details, and account tools."
+        description="Sign in to your Private Studio to access classes, coaching, health details and account tools."
         canonicalUrl="https://shrutiturner.co.uk/login"
         noIndex
       />
@@ -164,7 +148,7 @@ export function LoginPage({
                       Sign in to the part of the studio built around your actual life.
                     </h1>
                     <p className="text-brand-white/78 text-lg leading-relaxed">
-                      Book classes, check your plan, update health details, and keep everything in
+                      Book classes, check your plan, update health details and keep everything in
                       one calmer place.
                     </p>
                   </div>
@@ -191,7 +175,7 @@ export function LoginPage({
                     {[
                       { value: "Live", label: "Classes and bookings in one place" },
                       { value: "Clear", label: "No hard-sell onboarding flow" },
-                      { value: "Safe", label: "Built for complex bodies and real context" },
+                      { value: "Safe", label: "Built for inclusive coaching and real context" },
                     ].map((item) => (
                       <div key={item.label}>
                         <p className="text-brand-accent-light text-sm tracking-[0.18em] uppercase">
@@ -391,14 +375,7 @@ export function LoginPage({
                   ) : null}
 
                   <p className="text-muted-foreground mt-8 text-center text-sm">
-                    Need an account?{" "}
-                    <Link
-                      href="/signup"
-                      className="text-brand-accent hover:text-brand-accent/80 underline"
-                    >
-                      Create one here
-                    </Link>
-                    .
+                    Use the same email whenever you come back.
                   </p>
                 </div>
               </div>

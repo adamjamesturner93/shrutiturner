@@ -20,7 +20,7 @@ export const blogAuthors: AuthorProfileContent[] = [
     slug: "shruti-turner",
     name: "Shruti Turner",
     role: "Strength & Yoga Coach",
-    bio: "Shruti combines strength coaching, adaptive yoga, and rehabilitation-informed movement to help people with chronic illness, pain, hypermobility, and fluctuating energy build long-term capacity without boom-and-bust.",
+    bio: "Shruti combines strength coaching, adaptive yoga and rehabilitation-informed movement to help people with chronic illness, pain, hypermobility and fluctuating energy build long-term capacity without boom-and-bust.",
     avatarImageUrl: "https://api.dicebear.com/9.x/initials/svg?seed=Shruti%20Turner",
     avatarAlt: "Portrait illustration of Shruti Turner",
     websiteUrl: "https://shrutiturner.co.uk/about",
@@ -33,7 +33,7 @@ export const blogAuthors: AuthorProfileContent[] = [
     slug: "dr-hannah-lewis",
     name: "Dr Hannah Lewis",
     role: "Guest Physiotherapist",
-    bio: "Hannah is a musculoskeletal physiotherapist with a specialist interest in inflammatory arthritis, pacing, and helping people return to confident movement when symptoms are unpredictable.",
+    bio: "Hannah is a musculoskeletal physiotherapist with a specialist interest in inflammatory arthritis, pacing and helping people return to confident movement when symptoms are unpredictable.",
     avatarImageUrl: "https://api.dicebear.com/9.x/initials/svg?seed=Hannah%20Lewis",
     avatarAlt: "Portrait illustration of Dr Hannah Lewis",
     websiteUrl: "https://example.com/hannah-lewis",
@@ -48,16 +48,16 @@ export const blogPosts: BlogPost[] = [
     id: "strength-training-chronic-illness",
     title: "Why Strength Training Matters When You Have Chronic Illness",
     excerpt:
-      "Exploring the evidence for resistance training in managing autoimmune conditions, chronic pain, and building resilient bodies.",
+      "Exploring the evidence for resistance training in managing autoimmune conditions, chronic pain and building resilient bodies.",
     coverImage:
       "https://images.unsplash.com/photo-1615388599690-02c0d4a3dfa7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHJlbmd0aCUyMHRyYWluaW5nJTIwcmVoYWJpbGl0YXRpb24lMjBjaHJvbmljJTIwaWxsbmVzc3xlbnwxfHx8fDE3NzI2NDE3NDJ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
     coverAlt: "Strength training rehabilitation session",
     content: `
 # Why Strength Training Matters When You Have Chronic Illness
 
-When you're living with chronic illness, the idea of strength training might feel counterintuitive. You're managing pain, fatigue, and unpredictable symptoms—why would you deliberately stress your body further?
+When you're living with chronic illness, the idea of strength training might feel counterintuitive. You're managing pain, fatigue and unpredictable symptoms—why would you deliberately stress your body further?
 
-The answer lies in understanding that strength training, when done intelligently, isn't about pushing through pain or ignoring your body's signals. It's about building capacity, improving function, and creating resilience.
+The answer lies in understanding that strength training, when done intelligently, isn't about pushing through pain or ignoring your body's signals. It's about building capacity, improving function and creating resilience.
 
 ## The Evidence Base
 
@@ -81,63 +81,15 @@ This isn't generic gym programming. Rehabilitation-informed strength training me
 
 ## Building Resilience, Not Fragility
 
-The goal isn't to pretend your body is simple. It's to work with your body's complexity to build genuine strength and capacity.
+The goal is to work with your health context, recovery needs and real capacity to build genuine strength.
 
-Strength training for chronic illness requires nuance, patience, and expertise. But done well, it can be transformative.
+Strength training for chronic illness requires nuance, patience and expertise. But done well, it can be transformative.
     `,
     author: "Shruti Turner",
     authors: [blogAuthors[0]],
     date: "2026-02-15",
     tags: ["Strength Training", "Chronic Illness", "Evidence-Based"],
     readTime: "6 min read",
-  },
-  {
-    id: "adaptive-yoga-vs-mainstream",
-    title: "What Makes Adaptive Yoga Different From Mainstream Yoga",
-    excerpt:
-      "Understanding the principles and practices that distinguish rehabilitation-informed yoga from conventional classes.",
-    coverImage:
-      "https://images.unsplash.com/photo-1758599879693-9e06f55a4ded?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZGFwdGl2ZSUyMHlvZ2ElMjBtZWRpdGF0aW9uJTIwY2FsbSUyMHN0dWRpb3xlbnwxfHx8fDE3NzI2NDE3NDN8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-    coverAlt: "Calm yoga studio with natural light",
-    content: `
-# What Makes Adaptive Yoga Different From Mainstream Yoga
-
-If you've tried mainstream yoga classes and left feeling dismissed, injured, or simply unseen, you're not alone. Most yoga teaching doesn't account for the reality of living with chronic conditions, hypermobility, or complex bodies.
-
-## The Key Differences
-
-### 1. It Starts With Safety
-Adaptive yoga prioritizes joint stability and tissue health. No pushing into end-range positions, no "breathe through the pain," no assumptions that flexibility equals health.
-
-### 2. It Respects Your Body's Reality
-You're not asked to modify a pose designed for someone else's body. Instead, practices are built around what your body can do safely and effectively.
-
-### 3. It Understands Nervous System Regulation
-For people with chronic conditions, yoga isn't just about stretching. It's about helping your nervous system find regulation, which has real impacts on pain, fatigue, and symptom management.
-
-### 4. It Values Function Over Aesthetics
-The goal isn't to achieve a particular shape. It's to improve your capacity for the things that matter in your life.
-
-## What You Can Expect
-
-In an adaptive yoga session, you'll experience:
-
-- Clear anatomical cuing that respects your body's limitations
-- Options that aren't just "easier versions" but genuinely different approaches
-- Practices designed for nervous system regulation
-- An understanding that some days your body simply won't cooperate—and that's okay
-
-## The Bottom Line
-
-Adaptive yoga isn't about lowering standards. It's about raising them—requiring more knowledge, more skill, and more nuance from your teacher.
-
-Your body deserves practices that work with its reality, not against it.
-    `,
-    author: "Shruti Turner",
-    authors: [blogAuthors[0]],
-    date: "2026-02-10",
-    tags: ["Yoga", "Adaptive Movement", "Chronic Pain"],
-    readTime: "5 min read",
   },
   {
     id: "programming-around-flares",
@@ -181,7 +133,7 @@ Over time, you might find that your Tier 3 looks like your old Tier 1. That's pr
 
 ## The Long Game
 
-Building strength with chronic illness requires patience, flexibility, and self-compassion. But it's absolutely possible.
+Building strength with chronic illness requires patience, flexibility and self-compassion. But it's absolutely possible.
 
 You don't need to be consistent every day. You need to be persistent over time.
     `,
@@ -202,7 +154,7 @@ You don't need to be consistent every day. You need to be persistent over time.
     content: `
 # Strength Training for Hypermobility: What You Need to Know
 
-If you're hypermobile, you've probably been told you're "naturally flexible" as if it's a gift. In reality, excessive joint range without corresponding strength and control creates pain, instability, and injury risk.
+If you're hypermobile, you've probably been told you're "naturally flexible" as if it's a gift. In reality, excessive joint range without corresponding strength and control creates pain, instability and injury risk.
 
 ## The Hypermobility Challenge
 
@@ -263,7 +215,7 @@ With proper programming, hypermobile bodies can be incredibly strong and capable
     content: `
 # Exercise with Arthritis: Beyond the Generic Advice
 
-"Just keep moving" is well-meaning but insufficient advice when you have arthritis. The question isn't whether to move—it's how, how much, and what to do when movement itself causes pain.
+"Just keep moving" is well-meaning but insufficient advice when you have arthritis. The question isn't whether to move—it's how, how muchand what to do when movement itself causes pain.
 
 ## Understanding Exercise and Arthritis
 
@@ -317,7 +269,7 @@ This isn't failure. This is intelligent programming.
 
 ## The Real Goal
 
-The goal isn't to train despite your arthritis. It's to train in a way that manages your condition, reduces symptoms, and improves your function.
+The goal isn't to train despite your arthritis. It's to train in a way that manages your condition, reduces symptoms and improves your function.
 
 That requires expertise, not just enthusiasm.
     `,
@@ -338,7 +290,7 @@ That requires expertise, not just enthusiasm.
     content: `
 # Building Training Capacity When You Start From Zero
 
-Starting strength training when you're deconditioned from chronic illness is different from being a typical beginner. You're not just untrained—you might be dealing with pain, fatigue, nervous system dysregulation, and years of being told to "rest."
+Starting strength training when you're deconditioned from chronic illness is different from being a typical beginner. You're not just untrained—you might be dealing with pain, fatigue, nervous system dysregulation and years of being told to "rest."
 
 ## The Reality of Deconditioning
 
@@ -394,7 +346,7 @@ This isn't about getting back to some previous version of yourself. It's about b
 
 Your body can get stronger. Your symptoms can improve. Your function can increase.
 
-But it requires patience, intelligent programming, and consistent effort.
+But it requires patience, intelligent programming and consistent effort.
 
 You're not broken. You're building.
     `,

@@ -1,11 +1,5 @@
-import type { Metadata } from "next";
-import { AboutPage } from "@/views/about";
-import { buildPageMetadata } from "@/lib/content/metadata";
-
-export async function generateMetadata(): Promise<Metadata> {
-  return buildPageMetadata("about", "About");
-}
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <AboutPage />;
+  redirect("/#credentials");
 }

@@ -36,21 +36,14 @@ const CONTENTFUL_RETREAT_TEMPLATES = [
   {
     entryId: "ctfl_sankalpa",
     title: "Sankalpa",
-    subtitle: "A Yoga Retreat for Bodies That Require Nuance",
+    subtitle: "A Yoga Retreat for Inclusive Movement and Recovery",
     location: "Portuguese Countryside",
-    description: "5 days of rehabilitation-informed yoga, strength work, and community.",
-  },
-  {
-    entryId: "ctfl_strength_stillness",
-    title: "Strength & Stillness",
-    subtitle: "Winter Retreat for Complex Bodies",
-    location: "Scottish Highlands",
-    description: "4 days of strength training, restorative yoga, and community.",
+    description: "5 days of rehabilitation-informed yoga, strength work and community.",
   },
   {
     entryId: "ctfl_virtual_immersion",
     title: "Virtual Immersion Weekend",
-    subtitle: "An Online Retreat for Bodies That Can't Travel",
+    subtitle: "An Online Retreat for People Who Cannot Travel",
     location: "Online (Live via Video)",
     description: "2-day live online retreat bringing the retreat experience home.",
   },
@@ -102,7 +95,7 @@ export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetre
         <DialogHeader>
           <DialogTitle>Schedule Retreat Instance</DialogTitle>
           <DialogDescription>
-            Select a retreat template from Contentful, then set dates, capacity, and pricing for
+            Select a retreat template from Contentful, then set dates, capacity and pricing for
             this instance.
           </DialogDescription>
         </DialogHeader>
@@ -112,7 +105,7 @@ export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetre
           <div className="text-muted-foreground bg-secondary/50 flex items-start gap-2 rounded-md p-3 text-xs">
             <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
             <span>
-              Retreat descriptions, photos, accommodation details, schedule, and location info are
+              Retreat descriptions, photos, accommodation details, schedule and location info are
               managed in Contentful. Here you set the operational details for a specific instance
               (dates, spaces, pricing).
             </span>
@@ -129,11 +122,10 @@ export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetre
                 <button
                   key={t.entryId}
                   onClick={() => setSelectedTemplate(t.entryId)}
-                  className={`w-full rounded-lg border p-3 text-left transition-colors ${
-                    selectedTemplate === t.entryId
-                      ? "border-brand-accent bg-brand-accent/5"
-                      : "border-border hover:bg-secondary/30"
-                  }`}
+                  className={`w-full rounded-lg border p-3 text-left transition-colors ${selectedTemplate === t.entryId
+                    ? "border-brand-accent bg-brand-accent/5"
+                    : "border-border hover:bg-secondary/30"
+                    }`}
                 >
                   <div className="flex items-start justify-between">
                     <div>

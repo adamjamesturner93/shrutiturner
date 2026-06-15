@@ -14,7 +14,7 @@ export function PTPage() {
   return (
     <Layout>
       <SEO
-        title="1:1 Personal Training for Complex Bodies - Shruti Turner"
+        title="1:1 Inclusive Movement Coaching - Shruti Turner"
         description="Personalized strength and movement programming designed for people with chronic illness and autoimmune conditions. Evidence-based coaching that adapts to your symptoms."
         keywords="personal training chronic illness, 1:1 strength coaching, personal trainer autoimmune disease, chronic pain personal training"
         canonicalUrl="https://shrutiturner.co.uk/pt"
@@ -24,11 +24,11 @@ export function PTPage() {
       <section className="bg-[#2E1F33] py-20 text-[#FAFAF8] md:py-28">
         <div className="container mx-auto max-w-4xl px-4 text-center">
           <h1 className="mb-6 text-4xl leading-tight md:text-6xl">
-            1:1 Personal Training for Complex Bodies
+            1:1 Inclusive Movement Coaching
           </h1>
           <p className="mb-8 text-xl leading-relaxed text-[#B5C49B] md:text-2xl">
             Fully personalized strength and movement programming designed around your specific
-            condition, symptoms, and goals.
+            condition, symptoms and goals.
           </p>
           <div className="inline-block rounded-lg bg-[#FAFAF8]/10 p-4">
             <p className="mb-2 text-sm opacity-90">Personalised to You</p>
@@ -64,7 +64,7 @@ export function PTPage() {
               <h3 className="text-2xl">Fully Personalized</h3>
               <p className="text-muted-foreground leading-relaxed">
                 Not group classes with modifications. Not generic templates. Every aspect of your
-                program is designed specifically for your body, conditions, current capacity, and
+                program is designed specifically for your body, conditions, current capacity and
                 goals.
               </p>
               <p className="text-muted-foreground leading-relaxed">
@@ -133,7 +133,10 @@ export function PTPage() {
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
-                  <span>You have complex conditions requiring specialized knowledge</span>
+                  <span>
+                    You have chronic illness, autoimmune conditions, or injury history requiring
+                    specialist knowledge
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="text-primary mt-0.5 h-5 w-5 flex-shrink-0" />
@@ -159,10 +162,6 @@ export function PTPage() {
               <strong>Not sure if 1:1 is right for you?</strong> Try{" "}
               <Link href="/classes" className="text-primary underline">
                 group classes
-              </Link>{" "}
-              or{" "}
-              <Link href="/classes/small-groups" className="text-primary underline">
-                small group programs
               </Link>{" "}
               first. You can always upgrade later.
             </p>

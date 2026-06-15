@@ -1,5 +1,9 @@
 # Strength and Yoga Coaching
 
+## Codex
+
+codex resume 019e35b4-8489-7fd2-8b39-18fffb998ad1
+
 This is a native Next.js App Router project for Strength and Yoga Coaching.
 The original design source is available at https://www.figma.com/design/3UJRjmwzRyNyxaqLWpD8ff/Strength-and-Yoga-Coaching.
 
@@ -48,6 +52,36 @@ Useful commands:
 6. `pnpm run prisma:studio`
 7. `pnpm run db:down`
 
+### Environment workflow
+
+- Local development:
+  - Use `.env` with the Docker Postgres instance from `pnpm run db:up`.
+  - Apply schema changes locally with `pnpm run prisma:migrate:dev`.
+  - Seed local scenarios with `pnpm run prisma:seed:local`.
+- Staging database:
+  - Keep credentials in `.env.staging` only.
+  - Check pending migrations with `pnpm run db:status:staging`.
+  - Apply backward-compatible migrations with `pnpm run db:migrate:staging`.
+- Production database:
+  - Keep credentials in `.env.prod` only.
+  - Check pending migrations with `pnpm run db:status:prod`.
+  - Apply backward-compatible migrations with `pnpm run db:migrate:prod`.
+- Important:
+  - Do not use `prisma db push` against staging or production.
+  - Remote migrations are run manually from a developer machine, not from CI or Vercel.
+  - Because database deploys can happen shortly before code deploys, every staging/prod migration must be backward-compatible.
+
+### Seed datasets
+
+- `pnpm run prisma:seed:local`
+  - Bootstraps the local app with admin users, current legal documents, local member scenarios, retreat inventory and small-group fixtures.
+- `pnpm run prisma:seed:preview`
+  - Creates preview-safe owner/member/instructor fixtures, a booked dashboard session and an active membership using clearly fake `*.preview.invalid` email addresses.
+- `pnpm run prisma:seed:billing`
+  - Adds deterministic class, membership, credit and themed-week fixtures that support billing and timetable flows.
+- Use `pnpm run db:reset:local` when you want a clean local rebuild from migrations plus the local seed.
+- Use `PREVIEW_FIXTURE_NAMESPACE=<label> pnpm run prisma:seed:preview` to reseed preview/test environments without colliding with other fixture sets.
+
 Prisma note:
 
 - This workspace targets Prisma 7 (`prisma` and `@prisma/client` in `package.json`).
@@ -58,11 +92,55 @@ Prisma note:
 - Public marketing/SEO routes are wired through `src/lib/content`.
 - Content source strategy is controlled by `CONTENT_SOURCE`:
   - `local`: use local fallback data only.
-  - `hybrid`: Contentful first with local fallback.
-  - `contentful`: Contentful only for CMS-managed data.
+  - `contentful`: Contentful only for CMS-managed data. This is the default. Missing Contentful config, failed CDA requests and missing required CMS entries fail the request/build instead of falling back to local data.
 - CMS/public content API routes are available under `src/app/api/content/*`.
 - Contentful webhook revalidation endpoint:
   - `POST /api/webhooks/contentful`
+- Published Contentful delivery reads are ISR-cached with a 60 second default TTL. Set `CONTENTFUL_REVALIDATE_SECONDS` to change that fallback window; Contentful webhooks still revalidate paths/tags immediately.
+
+Vercel production/preview environment variables:
+
+- `NEXT_PUBLIC_APP_URL`
+- `NEXT_PUBLIC_SITE_URL`
+- `CONTENTFUL_SPACE_ID`
+- `CONTENTFUL_ENVIRONMENT` (default: `master`)
+- `CONTENTFUL_DELIVERY_TOKEN`
+- `CONTENTFUL_PREVIEW_TOKEN` (optional, required for admin previews)
+- `CONTENTFUL_MANAGEMENT_TOKEN` (required for publish-triggered newsletter campaign automation)
+- `CONTENTFUL_WEBHOOK_SECRET`
+- `CONTENTFUL_REVALIDATE_SECONDS` (optional, default `60`)
+
+Configure the Contentful webhook to call `https://shrutiturner.co.uk/api/webhooks/contentful`
+with an `x-contentful-webhook-secret` header matching `CONTENTFUL_WEBHOOK_SECRET`. Enable entry
+publish, unpublish, archive and delete events for public content types such as `blogPost`,
+`authorProfile`, `newsletterSignupContent`, `leadMagnet`, `faqItem`, `newsletterTemplate` and
+`testimonial`.
+
+## Stripe Webhooks
+
+Production Stripe webhook endpoint:
+
+- `POST https://shrutiturner.co.uk/api/webhooks/stripe`
+
+Configure the Stripe endpoint with API version `2026-05-27.dahlia` and set its signing secret in
+`STRIPE_WEBHOOK_SECRET`. This app currently uses the main Stripe account webhook scope, not a Stripe
+Connect connected-accounts endpoint.
+
+Required Stripe events:
+
+- `checkout.session.completed`
+- `invoice.paid`
+- `invoice.payment_failed`
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+- `customer.created`
+- `customer.updated`
+- `customer.deleted`
+- `promotion_code.updated`
+- `charge.dispute.created`
+- `charge.dispute.updated`
+- `charge.dispute.closed`
 
 ### Code-first CMS tooling
 
@@ -85,6 +163,7 @@ Required environment variables:
 - `CONTENTFUL_MANAGEMENT_TOKEN`
 - `CONTENTFUL_PREVIEW_TOKEN` (optional)
 - `CONTENTFUL_WEBHOOK_SECRET` (for webhook endpoint)
+- `CONTENTFUL_REVALIDATE_SECONDS` (optional, default `60`)
 
 ## Marketing Lead + Email Management
 
@@ -148,3 +227,23 @@ Turnstile environment variables:
 
 - `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
 - `TURNSTILE_SECRET_KEY`
+
+## Preview-safe jobs and focused E2E
+
+- Scheduled jobs are registered centrally in `src/lib/jobs/registry.ts`.
+- The infra-only cron endpoint is `POST /api/internal/jobs/[jobName]`.
+- Protect cron requests with `INTERNAL_JOB_SECRET` and send it as `Authorization: Bearer <secret>`.
+- Jobs marked `previewSafe: false` are skipped automatically when `VERCEL_ENV=preview`.
+- Add new framework jobs by:
+  - implementing a pure infrastructure handler under `src/lib/jobs/**`
+  - registering it in `src/lib/jobs/registry.ts`
+  - triggering it from Vercel Cron against `/api/internal/jobs/<jobName>`
+- Keep business-domain schedulers out of the core registry. Domain routes can still reuse `runScheduledJob(...)` directly.
+- Subscription compliance notices run through `POST /api/internal/subscriptions/process-notices`.
+- Membership dunning runs through `POST /api/internal/subscriptions/process-dunning`.
+- Protect subscription domain cron requests with `SUBSCRIPTION_COMPLIANCE_CRON_SECRET` or `INTERNAL_JOB_SECRET` and send it as `Authorization: Bearer <secret>`.
+- Recommended production cadence: run both subscription notice and dunning endpoints daily.
+- For incremental live checks around holding pages and newsletter flows, run:
+  - `pnpm run test:e2e:newsletter`
+- Full regression coverage remains available through:
+  - `pnpm run test:e2e`

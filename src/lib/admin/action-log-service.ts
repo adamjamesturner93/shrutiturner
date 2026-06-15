@@ -7,6 +7,9 @@ export async function createAdminActionLog(input: {
   targetType: string;
   targetId?: string | null;
   reason?: string | null;
+  requestId?: string | null;
+  requestPath?: string | null;
+  requestIp?: string | null;
   oldValueJson?: Prisma.InputJsonValue;
   newValueJson?: Prisma.InputJsonValue;
   metadataJson?: Prisma.InputJsonValue;
@@ -18,6 +21,9 @@ export async function createAdminActionLog(input: {
       targetType: input.targetType,
       targetId: input.targetId || null,
       reason: input.reason || null,
+      requestId: input.requestId || null,
+      requestPath: input.requestPath || null,
+      requestIp: input.requestIp || null,
       oldValueJson: input.oldValueJson,
       newValueJson: input.newValueJson,
       metadataJson: input.metadataJson,
@@ -29,6 +35,7 @@ export async function listAdminActionLogs(params?: {
   targetType?: string;
   targetId?: string;
   actionType?: string;
+  actorUserId?: string;
   limit?: number;
 }) {
   return db.adminActionLog.findMany({
@@ -36,6 +43,7 @@ export async function listAdminActionLogs(params?: {
       targetType: params?.targetType,
       targetId: params?.targetId,
       actionType: params?.actionType,
+      actorUserId: params?.actorUserId,
     },
     orderBy: { createdAt: "desc" },
     take: params?.limit || 50,

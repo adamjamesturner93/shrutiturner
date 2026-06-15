@@ -4,7 +4,7 @@ import { generateDraftSessionsForActiveClassTimetables } from "@/lib/classes/tim
 
 export async function POST(request: Request) {
   try {
-    await requireStaffAdminUser();
+    const adminUser = await requireStaffAdminUser();
     const body = (await request.json().catch(() => ({}))) as {
       generateUntil?: string;
     };
@@ -15,6 +15,7 @@ export async function POST(request: Request) {
 
     const result = await generateDraftSessionsForActiveClassTimetables({
       generateUntil: body.generateUntil,
+      actorUserId: adminUser.id,
     });
     return NextResponse.json(result);
   } catch (error) {

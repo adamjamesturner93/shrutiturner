@@ -7,7 +7,7 @@ import {
   ClipboardList,
   GraduationCap,
   MessageCircle,
-  Shield,
+  X,
   Smartphone,
   Sparkles,
   Users,
@@ -16,7 +16,6 @@ import { Layout } from "@/components/layout";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 import {
   EditorialHero,
-  JourneySection,
   MarketingSection,
   PreFooterCtaSection,
   ProofBand,
@@ -27,61 +26,51 @@ import { SEO } from "@/components/seo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { coachingProofItems } from "@/data/public-refresh";
-import {
-  applicationJourney,
-  coachingFaqs,
-  coachingTiers,
-  personalProgrammeJourney,
-} from "@/data/marketing";
+import { coachingFaqs, coachingTiers } from "@/data/marketing";
 
 const tierIcon = {
-  "independent-plan": ClipboardList,
-  "coached-plan": Users,
-  coaching: GraduationCap,
+  guided_accountability: ClipboardList,
+  independent_training_plan: Smartphone,
+  guided_training_plan: Users,
+  one_to_one_coaching: GraduationCap,
 } as const;
 
 export function CoachingPage() {
   return (
     <Layout>
       <SEO
-        title="Coaching - Shruti Turner"
-        description="Three tiers of personalised support for complex bodies, from tailored programming to high-touch 1:1 coaching."
-        keywords="coaching chronic illness, personal training complex bodies, everfit coaching, training plan chronic pain"
+        title="1:1 Offers - Shruti Turner"
+        description="Four 1:1 offers for chronic illness, autoimmune conditions, wellbeing and injury recovery, from guided accountability to high-touch 1:1 coaching."
+        keywords="coaching chronic illness, inclusive movement coaching, everfit coaching, training plan chronic pain, injury recovery coaching"
         canonicalUrl="https://shrutiturner.co.uk/coaching"
       />
 
       <EditorialHero
-        eyebrow="1:1 Coaching"
+        eyebrow="1:1 Offers"
         size="compact"
         title={
           <>
-            Coaching built around
-            <span className="text-brand-accent-light"> your real body,</span> not an idealised one.
+            Support built for
+            <span className="text-brand-accent-light"> your real body</span>, not generic advice.
           </>
         }
-        description="Choose from lower-touch programming, guided coaching, or a fuller strategic partnership. Every tier is designed for symptom fluctuation, thoughtful progression, and long-term capacity."
-        primaryCta={{ href: "#tiers", label: "Explore Coaching Tiers" }}
+        description="Every 1:1 offer starts with an application so support, programming and delivery through Everfit match you."
+        primaryCta={{ href: "#tiers", label: "Explore 1:1 Offers" }}
         secondaryCta={{ href: "/coaching/apply", label: "Apply Now" }}
-        stats={[
-          { value: "3", label: "Distinct coaching levels" },
-          { value: "Everfit", label: "Training delivery and check-ins" },
-          { value: "Built-in", label: "Good day and flare day planning" },
-        ]}
         metrics={[
           {
             label: "Best For",
             detail:
-              "Clients who want strategy, structure, and better decision-making between sessions.",
+              "Clients who want strategy, structure and clarity around their movement, training and wellbeing.",
           },
           {
             label: "Delivery",
-            detail:
-              "Workouts, habits, and reviews live in Everfit while the website remains the service hub.",
+            detail: "Programming, check-ins and support communication live in Everfit.",
           },
           {
             label: "Difference",
             detail:
-              "Support tiers vary by coaching depth, not by how seriously your body is taken.",
+              "Support varies by your chosen option, not by how seriously your body is taken.",
           },
         ]}
         aside={
@@ -90,27 +79,9 @@ export function CoachingPage() {
               <div className="aspect-[4/5] overflow-hidden rounded-[1.45rem]">
                 <ImageWithFallback
                   src="https://images.unsplash.com/photo-1654613412232-10aaf36df8a6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMHN0cmV0Y2hpbmclMjB5b2dhJTIwY2FsbSUyMG1pbmRmdWwlMjBtb3ZlbWVudHxlbnwxfHx8fDE3NzMzMjQ0NjF8MA&ixlib=rb-4.1.0&q=80&w=1080"
-                  alt="Mindful coaching and movement support"
+                  alt="Mindful 1:1 movement support"
                   className="h-full w-full object-cover"
                 />
-              </div>
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                <div className="bg-brand-white/10 rounded-[1.15rem] p-4 backdrop-blur-sm">
-                  <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
-                    What coaching changes
-                  </p>
-                  <p className="text-brand-white/84 mt-3 text-sm leading-relaxed">
-                    You stop guessing how hard to push and start training with clearer rules.
-                  </p>
-                </div>
-                <div className="bg-brand-accent-light/12 rounded-[1.15rem] p-4 backdrop-blur-sm">
-                  <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
-                    What stays true
-                  </p>
-                  <p className="text-brand-white/84 mt-3 text-sm leading-relaxed">
-                    Ambition remains. The plan just makes room for the messier reality of symptoms.
-                  </p>
-                </div>
               </div>
             </div>
           </div>
@@ -118,69 +89,55 @@ export function CoachingPage() {
       />
 
       <ProofBand
-        title="What personalised support means here"
-        description="The difference between the tiers is the rhythm of review, accountability, and live support. The programming standard stays high throughout."
+        title="What personalised support means here."
+        description="The difference between offers is the frequency of touch points, programme review and updates. Every offer starts with a short form."
         items={[...coachingProofItems]}
       />
 
       <StorySplit
-        eyebrow="Why Coaching Works"
-        title="Not generic fitness. Not just modifications."
-        description="Every plan is built around how your symptoms, capacity, and life demands actually change across the month."
+        eyebrow="Why 1:1 Works"
+        title="It is about you."
+        description="Every plan is built for your body, your life and your goals."
         body={
           <div className="space-y-6">
-            <p className="text-muted-foreground text-lg leading-relaxed">
-              Coaching is for people who do not just want more exercises. They want better
-              judgement, steadier progression, and enough structure that they can keep going when
-              the week does not unfold neatly.
-            </p>
+            <div className="text-muted-foreground space-y-4 text-lg leading-relaxed">
+              <p>My 1:1 offers are designed to support you as much as you need.</p>
+              <p>
+                You might want accountability to guide your routine and support decision-making. You
+                might want a workout plan with check-ins to support your progression. Or you might
+                want more collaborative day-to-day coaching for how movement fits into your
+                lifestyle.
+              </p>
+              <p>There are different options to help you find what works for you.</p>
+            </div>
             <div className="grid gap-4 md:grid-cols-2">
               {[
-                "Good-day, average-day, and survival-day versions are planned up front.",
-                "The programme evolves around symptoms, recovery, goals, and actual feedback.",
-                "You get a coaching rhythm that matches your complexity and desired support level.",
-                "The aim is less second-guessing and more confidence in your decisions.",
+                "The programme evolves with you, adjusting to your body, confidence and goals.",
+                "It’s about working with your body to build physical strength and learning to trust it.",
               ].map((item) => (
                 <div key={item} className="marketing-panel rounded-[1.3rem] px-5 py-5">
                   <p className="text-sm leading-relaxed">{item}</p>
                 </div>
               ))}
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Badge className="border-brand-accent/20 bg-brand-accent/10 text-brand-accent">
-                <Smartphone className="mr-1.5 h-3.5 w-3.5" />
-                Everfit delivery
-              </Badge>
-              <Badge className="border-brand-accent/20 bg-brand-accent/10 text-brand-accent">
-                <Shield className="mr-1.5 h-3.5 w-3.5" />
-                Condition-aware programming
-              </Badge>
-              <Badge className="border-brand-accent/20 bg-brand-accent/10 text-brand-accent">
-                <Users className="mr-1.5 h-3.5 w-3.5" />
-                Support depth that scales
-              </Badge>
-            </div>
           </div>
         }
         aside={
           <div className="border-brand-dark/10 bg-brand-warm rounded-[1.8rem] border p-7">
-            <p className="text-brand-accent text-xs tracking-[0.18em] uppercase">Typical shift</p>
-            <h3 className="mt-4 text-3xl">
-              From “What should I do today?” to “I know how to adjust this.”
-            </h3>
+            <h3 className="mt-4 text-3xl">How it happens</h3>
             <div className="mt-7 space-y-4">
               {[
                 {
-                  title: "Capacity-aware programming",
-                  body: "The plan assumes variability instead of treating it like a disruption.",
+                  title: "Understanding",
+                  body: "Learn to listen to what your body is telling you and what it means.",
                 },
                 {
-                  title: "Useful accountability",
-                  body: "Support is there to clarify decisions, not just to push for compliance.",
+                  title: "Movement",
+                  body: "Develop movement patterns that match what your body is telling you it needs.",
                 },
                 {
-                  title: "More strategic support",
-                  body: "Higher tiers bring more review, more direct input, and more context-sensitive programming changes.",
+                  title: "Strength",
+                  body: "Build the life you want by sustainably strengthening your body and relationship with movement.",
                 },
               ].map((item) => (
                 <div
@@ -199,16 +156,16 @@ export function CoachingPage() {
 
       <MarketingSection className="section-wash" contentClassName="max-w-7xl">
         <SectionHeading
-          eyebrow="Choose Your Tier"
+          eyebrow="Choose Your Offer"
           title="The support stays personalised. The touch level changes."
-          description="Pick the version of coaching that matches how much review, live input, and accountability you want."
+          description="Choose the closest offer and apply. Checkout is only created after Shruti accepts the application."
           align="center"
         />
         <div id="tiers" className="mt-12 grid gap-6 md:grid-cols-3 lg:gap-8">
           {coachingTiers.map((tier) => {
             const Icon = tierIcon[tier.id];
-            const highlighted = tier.id === "coached-plan";
-            const highest = tier.id === "coaching";
+            const highlighted = tier.id === "guided_training_plan";
+            const highest = null;
 
             return (
               <article
@@ -282,23 +239,14 @@ export function CoachingPage() {
                         : "border-brand-dark/10 bg-secondary text-foreground"
                     }
                   >
-                    {tier.supportLevel === "async"
-                      ? "Async support"
-                      : tier.supportLevel === "moderate"
-                        ? "Live + async"
-                        : "Highest touch"}
+                    {tier.supportLevel === "programme"
+                      ? "Programme + review"
+                      : tier.supportLevel === "guided"
+                        ? "Guided review"
+                        : tier.supportLevel === "accountability"
+                          ? "Accountability"
+                          : "Highest touch"}
                   </Badge>
-                  {tier.includesMembership ? (
-                    <Badge
-                      className={
-                        highest
-                          ? "border-brand-accent-light/20 bg-brand-accent-light/12 text-brand-accent-light"
-                          : "border-brand-accent/20 bg-brand-accent/10 text-brand-accent"
-                      }
-                    >
-                      Move Well included
-                    </Badge>
-                  ) : null}
                 </div>
 
                 <ul className="mt-6 flex-1 space-y-3">
@@ -311,6 +259,18 @@ export function CoachingPage() {
                       />
                       <span className={highest ? "text-brand-white/80" : "text-muted-foreground"}>
                         {feature}
+                      </span>
+                    </li>
+                  ))}
+                  {tier.boundaries.map((boundary) => (
+                    <li key={boundary} className="flex items-start gap-3 text-sm">
+                      <X
+                        className={`mt-0.5 h-4 w-4 flex-shrink-0 ${
+                          highest ? "text-brand-white/45" : "text-muted-foreground/60"
+                        }`}
+                      />
+                      <span className={highest ? "text-brand-white/65" : "text-muted-foreground"}>
+                        {boundary}
                       </span>
                     </li>
                   ))}
@@ -329,9 +289,7 @@ export function CoachingPage() {
                   }`}
                 >
                   <Link href={tier.ctaHref}>
-                    {tier.purchaseModel === "application" ? (
-                      <MessageCircle className="h-4 w-4" />
-                    ) : null}
+                    <MessageCircle className="h-4 w-4" />
                     {tier.ctaLabel}
                   </Link>
                 </Button>
@@ -341,36 +299,11 @@ export function CoachingPage() {
         </div>
       </MarketingSection>
 
-      <MarketingSection className="section-divider">
-        <div className="grid gap-12 lg:grid-cols-2">
-          <div>
-            <SectionHeading
-              eyebrow="Independent Plan Journey"
-              title="For clients who want expert structure with lighter-touch review."
-              description="The Independent Training Plan is the cleanest route if you want personalised programming without regular live coaching."
-            />
-            <div className="mt-8">
-              <JourneySection steps={personalProgrammeJourney} />
-            </div>
-          </div>
-          <div>
-            <SectionHeading
-              eyebrow="Application Journey"
-              title="For coached tiers with more support and fit-checking."
-              description="The application-led tiers help confirm the right support level before you begin."
-            />
-            <div className="mt-8">
-              <JourneySection steps={applicationJourney} />
-            </div>
-          </div>
-        </div>
-      </MarketingSection>
-
       <MarketingSection className="bg-brand-warm">
         <SectionHeading
           eyebrow="Common Questions"
           title="A few things people usually want to know."
-          description="If you are unsure which tier fits, applying is the simplest way to get a recommendation."
+          description="If you are unsure which offer fits, applying is the simplest way to get a recommendation."
           align="center"
         />
         <div className="mt-10 grid gap-5 md:grid-cols-2">
@@ -388,12 +321,12 @@ export function CoachingPage() {
 
       <PreFooterCtaSection
         eyebrow="Next step"
-        title="If you want coaching that respects complexity, start the conversation."
-        description="The right tier depends on how much support, review, and strategic input your body and life currently need."
+        title="If you want 1:1 support that respects you, apply now."
+        description="There is no right answer, just the one that best suits what you need right now."
         actions={[
           {
             href: "/coaching/apply",
-            label: "Apply for coaching",
+            label: "Apply for 1:1 Support",
             icon: Sparkles,
             iconPosition: "start",
           },

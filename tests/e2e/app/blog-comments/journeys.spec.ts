@@ -4,7 +4,7 @@ import { seedBlogCommentThread, seedBlogUser } from "../../helpers/blog";
 
 const POST_SLUG = "strength-training-chronic-illness";
 
-test("admin can hide, restore, and delete a blog comment thread", async ({ page }) => {
+test("admin can hide, restore and delete a blog comment thread", async ({ page }) => {
   const label = `moderation-${Date.now()}`;
   const { email } = await seedBlogUser(label, "admin");
   const { topLevelContent } = await seedBlogCommentThread(POST_SLUG, label);

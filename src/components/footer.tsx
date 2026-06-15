@@ -7,8 +7,11 @@ import { useNewsletterSignupCopy } from "@/lib/use-newsletter-signup-copy";
 import { submitNewsletterSignup } from "@/lib/newsletter-signup";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 import { IconHorizontal } from "./icon";
+import { usePlatformSettings } from "@/context/platform-settings-context";
+import { Label } from "@/components/ui/label";
 
 export function Footer() {
+  const { businessName, supportEmail, contactEmail, instagramUrl } = usePlatformSettings();
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [consent, setConsent] = useState(false);
@@ -17,6 +20,8 @@ export function Footer() {
   const [error, setError] = useState<string | null>(null);
   const [subscribed, setSubscribed] = useState(false);
   const signupCopy = useNewsletterSignupCopy();
+  const supportHref = supportEmail ? `mailto:${supportEmail}` : null;
+  const contactHref = contactEmail ? `mailto:${contactEmail}` : null;
 
   const handleNewsletterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,12 +58,13 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-4">
           {/* Brand + Newsletter */}
           <div className="space-y-6 lg:col-span-2">
-            <div role="img" aria-label="Shruti Turner">
+            <div role="img" aria-label={businessName}>
               <IconHorizontal tone="white" className="h-12 w-auto" />
             </div>
             <p className="text-brand-white/70 max-w-md leading-relaxed">
-              Science-backed strength and yoga coaching for people with chronic illness, autoimmune
-              conditions, and complex bodies. PhD Biomechanics. Living with psoriatic arthritis.
+              Science-backed individual movement support for adults with chronic illness,
+              autoimmune conditions and injury recovery. PhD rehabilitation. Living with psoriatic
+              arthritis.
             </p>
 
             {/* Newsletter in footer */}
@@ -69,7 +75,11 @@ export function Footer() {
               <p className="text-brand-white/75 mt-2 mb-3 text-sm">{signupCopy.hookText}</p>
               {!subscribed ? (
                 <form onSubmit={handleNewsletterSubmit} className="max-w-sm space-y-2">
+                  <Label htmlFor="footer-newsletter-first-name" className="sr-only">
+                    First name
+                  </Label>
                   <Input
+                    id="footer-newsletter-first-name"
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
@@ -78,7 +88,11 @@ export function Footer() {
                     className="border-brand-white/20 bg-brand-white/10 text-brand-white placeholder:text-brand-white/40"
                   />
                   <div className="flex flex-col gap-2 sm:flex-row">
+                    <Label htmlFor="footer-newsletter-email" className="sr-only">
+                      Email address
+                    </Label>
                     <Input
+                      id="footer-newsletter-email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -113,10 +127,13 @@ export function Footer() {
                   onChange={(e) => setConsent(e.target.checked)}
                   className="accent-brand-accent-light mt-0.5 h-3.5 w-3.5"
                   required
+                  aria-describedby="footer-newsletter-consent-copy"
                 />
                 <span>I want newsletter and update emails. I can unsubscribe anytime.</span>
               </label>
-              <p className="text-brand-white/70 mt-1 text-xs">{signupCopy.consentText}</p>
+              <p id="footer-newsletter-consent-copy" className="text-brand-white/70 mt-1 text-xs">
+                {signupCopy.consentText}
+              </p>
               {error ? <p className="mt-1 text-xs text-red-300">{error}</p> : null}
             </div>
 
@@ -132,7 +149,7 @@ export function Footer() {
                 <Youtube className="h-5 w-5" />
               </a>
               <a
-                href="https://instagram.com/shrutiturner"
+                href={instagramUrl || "https://instagram.com/shrutiturner"}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand-white/60 hover:text-brand-accent-light transition-colors"
@@ -153,56 +170,23 @@ export function Footer() {
           </div>
 
           {/* Services */}
-          <div>
+          <nav aria-label="Footer services">
             <h4 className="text-brand-accent-light mb-4">Services</h4>
             <ul className="text-brand-white/70 space-y-2">
-              <li>
-                <Link href="/classes" className="hover:text-brand-accent-light transition-colors">
-                  Move Well Classes
-                </Link>
-              </li>
-              <li>
-                <Link href="/schedule" className="hover:text-brand-accent-light transition-colors">
-                  Schedule
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/classes/small-groups"
-                  className="hover:text-brand-accent-light transition-colors"
-                >
-                  Small Group Programmes
-                </Link>
-              </li>
-              <li>
-                <Link href="/coaching" className="hover:text-brand-accent-light transition-colors">
-                  Coaching
-                </Link>
-              </li>
-              <li>
-                <Link href="/retreats" className="hover:text-brand-accent-light transition-colors">
-                  Retreats
-                </Link>
-              </li>
-              <li>
-                <Link href="/pricing" className="hover:text-brand-accent-light transition-colors">
-                  Pricing
-                </Link>
-              </li>
-            </ul>
-          </div>
+	              <li>
+	                <Link href="/coaching" className="hover:text-brand-accent-light transition-colors">
+                  1:1 Offers
+	                </Link>
+	              </li>
+	            </ul>
+	          </nav>
 
           {/* Company */}
-          <div>
+          <nav aria-label="Footer company">
             <h4 className="text-brand-accent-light mb-4">Company</h4>
             <ul className="text-brand-white/70 space-y-2">
-              <li>
-                <Link href="/about" className="hover:text-brand-accent-light transition-colors">
-                  About Shruti
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog" className="hover:text-brand-accent-light transition-colors">
+	              <li>
+	                <Link href="/blog" className="hover:text-brand-accent-light transition-colors">
                   Blog & Resources
                 </Link>
               </li>
@@ -211,6 +195,20 @@ export function Footer() {
                   Contact
                 </Link>
               </li>
+              {supportHref ? (
+                <li>
+                  <a href={supportHref} className="hover:text-brand-accent-light transition-colors">
+                    Support
+                  </a>
+                </li>
+              ) : null}
+              {contactHref && contactHref !== supportHref ? (
+                <li>
+                  <a href={contactHref} className="hover:text-brand-accent-light transition-colors">
+                    Email
+                  </a>
+                </li>
+              ) : null}
               <li>
                 <Link href="/login" className="hover:text-brand-accent-light transition-colors">
                   Client Login
@@ -225,12 +223,12 @@ export function Footer() {
                 </Link>
               </li>
             </ul>
-          </div>
+          </nav>
         </div>
 
         {/* Bottom bar */}
         <div className="border-brand-white/10 text-brand-white/50 mt-12 border-t pt-8 text-center text-sm">
-          <div className="mb-4 flex flex-wrap justify-center gap-6">
+          <nav aria-label="Footer legal" className="mb-4 flex flex-wrap justify-center gap-6">
             <Link href="/terms" className="hover:text-brand-accent-light transition-colors">
               Terms & Conditions
             </Link>
@@ -255,8 +253,8 @@ export function Footer() {
             >
               Acceptable Use Policy
             </Link>
-          </div>
-          <p>Copyright Shruti Turner. All rights reserved.</p>
+          </nav>
+          <p>Copyright {businessName}. All rights reserved.</p>
         </div>
       </div>
     </footer>

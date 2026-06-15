@@ -1,9 +1,7 @@
-import { auth } from "@/lib/auth";
-import { getMyRetreatBookings } from "@/lib/retreats/service";
-import { DashboardRetreats } from "@/views/dashboard/retreats-list";
+import { connection } from "next/server";
+import { redirect } from "next/navigation";
 
 export default async function Page() {
-  const session = await auth();
-  const initialData = session?.user?.id ? await getMyRetreatBookings(session.user.id) : null;
-  return <DashboardRetreats initialData={initialData} />;
+  await connection();
+  redirect("/dashboard/coaching");
 }

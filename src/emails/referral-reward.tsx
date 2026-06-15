@@ -43,7 +43,7 @@ export default function ReferralRewardEmail({
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
       <Text style={bodyTextStyle}>
-        Great news — <strong>{referredName}</strong> has signed up using your referral link, and{" "}
+        Great news — <strong>{referredName}</strong> has signed up using your referral link and{" "}
         {"we've"} added <strong>{creditAmount} credit</strong> to your account as a thank you.
       </Text>
 

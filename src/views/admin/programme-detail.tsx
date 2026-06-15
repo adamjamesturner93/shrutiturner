@@ -168,7 +168,7 @@ export function AdminProgrammeDetail({
         <div className="text-muted-foreground rounded-[1.5rem] border p-6 text-sm leading-relaxed">
           <p>
             This detail view is now centred on a scheduled run. Public content comes from the
-            template, while dates, capacity, pricing, enrolments, and gifts are driven by the live
+            template, while dates, capacity, pricing, enrolments and gifts are driven by the live
             run record.
           </p>
           <div className="mt-4 flex flex-wrap gap-3">

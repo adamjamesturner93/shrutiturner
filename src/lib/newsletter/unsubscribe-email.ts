@@ -1,20 +1,10 @@
-import { ServerClient } from "postmark";
-import { getPostmarkMessageStream } from "@/lib/postmark/client";
+import UnsubscribeRequestEmail from "@/emails/unsubscribe-request";
+import { sendPostmarkReactEmail } from "@/lib/postmark/client";
 
 export async function sendMarketingUnsubscribeRequestEmail(input: {
   email: string;
   unsubscribeUrl: string;
 }) {
-  const postmarkToken = process.env.POSTMARK_API_TOKEN;
-  const fromEmail =
-    process.env.POSTMARK_FROM_EMAIL || "Shruti Turner <shruti@thechronicyogini.com>";
-
-  if (!postmarkToken) {
-    throw new Error("POSTMARK_NOT_CONFIGURED");
-  }
-
-  const client = new ServerClient(postmarkToken);
-
   const textBody = [
     "Hi,",
     "",
@@ -24,23 +14,19 @@ export async function sendMarketingUnsubscribeRequestEmail(input: {
     "If you did not request this, you can ignore this email.",
   ].join("\n");
 
-  const htmlBody = [
-    "<p>Hi,</p>",
-    "<p>Use the secure link below to confirm that you want to unsubscribe from Shruti Turner marketing emails:</p>",
-    `<p><a href="${input.unsubscribeUrl}">Confirm unsubscribe</a></p>`,
-    "<p>If you did not request this, you can ignore this email.</p>",
-  ].join("");
-
-  await client.sendEmail({
-    From: fromEmail,
-    To: input.email,
-    Subject: "Confirm your unsubscribe request",
-    HtmlBody: htmlBody,
-    TextBody: textBody,
-    MessageStream: getPostmarkMessageStream("transactional"),
-    Tag: "newsletter-unsubscribe-request",
-    Metadata: {
-      emailCategory: "transactional",
+  await sendPostmarkReactEmail({
+    to: input.email,
+    subject: "Confirm your unsubscribe request",
+    react: UnsubscribeRequestEmail({ unsubscribeUrl: input.unsubscribeUrl }),
+    textBody,
+    tag: "newsletter-unsubscribe-request",
+    templateKey: "newsletter-unsubscribe-request",
+    category: "transactional",
+    metadata: {
+      unsubscribeUrl: input.unsubscribeUrl,
     },
+    retryable: false,
+    maxAttempts: 1,
+    dispatchMode: "immediate_required",
   });
 }

@@ -23,6 +23,19 @@ import type { ClassSessionDetailDto } from "@/lib/api/types";
 import { VideoRoom, type RoomMode } from "../../components/video/video-room";
 import { getClassSessionRoomMode } from "@/lib/classes/room-mode";
 
+function formatDateInput(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatTimeInput(date: Date) {
+  const hours = `${date.getHours()}`.padStart(2, "0");
+  const minutes = `${date.getMinutes()}`.padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
 export function AdminClassDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -34,12 +47,17 @@ export function AdminClassDetail() {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [instructors, setInstructors] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedInstructorId, setSelectedInstructorId] = useState("");
+  const [sessionDateInput, setSessionDateInput] = useState("");
+  const [sessionTimeInput, setSessionTimeInput] = useState("");
   const [capacityInput, setCapacityInput] = useState("0");
   const [notesInput, setNotesInput] = useState("");
 
   const applySession = (payload: ClassSessionDetailDto) => {
+    const start = new Date(payload.startsAtUtc);
     setSession(payload);
     setSelectedInstructorId(payload.instructorUserId);
+    setSessionDateInput(formatDateInput(start));
+    setSessionTimeInput(formatTimeInput(start));
     setCapacityInput(String(payload.capacity));
     setNotesInput(payload.notes || "");
   };
@@ -191,10 +209,21 @@ export function AdminClassDetail() {
     setSaving(true);
     setError("");
     try {
+      const [year, month, day] = sessionDateInput.split("-").map(Number);
+      const [hour, minute] = sessionTimeInput.split(":").map(Number);
+      const nextStartsAt = new Date(year, month - 1, day, hour, minute);
+      if (Number.isNaN(nextStartsAt.getTime())) {
+        setError("Choose a valid class date and start time.");
+        return;
+      }
+      const nextEndsAt = new Date(nextStartsAt.getTime() + session.durationMinutes * 60_000);
+
       const response = await fetch(`/api/admin/classes/sessions/${session.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          startsAtUtc: nextStartsAt.toISOString(),
+          endsAtUtc: nextEndsAt.toISOString(),
           instructorUserId: selectedInstructorId,
           capacity: Number(capacityInput),
           notes: notesInput,
@@ -346,7 +375,7 @@ export function AdminClassDetail() {
             <DialogHeader>
               <DialogTitle>Cancel this class?</DialogTitle>
               <DialogDescription>
-                This will cancel the session, email all booked participants, and close any Daily
+                This will cancel the session, email all booked participants and close any Daily
                 room already created for it.
               </DialogDescription>
             </DialogHeader>
@@ -426,9 +455,9 @@ export function AdminClassDetail() {
         ) : null}
 
         {!session.dailyRoomUrl &&
-        session.roomSetupStatus === "pending" &&
-        session.status !== "draft" &&
-        session.status !== "cancelled" ? (
+          session.roomSetupStatus === "pending" &&
+          session.status !== "draft" &&
+          session.status !== "cancelled" ? (
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm">Daily room pending</p>
@@ -505,6 +534,30 @@ export function AdminClassDetail() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label htmlFor="session-date" className="text-sm">
+                  Date
+                </label>
+                <Input
+                  id="session-date"
+                  type="date"
+                  value={sessionDateInput}
+                  onChange={(event) => setSessionDateInput(event.target.value)}
+                  disabled={saving || session.status === "live" || session.status === "completed"}
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="session-start-time" className="text-sm">
+                  Start time
+                </label>
+                <Input
+                  id="session-start-time"
+                  type="time"
+                  value={sessionTimeInput}
+                  onChange={(event) => setSessionTimeInput(event.target.value)}
+                  disabled={saving || session.status === "live" || session.status === "completed"}
+                />
+              </div>
               <div className="space-y-2">
                 <label htmlFor="session-instructor" className="text-sm">
                   Instructor

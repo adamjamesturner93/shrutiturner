@@ -8,8 +8,9 @@ type PatchBody = {
 };
 
 export async function GET(request: Request) {
+  await connection();
+
   try {
-    await connection();
     await requireStaffAdminUser();
     const url = new URL(request.url);
     const comments = await listAdminBlogComments({
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    await requireStaffAdminUser();
+    const adminUser = await requireStaffAdminUser();
     const body = (await request.json().catch(() => null)) as PatchBody | null;
     if (!body || typeof body.id !== "string") {
       return NextResponse.json({ message: "Comment id is required." }, { status: 400 });
@@ -45,6 +46,12 @@ export async function PATCH(request: Request) {
     const result = await updateAdminBlogCommentStatus({
       id: body.id,
       action: body.action,
+      actorUserId: adminUser.id,
+      requestId: request.headers.get("x-request-id"),
+      requestPath: new URL(request.url).pathname,
+      requestIp:
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        request.headers.get("x-real-ip"),
     });
     return NextResponse.json(result);
   } catch (error) {

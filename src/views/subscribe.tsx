@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   ArrowRight,
-  BookOpen,
-  Calendar,
   Check,
   Download,
   Dumbbell,
@@ -38,25 +36,18 @@ const SOCIAL_LINKS = [
 
 const LINKS = [
   {
-    href: "/schedule",
-    title: "Live Class Schedule",
-    subtitle: "Adaptive yoga and strength from anywhere",
-    icon: Calendar,
+    href: "/coaching",
+    title: "Coaching",
+    subtitle: "Application-led support from £70/month",
+    icon: Dumbbell,
     colorClass: "text-primary bg-primary/10",
   },
   {
-    href: "/coaching",
-    title: "1:1 Coaching and Training Plans",
-    subtitle: "Fully personalised support from £60/month",
-    icon: Dumbbell,
+    href: "/#work-with-me",
+    title: "Coaching Options",
+    subtitle: "Compare the four current support options",
+    icon: Heart,
     colorClass: "text-brand-plum bg-brand-plum/10",
-  },
-  {
-    href: "/classes/small-groups",
-    title: "Programmes and Themed Weeks",
-    subtitle: "Focused cohorts and structured progression",
-    icon: BookOpen,
-    colorClass: "text-bronze-text bg-bronze-text/10",
   },
   {
     href: "/blog",
@@ -119,8 +110,8 @@ export function SubscribePage() {
                 Build more strength with advice that understands fluctuating bodies.
               </h1>
               <p className="text-brand-white/80 mt-5 max-w-2xl text-lg leading-relaxed md:text-[1.2rem]">
-                Get a practical guide, weekly training notes, and sharper coaching ideas for chronic
-                illness, hypermobility, pain, and long-term capacity.
+                Get a practical guide, weekly training notes and sharper coaching ideas for chronic
+                illness, hypermobility, pain and long-term capacity.
               </p>
 
               <div className="mt-5 flex flex-wrap gap-3">
@@ -190,7 +181,7 @@ export function SubscribePage() {
                       Inside the emails
                     </p>
                     <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                      Training decisions, symptom-aware progressions, and honest notes on how to
+                      Training decisions, symptom-aware progressions and honest notes on how to
                       keep building capacity without crashing.
                     </p>
                   </div>
@@ -255,7 +246,7 @@ export function SubscribePage() {
                           />
                           <span className="text-brand-white/80 group-hover:text-brand-white text-xs leading-snug transition-colors">
                             I&apos;d like to receive the newsletter and occasional updates about new
-                            articles, classes, and offers. I can unsubscribe at any time.
+                            articles, coaching and offers. I can unsubscribe at any time.
                           </span>
                         </label>
 
@@ -316,7 +307,7 @@ export function SubscribePage() {
             <SectionHeading
               eyebrow="What You’ll Get"
               title="Useful notes, not filler."
-              description="Expect practical coaching emails, new article updates, and occasional offers when something genuinely new is open."
+              description="Expect practical coaching emails, new article updates and occasional offers when something genuinely new is open."
             />
           </div>
 

@@ -49,7 +49,7 @@ const plans: MembershipPlan[] = ["movewell", "instructor"];
 const statuses: MembershipStatus[] = ["active", "paused", "cancelled", "expired"];
 
 function membershipPricePence(plan: MembershipPlan) {
-  if (plan === "movewell") return 2900;
+  if (plan === "movewell") return 3500;
   return 0;
 }
 
@@ -498,7 +498,7 @@ async function seedDeterministicClassScenarios() {
       userId: unlimitedMember.id,
       plan: MembershipPlan.movewell,
       status: MembershipStatus.active,
-      pricePence: 2900,
+      pricePence: 3500,
       currency: "GBP",
       classesPerWeek: 99,
       classesUsedThisWeek: 1,
@@ -512,7 +512,7 @@ async function seedDeterministicClassScenarios() {
       userId: unlimitedMember.id,
       plan: MembershipPlan.movewell,
       status: MembershipStatus.active,
-      pricePence: 2900,
+      pricePence: 3500,
       currency: "GBP",
       classesPerWeek: 99,
       classesUsedThisWeek: 1,
@@ -528,7 +528,7 @@ async function seedDeterministicClassScenarios() {
       userId: limitedMember.id,
       plan: MembershipPlan.movewell,
       status: MembershipStatus.active,
-      pricePence: 2900,
+      pricePence: 3500,
       currency: "GBP",
       classesPerWeek: 2,
       classesUsedThisWeek: 1,
@@ -542,7 +542,7 @@ async function seedDeterministicClassScenarios() {
       userId: limitedMember.id,
       plan: MembershipPlan.movewell,
       status: MembershipStatus.active,
-      pricePence: 2900,
+      pricePence: 3500,
       currency: "GBP",
       classesPerWeek: 2,
       classesUsedThisWeek: 1,
@@ -1002,7 +1002,7 @@ async function seedThemedWeeks() {
       slug: "pain-management-week",
       title: "Pain Management Week",
       shortDescription:
-        "A focused run of classes exploring pacing, flare-aware movement, and strategies that help you keep moving without boom-and-bust.",
+        "A focused run of classes exploring pacing, flare-aware movement and strategies that help you keep moving without boom-and-bust.",
       audience: "Best for people navigating pain spikes and unpredictable symptoms.",
       ctaHref: "/schedule",
       ctaLabel: "See What's Running",
@@ -1014,9 +1014,9 @@ async function seedThemedWeeks() {
       slug: "pelvic-floor-health-week",
       title: "Pelvic Floor Health Week",
       shortDescription:
-        "All your regular classes this week will incorporate pelvic floor-aware cueing, breath strategies, and strength work that supports pressure management.",
+        "All your regular classes this week will incorporate pelvic floor-aware cueing, breath strategies and strength work that supports pressure management.",
       audience:
-        "Best for clients who want more confidence, understanding, and support around pelvic floor health.",
+        "Best for clients who want more confidence, understanding and support around pelvic floor health.",
       ctaHref: "/classes",
       ctaLabel: "Register",
       startDate: new Date("2026-03-23T00:00:00.000Z"),
@@ -1027,8 +1027,8 @@ async function seedThemedWeeks() {
       slug: "hypermobility-support-week",
       title: "Hypermobility Support Week",
       shortDescription:
-        "A themed class focus on stability, control, and confidence for hypermobile bodies that need strength more than stretching.",
-      audience: "Best for people who need more stability, strength, and body trust.",
+        "A themed class focus on stability, control and confidence for hypermobile bodies that need strength more than stretching.",
+      audience: "Best for people who need more stability, strengthand body trust.",
       ctaHref: "/classes",
       ctaLabel: "Register",
       startDate: new Date("2026-04-20T00:00:00.000Z"),
@@ -1060,7 +1060,7 @@ async function main() {
   await seedThemedWeeks();
 
   console.log(
-    "Seeded billing dataset: 25 members plus deterministic class timetable, cutoff, waitlist, attendance, and themed-week scenarios."
+    "Seeded billing dataset: 25 members plus deterministic class timetable, cutoff, waitlist, attendance and themed-week scenarios."
   );
 }
 

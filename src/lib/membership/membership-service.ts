@@ -21,6 +21,10 @@ import {
 } from "@/lib/billing/subscription-compliance";
 import { getCreditBalance, getCreditSummary } from "@/lib/credits/credit-service";
 import { getReferralBalancePence } from "@/lib/referrals/referral-discount-service";
+import {
+  getActiveDunningCaseForMembership,
+  membershipDunningAccessActive,
+} from "@/lib/billing/dunning-service";
 
 function getSubscriptionPeriodEnd(
   subscription: { current_period_end?: number | null } | Stripe.Subscription
@@ -28,16 +32,20 @@ function getSubscriptionPeriodEnd(
   return Number((subscription as { current_period_end?: number | null }).current_period_end || 0);
 }
 
+function getSubscriptionPeriodStart(
+  subscription: { current_period_start?: number | null } | Stripe.Subscription
+) {
+  return Number(
+    (subscription as { current_period_start?: number | null }).current_period_start || 0
+  );
+}
+
 function unixToDate(value?: number | null) {
   return value ? new Date(value * 1000) : null;
 }
 
 function isAccessActiveStatus(status: MembershipStatus) {
-  return (
-    status === MembershipStatus.active ||
-    status === MembershipStatus.paused ||
-    status === MembershipStatus.past_due
-  );
+  return status === MembershipStatus.active || status === MembershipStatus.past_due;
 }
 
 export function getMembershipLabel(plan: MembershipPlan | null) {
@@ -213,6 +221,15 @@ export async function getMembershipState(userId: string): Promise<MembershipStat
       getReferralBalancePence(userId),
       getSubscriptionComplianceHistory(userId),
     ]);
+  const activeDunningCase = subscription
+    ? await getActiveDunningCaseForMembership(subscription.id)
+    : null;
+  const accessActive = subscription
+    ? membershipDunningAccessActive({
+        membershipStatus: subscription.status,
+        dunningCase: activeDunningCase,
+      })
+    : false;
 
   const membership = subscription
     ? {
@@ -234,7 +251,20 @@ export async function getMembershipState(userId: string): Promise<MembershipStat
         ),
         pricePence: subscription.pricePence,
         cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
-        accessActive: isAccessActiveStatus(subscription.status),
+        accessActive,
+        paymentIssue: activeDunningCase
+          ? {
+              status: activeDunningCase.status as "open" | "suspended",
+              graceEndsAt: (activeDunningCase.graceExtendedUntil || activeDunningCase.graceEndsAt)
+                .toISOString()
+                .slice(0, 10),
+              amountDuePence: activeDunningCase.amountDuePence,
+              invoiceUrl: activeDunningCase.invoiceUrl || null,
+              suspendedAt: activeDunningCase.suspendedAt
+                ? activeDunningCase.suspendedAt.toISOString().slice(0, 10)
+                : null,
+            }
+          : null,
         compliance: {
           disclosureVersion: subscription.disclosureVersion || null,
           disclosureAcceptedAt: subscription.disclosureAcceptedAt
@@ -374,7 +404,123 @@ export async function startOrSwitchMembership({
   return db.membershipSubscription.create({ data });
 }
 
-export async function cancelMembership(userId: string) {
+export async function changeMembershipPlan({
+  userId,
+  plan,
+  billingInterval,
+}: {
+  userId: string;
+  plan: Exclude<MembershipPlan, "instructor">;
+  billingInterval: MembershipBillingInterval;
+}) {
+  const current = await getLatestMembership(userId);
+  if (!current) throw new Error("MEMBERSHIP_NOT_FOUND");
+  if (!isAccessActiveStatus(current.status)) throw new Error("MEMBERSHIP_NOT_ACTIVE");
+
+  if (current.plan !== plan) {
+    throw new Error("UNSUPPORTED_MEMBERSHIP_PLAN_CHANGE");
+  }
+
+  if (current.billingInterval === billingInterval) {
+    return { membership: current, mode: "already_current" as const };
+  }
+
+  if (!current.stripeSubscriptionId) {
+    throw new Error("STRIPE_SUBSCRIPTION_NOT_FOUND");
+  }
+
+  const catalogKey =
+    billingInterval === "annual" ? "membership_movewell_annual" : "membership_movewell_monthly";
+  const catalog = await getActiveCatalogItem(catalogKey);
+  if (!catalog.stripePriceId) {
+    throw new Error("STRIPE_PRICE_NOT_CONFIGURED");
+  }
+
+  const stripe = getStripeClient();
+  const subscription = await stripe.subscriptions.retrieve(current.stripeSubscriptionId);
+  const subscriptionItem = subscription.items.data[0];
+  if (!subscriptionItem?.id) {
+    throw new Error("UNKNOWN_MEMBERSHIP_PRICE");
+  }
+
+  if (current.billingInterval === "monthly" && billingInterval === "annual") {
+    const updated = await stripe.subscriptions.update(current.stripeSubscriptionId, {
+      cancel_at_period_end: false,
+      items: [
+        {
+          id: subscriptionItem.id,
+          price: catalog.stripePriceId,
+        },
+      ],
+      metadata: {
+        plan,
+        billingInterval,
+        userId,
+        changeMode: "immediate_prorated_upgrade",
+      },
+      proration_behavior: "create_prorations",
+    });
+
+    const membership = await upsertMembershipFromStripeSubscription({
+      userId,
+      subscription: updated,
+      billingInterval,
+      plan,
+      priceId: catalog.stripePriceId,
+    });
+
+    return { membership, mode: "immediate" as const };
+  }
+
+  const currentPriceId = subscriptionItem.price?.id || current.stripePriceId;
+  const currentPeriodStart = getSubscriptionPeriodStart(subscription);
+  const currentPeriodEnd = getSubscriptionPeriodEnd(subscription);
+  if (!currentPriceId || currentPeriodStart <= 0 || currentPeriodEnd <= 0) {
+    throw new Error("UNKNOWN_MEMBERSHIP_PRICE");
+  }
+
+  const schedule = await stripe.subscriptionSchedules.create({
+    from_subscription: current.stripeSubscriptionId,
+  });
+
+  await stripe.subscriptionSchedules.update(schedule.id, {
+    end_behavior: "release",
+    phases: [
+      {
+        items: [
+          {
+            price: currentPriceId,
+            quantity: subscriptionItem.quantity || 1,
+          },
+        ],
+        start_date: currentPeriodStart,
+        end_date: currentPeriodEnd,
+      },
+      {
+        items: [
+          {
+            price: catalog.stripePriceId,
+            quantity: subscriptionItem.quantity || 1,
+          },
+        ],
+        start_date: currentPeriodEnd,
+        metadata: {
+          plan,
+          billingInterval,
+          userId,
+          changeMode: "period_end_downgrade",
+        },
+      },
+    ],
+  });
+
+  return { membership: current, mode: "period_end" as const };
+}
+
+export async function cancelMembership(
+  userId: string,
+  cancellation?: { reason?: string; reasonDetail?: string }
+) {
   const current = await getLatestMembership(userId);
   if (!current) return null;
   const user = await db.user.findUnique({
@@ -443,6 +589,8 @@ export async function cancelMembership(userId: string) {
         : "Membership cancelled during the renewal cooling-off period.",
       metadataJson: {
         refundAmountPence,
+        cancellationReason: cancellation?.reason || null,
+        cancellationReasonDetail: cancellation?.reasonDetail || null,
       },
       eventAt: now,
     });
@@ -484,6 +632,10 @@ export async function cancelMembership(userId: string) {
       kind: "membership_cancelled",
       status: "processed",
       summary: `Membership scheduled to end on ${updated.endsAt?.toISOString().slice(0, 10) || "the current period end"}.`,
+      metadataJson: {
+        cancellationReason: cancellation?.reason || null,
+        cancellationReasonDetail: cancellation?.reasonDetail || null,
+      },
       eventAt: now,
     });
     if (user?.email) {
@@ -516,6 +668,10 @@ export async function cancelMembership(userId: string) {
     kind: "membership_cancelled",
     status: "processed",
     summary: `Membership scheduled to end on ${updated.endsAt?.toISOString().slice(0, 10) || "the current period end"}.`,
+    metadataJson: {
+      cancellationReason: cancellation?.reason || null,
+      cancellationReasonDetail: cancellation?.reasonDetail || null,
+    },
     eventAt: now,
   });
   if (user?.email) {

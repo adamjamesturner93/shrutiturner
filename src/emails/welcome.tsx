@@ -30,9 +30,9 @@ export default function WelcomeEmail({
 }: WelcomeEmailProps) {
   const welcomeParagraphs = welcomeCopy
     ? welcomeCopy
-        .split(/\n\s*\n/)
-        .map((line) => line.trim())
-        .filter(Boolean)
+      .split(/\n\s*\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
     : null;
 
   return (
@@ -64,7 +64,7 @@ export default function WelcomeEmail({
       ) : (
         <Text style={bodyTextStyle}>
           Thank you for joining this community. I believe in training that is intelligent,
-          evidence-based, and built for real bodies and I&apos;m so glad you do too.
+          evidence-based and built for real bodies and I&apos;m so glad you do too.
         </Text>
       )}
 
@@ -140,7 +140,7 @@ export default function WelcomeEmail({
       </Text>
 
       <Text style={bodyTextStyle}>
-        I send occasional emails about launch updates, classes, coaching, retreat openings, and
+        I send occasional emails about launch updates, classes, coaching, retreat openings and
         thoughtful notes on building strength with a fluctuating body. No spam, no filler.
       </Text>
 

@@ -1,14 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { db } from "@/lib/db";
+import { db } from "../../helpers/db";
 import {
   CURRENT_HEALTH_DATA_CONSENT_VERSION,
   CURRENT_HEALTH_WAIVER_VERSION,
   CURRENT_TERMS_VERSION,
 } from "@/data/legal-documents";
-import {
-  loginWithEmail,
-  makeE2eAuthEmail,
-} from "../../helpers/auth";
+import { loginWithEmail, makeE2eAuthEmail } from "../../helpers/auth";
 
 test("account page saves profile and preference updates while keeping email disabled", async ({
   page,
@@ -152,14 +149,8 @@ test("account page can complete missing legal agreements", async ({ page }) => {
   await page.goto("/dashboard/account");
 
   await expect(page.getByText("You still need to accept required agreements.")).toBeVisible();
-  await page
-    .getByTestId("accept-terms-checkbox")
-    .locator('input[type="checkbox"]')
-    .check();
-  await page
-    .getByTestId("accept-health-checkbox")
-    .locator('input[type="checkbox"]')
-    .check();
+  await page.getByTestId("accept-terms-checkbox").locator('input[type="checkbox"]').check();
+  await page.getByTestId("accept-health-checkbox").locator('input[type="checkbox"]').check();
   await expect(page.getByText("Terms accepted")).toBeVisible();
   await expect(page.getByText("Health & Liability Waiver accepted")).toBeVisible();
 });

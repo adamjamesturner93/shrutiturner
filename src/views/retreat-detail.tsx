@@ -15,9 +15,10 @@ import {
 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
+import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
 import { SEO } from "@/components/seo";
 import { Button } from "@/components/ui/button";
-import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content";
+import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content/types";
 import { useI18n } from "@/lib/use-i18n";
 
 interface RetreatDetailPageProps {
@@ -140,6 +141,15 @@ export function RetreatDetailPage({
         <div className="container mx-auto max-w-6xl">
           <div className="grid items-center gap-8 lg:grid-cols-[0.92fr_1.08fr] lg:gap-10">
             <div>
+              <PublicBreadcrumbs
+                inverted
+                className="mb-7"
+                items={[
+                  { name: "Home", href: "/" },
+                  { name: "Retreats", href: "/retreats" },
+                  { name: retreat.title, href: `/retreats/${retreat.slug}` },
+                ]}
+              />
               <div className="text-brand-accent-light inline-flex items-center gap-2 text-sm">
                 <MapPin className="h-4 w-4" />
                 {retreat.location}
@@ -202,7 +212,7 @@ export function RetreatDetailPage({
                       Atmosphere
                     </p>
                     <p className="text-brand-white/84 mt-2 text-sm leading-relaxed">
-                      Spacious movement, enough rest, and no expectation that everyone extracts the
+                      Spacious movement, enough restand no expectation that everyone extracts the
                       same thing from the day.
                     </p>
                   </div>
@@ -360,11 +370,10 @@ export function RetreatDetailPage({
                           setSelectedDateId(date.id);
                           setSelectedRoomId(getDefaultRoomOptionId(date));
                         }}
-                        className={`rounded-[1rem] border p-4 text-left transition-colors ${
-                          isSelected
+                        className={`rounded-[1rem] border p-4 text-left transition-colors ${isSelected
                             ? "border-brand-accent bg-brand-accent/5"
                             : "hover:bg-secondary/20"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div>
@@ -392,11 +401,10 @@ export function RetreatDetailPage({
                           key={roomOption.id}
                           type="button"
                           onClick={() => setSelectedRoomId(roomOption.id)}
-                          className={`rounded-[1rem] border p-4 text-left transition-colors ${
-                            isSelected
+                          className={`rounded-[1rem] border p-4 text-left transition-colors ${isSelected
                               ? "border-brand-accent bg-brand-accent/5"
                               : "hover:bg-secondary/20"
-                          } ${roomOption.availableSpots <= 0 || roomOption.isWaitlistOnly ? "opacity-60" : ""}`}
+                            } ${roomOption.availableSpots <= 0 || roomOption.isWaitlistOnly ? "opacity-60" : ""}`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div>
@@ -443,7 +451,7 @@ export function RetreatDetailPage({
                 <div className="flex items-start gap-3 rounded-xl border p-4">
                   <AlertCircle className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
                   <p className="text-muted-foreground">
-                    Room choice, deposit, and any gifted place are all reserved against this
+                    Room choice, depositand any gifted place are all reserved against this
                     selected retreat date.
                   </p>
                 </div>

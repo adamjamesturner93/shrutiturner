@@ -28,7 +28,7 @@ import {
   CURRENT_HEALTH_WAIVER_VERSION,
   CURRENT_TERMS_VERSION,
 } from "@/data/legal-documents";
-import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content";
+import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content/types";
 import { useI18n } from "@/lib/use-i18n";
 
 type PendingAcceptance = {
@@ -357,7 +357,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
         ) {
           throw new Error(
             payload.message ||
-              "The retreat legal agreements have changed. Refresh this page and review the latest versions before continuing."
+            "The retreat legal agreements have changed. Refresh this page and review the latest versions before continuing."
           );
         }
         throw new Error(payload?.message || "Failed to start checkout.");
@@ -474,11 +474,10 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                       <button
                         key={date.id}
                         type="button"
-                        className={`rounded-[1.25rem] border p-4 text-left transition-colors ${
-                          isSelected
-                            ? "border-brand-accent bg-brand-accent/5"
-                            : "hover:bg-secondary/20"
-                        }`}
+                        className={`rounded-[1.25rem] border p-4 text-left transition-colors ${isSelected
+                          ? "border-brand-accent bg-brand-accent/5"
+                          : "hover:bg-secondary/20"
+                          }`}
                         onClick={() => setSelectedDateId(date.id)}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -510,11 +509,10 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                           key={roomOption.id}
                           type="button"
                           disabled={isUnavailable}
-                          className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
-                            isSelected
-                              ? "border-brand-accent bg-brand-accent/5"
-                              : "hover:bg-secondary/20"
-                          } ${isUnavailable ? "opacity-60" : ""}`}
+                          className={`rounded-[1.25rem] border p-5 text-left transition-colors ${isSelected
+                            ? "border-brand-accent bg-brand-accent/5"
+                            : "hover:bg-secondary/20"
+                            } ${isUnavailable ? "opacity-60" : ""}`}
                           onClick={() => setSelectedRoomId(roomOption.id)}
                         >
                           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -688,7 +686,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                   </div>
 
                   <div className="marketing-panel rounded-[1.5rem] p-6">
-                    <h2 className="text-2xl">5. Health, access, and emergency details</h2>
+                    <h2 className="text-2xl">5. Health, access and emergency details</h2>
                     <div className="mt-6 grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="phone">Phone</Label>
@@ -940,7 +938,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                   </h2>
                   <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
                     Gift purchases reserve this retreat place now. The recipient completes their own
-                    attendee, health, and access details later through the redemption link.
+                    attendee, healthand access details later through the redemption link.
                   </p>
                   <div className="mt-6 grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">

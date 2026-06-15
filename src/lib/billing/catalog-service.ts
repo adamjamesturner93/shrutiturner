@@ -1,14 +1,17 @@
 import type Stripe from "stripe";
+import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { db } from "@/lib/db";
 import { getStripeClient } from "@/lib/billing/stripe-client";
 import { CREDIT_BUNDLE_CONFIG, MEMBERSHIP_CONFIG } from "@/lib/billing/price-map";
+import { coachingTiers, type CoachingOfferKey } from "@/data/marketing";
 
 export type BillingCatalogKey =
   | "membership_movewell_monthly"
   | "membership_movewell_annual"
   | "credits_1"
   | "credits_3"
-  | "credits_10";
+  | "credits_10"
+  | `coaching_${CoachingOfferKey}_monthly`;
 
 const CATALOG_KEYS: BillingCatalogKey[] = [
   "membership_movewell_monthly",
@@ -16,9 +19,33 @@ const CATALOG_KEYS: BillingCatalogKey[] = [
   "credits_1",
   "credits_3",
   "credits_10",
+  "coaching_guided_accountability_monthly",
+  "coaching_independent_training_plan_monthly",
+  "coaching_guided_training_plan_monthly",
+  "coaching_one_to_one_coaching_monthly",
 ];
 
+function getCoachingTierForCatalogKey(key: BillingCatalogKey) {
+  const match = /^coaching_(.+)_monthly$/.exec(key);
+  if (!match) return null;
+  return coachingTiers.find((tier) => tier.id === match[1]) || null;
+}
+
+function parsePenceFromPriceLabel(priceLabel: string) {
+  const match = /£(\d+)/.exec(priceLabel);
+  return match ? Number(match[1]) * 100 : 0;
+}
+
 function defaultFromEnv(key: BillingCatalogKey) {
+  const coachingTier = getCoachingTierForCatalogKey(key);
+  if (coachingTier) {
+    const envKey = `STRIPE_PRICE_COACHING_${coachingTier.id.toUpperCase()}_MONTHLY`;
+    return {
+      stripePriceId: process.env[envKey] || "",
+      unitAmountPence: parsePenceFromPriceLabel(coachingTier.priceLabel),
+    };
+  }
+
   switch (key) {
     case "membership_movewell_monthly":
       return {
@@ -53,6 +80,15 @@ function defaultFromEnv(key: BillingCatalogKey) {
 function catalogMetaForKey(key: BillingCatalogKey) {
   const stripe = getStripeClient();
   void stripe;
+  const coachingTier = getCoachingTierForCatalogKey(key);
+  if (coachingTier) {
+    return {
+      name: `Coaching · ${coachingTier.name}`,
+      recurring: "month" as const,
+      fallbackPence: parsePenceFromPriceLabel(coachingTier.priceLabel),
+    };
+  }
+
   switch (key) {
     case "membership_movewell_monthly":
       return {
@@ -147,10 +183,18 @@ export async function createOrActivateCatalogPrice(input: {
   key: BillingCatalogKey;
   unitAmountPence: number;
   currency?: string;
+  actorUserId?: string | null;
+  requestId?: string | null;
+  requestPath?: string | null;
+  requestIp?: string | null;
 }) {
   const stripe = getStripeClient();
   const productId = await resolveOrCreateProduct(stripe, input.key);
   const meta = catalogMetaForKey(input.key);
+  const previousActive = await db.billingCatalogItem.findFirst({
+    where: { key: input.key, active: true },
+    orderBy: { updatedAt: "desc" },
+  });
 
   const price = await stripe.prices.create({
     product: productId,
@@ -177,13 +221,29 @@ export async function createOrActivateCatalogPrice(input: {
     });
   });
 
-  return {
+  const result = {
     key: input.key,
     stripePriceId: price.id,
     stripeProductId: productId,
     unitAmountPence: price.unit_amount || input.unitAmountPence,
     currency: (price.currency || "gbp").toUpperCase(),
   };
+
+  if (input.actorUserId) {
+    await createAdminActionLog({
+      actorUserId: input.actorUserId,
+      actionType: "billing_catalog_price_updated",
+      targetType: "billing_catalog_item",
+      targetId: input.key,
+      requestId: input.requestId,
+      requestPath: input.requestPath,
+      requestIp: input.requestIp,
+      oldValueJson: previousActive,
+      newValueJson: result,
+    });
+  }
+
+  return result;
 }
 
 export async function listPromotionCodes() {
@@ -198,6 +258,10 @@ export async function createPromotionCode(input: {
   currency?: string;
   expiresAt?: string;
   maxRedemptions?: number;
+  actorUserId?: string | null;
+  requestId?: string | null;
+  requestPath?: string | null;
+  requestIp?: string | null;
 }) {
   const stripe = getStripeClient();
 
@@ -215,7 +279,10 @@ export async function createPromotionCode(input: {
   );
 
   const promo = await stripe.promotionCodes.create({
-    coupon: coupon.id,
+    promotion: {
+      type: "coupon",
+      coupon: coupon.id,
+    },
     code: input.code,
     max_redemptions: input.maxRedemptions,
     expires_at: input.expiresAt
@@ -254,30 +321,90 @@ export async function createPromotionCode(input: {
     },
   });
 
-  return { id: promo.id, code: promo.code, active: promo.active };
+  const result = { id: promo.id, code: promo.code, active: promo.active };
+
+  if (input.actorUserId) {
+    await createAdminActionLog({
+      actorUserId: input.actorUserId,
+      actionType: "promotion_code_created",
+      targetType: "promotion_code",
+      targetId: promo.id,
+      requestId: input.requestId,
+      requestPath: input.requestPath,
+      requestIp: input.requestIp,
+      newValueJson: {
+        ...result,
+        type: input.type,
+        percentOff: input.percentOff || null,
+        amountOffPence: input.amountOffPence || null,
+        currency: input.currency || "GBP",
+        expiresAt: input.expiresAt || null,
+        maxRedemptions: input.maxRedemptions || null,
+      },
+    });
+  }
+
+  return result;
 }
 
-export async function setPromotionCodeActive(id: string, active: boolean) {
+export async function setPromotionCodeActive(input: {
+  id: string;
+  active: boolean;
+  actorUserId?: string | null;
+  requestId?: string | null;
+  requestPath?: string | null;
+  requestIp?: string | null;
+}) {
   const stripe = getStripeClient();
-  const updated = await stripe.promotionCodes.update(id, { active });
+  const previous = await db.promotionCodeMirror.findFirst({
+    where: { stripePromotionCodeId: input.id },
+    orderBy: { updatedAt: "desc" },
+  });
+  const updated = await stripe.promotionCodes.update(input.id, { active: input.active });
 
   await db.promotionCodeMirror.updateMany({
-    where: { stripePromotionCodeId: id },
+    where: { stripePromotionCodeId: input.id },
     data: { active: updated.active, timesRedeemed: updated.times_redeemed || 0 },
   });
 
-  return { id: updated.id, active: updated.active };
+  const result = { id: updated.id, active: updated.active };
+
+  if (input.actorUserId) {
+    await createAdminActionLog({
+      actorUserId: input.actorUserId,
+      actionType: "promotion_code_updated",
+      targetType: "promotion_code",
+      targetId: updated.id,
+      requestId: input.requestId,
+      requestPath: input.requestPath,
+      requestIp: input.requestIp,
+      oldValueJson: previous,
+      newValueJson: result,
+    });
+  }
+
+  return result;
 }
 
 export async function resolvePromotionCodeDiscount(code: string, amountPence: number) {
   const trimmed = code.trim();
   if (!trimmed) return null;
   const stripe = getStripeClient();
-  const list = await stripe.promotionCodes.list({ code: trimmed, active: true, limit: 1 });
+  const list = await stripe.promotionCodes.list({
+    code: trimmed,
+    active: true,
+    limit: 1,
+    expand: ["data.promotion.coupon"],
+  });
   const promo = list.data[0];
-  if (!promo || !promo.coupon || typeof promo.coupon !== "object") return null;
+  if (!promo) return null;
 
-  const coupon = promo.coupon;
+  const promotionCoupon = promo.promotion.coupon;
+  const coupon =
+    typeof promotionCoupon === "string"
+      ? await stripe.coupons.retrieve(promotionCoupon)
+      : promotionCoupon;
+  if (!coupon) return null;
   const percentOff = coupon.percent_off || 0;
   const amountOff = coupon.amount_off || 0;
   const computed = percentOff > 0 ? Math.floor((amountPence * percentOff) / 100) : amountOff;

@@ -15,6 +15,11 @@ type RawPostmarkEvent = {
   OriginalLink?: string;
 };
 
+type LinkedDelivery = {
+  id: string;
+  campaignId: string | null;
+};
+
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
@@ -24,6 +29,79 @@ function toDate(value: string | undefined) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return new Date();
   return parsed;
+}
+
+function normalizeEventType(recordType: string) {
+  const compact = recordType.replace(/[\s_-]/g, "").toLowerCase();
+  switch (compact) {
+    case "delivery":
+    case "delivered":
+      return "delivered";
+    case "open":
+    case "opened":
+      return "opened";
+    case "click":
+    case "clicked":
+      return "clicked";
+    case "bounce":
+    case "bounced":
+      return "bounced";
+    case "spamcomplaint":
+    case "spam":
+    case "complaint":
+      return "spam_complaint";
+    case "subscriptionchange":
+    case "unsubscribe":
+    case "unsubscribed":
+      return "unsubscribed";
+    default:
+      return recordType || "unknown";
+  }
+}
+
+async function suppressSubscriberForCompliance(input: {
+  email: string;
+  userId?: string | null;
+  type: string;
+}) {
+  if (input.type !== "unsubscribed" && input.type !== "spam_complaint") {
+    return;
+  }
+
+  const now = new Date();
+  const subscriber = await db.newsletterSubscriber.findUnique({
+    where: { email: input.email },
+    select: { id: true, userId: true },
+  });
+
+  if (subscriber) {
+    await db.newsletterSubscriber.update({
+      where: { id: subscriber.id },
+      data: {
+        status: "unsubscribed",
+        unsubscribedAt: now,
+        verificationTokenHash: null,
+        verificationTokenExpiresAt: null,
+      },
+    });
+  }
+
+  const userId = subscriber?.userId || input.userId;
+  if (userId) {
+    await db.userNotificationPreference.upsert({
+      where: { userId },
+      create: {
+        userId,
+        marketingEmails: false,
+        classReminders: true,
+        scheduleUpdates: true,
+        programAnnouncements: true,
+      },
+      update: {
+        marketingEmails: false,
+      },
+    });
+  }
 }
 
 export function verifyPostmarkWebhook(
@@ -51,7 +129,7 @@ function timingSafeCompare(a: string, b: string) {
 }
 
 export async function ingestPostmarkEvent(payload: RawPostmarkEvent) {
-  const type = payload.RecordType || "Unknown";
+  const type = normalizeEventType(payload.RecordType || "Unknown");
   const recipient = normalizeEmail(payload.Recipient || "");
   if (!recipient) {
     throw new Error("MISSING_RECIPIENT");
@@ -74,12 +152,14 @@ export async function ingestPostmarkEvent(payload: RawPostmarkEvent) {
     select: { id: true },
   });
 
-  let campaignId: string | undefined;
+  const linkedDelivery = await findLinkedDelivery(metadata, messageId);
+
+  let campaignId: string | undefined = linkedDelivery?.campaignId || undefined;
   const explicitCampaignId =
     typeof metadata.campaignId === "string" && metadata.campaignId
       ? metadata.campaignId
       : undefined;
-  if (explicitCampaignId) {
+  if (!campaignId && explicitCampaignId) {
     const existingById = await db.emailCampaign.findUnique({
       where: { id: explicitCampaignId },
       select: { id: true },
@@ -87,36 +167,6 @@ export async function ingestPostmarkEvent(payload: RawPostmarkEvent) {
     if (existingById) {
       campaignId = existingById.id;
     }
-  }
-
-  const providerCampaignId =
-    (campaignId ? undefined : explicitCampaignId) ||
-    (typeof payload.Tag === "string" && payload.Tag) ||
-    messageId ||
-    undefined;
-
-  if (!campaignId && providerCampaignId) {
-    const campaign = await db.emailCampaign.upsert({
-      where: { providerCampaignId },
-      create: {
-        providerCampaignId,
-        subject: payload.Subject || "Untitled campaign",
-        stream: payload.MessageStream || null,
-        status: type === "Scheduled" ? "scheduled" : "sent",
-        sentAt: type === "Scheduled" ? null : eventAt,
-        scheduledAt: type === "Scheduled" ? eventAt : null,
-        metadataJson: metadata as Prisma.InputJsonValue,
-      },
-      update: {
-        subject: payload.Subject || undefined,
-        stream: payload.MessageStream || undefined,
-        status: type === "Scheduled" ? "scheduled" : "sent",
-        sentAt: type === "Scheduled" ? undefined : eventAt,
-        metadataJson: metadata as Prisma.InputJsonValue,
-      },
-      select: { id: true },
-    });
-    campaignId = campaign.id;
   }
 
   await db.emailEvent.upsert({
@@ -129,6 +179,7 @@ export async function ingestPostmarkEvent(payload: RawPostmarkEvent) {
       email: recipient,
       userId: user?.id,
       campaignId,
+      deliveryId: linkedDelivery?.id,
       eventAt,
       metadataJson: metadata as Prisma.InputJsonValue,
     },
@@ -137,10 +188,45 @@ export async function ingestPostmarkEvent(payload: RawPostmarkEvent) {
       email: recipient,
       userId: user?.id,
       campaignId,
+      deliveryId: linkedDelivery?.id,
       eventAt,
       metadataJson: metadata as Prisma.InputJsonValue,
     },
   });
 
+  await suppressSubscriberForCompliance({
+    email: recipient,
+    userId: user?.id,
+    type,
+  });
+
   return { providerEventId };
+}
+
+async function findLinkedDelivery(metadata: Record<string, unknown>, messageId: string | null) {
+  const explicitDeliveryId =
+    typeof metadata.deliveryId === "string" && metadata.deliveryId.trim()
+      ? metadata.deliveryId.trim()
+      : null;
+
+  if (explicitDeliveryId) {
+    const delivery = await db.emailDelivery.findUnique({
+      where: { id: explicitDeliveryId },
+      select: { id: true, campaignId: true },
+    });
+    if (delivery) {
+      return delivery satisfies LinkedDelivery;
+    }
+  }
+
+  if (!messageId) {
+    return null;
+  }
+
+  const delivery = await db.emailDelivery.findFirst({
+    where: { providerMessageId: messageId },
+    select: { id: true, campaignId: true },
+  });
+
+  return delivery ? (delivery satisfies LinkedDelivery) : null;
 }

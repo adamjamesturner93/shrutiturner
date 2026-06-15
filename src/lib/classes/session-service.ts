@@ -6,6 +6,7 @@ import {
   Prisma,
 } from "@prisma/client";
 import { db } from "@/lib/db";
+import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import {
   getClassDefinitionBySlug,
   getClassDefinitions,
@@ -27,6 +28,7 @@ import { createSessionRoom, deleteSessionRoom, isDailyConfigured } from "@/lib/d
 import { HEALTH_CATEGORIES } from "@/data/health-profile-data";
 import { getHealthCheckInMode } from "@/lib/health/health-service";
 import { resolveClassInstructorSnapshot } from "@/lib/instructors/effective-instructor-service";
+import { resolveReplayPolicyForClassSession } from "@/lib/replay/policy-service";
 import type {
   AdminClassSessionDto,
   BulkCreateSessionsInput,
@@ -40,6 +42,58 @@ const CONDITION_LABELS = new Map(
   HEALTH_CATEGORIES.flatMap((category) => category.items.map((item) => [item.key, item.label]))
 );
 const PUBLIC_SCHEDULE_HORIZON_DAYS = 28;
+
+async function logClassSessionAction(input: {
+  actorUserId?: string | null;
+  actionType: string;
+  targetId?: string | null;
+  reason?: string | null;
+  oldValueJson?: Prisma.InputJsonValue;
+  newValueJson?: Prisma.InputJsonValue;
+  metadataJson?: Prisma.InputJsonValue;
+}) {
+  if (!input.actorUserId) {
+    return;
+  }
+
+  await createAdminActionLog({
+    actorUserId: input.actorUserId,
+    actionType: input.actionType,
+    targetType: "class_session",
+    targetId: input.targetId,
+    reason: input.reason,
+    oldValueJson: input.oldValueJson,
+    newValueJson: input.newValueJson,
+    metadataJson: input.metadataJson,
+  });
+}
+
+function formatDateInTimezone(date: Date, timezone: string) {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const parts = formatter.formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  if (!year || !month || !day) {
+    throw new Error("INVALID_TIMEZONE_DATE");
+  }
+  return `${year}-${month}-${day}`;
+}
+
+function toDateOnlyUtcForTimezone(date: Date, timezone: string) {
+  return new Date(`${formatDateInTimezone(date, timezone)}T00:00:00.000Z`);
+}
+
+function shiftDate(date: Date, days: number) {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+}
 
 function toHealthConditionLabel(conditionKey: string, detail: string | null) {
   if (detail && detail.trim().length > 0) {
@@ -167,10 +221,10 @@ function toSessionListItem(
       communityModeEnabled: session.communityModeEnabled,
       communityModeUpdatedAt: session.communityModeUpdatedAt,
     }),
-    isRecorded: false,
-    recordingScope: null,
-    replayAvailable: false,
-    replayAccessDurationDays: null,
+    isRecorded: session.isRecorded,
+    recordingScope: session.recordingScope,
+    replayAvailable: session.replayAvailable,
+    replayAccessDurationDays: session.replayAccessDurationDays,
     chatEnabled: session.chatEnabled,
     participantMicDefaultMuted: session.participantMicDefaultMuted,
     participantCameraDefaultOff: session.participantCameraDefaultOff,
@@ -541,6 +595,24 @@ export async function bulkCreateClassSessions(
     return records;
   });
 
+  await logClassSessionAction({
+    actorUserId: fallbackInstructorUserId,
+    actionType: "class_sessions_bulk_created",
+    metadataJson: {
+      createdSessionIds: created.map((c) => c.id),
+      createdCount: created.length,
+      classDefinitionSlug: classDef.slug,
+      startDate: input.startDate,
+      timeLocal: input.timeLocal,
+      durationMinutes: input.durationMinutes,
+      capacity: input.capacity,
+      repeatWeeks: input.repeatWeeks,
+      weekdays: days,
+      instructorUserId,
+      instructorProfileEntryId: input.instructorProfileEntryId || null,
+    },
+  });
+
   return {
     createdSessionIds: created.map((c) => c.id),
     dailyConfigured: isDailyConfigured(),
@@ -558,6 +630,9 @@ export async function setUpSessionRoom(sessionId: string) {
       dailyRoomName: true,
       dailyRoomUrl: true,
       roomSetupStatus: true,
+      isRecorded: true,
+      recordingScope: true,
+      replayAccessDurationDays: true,
       bookings: {
         where: {
           status: {
@@ -638,6 +713,31 @@ export async function setUpSessionRoom(sessionId: string) {
         roomSetupError: null,
       },
     });
+    if (session.isRecorded) {
+      const policy = await resolveReplayPolicyForClassSession(session.id);
+      await db.replayAsset.upsert({
+        where: { classSessionId: session.id },
+        create: {
+          resourceType: "class_session",
+          classSessionId: session.id,
+          dailyRoomName: room.roomName,
+          status: "processing",
+          deleteAfterAt: policy.deleteAfterAt,
+          recordingConfigSnapshotJson: {
+            recordingScope: session.recordingScope,
+            replayAccessDurationDays: session.replayAccessDurationDays,
+          },
+        },
+        update: {
+          dailyRoomName: room.roomName,
+          deleteAfterAt: policy.deleteAfterAt,
+          recordingConfigSnapshotJson: {
+            recordingScope: session.recordingScope,
+            replayAccessDurationDays: session.replayAccessDurationDays,
+          },
+        },
+      });
+    }
     return { status: "ready" as const };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to create Daily room";
@@ -717,14 +817,22 @@ export async function updateClassSession(
     notes?: string;
     instructorUserId?: string;
     instructorProfileEntryId?: string | null;
+    actorUserId?: string;
   }
 ) {
   const existing = await db.classSession.findUnique({
     where: { id: sessionId },
     select: {
+      id: true,
       classDefinitionSlug: true,
       instructorUserId: true,
       instructorProfileEntryId: true,
+      timezone: true,
+      startsAtUtc: true,
+      endsAtUtc: true,
+      capacity: true,
+      status: true,
+      notes: true,
     },
   });
   if (!existing) {
@@ -750,6 +858,9 @@ export async function updateClassSession(
     data: {
       startsAtUtc: updates.startsAtUtc,
       endsAtUtc: updates.endsAtUtc,
+      localDate: updates.startsAtUtc
+        ? toDateOnlyUtcForTimezone(updates.startsAtUtc, existing.timezone)
+        : undefined,
       capacity: updates.capacity,
       status: updates.status,
       notes: updates.notes,
@@ -767,7 +878,127 @@ export async function updateClassSession(
     await finalizeSessionNoShows(sessionId);
   }
 
+  await logClassSessionAction({
+    actorUserId: updates.actorUserId,
+    actionType: "class_session_updated",
+    targetId: sessionId,
+    oldValueJson: {
+      startsAtUtc: existing.startsAtUtc.toISOString(),
+      endsAtUtc: existing.endsAtUtc.toISOString(),
+      capacity: existing.capacity,
+      status: existing.status,
+      notes: existing.notes,
+      instructorUserId: existing.instructorUserId,
+      instructorProfileEntryId: existing.instructorProfileEntryId,
+    },
+    newValueJson: {
+      startsAtUtc: updated.startsAtUtc.toISOString(),
+      endsAtUtc: updated.endsAtUtc.toISOString(),
+      capacity: updated.capacity,
+      status: updated.status,
+      notes: updated.notes,
+      instructorUserId: updated.instructorUserId,
+      instructorProfileEntryId: updated.instructorProfileEntryId,
+    },
+    metadataJson: {
+      classDefinitionSlug: existing.classDefinitionSlug,
+      completedNoShowsFinalized: updates.status === ClassSessionStatus.completed,
+    },
+  });
+
   return updated;
+}
+
+export async function rescheduleClassSessionsForWeek(params: {
+  weekStart: string;
+  dayDelta: number;
+  adminUserId: string;
+}) {
+  void params.adminUserId;
+  const weekStartDate = new Date(`${params.weekStart}T00:00:00.000Z`);
+  if (Number.isNaN(weekStartDate.getTime())) {
+    throw new Error("INVALID_WEEK_START");
+  }
+  if (
+    !Number.isInteger(params.dayDelta) ||
+    params.dayDelta === 0 ||
+    Math.abs(params.dayDelta) > 14
+  ) {
+    throw new Error("INVALID_DAY_DELTA");
+  }
+
+  const weekEndDate = shiftDate(weekStartDate, 7);
+  const now = new Date();
+
+  const sessions = await db.classSession.findMany({
+    where: {
+      OR: [
+        {
+          localDate: {
+            gte: weekStartDate,
+            lt: weekEndDate,
+          },
+        },
+        {
+          localDate: null,
+          startsAtUtc: {
+            gte: weekStartDate,
+            lt: weekEndDate,
+          },
+        },
+      ],
+    },
+    select: {
+      id: true,
+      status: true,
+      startsAtUtc: true,
+      endsAtUtc: true,
+      localDate: true,
+      timezone: true,
+    },
+    orderBy: {
+      startsAtUtc: "asc",
+    },
+  });
+
+  let updatedCount = 0;
+  let skippedCount = 0;
+
+  for (const session of sessions) {
+    const canReschedule =
+      session.startsAtUtc > now &&
+      (session.status === ClassSessionStatus.draft ||
+        session.status === ClassSessionStatus.scheduled);
+
+    if (!canReschedule) {
+      skippedCount += 1;
+      continue;
+    }
+
+    const nextStartsAtUtc = shiftDate(session.startsAtUtc, params.dayDelta);
+    const nextEndsAtUtc = shiftDate(session.endsAtUtc, params.dayDelta);
+    const nextLocalDate = session.localDate
+      ? shiftDate(session.localDate, params.dayDelta)
+      : toDateOnlyUtcForTimezone(nextStartsAtUtc, session.timezone);
+
+    await db.classSession.update({
+      where: { id: session.id },
+      data: {
+        startsAtUtc: nextStartsAtUtc,
+        endsAtUtc: nextEndsAtUtc,
+        localDate: nextLocalDate,
+      },
+    });
+    updatedCount += 1;
+  }
+
+  return {
+    weekStart: params.weekStart,
+    weekEndExclusive: weekEndDate.toISOString().slice(0, 10),
+    dayDelta: params.dayDelta,
+    updatedCount,
+    skippedCount,
+  };
 }
 
 export async function listAdminClassSessions(params: {

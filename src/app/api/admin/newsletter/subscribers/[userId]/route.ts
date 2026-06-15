@@ -8,11 +8,16 @@ type Body = {
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ userId: string }> }) {
   try {
-    await requireStaffAdminUser();
+    const adminUser = await requireStaffAdminUser();
     const { userId } = await params;
     const body = (await req.json().catch(() => ({}))) as Body;
     const payload = await updateAdminSubscriber(userId, {
       marketingEmails: typeof body.marketingEmails === "boolean" ? body.marketingEmails : undefined,
+      actorUserId: adminUser.id,
+      requestId: req.headers.get("x-request-id"),
+      requestPath: new URL(req.url).pathname,
+      requestIp:
+        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip"),
     });
     return NextResponse.json(payload);
   } catch (error) {

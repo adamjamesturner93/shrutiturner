@@ -1,36 +1,25 @@
-import { NextResponse } from "next/server";
-import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import {
   getClassOperationalSettings,
   updateClassOperationalSettings,
 } from "@/lib/classes/settings-service";
+import { apiOk, handleApiRoute, parseJsonBody } from "@/lib/api/route";
 
-export async function GET() {
-  try {
-    await requireStaffAdminUser();
+export const GET = handleApiRoute(
+  async () => {
     const settings = await getClassOperationalSettings();
-    return NextResponse.json(settings);
-  } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message === "FORBIDDEN") {
-      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-    }
-    console.error("GET /api/admin/business/class-rules failed", error);
-    return NextResponse.json({ message: "Failed to load class rules" }, { status: 500 });
-  }
-}
+    return apiOk(settings);
+  },
+  { auth: "staff_admin" }
+);
 
-export async function PATCH(request: Request) {
-  try {
-    await requireStaffAdminUser();
-    const body = (await request.json().catch(() => ({}))) as {
+export const PATCH = handleApiRoute(
+  async ({ request, requestId, requestIp, path, sessionUser }) => {
+    const body = await parseJsonBody<{
       preJoinWindowMinutes?: number;
       lateJoinCutoffMinutes?: number;
       creditRefundWindowMinutes?: number;
       emptyClassAutoCancelWindowMinutes?: number;
-    };
+    }>(request);
 
     const settings = await updateClassOperationalSettings({
       preJoinWindowMinutes:
@@ -45,17 +34,13 @@ export async function PATCH(request: Request) {
         typeof body.emptyClassAutoCancelWindowMinutes === "number"
           ? body.emptyClassAutoCancelWindowMinutes
           : undefined,
+      actorUserId: sessionUser?.id,
+      requestId,
+      requestPath: path,
+      requestIp,
     });
 
-    return NextResponse.json(settings);
-  } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message === "FORBIDDEN") {
-      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-    }
-    console.error("PATCH /api/admin/business/class-rules failed", error);
-    return NextResponse.json({ message: "Failed to update class rules" }, { status: 500 });
-  }
-}
+    return apiOk(settings);
+  },
+  { auth: "staff_admin" }
+);

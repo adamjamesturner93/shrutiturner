@@ -76,7 +76,7 @@ export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSumma
         <div>
           <h1 className="text-brand-dark text-2xl">Retreat Management</h1>
           <p className="text-muted-foreground mt-1">
-            Live retreat bookings, payment status, and operational capacity across all published
+            Live retreat bookings, payment status and operational capacity across all published
             dates.
           </p>
         </div>

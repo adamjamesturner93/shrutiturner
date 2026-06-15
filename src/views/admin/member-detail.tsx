@@ -191,10 +191,23 @@ export function AdminMemberDetail() {
           : `Instructor role removed from ${member.firstName}`
       );
     } else {
+      if (!newValue && isCoachingClient) {
+        const firstConfirmed = window.confirm(
+          "Remove coaching client status from this member? This does not cancel any Stripe coaching subscription or remove Everfit access."
+        );
+        if (!firstConfirmed) return;
+        const secondConfirmed = window.confirm(
+          "Confirm again: remove the coaching client flag only. Billing and delivery must be handled separately."
+        );
+        if (!secondConfirmed) return;
+      }
       const response = await fetch(`/api/admin/members/${member.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isCoachingClient: newValue }),
+        body: JSON.stringify({
+          isCoachingClient: newValue,
+          confirmCoachingRemoval: !newValue ? "REMOVE_COACHING_CLIENT" : undefined,
+        }),
       });
       if (!response.ok) {
         toast.error("Failed to update coaching role.");
@@ -545,7 +558,7 @@ export function AdminMemberDetail() {
                     )}
                   </div>
                   <p className="text-muted-foreground mt-1 text-xs">
-                    Grants admin access, unlimited class membership, and ability to lead classes.
+                    Grants admin access, unlimited class membership and ability to lead classes.
                   </p>
                 </label>
               </div>
@@ -637,7 +650,7 @@ export function AdminMemberDetail() {
             <CardContent className="space-y-4">
               <p className="text-muted-foreground text-sm">
                 Export the member record or anonymise personal data while preserving finance,
-                dispute, audit, and evidence links through an anonymised user shell.
+                dispute, auditand evidence links through an anonymised user shell.
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button
@@ -809,11 +822,10 @@ export function AdminMemberDetail() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <span
-                              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs ${
-                                entry.action === "add"
+                              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs ${entry.action === "add"
                                   ? "bg-brand-accent/10 text-brand-accent"
                                   : "bg-red-50 text-red-600"
-                              }`}
+                                }`}
                             >
                               {entry.action === "add" ? "+" : "−"}
                               {entry.amount}
@@ -956,10 +968,10 @@ export function AdminMemberDetail() {
                 <span className="text-sm">
                   {member.lastClassDate
                     ? new Date(member.lastClassDate).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })
                     : "No completed classes yet"}
                 </span>
               </div>

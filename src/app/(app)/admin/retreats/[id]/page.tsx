@@ -1,18 +1,7 @@
-import { auth } from "@/lib/auth";
-import { isOwnerAdminRole } from "@/lib/authz/roles";
-import { getAdminRetreatDetail } from "@/lib/retreats/service";
-import { AdminRetreatDetail } from "@/views/admin/retreat-detail";
+import { connection } from "next/server";
+import { redirect } from "next/navigation";
 
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  const { id } = await params;
-  let initialData = null;
-  if (isOwnerAdminRole(session?.user?.role)) {
-    try {
-      initialData = await getAdminRetreatDetail(id);
-    } catch {
-      initialData = null;
-    }
-  }
-  return <AdminRetreatDetail initialData={initialData} />;
+export default async function Page() {
+  await connection();
+  redirect("/admin/coaching");
 }

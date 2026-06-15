@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { blogAuthors, blogPosts } from "@/data/blog-data";
 import {
   formatAuthorList,
+  getBlogPostContextualCta,
   getAuthorLabel,
   getPostAuthors,
   getRelatedPosts,
@@ -49,6 +50,24 @@ describe("blog view model helpers", () => {
     expect(formatAuthorList(post)).toBe("Shruti Turner and Dr Hannah Lewis");
   });
 
+  it("formats three author bylines without an Oxford comma", () => {
+    const post = {
+      ...blogPosts[0]!,
+      authors: [
+        blogAuthors[0]!,
+        blogAuthors[1]!,
+        {
+          id: "guest-author",
+          slug: "guest-author",
+          name: "Guest Author",
+          bio: "",
+        },
+      ],
+    };
+
+    expect(formatAuthorList(post)).toBe("Shruti Turner, Dr Hannah Lewis and Guest Author");
+  });
+
   it("finds related posts by shared tags and excludes the current post", () => {
     const related = getRelatedPosts(blogPosts[0]!, blogPosts);
     expect(related).toHaveLength(3);
@@ -56,5 +75,11 @@ describe("blog view model helpers", () => {
     expect(related.every((post) => post.tags.some((tag) => blogPosts[0]!.tags.includes(tag)))).toBe(
       true
     );
+  });
+
+  it("selects contextual article CTAs from post topics", () => {
+    expect(getBlogPostContextualCta(blogPosts[0]!).href).toBe("/coaching");
+    expect(getBlogPostContextualCta(blogPosts[0]!).label).toBe("Explore 1:1 offers");
+    expect(getBlogPostContextualCta(blogPosts[1]!).href).toBe("/coaching");
   });
 });

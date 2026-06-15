@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const requireSessionUserMock = vi.fn();
+const authMock = vi.fn();
 const createMembershipCheckoutSessionMock = vi.fn();
 const assertNoUserCheckoutDisputeHoldMock = vi.fn();
 const recordSubscriptionComplianceEventMock = vi.fn();
@@ -8,8 +8,8 @@ const assertCurrentAcceptancesMock = vi.fn();
 const recordAcceptanceEventMock = vi.fn();
 const isAcceptanceRequiredErrorMock = vi.fn();
 
-vi.mock("@/lib/api/auth-user", () => ({
-  requireSessionUser: requireSessionUserMock,
+vi.mock("@/lib/auth", () => ({
+  auth: authMock,
 }));
 
 vi.mock("@/lib/billing/billing-service", () => ({
@@ -21,11 +21,25 @@ vi.mock("@/lib/billing/dispute-service", () => ({
 }));
 
 vi.mock("@/lib/billing/subscription-disclosure", () => ({
-  SUBSCRIPTION_DISCLOSURE_VERSION: "2026-04-03",
+  SUBSCRIPTION_DISCLOSURE_VERSION: "2026-05-24",
+  buildMembershipDisclosure: vi.fn(() => ({
+    version: "2026-05-24",
+    keyItems: ["Price: £350.00 per year."],
+    fullItems: [],
+  })),
 }));
 
 vi.mock("@/lib/billing/subscription-compliance", () => ({
   recordSubscriptionComplianceEvent: recordSubscriptionComplianceEventMock,
+}));
+
+vi.mock("@/lib/billing/public-pricing", () => ({
+  getPublicPricing: vi.fn(async () => ({
+    membershipDisplay: {
+      movewellMonthly: 35,
+      movewellAnnual: 350,
+    },
+  })),
 }));
 
 vi.mock("@/lib/legal/acceptance-service", () => ({
@@ -47,7 +61,7 @@ function createRequest(body: Record<string, unknown>) {
 describe("POST /api/me/membership/checkout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireSessionUserMock.mockResolvedValue({ id: "user_123" });
+    authMock.mockResolvedValue({ user: { id: "user_123", role: "member" } });
     assertNoUserCheckoutDisputeHoldMock.mockResolvedValue(undefined);
     assertCurrentAcceptancesMock.mockResolvedValue([
       {
@@ -86,16 +100,20 @@ describe("POST /api/me/membership/checkout", () => {
         plan: "movewell",
         billingInterval: "monthly",
         disclosureAccepted: false,
-        disclosureVersion: "2026-04-03",
+        disclosureVersion: "2026-05-24",
       })
     );
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      message: "Subscription terms must be acknowledged before checkout.",
+      success: false,
+      error: {
+        code: "BAD_REQUEST",
+        message: "Subscription terms must be acknowledged before checkout.",
+      },
     });
     expect(createMembershipCheckoutSessionMock).not.toHaveBeenCalled();
-    expect(assertNoUserCheckoutDisputeHoldMock).toHaveBeenCalledWith("user_123");
+    expect(assertNoUserCheckoutDisputeHoldMock).not.toHaveBeenCalled();
   });
 
   it("rejects checkout when the disclosure version is stale", async () => {
@@ -110,11 +128,15 @@ describe("POST /api/me/membership/checkout", () => {
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
-      message: "Subscription disclosure is out of date. Refresh and review it again.",
+      success: false,
+      error: {
+        code: "CONFLICT",
+        message: "Subscription disclosure is out of date. Refresh and review it again.",
+      },
     });
     expect(recordSubscriptionComplianceEventMock).not.toHaveBeenCalled();
     expect(createMembershipCheckoutSessionMock).not.toHaveBeenCalled();
-    expect(assertNoUserCheckoutDisputeHoldMock).toHaveBeenCalledWith("user_123");
+    expect(assertNoUserCheckoutDisputeHoldMock).not.toHaveBeenCalled();
   });
 
   it("records disclosure acceptance before creating checkout", async () => {
@@ -126,7 +148,7 @@ describe("POST /api/me/membership/checkout", () => {
         successPath: "/dashboard/membership?checkout=success",
         cancelPath: "/dashboard/membership",
         disclosureAccepted: true,
-        disclosureVersion: "2026-04-03",
+        disclosureVersion: "2026-05-24",
       })
     );
 
@@ -159,9 +181,9 @@ describe("POST /api/me/membership/checkout", () => {
       expect.objectContaining({
         successPath: "/dashboard/membership?checkout=success",
         cancelPath: "/dashboard/membership",
-        disclosureVersion: "2026-04-03",
+        disclosureVersion: "2026-05-24",
         disclosureAcceptedAt: expect.any(Date),
-        complianceSnapshot: {
+        complianceSnapshot: expect.objectContaining({
           acceptanceStates: [
             {
               type: "terms",
@@ -179,7 +201,8 @@ describe("POST /api/me/membership/checkout", () => {
             },
           ],
           immediateStartAcceptanceEventId: "event_immediate_start_v1",
-        },
+        }),
+        immediateStartSummary: expect.any(String),
       })
     );
     expect(assertNoUserCheckoutDisputeHoldMock).toHaveBeenCalledWith("user_123");
@@ -214,14 +237,21 @@ describe("POST /api/me/membership/checkout", () => {
         plan: "movewell",
         billingInterval: "monthly",
         disclosureAccepted: true,
-        disclosureVersion: "2026-04-03",
+        disclosureVersion: "2026-05-24",
       })
     );
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
-      code: "LEGAL_ACCEPTANCE_REQUIRED",
-      requiredAcceptances,
+      success: false,
+      error: {
+        code: "CONFLICT",
+        message: "Current legal acceptance is required before membership checkout.",
+        details: {
+          code: "LEGAL_ACCEPTANCE_REQUIRED",
+          requiredAcceptances,
+        },
+      },
     });
     expect(recordAcceptanceEventMock).not.toHaveBeenCalled();
     expect(createMembershipCheckoutSessionMock).not.toHaveBeenCalled();

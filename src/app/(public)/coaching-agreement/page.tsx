@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getLegalDocumentBySlug } from "@/lib/content";
+import { buildLegalDocumentMetadata } from "@/lib/content/metadata";
 import { LegalDocumentPage } from "@/views/legal-document";
 
 export async function generateMetadata(): Promise<Metadata> {
   const doc = await getLegalDocumentBySlug("coaching-agreement");
-  if (!doc) return { title: "Coaching Agreement" };
-
-  return {
-    title: doc.seoTitle || doc.title,
-    description: doc.seoDescription,
-  };
+  return buildLegalDocumentMetadata({
+    slug: "coaching-agreement",
+    title: doc?.seoTitle || doc?.title || "Coaching Agreement",
+    description: doc?.seoDescription,
+  });
 }
 
 export default async function Page() {

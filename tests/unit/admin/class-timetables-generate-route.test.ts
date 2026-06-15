@@ -38,6 +38,7 @@ describe("POST /api/admin/classes/timetables/generate", () => {
     expect(response.status).toBe(200);
     expect(generateDraftSessionsForActiveClassTimetablesMock).toHaveBeenCalledWith({
       generateUntil: "2026-05-23",
+      actorUserId: "admin_123",
     });
   });
 

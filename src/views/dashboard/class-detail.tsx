@@ -23,11 +23,47 @@ import {
 import { getTypeColor } from "@/lib/classes/type-color";
 import { useEffect, useState } from "react";
 import type { ClassSessionDetailDto } from "@/lib/api/types";
-import type { ClassDefinitionContent } from "@/lib/content";
+import type { ClassDefinitionContent } from "@/lib/content/types";
 import {
   getBookingEntitlementText,
   isSessionUnavailableForBooking,
 } from "@/lib/classes/session-bookability";
+
+function getJoinButtonState(session: ClassSessionDetailDto | null) {
+  if (!session?.isBookedByCurrentUser) {
+    return { canJoin: false, label: "Join Class", helper: "" };
+  }
+
+  if (session.status === "cancelled" || session.status === "completed") {
+    return {
+      canJoin: false,
+      label: "Join Unavailable",
+      helper: "This class is no longer open for joining.",
+    };
+  }
+
+  const now = Date.now();
+  const joinWindowOpensAt = new Date(session.joinWindowOpensAt).getTime();
+  const lateJoinCutoffAt = new Date(session.lateJoinCutoffAt).getTime();
+
+  if (now < joinWindowOpensAt) {
+    return {
+      canJoin: false,
+      label: "Join Not Open Yet",
+      helper: `The studio opens ${session.preJoinWindowMinutes} minutes before class.`,
+    };
+  }
+
+  if (now > lateJoinCutoffAt && !session.hasPreviouslyJoinedCurrentUser) {
+    return {
+      canJoin: false,
+      label: "Warm-up Complete",
+      helper: `First-time joins close ${session.lateJoinCutoffMinutes} minutes after class starts.`,
+    };
+  }
+
+  return { canJoin: true, label: "Join Class", helper: "" };
+}
 
 export function DashboardClassDetail({
   classDetail,
@@ -130,6 +166,7 @@ export function DashboardClassDetail({
     membershipClassesRemaining,
     totalCredits,
   });
+  const joinButtonState = getJoinButtonState(session);
 
   const typeIcon =
     resolvedType === "Yoga" ? (
@@ -327,6 +364,8 @@ export function DashboardClassDetail({
                   duration={resolvedDuration}
                   variant="lg"
                   attendeeCount={session?.bookedCount}
+                  spotsRemaining={session?.spotsRemaining}
+                  waitlistPosition={session?.waitlistPosition}
                   status={session?.status}
                   emptyClassAutoCancelWindowMinutes={session?.emptyClassAutoCancelWindowMinutes}
                 />
@@ -346,19 +385,33 @@ export function DashboardClassDetail({
                 </div>
 
                 <div className="flex flex-col gap-4">
-                  <Link
-                    className="block"
-                    href={
-                      session?.id
-                        ? `/dashboard/classes/${cls.slug}/join?sessionId=${encodeURIComponent(session.id)}`
-                        : `/dashboard/classes/${cls.slug}/join`
-                    }
-                  >
-                    <Button size="lg" className="w-full">
-                      <Video className="mr-2 h-4 w-4" />
-                      Join Class
-                    </Button>
-                  </Link>
+                  {joinButtonState.canJoin ? (
+                    <Link
+                      className="block"
+                      href={
+                        session?.id
+                          ? `/dashboard/classes/${cls.slug}/join?sessionId=${encodeURIComponent(session.id)}`
+                          : `/dashboard/classes/${cls.slug}/join`
+                      }
+                    >
+                      <Button size="lg" className="w-full">
+                        <Video className="mr-2 h-4 w-4" />
+                        {joinButtonState.label}
+                      </Button>
+                    </Link>
+                  ) : (
+                    <div className="space-y-2">
+                      <Button size="lg" className="w-full" disabled>
+                        <Video className="mr-2 h-4 w-4" />
+                        {joinButtonState.label}
+                      </Button>
+                      {joinButtonState.helper ? (
+                        <p className="text-muted-foreground text-center text-xs">
+                          {joinButtonState.helper}
+                        </p>
+                      ) : null}
+                    </div>
+                  )}
 
                   <Button
                     variant="destructive"
@@ -425,6 +478,8 @@ export function DashboardClassDetail({
                   duration={resolvedDuration}
                   variant="lg"
                   attendeeCount={session?.bookedCount}
+                  spotsRemaining={session?.spotsRemaining}
+                  waitlistPosition={session?.waitlistPosition}
                   status={session?.status}
                   emptyClassAutoCancelWindowMinutes={session?.emptyClassAutoCancelWindowMinutes}
                 />

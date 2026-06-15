@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { ClassSessionStatus } from "@prisma/client";
 import { getScheduleGroupedByDay, listClassSessions } from "@/lib/classes/session-service";
@@ -60,6 +60,8 @@ function parseQuery(searchParams: URLSearchParams): ParsedQuery {
 }
 
 export async function GET(request: Request) {
+  await connection();
+
   try {
     const url = new URL(request.url);
     const session = await auth();

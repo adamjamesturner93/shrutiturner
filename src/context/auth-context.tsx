@@ -20,6 +20,7 @@ import {
   CURRENT_HEALTH_WAIVER_VERSION,
   CURRENT_TERMS_VERSION,
 } from "@/data/legal-documents";
+import { getApiErrorMessage, isApiSuccess } from "@/lib/api/client";
 
 /* ──────────── Types ──────────── */
 
@@ -285,8 +286,8 @@ type AccountAndReferralResponse = {
 /* ──────────── Pricing config ──────────── */
 
 export const PLAN_PRICES: Record<string, number> = {
-  movewell: 29,
-  annual: 290,
+  movewell: 35,
+  annual: 350,
 };
 
 export const BUNDLE_PRICES: Record<number, number> = {
@@ -424,7 +425,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch("/api/me/membership", { cache: "no-store" });
       if (!response.ok) return;
-      const data = (await response.json()) as MembershipStateDto;
+      const payload = (await response.json()) as unknown;
+      const data = isApiSuccess<MembershipStateDto>(payload)
+        ? payload.data
+        : (payload as MembershipStateDto);
       applyMembershipState(data);
     } catch {
       // Leave fallback local state in place.
@@ -544,7 +548,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await fetch("/api/me", { cache: "no-store" });
       if (!res.ok) return null;
-      const data = (await res.json()) as AccountAndReferralResponse;
+      const payload = (await res.json().catch(() => null)) as unknown;
+      if (!isApiSuccess<AccountAndReferralResponse>(payload)) return null;
+      const data = payload.data;
 
       setUser((prev) =>
         prev
@@ -808,8 +814,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({ bundleSize: count }),
         });
         if (!response.ok) return;
-        const data = (await response.json()) as { checkoutUrl?: string };
-        if (data.checkoutUrl && typeof window !== "undefined") {
+        const payload = (await response.json().catch(() => null)) as unknown;
+        const data = isApiSuccess<{ checkoutUrl?: string }>(payload)
+          ? payload.data
+          : (payload as { checkoutUrl?: string } | null);
+        if (data?.checkoutUrl && typeof window !== "undefined") {
           window.location.href = data.checkoutUrl;
           return;
         }
@@ -825,27 +834,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void purchaseCredits(1);
   }, [purchaseCredits]);
 
-  const upgradeMembership = useCallback(
-    async (plan: "movewell") => {
-      try {
-        const response = await fetch("/api/me/membership/checkout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ plan }),
-        });
-        if (!response.ok) return;
-        const data = (await response.json()) as { checkoutUrl?: string };
-        if (data.checkoutUrl && typeof window !== "undefined") {
-          window.location.href = data.checkoutUrl;
-          return;
-        }
-        await loadMembershipState();
-      } catch {
-        // keep UI stable
-      }
-    },
-    [loadMembershipState]
-  );
+  const upgradeMembership = useCallback(async (plan: "movewell") => {
+    if (typeof window !== "undefined") {
+      window.location.href = `/dashboard/membership?subscribe=1&interval=monthly&plan=${plan}`;
+    }
+  }, []);
 
   const cancelMembership = useCallback(async () => {
     try {
@@ -889,11 +882,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }),
     });
     if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-      throw new Error(payload?.message || "Failed to update legal agreements.");
+      const payload = (await response.json().catch(() => null)) as unknown;
+      throw new Error(getApiErrorMessage(payload, "Failed to update legal agreements."));
     }
 
-    const payload = (await response.json().catch(() => null)) as {
+    const payload = (await response.json().catch(() => null)) as unknown;
+    const data = isApiSuccess<{
       profile?: {
         hasAgreedToTerms?: boolean;
         hasAgreedToHealth?: boolean;
@@ -907,27 +901,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         needsHealthWaiverReacceptance?: boolean;
         onboarding?: OnboardingStateDto;
       };
-    } | null;
+    }>(payload)
+      ? payload.data
+      : null;
     setUser((prev) =>
       prev
         ? {
             ...prev,
-            hasAgreedToTerms: payload?.profile?.hasAgreedToTerms ?? prev.hasAgreedToTerms,
-            hasAgreedToHealth: payload?.profile?.hasAgreedToHealth ?? prev.hasAgreedToHealth,
-            termsAgreedAt: payload?.profile?.termsAgreedAt ?? prev.termsAgreedAt,
-            healthAgreedAt: payload?.profile?.healthAgreedAt ?? prev.healthAgreedAt,
-            acceptedTermsVersion:
-              payload?.profile?.acceptedTermsVersion ?? prev.acceptedTermsVersion,
+            hasAgreedToTerms: data?.profile?.hasAgreedToTerms ?? prev.hasAgreedToTerms,
+            hasAgreedToHealth: data?.profile?.hasAgreedToHealth ?? prev.hasAgreedToHealth,
+            termsAgreedAt: data?.profile?.termsAgreedAt ?? prev.termsAgreedAt,
+            healthAgreedAt: data?.profile?.healthAgreedAt ?? prev.healthAgreedAt,
+            acceptedTermsVersion: data?.profile?.acceptedTermsVersion ?? prev.acceptedTermsVersion,
             acceptedHealthWaiverVersion:
-              payload?.profile?.acceptedHealthWaiverVersion ?? prev.acceptedHealthWaiverVersion,
-            currentTermsVersion: payload?.profile?.currentTermsVersion ?? prev.currentTermsVersion,
+              data?.profile?.acceptedHealthWaiverVersion ?? prev.acceptedHealthWaiverVersion,
+            currentTermsVersion: data?.profile?.currentTermsVersion ?? prev.currentTermsVersion,
             currentHealthWaiverVersion:
-              payload?.profile?.currentHealthWaiverVersion ?? prev.currentHealthWaiverVersion,
+              data?.profile?.currentHealthWaiverVersion ?? prev.currentHealthWaiverVersion,
             needsTermsReacceptance:
-              payload?.profile?.needsTermsReacceptance ?? prev.needsTermsReacceptance,
+              data?.profile?.needsTermsReacceptance ?? prev.needsTermsReacceptance,
             needsHealthWaiverReacceptance:
-              payload?.profile?.needsHealthWaiverReacceptance ?? prev.needsHealthWaiverReacceptance,
-            onboarding: payload?.profile?.onboarding ?? prev.onboarding,
+              data?.profile?.needsHealthWaiverReacceptance ?? prev.needsHealthWaiverReacceptance,
+            onboarding: data?.profile?.onboarding ?? prev.onboarding,
           }
         : prev
     );
@@ -942,11 +937,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }),
     });
     if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-      throw new Error(payload?.message || "Failed to update health data consent.");
+      const payload = (await response.json().catch(() => null)) as unknown;
+      throw new Error(getApiErrorMessage(payload, "Failed to update health data consent."));
     }
 
-    const payload = (await response.json().catch(() => null)) as {
+    const payload = (await response.json().catch(() => null)) as unknown;
+    const data = isApiSuccess<{
       profile?: {
         hasConsentedToHealthData?: boolean;
         healthDataConsentedAt?: string | null;
@@ -955,25 +951,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         needsHealthDataConsentRefresh?: boolean;
         onboarding?: OnboardingStateDto;
       };
-    } | null;
+    }>(payload)
+      ? payload.data
+      : null;
 
     setUser((prev) =>
       prev
         ? {
             ...prev,
             hasConsentedToHealthData:
-              payload?.profile?.hasConsentedToHealthData ?? prev.hasConsentedToHealthData,
+              data?.profile?.hasConsentedToHealthData ?? prev.hasConsentedToHealthData,
             healthDataConsentedAt:
-              payload?.profile?.healthDataConsentedAt ?? prev.healthDataConsentedAt,
+              data?.profile?.healthDataConsentedAt ?? prev.healthDataConsentedAt,
             acceptedHealthDataConsentVersion:
-              payload?.profile?.acceptedHealthDataConsentVersion ??
+              data?.profile?.acceptedHealthDataConsentVersion ??
               prev.acceptedHealthDataConsentVersion,
             currentHealthDataConsentVersion:
-              payload?.profile?.currentHealthDataConsentVersion ??
+              data?.profile?.currentHealthDataConsentVersion ??
               prev.currentHealthDataConsentVersion,
             needsHealthDataConsentRefresh:
-              payload?.profile?.needsHealthDataConsentRefresh ?? prev.needsHealthDataConsentRefresh,
-            onboarding: payload?.profile?.onboarding ?? prev.onboarding,
+              data?.profile?.needsHealthDataConsentRefresh ?? prev.needsHealthDataConsentRefresh,
+            onboarding: data?.profile?.onboarding ?? prev.onboarding,
           }
         : prev
     );
@@ -989,25 +987,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }),
     });
     if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-      throw new Error(payload?.message || "Failed to save onboarding source.");
+      const payload = (await response.json().catch(() => null)) as unknown;
+      throw new Error(getApiErrorMessage(payload, "Failed to save onboarding source."));
     }
 
-    const payload = (await response.json().catch(() => null)) as {
+    const payload = (await response.json().catch(() => null)) as unknown;
+    const data = isApiSuccess<{
       profile?: {
         heardAboutSource?: string | null;
         heardAboutDetail?: string | null;
         onboarding?: OnboardingStateDto;
       };
-    } | null;
+    }>(payload)
+      ? payload.data
+      : null;
 
     setUser((prev) =>
       prev
         ? {
             ...prev,
-            heardAboutSource: payload?.profile?.heardAboutSource ?? source,
-            heardAboutDetail: payload?.profile?.heardAboutDetail ?? detail ?? null,
-            onboarding: payload?.profile?.onboarding ?? prev.onboarding,
+            heardAboutSource: data?.profile?.heardAboutSource ?? source,
+            heardAboutDetail: data?.profile?.heardAboutDetail ?? detail ?? null,
+            onboarding: data?.profile?.onboarding ?? prev.onboarding,
           }
         : prev
     );

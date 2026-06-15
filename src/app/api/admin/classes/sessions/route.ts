@@ -4,8 +4,9 @@ import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { listAdminClassSessions } from "@/lib/classes/session-service";
 
 export async function GET(request: Request) {
+  await connection();
+
   try {
-    await connection();
     const adminUser = await requireStaffAdminUser();
     const url = new URL(request.url);
     const from = url.searchParams.get("from");

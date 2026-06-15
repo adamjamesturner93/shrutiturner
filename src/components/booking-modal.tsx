@@ -5,10 +5,17 @@ import { Button } from "./ui/button";
 import { useAuth, type CreditItem } from "../context/auth-context";
 import { useI18n } from "../lib/use-i18n";
 import type { PublicPricingDto } from "@/lib/api/types";
+import { getApiErrorMessage, isApiSuccess } from "@/lib/api/client";
 import {
   isSessionUnavailableForBooking,
   resolveSessionStart,
 } from "@/lib/classes/session-bookability";
+import {
+  BOOKING_CHECKOUT_INTENT_STORAGE_KEY,
+  buildBookingCheckoutReturnPath,
+  createBookingCheckoutIntent,
+  parseBookingCheckoutIntent,
+} from "@/lib/classes/booking-checkout-intent";
 
 type CheckoutResult = {
   checkoutUrl: string;
@@ -23,7 +30,8 @@ function generateICS(
   day: string,
   time: string,
   durationMin: number,
-  startsAtUtc?: string
+  startsAtUtc?: string,
+  joinUrl = "https://shrutiturner.co.uk/dashboard/schedule"
 ): string {
   const startDate = resolveSessionStart({ startsAtUtc, day, time }) ?? new Date();
   const endDate = new Date(startDate.getTime() + durationMin * 60 * 1000);
@@ -41,8 +49,9 @@ function generateICS(
     `DTSTART:${fmt(startDate)}`,
     `DTEND:${fmt(endDate)}`,
     `SUMMARY:${title} — Shruti Turner`,
-    "DESCRIPTION:Join from your Private Studio: https://shrutiturner.co.uk/dashboard",
-    "URL:https://shrutiturner.co.uk/dashboard",
+    `DESCRIPTION:Join from your Private Studio: ${joinUrl}`,
+    "LOCATION:Private Studio (online)",
+    `URL:${joinUrl}`,
     "STATUS:CONFIRMED",
     `UID:${Date.now()}@shrutiturner.com`,
     "END:VEVENT",
@@ -55,10 +64,11 @@ function downloadICS(
   day: string,
   time: string,
   durationStr: string,
-  startsAtUtc?: string
+  startsAtUtc?: string,
+  joinUrl?: string
 ) {
   const durationMin = parseInt(durationStr) || 60;
-  const ics = generateICS(title, day, time, durationMin, startsAtUtc);
+  const ics = generateICS(title, day, time, durationMin, startsAtUtc, joinUrl);
   const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -79,6 +89,7 @@ interface BookingConfirmationProps {
   duration?: string;
   creditUsed: CreditItem;
   startsAtUtc?: string;
+  joinUrl?: string;
   onClose: () => void;
 }
 
@@ -89,6 +100,7 @@ export function BookingConfirmation({
   duration = "60 min",
   creditUsed,
   startsAtUtc,
+  joinUrl,
   onClose,
 }: BookingConfirmationProps) {
   const { fmtTimeStr } = useI18n();
@@ -119,7 +131,7 @@ export function BookingConfirmation({
           <Button
             size="lg"
             className="w-full"
-            onClick={() => downloadICS(className, day, time, duration, startsAtUtc)}
+            onClick={() => downloadICS(className, day, time, duration, startsAtUtc, joinUrl)}
           >
             <Download className="mr-2 h-4 w-4" />
             Download Calendar Event (.ics)
@@ -178,7 +190,7 @@ export function PurchaseModal({
   }, []);
 
   const moveWellMonthlyPrice =
-    pricing?.membershipDisplay?.movewellMonthly ?? pricing?.membership.movewell ?? 29;
+    pricing?.membershipDisplay?.movewellMonthly ?? pricing?.membership.movewell ?? 35;
   const credits1Price = pricing?.credits[1] ?? 9;
   const credits3Price = pricing?.credits[3] ?? 24;
   const credits10Price = pricing?.credits[10] ?? 70;
@@ -197,23 +209,21 @@ export function PurchaseModal({
     return <span>£{basePrice}</span>;
   };
 
-  const buildReturnPath = (checkoutStatus: "success" | "cancelled") => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("checkout", checkoutStatus);
-    if (checkoutStatus === "success") {
-      params.set("autobook", "1");
-      params.set("autobookClass", classSlug);
-      if (sessionId) {
-        params.set("autobookSessionId", sessionId);
-      }
-    } else {
-      params.delete("autobook");
-      params.delete("autobookClass");
-      params.delete("autobookSessionId");
-    }
+  const buildReturnPath = (checkoutStatus: "success" | "cancelled") =>
+    buildBookingCheckoutReturnPath({
+      pathname,
+      search: searchParams.toString(),
+      classSlug,
+      sessionId,
+      checkoutStatus,
+    });
 
-    const query = params.toString();
-    return query ? `${pathname}?${query}` : pathname;
+  const saveCheckoutIntent = () => {
+    const returnPath = buildReturnPath("success");
+    window.localStorage.setItem(
+      BOOKING_CHECKOUT_INTENT_STORAGE_KEY,
+      JSON.stringify(createBookingCheckoutIntent({ classSlug, sessionId, returnPath }))
+    );
   };
 
   const startCheckout = async (option: "dropin" | "3pack" | "10pack" | "membership") => {
@@ -221,25 +231,22 @@ export function PurchaseModal({
     setPurchaseError("");
 
     try {
-      const request =
-        option === "membership"
-          ? {
-              url: "/api/me/membership/checkout",
-              body: {
-                plan: "movewell",
-                billingInterval: "monthly",
-                successPath: buildReturnPath("success"),
-                cancelPath: buildReturnPath("cancelled"),
-              },
-            }
-          : {
-              url: "/api/me/credits/checkout",
-              body: {
-                bundleSize: option === "dropin" ? 1 : option === "3pack" ? 3 : 10,
-                successPath: buildReturnPath("success"),
-                cancelPath: buildReturnPath("cancelled"),
-              },
-            };
+      if (option === "membership") {
+        saveCheckoutIntent();
+        window.location.href = "/dashboard/membership?subscribe=1&interval=monthly&source=booking";
+        return;
+      }
+
+      const request = {
+        url: "/api/me/credits/checkout",
+        body: {
+          bundleSize: option === "dropin" ? 1 : option === "3pack" ? 3 : 10,
+          successPath: buildReturnPath("success"),
+          cancelPath: buildReturnPath("cancelled"),
+          bookingClassSlug: classSlug,
+          bookingSessionId: sessionId,
+        },
+      };
 
       const response = await fetch(request.url, {
         method: "POST",
@@ -248,13 +255,18 @@ export function PurchaseModal({
       });
 
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-        throw new Error(payload?.message || "Could not start checkout.");
+        const payload = await response.json().catch(() => null);
+        throw new Error(getApiErrorMessage(payload, "Could not start checkout."));
       }
 
-      const payload = (await response.json()) as CheckoutResult;
+      const payload = (await response.json()) as unknown;
+      const result = isApiSuccess<CheckoutResult>(payload)
+        ? payload.data
+        : (payload as CheckoutResult);
+      if (!result.checkoutUrl) throw new Error("Could not start checkout.");
+      saveCheckoutIntent();
       onSuccess();
-      window.location.href = payload.checkoutUrl;
+      window.location.href = result.checkoutUrl;
     } catch (error) {
       setPurchaseError(error instanceof Error ? error.message : "Could not start checkout.");
       setPurchasing(false);
@@ -482,6 +494,8 @@ interface BookClassButtonProps {
   attendeeCount?: number;
   status?: "draft" | "scheduled" | "live" | "completed" | "cancelled";
   emptyClassAutoCancelWindowMinutes?: number;
+  spotsRemaining?: number;
+  waitlistPosition?: number | null;
 }
 
 export function BookClassButton({
@@ -499,6 +513,8 @@ export function BookClassButton({
   attendeeCount = 5,
   status,
   emptyClassAutoCancelWindowMinutes,
+  spotsRemaining,
+  waitlistPosition,
 }: BookClassButtonProps) {
   const { isAuthenticated, refreshMembershipState, user } = useAuth();
   const router = useRouter();
@@ -506,7 +522,11 @@ export function BookClassButton({
   const searchParams = useSearchParams();
   const [showPurchase, setShowPurchase] = useState(false);
   const [confirmation, setConfirmation] = useState<{ creditUsed: CreditItem } | null>(null);
-  const [bookingState, setBookingState] = useState<"idle" | "loading" | "waitlisted">("idle");
+  const [bookingState, setBookingState] = useState<"idle" | "loading" | "leaving_waitlist">("idle");
+  const [autoBookingMessage, setAutoBookingMessage] = useState("");
+  const [currentWaitlistPosition, setCurrentWaitlistPosition] = useState<number | null>(
+    waitlistPosition ?? null
+  );
   const [bookedOverride, setBookedOverride] = useState(false);
   const [resolvedSessionId, setResolvedSessionId] = useState<string | null>(sessionId ?? null);
   const autoBookingAttemptedRef = useRef(false);
@@ -518,6 +538,12 @@ export function BookClassButton({
 
   const effectiveSessionId = sessionId || resolvedSessionId || undefined;
   const booked = bookedOverride || isBookedProp;
+  const classJoinUrl =
+    typeof window === "undefined"
+      ? "https://shrutiturner.co.uk/dashboard/schedule"
+      : `${window.location.origin}/dashboard/classes/${encodeURIComponent(classSlug)}/join${
+          effectiveSessionId ? `?sessionId=${encodeURIComponent(effectiveSessionId)}` : ""
+        }`;
   const cutoffMinutes = emptyClassAutoCancelWindowMinutes ?? 180;
   const isCancelledDueToLowEnrollment = isSessionUnavailableForBooking({
     attendeeCount,
@@ -529,6 +555,14 @@ export function BookClassButton({
   });
 
   const effectiveSize = sizeProp || (variant === "lg" ? "lg" : "default");
+  const isWaitlisted = currentWaitlistPosition !== null;
+  const primaryLabel =
+    label ||
+    (spotsRemaining === 0 ? "Join Waitlist" : effectiveSize === "sm" ? "Book" : "Book This Class");
+
+  useEffect(() => {
+    setCurrentWaitlistPosition(waitlistPosition ?? null);
+  }, [waitlistPosition]);
 
   const clearCheckoutIntent = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -537,6 +571,7 @@ export function BookClassButton({
     params.delete("autobookClass");
     params.delete("autobookSessionId");
     const query = params.toString();
+    window.localStorage.removeItem(BOOKING_CHECKOUT_INTENT_STORAGE_KEY);
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
 
@@ -571,13 +606,17 @@ export function BookClassButton({
         method: "POST",
       });
       const payload = (await response.json().catch(() => ({}))) as {
+        code?: string;
         status?: "booked" | "waitlisted";
         bookingMode?: "membership" | "credit" | "waitlist" | "manual";
+        position?: number;
         message?: string;
       };
 
       if (!response.ok) {
-        if (payload.message === "HEALTH_DECLARATION_REQUIRED") {
+        if (payload.code === "LEGAL_ACCEPTANCE_REQUIRED") {
+          router.push(`/dashboard/account?returnTo=${encodeURIComponent(pathname)}`);
+        } else if (payload.message === "HEALTH_DECLARATION_REQUIRED") {
           router.push(`/dashboard/health?returnTo=${encodeURIComponent(pathname)}`);
         }
         if (payload.message === "BOOKING_LIMIT_REACHED" && openPurchaseModalOnLimit) {
@@ -590,7 +629,8 @@ export function BookClassButton({
       }
 
       if (payload.status === "waitlisted") {
-        setBookingState("waitlisted");
+        setCurrentWaitlistPosition(payload.position ?? null);
+        setBookingState("idle");
         await refreshMembershipState();
         return "waitlisted" as const;
       }
@@ -616,12 +656,36 @@ export function BookClassButton({
     [classSlug, effectiveSessionId, pathname, refreshMembershipState, router]
   );
 
+  const handleLeaveWaitlist = () => {
+    if (!effectiveSessionId || bookingState === "leaving_waitlist") return;
+
+    setBookingState("leaving_waitlist");
+    void (async () => {
+      try {
+        const response = await fetch(`/api/classes/sessions/${effectiveSessionId}/waitlist`, {
+          method: "DELETE",
+        });
+        if (response.ok) {
+          setCurrentWaitlistPosition(null);
+          await refreshMembershipState();
+        }
+      } finally {
+        setBookingState("idle");
+      }
+    })();
+  };
+
   const handleBook = () => {
     if (isCancelledDueToLowEnrollment) return;
 
     if (!isAuthenticated) {
       const returnUrl = encodeURIComponent(pathname);
       router.push(`/login?redirect=${returnUrl}&intent=book`);
+      return;
+    }
+
+    if (user?.needsTermsReacceptance || user?.needsHealthWaiverReacceptance) {
+      router.push(`/dashboard/account?returnTo=${encodeURIComponent(pathname)}`);
       return;
     }
 
@@ -646,17 +710,24 @@ export function BookClassButton({
 
   useEffect(() => {
     const checkoutStatus = searchParams.get("checkout");
-    const shouldAutoBook = searchParams.get("autobook") === "1";
-    const targetClassSlug = searchParams.get("autobookClass");
-    const targetSessionId = searchParams.get("autobookSessionId") || undefined;
+    const storedIntent = parseBookingCheckoutIntent(
+      window.localStorage.getItem(BOOKING_CHECKOUT_INTENT_STORAGE_KEY)
+    );
+    const urlShouldAutoBook = searchParams.get("autobook") === "1";
+    const urlClassSlug = searchParams.get("autobookClass");
+    const urlSessionId = searchParams.get("autobookSessionId") || undefined;
+    const targetClassSlug = urlShouldAutoBook ? urlClassSlug : storedIntent?.classSlug;
+    const targetSessionId = urlShouldAutoBook ? urlSessionId : storedIntent?.sessionId;
 
     if (
       !isAuthenticated ||
       autoBookingAttemptedRef.current ||
       checkoutStatus !== "success" ||
-      !shouldAutoBook ||
       targetClassSlug !== classSlug
     ) {
+      if (checkoutStatus === "cancelled" && targetClassSlug === classSlug) {
+        clearCheckoutIntent();
+      }
       return;
     }
 
@@ -665,14 +736,26 @@ export function BookClassButton({
     }
 
     autoBookingAttemptedRef.current = true;
+    setAutoBookingMessage(
+      "Payment complete. Booking this class as soon as your credits are ready..."
+    );
 
     void (async () => {
-      for (let attempt = 0; attempt < 4; attempt += 1) {
+      let finalResult:
+        | "booked"
+        | "waitlisted"
+        | "limit_reached"
+        | "missing_session"
+        | "failed"
+        | null = null;
+
+      for (let attempt = 0; attempt < 20; attempt += 1) {
         await refreshMembershipState();
         const result = await attemptBooking({
           preferredSessionId: targetSessionId,
           openPurchaseModalOnLimit: false,
         });
+        finalResult = result;
 
         if (result === "booked" || result === "waitlisted" || result === "failed") {
           break;
@@ -682,10 +765,18 @@ export function BookClassButton({
           break;
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
       }
 
-      clearCheckoutIntent();
+      if (finalResult === "booked" || finalResult === "waitlisted" || finalResult === "failed") {
+        setAutoBookingMessage("");
+        clearCheckoutIntent();
+        return;
+      }
+
+      setAutoBookingMessage(
+        "This class is still saved. Credits are not available on your account yet, so leave this page open or refresh once Stripe has finished updating the payment."
+      );
     })();
   }, [
     attemptBooking,
@@ -697,16 +788,30 @@ export function BookClassButton({
     searchParams,
   ]);
 
-  if (bookingState === "waitlisted") {
+  if (isWaitlisted) {
     return (
-      <Button
-        variant="outline"
-        disabled
-        size={effectiveSize}
-        className={variant === "lg" ? "px-8 text-lg" : ""}
-      >
-        Waitlisted
-      </Button>
+      <div className="flex flex-col gap-2">
+        <Button
+          variant="outline"
+          disabled
+          size={effectiveSize}
+          className={variant === "lg" ? "px-8 text-lg" : ""}
+        >
+          Waitlisted
+          {currentWaitlistPosition ? ` #${currentWaitlistPosition}` : ""}
+        </Button>
+        {effectiveSessionId ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size={effectiveSize === "lg" ? "default" : "sm"}
+            disabled={bookingState === "leaving_waitlist"}
+            onClick={handleLeaveWaitlist}
+          >
+            {bookingState === "leaving_waitlist" ? "Leaving..." : "Leave waitlist"}
+          </Button>
+        ) : null}
+      </div>
     );
   }
 
@@ -752,11 +857,13 @@ export function BookClassButton({
         size={effectiveSize}
         className={variant === "lg" ? "px-8 text-lg" : ""}
       >
-        {bookingState === "loading"
-          ? "Booking..."
-          : label || (effectiveSize === "sm" ? "Book" : "Book This Class")}
+        {bookingState === "loading" ? "Booking..." : primaryLabel}
         <ArrowRight className="ml-2 h-4 w-4" />
       </Button>
+
+      {autoBookingMessage ? (
+        <p className="text-muted-foreground max-w-xs text-sm">{autoBookingMessage}</p>
+      ) : null}
 
       {showPurchase && (
         <PurchaseModal
@@ -778,6 +885,7 @@ export function BookClassButton({
           duration={duration}
           creditUsed={confirmation.creditUsed}
           startsAtUtc={startsAtUtc}
+          joinUrl={classJoinUrl}
           onClose={() => setConfirmation(null)}
         />
       )}

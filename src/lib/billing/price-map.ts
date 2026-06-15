@@ -1,7 +1,7 @@
 import { MembershipPlan } from "@prisma/client";
 
-export const MOVEWELL_MONTHLY_PENCE = 2900;
-export const MOVEWELL_ANNUAL_PENCE = 29000;
+export const MOVEWELL_MONTHLY_PENCE = 3500;
+export const MOVEWELL_ANNUAL_PENCE = 35000;
 export const MEMBERSHIP_TRIAL_DAYS = 14;
 export const CREDITS_EXPIRY_DAYS = 90;
 

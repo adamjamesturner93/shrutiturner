@@ -237,7 +237,7 @@ export function ClassesSmallGroupDetailPage({
 
       <ProofBand
         title="What this programme is designed to give you"
-        description="The point is a clearer build, not more noise. You should leave with better continuity, sharper judgement, and more confidence staying with the work."
+        description="The point is a clearer build, not more noise. You should leave with better continuity, sharper judgementand more confidence staying with the work."
         items={[
           {
             label: "Block length",
@@ -258,7 +258,7 @@ export function ClassesSmallGroupDetailPage({
           {
             label: "Best Fit",
             detail:
-              "Ideal when you want more structure than drop-ins but do not need the complexity of 1:1 coaching.",
+              "Ideal when you want more structure than drop-ins but do not need the closer support of 1:1 coaching.",
           },
         ]}
       />
@@ -269,17 +269,17 @@ export function ClassesSmallGroupDetailPage({
             <SectionHeading
               eyebrow="What You’ll Build"
               title="The outcomes are meant to feel practical, not abstract."
-              description="This should help you train with more clarity, better pacing, and a stronger sense of what to repeat from week to week."
+              description="This should help you train with more clarity, better pacing and a stronger sense of what to repeat from week to week."
             />
 
             <div className="mt-8 grid gap-4">
               {(programme.outcomes.length > 0
                 ? programme.outcomes
                 : [
-                    "A clearer progression than weekly drop-in classes",
-                    "More confidence training toward one specific outcome",
-                    "Greater consistency through a fixed schedule and stable cohort",
-                  ]
+                  "A clearer progression than weekly drop-in classes",
+                  "More confidence training toward one specific outcome",
+                  "Greater consistency through a fixed schedule and stable cohort",
+                ]
               ).map((point) => (
                 <div
                   key={point}
@@ -301,10 +301,10 @@ export function ClassesSmallGroupDetailPage({
                 {(programme.whoItsFor.length > 0
                   ? programme.whoItsFor
                   : [
-                      "People who want a tighter coaching container than weekly classes",
-                      "Bodies that benefit from repetition and a clearer progression",
-                      "Anyone wanting accountability without moving into 1:1 support",
-                    ]
+                    "People who want a tighter coaching container than weekly classes",
+                    "Bodies that benefit from repetition and a clearer progression",
+                    "Anyone wanting accountability without moving into 1:1 support",
+                  ]
                 ).map((item) => (
                   <div
                     key={item}
@@ -342,10 +342,10 @@ export function ClassesSmallGroupDetailPage({
                 {(programme.inclusions.length > 0
                   ? programme.inclusions
                   : [
-                      "Live coached sessions",
-                      "A fixed small cohort",
-                      "Progressive structure across the full block",
-                    ]
+                    "Live coached sessions",
+                    "A fixed small cohort",
+                    "Progressive structure across the full block",
+                  ]
                 ).map((item) => (
                   <div
                     key={item}
@@ -407,12 +407,12 @@ export function ClassesSmallGroupDetailPage({
         actions={[
           ...(nextJoinableRun
             ? [
-                {
-                  href: nextJoinableRun.checkoutHref,
-                  label: "Join next intake",
-                  icon: ArrowRight,
-                },
-              ]
+              {
+                href: nextJoinableRun.checkoutHref,
+                label: "Join next intake",
+                icon: ArrowRight,
+              },
+            ]
             : []),
           {
             href: "/classes/small-groups",

@@ -147,12 +147,21 @@ describe("account activity and session feedback", () => {
     expect(activity.attendedCount).toBe(16);
     expect(activity.totalCount).toBe(16);
     expect(activity.items).toHaveLength(15);
+    expect(activity.pageInfo.nextCursor).toEqual(expect.any(String));
     expect(activity.items[0]).toMatchObject({
       className: "Class 15",
       flareToday: true,
       postClassFeeling: "good",
     });
     expect(activity.items.at(-1)?.className).toBe("Class 1");
+
+    const nextPage = await getAccountActivity(user.id, {
+      cursor: activity.pageInfo.nextCursor || undefined,
+    });
+
+    expect(nextPage.items).toHaveLength(1);
+    expect(nextPage.items[0]?.className).toBe("Class 0");
+    expect(nextPage.pageInfo.nextCursor).toBeNull();
   });
 
   it("persists pre and post-class feedback onto the member booking", async () => {

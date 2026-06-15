@@ -2,14 +2,14 @@ import type { NewsletterSignupContent } from "@/lib/content/types";
 
 const LEGACY_LEAD_MAGNET = {
   assetUrl: "https://shrutiturner.co.uk/resources/5-yoga-poses-strength",
-  hookText: 'Get "5 Yoga Poses That Actually Build Strength" - free:',
+  hookText: 'Get "5 Yoga Poses That Actually Build Strength":',
   slug: "5-yoga-poses-strength",
   title: "5 Yoga Poses That Actually Build Strength",
 };
 
 export const FREE_GUIDE_TITLE = "Why Some Bodies Need Strength Before More Stretching";
 export const FREE_GUIDE_SUPPORTING_LINE =
-  "A free guide exploring stability, control, and capacity in flexible bodies.";
+  "A free guide exploring stability, controland capacity in flexible bodies.";
 export const FREE_GUIDE_META_DESCRIPTION =
   "Join The Chronic Yogini newsletter and receive a free guide: Why Some Bodies Need Strength Before More Stretching.";
 export const FREE_GUIDE_KEY = "why-some-bodies-need-strength-before-more-stretching";
@@ -24,7 +24,7 @@ export const CANONICAL_LEAD_MAGNET = {
   emailBody: `Hi {{firstName}},\n\nThanks for joining. Here is your guide: ${FREE_GUIDE_TITLE}.\n\n{{leadMagnetLink}}\n\nShruti`,
   emailPreviewText: "Confirm your email to receive the guide and launch updates.",
   emailSubject: `Your free guide: ${FREE_GUIDE_TITLE}`,
-  hookText: `Get "${FREE_GUIDE_TITLE}" - free:`,
+  hookText: `Get the free guide to your inbox - "${FREE_GUIDE_TITLE}"`,
   landingDescription: FREE_GUIDE_SUPPORTING_LINE,
   slug: FREE_GUIDE_KEY,
   subscribeBenefits: [

@@ -10,7 +10,7 @@ export function HealthDeclarationPage() {
     <Layout>
       <SEO
         title="Health Declaration - Shruti Turner"
-        description="Health declaration and informed consent for participation in strength training, yoga, and physical activities with Shruti Turner."
+        description="Health declaration and informed consent for participation in strength training, yoga and physical activities with Shruti Turner."
         canonicalUrl="https://shrutiturner.co.uk/health-declaration"
       />
 
@@ -30,8 +30,8 @@ export function HealthDeclarationPage() {
           <div className="border-brand-accent/30 bg-brand-accent/10 my-8 rounded-lg border p-6">
             <p className="text-foreground">
               <strong>Important:</strong> Please read this document carefully. It contains important
-              information about your health, safety, and participation in physical activities. By
-              participating in any service, you acknowledge that you have read, understood, and
+              information about your health, safety and participation in physical activities. By
+              participating in any service, you acknowledge that you have read, understood and
               agreed to this declaration.
             </p>
           </div>
@@ -44,7 +44,7 @@ export function HealthDeclarationPage() {
             <ul className="list-disc space-y-2 pl-6">
               <li>
                 Services provided by Shruti Turner include physical activities such as strength
-                training, yoga, and movement practices
+                training, yoga and movement practices
               </li>
               <li>
                 While services are informed by rehabilitation principles and adapted for chronic
@@ -52,7 +52,7 @@ export function HealthDeclarationPage() {
               </li>
               <li>
                 Shruti Turner is not a medical professional and does not provide medical advice,
-                diagnosis, or treatment
+                diagnosis or treatment
               </li>
               <li>
                 I am responsible for consulting with my healthcare provider before beginning any new
@@ -79,8 +79,8 @@ export function HealthDeclarationPage() {
                 participate against medical advice and accept full responsibility for this decision
               </li>
               <li>
-                I will inform my coach of any changes to my medical status, medications, or
-                treatment plan
+                I will inform my coach of any changes to my medical status, medications or treatment
+                plan
               </li>
             </ul>
           </section>
@@ -97,7 +97,7 @@ export function HealthDeclarationPage() {
               <li>Pain patterns and limitations</li>
               <li>Recent flares or acute symptoms</li>
               <li>Pregnancy or potential pregnancy</li>
-              <li>Any cardiovascular, respiratory, or neurological conditions</li>
+              <li>Any cardiovascular, respiratory or neurological conditions</li>
               <li>Mental health conditions that may affect participation</li>
               <li>Any other relevant medical information</li>
             </ul>
@@ -114,7 +114,7 @@ export function HealthDeclarationPage() {
               including but not limited to:
             </p>
             <ul className="list-disc space-y-2 pl-6">
-              <li>Muscle soreness, strains, or sprains</li>
+              <li>Muscle soreness, strains or sprains</li>
               <li>Joint pain or inflammation</li>
               <li>Fatigue or post-exertional malaise</li>
               <li>Symptom flares of chronic conditions</li>
@@ -136,9 +136,9 @@ export function HealthDeclarationPage() {
               <li>I am responsible for monitoring my own body and symptoms during activities</li>
               <li>
                 I will immediately stop any activity that causes pain, dizziness, shortness of
-                breath, or other concerning symptoms
+                breath or other concerning symptoms
               </li>
-              <li>I will communicate honestly about my experience, symptoms, and limitations</li>
+              <li>I will communicate honestly about my experience, symptoms and limitations</li>
               <li>I will not push beyond my current capacity in a way that feels unsafe</li>
               <li>I will follow safety guidelines and modifications provided by my coach</li>
               <li>I will seek immediate medical attention if I experience any serious symptoms</li>
@@ -157,7 +157,7 @@ export function HealthDeclarationPage() {
             </p>
             <ul className="list-disc space-y-2 pl-6">
               <li>What feels appropriate one day may not be appropriate the next day</li>
-              <li>Flares, fatigue, and symptom variations are normal and expected</li>
+              <li>Flares, fatigue and symptom variations are normal and expected</li>
               <li>Resting or modifying activities is a valid and important choice</li>
               <li>I will communicate with my coach about changes in my symptoms or capacity</li>
               <li>Programming may need to be adjusted based on my current state</li>
@@ -192,10 +192,14 @@ export function HealthDeclarationPage() {
               <li>Adapt programming to my needs</li>
               <li>Ensure safety during activities</li>
               <li>Respond to emergencies</li>
+              <li>
+                Understand anonymised grouped patterns for research, education or public posts
+              </li>
             </ul>
             <p className="mt-4">
-              Health information will not be shared without my consent except in case of emergency
-              or legal requirement. See our{" "}
+              My individual health information will not be shared without my consent except in case
+              of emergency or legal requirement. Any public or research use will be anonymised and
+              grouped so that I am not identifiable. See our{" "}
               <a href="/privacy" className="text-primary underline">
                 Privacy Policy
               </a>{" "}
@@ -206,18 +210,18 @@ export function HealthDeclarationPage() {
           <section>
             <h2 className="text-foreground mb-4 text-2xl">9. Limitation of Liability</h2>
             <p>
-              I agree that Shruti Turner, her employees, contractors, and affiliates shall not be
+              I agree that Shruti Turner, her employees, contractors and affiliates shall not be
               held liable for:
             </p>
             <ul className="list-disc space-y-2 pl-6">
-              <li>Any injuries, illness, or health complications arising from participation</li>
+              <li>Any injuries, illness or health complications arising from participation</li>
               <li>Aggravation or flaring of pre-existing conditions</li>
               <li>Outcomes of exercise programming (positive or negative)</li>
               <li>Medical emergencies or health events during activities</li>
             </ul>
             <p className="mt-4">
               This waiver applies to the fullest extent permitted by law. It does not exclude
-              liability for death or personal injury caused by negligence, fraud, or anything else
+              liability for death or personal injury caused by negligence, fraud or anything else
               that cannot be lawfully excluded.
             </p>
           </section>
@@ -238,7 +242,7 @@ export function HealthDeclarationPage() {
           <section>
             <h2 className="text-foreground mb-4 text-2xl">11. Photography & Media</h2>
             <p>
-              I understand that photos or videos may be taken during group classes, retreats, or
+              I understand that photos or videos may be taken during group classes, retreats or
               workshops. I can opt out at any time by informing the instructor. See separate media
               consent form for details on use of images.
             </p>

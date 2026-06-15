@@ -19,11 +19,12 @@ import {
 import { Layout } from "@/components/layout";
 import { BookClassButton } from "@/components/booking-modal";
 import { PreFooterCtaSection } from "@/components/marketing/sections";
+import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getTypeColor } from "@/lib/classes/type-color";
 import { useI18n } from "@/lib/use-i18n";
-import type { ClassDefinitionContent } from "@/lib/content";
+import type { ClassDefinitionContent, InstructorProfileContent } from "@/lib/content/types";
 
 type UpcomingSession = {
   id: string;
@@ -36,11 +37,14 @@ type UpcomingSession = {
   isRecorded?: boolean;
   replayAvailable?: boolean;
   chatEnabled?: boolean;
+  isBookedByCurrentUser?: boolean;
+  waitlistPosition?: number | null;
 };
 
 interface ClassDetailPageProps {
   classDetail?: ClassDefinitionContent | null;
   allClasses?: ClassDefinitionContent[];
+  instructorProfile?: InstructorProfileContent | null;
 }
 
 function getSessionDateParts(startsAtUtc: string) {
@@ -77,6 +81,7 @@ function getSessionDateParts(startsAtUtc: string) {
 export function ClassDetailPage({
   classDetail: classDetailProp,
   allClasses,
+  instructorProfile,
 }: ClassDetailPageProps) {
   const searchParams = useSearchParams();
   const selectedSessionId = searchParams.get("session");
@@ -165,10 +170,9 @@ export function ClassDetailPage({
         ? "border-brand-copper/55 bg-brand-white/8 text-brand-white"
         : "border-brand-white/30 bg-brand-white/8 text-brand-white";
 
-  const instructorName = sessionInstructor?.name || classDetail.instructor;
-  const instructorBio =
-    sessionInstructor?.bio ||
-    "Strength and yoga coach specialising in rehabilitation-informed training for chronic illness and complex bodies. Living with psoriatic arthritis. PhD Biomechanics, PGDip Rehabilitation, 650hr Yoga Teacher Training, Level 4 Personal Trainer.";
+  const instructorName =
+    sessionInstructor?.name || instructorProfile?.name || classDetail.instructor;
+  const instructorBio = sessionInstructor?.bio || instructorProfile?.bio || null;
   const instructorInitials = instructorName
     .split(" ")
     .filter(Boolean)
@@ -184,23 +188,15 @@ export function ClassDetailPage({
     <Layout>
       <section className="bg-brand-dark text-brand-white py-14 md:py-18">
         <div className="container mx-auto max-w-6xl px-4">
-          <nav aria-label="Breadcrumb" className="mb-8">
-            <ol className="text-brand-white/60 flex flex-wrap items-center gap-2 text-sm">
-              <li>
-                <Link href="/" className="hover:text-brand-accent-light transition-colors">
-                  Home
-                </Link>
-              </li>
-              <li>/</li>
-              <li>
-                <Link href="/classes" className="hover:text-brand-accent-light transition-colors">
-                  Classes
-                </Link>
-              </li>
-              <li>/</li>
-              <li className="text-brand-accent-light">{classDetail.name}</li>
-            </ol>
-          </nav>
+          <PublicBreadcrumbs
+            inverted
+            className="mb-8"
+            items={[
+              { name: "Home", href: "/" },
+              { name: "Classes", href: "/classes" },
+              { name: classDetail.name, href: `/classes/${classDetail.slug}` },
+            ]}
+          />
 
           <div className="mb-5 flex flex-wrap items-center gap-3">
             <Badge variant="outline" className={heroTypeBadgeClass}>
@@ -230,10 +226,10 @@ export function ClassDetailPage({
               <span>
                 {selectedSessionStartsAt
                   ? selectedSessionStartsAt.toLocaleDateString("en-GB", {
-                      weekday: "long",
-                      day: "numeric",
-                      month: "short",
-                    })
+                    weekday: "long",
+                    day: "numeric",
+                    month: "short",
+                  })
                   : `${classDetail.day}s`}
               </span>
             </div>
@@ -242,9 +238,9 @@ export function ClassDetailPage({
               <span>
                 {selectedSessionStartsAt
                   ? selectedSessionStartsAt.toLocaleTimeString("en-GB", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
                   : fmtTimeStr(classDetail.time)}{" "}
                 ·{" "}
                 {selectedSession ? `${selectedSession.durationMinutes} min` : classDetail.duration}
@@ -270,11 +266,15 @@ export function ClassDetailPage({
           <div className="mt-8 flex flex-col gap-4 sm:flex-row">
             <BookClassButton
               sessionId={nextSessionId || undefined}
+              isBooked={Boolean(selectedSession?.isBookedByCurrentUser)}
               classSlug={classDetail.slug}
               className={classDetail.name}
               day={classDetail.day}
               time={classDetail.time}
-              label="Book Next Session"
+              startsAtUtc={selectedSession?.startsAtUtc}
+              spotsRemaining={selectedSession?.spotsRemaining}
+              waitlistPosition={selectedSession?.waitlistPosition}
+              label={selectedSession?.spotsRemaining === 0 ? "Join waitlist" : "Book Next Session"}
               variant="lg"
             />
             <Button
@@ -372,7 +372,7 @@ export function ClassDetailPage({
                     ))}
                   </ul>
                   <p className="text-muted-foreground mt-6 border-t pt-4 text-sm leading-relaxed">
-                    Do not have everything? That is fine. Household substitutions work well, and
+                    Do not have everything? That is fine. Household substitutions work well and
                     alternatives are cued at the start of class.
                   </p>
                 </div>
@@ -389,12 +389,16 @@ export function ClassDetailPage({
                     </div>
                     <div>
                       <h3 className="text-2xl">{instructorName}</h3>
-                      <p className="text-muted-foreground mt-4 leading-relaxed">{instructorBio}</p>
+                      {instructorBio ? (
+                        <p className="text-muted-foreground mt-4 leading-relaxed">
+                          {instructorBio}
+                        </p>
+                      ) : null}
                       <Link
                         href="/coaching"
                         className="text-primary mt-5 inline-flex items-center gap-2 text-sm hover:underline"
                       >
-                        Explore coaching with Shruti
+                        Explore coaching
                         <Sparkles className="h-4 w-4" />
                       </Link>
                     </div>
@@ -496,12 +500,20 @@ export function ClassDetailPage({
                               <div className="mt-3">
                                 <BookClassButton
                                   sessionId={session.id}
+                                  isBooked={Boolean(session.isBookedByCurrentUser)}
                                   classSlug={classDetail.slug}
                                   className={classDetail.name}
                                   day={dateLabel}
                                   time={fmtTimeStr(classDetail.time)}
+                                  startsAtUtc={session.startsAtUtc}
+                                  spotsRemaining={session.spotsRemaining}
+                                  waitlistPosition={session.waitlistPosition}
                                   size="sm"
-                                  label={`Book ${dateLabel}`}
+                                  label={
+                                    session.spotsRemaining === 0
+                                      ? "Join waitlist"
+                                      : `Book ${dateLabel}`
+                                  }
                                 />
                               </div>
                             </div>
@@ -587,7 +599,7 @@ export function ClassDetailPage({
               priceCurrency: "GBP",
               availability: "https://schema.org/InStock",
               url: "https://shrutiturner.co.uk/pricing",
-              description: "Drop-in from £9. 3-pack £24. Membership from £29/month.",
+              description: "Drop-in from £9. 3-pack £24. Membership from £35/month.",
             },
           }),
         }}

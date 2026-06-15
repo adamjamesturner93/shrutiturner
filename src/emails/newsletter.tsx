@@ -1,4 +1,5 @@
-import { Section, Text, Img, Hr } from "@react-email/components";
+import { Section, Text, Img, Hr, Link } from "@react-email/components";
+import type { ReactNode } from "react";
 import { EmailLayout } from "./components/email-layout";
 import { colors, fonts, bodyTextStyle, dividerStyle } from "./styles";
 
@@ -8,14 +9,278 @@ interface NewsletterEmailProps {
   bodyContent?: string;
   signOffImageUrl?: string;
   signOffImageAlt?: string;
+  unsubscribeUrl?: string;
+}
+
+type InlineToken =
+  | { type: "text"; value: string }
+  | { type: "strong"; value: string }
+  | { type: "em"; value: string }
+  | { type: "link"; label: string; href: string };
+
+type MarkdownBlock =
+  | { type: "paragraph"; text: string }
+  | { type: "heading"; level: number; text: string }
+  | { type: "blockquote"; text: string }
+  | { type: "hr" }
+  | { type: "image"; alt: string; src: string }
+  | { type: "list"; ordered: boolean; items: string[] };
+
+const headingStyle = {
+  fontFamily: fonts.heading,
+  color: colors.brandDark,
+  fontWeight: "700",
+  lineHeight: "1.35",
+  margin: "24px 0 12px 0",
+};
+
+const listStyle = {
+  ...bodyTextStyle,
+  margin: "0 0 8px 0",
+};
+
+function parseInline(input: string): InlineToken[] {
+  const tokens: InlineToken[] = [];
+  const pattern = /(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|\[[^\]]+\]\([^)]+\))/g;
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(input)) !== null) {
+    if (match.index > cursor) {
+      tokens.push({ type: "text", value: input.slice(cursor, match.index) });
+    }
+
+    const raw = match[0];
+    const linkMatch = raw.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (linkMatch) {
+      tokens.push({ type: "link", label: linkMatch[1], href: linkMatch[2] });
+    } else if (raw.startsWith("**") || raw.startsWith("__")) {
+      tokens.push({ type: "strong", value: raw.slice(2, -2) });
+    } else {
+      tokens.push({ type: "em", value: raw.slice(1, -1) });
+    }
+
+    cursor = match.index + raw.length;
+  }
+
+  if (cursor < input.length) {
+    tokens.push({ type: "text", value: input.slice(cursor) });
+  }
+
+  return tokens;
+}
+
+function renderInline(input: string): ReactNode {
+  return parseInline(input).map((token, index) => {
+    const key = `${token.type}-${index}`;
+    if (token.type === "strong") {
+      return (
+        <strong key={key} style={{ fontWeight: 700 }}>
+          {token.value}
+        </strong>
+      );
+    }
+    if (token.type === "em") {
+      return (
+        <em key={key} style={{ fontStyle: "italic" }}>
+          {token.value}
+        </em>
+      );
+    }
+    if (token.type === "link") {
+      return (
+        <Link
+          key={key}
+          href={token.href}
+          style={{ color: colors.brandAccent, textDecoration: "underline" }}
+        >
+          {token.label}
+        </Link>
+      );
+    }
+    return token.value;
+  });
+}
+
+function parseNewsletterMarkdown(markdown: string): MarkdownBlock[] {
+  const blocks: MarkdownBlock[] = [];
+  const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+  let paragraph: string[] = [];
+  let listItems: string[] = [];
+  let orderedList = false;
+
+  const flushParagraph = () => {
+    if (paragraph.length > 0) {
+      blocks.push({ type: "paragraph", text: paragraph.join(" ").trim() });
+      paragraph = [];
+    }
+  };
+
+  const flushList = () => {
+    if (listItems.length > 0) {
+      blocks.push({ type: "list", ordered: orderedList, items: listItems });
+      listItems = [];
+      orderedList = false;
+    }
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
+    const imageMatch = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    if (imageMatch) {
+      flushParagraph();
+      flushList();
+      blocks.push({ type: "image", alt: imageMatch[1], src: imageMatch[2] });
+      continue;
+    }
+
+    if (/^(---|\*\*\*|___)$/.test(line)) {
+      flushParagraph();
+      flushList();
+      blocks.push({ type: "hr" });
+      continue;
+    }
+
+    const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+    if (headingMatch) {
+      flushParagraph();
+      flushList();
+      blocks.push({
+        type: "heading",
+        level: headingMatch[1].length,
+        text: headingMatch[2].trim(),
+      });
+      continue;
+    }
+
+    const blockquoteMatch = line.match(/^>\s?(.+)$/);
+    if (blockquoteMatch) {
+      flushParagraph();
+      flushList();
+      blocks.push({ type: "blockquote", text: blockquoteMatch[1].trim() });
+      continue;
+    }
+
+    const unorderedMatch = line.match(/^[-+*]\s+(.+)$/);
+    const orderedMatch = line.match(/^\d+[.)]\s+(.+)$/);
+    if (unorderedMatch || orderedMatch) {
+      flushParagraph();
+      const nextOrdered = Boolean(orderedMatch);
+      if (listItems.length > 0 && orderedList !== nextOrdered) {
+        flushList();
+      }
+      orderedList = nextOrdered;
+      listItems.push((orderedMatch?.[1] || unorderedMatch?.[1] || "").trim());
+      continue;
+    }
+
+    flushList();
+    paragraph.push(line);
+  }
+
+  flushParagraph();
+  flushList();
+  return blocks;
+}
+
+function renderMarkdown(markdown: string): ReactNode {
+  return parseNewsletterMarkdown(markdown).map((block, index) => {
+    if (block.type === "heading") {
+      const fontSize = block.level === 1 ? "22px" : block.level === 2 ? "20px" : "18px";
+      return (
+        <Text key={index} style={{ ...headingStyle, fontSize }}>
+          {renderInline(block.text)}
+        </Text>
+      );
+    }
+
+    if (block.type === "blockquote") {
+      return (
+        <Section
+          key={index}
+          style={{
+            borderLeft: `3px solid ${colors.brandAccent}`,
+            paddingLeft: "16px",
+            margin: "20px 0",
+          }}
+        >
+          <Text style={{ ...bodyTextStyle, fontStyle: "italic", color: colors.muted }}>
+            {renderInline(block.text)}
+          </Text>
+        </Section>
+      );
+    }
+
+    if (block.type === "hr") {
+      return <Hr key={index} style={dividerStyle} />;
+    }
+
+    if (block.type === "image") {
+      return (
+        <Section key={index} style={{ margin: "24px 0" }}>
+          <Img
+            src={block.src}
+            alt={block.alt}
+            width="520"
+            style={{
+              width: "100%",
+              height: "auto",
+              borderRadius: "6px",
+              display: "block",
+            }}
+          />
+          {block.alt ? (
+            <Text
+              style={{
+                fontFamily: fonts.body,
+                color: colors.muted,
+                fontSize: "13px",
+                fontStyle: "italic",
+                lineHeight: "1.5",
+                margin: "8px 0 0 0",
+              }}
+            >
+              {block.alt}
+            </Text>
+          ) : null}
+        </Section>
+      );
+    }
+
+    if (block.type === "list") {
+      return (
+        <Section key={index} style={{ margin: "12px 0 20px 0" }}>
+          {block.items.map((item, itemIndex) => (
+            <Text key={itemIndex} style={listStyle}>
+              {block.ordered ? `${itemIndex + 1}. ` : "\u2022 "}
+              {renderInline(item)}
+            </Text>
+          ))}
+        </Section>
+      );
+    }
+
+    return (
+      <Text key={index} style={bodyTextStyle}>
+        {renderInline(block.text)}
+      </Text>
+    );
+  });
 }
 
 export default function NewsletterEmail({
   firstName = "Adam",
   subject = "Expanding capacity without breaking.",
   bodyContent,
-  signOffImageUrl = "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=520&h=400&fit=crop",
-  signOffImageAlt = "Bonnie taking some time for recovery after her long and arduous playtime in the park!",
+  signOffImageUrl,
+  signOffImageAlt,
+  unsubscribeUrl,
 }: NewsletterEmailProps) {
   // Default body content matching the real newsletter style
   const defaultBody = [
@@ -26,7 +291,7 @@ export default function NewsletterEmail({
   ];
 
   return (
-    <EmailLayout preview={subject} category="marketing">
+    <EmailLayout preview={subject} category="marketing" unsubscribeUrl={unsubscribeUrl}>
       {/* Subject as serif heading */}
       <Text
         style={{
@@ -44,9 +309,8 @@ export default function NewsletterEmail({
 
       <Text style={bodyTextStyle}>Hello {firstName},</Text>
 
-      {/* Body paragraphs - in production these come from Contentful markdown */}
       {bodyContent ? (
-        <Text style={bodyTextStyle} dangerouslySetInnerHTML={{ __html: bodyContent }} />
+        renderMarkdown(bodyContent)
       ) : (
         <>
           {defaultBody.map((paragraph, i) => (
@@ -71,7 +335,7 @@ export default function NewsletterEmail({
           </Text>
 
           <Text style={bodyTextStyle}>
-            For many of us (especially with bodies that can feel unpredictable) those signals get
+            For many of us (especially when symptoms and recovery can vary) those signals get
             tangled. If you{"\u2019"}ve experienced flares or pain spikes, your system has learned
             that unpredictability can have consequences.
           </Text>

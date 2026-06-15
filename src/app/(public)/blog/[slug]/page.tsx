@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BlogPostPage } from "@/views/blog-post";
-import { getBlogPostBySlug, getBlogPosts } from "@/lib/content";
+import { buildAbsoluteUrl } from "@/lib/app-url";
+import { formatAuthorList } from "@/lib/blog/view-model";
+import { getBlogPostBySlug, getBlogPostStaticParams, getBlogPosts } from "@/lib/content";
+
+export async function generateStaticParams() {
+  return getBlogPostStaticParams();
+}
 
 export async function generateMetadata({
   params,
@@ -15,9 +21,34 @@ export async function generateMetadata({
     return { title: "Post Not Found" };
   }
 
+  const title = post.seoTitle || post.title;
+  const description = post.seoDescription || post.excerpt;
+  const canonical = buildAbsoluteUrl(`/blog/${post.id}`);
+
   return {
-    title: post.seoTitle || post.title,
-    description: post.seoDescription || post.excerpt,
+    title,
+    description,
+    keywords: post.tags,
+    alternates: {
+      canonical,
+    },
+    authors: [{ name: formatAuthorList(post) }],
+    openGraph: {
+      type: "article",
+      title,
+      description,
+      url: canonical,
+      publishedTime: post.date,
+      authors: [formatAuthorList(post)],
+      tags: post.tags,
+      images: [{ url: post.coverImage, alt: post.coverAlt }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [post.coverImage],
+    },
   };
 }
 

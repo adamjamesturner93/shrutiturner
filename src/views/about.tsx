@@ -29,7 +29,7 @@ export function AboutPage() {
     <Layout>
       <SEO
         title="About Shruti Turner - PhD Biomechanics, Strength & Yoga Coach"
-        description="Shruti Turner is a strength and yoga coach with a PhD in Biomechanics, PGDip Rehabilitation, 650hr yoga training, and Level 4 PT qualification. Living with psoriatic arthritis, she specialises in evidence-based coaching for chronic illness and complex bodies."
+        description="Shruti Turner is a strength and yoga coach with a PhD in Biomechanics, PGDip Rehabilitation, 650hr yoga training and Level 4 PT qualification. Living with psoriatic arthritis, she specialises in evidence-based coaching for chronic illness, autoimmune conditions and injury recovery."
         keywords="Shruti Turner, strength coach chronic illness, yoga teacher autoimmune, PhD biomechanics coach, psoriatic arthritis coach, rehabilitation informed yoga"
         canonicalUrl="https://shrutiturner.co.uk/about"
       />
@@ -44,9 +44,9 @@ export function AboutPage() {
             <span className="text-brand-accent-light"> lived experience.</span>
           </>
         }
-        description="I work with people whose bodies need more nuance than the fitness industry usually offers. That perspective comes from research, clinical study, coaching practice, and living with psoriatic arthritis myself."
+        description="I work with people whose bodies need more nuance than the fitness industry usually offers. That perspective comes from research, clinical study, coaching practice and living with psoriatic arthritis myself."
         primaryCta={{ href: "/contact", label: "Get In Touch" }}
-        secondaryCta={{ href: "/classes", label: "Explore Classes" }}
+        secondaryCta={{ href: "/coaching", label: "Explore Coaching" }}
         stats={[
           { value: "PhD", label: "Biomechanics" },
           { value: "PGDip", label: "Rehabilitation" },
@@ -56,16 +56,16 @@ export function AboutPage() {
           {
             label: "Perspective",
             detail:
-              "Academic depth, coaching practice, and day-to-day lived experience with fluctuation.",
+              "Academic depth, coaching practice and day-to-day lived experience with fluctuation.",
           },
           {
             label: "Clients",
             detail:
-              "People with chronic illness, hypermobility, pain, arthritis, and longer recovery histories.",
+              "People with chronic illness, hypermobility, pain, arthritis and longer recovery histories.",
           },
           {
             label: "Promise",
-            detail: "Respect, precision, and real progression instead of fragile-feeling fitness.",
+            detail: "Respect, precision and real progression instead of fragile-feeling fitness.",
           },
         ]}
         aside={
@@ -83,8 +83,8 @@ export function AboutPage() {
                   The lens I teach through
                 </p>
                 <p className="text-brand-white/84 mt-3 text-sm leading-relaxed">
-                  Complex bodies deserve technical clarity without losing warmth, ambition, or
-                  honesty about what fluctuating symptoms feel like.
+                  Inclusive movement coaching should offer technical clarity without losing warmth,
+                  ambition, or honesty about what fluctuating symptoms feel like.
                 </p>
               </div>
             </div>
@@ -101,7 +101,7 @@ export function AboutPage() {
       <StorySplit
         eyebrow="My Story"
         title="This work became personal while I was finishing my PhD."
-        description="A diagnosis of psoriatic arthritis changed how I understood movement, effort, recovery, and the limits of generic advice."
+        description="A diagnosis of psoriatic arthritis changed how I understood movement, effort, recovery and the limits of generic advice."
         body={
           <div className="text-muted-foreground space-y-5 leading-relaxed">
             <p>
@@ -112,7 +112,7 @@ export function AboutPage() {
             <p>
               I tried the routes most people try. Generic fitness plans. Yoga classes. Professional
               help that had good intentions but could not fully account for fluctuating symptoms,
-              pain, fatigue, and the psychology of not trusting your body.
+              pain, fatigue and the psychology of not trusting your body.
             </p>
             <p>
               The fitness industry often tells people like us to either push through or become
@@ -156,33 +156,29 @@ export function AboutPage() {
         <SectionHeading
           eyebrow="Credentials"
           title="Academic training and professional qualifications."
-          description="The details matter because they shape how I think about loading, tissue behaviour, recovery, pain, and adaptation."
+          description="The details matter because they shape how I think about loading, tissue behaviour, recovery, pain and adaptation."
           align="center"
         />
         <div className="mt-12 grid gap-6 md:grid-cols-2">
           {[
             {
               title: "PhD Biomechanics",
-              body: "Doctoral research informing how I think about human movement, loading, and musculoskeletal behaviour.",
-              footnote: "[Placeholder: University name and thesis title to be added]",
+              body: "Doctoral research informing how I think about human movement, loading and musculoskeletal behaviour.",
               icon: GraduationCap,
             },
             {
               title: "PGDip Rehabilitation",
-              body: "Postgraduate rehabilitation training shaping how I approach recovery, capacity building, and clinical nuance.",
-              footnote: "[Placeholder: Institution to be added]",
+              body: "Postgraduate rehabilitation training shaping how I approach recovery, capacity building and clinical nuance.",
               icon: Award,
             },
             {
               title: "650-Hour Yoga Training",
-              body: "Extensive teacher training with emphasis on anatomy, therapeutic application, and adaptive practice.",
-              footnote: "[Placeholder: Training school and registration number to be added]",
+              body: "Extensive teacher training with emphasis on anatomy, therapeutic application and adaptive practice.",
               icon: Heart,
             },
             {
               title: "Level 4 Personal Trainer",
-              body: "Advanced PT qualification supporting exercise referral, long-term condition awareness, and coaching practice.",
-              footnote: "[Placeholder: CIMSPA registration number to be added]",
+              body: "Advanced PT qualification supporting exercise referral, long-term condition awareness and coaching practice.",
               icon: Shield,
             },
           ].map((item) => {
@@ -197,7 +193,6 @@ export function AboutPage() {
                 </div>
                 <h3 className="mt-5 text-2xl">{item.title}</h3>
                 <p className="text-muted-foreground mt-4 leading-relaxed">{item.body}</p>
-                <p className="text-muted-foreground mt-4 text-sm italic">{item.footnote}</p>
               </article>
             );
           })}
@@ -217,17 +212,17 @@ export function AboutPage() {
             {[
               {
                 title: "Evidence over dogma",
-                body: "Recommendations are grounded in biomechanics, pain science, strength principles, and rehabilitation thinking. If the evidence changes, the practice should change too.",
+                body: "Recommendations are grounded in biomechanics, pain science, strength principles and rehabilitation thinking. If the evidence changes, the practice should change too.",
                 icon: BookOpen,
               },
               {
                 title: "Lived experience matters",
-                body: "Living with psoriatic arthritis changes how I understand uncertainty, grief, adaptation, and the emotional cost of not trusting your body.",
+                body: "Living with psoriatic arthritis changes how I understand uncertainty, grief, adaptation and the emotional cost of not trusting your body.",
                 icon: Heart,
               },
               {
                 title: "Respect, not pity",
-                body: "Clients are treated like intelligent adults who deserve real strength work, real yoga, and thoughtful progression.",
+                body: "Clients are treated like intelligent adults who deserve real strength work, real yoga and thoughtful progression.",
                 icon: Users,
               },
             ].map((item) => {
@@ -255,8 +250,8 @@ export function AboutPage() {
 
       <PreFooterCtaSection
         eyebrow="Work together"
-        title="If you want coaching that feels thoughtful, direct, and technically grounded, start here."
-        description="Classes, coaching, and retreats all come from the same core belief: complex bodies deserve more intelligent movement support than they usually receive."
+        title="If you want coaching that feels thoughtful, directand technically grounded, start here."
+        description="Coaching starts from a simple belief: people living with chronic illness, autoimmune conditions, or injury recovery deserve more intelligent movement support than they usually receive."
         actions={[
           {
             href: "/contact",
@@ -286,7 +281,7 @@ export function AboutPage() {
             ],
             jobTitle: "Strength & Yoga Coach",
             description:
-              "Strength and yoga coach specialising in rehabilitation-informed training for people with chronic illness, autoimmune conditions, and complex bodies. PhD Biomechanics.",
+              "Strength and yoga coach specialising in rehabilitation-informed training for people with chronic illness, autoimmune conditions and injury recovery. PhD Biomechanics.",
             knowsAbout: [
               "Biomechanics",
               "Rehabilitation",

@@ -1,4 +1,5 @@
 import { BlogCommentStatus, Prisma } from "@prisma/client";
+import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { db } from "@/lib/db";
 import { getNotificationInbox, sendPostmarkReactEmail } from "@/lib/postmark/client";
 import { buildAbsoluteUrl } from "@/lib/app-url";
@@ -6,6 +7,17 @@ import BlogCommentNotificationEmail from "@/emails/blog-comment-notification";
 
 const COMMENT_MIN_LENGTH = 3;
 const COMMENT_MAX_LENGTH = 3000;
+
+export function sanitizeBlogCommentContent(rawContent: string) {
+  return rawContent
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{4,}/g, "\n\n\n")
+    .trim();
+}
 
 function toAuthorName(user: {
   firstName: string | null;
@@ -43,9 +55,11 @@ async function sendNewCommentNotification(input: {
     }),
     textBody: `New blog comment from ${input.authorName}\n\nPost: ${input.postSlug}\n\n${input.content}\n\nReview: ${postUrl}`,
     tag: "blog-comment-notification",
+    templateKey: "blog-comment-notification",
     metadata: {
       postSlug: input.postSlug,
     },
+    dispatchMode: "immediate_best_effort",
   });
 }
 
@@ -179,7 +193,7 @@ export async function createBlogComment(input: {
   content: string;
   parentId?: string | null;
 }) {
-  const content = input.content.trim();
+  const content = sanitizeBlogCommentContent(input.content);
   if (content.length < COMMENT_MIN_LENGTH) {
     throw new Error("COMMENT_TOO_SHORT");
   }
@@ -360,10 +374,14 @@ export async function listAdminBlogComments(params: {
 export async function updateAdminBlogCommentStatus(input: {
   id: string;
   action: "hide" | "show" | "delete";
+  actorUserId?: string | null;
+  requestId?: string | null;
+  requestPath?: string | null;
+  requestIp?: string | null;
 }) {
   const comment = await db.blogComment.findUnique({
     where: { id: input.id },
-    select: { id: true, parentId: true },
+    select: { id: true, parentId: true, status: true, postSlug: true, content: true },
   });
   if (!comment) {
     throw new Error("NOT_FOUND");
@@ -375,6 +393,19 @@ export async function updateAdminBlogCommentStatus(input: {
         OR: [{ id: input.id }, { parentId: input.id }],
       },
     });
+    if (input.actorUserId) {
+      await createAdminActionLog({
+        actorUserId: input.actorUserId,
+        actionType: "blog_comment_deleted",
+        targetType: "blog_comment",
+        targetId: input.id,
+        requestId: input.requestId,
+        requestPath: input.requestPath,
+        requestIp: input.requestIp,
+        oldValueJson: comment,
+        newValueJson: { deleted: true },
+      });
+    }
     return { ok: true };
   }
 
@@ -385,6 +416,23 @@ export async function updateAdminBlogCommentStatus(input: {
     },
     data: { status: nextStatus },
   });
+
+  if (input.actorUserId) {
+    await createAdminActionLog({
+      actorUserId: input.actorUserId,
+      actionType: "blog_comment_moderated",
+      targetType: "blog_comment",
+      targetId: input.id,
+      requestId: input.requestId,
+      requestPath: input.requestPath,
+      requestIp: input.requestIp,
+      oldValueJson: comment,
+      newValueJson: {
+        status: nextStatus,
+        action: input.action,
+      },
+    });
+  }
 
   return { ok: true };
 }

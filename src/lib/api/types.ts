@@ -101,6 +101,9 @@ export type AccountActivityDto = {
   attendedCount: number;
   totalCount: number;
   items: AccountActivityItemDto[];
+  pageInfo: {
+    nextCursor: string | null;
+  };
 };
 
 export type SessionFeedbackRequestDto =
@@ -158,31 +161,71 @@ export type CoachingApplicationResponseDto = {
 };
 
 export type CoachingDashboardDto = {
-  state: "not_a_client" | "application_pending" | "onboarding" | "active" | "paused" | "completed";
+  state:
+    | "not_a_client"
+    | "application_pending"
+    | "waitlisted"
+    | "withdrawn"
+    | "onboarding"
+    | "active"
+    | "paused"
+    | "completed";
   hasProfile: boolean;
   isCoachingClient: boolean;
   profile: null | {
     id: string;
     tier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
     status: "application_pending" | "onboarding" | "active" | "paused" | "completed";
-    includesMoveWellMembership: boolean;
     everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue";
     nextCheckInDueAt: string | null;
     nextCheckInStatus: "due" | "submitted" | "reviewed" | "overdue" | null;
     nextSessionStartsAt: string | null;
     latestCoachResponseSummary: string | null;
+    billingCancellationRequestedAt: string | null;
+    billingFinalPaymentAt: string | null;
+    billingEndsAt: string | null;
+    pendingPackageChange: null | {
+      id: string;
+      fromTier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
+      toTier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
+      fromOfferKey:
+        | "guided_accountability"
+        | "independent_training_plan"
+        | "guided_training_plan"
+        | "one_to_one_coaching"
+        | null;
+      toOfferKey:
+        | "guided_accountability"
+        | "independent_training_plan"
+        | "guided_training_plan"
+        | "one_to_one_coaching";
+      effectiveMode: "next_invoice" | "immediate" | "manual";
+      note: string | null;
+      createdAt: string;
+    };
   };
   application: null | {
     id: string;
+    offerKey:
+      | "guided_accountability"
+      | "independent_training_plan"
+      | "guided_training_plan"
+      | "one_to_one_coaching"
+      | null;
     status:
       | "submitted"
       | "under_review"
       | "follow_up_needed"
+      | "waitlisted"
       | "approved"
       | "declined"
-      | "converted";
+      | "converted"
+      | "withdrawn";
+    decisionReason: string | null;
     tier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
     createdAt: string;
+    waitlistedAt: string | null;
+    waitlistLeftAt: string | null;
   };
 };
 
@@ -235,6 +278,12 @@ export type ReplayPlaybackAccessDto = {
 
 export type AdminCoachingApplicationDto = {
   id: string;
+  offerKey:
+    | "guided_accountability"
+    | "independent_training_plan"
+    | "guided_training_plan"
+    | "one_to_one_coaching"
+    | null;
   applicantName: string;
   applicantEmail: string;
   status: string;
@@ -242,11 +291,41 @@ export type AdminCoachingApplicationDto = {
   createdAt: string;
   reviewedAt: string | null;
   approvedAt: string | null;
+  waitlistedAt: string | null;
+  waitlistLeftAt: string | null;
   userId: string | null;
   isLinkedUserCoachingClient: boolean;
-  hasMoveWellMembershipSnapshot: boolean;
+  decisionReason: string;
   answers: Record<string, string>;
   adminNotes: string;
+  coachingProfile: null | {
+    id: string;
+    status: "application_pending" | "onboarding" | "active" | "paused" | "completed";
+    everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue";
+    billingCancellationRequestedAt: string | null;
+    billingFinalPaymentAt: string | null;
+    billingEndsAt: string | null;
+    tier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
+    pendingPackageChange: null | {
+      id: string;
+      fromTier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
+      toTier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
+      fromOfferKey:
+        | "guided_accountability"
+        | "independent_training_plan"
+        | "guided_training_plan"
+        | "one_to_one_coaching"
+        | null;
+      toOfferKey:
+        | "guided_accountability"
+        | "independent_training_plan"
+        | "guided_training_plan"
+        | "one_to_one_coaching";
+      effectiveMode: "next_invoice" | "immediate" | "manual";
+      note: string | null;
+      createdAt: string;
+    };
+  };
 };
 
 export type AdminRetreatSummaryDto = {
@@ -359,6 +438,13 @@ export type MembershipStateDto = {
     cancelAtPeriodEnd: boolean;
     accessActive: boolean;
     endsAt: string | null;
+    paymentIssue: {
+      status: "open" | "suspended";
+      graceEndsAt: string;
+      amountDuePence: number;
+      invoiceUrl: string | null;
+      suspendedAt: string | null;
+    } | null;
     compliance: {
       disclosureVersion: string | null;
       disclosureAcceptedAt: string | null;
@@ -393,7 +479,9 @@ export type MembershipStateDto = {
       | "end_of_contract_notice"
       | "membership_cancelled"
       | "cooling_off_cancellation"
-      | "refund_issued";
+      | "refund_issued"
+      | "payment_failure_notice"
+      | "payment_recovery_notice";
     status: string;
     channel: string;
     summary: string;
@@ -444,6 +532,7 @@ export type BillingHistoryItemDto = {
   status: "paid" | "failed" | "refunded" | "applied";
   stripeInvoiceId?: string | null;
   stripeCheckoutSessionId?: string | null;
+  invoiceUrl?: string | null;
 };
 
 export type DashboardSummaryDto = {
@@ -464,12 +553,22 @@ export type DashboardSummaryDto = {
   attendance: {
     attendedCount: number;
     thisWeekBookedCount: number;
+    currentStreakWeeks: number;
+    lastAttendedAt: string | null;
   };
   favourites: Array<{
     classSlug: string;
     className: string;
     classType: string;
     startsAtUtc: string | null;
+  }>;
+  suggestedClasses: Array<{
+    sessionId: string;
+    classSlug: string;
+    className: string;
+    classType: string;
+    startsAtUtc: string;
+    durationMinutes: number;
   }>;
   membership: MembershipStateDto["membership"];
   credits: MembershipStateDto["credits"];
@@ -506,6 +605,26 @@ export type AdminDashboardSummaryDto = {
     date: string;
     booked: number;
     attended: number;
+  }>;
+};
+
+export type AdminEmailDeliveryHealthDto = {
+  failedCount: number;
+  deadLetterCount: number;
+  retryQueuedCount: number;
+  nextRetryAt: string | null;
+  recentFailures: Array<{
+    id: string;
+    toEmail: string;
+    templateKey: string;
+    category: string;
+    subject: string;
+    status: "failed" | "dead_letter";
+    attemptCount: number;
+    maxAttempts: number;
+    nextRetryAt: string | null;
+    lastError: string | null;
+    updatedAt: string;
   }>;
 };
 
@@ -624,11 +743,17 @@ export type AdminNewsletterCampaignDetailDto = {
   bounced: number;
   spamComplaints: number;
   unsubscribed: number;
+  failedSends: number;
+  deliveryRate: number;
   openRate: number;
   clickRate: number;
   clickToOpenRate: number;
+  unsubscribeRate: number;
+  bounceRate: number;
+  complaintRate: number;
   audienceType?: string | null;
   triggeredBy?: string | null;
+  sourceSystem: string;
   topLinks: Array<{ url: string; clicks: number }>;
   eventTimeline: Array<{ date: string; opened: number; clicked: number; bounced: number }>;
 };
@@ -643,6 +768,16 @@ export type AdminBusinessMetricDto = {
   failedPayments7d: number;
   failedPayments30d: number;
   dataFreshnessIso: string | null;
+};
+
+export type PlatformSettingsDto = {
+  businessName: string;
+  supportEmail: string | null;
+  contactEmail: string | null;
+  instagramUrl: string | null;
+  defaultSeoTitle: string | null;
+  defaultSeoDescription: string | null;
+  gaMeasurementId: string | null;
 };
 
 export type ClassOperationalSettingsDto = {

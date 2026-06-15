@@ -57,28 +57,28 @@ export function HoldingNewsletterForm() {
   const verificationMessage =
     verifiedState === "success"
       ? {
-          body: "Your email is confirmed. Check your inbox for the guide and future launch updates.",
-          icon: CheckCircle2,
-          tone: "border-emerald-300/40 bg-emerald-500/10 text-emerald-50",
-        }
+        body: "Your email is confirmed. Check your inbox for the guide and future launch updates.",
+        icon: CheckCircle2,
+        tone: "border-emerald-300/40 bg-emerald-500/10 text-emerald-50",
+      }
       : verifiedState === "invalid"
         ? {
-            body: "That confirmation link is no longer valid. Enter your details again and we’ll send a fresh email.",
-            icon: AlertCircle,
-            tone: "border-amber-300/40 bg-amber-500/10 text-amber-50",
-          }
+          body: "That confirmation link is no longer valid. Enter your details again and we’ll send a fresh email.",
+          icon: AlertCircle,
+          tone: "border-amber-300/40 bg-amber-500/10 text-amber-50",
+        }
         : null;
 
   const statusMessage =
     verificationMessage ||
     (serverMessage
       ? {
-          body: serverMessage,
-          icon: submitted ? CheckCircle2 : AlertCircle,
-          tone: submitted
-            ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-50"
-            : "border-red-300/40 bg-red-500/10 text-red-50",
-        }
+        body: serverMessage,
+        icon: submitted ? CheckCircle2 : AlertCircle,
+        tone: submitted
+          ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-50"
+          : "border-red-300/40 bg-red-500/10 text-red-50",
+      }
       : null);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -105,9 +105,9 @@ export function HoldingNewsletterForm() {
     setSubmitted(result.ok);
     setServerMessage(
       result.message ||
-        (result.ok
-          ? "Please check your inbox to confirm your email address."
-          : "Unable to subscribe right now. Please try again.")
+      (result.ok
+        ? "Please check your inbox to confirm your email address."
+        : "Unable to subscribe right now. Please try again.")
     );
 
     if (result.ok) {
@@ -126,7 +126,7 @@ export function HoldingNewsletterForm() {
           Be the first to know
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-white/72">
-          Join the mailing list for launch updates, useful notes, and a free guide:
+          Join the mailing list for launch updates, useful notes and a free guide:
         </p>
         <p className="text-brand-accent-light mt-2 text-sm italic sm:text-[0.96rem]">
           {CANONICAL_LEAD_MAGNET.title}
@@ -202,7 +202,7 @@ export function HoldingNewsletterForm() {
               className="text-[0.88rem] leading-relaxed text-white/74"
             >
               I&apos;d like to receive the newsletter and occasional updates about new classes,
-              coaching, retreats, and offers. You can unsubscribe at any time. Read the{" "}
+              coaching, retreats and offers. You can unsubscribe at any time. Read the{" "}
               <a href="/privacy" className="underline decoration-white/40 underline-offset-4">
                 privacy policy
               </a>

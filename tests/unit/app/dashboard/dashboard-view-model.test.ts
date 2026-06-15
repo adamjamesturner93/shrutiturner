@@ -21,10 +21,11 @@ describe("dashboard view model helpers", () => {
           classesPerWeek: 99,
           classesUsedThisWeek: 2,
           classesRemaining: 97,
-          pricePence: 2900,
+          pricePence: 3500,
           cancelAtPeriodEnd: false,
           accessActive: true,
           endsAt: null,
+          paymentIssue: null,
           compliance: {
             disclosureVersion: "2026-04-03",
             disclosureAcceptedAt: "2026-04-03T10:00:00.000Z",

@@ -58,7 +58,7 @@ export function CookiesPage() {
             <h3 className="text-foreground mb-3 text-xl">3.1 Essential Cookies (Required)</h3>
             <p>
               These cookies are necessary for the website to function. They enable basic features
-              like page navigation, secure areas, and payment processing. The website cannot
+              like page navigation, secure areas and payment processing. The website cannot
               function properly without these cookies.
             </p>
             <div className="bg-secondary/30 my-4 rounded-lg p-4">

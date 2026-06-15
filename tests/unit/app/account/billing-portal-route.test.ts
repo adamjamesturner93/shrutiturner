@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const requireSessionUserMock = vi.fn();
+const authMock = vi.fn();
 const createBillingPortalSessionMock = vi.fn();
 
-vi.mock("@/lib/api/auth-user", () => ({
-  requireSessionUser: requireSessionUserMock,
+vi.mock("@/lib/auth", () => ({
+  auth: authMock,
 }));
 
 vi.mock("@/lib/billing/billing-service", () => ({
@@ -24,7 +24,7 @@ function createRequest(body: Record<string, unknown>) {
 describe("POST /api/me/billing/portal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireSessionUserMock.mockResolvedValue({ id: "user_123" });
+    authMock.mockResolvedValue({ user: { id: "user_123", role: "member" } });
     createBillingPortalSessionMock.mockResolvedValue({
       portalUrl: "https://billing.example.com/session",
     });
@@ -37,6 +37,10 @@ describe("POST /api/me/billing/portal", () => {
     expect(createBillingPortalSessionMock).toHaveBeenCalledWith("user_123", {
       returnPath: "/dashboard/account",
     });
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      data: { portalUrl: "https://billing.example.com/session" },
+    });
   });
 
   it("falls back to the membership page for unsafe return paths", async () => {
@@ -48,11 +52,26 @@ describe("POST /api/me/billing/portal", () => {
   });
 
   it("returns 401 for unauthenticated requests", async () => {
-    requireSessionUserMock.mockRejectedValue(new Error("UNAUTHORIZED"));
+    authMock.mockResolvedValue(null);
 
     const response = await route.POST(createRequest({}));
 
     expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toEqual({ message: "Unauthorized" });
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      error: { code: "UNAUTHORIZED", message: "Unauthorized" },
+    });
+  });
+
+  it("returns 503 when Stripe is not configured", async () => {
+    createBillingPortalSessionMock.mockRejectedValue(new Error("STRIPE_NOT_CONFIGURED"));
+
+    const response = await route.POST(createRequest({}));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      error: { code: "SERVICE_UNAVAILABLE", message: "Stripe is not configured." },
+    });
   });
 });

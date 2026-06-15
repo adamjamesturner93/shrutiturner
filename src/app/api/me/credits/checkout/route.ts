@@ -1,57 +1,66 @@
-import { NextResponse } from "next/server";
-import { requireSessionUser } from "@/lib/api/auth-user";
+import {
+  apiOk,
+  badRequest,
+  conflict,
+  handleApiRoute,
+  parseJsonBody,
+  serviceUnavailable,
+  upstreamFailure,
+} from "@/lib/api/route";
 import { createCreditCheckoutSession } from "@/lib/billing/billing-service";
 import { assertNoUserCheckoutDisputeHold } from "@/lib/billing/dispute-service";
 import { sanitizeRedirectPath } from "@/lib/navigation/safe-redirect";
 
-export async function POST(request: Request) {
-  try {
-    const user = await requireSessionUser();
-    const body = (await request.json().catch(() => ({}))) as {
+export const POST = handleApiRoute(
+  async ({ request, sessionUser }) => {
+    const body = await parseJsonBody<{
       bundleSize?: number;
       promotionCode?: string;
       successPath?: string;
       cancelPath?: string;
-    };
+      bookingClassSlug?: string;
+      bookingSessionId?: string;
+    }>(request);
     const bundleSize = body.bundleSize;
     if (bundleSize !== 1 && bundleSize !== 3 && bundleSize !== 10) {
-      return NextResponse.json({ message: "Invalid bundle size." }, { status: 400 });
+      throw badRequest("Invalid bundle size.");
     }
 
-    await assertNoUserCheckoutDisputeHold(user.id);
+    await assertNoUserCheckoutDisputeHold(sessionUser!.id);
 
-    const result = await createCreditCheckoutSession(
-      user.id,
-      bundleSize,
-      typeof body.promotionCode === "string" ? body.promotionCode : undefined,
-      {
-        successPath: sanitizeRedirectPath(body.successPath),
-        cancelPath: sanitizeRedirectPath(body.cancelPath),
-      }
-    );
-    return NextResponse.json(result);
-  } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === "UNAUTHORIZED") {
-        return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-      }
-      if (error.message.startsWith("MISSING_STRIPE_PRICE:")) {
-        return NextResponse.json({ message: "Stripe price is not configured." }, { status: 501 });
-      }
-      if (error.message === "STRIPE_NOT_CONFIGURED") {
-        return NextResponse.json({ message: "Stripe is not configured." }, { status: 501 });
-      }
-      if (error.message === "DISPUTE_HOLD") {
-        return NextResponse.json(
-          {
-            message:
-              "Checkout is temporarily blocked while an open payment dispute is under review.",
+    try {
+      const result = await createCreditCheckoutSession(
+        sessionUser!.id,
+        bundleSize,
+        typeof body.promotionCode === "string" ? body.promotionCode : undefined,
+        {
+          successPath: sanitizeRedirectPath(body.successPath),
+          cancelPath: sanitizeRedirectPath(body.cancelPath),
+          bookingIntent: {
+            classSlug:
+              typeof body.bookingClassSlug === "string" ? body.bookingClassSlug : undefined,
+            sessionId:
+              typeof body.bookingSessionId === "string" ? body.bookingSessionId : undefined,
           },
-          { status: 409 }
-        );
+        }
+      );
+      return apiOk(result);
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message.startsWith("MISSING_STRIPE_PRICE:")) {
+          throw serviceUnavailable("Stripe price is not configured.");
+        }
+        if (error.message === "STRIPE_NOT_CONFIGURED") {
+          throw serviceUnavailable("Stripe is not configured.");
+        }
+        if (error.message === "DISPUTE_HOLD") {
+          throw conflict(
+            "Checkout is temporarily blocked while an open payment dispute is under review."
+          );
+        }
       }
+      throw upstreamFailure("Failed to create checkout session");
     }
-    console.error("POST /api/me/credits/checkout failed", error);
-    return NextResponse.json({ message: "Failed to create checkout session" }, { status: 500 });
-  }
-}
+  },
+  { auth: "user" }
+);

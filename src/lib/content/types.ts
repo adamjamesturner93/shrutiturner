@@ -1,5 +1,3 @@
-export type ContentSource = "local" | "hybrid" | "contentful";
-
 export interface SeoContent {
   title: string;
   description?: string;
@@ -132,48 +130,12 @@ export interface FaqItemContent {
   sortOrder?: number;
 }
 
-export interface TrustBadgeContent {
-  slug: string;
-  title: string;
-  description?: string;
-  iconKey?: string;
-}
-
-export interface ContactBlockContent {
-  slug: string;
-  title: string;
-  body?: string;
-  email?: string;
-  phone?: string;
-  ctaLabel?: string;
-  ctaHref?: string;
-}
-
-export interface AnnouncementBannerContent {
-  slug: string;
-  message: string;
-  ctaLabel?: string;
-  ctaHref?: string;
-  active?: boolean;
-}
-
-export interface TransactionalEmailTemplateContent {
-  slug: string;
-  templateKey: string;
-  subject: string;
-  previewText?: string;
-  htmlBody: string;
-  textBody?: string;
-  status?: "draft" | "approved";
-}
-
 export interface NewsletterTemplateContent {
   slug: string;
   title: string;
   subject: string;
   previewText?: string;
   body: string;
-  status?: "draft" | "approved";
 }
 
 export interface BlogPostContent {

@@ -17,7 +17,7 @@ import type {
   SessionFeedbackRequestDto,
 } from "@/lib/api/types";
 import { getClassSessionRoomMode } from "@/lib/classes/room-mode";
-import type { ClassDefinitionContent } from "@/lib/content";
+import type { ClassDefinitionContent } from "@/lib/content/types";
 
 type Stage = "too-early" | "access-denied" | "late-denied" | "pre-join" | "live" | "post-class";
 const NEXT_WEEK_FALLBACK_HREF = "/dashboard/schedule?wk=1";

@@ -1,22 +1,20 @@
-import { connection, NextResponse } from "next/server";
-import { requireSessionUser } from "@/lib/api/auth-user";
+import { connection } from "next/server";
+import { apiOk, handleApiRoute, notFound } from "@/lib/api/route";
 import { getMyRetreatBookingDetail } from "@/lib/retreats/service";
 
-export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
-  try {
+export const GET = handleApiRoute(
+  async ({ sessionUser }, routeContext?: { params: Promise<{ id: string }> }) => {
     await connection();
-    const user = await requireSessionUser();
-    const { id } = await context.params;
-    const booking = await getMyRetreatBookingDetail(user.id, id);
-    return NextResponse.json(booking);
-  } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    const { id } = await routeContext!.params;
+    try {
+      const booking = await getMyRetreatBookingDetail(sessionUser!.id, id);
+      return apiOk(booking);
+    } catch (error) {
+      if (error instanceof Error && error.message === "NOT_FOUND") {
+        throw notFound("Retreat booking not found.");
+      }
+      throw error;
     }
-    if (error instanceof Error && error.message === "NOT_FOUND") {
-      return NextResponse.json({ message: "Retreat booking not found." }, { status: 404 });
-    }
-    console.error("GET /api/me/retreats/[id] failed", error);
-    return NextResponse.json({ message: "Failed to load retreat booking." }, { status: 500 });
-  }
-}
+  },
+  { auth: "user" }
+);

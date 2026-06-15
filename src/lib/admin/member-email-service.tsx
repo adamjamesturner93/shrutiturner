@@ -68,6 +68,7 @@ export async function sendAdminMemberMessage(params: {
     ),
     textBody: `Hi ${memberFirstName},\n\n${body}\n\nWarmly,\n${adminName}`,
     tag: "admin-member-message",
+    templateKey: "admin-member-message",
     replyTo: adminUser.email,
     metadata: {
       adminUserId: adminUser.id,
