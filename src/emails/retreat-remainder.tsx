@@ -249,7 +249,7 @@ export default function RetreatRemainderEmail({
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>
-        With warmth,
+        Best,
         <br />
         Shruti
       </Text>

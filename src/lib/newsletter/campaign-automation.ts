@@ -14,6 +14,10 @@ type CampaignAudienceType = "newsletter" | "blog";
 type SupportedContentType = "blogPost" | "newsletterTemplate";
 type SendEmailBatchResponse = Awaited<ReturnType<ServerClient["sendEmailBatch"]>>;
 type CampaignEntry = Awaited<ReturnType<typeof loadEntry>>;
+type ExistingCampaign = {
+  id: string;
+  status: string;
+};
 type CampaignRecipient = {
   subscriberId: string;
   userId: string | null;
@@ -24,6 +28,13 @@ type CampaignRecipient = {
 const POSTMARK_FROM_EMAIL =
   process.env.POSTMARK_FROM_EMAIL || "Shruti Turner <shruti@thechronicyogini.com>";
 const POSTMARK_STREAM = getPostmarkMessageStream("marketing");
+const AUTO_SKIP_CAMPAIGN_STATUSES = new Set([
+  "sending",
+  "scheduled",
+  "sent",
+  "failed",
+  "failed_partial",
+]);
 
 function chunk<T>(input: T[], size: number): T[][] {
   const out: T[][] = [];
@@ -101,6 +112,15 @@ function getEntrySubject(contentType: SupportedContentType, fields: Record<strin
   const title = readStringField(fields, "title");
   if (title) return contentType === "blogPost" ? `New blog post: ${title}` : title;
   return contentType === "blogPost" ? "Blog campaign" : "Newsletter campaign";
+}
+
+function getAlreadyProcessedReason(status: string) {
+  if (status === "sent") return "already_sent";
+  if (status === "scheduled") return "already_scheduled";
+  if (status === "sending") return "already_sending";
+  if (status === "failed_partial") return "already_partially_sent";
+  if (status === "failed") return "already_failed";
+  return "already_processed";
 }
 
 function getPublishReadiness(input: {
@@ -225,10 +245,30 @@ async function renderCampaignMessage(
       })
     );
     const subject = `New blog post: ${postTitle}`;
+    const blogUrl = `${getBaseSiteUrlFromEnv()}/blog`;
     return {
       subject,
       html,
-      text: `${subject}\n\n${postExcerpt}\n\n${postUrl || getBaseSiteUrlFromEnv()}/blog\n\nUnsubscribe: ${unsubscribeUrl}`,
+      text: [
+        `Hi ${firstName},`,
+        "",
+        "I've just published a new post on my blog I thought you'd be interested in.",
+        "",
+        postTitle,
+        "",
+        postExcerpt,
+        "",
+        postUrl || blogUrl,
+        "",
+        "If something resonated with you, feel free to reply to this email. I always love hearing from you.",
+        "",
+        `You can also browse all articles on the blog: ${blogUrl}`,
+        "",
+        "Hope you enjoy,",
+        "Shruti",
+        "",
+        `Unsubscribe: ${unsubscribeUrl}`,
+      ].join("\n"),
     };
   }
 
@@ -458,13 +498,30 @@ export async function triggerContentfulPublishCampaign(input: {
       ? `contentful:${contentType}:${input.contentfulEntryId}:${audienceType}`
       : `contentful:${contentType}:${input.contentfulEntryId}:${input.contentfulVersion || "latest"}:${audienceType}`;
 
-  const existing = await db.emailCampaign.findUnique({
+  const existingByProviderId = await db.emailCampaign.findUnique({
     where: { providerCampaignId },
     select: { id: true, status: true },
   });
+  const existing: ExistingCampaign | null =
+    existingByProviderId ||
+    (contentType === "blogPost"
+      ? await db.emailCampaign.findFirst({
+          where: {
+            contentfulEntryId: input.contentfulEntryId,
+            contentfulContentType: contentType,
+            audienceType,
+          },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, status: true },
+        })
+      : null);
 
-  if (existing?.status === "sent") {
-    return { skipped: true as const, reason: "already_sent", campaignId: existing.id };
+  if (existing && AUTO_SKIP_CAMPAIGN_STATUSES.has(existing.status)) {
+    return {
+      skipped: true as const,
+      reason: getAlreadyProcessedReason(existing.status),
+      campaignId: existing.id,
+    };
   }
 
   if (!readiness.ready) {

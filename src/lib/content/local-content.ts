@@ -86,13 +86,13 @@ export const LOCAL_NEWSLETTER_SIGNUP_CONTENT: NewsletterSignupContent = {
   consentText: "No spam. Unsubscribe anytime.",
   popupTitle: "Get Evidence-Based Insights",
   popupDescription:
-    "Join the mailing list for launch updates, practical strength guidance, and occasional offers. No spam, unsubscribe anytime.",
+    "Join the mailing list for new writing, useful resources and occasional offers. No spam, unsubscribe anytime.",
   leadMagnetSlug: CANONICAL_LEAD_MAGNET.slug,
   leadMagnetTitle: CANONICAL_LEAD_MAGNET.title,
   emailSubject: "Confirm your email to get your free guide",
-  emailPreviewText: "Confirm your email to receive the guide and launch updates.",
+  emailPreviewText: "Confirm your email to receive the guide.",
   emailBody:
-    "Hi {{firstName}},\n\nConfirm your email to receive launch updates and your free guide.\n\n{{leadMagnetLink}}\n\nShruti",
+    "Hi {{firstName}},\n\nConfirm your email to receive your free guide.\n\n{{leadMagnetLink}}\n\nShruti",
   deliveryType: "link",
   assetUrl: CANONICAL_LEAD_MAGNET.assetUrl,
 };

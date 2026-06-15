@@ -10,8 +10,8 @@ interface WelcomeEmailProps {
   downloadUrl?: string;
   ctaLabel?: string;
   welcomeCopy?: string;
-  classesUrl?: string;
-  aboutUrl?: string;
+  offersUrl?: string;
+  blogUrl?: string;
   privacyUrl?: string;
   unsubscribeUrl?: string;
 }
@@ -23,16 +23,16 @@ export default function WelcomeEmail({
   downloadUrl = "https://shrutiturner.co.uk/guides/why-some-bodies-need-strength-before-more-stretching.pdf",
   ctaLabel = "Download your guide",
   welcomeCopy,
-  classesUrl = "https://shrutiturner.co.uk/classes",
-  aboutUrl = "https://shrutiturner.co.uk/about",
+  offersUrl = "https://shrutiturner.co.uk/#work-with-me",
+  blogUrl = "https://shrutiturner.co.uk/blog",
   privacyUrl = "https://shrutiturner.co.uk/privacy",
   unsubscribeUrl = "https://shrutiturner.co.uk/unsubscribe",
 }: WelcomeEmailProps) {
   const welcomeParagraphs = welcomeCopy
     ? welcomeCopy
-      .split(/\n\s*\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
+        .split(/\n\s*\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
     : null;
 
   return (
@@ -140,21 +140,21 @@ export default function WelcomeEmail({
       </Text>
 
       <Text style={bodyTextStyle}>
-        I send occasional emails about launch updates, classes, coaching, retreat openings and
-        thoughtful notes on building strength with a fluctuating body. No spam, no filler.
+        I send occasional emails about new writing, useful resources and ways to work together. No
+        spam, no filler.
       </Text>
 
       <Text style={bodyTextStyle}>In the meantime, feel free to explore: </Text>
 
       <Text style={{ ...bodyTextStyle, paddingLeft: "8px" }}>
         {"\u2022 "}
-        <Link href={classesUrl} style={{ color: colors.brandAccent, textDecoration: "underline" }}>
-          Browse upcoming classes
+        <Link href={blogUrl} style={{ color: colors.brandAccent, textDecoration: "underline" }}>
+          Read the blog
         </Link>
         <br />
         {"\u2022 "}
-        <Link href={aboutUrl} style={{ color: colors.brandAccent, textDecoration: "underline" }}>
-          Learn more about my approach
+        <Link href={offersUrl} style={{ color: colors.brandAccent, textDecoration: "underline" }}>
+          Explore 1:1 offers
         </Link>
         <br />
         {"\u2022 "}
@@ -164,7 +164,7 @@ export default function WelcomeEmail({
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>
-        With warmth,
+        Best,
         <br />
         Shruti
       </Text>

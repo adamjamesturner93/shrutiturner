@@ -233,7 +233,7 @@ export default function OnboardingEmail({
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>
-        With warmth,
+        Best,
         <br />
         Shruti
       </Text>

@@ -15,16 +15,16 @@ interface PurchaseConfirmationEmailProps {
   amount?: string;
   date?: string;
   invoiceId?: string;
-  scheduleUrl?: string;
+  accountUrl?: string;
 }
 
 export default function PurchaseConfirmationEmail({
   firstName = "there",
-  purchaseDescription = "10 Class Pack",
+  purchaseDescription = "Purchase",
   amount = "£90.00",
   date = "March 15, 2026",
   invoiceId = "INV-12345678",
-  scheduleUrl = "https://shrutiturner.co.uk/dashboard/schedule",
+  accountUrl = "https://shrutiturner.co.uk/dashboard",
 }: PurchaseConfirmationEmailProps) {
   return (
     <EmailLayout preview={`Receipt for ${purchaseDescription}`}>
@@ -67,15 +67,13 @@ export default function PurchaseConfirmationEmail({
       </Section>
 
       <Section style={{ textAlign: "center", marginBottom: "16px" }}>
-        <Link href={scheduleUrl} style={buttonStyle}>
-          Book a Class
+        <Link href={accountUrl} style={buttonStyle}>
+          View your account
         </Link>
       </Section>
 
       <Hr style={dividerStyle} />
-      <Text style={mutedTextStyle}>
-        Your credits or membership have been applied to your account.
-      </Text>
+      <Text style={mutedTextStyle}>Your purchase has been applied to your account.</Text>
     </EmailLayout>
   );
 }

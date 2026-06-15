@@ -20,7 +20,7 @@ export default function NewsletterVerificationEmail({
 }: NewsletterVerificationEmailProps) {
   return (
     <EmailLayout
-      preview="Confirm your email to get launch updates and your free guide"
+      preview="Confirm your email to get your free guide"
       unsubscribeUrl={unsubscribeUrl}
       privacyUrl={privacyUrl}
       category="marketing"
@@ -32,8 +32,8 @@ export default function NewsletterVerificationEmail({
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
       <Text style={bodyTextStyle}>
-        Thanks for signing up. Confirm your email address to receive launch updates and the free
-        guide, <em>{leadMagnetTitle}</em>.
+        Thanks for signing up. Confirm your email address to receive the free guide,{" "}
+        <em>{leadMagnetTitle}</em>.
       </Text>
 
       <Section
@@ -55,8 +55,8 @@ export default function NewsletterVerificationEmail({
       </Section>
 
       <Text style={bodyTextStyle}>
-        By confirming, you agree to receive launch updates and occasional emails about classes,
-        coaching and offers. You can unsubscribe at any time.
+        By confirming, you agree to receive occasional emails about new writing, useful resources
+        and ways to work together. You can unsubscribe at any time.
       </Text>
 
       <Text style={bodyTextStyle}>

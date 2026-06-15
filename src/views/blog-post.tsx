@@ -22,6 +22,7 @@ import {
   getRelatedPosts,
   type BlogPostContextualCta,
 } from "@/lib/blog/view-model";
+import { renderInlineMarkdown } from "@/lib/blog/inline-markdown";
 
 interface BlogPostPageProps {
   post: BlogPostContent;
@@ -165,29 +166,29 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
                   return (
                     <Fragment key={index}>
                       <div className="space-y-4">
-                        {lines.slice(1).map((line, lineIndex) => {
+                        {lines.map((line, lineIndex) => {
                           if (line.startsWith("### ")) {
                             return (
                               <h3 key={lineIndex} className="mt-8 mb-4 text-2xl">
-                                {line.replace("### ", "")}
+                                {renderInlineMarkdown(line.replace("### ", ""))}
                               </h3>
                             );
                           }
                           if (line.match(/^\d+\.\s/)) {
                             return (
                               <p key={lineIndex} className="ml-4">
-                                {line}
+                                {renderInlineMarkdown(line)}
                               </p>
                             );
                           }
                           if (line.startsWith("- ")) {
                             return (
                               <p key={lineIndex} className="ml-4">
-                                {line}
+                                {renderInlineMarkdown(line)}
                               </p>
                             );
                           }
-                          return <p key={lineIndex}>{line}</p>;
+                          return <p key={lineIndex}>{renderInlineMarkdown(line)}</p>;
                         })}
                       </div>
                     </Fragment>
@@ -198,30 +199,30 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
                 return (
                   <Fragment key={index}>
                     <div className="space-y-4">
-                      <h2 className="mt-12 mb-6 text-3xl">{heading}</h2>
+                      <h2 className="mt-12 mb-6 text-3xl">{renderInlineMarkdown(heading)}</h2>
                       {content.map((line, lineIndex) => {
                         if (line.startsWith("### ")) {
                           return (
                             <h3 key={lineIndex} className="mt-8 mb-4 text-2xl">
-                              {line.replace("### ", "")}
+                              {renderInlineMarkdown(line.replace("### ", ""))}
                             </h3>
                           );
                         }
                         if (line.match(/^\d+\.\s/)) {
                           return (
                             <p key={lineIndex} className="ml-4">
-                              {line}
+                              {renderInlineMarkdown(line)}
                             </p>
                           );
                         }
                         if (line.startsWith("- ")) {
                           return (
                             <p key={lineIndex} className="ml-4">
-                              {line}
+                              {renderInlineMarkdown(line)}
                             </p>
                           );
                         }
-                        return <p key={lineIndex}>{line}</p>;
+                        return <p key={lineIndex}>{renderInlineMarkdown(line)}</p>;
                       })}
                     </div>
                     {index === 1 ? <ContextualPostCta cta={contextualCta} /> : null}

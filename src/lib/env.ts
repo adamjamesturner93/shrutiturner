@@ -21,6 +21,7 @@ const schema = z.object({
   DATABASE_URL: optionalString,
   DIRECT_URL: optionalString,
   AUTH_SECRET: optionalString,
+  AUTH_URL: optionalUrl,
   AUTH_GOOGLE_ID: optionalString,
   AUTH_GOOGLE_SECRET: optionalString,
   AUTH_SESSION_MAX_AGE_DAYS: z.coerce.number().int().min(1).default(30),
@@ -72,6 +73,9 @@ function ensureRequiredRuntimeEnv(value: z.infer<typeof schema>) {
 
   const missing: string[] = [];
   if (!value.AUTH_SECRET) missing.push("AUTH_SECRET");
+  if ((value.AUTH_GOOGLE_ID || value.AUTH_GOOGLE_SECRET) && !value.AUTH_URL) {
+    missing.push("AUTH_URL");
+  }
   if (!value.DATABASE_URL && !value.DIRECT_URL) missing.push("DATABASE_URL or DIRECT_URL");
   if (!value.NEXT_PUBLIC_APP_URL && !value.NEXT_PUBLIC_SITE_URL) {
     missing.push("NEXT_PUBLIC_APP_URL or NEXT_PUBLIC_SITE_URL");

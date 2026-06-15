@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sendEmailBatchMock = vi.fn();
 const emailCampaignFindUniqueMock = vi.fn();
+const emailCampaignFindFirstMock = vi.fn();
 const emailCampaignFindManyMock = vi.fn();
 const emailCampaignCreateMock = vi.fn();
 const emailCampaignUpdateMock = vi.fn();
@@ -27,6 +28,7 @@ vi.mock("@/lib/db", () => ({
   db: {
     emailCampaign: {
       findUnique: emailCampaignFindUniqueMock,
+      findFirst: emailCampaignFindFirstMock,
       findMany: emailCampaignFindManyMock,
       create: emailCampaignCreateMock,
       update: emailCampaignUpdateMock,
@@ -73,6 +75,7 @@ describe("triggerContentfulPublishCampaign", () => {
     vi.clearAllMocks();
     process.env.POSTMARK_FROM_EMAIL = "Shruti <hello@example.com>";
     emailCampaignFindUniqueMock.mockResolvedValue(null);
+    emailCampaignFindFirstMock.mockResolvedValue(null);
     emailCampaignFindManyMock.mockResolvedValue([]);
     emailCampaignCreateMock.mockResolvedValue({
       id: "campaign_123",
@@ -194,6 +197,15 @@ describe("triggerContentfulPublishCampaign", () => {
       where: { providerCampaignId: "contentful:blogPost:blog_123:blog" },
       select: { id: true, status: true },
     });
+    expect(emailCampaignFindFirstMock).toHaveBeenCalledWith({
+      where: {
+        contentfulEntryId: "blog_123",
+        contentfulContentType: "blogPost",
+        audienceType: "blog",
+      },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, status: true },
+    });
     expect(emailCampaignCreateMock).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -219,7 +231,14 @@ describe("triggerContentfulPublishCampaign", () => {
     expect(sendEmailBatchMock).toHaveBeenCalledWith([
       expect.objectContaining({
         Subject: "New blog post: Training Around Flares",
-        TextBody: expect.stringContaining("https://shrutiturner.test/blog/training-around-flares"),
+        TextBody: expect.stringContaining(
+          "I've just published a new post on my blog I thought you'd be interested in."
+        ),
+      }),
+    ]);
+    expect(sendEmailBatchMock).toHaveBeenCalledWith([
+      expect.objectContaining({
+        TextBody: expect.stringContaining("Hope you enjoy,\nShruti"),
       }),
     ]);
   });
@@ -259,6 +278,77 @@ describe("triggerContentfulPublishCampaign", () => {
       select: { id: true, status: true },
     });
     expect(emailCampaignCreateMock).not.toHaveBeenCalled();
+    expect(sendEmailBatchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not resend a blog campaign while a previous publish event is still sending", async () => {
+    emailCampaignFindUniqueMock.mockResolvedValueOnce({
+      id: "campaign_sending",
+      status: "sending",
+    });
+    getEntriesMock.mockResolvedValue({
+      items: [
+        {
+          sys: { id: "blog_123" },
+          fields: {
+            title: "Training Around Flares",
+            slug: "training-around-flares",
+            excerpt: "Updated excerpt.",
+          },
+        },
+      ],
+    });
+
+    await expect(
+      triggerContentfulPublishCampaign({
+        contentType: "blogPost",
+        contentfulEntryId: "blog_123",
+        contentfulVersion: "8",
+      })
+    ).resolves.toEqual({
+      skipped: true,
+      reason: "already_sending",
+      campaignId: "campaign_sending",
+    });
+
+    expect(emailCampaignCreateMock).not.toHaveBeenCalled();
+    expect(emailCampaignUpdateMock).not.toHaveBeenCalled();
+    expect(sendEmailBatchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not resend a republished blog post when an earlier campaign exists for the entry id", async () => {
+    emailCampaignFindUniqueMock.mockResolvedValueOnce(null);
+    emailCampaignFindFirstMock.mockResolvedValueOnce({
+      id: "campaign_by_entry",
+      status: "sent",
+    });
+    getEntriesMock.mockResolvedValue({
+      items: [
+        {
+          sys: { id: "blog_123" },
+          fields: {
+            title: "Training Around Flares",
+            slug: "training-around-flares",
+            excerpt: "Edited excerpt after publish.",
+          },
+        },
+      ],
+    });
+
+    await expect(
+      triggerContentfulPublishCampaign({
+        contentType: "blogPost",
+        contentfulEntryId: "blog_123",
+        contentfulVersion: "9",
+      })
+    ).resolves.toEqual({
+      skipped: true,
+      reason: "already_sent",
+      campaignId: "campaign_by_entry",
+    });
+
+    expect(emailCampaignCreateMock).not.toHaveBeenCalled();
+    expect(emailCampaignUpdateMock).not.toHaveBeenCalled();
     expect(sendEmailBatchMock).not.toHaveBeenCalled();
   });
 

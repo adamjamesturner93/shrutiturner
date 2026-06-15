@@ -56,6 +56,7 @@ function createAppAuthAdapter(): Adapter {
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: createAppAuthAdapter(),
   secret: env.AUTH_SECRET,
+  trustHost: true,
   session: {
     strategy: "jwt",
     maxAge: SESSION_MAX_AGE_SECONDS,

@@ -42,7 +42,7 @@ export default function BlogPostEmail({
       <Text style={{ ...bodyTextStyle, marginBottom: "24px" }}>Hi {firstName},</Text>
 
       <Text style={bodyTextStyle}>
-        {"There\u2019s a new post on the blog I thought you\u2019d enjoy."}
+        {"I\u2019ve just published a new post on my blog I thought you\u2019d be interested in."}
       </Text>
 
       {/* Article Card */}
@@ -159,7 +159,7 @@ export default function BlogPostEmail({
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>
-        With warmth,
+        Hope you enjoy,
         <br />
         Shruti
       </Text>

@@ -22,7 +22,7 @@ export const CANONICAL_LEAD_MAGNET = {
   cardDescription: FREE_GUIDE_SUPPORTING_LINE,
   cardTitle: FREE_GUIDE_TITLE,
   emailBody: `Hi {{firstName}},\n\nThanks for joining. Here is your guide: ${FREE_GUIDE_TITLE}.\n\n{{leadMagnetLink}}\n\nShruti`,
-  emailPreviewText: "Confirm your email to receive the guide and launch updates.",
+  emailPreviewText: "Confirm your email to receive the guide.",
   emailSubject: `Your free guide: ${FREE_GUIDE_TITLE}`,
   hookText: `Get the free guide to your inbox - "${FREE_GUIDE_TITLE}"`,
   landingDescription: FREE_GUIDE_SUPPORTING_LINE,

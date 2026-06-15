@@ -20,7 +20,11 @@ const richTextDocument = {
   content: [
     {
       nodeType: "paragraph",
-      content: [{ nodeType: "text", value: "Intro paragraph." }],
+      content: [
+        { nodeType: "text", value: "Intro " },
+        { nodeType: "text", value: "paragraph", marks: [{ type: "bold" }] },
+        { nodeType: "text", value: "." },
+      ],
     },
     {
       nodeType: "heading-2",
@@ -104,6 +108,7 @@ describe("Contentful public content mapping", () => {
       authors: [expect.objectContaining({ name: "Guest Author" })],
     });
     expect(posts[0]?.content).toContain("- First point");
+    expect(posts[0]?.content).toContain("Intro **paragraph**.");
   });
 
   it("loads draft blog previews from the Contentful preview API", async () => {

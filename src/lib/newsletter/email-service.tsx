@@ -33,7 +33,7 @@ export async function sendNewsletterVerificationEmail(input: {
 
   await sendPostmarkReactEmail({
     to: input.email,
-    subject: "Confirm your email to get launch updates",
+    subject: "Confirm your email to get your free guide",
     react: (
       <NewsletterVerificationEmail
         firstName={input.firstName || "there"}
@@ -46,10 +46,11 @@ export async function sendNewsletterVerificationEmail(input: {
     textBody: [
       `Hi ${input.firstName || "there"},`,
       "",
-      `Confirm your email to receive launch updates and your free guide, ${leadMagnetTitle}:`,
+      `Confirm your email to receive your free guide, ${leadMagnetTitle}:`,
       verificationUrl,
       "",
       "This link expires in 24 hours.",
+      "By confirming, you agree to receive occasional emails about new writing, useful resources and ways to work together. You can unsubscribe at any time.",
       `Privacy policy: ${privacyUrl}`,
       `Unsubscribe: ${unsubscribeUrl}`,
     ].join("\n"),
@@ -94,8 +95,8 @@ export async function sendLeadMagnetDeliveryEmail(input: {
         welcomeCopy={
           "Thanks for confirming your email.\n\nYour free guide is ready below and future updates will only arrive when there is something genuinely useful to share."
         }
-        classesUrl={buildAbsoluteUrl("/classes")}
-        aboutUrl={buildAbsoluteUrl("/about")}
+        offersUrl={buildAbsoluteUrl("/#work-with-me")}
+        blogUrl={buildAbsoluteUrl("/blog")}
         privacyUrl={privacyUrl}
         unsubscribeUrl={unsubscribeUrl}
       />

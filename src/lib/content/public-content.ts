@@ -185,11 +185,21 @@ function renderRichTextNode(node: unknown): string {
     nodeType?: unknown;
     value?: unknown;
     content?: unknown;
+    marks?: unknown;
   };
   const nodeType = typeof richNode.nodeType === "string" ? richNode.nodeType : "";
 
   if (nodeType === "text") {
-    return typeof richNode.value === "string" ? richNode.value : "";
+    let value = typeof richNode.value === "string" ? richNode.value : "";
+    const marks = Array.isArray(richNode.marks) ? richNode.marks : [];
+    for (const mark of marks) {
+      if (!mark || typeof mark !== "object" || Array.isArray(mark)) continue;
+      const type = (mark as { type?: unknown }).type;
+      if (type === "bold") value = `**${value}**`;
+      if (type === "italic") value = `_${value}_`;
+      if (type === "code") value = `\`${value}\``;
+    }
+    return value;
   }
 
   const children = Array.isArray(richNode.content)

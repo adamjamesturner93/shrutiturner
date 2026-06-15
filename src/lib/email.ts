@@ -386,7 +386,7 @@ export async function sendPurchaseConfirmation(
       amount,
       invoiceId,
       date: formatDate(new Date(), userPrefs),
-      scheduleUrl: `${APP_URL}/dashboard/schedule`,
+      accountUrl: `${APP_URL}/dashboard`,
     });
 
     await sendPostmarkReactEmail({
@@ -400,7 +400,7 @@ export async function sendPurchaseConfirmation(
         `Thanks for your purchase: ${purchaseDescription}.`,
         `Amount: ${amount}`,
         `Invoice: ${invoiceId}`,
-        `Manage your schedule: ${APP_URL}/dashboard/schedule`,
+        `View your account: ${APP_URL}/dashboard`,
       ].join("\n"),
       tag: "purchase-confirmation",
       templateKey: "purchase-confirmation",
