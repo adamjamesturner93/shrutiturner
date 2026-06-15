@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "../styles/index.css";
 import { Providers } from "./providers";
 import { env } from "@/lib/env";
@@ -39,6 +41,8 @@ gtag('config', '${gaMeasurementId}', { anonymize_ip: true });`}
           </>
         ) : null}
         <Providers platformSettings={platformSettings}>{children}</Providers>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
