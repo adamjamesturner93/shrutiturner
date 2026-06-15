@@ -260,7 +260,7 @@ function mapBlogPostContent(
       ? item.fields.coverImageUrl.trim()
       : "";
   const slug = requireStringField("blogPost", item, "slug");
-  const authors = mapBlogPostAuthors(item, includes.Entry);
+  const authors = mapBlogPostAuthors(item, includes);
 
   return {
     id: slug,
@@ -287,12 +287,23 @@ function mapBlogPostContent(
 
 function mapAuthorProfile(
   id: string,
-  fields: Record<string, unknown> | null | undefined
+  fields: Record<string, unknown> | null | undefined,
+  includes?: {
+    Asset?: Array<{ sys: { id: string }; fields: Record<string, unknown> }>;
+  }
 ): AuthorProfileContent | null {
   if (!fields) return null;
 
   const name = fields.name ? String(fields.name) : "";
   if (!name) return null;
+  const avatarAssetId = getLinkedEntryId(fields.avatarImageAsset);
+  const avatarAsset = getIncludedAssetById(includes?.Asset, avatarAssetId);
+  const avatarAssetUrl = readContentfulAssetUrl(avatarAsset?.fields);
+  const avatarUrl =
+    avatarAssetUrl ||
+    (typeof fields.avatarImageUrl === "string" && fields.avatarImageUrl.trim()
+      ? fields.avatarImageUrl.trim()
+      : "");
 
   return {
     id,
@@ -300,10 +311,11 @@ function mapAuthorProfile(
     name,
     role: fields.role ? String(fields.role) : undefined,
     bio: fields.bio ? String(fields.bio) : "",
-    avatarImageUrl: fields.avatarImageUrl
-      ? String(fields.avatarImageUrl)
-      : createFallbackAvatar(name),
-    avatarAlt: fields.avatarAlt ? String(fields.avatarAlt) : `${name} avatar`,
+    avatarImageUrl: avatarUrl ? toContentfulImageUrl(avatarUrl, 256) : createFallbackAvatar(name),
+    avatarAlt:
+      (fields.avatarAlt ? String(fields.avatarAlt) : "") ||
+      readContentfulAssetAlt(avatarAsset?.fields) ||
+      `${name} avatar`,
     websiteUrl: fields.websiteUrl ? String(fields.websiteUrl) : undefined,
     instagramHandle: fields.instagramHandle ? String(fields.instagramHandle) : undefined,
     isGuestContributor: fields.isGuestContributor === true,
@@ -313,14 +325,19 @@ function mapAuthorProfile(
 
 function mapBlogPostAuthors(
   item: ContentfulMappedEntry,
-  includes: Array<{ sys: { id: string }; fields: Record<string, unknown> }> | undefined
+  includes:
+    | {
+        Entry?: Array<{ sys: { id: string }; fields: Record<string, unknown> }>;
+        Asset?: Array<{ sys: { id: string }; fields: Record<string, unknown> }>;
+      }
+    | undefined
 ) {
   const linkedAuthors = Array.isArray(item.fields.authors)
     ? item.fields.authors
         .map((authorRef) => {
           const authorId = getLinkedEntryId(authorRef);
-          const linkedEntry = getIncludedEntryById(includes, authorId);
-          return mapAuthorProfile(authorId || "", linkedEntry?.fields);
+          const linkedEntry = getIncludedEntryById(includes?.Entry, authorId);
+          return mapAuthorProfile(authorId || "", linkedEntry?.fields, includes);
         })
         .filter((author): author is AuthorProfileContent => Boolean(author))
     : [];

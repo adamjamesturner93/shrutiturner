@@ -140,6 +140,35 @@ export const EMPTY_HEALTH_PROFILE: HealthProfile = {
   needsReview: false,
 };
 
+export function normalizeHealthProfile(profile?: Partial<HealthProfile> | null): HealthProfile {
+  return {
+    ...EMPTY_HEALTH_PROFILE,
+    ...profile,
+    declarationStatus: profile?.declarationStatus || EMPTY_HEALTH_PROFILE.declarationStatus,
+    conditions:
+      profile?.conditions && typeof profile.conditions === "object" ? profile.conditions : {},
+    details: profile?.details && typeof profile.details === "object" ? profile.details : {},
+    tracksFlareCheckIns: Boolean(profile?.tracksFlareCheckIns),
+    additionalNotes: profile?.additionalNotes || "",
+    lastConfirmedAt: profile?.lastConfirmedAt || "",
+    lastUpdated: profile?.lastUpdated || "",
+    needsReview: Boolean(profile?.needsReview),
+  };
+}
+
+export function normalizeHealthProfileApiResponse(payload: unknown): HealthProfile {
+  if (payload && typeof payload === "object" && "data" in payload) {
+    const data = (payload as { data?: unknown }).data;
+    if (data && typeof data === "object") {
+      return normalizeHealthProfile(data as Partial<HealthProfile>);
+    }
+  }
+
+  return normalizeHealthProfile(
+    payload && typeof payload === "object" ? (payload as Partial<HealthProfile>) : null
+  );
+}
+
 // Mock data for Sarah Chen (our test user)
 export const MOCK_HEALTH_PROFILE: HealthProfile = {
   declarationStatus: "context_declared",

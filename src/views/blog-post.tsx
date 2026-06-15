@@ -156,7 +156,10 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
         </div>
       </section>
 
-      <MarketingSection className="section-wash" contentClassName="max-w-4xl">
+      <MarketingSection
+        className="section-wash pt-16 pb-6 md:pt-20 md:pb-8"
+        contentClassName="max-w-4xl"
+      >
         <article className="marketing-panel rounded-[2rem] p-6 md:p-8">
           <div className="prose prose-lg max-w-none">
             <div className="space-y-6 leading-relaxed" style={{ whiteSpace: "pre-line" }}>
@@ -232,90 +235,10 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
             </div>
           </div>
         </article>
-
-        {authors.length > 0 ? (
-          <section className="mt-10">
-            <div className="mb-6 flex items-center justify-between gap-3">
-              <h2 className="text-2xl md:text-3xl">{authorHeading}</h2>
-              {authors.length > 1 ? (
-                <Badge variant="secondary">{authors.length} contributors</Badge>
-              ) : null}
-            </div>
-
-            <div className="grid gap-5 md:grid-cols-2">
-              {authors.map((author) => (
-                <div
-                  key={author.slug}
-                  className="bg-card border-brand-dark/10 rounded-[1.6rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="bg-brand-warm h-16 w-16 overflow-hidden rounded-full">
-                      {author.avatarImageUrl ? (
-                        <ImageWithFallback
-                          src={author.avatarImageUrl}
-                          alt={author.avatarAlt || `${author.name} avatar`}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="text-brand-dark flex h-full w-full items-center justify-center text-sm font-semibold">
-                          {author.name
-                            .split(" ")
-                            .map((part) => part[0])
-                            .join("")
-                            .slice(0, 2)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1 space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-xl">{author.name}</h3>
-                        {author.isGuestContributor ? (
-                          <Badge variant="outline">Guest Contributor</Badge>
-                        ) : null}
-                      </div>
-                      {author.role ? (
-                        <p className="text-muted-foreground text-sm">{author.role}</p>
-                      ) : null}
-                      {author.bio ? (
-                        <p className="text-muted-foreground text-sm leading-relaxed">
-                          {author.bio}
-                        </p>
-                      ) : null}
-                      <div className="flex flex-wrap gap-3 pt-2 text-sm">
-                        {author.websiteUrl ? (
-                          <Link
-                            href={author.websiteUrl}
-                            className="text-brand-accent inline-flex items-center gap-1 hover:underline"
-                          >
-                            <Globe className="h-4 w-4" />
-                            Website
-                          </Link>
-                        ) : null}
-                        {author.instagramHandle ? (
-                          <Link
-                            href={
-                              author.instagramHandle.startsWith("http")
-                                ? author.instagramHandle
-                                : `https://instagram.com/${author.instagramHandle.replace(/^@/, "")}`
-                            }
-                            className="text-brand-accent inline-flex items-center gap-1 hover:underline"
-                          >
-                            <Instagram className="h-4 w-4" />
-                            {author.instagramHandle}
-                          </Link>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
       </MarketingSection>
 
-      <MarketingSection compact contentClassName="max-w-4xl">
-        <div className="space-y-8">
+      <MarketingSection className="pt-4 pb-12 md:pt-6 md:pb-14" contentClassName="max-w-4xl">
+        <div className="space-y-6">
           <div className="marketing-panel flex flex-col items-start justify-between gap-4 rounded-[1.75rem] p-6 sm:flex-row sm:items-center">
             <p className="text-muted-foreground">
               Found this useful? Share it with someone who might benefit.
@@ -329,6 +252,7 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
 
           <BlogReactions postId={post.id} />
           <BlogComments postId={post.id} />
+          <AuthorBioSection authors={authors} authorHeading={authorHeading} />
         </div>
       </MarketingSection>
 
@@ -470,5 +394,96 @@ function ContextualPostCta({ cta }: { cta: BlogPostContextualCta }) {
         </Button>
       </div>
     </aside>
+  );
+}
+
+function AuthorBioSection({
+  authors,
+  authorHeading,
+}: {
+  authors: ReturnType<typeof getPostAuthors>;
+  authorHeading: string;
+}) {
+  if (authors.length === 0) return null;
+
+  return (
+    <section>
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <h2 className="text-2xl md:text-3xl">{authorHeading}</h2>
+        {authors.length > 1 ? (
+          <Badge variant="secondary">{authors.length} contributors</Badge>
+        ) : null}
+      </div>
+
+      <div className="space-y-5">
+        {authors.map((author) => (
+          <div
+            key={author.slug}
+            className="bg-card border-brand-dark/10 rounded-[1.6rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]"
+          >
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+              <div className="bg-brand-warm h-20 w-20 shrink-0 overflow-hidden rounded-full">
+                {author.avatarImageUrl ? (
+                  <ImageWithFallback
+                    src={author.avatarImageUrl}
+                    alt={author.avatarAlt || `${author.name} avatar`}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="text-brand-dark flex h-full w-full items-center justify-center text-sm font-semibold">
+                    {author.name
+                      .split(" ")
+                      .map((part) => part[0])
+                      .join("")
+                      .slice(0, 2)}
+                  </div>
+                )}
+              </div>
+
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-xl">{author.name}</h3>
+                  {author.isGuestContributor ? (
+                    <Badge variant="outline">Guest Contributor</Badge>
+                  ) : null}
+                </div>
+                {author.role ? (
+                  <p className="text-muted-foreground text-sm">{author.role}</p>
+                ) : null}
+                {author.bio ? (
+                  <p className="text-muted-foreground max-w-none text-sm leading-relaxed md:text-base">
+                    {author.bio}
+                  </p>
+                ) : null}
+                <div className="flex flex-wrap gap-3 pt-2 text-sm">
+                  {author.websiteUrl ? (
+                    <Link
+                      href={author.websiteUrl}
+                      className="text-brand-accent inline-flex items-center gap-1 hover:underline"
+                    >
+                      <Globe className="h-4 w-4" />
+                      Website
+                    </Link>
+                  ) : null}
+                  {author.instagramHandle ? (
+                    <Link
+                      href={
+                        author.instagramHandle.startsWith("http")
+                          ? author.instagramHandle
+                          : `https://instagram.com/${author.instagramHandle.replace(/^@/, "")}`
+                      }
+                      className="text-brand-accent inline-flex items-center gap-1 hover:underline"
+                    >
+                      <Instagram className="h-4 w-4" />
+                      {author.instagramHandle}
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

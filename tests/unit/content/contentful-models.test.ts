@@ -54,11 +54,14 @@ describe("Contentful public content models", () => {
 
   it("keeps blog author and publish date derived from linked profiles and Contentful metadata", () => {
     const blogModel = PUBLIC_CONTENT_MODELS.find((model) => model.id === "blogPost");
+    const authorModel = PUBLIC_CONTENT_MODELS.find((model) => model.id === "authorProfile");
     const fieldIds = blogModel?.fields.map((field) => field.id) ?? [];
+    const authorFieldIds = authorModel?.fields.map((field) => field.id) ?? [];
 
     expect(fieldIds).toEqual(
       expect.arrayContaining(["coverImageAsset", "coverImageUrl", "authors"])
     );
+    expect(authorFieldIds).toEqual(expect.arrayContaining(["avatarImageAsset"]));
     expect(fieldIds).not.toEqual(
       expect.arrayContaining(["authorName", "publishDate", "isNewsletter"])
     );

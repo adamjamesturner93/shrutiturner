@@ -1,9 +1,8 @@
 import { PUBLIC_CONTENT_MODELS } from "../migrations/001-public-content-models.ts";
-import contentfulManagement from "contentful-management";
+import { createClient } from "contentful-management";
 import { getContentfulScriptEnv } from "./env.ts";
 
 const { spaceId, environmentId, managementToken } = getContentfulScriptEnv();
-const { createClient } = contentfulManagement;
 
 const client = createClient({ accessToken: managementToken }, { type: "legacy" });
 const CMA_BASE_URL = `https://api.contentful.com/spaces/${spaceId}/environments/${environmentId}`;

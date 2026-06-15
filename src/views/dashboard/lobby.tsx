@@ -13,7 +13,11 @@ import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-su
 import { ArrowRight, CheckCircle, Shield, HeartPulse, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import type { DashboardSummaryDto, OnboardingStateDto } from "@/lib/api/types";
-import { EMPTY_HEALTH_PROFILE, type HealthProfile } from "@/data/health-profile-data";
+import {
+  EMPTY_HEALTH_PROFILE,
+  normalizeHealthProfileApiResponse,
+  type HealthProfile,
+} from "@/data/health-profile-data";
 import { getApiErrorMessage } from "@/lib/api/client";
 import { getGreeting } from "@/components/greeting";
 import {
@@ -205,18 +209,18 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
       throw new Error(payload?.message || "Could not save health profile.");
     }
 
-    const savedProfile = (await response.json()) as HealthProfile;
+    const savedProfile = normalizeHealthProfileApiResponse(await response.json());
     const account = await refreshAccountProfile();
     setOnboardingStep(resolveOnboardingStep(account?.profile?.onboarding?.nextStep));
     setSummary((prev) =>
       prev
         ? {
-          ...prev,
-          hasHealthProfile: true,
-          healthDeclarationStatus: savedProfile.declarationStatus,
-          healthDeclarationLastConfirmedAt: savedProfile.lastConfirmedAt,
-          healthDeclarationNeedsReview: false,
-        }
+            ...prev,
+            hasHealthProfile: true,
+            healthDeclarationStatus: savedProfile.declarationStatus,
+            healthDeclarationLastConfirmedAt: savedProfile.lastConfirmedAt,
+            healthDeclarationNeedsReview: false,
+          }
         : prev
     );
   };
@@ -228,14 +232,14 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
       if (!response.ok) {
         throw new Error("Could not confirm health declaration.");
       }
-      const payload = (await response.json()) as HealthProfile;
+      const payload = normalizeHealthProfileApiResponse(await response.json());
       setSummary((prev) =>
         prev
           ? {
-            ...prev,
-            healthDeclarationLastConfirmedAt: payload.lastConfirmedAt,
-            healthDeclarationNeedsReview: false,
-          }
+              ...prev,
+              healthDeclarationLastConfirmedAt: payload.lastConfirmedAt,
+              healthDeclarationNeedsReview: false,
+            }
           : prev
       );
       await refreshAccountProfile();

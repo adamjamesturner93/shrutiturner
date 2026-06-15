@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Heart } from "lucide-react";
 import { motion } from "motion/react";
-import { Button } from "./ui/button";
 import type { BlogEngagementDto } from "@/lib/api/types";
+import { cn } from "./ui/utils";
 
 interface BlogReactionsProps {
   postId: string;
@@ -44,16 +44,16 @@ export function BlogReactions({ postId }: BlogReactionsProps) {
 
   return (
     <div className="flex items-center gap-3">
-      <motion.div whileTap={{ scale: 1.3 }}>
-        <Button
-          variant="ghost"
-          size="sm"
+      <motion.div whileTap={{ scale: 1.12 }}>
+        <button
+          type="button"
           onClick={() => void handleToggle()}
-          className={`gap-2 rounded-full border px-3 py-2 transition-colors ${
+          className={cn(
+            "inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-base font-semibold shadow-sm transition-all hover:-translate-y-0.5 focus-visible:ring-3 focus-visible:outline-none",
             hasReacted
-              ? "border-destructive/20 bg-destructive/5 text-destructive hover:bg-destructive/10"
-              : "border-border text-muted-foreground hover:border-destructive/30 hover:text-destructive"
-          }`}
+              ? "border-destructive bg-destructive/10 text-destructive hover:border-destructive hover:bg-destructive/15 hover:text-destructive focus-visible:ring-destructive/25"
+              : "border-brand-accent/45 bg-brand-warm/70 text-brand-accent hover:border-destructive/45 hover:bg-destructive/8 hover:text-destructive focus-visible:ring-brand-accent/25"
+          )}
           aria-label={hasReacted ? "Remove reaction" : "React with heart"}
           aria-pressed={hasReacted}
         >
@@ -62,8 +62,8 @@ export function BlogReactions({ postId }: BlogReactionsProps) {
               hasReacted ? "fill-destructive text-destructive" : ""
             }`}
           />
-          <span className="text-sm tabular-nums">{count}</span>
-        </Button>
+          <span className="tabular-nums">{count}</span>
+        </button>
       </motion.div>
     </div>
   );

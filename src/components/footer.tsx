@@ -62,9 +62,8 @@ export function Footer() {
               <IconHorizontal tone="white" className="h-12 w-auto" />
             </div>
             <p className="text-brand-white/70 max-w-md leading-relaxed">
-              Science-backed individual movement support for adults with chronic illness,
-              autoimmune conditions and injury recovery. PhD rehabilitation. Living with psoriatic
-              arthritis.
+              Science-backed individual movement support for adults with chronic illness, autoimmune
+              conditions and injury recovery. PhD rehabilitation. Living with psoriatic arthritis.
             </p>
 
             {/* Newsletter in footer */}
@@ -140,7 +139,7 @@ export function Footer() {
             {/* Social Media */}
             <div className="flex items-center gap-4 pt-2">
               <a
-                href="https://youtube.com/@TheChronicYogini"
+                href="https://youtube.com/@shrutiturner"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand-white/60 hover:text-brand-accent-light transition-colors"
@@ -173,20 +172,20 @@ export function Footer() {
           <nav aria-label="Footer services">
             <h4 className="text-brand-accent-light mb-4">Services</h4>
             <ul className="text-brand-white/70 space-y-2">
-	              <li>
-	                <Link href="/coaching" className="hover:text-brand-accent-light transition-colors">
+              <li>
+                <Link href="/coaching" className="hover:text-brand-accent-light transition-colors">
                   1:1 Offers
-	                </Link>
-	              </li>
-	            </ul>
-	          </nav>
+                </Link>
+              </li>
+            </ul>
+          </nav>
 
           {/* Company */}
           <nav aria-label="Footer company">
             <h4 className="text-brand-accent-light mb-4">Company</h4>
             <ul className="text-brand-white/70 space-y-2">
-	              <li>
-	                <Link href="/blog" className="hover:text-brand-accent-light transition-colors">
+              <li>
+                <Link href="/blog" className="hover:text-brand-accent-light transition-colors">
                   Blog & Resources
                 </Link>
               </li>

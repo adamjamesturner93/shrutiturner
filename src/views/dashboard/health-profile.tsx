@@ -10,6 +10,8 @@ import { AppEmptyState, AppPageHeader } from "@/components/app-surface";
 import {
   EMPTY_HEALTH_PROFILE,
   HEALTH_CATEGORIES,
+  normalizeHealthProfileApiResponse,
+  normalizeHealthProfile,
   type HealthProfile,
 } from "../../data/health-profile-data";
 import { useI18n } from "../../lib/use-i18n";
@@ -26,7 +28,9 @@ type LegalAcceptanceResponse = {
 export function HealthProfilePage({ initialProfile }: { initialProfile?: HealthProfile }) {
   const { fmtDate } = useI18n();
   const { user, acceptHealthDataConsent, refreshAccountProfile } = useAuth();
-  const [profile, setProfile] = useState<HealthProfile>(initialProfile || EMPTY_HEALTH_PROFILE);
+  const [profile, setProfile] = useState<HealthProfile>(() =>
+    normalizeHealthProfile(initialProfile || EMPTY_HEALTH_PROFILE)
+  );
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(!initialProfile);
   const [confirming, setConfirming] = useState(false);
@@ -42,8 +46,8 @@ export function HealthProfilePage({ initialProfile }: { initialProfile?: HealthP
       try {
         const res = await fetch("/api/me/health-profile", { cache: "no-store" });
         if (!res.ok) throw new Error("Failed to load health profile.");
-        const data = (await res.json()) as HealthProfile;
-        if (active) setProfile(data);
+        const data = await res.json();
+        if (active) setProfile(normalizeHealthProfileApiResponse(data));
       } catch (e) {
         if (active) setError(e instanceof Error ? e.message : "Failed to load health profile.");
       } finally {
@@ -113,9 +117,9 @@ export function HealthProfilePage({ initialProfile }: { initialProfile?: HealthP
         throw new Error(payload?.message || "Failed to save health profile.");
       }
 
-      const next = (await res.json()) as HealthProfile;
+      const next = await res.json();
       await refreshAccountProfile();
-      setProfile(next);
+      setProfile(normalizeHealthProfileApiResponse(next));
       setEditing(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save health profile.");
@@ -146,8 +150,8 @@ export function HealthProfilePage({ initialProfile }: { initialProfile?: HealthP
         }
         throw new Error(payload?.message || "Failed to confirm health declaration.");
       }
-      const next = (await res.json()) as HealthProfile;
-      setProfile(next);
+      const next = await res.json();
+      setProfile(normalizeHealthProfileApiResponse(next));
       await refreshAccountProfile();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to confirm health declaration.");

@@ -3,11 +3,8 @@ import { join } from "node:path";
 import { ImageResponse } from "next/og";
 
 async function loadIconDataUrl() {
-  const svg = await readFile(
-    join(process.cwd(), "public", "logos", "logo-colour-icon-only.svg"),
-    "utf8"
-  );
-  return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+  const png = await readFile(join(process.cwd(), "public", "favicon.png"));
+  return `data:image/png;base64,${Buffer.from(png).toString("base64")}`;
 }
 
 export async function renderBrandIcon({ width, height }: { width: number; height: number }) {

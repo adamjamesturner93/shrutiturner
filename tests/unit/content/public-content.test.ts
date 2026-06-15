@@ -71,11 +71,20 @@ const blogPostResponse = {
           name: "Guest Author",
           slug: "guest-author",
           bio: "Guest bio",
+          avatarImageAsset: { sys: { id: "asset_author" } },
           active: true,
         },
       },
     ],
     Asset: [
+      {
+        sys: { id: "asset_author" },
+        fields: {
+          title: "Guest author portrait",
+          description: "Guest author smiling",
+          file: { url: "//images.ctfassets.net/space/author.jpg" },
+        },
+      },
       {
         sys: { id: "asset_1" },
         fields: {
@@ -105,7 +114,13 @@ describe("Contentful public content mapping", () => {
       author: "Guest Author",
       coverImage: "https://images.ctfassets.net/space/image.jpg?w=1200&fm=webp&q=80",
       coverAlt: "Coach demonstrating a movement",
-      authors: [expect.objectContaining({ name: "Guest Author" })],
+      authors: [
+        expect.objectContaining({
+          name: "Guest Author",
+          avatarImageUrl: "https://images.ctfassets.net/space/author.jpg?w=256&fm=webp&q=80",
+          avatarAlt: "Guest author smiling",
+        }),
+      ],
     });
     expect(posts[0]?.content).toContain("- First point");
     expect(posts[0]?.content).toContain("Intro **paragraph**.");

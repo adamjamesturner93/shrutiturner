@@ -29,7 +29,7 @@ import { TurnstileWidget } from "@/components/turnstile-widget";
 const GUIDE_BENEFITS = CANONICAL_LEAD_MAGNET.subscribeBenefits;
 
 const SOCIAL_LINKS = [
-  { href: "https://youtube.com/@TheChronicYogini", label: "YouTube", icon: Youtube },
+  { href: "https://youtube.com/@shrutiturner", label: "YouTube", icon: Youtube },
   { href: "https://instagram.com/shrutiturner", label: "Instagram", icon: Instagram },
   { href: "https://facebook.com/profile.php?id=61556124191934", label: "Facebook", icon: Facebook },
 ];
@@ -181,8 +181,8 @@ export function SubscribePage() {
                       Inside the emails
                     </p>
                     <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                      Training decisions, symptom-aware progressions and honest notes on how to
-                      keep building capacity without crashing.
+                      Training decisions, symptom-aware progressions and honest notes on how to keep
+                      building capacity without crashing.
                     </p>
                   </div>
                 </div>
@@ -313,7 +313,7 @@ export function SubscribePage() {
 
           <div className="grid gap-6">
             <a
-              href="https://youtube.com/@TheChronicYogini"
+              href="https://youtube.com/@shrutiturner"
               target="_blank"
               rel="noopener noreferrer"
               className="group block"

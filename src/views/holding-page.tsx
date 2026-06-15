@@ -15,7 +15,7 @@ const SOCIAL_LINKS = [
     label: "Instagram",
   },
   {
-    href: "https://youtube.com/@TheChronicYogini",
+    href: "https://youtube.com/@shrutiturner",
     icon: Youtube,
     label: "YouTube",
   },

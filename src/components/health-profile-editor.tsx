@@ -13,6 +13,7 @@ import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import {
   HEALTH_CATEGORIES,
+  normalizeHealthProfile,
   type HealthProfile,
   type HealthCategory,
 } from "../data/health-profile-data";
@@ -43,16 +44,19 @@ export function HealthProfileEditor({
   requireConsentAcknowledgement = true,
   initialConsentAccepted = false,
 }: HealthProfileEditorProps) {
+  const safeProfile = normalizeHealthProfile(profile);
   const [conditions, setConditions] = useState<Record<string, boolean>>(() => ({
-    ...profile.conditions,
+    ...safeProfile.conditions,
   }));
-  const [details, setDetails] = useState<Record<string, string>>(() => ({ ...profile.details }));
-  const [additionalNotes, setAdditionalNotes] = useState(profile.additionalNotes);
+  const [details, setDetails] = useState<Record<string, string>>(() => ({
+    ...safeProfile.details,
+  }));
+  const [additionalNotes, setAdditionalNotes] = useState(safeProfile.additionalNotes);
   const [tracksFlareCheckIns, setTracksFlareCheckIns] = useState(
-    Boolean(profile.tracksFlareCheckIns)
+    Boolean(safeProfile.tracksFlareCheckIns)
   );
   const [nothingToDeclare, setNothingToDeclare] = useState(
-    profile.declarationStatus === "none_declared"
+    safeProfile.declarationStatus === "none_declared"
   );
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() => {
     // Auto-expand categories that have selections
@@ -121,7 +125,7 @@ export function HealthProfileEditor({
         details,
         tracksFlareCheckIns,
         additionalNotes,
-        lastConfirmedAt: profile.lastConfirmedAt,
+        lastConfirmedAt: safeProfile.lastConfirmedAt,
         lastUpdated: new Date().toISOString().split("T")[0],
       },
       consentAccepted

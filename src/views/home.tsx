@@ -154,7 +154,7 @@ export function HomePage({ recentPosts, testimonials }: HomePageProps) {
               <div className="aspect-[4/4.75] overflow-hidden rounded-[1.45rem]">
                 <ImageWithFallback
                   src="/images/shruti.jpeg"
-                  alt="Shruti Turner teaching inclusive movement and strength"
+                  alt="Shruti Turner hiking in the mountains"
                   className="h-full w-full object-cover"
                 />
               </div>

@@ -54,7 +54,7 @@ export function CoachingPage() {
             <span className="text-brand-accent-light"> your real body</span>, not generic advice.
           </>
         }
-        description="Every 1:1 offer starts with an application so support, programming and delivery through Everfit match you."
+        description="Every 1:1 offer starts with an application so support and programming work for you."
         primaryCta={{ href: "#tiers", label: "Explore 1:1 Offers" }}
         secondaryCta={{ href: "/coaching/apply", label: "Apply Now" }}
         metrics={[
@@ -78,8 +78,8 @@ export function CoachingPage() {
             <div className="border-brand-white/10 bg-brand-white/8 overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
               <div className="aspect-[4/5] overflow-hidden rounded-[1.45rem]">
                 <ImageWithFallback
-                  src="https://images.unsplash.com/photo-1654613412232-10aaf36df8a6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMHN0cmV0Y2hpbmclMjB5b2dhJTIwY2FsbSUyMG1pbmRmdWwlMjBtb3ZlbWVudHxlbnwxfHx8fDE3NzMzMjQ0NjF8MA&ixlib=rb-4.1.0&q=80&w=1080"
-                  alt="Mindful 1:1 movement support"
+                  src="/images/shruti-coaching.jpeg"
+                  alt="Shruti Turner running by the sea"
                   className="h-full w-full object-cover"
                 />
               </div>

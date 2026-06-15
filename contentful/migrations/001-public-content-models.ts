@@ -164,6 +164,7 @@ export const PUBLIC_CONTENT_MODELS: ContentTypeDefinition[] = [
       { id: "slug", name: "Slug", type: "Symbol", required: true, validations: [{ unique: true }] },
       { id: "role", name: "Role", type: "Symbol" },
       { id: "bio", name: "Bio", type: "Text", required: true },
+      { id: "avatarImageAsset", name: "Avatar Image", type: "Link", linkType: "Asset" },
       { id: "avatarImageUrl", name: "Avatar Image Url", type: "Symbol" },
       { id: "avatarAlt", name: "Avatar Alt", type: "Symbol" },
       { id: "websiteUrl", name: "Website Url", type: "Symbol" },
