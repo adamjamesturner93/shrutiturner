@@ -228,7 +228,14 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
                         return <p key={lineIndex}>{renderInlineMarkdown(line)}</p>;
                       })}
                     </div>
-                    {index === 1 ? <ContextualPostCta cta={contextualCta} /> : null}
+                    {index === 1 ? (
+                      <>
+                        <div className="not-prose my-8">
+                          <BlogReactions postId={post.id} />
+                        </div>
+                        <ContextualPostCta cta={contextualCta} />
+                      </>
+                    ) : null}
                   </Fragment>
                 );
               })}
@@ -250,7 +257,6 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
             />
           </div>
 
-          <BlogReactions postId={post.id} />
           <BlogComments postId={post.id} />
           <AuthorBioSection authors={authors} authorHeading={authorHeading} />
         </div>
