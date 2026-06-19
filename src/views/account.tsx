@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { getTimezoneOptions } from "../lib/date-i18n";
 import type { AccountDto, OnboardingStateDto } from "@/lib/api/types";
-import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
+import { AppPageHeader } from "@/components/app-surface";
 import { getApiErrorMessage, isApiSuccess } from "@/lib/api/client";
 
 const UNANSWERED_VALUE = "__unanswered__";
@@ -77,6 +77,10 @@ const ONBOARDING_STEP_LABELS: Record<OnboardingStateDto["missingSteps"][number],
   health: "Finish your health profile and consent",
 };
 
+function getDisplayName(firstName?: string | null, lastName?: string | null) {
+  return [firstName, lastName].filter(Boolean).join(" ").trim();
+}
+
 function calculateAge(dob: string): number {
   const birth = new Date(dob);
   const today = new Date();
@@ -116,8 +120,9 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
 
   const [activeTab, setActiveTab] = useState<AccountTab>("profile");
 
-  const [firstName, setFirstName] = useState(initialAccount.profile.firstName || "");
-  const [lastName, setLastName] = useState(initialAccount.profile.lastName || "");
+  const [displayName, setDisplayName] = useState(
+    getDisplayName(initialAccount.profile.firstName, initialAccount.profile.lastName)
+  );
   const [email, setEmail] = useState(initialAccount.profile.email || "");
   const [dob, setDob] = useState(initialAccount.profile.dob || "");
   const [gender, setGender] = useState(toSelectValue(initialAccount.profile.gender));
@@ -163,8 +168,7 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
   const [emailChangeError, setEmailChangeError] = useState("");
 
   const applyAccountData = (data: AccountDto) => {
-    setFirstName(data.profile.firstName || "");
-    setLastName(data.profile.lastName || "");
+    setDisplayName(getDisplayName(data.profile.firstName, data.profile.lastName));
     setEmail(data.profile.email || "");
     setDob(data.profile.dob || "");
     setGender(toSelectValue(data.profile.gender));
@@ -320,8 +324,8 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          firstName,
-          lastName,
+          firstName: displayName.trim(),
+          lastName: "",
           dob: dob || null,
           gender: fromSelectValue(gender),
           ethnicity: fromSelectValue(ethnicity),
@@ -409,33 +413,35 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
     <DashboardLayout title="Account - Shruti Turner">
       <AppPageHeader
         eyebrow="Account"
-        title="Account Settings"
-        description="Manage your profile, preferences and notifications."
+        title="Your account"
+        description="Keep the practical details current so Shruti can contact you, use the right name and keep required agreements in place."
         className="mb-6"
       />
       {error ? <p className="mb-6 text-sm text-red-600">{error}</p> : null}
 
-      <AppMetricGrid className="mb-8 lg:grid-cols-3">
-        <AppMetricCard
-          label="Profile"
-          value={firstName && lastName ? "Complete" : "Review"}
-          detail="name and contact details"
-        />
-        <AppMetricCard
-          label="Notifications"
-          value={notifications.marketingEmails ? "On" : "Off"}
-          detail="marketing email preference"
-        />
-        <AppMetricCard
-          label="Legal status"
-          value={hasAgreedToTerms && hasAgreedToHealth ? "Complete" : "Action needed"}
-          detail={
-            hasAgreedToTerms && hasAgreedToHealth
-              ? "required agreements accepted"
-              : "review outstanding agreements below"
-          }
-        />
-      </AppMetricGrid>
+      <div className="bg-background mb-8 rounded-lg border p-6">
+        <div className="grid gap-4 md:grid-cols-3">
+          <div>
+            <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">Profile</p>
+            <p className="mt-2 text-lg">{displayName ? "Ready" : "Needs your name"}</p>
+            <p className="text-muted-foreground mt-1 text-sm">How Shruti addresses you.</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">Email</p>
+            <p className="mt-2 text-lg">Verified sign-in</p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Used for account access and updates.
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">Agreements</p>
+            <p className="mt-2 text-lg">
+              {hasAgreedToTerms && hasAgreedToHealth ? "Accepted" : "Review needed"}
+            </p>
+            <p className="text-muted-foreground mt-1 text-sm">Terms and health waiver status.</p>
+          </div>
+        </div>
+      </div>
       <>
         {onboardingState && !onboardingState.isComplete ? (
           <div className="bg-background mb-8 flex flex-col gap-4 rounded-lg border p-6 lg:flex-row lg:items-center lg:justify-between">
@@ -448,8 +454,8 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
                 </span>
               </div>
               <p className="text-sm leading-relaxed">
-                Finish the remaining setup steps so your studio account, legal agreements and
-                health profile stay complete.
+                Finish the remaining setup steps so your studio account, legal agreements and health
+                profile stay complete.
               </p>
               <div className="flex flex-wrap gap-2">
                 {onboardingState.missingSteps.map((step) => (
@@ -475,10 +481,11 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`relative px-4 py-2.5 text-sm whitespace-nowrap transition-colors ${activeTab === tab.key
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-                  }`}
+                className={`relative px-4 py-2.5 text-sm whitespace-nowrap transition-colors ${
+                  activeTab === tab.key
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
                 <span className="flex items-center gap-2">
                   <Icon className="h-4 w-4" />
@@ -492,7 +499,7 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
           })}
         </div>
 
-        <div className="max-w-2xl">
+        <div className="max-w-3xl">
           {activeTab === "profile" ? (
             <div className="space-y-8">
               <div className="bg-background space-y-5 rounded-lg border p-6">
@@ -501,23 +508,17 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
                   <h2 className="text-xl">Personal Details</h2>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input
-                      id="firstName"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="displayName">What should I call you?</Label>
+                  <Input
+                    id="displayName"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    autoComplete="name"
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    This is the name used in your account, emails and 1:1 support.
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -527,73 +528,6 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
                     Change requests are verified with a code sent to the new address before the
                     account email is updated.
                   </p>
-                </div>
-
-                <div className="space-y-3 rounded-lg border p-4">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">Change sign-in email</p>
-                    <p className="text-muted-foreground text-xs">
-                      Billing and account history stay attached to your account. The new address
-                      must be verified before it replaces the current one.
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-3 sm:flex-row">
-                    <Input
-                      type="email"
-                      value={newEmail}
-                      onChange={(event) => setNewEmail(event.target.value)}
-                      placeholder="new-email@example.com"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={!newEmail || emailChangeBusy !== null}
-                      onClick={handleEmailChangeRequest}
-                    >
-                      {emailChangeBusy === "request" ? "Sending..." : "Send code"}
-                    </Button>
-                  </div>
-                  {emailChangeRequested ? (
-                    <div className="flex flex-col gap-3 sm:flex-row">
-                      <Input
-                        value={emailChangeCode}
-                        onChange={(event) => setEmailChangeCode(event.target.value)}
-                        inputMode="numeric"
-                        placeholder="Enter 6-digit code"
-                      />
-                      <Button
-                        type="button"
-                        disabled={!emailChangeCode || emailChangeBusy !== null}
-                        onClick={handleEmailChangeConfirm}
-                      >
-                        {emailChangeBusy === "confirm" ? "Confirming..." : "Confirm change"}
-                      </Button>
-                    </div>
-                  ) : null}
-                  {emailChangeMessage ? (
-                    <p className="text-sm text-emerald-700">{emailChangeMessage}</p>
-                  ) : null}
-                  {emailChangeError ? (
-                    <p className="text-sm text-red-600">{emailChangeError}</p>
-                  ) : null}
-                </div>
-
-                <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50/60 p-4">
-                  <div>
-                    <p className="text-sm font-medium text-red-800">Delete account</p>
-                    <p className="mt-1 text-xs text-red-700">
-                      This anonymises personal data, revokes active sessions and keeps only the
-                      records that must be retained for audit, disputes, or finance.
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    disabled={deleteBusy}
-                    onClick={handleDeleteAccount}
-                  >
-                    {deleteBusy ? "Deleting..." : "Delete account"}
-                  </Button>
                 </div>
 
                 <div className="space-y-2">
@@ -665,6 +599,83 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
                       Saved
                     </span>
                   ) : null}
+                </div>
+              </div>
+
+              <div className="bg-background space-y-5 rounded-lg border p-6">
+                <div className="mb-2 flex items-center gap-3">
+                  <Mail className="text-primary h-5 w-5" />
+                  <h2 className="text-xl">Sign-in email</h2>
+                </div>
+                <p className="text-muted-foreground text-sm">
+                  Your email is used for sign-in, account updates and messages about your 1:1
+                  support.
+                </p>
+                <div className="space-y-3 rounded-lg border p-4">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Change sign-in email</p>
+                    <p className="text-muted-foreground text-xs">
+                      Account history stays attached to your profile. The new address must be
+                      verified before it replaces the current one.
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Input
+                      type="email"
+                      value={newEmail}
+                      onChange={(event) => setNewEmail(event.target.value)}
+                      placeholder="new-email@example.com"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!newEmail || emailChangeBusy !== null}
+                      onClick={handleEmailChangeRequest}
+                    >
+                      {emailChangeBusy === "request" ? "Sending..." : "Send code"}
+                    </Button>
+                  </div>
+                  {emailChangeRequested ? (
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <Input
+                        value={emailChangeCode}
+                        onChange={(event) => setEmailChangeCode(event.target.value)}
+                        inputMode="numeric"
+                        placeholder="Enter 6-digit code"
+                      />
+                      <Button
+                        type="button"
+                        disabled={!emailChangeCode || emailChangeBusy !== null}
+                        onClick={handleEmailChangeConfirm}
+                      >
+                        {emailChangeBusy === "confirm" ? "Confirming..." : "Confirm change"}
+                      </Button>
+                    </div>
+                  ) : null}
+                  {emailChangeMessage ? (
+                    <p className="text-sm text-emerald-700">{emailChangeMessage}</p>
+                  ) : null}
+                  {emailChangeError ? (
+                    <p className="text-sm text-red-600">{emailChangeError}</p>
+                  ) : null}
+                </div>
+
+                <div className="flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-red-800">Delete account</p>
+                    <p className="mt-1 text-xs text-red-700">
+                      This anonymises personal data, revokes active sessions and keeps only records
+                      that must be retained for audit, disputes or finance.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={deleteBusy}
+                    onClick={handleDeleteAccount}
+                  >
+                    {deleteBusy ? "Deleting..." : "Delete account"}
+                  </Button>
                 </div>
               </div>
 

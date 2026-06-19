@@ -30,7 +30,7 @@ function hasText(value: string | null | undefined) {
 export function deriveOnboardingState(input: OnboardingStateInput): OnboardingState {
   const missingSteps: OnboardingChecklistStep[] = [];
 
-  const hasProfile = hasText(input.firstName) && hasText(input.lastName) && Boolean(input.dob);
+  const hasProfile = hasText(input.firstName) && Boolean(input.dob);
   if (!hasProfile) missingSteps.push("profile");
 
   const hasLegal = Boolean(input.hasAgreedToTerms) && Boolean(input.hasAgreedToHealth);

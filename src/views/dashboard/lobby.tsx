@@ -7,9 +7,8 @@ import { DashboardLayout } from "../../components/dashboard-layout";
 import { DashboardSkeleton } from "../../components/dashboard-skeleton";
 import { HealthProfileEditor } from "../../components/health-profile-editor";
 import { Button } from "../../components/ui/button";
-import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
-import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
+import { AppPageHeader } from "@/components/app-surface";
 import { ArrowRight, CheckCircle, Shield, HeartPulse, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import type { DashboardSummaryDto, OnboardingStateDto } from "@/lib/api/types";
@@ -65,7 +64,6 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
   const [legalTerms, setLegalTerms] = useState(false);
   const [legalHealth, setLegalHealth] = useState(false);
   const [profileFirstName, setProfileFirstName] = useState("");
-  const [profileLastName, setProfileLastName] = useState("");
   const [profileDob, setProfileDob] = useState("");
   const [profileError, setProfileError] = useState("");
   const [profileSubmitting, setProfileSubmitting] = useState(false);
@@ -113,7 +111,6 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
     }
 
     setProfileFirstName(user.firstName || "");
-    setProfileLastName(user.lastName || "");
     setProfileDob(user.dob || "");
     setHeardAboutSource(user.heardAboutSource || "");
     setHeardAboutDetail(user.heardAboutDetail || "");
@@ -143,7 +140,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           firstName: profileFirstName.trim(),
-          lastName: profileLastName.trim(),
+          lastName: "",
           dob: profileDob,
         }),
       });
@@ -298,21 +295,13 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                   </p>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3">
                   <label className="space-y-2 text-sm">
-                    <span>First name</span>
+                    <span>What should I call you?</span>
                     <Input
                       value={profileFirstName}
                       onChange={(e) => setProfileFirstName(e.target.value)}
-                      autoComplete="given-name"
-                    />
-                  </label>
-                  <label className="space-y-2 text-sm">
-                    <span>Last name</span>
-                    <Input
-                      value={profileLastName}
-                      onChange={(e) => setProfileLastName(e.target.value)}
-                      autoComplete="family-name"
+                      autoComplete="name"
                     />
                   </label>
                 </div>
@@ -339,12 +328,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
 
                 <Button
                   className="w-full"
-                  disabled={
-                    profileSubmitting ||
-                    !profileFirstName.trim() ||
-                    !profileLastName.trim() ||
-                    !profileDob
-                  }
+                  disabled={profileSubmitting || !profileFirstName.trim() || !profileDob}
                   onClick={() => void handleProfileContinue()}
                 >
                   Save & Continue
@@ -428,7 +412,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                 </div>
                 <h2 className="text-2xl">Welcome, {user?.firstName || "there"}.</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  Your Private Studio is ready. Start with whatever feels manageable.
+                  Your account is ready. Start with whatever feels manageable.
                 </p>
                 <div className="bg-secondary/30 text-muted-foreground space-y-3 rounded-lg p-4 text-left text-sm">
                   <p className="flex items-start gap-2">
@@ -542,18 +526,12 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
 
       <div className="space-y-8">
         <AppPageHeader
-          eyebrow="Private Studio"
           title={
             <>
               {getGreeting()}, {user?.firstName || "there"}.
             </>
           }
-          description="Use this area to manage coaching, health details and your account."
-          meta={
-            <Badge className="border-white/15 bg-white/10 text-[rgba(250,250,248,0.96)] shadow-none">
-              Coaching dashboard
-            </Badge>
-          }
+          description="A simple place to keep your 1:1 support, health context and account details up to date."
         />
 
         {shouldShowHealthPrompt ? (
@@ -597,29 +575,11 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
           </div>
         ) : null}
 
-        <AppMetricGrid>
-          <AppMetricCard
-            label="Coaching"
-            value="Dashboard"
-            detail="applications, billing and status"
-          />
-          <AppMetricCard
-            label="Health profile"
-            value={summary.healthDeclarationStatus === "incomplete" ? "Needed" : "Ready"}
-            detail="context for coaching decisions"
-          />
-          <AppMetricCard
-            label="Account"
-            value="Private"
-            detail="registration and contact details"
-          />
-        </AppMetricGrid>
-
         <section className="space-y-4">
           <div>
-            <h2 className="text-xl">Quick Actions</h2>
+            <h2 className="text-xl">Where do you want to start?</h2>
             <p className="text-muted-foreground mt-1 text-sm">
-              Jump straight to your current coaching tools.
+              These are the three areas Shruti needs you to keep current while you work together.
             </p>
           </div>
 
@@ -630,10 +590,10 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
             >
               <div className="mb-2 flex items-center gap-3">
                 <HeartPulse className="text-primary h-5 w-5" />
-                <h3 className="text-lg">Coaching Dashboard</h3>
+                <h3 className="text-lg">1:1 dashboard</h3>
               </div>
               <p className="text-muted-foreground text-sm">
-                Review your application, onboarding, billing and cancellation options.
+                Follow your application, onboarding, billing and cancellation steps in one place.
               </p>
             </Link>
 
@@ -646,7 +606,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
                 <h3 className="text-lg">Health Profile</h3>
               </div>
               <p className="text-muted-foreground text-sm">
-                Keep relevant injuries, conditions and consent details current.
+                Keep injuries, conditions, consent and movement context current for safer support.
               </p>
             </Link>
 
@@ -656,10 +616,10 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
             >
               <div className="mb-2 flex items-center gap-3">
                 <Shield className="text-primary h-5 w-5" />
-                <h3 className="text-lg">Account Details</h3>
+                <h3 className="text-lg">Account details</h3>
               </div>
               <p className="text-muted-foreground text-sm">
-                Manage contact details and core registration information.
+                Update contact details, sign-in email, preferences and legal agreements.
               </p>
             </Link>
           </div>

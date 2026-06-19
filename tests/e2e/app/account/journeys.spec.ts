@@ -35,8 +35,7 @@ test("account page saves profile and preference updates while keeping email disa
   await expect(page.getByRole("heading", { name: "Account Settings" })).toBeVisible();
   await expect(page.getByLabel("Email")).toBeDisabled();
 
-  await page.getByLabel("First Name").fill("Taylor");
-  await page.getByLabel("Last Name").fill("Updated");
+  await page.getByLabel("What should I call you?").fill("Taylor");
   await page.getByLabel("Date of Birth").fill("1989-02-14");
   await page.getByRole("button", { name: "Save Profile" }).click();
   await expect(page.getByText("Saved")).toBeVisible();
@@ -50,8 +49,7 @@ test("account page saves profile and preference updates while keeping email disa
   await expect(page.getByText("Saved")).toBeVisible();
 
   await page.reload();
-  await expect(page.getByLabel("First Name")).toHaveValue("Taylor");
-  await expect(page.getByLabel("Last Name")).toHaveValue("Updated");
+  await expect(page.getByLabel("What should I call you?")).toHaveValue("Taylor");
   await expect(page.getByLabel("Date of Birth")).toHaveValue("1989-02-14");
 
   await page.getByRole("button", { name: "Preferences" }).click();

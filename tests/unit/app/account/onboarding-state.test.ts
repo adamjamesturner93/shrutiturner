@@ -32,6 +32,26 @@ describe("deriveOnboardingState", () => {
     });
   });
 
+  it("does not require a separate family name to complete the profile step", () => {
+    expect(
+      deriveOnboardingState({
+        firstName: "Jamie",
+        lastName: "",
+        dob: "1987-01-01",
+        hasAgreedToTerms: true,
+        hasAgreedToHealth: true,
+        heardAboutSource: "google",
+        hasHealthProfile: true,
+        hasConsentedToHealthData: true,
+      })
+    ).toEqual({
+      isComplete: false,
+      checklistComplete: true,
+      nextStep: "welcome",
+      missingSteps: [],
+    });
+  });
+
   it("does not block onboarding when the health data consent is stale", () => {
     expect(
       deriveOnboardingState({

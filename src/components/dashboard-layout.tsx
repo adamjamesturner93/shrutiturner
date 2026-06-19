@@ -63,10 +63,11 @@ function LegalGuardModal({
           </div>
           <div className="space-y-3">
             <label
-              className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${legalTermsChecked
+              className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${
+                legalTermsChecked
                   ? "border-brand-accent bg-brand-accent/5"
                   : "border-border hover:bg-secondary/30"
-                }`}
+              }`}
             >
               <input
                 type="checkbox"
@@ -86,10 +87,11 @@ function LegalGuardModal({
               </span>
             </label>
             <label
-              className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${legalHealthChecked
+              className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${
+                legalHealthChecked
                   ? "border-brand-accent bg-brand-accent/5"
                   : "border-border hover:bg-secondary/30"
-                }`}
+              }`}
             >
               <input
                 type="checkbox"
@@ -132,7 +134,6 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
     isSigningOut,
     user,
     logout,
-    membership,
     isAdmin,
     isAuthenticated,
     acceptTermsAndHealth,
@@ -211,7 +212,7 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
           <div>
             <h2 className="mb-2 text-xl">Sign In Required</h2>
             <p className="text-muted-foreground text-sm">
-              You need to sign in to access your Private Studio.
+              You need to sign in to access your account.
             </p>
           </div>
           <div className="flex flex-col gap-2">
@@ -247,7 +248,7 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
           <Link href="/" className="block">
             <IconHorizontal
               tone="white"
-              alt="Shruti Turner Private Studio"
+              alt="Shruti Turner"
               className="h-10 w-auto transition-opacity hover:opacity-90"
             />
           </Link>
@@ -264,9 +265,6 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
                 <p className="truncate text-sm">
                   {user.firstName} {user.lastName}
                 </p>
-                <p className="text-brand-white/50 truncate text-xs">
-                  {membership ? membership.label : "Pay as you go"}
-                </p>
               </div>
             </div>
           </div>
@@ -279,10 +277,11 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
               <li key={item.path}>
                 <Link
                   href={item.path}
-                  className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${isActive(item.path, item.exact)
+                  className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${
+                    isActive(item.path, item.exact)
                       ? "bg-brand-accent-light/20 text-brand-accent-light"
                       : "text-brand-white/70 hover:bg-brand-white/5 hover:text-brand-white"
-                    }`}
+                  }`}
                 >
                   <item.icon className="h-4 w-4 flex-shrink-0" />
                   <span>{item.label}</span>
@@ -324,11 +323,7 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
           <Link href="/dashboard">
-            <IconHorizontal
-              tone="white"
-              alt="Shruti Turner Private Studio"
-              className="h-7 w-auto"
-            />
+            <IconHorizontal tone="white" alt="Shruti Turner" className="h-7 w-auto" />
           </Link>
           <div className="bg-brand-accent-light text-brand-dark flex h-8 w-8 items-center justify-center rounded-full text-xs">
             {user?.avatarInitials || "?"}
@@ -343,11 +338,7 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
           <aside className="text-brand-white absolute inset-y-0 left-0 flex w-72 flex-col bg-[linear-gradient(180deg,rgba(46,31,51,0.99),rgba(86,52,74,0.99))] shadow-[0_24px_70px_rgba(46,31,51,0.3)]">
             <div className="border-brand-white/10 flex items-center justify-between border-b p-4">
               <Link href="/dashboard" onClick={() => setSidebarOpen(false)}>
-                <IconHorizontal
-                  tone="white"
-                  alt="Shruti Turner Private Studio"
-                  className="h-7 w-auto"
-                />
+                <IconHorizontal tone="white" alt="Shruti Turner" className="h-7 w-auto" />
               </Link>
               <button onClick={() => setSidebarOpen(false)}>
                 <X className="h-5 w-5" />
@@ -361,9 +352,6 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
                   </div>
                   <div>
                     <p className="text-sm">{user.firstName}</p>
-                    <p className="text-brand-white/50 text-xs">
-                      {membership ? membership.label : "Pay as you Go"}
-                    </p>
                   </div>
                 </div>
               </div>
@@ -375,10 +363,11 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
                     <Link
                       href={item.path}
                       onClick={() => setSidebarOpen(false)}
-                      className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${isActive(item.path, item.exact)
+                      className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${
+                        isActive(item.path, item.exact)
                           ? "bg-brand-accent-light/20 text-brand-accent-light"
                           : "text-brand-white/70 hover:bg-brand-white/5"
-                        }`}
+                      }`}
                     >
                       <item.icon className="h-4 w-4" />
                       <span>{item.label}</span>

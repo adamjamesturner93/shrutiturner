@@ -13,8 +13,7 @@ test("first-time login completes onboarding and persists account and health deta
   await expect(page).toHaveURL(/\/dashboard(\?onboarding=true)?$/);
   await expect(page.getByRole("heading", { name: "Complete Your Profile" })).toBeVisible();
 
-  await page.getByLabel("First name").fill("Jamie");
-  await page.getByLabel("Last name").fill("Starter");
+  await page.getByLabel("What should I call you?").fill("Jamie");
   await page.getByLabel("Date of birth").fill("1987-11-09");
   await page.getByRole("button", { name: "Save & Continue" }).click();
 
@@ -40,8 +39,7 @@ test("first-time login completes onboarding and persists account and health deta
   await expect(page).toHaveURL(/\/dashboard$/);
 
   await page.goto("/dashboard/account");
-  await expect(page.getByLabel("First Name")).toHaveValue("Jamie");
-  await expect(page.getByLabel("Last Name")).toHaveValue("Starter");
+  await expect(page.getByLabel("What should I call you?")).toHaveValue("Jamie");
   await expect(page.getByLabel("Date of Birth")).toHaveValue("1987-11-09");
 
   await page.goto("/dashboard/health");
@@ -88,8 +86,7 @@ test("first-time login can finish onboarding with nothing relevant to share righ
 
   await loginWithEmail(page, email);
 
-  await page.getByLabel("First name").fill("Avery");
-  await page.getByLabel("Last name").fill("Clear");
+  await page.getByLabel("What should I call you?").fill("Avery");
   await page.getByLabel("Date of birth").fill("1986-05-12");
   await page.getByRole("button", { name: "Save & Continue" }).click();
 
@@ -123,8 +120,7 @@ test("skipping health during onboarding lands on the dashboard with a health dec
 
   await loginWithEmail(page, email);
 
-  await page.getByLabel("First name").fill("Riley");
-  await page.getByLabel("Last name").fill("Skipped");
+  await page.getByLabel("What should I call you?").fill("Riley");
   await page.getByLabel("Date of birth").fill("1988-09-21");
   await page.getByRole("button", { name: "Save & Continue" }).click();
 
