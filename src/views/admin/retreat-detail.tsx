@@ -8,9 +8,12 @@ import {
   ArrowLeft,
   Calendar,
   Download,
+  ExternalLink,
+  Mail,
   MapPin,
   PoundSterling,
   Users,
+  Video,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,6 +70,10 @@ export function AdminRetreatDetail({
   const [evidence, setEvidence] = useState<AdminRetreatEvidenceDto | null>(null);
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState("");
+  const [balanceEmailStatus, setBalanceEmailStatus] = useState("");
+  const [sendingBalanceEmail, setSendingBalanceEmail] = useState<"due" | "chaser" | null>(null);
+  const [onlineRoomStatus, setOnlineRoomStatus] = useState("");
+  const [settingUpOnlineRoom, setSettingUpOnlineRoom] = useState(false);
 
   useEffect(() => {
     if (initialData || !id) return;
@@ -135,6 +142,67 @@ export function AdminRetreatDetail({
     return { paidInFull, balanceDue, specialRequirements };
   }, [retreat]);
 
+  async function handleSendBalanceEmails(mode: "due" | "chaser") {
+    if (!id) return;
+
+    setSendingBalanceEmail(mode);
+    setBalanceEmailStatus("");
+    try {
+      const response = await fetch(`/api/admin/retreats/${id}/balance-emails`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        sent?: number;
+        skipped?: number;
+        message?: string;
+      };
+      if (!response.ok) {
+        throw new Error(payload.message || "Failed to send balance emails.");
+      }
+      const sent = payload.sent || 0;
+      const skipped = payload.skipped || 0;
+      setBalanceEmailStatus(
+        `${mode === "chaser" ? "Chaser" : "Balance due"} email sent to ${sent} booking${
+          sent === 1 ? "" : "s"
+        }${skipped ? `; ${skipped} skipped` : ""}.`
+      );
+    } catch (sendError) {
+      setBalanceEmailStatus(
+        sendError instanceof Error ? sendError.message : "Failed to send balance emails."
+      );
+    } finally {
+      setSendingBalanceEmail(null);
+    }
+  }
+
+  async function handleSetUpOnlineRoom() {
+    if (!id) return;
+
+    setSettingUpOnlineRoom(true);
+    setOnlineRoomStatus("");
+    try {
+      const response = await fetch(`/api/admin/retreats/${id}/online-room`, {
+        method: "POST",
+      });
+      const payload = (await response.json().catch(() => ({}))) as
+        | AdminRetreatDetailDto
+        | { message?: string };
+      if (!response.ok) {
+        throw new Error("message" in payload ? payload.message : "Failed to set up online room.");
+      }
+      setRetreat(payload as AdminRetreatDetailDto);
+      setOnlineRoomStatus("Online room is ready.");
+    } catch (setupError) {
+      setOnlineRoomStatus(
+        setupError instanceof Error ? setupError.message : "Failed to set up online room."
+      );
+    } finally {
+      setSettingUpOnlineRoom(false);
+    }
+  }
+
   if (loading) {
     return (
       <AdminLayout title="Retreat - Admin">
@@ -181,8 +249,45 @@ export function AdminRetreatDetail({
               </span>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Badge variant="outline">{retreat.status.replaceAll("_", " ")}</Badge>
+            <Button
+              variant="outline"
+              disabled={sendingBalanceEmail !== null || !summary?.balanceDue}
+              onClick={() => void handleSendBalanceEmails("due")}
+            >
+              <Mail className="mr-2 h-4 w-4" />
+              {sendingBalanceEmail === "due" ? "Sending..." : "Send balance emails"}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={sendingBalanceEmail !== null || !summary?.balanceDue}
+              onClick={() => void handleSendBalanceEmails("chaser")}
+            >
+              <Mail className="mr-2 h-4 w-4" />
+              {sendingBalanceEmail === "chaser" ? "Sending..." : "Send chaser"}
+            </Button>
+            {retreat.retreatType === "online" ? (
+              <>
+                {retreat.dailyRoomUrl && retreat.roomSetupStatus === "ready" ? (
+                  <Button asChild variant="outline">
+                    <a href={retreat.dailyRoomUrl} target="_blank" rel="noreferrer">
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Open online room
+                    </a>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    disabled={settingUpOnlineRoom}
+                    onClick={() => void handleSetUpOnlineRoom()}
+                  >
+                    <Video className="mr-2 h-4 w-4" />
+                    {settingUpOnlineRoom ? "Setting up..." : "Set up online room"}
+                  </Button>
+                )}
+              </>
+            ) : null}
             <Button
               variant="outline"
               onClick={() =>
@@ -219,6 +324,20 @@ export function AdminRetreatDetail({
             </Button>
           </div>
         </div>
+        {summary?.balanceDue ? (
+          <p className="text-muted-foreground text-sm">
+            Suggested timing: send the balance due email around 8 weeks before the retreat starts,
+            then send one chaser 1-2 weeks before the balance due date.
+          </p>
+        ) : null}
+        {balanceEmailStatus ? (
+          <p className="text-muted-foreground text-sm">{balanceEmailStatus}</p>
+        ) : null}
+        {retreat.retreatType === "online" && (onlineRoomStatus || retreat.roomSetupError) ? (
+          <p className="text-muted-foreground text-sm">
+            {onlineRoomStatus || retreat.roomSetupError}
+          </p>
+        ) : null}
 
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
@@ -406,6 +525,7 @@ export function AdminRetreatDetail({
                   <th className="py-3 pr-4">Attendee</th>
                   <th className="py-3 pr-4">Purchaser</th>
                   <th className="py-3 pr-4">Room</th>
+                  <th className="py-3 pr-4">Instalments</th>
                   <th className="py-3 pr-4">Payment</th>
                   <th className="py-3 pr-4">Booked</th>
                 </tr>
@@ -421,7 +541,43 @@ export function AdminRetreatDetail({
                       <p>{booking.purchaserName}</p>
                       <p className="text-muted-foreground mt-1 text-xs">{booking.purchaserEmail}</p>
                     </td>
-                    <td className="py-3 pr-4">{booking.roomType || "Shared"}</td>
+                    <td className="py-3 pr-4">
+                      <p>{booking.roomType || "Shared"}</p>
+                      {booking.roomUnitLabel ? (
+                        <p className="text-muted-foreground mt-1 text-xs">
+                          Unit: {booking.roomUnitLabel}
+                        </p>
+                      ) : null}
+                      {booking.attendeeCount ? (
+                        <p className="text-muted-foreground mt-1 text-xs">
+                          {booking.attendeeCount} attendee{booking.attendeeCount === 1 ? "" : "s"}
+                        </p>
+                      ) : null}
+                    </td>
+                    <td className="py-3 pr-4">
+                      <div className="space-y-1">
+                        {(booking.instalments || []).map((instalment) => (
+                          <div key={instalment.id} className="text-xs">
+                            <span>{instalment.label}: </span>
+                            <span>{formatCurrency(instalment.amountPence)}</span>
+                            <span className="text-muted-foreground">
+                              {" "}
+                              ({instalment.status.replaceAll("_", " ")})
+                            </span>
+                          </div>
+                        ))}
+                        {booking.payInFullDiscountPence ? (
+                          <p className="text-muted-foreground text-xs">
+                            Pay in full discount: {formatCurrency(booking.payInFullDiscountPence)}
+                          </p>
+                        ) : null}
+                        {booking.nonRefundableAmountPence ? (
+                          <p className="text-muted-foreground text-xs">
+                            Non-refundable: {formatCurrency(booking.nonRefundableAmountPence)}
+                          </p>
+                        ) : null}
+                      </div>
+                    </td>
                     <td className="py-3 pr-4">
                       <div className="flex flex-col gap-1">
                         <Badge variant={badgeVariant(booking.paymentStatus)}>

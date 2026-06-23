@@ -526,7 +526,11 @@ This is not guaranteed and will depend on the service, timing and circumstances.
 
 Retreat or event cancellation terms are shown on the relevant retreat or event page and may vary by venue or supplier commitments.
 
-Unless a more specific page states otherwise, retreat bookings are normally non-refundable within the short-notice period before the event because accommodation and venue costs have already been committed.
+For in-person retreats, the deposit amount is non-refundable. If you pay in full and later cancel, the amount that would have been the deposit is still treated as non-refundable.
+
+Unless the retreat page states otherwise, in-person retreat payments above the deposit are refundable if you cancel more than 8 weeks before the retreat starts. Within 8 weeks of the start date, retreat payments are not normally refundable because venue, accommodation and supplier costs have been committed.
+
+For online retreats, the non-refundable amount is the greater of £10 or 10% of the retreat price. Payments above that amount are normally refundable until 14 days before the online retreat starts, unless the retreat page states a different window.
 
 6. Medical issues and chronic illness fluctuations
 

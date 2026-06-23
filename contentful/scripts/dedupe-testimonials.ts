@@ -1,26 +1,20 @@
-import contentfulManagement from "contentful-management";
+import { createClient } from "contentful-management";
 import { getContentfulScriptEnv } from "./env.ts";
 
 const { spaceId, environmentId, managementToken } = getContentfulScriptEnv();
-const { createClient } = contentfulManagement;
 
-const client = createClient({ accessToken: managementToken }, { type: "legacy" });
+const client = createClient(
+  { accessToken: managementToken },
+  { type: "plain", defaults: { spaceId, environmentId } }
+);
 
 type ContentfulEntry = {
   sys: {
     id: string;
     createdAt?: string;
+    publishedVersion?: number;
   };
   fields: Record<string, Record<string, unknown>>;
-  isPublished?: () => boolean;
-  unpublish?: () => Promise<ContentfulEntry>;
-  delete: () => Promise<void | ContentfulEntry>;
-};
-
-type ContentfulEnvironment = {
-  getEntries: (
-    query: Record<string, unknown>
-  ) => Promise<{ items?: ContentfulEntry[]; total?: number }>;
 };
 
 function readField(entry: ContentfulEntry, field: string, locale = "en-US") {
@@ -42,19 +36,21 @@ function createdAtMs(entry: ContentfulEntry) {
   return iso ? new Date(iso).getTime() : Number.MAX_SAFE_INTEGER;
 }
 
-async function listAllTestimonials(environment: ContentfulEnvironment) {
+async function listAllTestimonials() {
   const pageSize = 100;
   const all: ContentfulEntry[] = [];
   let skip = 0;
 
   while (true) {
-    const res = await environment.getEntries({
-      content_type: "testimonial",
-      limit: pageSize,
-      skip,
-      order: "sys.createdAt",
+    const res = await client.entry.getMany({
+      query: {
+        content_type: "testimonial",
+        limit: pageSize,
+        skip,
+        order: "sys.createdAt",
+      },
     });
-    const items = res.items || [];
+    const items = (res.items || []) as unknown as ContentfulEntry[];
     all.push(...items);
     skip += items.length;
     if (!items.length || skip >= (res.total || 0)) break;
@@ -64,12 +60,7 @@ async function listAllTestimonials(environment: ContentfulEnvironment) {
 }
 
 async function run() {
-  const space = await client.getSpace(spaceId);
-  const environment = (await space.getEnvironment(
-    environmentId
-  )) as unknown as ContentfulEnvironment;
-
-  const entries = await listAllTestimonials(environment);
+  const entries = await listAllTestimonials();
   const groups = new Map<string, ContentfulEntry[]>();
 
   for (const entry of entries) {
@@ -91,10 +82,10 @@ async function run() {
     const duplicates = group.slice(1);
 
     for (const duplicate of duplicates) {
-      if (duplicate.isPublished && duplicate.isPublished() && duplicate.unpublish) {
-        await duplicate.unpublish();
+      if (duplicate.sys.publishedVersion) {
+        await client.entry.unpublish({ entryId: duplicate.sys.id }, duplicate as never);
       }
-      await duplicate.delete();
+      await client.entry.delete({ entryId: duplicate.sys.id });
       removed += 1;
     }
 

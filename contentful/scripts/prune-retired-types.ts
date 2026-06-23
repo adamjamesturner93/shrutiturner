@@ -1,4 +1,4 @@
-import contentfulManagement from "contentful-management";
+import { createClient } from "contentful-management";
 import { getContentfulScriptEnv } from "./env.ts";
 
 const RETIRED_CONTENT_TYPES = [
@@ -17,23 +17,19 @@ type ContentTypeLike = {
     id: string;
     publishedVersion?: number;
   };
-  unpublish?: () => Promise<ContentTypeLike>;
-  delete: () => Promise<void>;
-};
-
-type ContentfulEnvironment = {
-  getContentType: (id: string) => Promise<ContentTypeLike>;
-  getEntries: (query: Record<string, unknown>) => Promise<{ total?: number }>;
 };
 
 const { spaceId, environmentId, managementToken } = getContentfulScriptEnv();
-const { createClient } = contentfulManagement;
+const client = createClient(
+  { accessToken: managementToken },
+  { type: "plain", defaults: { spaceId, environmentId } }
+);
 
 const dryRun = process.env.CONTENTFUL_PRUNE_CONFIRM !== "delete-retired-types";
 
-async function getRetiredType(environment: ContentfulEnvironment, id: string) {
+async function getRetiredType(id: string) {
   try {
-    return await environment.getContentType(id);
+    return (await client.contentType.get({ contentTypeId: id })) as unknown as ContentTypeLike;
   } catch (error) {
     const details = error as { name?: string; code?: string } | undefined;
     if (details?.name === "NotFound" || details?.code === "NotFound") return null;
@@ -41,8 +37,10 @@ async function getRetiredType(environment: ContentfulEnvironment, id: string) {
   }
 }
 
-async function assertNoEntries(environment: ContentfulEnvironment, id: string) {
-  const entries = await environment.getEntries({ content_type: id, limit: 1 });
+async function assertNoEntries(id: string) {
+  const entries = await client.entry.getMany({
+    query: { content_type: id, limit: 1 },
+  });
   const total = entries.total || 0;
   if (total > 0) {
     throw new Error(`Refusing to prune ${id}: found ${total} entries.`);
@@ -51,29 +49,27 @@ async function assertNoEntries(environment: ContentfulEnvironment, id: string) {
 
 async function pruneContentType(contentType: ContentTypeLike) {
   let current = contentType;
-  if (current.sys.publishedVersion && current.unpublish) {
-    current = await current.unpublish();
+  if (current.sys.publishedVersion) {
+    current = (await client.contentType.unpublish({
+      contentTypeId: current.sys.id,
+    })) as unknown as ContentTypeLike;
   }
-  await current.delete();
+  await client.contentType.delete({ contentTypeId: current.sys.id });
 }
 
 async function run() {
-  const client = createClient({ accessToken: managementToken }, { type: "legacy" });
-  const space = await client.getSpace(spaceId);
-  const environment = (await space.getEnvironment(environmentId)) as ContentfulEnvironment;
-
   console.log(
     `${dryRun ? "Dry run" : "Delete mode"} for retired Contentful types in ${spaceId}/${environmentId}.`
   );
 
   for (const id of RETIRED_CONTENT_TYPES) {
-    const contentType = await getRetiredType(environment, id);
+    const contentType = await getRetiredType(id);
     if (!contentType) {
       console.log(`${id}: already absent`);
       continue;
     }
 
-    await assertNoEntries(environment, id);
+    await assertNoEntries(id);
     if (dryRun) {
       console.log(
         `${id}: would prune; set CONTENTFUL_PRUNE_CONFIRM=delete-retired-types to delete`

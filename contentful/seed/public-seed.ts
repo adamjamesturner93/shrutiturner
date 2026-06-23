@@ -247,6 +247,42 @@ export const RETREAT_TEMPLATE_SEED = {
   })),
 };
 
+export const RETREAT_EVENT_SEED = {
+  contentType: "retreatEvent",
+  entries: retreats.flatMap((r) =>
+    r.dates.slice(0, 1).map((date) => ({
+      title: `${r.title} - ${date.startDate}`,
+      slug: `${r.slug}-${date.startDate}`,
+      retreatType: r.slug === "virtual-immersion" ? "online" : "in_person",
+      templateSlug: r.slug,
+      venueSlug:
+        r.slug === "virtual-immersion" ? "online" : r.location.toLowerCase().replace(/\s+/g, "-"),
+      instructorSlugs: ["shruti-turner"],
+      startDate: date.startDate,
+      endDate: date.endDate,
+      timezone: "Europe/London",
+      status: "draft",
+      totalSpaces: date.totalSpaces,
+      currency: r.currency,
+      roomOptions: date.roomOptions.map((option) => ({
+        ...option,
+        roomCount: option.type === "shared_private" ? option.availableSpots : option.capacity,
+        pricePerPersonPence: Math.round(option.normalPricePence / option.guestsIncluded),
+      })),
+      schedule: r.schedule,
+      paymentPlan: {
+        instalments: [
+          { label: "Deposit", kind: "deposit", percent: 25 },
+          { label: "Balance", kind: "balance", percent: 75, dueDaysBeforeStart: 56 },
+        ],
+      },
+      payInFullDiscountEnabled: true,
+      refundNotes:
+        "Deposits are non-refundable. In-person balances are refundable until eight weeks before the retreat starts.",
+    }))
+  ),
+};
+
 export const BLOG_SEED = {
   contentType: "blogPost",
   entries: [
@@ -594,7 +630,8 @@ export const LEAD_MAGNET_SEED = {
     {
       slug: "why-some-bodies-need-strength-before-more-stretching",
       title: "Why Some Bodies Need Strength Before More Stretching",
-      hookText: 'Get the free guide to your inbox - "Why Some Bodies Need Strength Before More Stretching"',
+      hookText:
+        'Get the free guide to your inbox - "Why Some Bodies Need Strength Before More Stretching"',
       landingHeadline: "Why Some Bodies Need Strength Before More Stretching",
       landingDescription:
         "A free guide exploring stability, control and capacity in flexible bodies.",
@@ -706,6 +743,7 @@ export const SEED_GROUPS = [
   SMALL_GROUP_PROGRAMME_SEED,
   RETREAT_VENUE_SEED,
   RETREAT_TEMPLATE_SEED,
+  RETREAT_EVENT_SEED,
   BLOG_SEED,
   TESTIMONIAL_SEED,
   FAQ_SEED,

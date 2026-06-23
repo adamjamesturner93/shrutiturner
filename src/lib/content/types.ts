@@ -49,8 +49,23 @@ export interface RetreatRoomOptionContent {
   availableSpots: number;
   earlyBirdPricePence?: number;
   normalPricePence: number;
+  pricePerPersonPence?: number;
+  roomCount?: number;
   depositPence?: number;
   isWaitlistOnly?: boolean;
+}
+
+export interface RetreatPaymentPlanInstalmentContent {
+  label: string;
+  kind?: "deposit" | "scheduled" | "balance" | "full_payment";
+  percent?: number;
+  amountPence?: number;
+  dueDate?: string;
+  dueDaysBeforeStart?: number;
+}
+
+export interface RetreatPaymentPlanContent {
+  instalments: RetreatPaymentPlanInstalmentContent[];
 }
 
 export interface GlobalContent {
@@ -250,8 +265,10 @@ export interface RetreatVenueContent {
 export interface RetreatInstanceContent {
   id: string;
   templateSlug: string;
+  retreatType?: "in_person" | "online";
   startDate: string;
   endDate: string;
+  timezone?: string;
   availableSpaces: number;
   totalSpaces: number;
   earlyBirdPrice: number;
@@ -259,6 +276,13 @@ export interface RetreatInstanceContent {
   earlyBirdDeadline: string;
   currency: string;
   roomOptions?: RetreatRoomOptionContent[];
+  schedule?: Array<{ day: string; activities: string[] }>;
+  paymentPlan?: RetreatPaymentPlanContent;
+  payInFullDiscountEnabled?: boolean;
+  refundNotes?: string;
+  venueId?: string;
+  venueSlug?: string;
+  instructorProfileIds?: string[];
 }
 
 export interface RetreatCombinedContent {
@@ -277,6 +301,12 @@ export interface RetreatCombinedContent {
     availableSpaces: number;
     totalSpaces: number;
     roomOptions: RetreatRoomOptionContent[];
+    retreatType?: "in_person" | "online";
+    timezone?: string;
+    paymentPlan?: RetreatPaymentPlanContent;
+    payInFullDiscountEnabled?: boolean;
+    refundNotes?: string;
+    instructorProfileIds?: string[];
   }>;
   earlyBirdPrice: number;
   earlyBirdDeadline: string;

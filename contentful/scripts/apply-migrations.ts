@@ -4,24 +4,16 @@ import { getContentfulScriptEnv } from "./env.ts";
 
 const { spaceId, environmentId, managementToken } = getContentfulScriptEnv();
 
-const client = createClient({ accessToken: managementToken }, { type: "legacy" });
-const CMA_BASE_URL = `https://api.contentful.com/spaces/${spaceId}/environments/${environmentId}`;
+const client = createClient(
+  { accessToken: managementToken },
+  { type: "plain", defaults: { spaceId, environmentId } }
+);
 
 type ContentTypeLike = {
   name?: string;
   description?: string;
   displayField?: string;
   fields: Array<Record<string, unknown>>;
-  update: () => Promise<ContentTypeLike>;
-  publish: () => Promise<ContentTypeLike>;
-};
-
-type ContentfulEnvironmentLike = {
-  getContentType: (id: string) => Promise<ContentTypeLike>;
-  createContentTypeWithId: (
-    id: string,
-    payload: ReturnType<typeof toPayload>
-  ) => Promise<ContentTypeLike>;
 };
 
 function toPayload(model: (typeof PUBLIC_CONTENT_MODELS)[number]) {
@@ -33,10 +25,7 @@ function toPayload(model: (typeof PUBLIC_CONTENT_MODELS)[number]) {
   };
 }
 
-async function upsertAndPublishContentType(
-  environment: ContentfulEnvironmentLike,
-  model: (typeof PUBLIC_CONTENT_MODELS)[number]
-) {
+async function upsertAndPublishContentType(model: (typeof PUBLIC_CONTENT_MODELS)[number]) {
   let contentType: ContentTypeLike;
 
   const getFieldKey = (field: Record<string, unknown>) => String(field.apiName || field.id || "");
@@ -55,7 +44,9 @@ async function upsertAndPublishContentType(
   });
 
   try {
-    contentType = await environment.getContentType(model.id);
+    contentType = (await client.contentType.get({
+      contentTypeId: model.id,
+    })) as unknown as ContentTypeLike;
 
     const incomingFieldKeys = new Set(
       model.fields.map((f) => getFieldKey(f as Record<string, unknown>))
@@ -72,8 +63,14 @@ async function upsertAndPublishContentType(
         contentType.description = model.description || "";
         contentType.displayField = model.displayField;
         contentType.fields = [...model.fields, ...removedFields.map(toOmittedField)];
-        contentType = await contentType.update();
-        contentType = await contentType.publish();
+        contentType = (await client.contentType.update(
+          { contentTypeId: model.id },
+          contentType as never
+        )) as unknown as ContentTypeLike;
+        contentType = (await client.contentType.publish(
+          { contentTypeId: model.id },
+          contentType as never
+        )) as unknown as ContentTypeLike;
         console.log(`Omitted removed fields for content type: ${model.id}`);
       }
     }
@@ -82,7 +79,10 @@ async function upsertAndPublishContentType(
     contentType.description = model.description || "";
     contentType.displayField = model.displayField;
     contentType.fields = model.fields;
-    contentType = await contentType.update();
+    contentType = (await client.contentType.update(
+      { contentTypeId: model.id },
+      contentType as never
+    )) as unknown as ContentTypeLike;
     console.log(`Updated content type: ${model.id}`);
   } catch (error: unknown) {
     const err = error as { name?: string; status?: number } | undefined;
@@ -90,30 +90,24 @@ async function upsertAndPublishContentType(
       throw error;
     }
 
-    contentType = await environment.createContentTypeWithId(model.id, toPayload(model));
+    contentType = (await client.contentType.createWithId(
+      { contentTypeId: model.id },
+      toPayload(model) as never
+    )) as unknown as ContentTypeLike;
     console.log(`Created content type: ${model.id}`);
   }
 
-  contentType = await contentType.publish();
+  contentType = (await client.contentType.publish(
+    { contentTypeId: model.id },
+    contentType as never
+  )) as unknown as ContentTypeLike;
   console.log(`Published content type: ${model.id}`);
 }
 
 async function configureSlugEditor(contentTypeId: string, trackingFieldId: string) {
-  const getRes = await fetch(`${CMA_BASE_URL}/content_types/${contentTypeId}/editor_interface`, {
-    headers: {
-      Authorization: `Bearer ${managementToken}`,
-      "Content-Type": "application/vnd.contentful.management.v1+json",
-    },
-  });
-
-  if (!getRes.ok) {
-    const body = await getRes.text();
-    throw new Error(
-      `Failed to fetch editor interface for ${contentTypeId}: ${getRes.status} ${body}`
-    );
-  }
-
-  const editorInterface = (await getRes.json()) as {
+  const editorInterface = (await client.editorInterface.get({
+    contentTypeId,
+  })) as unknown as {
     sys: { version: number };
     controls?: Array<{
       fieldId: string;
@@ -168,34 +162,17 @@ async function configureSlugEditor(contentTypeId: string, trackingFieldId: strin
     payload.editors = editorInterface.editors;
   }
 
-  const putRes = await fetch(`${CMA_BASE_URL}/content_types/${contentTypeId}/editor_interface`, {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${managementToken}`,
-      "Content-Type": "application/vnd.contentful.management.v1+json",
-      "X-Contentful-Version": String(editorInterface.sys.version),
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!putRes.ok) {
-    const body = await putRes.text();
-    throw new Error(
-      `Failed to update editor interface for ${contentTypeId}: ${putRes.status} ${body}`
-    );
-  }
+  await client.editorInterface.update({ contentTypeId }, {
+    ...editorInterface,
+    ...payload,
+  } as never);
 
   console.log(`Configured slug editor for ${contentTypeId} (source: ${trackingFieldId})`);
 }
 
 async function run() {
-  const space = await client.getSpace(spaceId);
-  const environment = (await space.getEnvironment(
-    environmentId
-  )) as unknown as ContentfulEnvironmentLike;
-
   for (const model of PUBLIC_CONTENT_MODELS) {
-    await upsertAndPublishContentType(environment, model);
+    await upsertAndPublishContentType(model);
   }
 
   // Auto-generate slugs in the Contentful UI while still allowing manual edits.

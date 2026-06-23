@@ -7,6 +7,7 @@ type RetreatCheckoutBody = {
   retreatDateId?: unknown;
   roomOptionId?: unknown;
   purchaseMode?: unknown;
+  paymentOption?: unknown;
   purchaserFirstName?: unknown;
   purchaserLastName?: unknown;
   purchaserEmail?: unknown;
@@ -48,6 +49,7 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
       retreatDateId: typeof body.retreatDateId === "string" ? body.retreatDateId : "",
       roomOptionId: typeof body.roomOptionId === "string" ? body.roomOptionId : "",
       purchaseMode: body.purchaseMode === "gift" ? "gift" : "self",
+      paymentOption: body.paymentOption === "pay_in_full" ? "pay_in_full" : "deposit",
       purchaserUserId: session?.user?.id || null,
       purchaserFirstName:
         typeof body.purchaserFirstName === "string" ? body.purchaserFirstName : "",

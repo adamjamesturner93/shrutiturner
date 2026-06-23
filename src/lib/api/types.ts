@@ -351,6 +351,10 @@ export type AdminRetreatDetailDto = {
   startDate: string;
   endDate: string;
   status: string;
+  retreatType?: string;
+  dailyRoomUrl?: string | null;
+  roomSetupStatus?: "pending" | "ready" | "failed";
+  roomSetupError?: string | null;
   capacity: number;
   revenuePence: number;
   depositAmountPence: number;
@@ -363,7 +367,9 @@ export type AdminRetreatDetailDto = {
     purchaserEmail: string;
     attendeeName: string;
     attendeeEmail: string;
+    attendeeCount?: number;
     roomType: string | null;
+    roomUnitLabel?: string | null;
     dietaryRequirements: string | null;
     medicalConditions: string | null;
     mobilityNeeds: string | null;
@@ -372,6 +378,18 @@ export type AdminRetreatDetailDto = {
     depositPaidPence: number;
     balancePaidPence: number;
     totalPricePence: number;
+    payInFullDiscountPence?: number;
+    nonRefundableAmountPence?: number;
+    instalments?: Array<{
+      id: string;
+      sequence: number;
+      kind: string;
+      label: string;
+      amountPence: number;
+      status: string;
+      dueAt: string | null;
+      paidAt: string | null;
+    }>;
     bookedAt: string;
   }>;
 };

@@ -45,7 +45,11 @@ function getCacheTags(contentType?: string): string[] {
   if (contentType === "classDefinition") return [...base, "content:classes", "content:schedule"];
   if (contentType === "smallGroupProgramme") return [...base, "content:classes"];
   if (contentType === "instructorProfile") return [...base, "content:classes", "content:schedule"];
-  if (contentType === "retreatTemplate" || contentType === "retreatVenue") {
+  if (
+    contentType === "retreatTemplate" ||
+    contentType === "retreatVenue" ||
+    contentType === "retreatEvent"
+  ) {
     return [...base, "content:retreats"];
   }
   if (contentType === "newsletterSignupContent") return [...base, "content:newsletter-signup"];

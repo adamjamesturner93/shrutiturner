@@ -78,14 +78,27 @@ export function TermsPage() {
             </p>
 
             <h3 className="text-foreground mt-6 mb-3 text-xl">4.2 Retreats</h3>
-            <p>Retreat bookings require full payment at time of booking.</p>
+            <p>
+              Retreat bookings may be offered as deposit plus balance, payment plan or payment in
+              full depending on the retreat.
+            </p>
             <p>
               <strong>Cancellation policy:</strong>
             </p>
             <ul className="list-disc space-y-2 pl-6">
-              <li>More than 60 days before retreat: 100% refund</li>
-              <li>30-60 days before retreat: 50% refund</li>
-              <li>Less than 30 days before retreat: No refund unless space can be filled</li>
+              <li>In-person retreat deposits are non-refundable.</li>
+              <li>
+                In-person retreat payments above the deposit are normally refundable more than 8
+                weeks before the retreat starts.
+              </li>
+              <li>
+                Within 8 weeks of an in-person retreat start date, retreat payments are not normally
+                refundable.
+              </li>
+              <li>
+                For online retreats, the non-refundable amount is the greater of £10 or 10% of the
+                retreat price.
+              </li>
             </ul>
             <p>
               We understand chronic illness is unpredictable. If you need to cancel due to medical

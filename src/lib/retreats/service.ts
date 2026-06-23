@@ -1,8 +1,12 @@
 import {
   AcceptanceType,
+  ClassRoomSetupStatus,
   GiftPurchaseStatus,
+  RetreatInstalmentKind,
+  RetreatInstalmentStatus,
   RetreatBookingStatus,
   RetreatPaymentStatus,
+  Prisma,
 } from "@prisma/client";
 import type Stripe from "stripe";
 import { db } from "@/lib/db";
@@ -21,12 +25,20 @@ import {
   getRetreatBySlugCombined,
   getRetreatsCombined,
   type RetreatCombinedContent,
+  type RetreatPaymentPlanContent,
 } from "@/lib/content";
+import { createSessionRoom, isDailyConfigured } from "@/lib/daily/service";
 import { assertCurrentAcceptances } from "@/lib/legal/acceptance-service";
 import { getCurrentPolicyVersions } from "@/lib/legal/policy-service";
 import { sendPostmarkReactEmail } from "@/lib/postmark/client";
-import RetreatBookingEmail from "@/emails/retreat-booking";
 import RetreatBalanceDueEmail from "@/emails/retreat-balance-due";
+import RetreatBookingEmail from "@/emails/retreat-booking";
+import {
+  buildRetreatInstalmentPlan,
+  calculatePayInFullDiscount,
+  calculateRetreatNonRefundableAmount,
+  type RetreatType,
+} from "@/lib/retreats/pricing";
 
 const RETREAT_PAYMENT_WINDOW_MS = 30 * 60 * 1000;
 
@@ -72,6 +84,25 @@ function formatDateRange(start: Date, end: Date) {
 
 function createBalanceToken() {
   return crypto.randomUUID().replace(/-/g, "");
+}
+
+function createPaymentToken() {
+  return crypto.randomUUID().replace(/-/g, "");
+}
+
+function parseRetreatType(value: string): RetreatType {
+  return value === "online" ? "online" : "in_person";
+}
+
+function readPaymentPlanSnapshot(value: unknown): RetreatPaymentPlanContent | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const instalments = (value as { instalments?: unknown }).instalments;
+  if (!Array.isArray(instalments)) return undefined;
+  return value as RetreatPaymentPlanContent;
+}
+
+function toPrismaJson(value: unknown) {
+  return value as Prisma.InputJsonValue | undefined;
 }
 
 function getDepositAmountPence(totalPricePence: number) {
@@ -158,8 +189,8 @@ function isEarlyBirdActive(retreat: RetreatCombinedContent) {
 
 async function getRoomAvailability(roomOptionId: string) {
   const now = new Date();
-  const [bookingCount, giftCount] = await Promise.all([
-    db.retreatBooking.count({
+  const [bookings, giftCount, roomOption] = await Promise.all([
+    db.retreatBooking.findMany({
       where: {
         roomOptionId,
         OR: [
@@ -170,6 +201,7 @@ async function getRoomAvailability(roomOptionId: string) {
           },
         ],
       },
+      select: { attendeeCount: true, guestsIncluded: true },
     }),
     db.giftPurchase.count({
       where: {
@@ -183,8 +215,16 @@ async function getRoomAvailability(roomOptionId: string) {
         ],
       },
     }),
+    db.retreatRoomOption.findUnique({
+      where: { id: roomOptionId },
+      select: { guestsIncluded: true },
+    }),
   ]);
-  return bookingCount + giftCount;
+  const bookedAttendees = bookings.reduce(
+    (sum, booking) => sum + Math.max(booking.attendeeCount || booking.guestsIncluded || 1, 1),
+    0
+  );
+  return bookedAttendees + giftCount * Math.max(roomOption?.guestsIncluded || 1, 1);
 }
 
 export async function syncRetreatDateFromContent(slug: string, externalDateId: string) {
@@ -195,6 +235,13 @@ export async function syncRetreatDateFromContent(slug: string, externalDateId: s
   const basePricePence = (earlyBird ? retreat.earlyBirdPrice : retreat.normalPrice) * 100;
   const depositAmountPence = getDepositAmountPence(basePricePence);
   const balanceDueAt = getBalanceDueDate(startsAt);
+  const retreatType = instance.retreatType || "in_person";
+  const refundPolicySnapshot = {
+    retreatType,
+    refundNotes: instance.refundNotes || null,
+    inPersonBalanceRefundCutoffDays: 56,
+    onlineRefundCutoffDays: 14,
+  };
 
   const retreatDate = await db.retreatDate.upsert({
     where: { externalDateId },
@@ -203,6 +250,8 @@ export async function syncRetreatDateFromContent(slug: string, externalDateId: s
       retreatSlug: retreat.slug,
       retreatTitleSnapshot: retreat.title,
       retreatLocationSnapshot: retreat.location,
+      retreatType,
+      timezone: instance.timezone || "Europe/London",
       startsAt,
       endsAt,
       capacity: instance.totalSpaces,
@@ -212,11 +261,16 @@ export async function syncRetreatDateFromContent(slug: string, externalDateId: s
       depositAmountPence,
       singleRoomSupplementPence: 0,
       balanceDueAt,
+      paymentPlanSnapshotJson: toPrismaJson(instance.paymentPlan),
+      refundPolicySnapshotJson: refundPolicySnapshot,
+      payInFullDiscountEnabled: instance.payInFullDiscountEnabled === true,
     },
     update: {
       retreatSlug: retreat.slug,
       retreatTitleSnapshot: retreat.title,
       retreatLocationSnapshot: retreat.location,
+      retreatType,
+      timezone: instance.timezone || "Europe/London",
       startsAt,
       endsAt,
       capacity: instance.totalSpaces,
@@ -226,6 +280,9 @@ export async function syncRetreatDateFromContent(slug: string, externalDateId: s
       depositAmountPence,
       singleRoomSupplementPence: 0,
       balanceDueAt,
+      paymentPlanSnapshotJson: toPrismaJson(instance.paymentPlan),
+      refundPolicySnapshotJson: refundPolicySnapshot,
+      payInFullDiscountEnabled: instance.payInFullDiscountEnabled === true,
     },
   });
 
@@ -234,7 +291,7 @@ export async function syncRetreatDateFromContent(slug: string, externalDateId: s
       ? (roomOption.earlyBirdPricePence ?? roomOption.normalPricePence)
       : roomOption.normalPricePence;
     const roomDepositPence = roomOption.depositPence ?? getDepositAmountPence(roomPricePence);
-    await db.retreatRoomOption.upsert({
+    const syncedRoomOption = await db.retreatRoomOption.upsert({
       where: {
         retreatDateId_externalRoomOptionId: {
           retreatDateId: retreatDate.id,
@@ -251,6 +308,8 @@ export async function syncRetreatDateFromContent(slug: string, externalDateId: s
         capacity: roomOption.capacity,
         availableSpots: roomOption.availableSpots,
         pricePence: roomPricePence,
+        pricePerPersonPence: roomOption.pricePerPersonPence ?? null,
+        roomCount: roomOption.roomCount ?? 0,
         depositAmountPence: roomDepositPence,
         isWaitlistOnly: roomOption.isWaitlistOnly === true,
       },
@@ -262,10 +321,34 @@ export async function syncRetreatDateFromContent(slug: string, externalDateId: s
         capacity: roomOption.capacity,
         availableSpots: roomOption.availableSpots,
         pricePence: roomPricePence,
+        pricePerPersonPence: roomOption.pricePerPersonPence ?? null,
+        roomCount: roomOption.roomCount ?? 0,
         depositAmountPence: roomDepositPence,
         isWaitlistOnly: roomOption.isWaitlistOnly === true,
       },
     });
+
+    const roomCount = Math.max(roomOption.roomCount ?? 0, 0);
+    for (let index = 1; index <= roomCount; index += 1) {
+      await db.retreatRoomUnit.upsert({
+        where: {
+          retreatDateId_label: {
+            retreatDateId: retreatDate.id,
+            label: `${roomOption.label} ${index}`,
+          },
+        },
+        create: {
+          retreatDateId: retreatDate.id,
+          roomOptionId: syncedRoomOption.id,
+          label: `${roomOption.label} ${index}`,
+          capacity: Math.max(roomOption.guestsIncluded, 1),
+        },
+        update: {
+          roomOptionId: syncedRoomOption.id,
+          capacity: Math.max(roomOption.guestsIncluded, 1),
+        },
+      });
+    }
   }
 
   return db.retreatDate.findUniqueOrThrow({
@@ -323,6 +406,8 @@ export async function getOperationalRetreatBySlug(
               availableSpots: Math.max(roomOption.capacity - reserved, 0),
               earlyBirdPricePence: undefined,
               normalPricePence: roomOption.pricePence,
+              pricePerPersonPence: roomOption.pricePerPersonPence ?? undefined,
+              roomCount: roomOption.roomCount,
               depositPence: roomOption.depositAmountPence ?? undefined,
               isWaitlistOnly: roomOption.isWaitlistOnly,
             };
@@ -355,6 +440,7 @@ export async function createRetreatCheckout(input: {
   retreatDateId: string;
   roomOptionId: string;
   purchaseMode: "self" | "gift";
+  paymentOption?: "deposit" | "pay_in_full";
   purchaserUserId?: string | null;
   purchaserFirstName: string;
   purchaserLastName: string;
@@ -413,6 +499,11 @@ export async function createRetreatCheckout(input: {
   const purchaserLastName = normalizeText(input.purchaserLastName, 80);
   const purchaserEmail = normalizeEmail(input.purchaserEmail);
   const purchaserName = `${purchaserFirstName} ${purchaserLastName}`.trim();
+  const attendeeCount = Math.max(roomOption.guestsIncluded || 1, 1);
+  const roomTotalPricePence =
+    roomOption.pricePerPersonPence && roomOption.pricePerPersonPence > 0
+      ? roomOption.pricePerPersonPence * attendeeCount
+      : roomOption.pricePence;
 
   const stripe = getStripeClient();
   const customerId = input.purchaserUserId
@@ -448,7 +539,7 @@ export async function createRetreatCheckout(input: {
         productSlug: input.retreatSlug,
         productTitleSnapshot: `${retreatDate.retreatTitleSnapshot} - ${roomOption.label}`,
         currency: retreatDate.currency,
-        totalPaidPence: roomOption.pricePence,
+        totalPaidPence: roomTotalPricePence,
         retreatDateId: retreatDate.id,
         retreatRoomOptionId: roomOption.id,
         expiresAt: new Date(Date.now() + RETREAT_PAYMENT_WINDOW_MS),
@@ -476,7 +567,7 @@ export async function createRetreatCheckout(input: {
                 retreatDate.endsAt
               )}`,
             },
-            unit_amount: roomOption.pricePence,
+            unit_amount: roomTotalPricePence,
           },
           quantity: 1,
         },
@@ -529,16 +620,50 @@ export async function createRetreatCheckout(input: {
     throw new Error("SECOND_GUEST_REQUIRED");
   }
 
-  const depositAmountPence = Math.min(
-    roomOption.depositAmountPence || roomOption.pricePence,
-    roomOption.pricePence
+  const payInFull = input.paymentOption === "pay_in_full";
+  const payInFullDiscountPence = calculatePayInFullDiscount(
+    roomTotalPricePence,
+    payInFull && retreatDate.payInFullDiscountEnabled
   );
-  const balanceAmountPence = Math.max(0, roomOption.pricePence - depositAmountPence);
+  const payableTotalPence = roomTotalPricePence - payInFullDiscountPence;
+  const depositAmountPence = Math.min(
+    roomOption.depositAmountPence || roomTotalPricePence,
+    payableTotalPence
+  );
+  const paymentPlan = readPaymentPlanSnapshot(retreatDate.paymentPlanSnapshotJson);
+  const instalmentDrafts = buildRetreatInstalmentPlan({
+    totalPence: payableTotalPence,
+    depositPence: depositAmountPence,
+    startsAt: retreatDate.startsAt,
+    paymentPlan,
+    payInFull,
+  });
+  const initialInstalment = instalmentDrafts[0];
+  if (!initialInstalment || initialInstalment.amountPence <= 0) {
+    throw new Error("RETREAT_PAYMENT_PLAN_INVALID");
+  }
+  const balanceAmountPence = Math.max(
+    0,
+    instalmentDrafts.slice(1).reduce((sum, instalment) => sum + instalment.amountPence, 0)
+  );
+  const nonRefundableAmountPence = calculateRetreatNonRefundableAmount({
+    retreatType: parseRetreatType(retreatDate.retreatType),
+    totalPence: payableTotalPence,
+    depositPence: depositAmountPence,
+  });
+  const roomUnit = await db.retreatRoomUnit.findFirst({
+    where: {
+      roomOptionId: roomOption.id,
+      status: "available",
+    },
+    orderBy: { label: "asc" },
+  });
 
   const booking = await db.retreatBooking.create({
     data: {
       retreatDateId: retreatDate.id,
       roomOptionId: roomOption.id,
+      roomUnitId: roomUnit?.id,
       purchaserUserId: input.purchaserUserId || undefined,
       purchaserFirstName,
       purchaserLastName,
@@ -562,6 +687,7 @@ export async function createRetreatCheckout(input: {
       roomOptionLabelSnapshot: roomOption.label,
       roomOptionTypeSnapshot: roomOption.roomType,
       guestsIncluded: roomOption.guestsIncluded,
+      attendeeCount,
       acceptedTermsVersion: input.acceptedTermsVersion || null,
       acceptedHealthWaiverVersion: input.acceptedHealthWaiverVersion || null,
       acceptedHealthDataVersion: input.acceptedHealthDataVersion || null,
@@ -583,7 +709,9 @@ export async function createRetreatCheckout(input: {
               roomOptionId: roomOption.id,
             }
           : undefined,
-      totalPricePence: roomOption.pricePence,
+      totalPricePence: payableTotalPence,
+      payInFullDiscountPence,
+      nonRefundableAmountPence,
       depositAmountPence,
       balanceAmountPence,
       currency: retreatDate.currency,
@@ -591,9 +719,70 @@ export async function createRetreatCheckout(input: {
       paymentStatus: "unpaid",
       balancePaymentUrlToken: balanceAmountPence > 0 ? createBalanceToken() : null,
       balanceDueAt: retreatDate.balanceDueAt,
+      paymentPlanSnapshotJson: toPrismaJson(paymentPlan),
+      refundPolicySnapshotJson: retreatDate.refundPolicySnapshotJson || undefined,
+      instalments: {
+        create: instalmentDrafts.map((instalment) => ({
+          sequence: instalment.sequence,
+          kind: instalment.kind as RetreatInstalmentKind,
+          label: instalment.label,
+          amountPence: instalment.amountPence,
+          dueAt: instalment.dueAt,
+          publicPaymentToken: instalment.sequence > 1 ? createPaymentToken() : null,
+        })),
+      },
+      attendees: {
+        create: [
+          {
+            email: attendeeEmail,
+            firstName: attendeeFirstName,
+            lastName: attendeeLastName,
+            displayName: `${attendeeFirstName} ${attendeeLastName}`.trim(),
+            isPrimary: true,
+            isPurchaser: attendeeEmail === purchaserEmail,
+            userId:
+              input.purchaserUserId && attendeeEmail === purchaserEmail
+                ? input.purchaserUserId
+                : undefined,
+            status:
+              input.purchaserUserId && attendeeEmail === purchaserEmail
+                ? "claimed"
+                : "pending_claim",
+            claimToken:
+              input.purchaserUserId && attendeeEmail === purchaserEmail
+                ? null
+                : createPaymentToken(),
+            claimedAt:
+              input.purchaserUserId && attendeeEmail === purchaserEmail ? new Date() : null,
+          },
+          ...(roomOption.guestsIncluded > 1 && input.guestTwoEmail
+            ? [
+                {
+                  email: normalizeEmail(input.guestTwoEmail),
+                  firstName: normalizeText(input.guestTwoFirstName || "", 80),
+                  lastName: normalizeText(input.guestTwoLastName || "", 80),
+                  displayName: `${normalizeText(input.guestTwoFirstName || "", 80)} ${normalizeText(
+                    input.guestTwoLastName || "",
+                    80
+                  )}`.trim(),
+                  isPrimary: false,
+                  isPurchaser: normalizeEmail(input.guestTwoEmail) === purchaserEmail,
+                  claimToken: createPaymentToken(),
+                },
+              ]
+            : []),
+        ],
+      },
     },
     include: { retreatDate: true },
   });
+
+  if (roomUnit) {
+    await db.retreatRoomUnit.update({
+      where: { id: roomUnit.id },
+      data: { status: "assigned" },
+    });
+  }
 
   const successUrl = `${getBaseSiteUrl()}/retreats/${input.retreatSlug}/checkout?date=${input.retreatDateId}&booking=${booking.id}&checkout=success`;
   const cancelUrl = `${getBaseSiteUrl()}/retreats/${input.retreatSlug}/checkout?date=${input.retreatDateId}&checkout=cancelled`;
@@ -610,20 +799,21 @@ export async function createRetreatCheckout(input: {
         price_data: {
           currency: retreatDate.currency.toLowerCase(),
           product_data: {
-            name: `${retreatDate.retreatTitleSnapshot} deposit`,
+            name: `${retreatDate.retreatTitleSnapshot} ${initialInstalment.label.toLowerCase()}`,
             description: `${roomOption.label} · ${formatDateRange(
               retreatDate.startsAt,
               retreatDate.endsAt
             )}`,
           },
-          unit_amount: depositAmountPence,
+          unit_amount: initialInstalment.amountPence,
         },
         quantity: 1,
       },
     ],
     metadata: {
-      kind: "retreat_deposit",
+      kind: "retreat_instalment",
       bookingId: booking.id,
+      instalmentSequence: String(initialInstalment.sequence),
       retreatSlug: input.retreatSlug,
       retreatDateId: retreatDate.externalDateId,
       roomOptionId: roomOption.externalRoomOptionId,
@@ -639,6 +829,17 @@ export async function createRetreatCheckout(input: {
     where: { id: booking.id },
     data: {
       stripeDepositSessionId: session.id,
+      instalments: {
+        update: {
+          where: {
+            bookingId_sequence: {
+              bookingId: booking.id,
+              sequence: initialInstalment.sequence,
+            },
+          },
+          data: { stripeCheckoutSessionId: session.id },
+        },
+      },
     },
   });
 
@@ -692,30 +893,114 @@ async function sendDepositConfirmationEmail(bookingId: string) {
     },
     dispatchMode: "immediate_best_effort",
   });
+}
 
-  if (booking.balanceAmountPence > 0 && booking.balancePaymentUrlToken) {
-    const paymentUrl = buildAbsoluteUrl(`/retreats/balance/${booking.balancePaymentUrlToken}`);
+function getNextPendingRetreatInstalment<
+  T extends {
+    sequence: number;
+    status: RetreatInstalmentStatus;
+  },
+>(instalments: T[]) {
+  return (
+    instalments
+      .filter(
+        (instalment) =>
+          instalment.status === RetreatInstalmentStatus.pending && instalment.sequence > 1
+      )
+      .sort((a, b) => a.sequence - b.sequence)[0] || null
+  );
+}
+
+export async function sendRetreatBalanceDueEmails(input: {
+  retreatDateId: string;
+  mode?: "due" | "chaser";
+}) {
+  const retreatDate = await db.retreatDate.findUnique({
+    where: { id: input.retreatDateId },
+    include: {
+      bookings: {
+        where: {
+          bookingStatus: {
+            in: [RetreatBookingStatus.deposit_paid, RetreatBookingStatus.balance_due],
+          },
+          paymentStatus: {
+            in: [RetreatPaymentStatus.deposit_paid, RetreatPaymentStatus.partially_paid],
+          },
+          balanceAmountPence: { gt: 0 },
+          balancePaymentUrlToken: { not: null },
+        },
+        include: {
+          instalments: {
+            orderBy: { sequence: "asc" },
+          },
+        },
+      },
+    },
+  });
+  if (!retreatDate) throw new Error("NOT_FOUND");
+
+  let sent = 0;
+  let skipped = 0;
+  const now = new Date();
+  const mode = input.mode === "chaser" ? "chaser" : "due";
+
+  for (const booking of retreatDate.bookings) {
+    const nextInstalment = getNextPendingRetreatInstalment(booking.instalments);
+    const amountPence = nextInstalment?.amountPence || booking.balanceAmountPence;
+    const dueAt = nextInstalment?.dueAt || booking.balanceDueAt;
+    const token = booking.balancePaymentUrlToken;
+
+    if (!token || amountPence <= 0) {
+      skipped += 1;
+      continue;
+    }
+
+    const paymentUrl = buildAbsoluteUrl(`/retreats/balance/${token}`);
     await sendPostmarkReactEmail({
       to: booking.purchaserEmail,
-      subject: `${booking.retreatDate.retreatTitleSnapshot}: balance payment link`,
+      subject:
+        mode === "chaser"
+          ? `Reminder: ${retreatDate.retreatTitleSnapshot} balance`
+          : `${retreatDate.retreatTitleSnapshot}: balance due`,
       react: RetreatBalanceDueEmail({
         firstName: booking.purchaserFirstName,
-        retreatName: booking.retreatDate.retreatTitleSnapshot,
-        retreatDates: formatDateRange(booking.retreatDate.startsAt, booking.retreatDate.endsAt),
-        balanceAmount: formatCurrency(booking.balanceAmountPence, booking.currency),
-        dueDate: booking.balanceDueAt ? formatDate(booking.balanceDueAt) : "Before arrival",
+        retreatName: retreatDate.retreatTitleSnapshot,
+        retreatDates: formatDateRange(retreatDate.startsAt, retreatDate.endsAt),
+        balanceAmount: formatCurrency(amountPence, booking.currency),
+        dueDate: dueAt ? formatDate(dueAt) : "Before arrival",
         paymentUrl,
       }),
-      textBody: `Your balance payment link for ${booking.retreatDate.retreatTitleSnapshot}\nAmount due: ${formatCurrency(booking.balanceAmountPence, booking.currency)}\nDue by: ${booking.balanceDueAt ? formatDate(booking.balanceDueAt) : "Before arrival"}\nPay here: ${paymentUrl}`,
-      tag: "retreat-balance-due",
+      textBody: [
+        `Hi ${booking.purchaserFirstName},`,
+        "",
+        `Your remaining ${retreatDate.retreatTitleSnapshot} payment is ready.`,
+        `Amount due: ${formatCurrency(amountPence, booking.currency)}`,
+        `Due by: ${dueAt ? formatDate(dueAt) : "Before arrival"}`,
+        "",
+        `Pay here: ${paymentUrl}`,
+      ].join("\n"),
+      tag: mode === "chaser" ? "retreat-balance-chaser" : "retreat-balance-due",
       templateKey: "retreat-balance-due",
       metadata: {
         bookingId: booking.id,
-        retreatSlug: booking.retreatDate.retreatSlug,
+        retreatDateId: retreatDate.id,
+        retreatSlug: retreatDate.retreatSlug,
+        mode,
       },
       dispatchMode: "immediate_best_effort",
     });
+
+    if (nextInstalment) {
+      await db.retreatBookingInstalment.update({
+        where: { id: nextInstalment.id },
+        data: mode === "chaser" ? { chaserSentAt: now } : { reminderSentAt: now },
+      });
+    }
+
+    sent += 1;
   }
+
+  return { sent, skipped };
 }
 
 export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.Session) {
@@ -733,6 +1018,82 @@ export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.S
     typeof session.payment_intent === "string"
       ? session.payment_intent
       : session.payment_intent?.id;
+
+  if (kind === "retreat_instalment") {
+    const instalmentSequence = Number(session.metadata?.instalmentSequence || "1");
+    const paidAt = new Date();
+
+    await db.$transaction(async (tx) => {
+      await tx.retreatBookingInstalment.update({
+        where: {
+          bookingId_sequence: {
+            bookingId: booking.id,
+            sequence: instalmentSequence,
+          },
+        },
+        data: {
+          status: RetreatInstalmentStatus.paid,
+          paidAt,
+          stripePaymentIntentId: paymentIntentId || undefined,
+        },
+      });
+
+      const instalments = await tx.retreatBookingInstalment.findMany({
+        where: { bookingId: booking.id },
+        orderBy: { sequence: "asc" },
+      });
+      const paidInstalments = instalments.filter(
+        (instalment) => instalment.status === RetreatInstalmentStatus.paid
+      );
+      const depositPaidPence = paidInstalments
+        .filter((instalment) => instalment.kind === RetreatInstalmentKind.deposit)
+        .reduce((sum, instalment) => sum + instalment.amountPence, 0);
+      const fullPaymentPaidPence = paidInstalments
+        .filter((instalment) => instalment.kind === RetreatInstalmentKind.full_payment)
+        .reduce((sum, instalment) => sum + instalment.amountPence, 0);
+      const balancePaidPence = paidInstalments
+        .filter((instalment) => instalment.kind !== RetreatInstalmentKind.deposit)
+        .reduce((sum, instalment) => sum + instalment.amountPence, 0);
+      const allPaid = instalments.every(
+        (instalment) => instalment.status === RetreatInstalmentStatus.paid
+      );
+      const nonInitialPaymentMade = balancePaidPence > 0 && !allPaid;
+
+      await tx.retreatBooking.update({
+        where: { id: booking.id },
+        data: {
+          paymentStatus: allPaid
+            ? RetreatPaymentStatus.paid_in_full
+            : nonInitialPaymentMade
+              ? RetreatPaymentStatus.partially_paid
+              : RetreatPaymentStatus.deposit_paid,
+          bookingStatus: allPaid
+            ? RetreatBookingStatus.paid_in_full
+            : RetreatBookingStatus.balance_due,
+          depositPaidPence: depositPaidPence || fullPaymentPaidPence,
+          depositPaidAt:
+            depositPaidPence > 0 || fullPaymentPaidPence > 0 ? paidAt : booking.depositPaidAt,
+          balancePaidPence: Math.max(0, balancePaidPence - fullPaymentPaidPence),
+          balancePaidAt: allPaid ? paidAt : booking.balancePaidAt,
+          stripeDepositPaymentIntentId:
+            instalmentSequence === 1
+              ? paymentIntentId || booking.stripeDepositPaymentIntentId
+              : booking.stripeDepositPaymentIntentId,
+          stripeBalancePaymentIntentId:
+            instalmentSequence > 1
+              ? paymentIntentId || booking.stripeBalancePaymentIntentId
+              : booking.stripeBalancePaymentIntentId,
+        },
+      });
+    });
+
+    if (instalmentSequence === 1) {
+      await sendDepositConfirmationEmail(booking.id).catch((error) => {
+        console.error("Failed to send retreat booking confirmation email", error);
+      });
+    }
+    return true;
+  }
 
   if (kind === "retreat_deposit") {
     const paymentStatus =
@@ -784,7 +1145,12 @@ export async function createRetreatBalanceCheckout(input: {
 }) {
   const booking = await db.retreatBooking.findUnique({
     where: { id: input.bookingId },
-    include: { retreatDate: true },
+    include: {
+      retreatDate: true,
+      instalments: {
+        orderBy: { sequence: "asc" },
+      },
+    },
   });
   if (!booking) throw new Error("NOT_FOUND");
 
@@ -797,6 +1163,12 @@ export async function createRetreatBalanceCheckout(input: {
     throw new Error("BALANCE_NOT_DUE");
   }
   await assertNoResourceDisputeHold("retreat_booking", booking.id);
+
+  const nextInstalment = getNextPendingRetreatInstalment(booking.instalments);
+  const checkoutAmountPence = nextInstalment?.amountPence || booking.balanceAmountPence;
+  if (checkoutAmountPence <= 0) {
+    throw new Error("BALANCE_NOT_DUE");
+  }
 
   const stripe = getStripeClient();
   const customerId = booking.purchaserUserId
@@ -825,28 +1197,38 @@ export async function createRetreatBalanceCheckout(input: {
         price_data: {
           currency: booking.currency.toLowerCase(),
           product_data: {
-            name: `${booking.retreatDate.retreatTitleSnapshot} balance`,
+            name: nextInstalment
+              ? `${booking.retreatDate.retreatTitleSnapshot}: ${nextInstalment.label}`
+              : `${booking.retreatDate.retreatTitleSnapshot} balance`,
             description: formatDateRange(booking.retreatDate.startsAt, booking.retreatDate.endsAt),
           },
-          unit_amount: booking.balanceAmountPence,
+          unit_amount: checkoutAmountPence,
         },
         quantity: 1,
       },
     ],
     metadata: {
-      kind: "retreat_balance",
+      kind: nextInstalment ? "retreat_instalment" : "retreat_balance",
       bookingId: booking.id,
       retreatSlug: booking.retreatDate.retreatSlug,
       userId: input.userId || "",
+      instalmentSequence: nextInstalment ? String(nextInstalment.sequence) : "",
     },
   });
 
   if (!session.url) throw new Error("STRIPE_CHECKOUT_URL_MISSING");
 
-  await db.retreatBooking.update({
-    where: { id: booking.id },
-    data: { stripeBalanceSessionId: session.id },
-  });
+  if (nextInstalment) {
+    await db.retreatBookingInstalment.update({
+      where: { id: nextInstalment.id },
+      data: { stripeCheckoutSessionId: session.id },
+    });
+  } else {
+    await db.retreatBooking.update({
+      where: { id: booking.id },
+      data: { stripeBalanceSessionId: session.id },
+    });
+  }
 
   return {
     checkoutUrl: session.url,
@@ -916,9 +1298,16 @@ export async function getAdminRetreatEvidence(retreatDateId: string) {
 export async function getRetreatBalancePaymentStateByToken(token: string) {
   const booking = await db.retreatBooking.findFirst({
     where: { balancePaymentUrlToken: token },
-    include: { retreatDate: true },
+    include: {
+      retreatDate: true,
+      instalments: {
+        orderBy: { sequence: "asc" },
+      },
+    },
   });
   if (!booking) throw new Error("NOT_FOUND");
+
+  const nextInstalment = getNextPendingRetreatInstalment(booking.instalments);
 
   return {
     bookingId: booking.id,
@@ -927,10 +1316,10 @@ export async function getRetreatBalancePaymentStateByToken(token: string) {
     retreatLocation: booking.retreatDate.retreatLocationSnapshot,
     dateLabel: formatDateRange(booking.retreatDate.startsAt, booking.retreatDate.endsAt),
     purchaserName: `${booking.purchaserFirstName} ${booking.purchaserLastName}`.trim(),
-    balanceAmountPence: booking.balanceAmountPence,
+    balanceAmountPence: nextInstalment?.amountPence || booking.balanceAmountPence,
     currency: booking.currency,
     paymentStatus: booking.paymentStatus,
-    dueDate: booking.balanceDueAt?.toISOString() || null,
+    dueDate: nextInstalment?.dueAt?.toISOString() || booking.balanceDueAt?.toISOString() || null,
   };
 }
 
@@ -1014,6 +1403,10 @@ export async function getAdminRetreatSummaries() {
     const confirmed = date.bookings.filter((booking) =>
       ["deposit_paid", "balance_due", "paid_in_full"].includes(booking.bookingStatus)
     );
+    const bookedSpaces = confirmed.reduce(
+      (sum, booking) => sum + Math.max(booking.attendeeCount || booking.guestsIncluded || 1, 1),
+      0
+    );
     const revenuePence = date.bookings.reduce(
       (sum, booking) => sum + booking.depositPaidPence + booking.balancePaidPence,
       0
@@ -1027,7 +1420,7 @@ export async function getAdminRetreatSummaries() {
       startDate: date.startsAt.toISOString(),
       endDate: date.endsAt.toISOString(),
       status: date.status,
-      bookedSpaces: confirmed.length,
+      bookedSpaces,
       totalSpaces: date.capacity,
       revenuePence,
       earlyBirdPricePence: content ? content.earlyBirdPrice * 100 : date.pricePence,
@@ -1036,12 +1429,81 @@ export async function getAdminRetreatSummaries() {
   });
 }
 
+export async function setUpRetreatOnlineRoom(retreatDateId: string) {
+  const retreatDate = await db.retreatDate.findUnique({
+    where: { id: retreatDateId },
+    select: {
+      id: true,
+      retreatType: true,
+      startsAt: true,
+      endsAt: true,
+      dailyRoomName: true,
+      dailyRoomUrl: true,
+      onlineRoomSetupStatus: true,
+    },
+  });
+  if (!retreatDate) throw new Error("NOT_FOUND");
+  if (retreatDate.retreatType !== "online") throw new Error("NOT_ONLINE_RETREAT");
+
+  if (
+    retreatDate.dailyRoomName &&
+    retreatDate.dailyRoomUrl &&
+    retreatDate.onlineRoomSetupStatus === ClassRoomSetupStatus.ready
+  ) {
+    return retreatDate;
+  }
+
+  if (!isDailyConfigured()) {
+    await db.retreatDate.update({
+      where: { id: retreatDate.id },
+      data: {
+        onlineRoomSetupStatus: ClassRoomSetupStatus.pending,
+        onlineRoomSetupError: "Daily is not configured",
+      },
+    });
+    throw new Error("DAILY_NOT_CONFIGURED");
+  }
+
+  try {
+    const room = await createSessionRoom(
+      `retreat-${retreatDate.id}`,
+      retreatDate.startsAt,
+      retreatDate.endsAt
+    );
+    return db.retreatDate.update({
+      where: { id: retreatDate.id },
+      data: {
+        dailyRoomName: room.roomName,
+        dailyRoomUrl: room.roomUrl,
+        onlineRoomSetupStatus: ClassRoomSetupStatus.ready,
+        onlineRoomSetupError: null,
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to create Daily room";
+    await db.retreatDate.update({
+      where: { id: retreatDate.id },
+      data: {
+        onlineRoomSetupStatus: ClassRoomSetupStatus.failed,
+        onlineRoomSetupError: message,
+      },
+    });
+    throw error;
+  }
+}
+
 export async function getAdminRetreatDetail(retreatDateId: string) {
   const bookingRows = await db.retreatDate.findUnique({
     where: { id: retreatDateId },
     include: {
       bookings: {
         orderBy: { createdAt: "asc" },
+        include: {
+          roomUnit: true,
+          instalments: {
+            orderBy: { sequence: "asc" },
+          },
+        },
       },
     },
   });
@@ -1060,6 +1522,10 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
     startDate: bookingRows.startsAt.toISOString(),
     endDate: bookingRows.endsAt.toISOString(),
     status: bookingRows.status,
+    retreatType: bookingRows.retreatType,
+    dailyRoomUrl: bookingRows.dailyRoomUrl,
+    roomSetupStatus: bookingRows.onlineRoomSetupStatus,
+    roomSetupError: bookingRows.onlineRoomSetupError,
     capacity: bookingRows.capacity,
     revenuePence,
     depositAmountPence: bookingRows.depositAmountPence,
@@ -1072,7 +1538,9 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
       purchaserEmail: booking.purchaserEmail,
       attendeeName: `${booking.attendeeFirstName} ${booking.attendeeLastName}`.trim(),
       attendeeEmail: booking.attendeeEmail,
+      attendeeCount: booking.attendeeCount,
       roomType: booking.roomOptionLabelSnapshot || booking.roomType,
+      roomUnitLabel: booking.roomUnit?.label || null,
       dietaryRequirements: booking.dietaryRequirements,
       medicalConditions: booking.medicalConditions,
       mobilityNeeds: booking.mobilityNeeds,
@@ -1081,6 +1549,18 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
       depositPaidPence: booking.depositPaidPence,
       balancePaidPence: booking.balancePaidPence,
       totalPricePence: booking.totalPricePence,
+      payInFullDiscountPence: booking.payInFullDiscountPence,
+      nonRefundableAmountPence: booking.nonRefundableAmountPence,
+      instalments: booking.instalments.map((instalment) => ({
+        id: instalment.id,
+        sequence: instalment.sequence,
+        kind: instalment.kind,
+        label: instalment.label,
+        amountPence: instalment.amountPence,
+        status: instalment.status,
+        dueAt: instalment.dueAt?.toISOString() || null,
+        paidAt: instalment.paidAt?.toISOString() || null,
+      })),
       bookedAt: booking.bookedAt.toISOString(),
     })),
   };

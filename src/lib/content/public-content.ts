@@ -13,6 +13,8 @@ import type {
   PageContent,
   RetreatCombinedContent,
   RetreatInstanceContent,
+  RetreatPaymentPlanContent,
+  RetreatRoomOptionContent,
   RetreatTemplateContent,
   RetreatVenueContent,
   SeoContent,
@@ -128,6 +130,136 @@ function getIncludedEntryById(
 ) {
   if (!includes || !id) return null;
   return includes.find((entry) => entry.sys.id === id) || null;
+}
+
+function parseRetreatRoomOptionObject(
+  contentType: string,
+  entryId: string,
+  item: Record<string, unknown>
+): RetreatRoomOptionContent | null {
+  const id = typeof item.id === "string" && item.id.trim() ? item.id.trim() : undefined;
+  const label = typeof item.label === "string" && item.label.trim() ? item.label.trim() : undefined;
+  const type = typeof item.type === "string" && item.type.trim() ? item.type.trim() : undefined;
+  const normalPricePence = Number(item.normalPricePence ?? item.pricePence);
+  const capacity = Number(item.capacity);
+
+  if (!id || !label || !type || !Number.isFinite(normalPricePence) || !Number.isFinite(capacity)) {
+    throw createMissingContentError(
+      contentType,
+      `entry "${entryId}" has an invalid roomOptions item`
+    );
+  }
+
+  if (
+    type !== "shared_twin" &&
+    type !== "single" &&
+    type !== "shared_private" &&
+    type !== "virtual"
+  ) {
+    throw createMissingContentError(
+      contentType,
+      `entry "${entryId}" has unsupported room option type "${type}"`
+    );
+  }
+
+  const guestsIncluded = Number(item.guestsIncluded ?? 1);
+  const availableSpots = Number(item.availableSpots ?? capacity);
+  const pricePerPersonPence = Number(item.pricePerPersonPence);
+  const roomCount = Number(item.roomCount);
+  const depositPence = Number(item.depositPence);
+  const earlyBirdPricePence = Number(item.earlyBirdPricePence);
+
+  return {
+    id,
+    label,
+    description: typeof item.description === "string" ? item.description : "",
+    type,
+    guestsIncluded: Number.isFinite(guestsIncluded) ? guestsIncluded : 1,
+    capacity,
+    availableSpots: Number.isFinite(availableSpots) ? availableSpots : capacity,
+    earlyBirdPricePence: Number.isFinite(earlyBirdPricePence) ? earlyBirdPricePence : undefined,
+    normalPricePence,
+    pricePerPersonPence: Number.isFinite(pricePerPersonPence) ? pricePerPersonPence : undefined,
+    roomCount: Number.isFinite(roomCount) ? roomCount : undefined,
+    depositPence: Number.isFinite(depositPence) ? depositPence : undefined,
+    isWaitlistOnly: item.isWaitlistOnly === true,
+  };
+}
+
+function parseRetreatRoomOptions(
+  contentType: string,
+  entryId: string,
+  value: unknown
+): RetreatRoomOptionContent[] {
+  const rawItems =
+    Array.isArray(value) ||
+    (value && typeof value === "object" && !Array.isArray(value) && "length" in value)
+      ? value
+      : value &&
+          typeof value === "object" &&
+          !Array.isArray(value) &&
+          Array.isArray((value as { items?: unknown }).items)
+        ? (value as { items: unknown[] }).items
+        : value && typeof value === "object" && !Array.isArray(value)
+          ? Object.values(value)
+          : [];
+
+  const parsed = parseObjectArray(rawItems, (item) =>
+    parseRetreatRoomOptionObject(contentType, entryId, item)
+  );
+
+  if (parsed.length === 0) {
+    throw createMissingContentError(contentType, `entry "${entryId}" has no roomOptions`);
+  }
+
+  return parsed;
+}
+
+function parseRetreatSchedule(value: unknown): Array<{ day: string; activities: string[] }> {
+  const rawItems =
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Array.isArray((value as { items?: unknown }).items)
+      ? (value as { items: unknown[] }).items
+      : value;
+
+  return parseObjectArray(rawItems, (item) => {
+    const day = typeof item.day === "string" && item.day.trim() ? item.day.trim() : null;
+    if (!day) return null;
+    return {
+      day,
+      activities: parseStringArray(item.activities),
+    };
+  });
+}
+
+function parseRetreatPaymentPlan(value: unknown): RetreatPaymentPlanContent | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const rawInstalments = (value as { instalments?: unknown }).instalments;
+  const instalments = parseObjectArray(rawInstalments, (item) => {
+    const label = typeof item.label === "string" && item.label.trim() ? item.label.trim() : null;
+    if (!label) return null;
+    const percent = Number(item.percent);
+    const amountPence = Number(item.amountPence);
+    const dueDaysBeforeStart = Number(item.dueDaysBeforeStart);
+    const kind = typeof item.kind === "string" ? item.kind : undefined;
+    const parsedKind: "deposit" | "scheduled" | "balance" | "full_payment" | undefined =
+      kind === "deposit" || kind === "scheduled" || kind === "balance" || kind === "full_payment"
+        ? kind
+        : undefined;
+
+    return {
+      label,
+      kind: parsedKind,
+      percent: Number.isFinite(percent) ? percent : undefined,
+      amountPence: Number.isFinite(amountPence) ? amountPence : undefined,
+      dueDate: typeof item.dueDate === "string" ? item.dueDate : undefined,
+      dueDaysBeforeStart: Number.isFinite(dueDaysBeforeStart) ? dueDaysBeforeStart : undefined,
+    };
+  });
+
+  return instalments.length > 0 ? { instalments } : undefined;
 }
 
 function getIncludedAssetById(
@@ -387,6 +519,12 @@ function combineRetreats(
         availableSpaces: i.availableSpaces,
         totalSpaces: i.totalSpaces,
         roomOptions: i.roomOptions || [],
+        retreatType: i.retreatType,
+        timezone: i.timezone,
+        paymentPlan: i.paymentPlan,
+        payInFullDiscountEnabled: i.payInFullDiscountEnabled,
+        refundNotes: i.refundNotes,
+        instructorProfileIds: i.instructorProfileIds,
       })),
       earlyBirdPrice: first.earlyBirdPrice,
       earlyBirdDeadline: first.earlyBirdDeadline,
@@ -394,7 +532,7 @@ function combineRetreats(
       currency: first.currency,
       included: template.included,
       notIncluded: template.notIncluded,
-      schedule: [],
+      schedule: first.schedule || [],
       accommodation: venue?.accommodationType || venue?.description || "",
       suitableFor: template.suitableFor,
       venueId: venue?.id,
@@ -794,7 +932,65 @@ export async function getRetreatTemplates(): Promise<RetreatTemplateContent[]> {
 }
 
 export async function getRetreatInstances(): Promise<RetreatInstanceContent[]> {
-  return [];
+  const res = await getEntries<Record<string, unknown>>("retreatEvent", {
+    limit: 200,
+    include: 2,
+    order: "fields.startDate",
+  });
+  if (!res?.items?.length) return [];
+
+  return res.items.map((item) => {
+    const templateId = getLinkedEntryId(item.fields.template);
+    const templateEntry = getIncludedEntryById(res.includes?.Entry, templateId);
+    const templateSlug =
+      templateEntry?.fields.slug && typeof templateEntry.fields.slug === "string"
+        ? templateEntry.fields.slug
+        : undefined;
+    if (!templateSlug) {
+      throw createMissingContentError(
+        "retreatEvent",
+        `entry "${item.sys.id}" is missing linked retreatTemplate`
+      );
+    }
+
+    const retreatTypeRaw = requireStringField("retreatEvent", item, "retreatType");
+    const retreatType = retreatTypeRaw === "online" ? "online" : "in_person";
+    const roomOptions = parseRetreatRoomOptions(
+      "retreatEvent",
+      item.sys.id,
+      item.fields.roomOptions
+    );
+    const normalPrices = roomOptions.map((option) => option.normalPricePence);
+    const earlyBirdPrices = roomOptions
+      .map((option) => option.earlyBirdPricePence)
+      .filter((price): price is number => typeof price === "number");
+    const venueId = getLinkedEntryId(item.fields.venue);
+    const instructorProfileIds = Array.isArray(item.fields.instructors)
+      ? item.fields.instructors.map(getLinkedEntryId).filter((id): id is string => Boolean(id))
+      : [];
+
+    return {
+      id: String(item.sys.id),
+      templateSlug,
+      retreatType,
+      startDate: requireStringField("retreatEvent", item, "startDate"),
+      endDate: requireStringField("retreatEvent", item, "endDate"),
+      timezone: optionalStringField(item.fields, "timezone") || "Europe/London",
+      availableSpaces: requireNumberField("retreatEvent", item, "totalSpaces"),
+      totalSpaces: requireNumberField("retreatEvent", item, "totalSpaces"),
+      earlyBirdPrice: Math.min(...(earlyBirdPrices.length ? earlyBirdPrices : normalPrices)) / 100,
+      normalPrice: Math.min(...normalPrices) / 100,
+      earlyBirdDeadline: "",
+      currency: requireStringField("retreatEvent", item, "currency"),
+      roomOptions,
+      schedule: parseRetreatSchedule(item.fields.schedule),
+      paymentPlan: parseRetreatPaymentPlan(item.fields.paymentPlan),
+      payInFullDiscountEnabled: item.fields.payInFullDiscountEnabled === true,
+      refundNotes: optionalStringField(item.fields, "refundNotes"),
+      venueId,
+      instructorProfileIds,
+    };
+  });
 }
 
 export async function getRetreatVenues(): Promise<RetreatVenueContent[]> {

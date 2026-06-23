@@ -1,24 +1,17 @@
 import { SEED_GROUPS } from "../seed/public-seed.ts";
-import contentfulManagement from "contentful-management";
+import { createClient } from "contentful-management";
 import { getContentfulScriptEnv } from "./env.ts";
 
 const { spaceId, environmentId, managementToken } = getContentfulScriptEnv();
-const { createClient } = contentfulManagement;
 
-const client = createClient({ accessToken: managementToken }, { type: "legacy" });
+const client = createClient(
+  { accessToken: managementToken },
+  { type: "plain", defaults: { spaceId, environmentId } }
+);
 
 type ContentfulEntry = {
   sys: { id: string };
   fields: Record<string, Record<string, unknown>>;
-  update: () => Promise<ContentfulEntry>;
-};
-
-type ContentfulEnvironment = {
-  getEntries: (query: Record<string, unknown>) => Promise<{ items?: ContentfulEntry[] }>;
-  createEntry: (
-    contentType: string,
-    payload: { fields: Record<string, Record<string, unknown>> }
-  ) => Promise<ContentfulEntry>;
 };
 
 function slugify(input: string) {
@@ -74,20 +67,21 @@ function toEntryLink(id: string) {
 }
 
 async function findExistingEntry(
-  environment: ContentfulEnvironment,
   contentType: string,
   slug?: string,
   entry?: Record<string, unknown>
 ) {
   if (slug) {
-    const response = await environment.getEntries({
-      content_type: contentType,
-      "fields.slug": slug,
-      limit: 1,
+    const response = await client.entry.getMany({
+      query: {
+        content_type: contentType,
+        "fields.slug": slug,
+        limit: 1,
+      },
     });
 
     if (response.items?.[0]) {
-      return response.items[0];
+      return response.items[0] as unknown as ContentfulEntry;
     }
   }
 
@@ -96,14 +90,16 @@ async function findExistingEntry(
     const authorName = typeof entry?.authorName === "string" ? entry.authorName : undefined;
     const quote = typeof entry?.quote === "string" ? entry.quote : undefined;
     if (authorName && quote) {
-      const response = await environment.getEntries({
-        content_type: contentType,
-        "fields.authorName": authorName,
-        "fields.quote": quote,
-        limit: 1,
+      const response = await client.entry.getMany({
+        query: {
+          content_type: contentType,
+          "fields.authorName": authorName,
+          "fields.quote": quote,
+          limit: 1,
+        },
       });
       if (response.items?.[0]) {
-        return response.items[0];
+        return response.items[0] as unknown as ContentfulEntry;
       }
     }
   }
@@ -111,60 +107,49 @@ async function findExistingEntry(
   return null;
 }
 
-async function upsertDraftEntry(
-  environment: ContentfulEnvironment,
-  contentType: string,
-  entry: Record<string, unknown>
-) {
+async function upsertDraftEntry(contentType: string, entry: Record<string, unknown>) {
   const autoSlug = buildAutoSlug(contentType, entry);
   const normalizedEntry = autoSlug && !entry.slug ? { ...entry, slug: autoSlug } : entry;
   const slug = typeof normalizedEntry.slug === "string" ? normalizedEntry.slug : undefined;
-  const existing = await findExistingEntry(environment, contentType, slug, normalizedEntry);
+  const existing = await findExistingEntry(contentType, slug, normalizedEntry);
 
   if (existing) {
     existing.fields = normalizeEntryFields(normalizedEntry);
-    await existing.update();
+    await client.entry.update({ entryId: existing.sys.id }, existing as never);
 
     return { action: "updated", id: existing.sys.id };
   }
 
-  const created = await environment.createEntry(contentType, {
-    fields: normalizeEntryFields(normalizedEntry),
-  });
+  const created = await client.entry.create(
+    { contentTypeId: contentType },
+    {
+      fields: normalizeEntryFields(normalizedEntry),
+    }
+  );
 
   return { action: "created", id: created.sys.id };
 }
 
-async function getEntryIdBySlug(
-  environment: ContentfulEnvironment,
-  contentType: string,
-  slug: string
-) {
-  const existing = await findExistingEntry(environment, contentType, slug);
+async function getEntryIdBySlug(contentType: string, slug: string) {
+  const existing = await findExistingEntry(contentType, slug);
   return existing?.sys?.id ? String(existing.sys.id) : null;
 }
 
 async function run() {
-  const space = await client.getSpace(spaceId);
-  const environment = (await space.getEnvironment(environmentId)) as ContentfulEnvironment;
-
   const report: Record<string, { created: number; updated: number }> = {};
 
   // Seed all groups except groups requiring link resolution first.
   for (const group of SEED_GROUPS.filter(
     (g) =>
       g.contentType !== "retreatTemplate" &&
+      g.contentType !== "retreatEvent" &&
       g.contentType !== "newsletterSignupContent" &&
       g.contentType !== "classDefinition" &&
       g.contentType !== "blogPost"
   )) {
     report[group.contentType] = { created: 0, updated: 0 };
     for (const entry of group.entries) {
-      const result = await upsertDraftEntry(
-        environment,
-        group.contentType,
-        entry as Record<string, unknown>
-      );
+      const result = await upsertDraftEntry(group.contentType, entry as Record<string, unknown>);
       report[group.contentType][result.action as "created" | "updated"] += 1;
     }
   }
@@ -182,11 +167,7 @@ async function run() {
         typeof defaultInstructorProfileSlug === "string" &&
         defaultInstructorProfileSlug.length > 0
       ) {
-        const profileId = await getEntryIdBySlug(
-          environment,
-          "instructorProfile",
-          defaultInstructorProfileSlug
-        );
+        const profileId = await getEntryIdBySlug("instructorProfile", defaultInstructorProfileSlug);
         if (!profileId) {
           throw new Error(
             `Unable to resolve instructorProfile by slug "${defaultInstructorProfileSlug}" for class definition "${String(entry.slug || "")}".`
@@ -195,7 +176,7 @@ async function run() {
         defaultInstructorProfile = toEntryLink(profileId);
       }
 
-      const result = await upsertDraftEntry(environment, "classDefinition", {
+      const result = await upsertDraftEntry("classDefinition", {
         ...rest,
         ...(defaultInstructorProfile ? { defaultInstructorProfile } : {}),
       });
@@ -216,7 +197,7 @@ async function run() {
         authors = [];
         for (const authorSlug of authorSlugs) {
           if (typeof authorSlug !== "string" || authorSlug.length === 0) continue;
-          const authorId = await getEntryIdBySlug(environment, "authorProfile", authorSlug);
+          const authorId = await getEntryIdBySlug("authorProfile", authorSlug);
           if (!authorId) {
             throw new Error(
               `Unable to resolve authorProfile by slug "${authorSlug}" for blog post "${String(entry.slug || "")}".`
@@ -226,7 +207,7 @@ async function run() {
         }
       }
 
-      const result = await upsertDraftEntry(environment, "blogPost", {
+      const result = await upsertDraftEntry("blogPost", {
         ...rest,
         ...(authors && authors.length > 0 ? { authors } : {}),
       });
@@ -246,11 +227,7 @@ async function run() {
 
       let activeLeadMagnet: ReturnType<typeof toEntryLink> | undefined;
       if (typeof activeLeadMagnetSlug === "string" && activeLeadMagnetSlug.length > 0) {
-        const leadMagnetId = await getEntryIdBySlug(
-          environment,
-          "leadMagnet",
-          activeLeadMagnetSlug
-        );
+        const leadMagnetId = await getEntryIdBySlug("leadMagnet", activeLeadMagnetSlug);
         if (!leadMagnetId) {
           throw new Error(
             `Unable to resolve leadMagnet by slug "${activeLeadMagnetSlug}" for newsletter signup "${String(entry.slug || "")}".`
@@ -259,7 +236,7 @@ async function run() {
         activeLeadMagnet = toEntryLink(leadMagnetId);
       }
 
-      const result = await upsertDraftEntry(environment, "newsletterSignupContent", {
+      const result = await upsertDraftEntry("newsletterSignupContent", {
         ...rest,
         ...(activeLeadMagnet ? { activeLeadMagnet } : {}),
       });
@@ -277,7 +254,7 @@ async function run() {
 
       let venue: ReturnType<typeof toEntryLink> | undefined;
       if (typeof venueSlug === "string" && venueSlug.length > 0) {
-        const venueId = await getEntryIdBySlug(environment, "retreatVenue", venueSlug);
+        const venueId = await getEntryIdBySlug("retreatVenue", venueSlug);
         if (!venueId) {
           throw new Error(
             `Unable to resolve retreatVenue by slug "${venueSlug}" for retreat template "${String(entry.slug || "")}".`
@@ -286,11 +263,70 @@ async function run() {
         venue = toEntryLink(venueId);
       }
 
-      const result = await upsertDraftEntry(environment, "retreatTemplate", {
+      const result = await upsertDraftEntry("retreatTemplate", {
         ...rest,
         ...(venue ? { venue } : {}),
       });
       report.retreatTemplate[result.action as "created" | "updated"] += 1;
+    }
+  }
+
+  const retreatEventGroup = SEED_GROUPS.find((g) => g.contentType === "retreatEvent");
+  if (retreatEventGroup) {
+    report.retreatEvent = { created: 0, updated: 0 };
+
+    for (const rawEntry of retreatEventGroup.entries) {
+      const entry = rawEntry as Record<string, unknown> & {
+        templateSlug?: string;
+        venueSlug?: string;
+        instructorSlugs?: string[];
+      };
+      const { templateSlug, venueSlug, instructorSlugs, ...rest } = entry;
+
+      let template: ReturnType<typeof toEntryLink> | undefined;
+      if (typeof templateSlug === "string" && templateSlug.length > 0) {
+        const templateId = await getEntryIdBySlug("retreatTemplate", templateSlug);
+        if (!templateId) {
+          throw new Error(
+            `Unable to resolve retreatTemplate by slug "${templateSlug}" for retreat event "${String(entry.slug || "")}".`
+          );
+        }
+        template = toEntryLink(templateId);
+      }
+
+      let venue: ReturnType<typeof toEntryLink> | undefined;
+      if (typeof venueSlug === "string" && venueSlug.length > 0) {
+        const venueId = await getEntryIdBySlug("retreatVenue", venueSlug);
+        if (!venueId) {
+          throw new Error(
+            `Unable to resolve retreatVenue by slug "${venueSlug}" for retreat event "${String(entry.slug || "")}".`
+          );
+        }
+        venue = toEntryLink(venueId);
+      }
+
+      let instructors: Array<ReturnType<typeof toEntryLink>> | undefined;
+      if (Array.isArray(instructorSlugs) && instructorSlugs.length > 0) {
+        instructors = [];
+        for (const instructorSlug of instructorSlugs) {
+          if (typeof instructorSlug !== "string" || instructorSlug.length === 0) continue;
+          const instructorId = await getEntryIdBySlug("instructorProfile", instructorSlug);
+          if (!instructorId) {
+            throw new Error(
+              `Unable to resolve instructorProfile by slug "${instructorSlug}" for retreat event "${String(entry.slug || "")}".`
+            );
+          }
+          instructors.push(toEntryLink(instructorId));
+        }
+      }
+
+      const result = await upsertDraftEntry("retreatEvent", {
+        ...rest,
+        ...(template ? { template } : {}),
+        ...(venue ? { venue } : {}),
+        ...(instructors && instructors.length > 0 ? { instructors } : {}),
+      });
+      report.retreatEvent[result.action as "created" | "updated"] += 1;
     }
   }
 

@@ -11,6 +11,7 @@ const retainedContentTypes = [
   "leadMagnet",
   "newsletterSignupContent",
   "newsletterTemplate",
+  "retreatEvent",
   "retreatTemplate",
   "retreatVenue",
   "smallGroupProgramme",
