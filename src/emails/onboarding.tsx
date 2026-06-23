@@ -12,17 +12,27 @@ import {
 
 interface OnboardingEmailProps {
   firstName?: string;
-  membershipUrl?: string;
-  scheduleUrl?: string;
+  offersUrl?: string;
+  applyUrl?: string;
+  dashboardUrl?: string;
+  healthUrl?: string;
+  hasOneToOneApplication?: boolean;
 }
 
 export default function OnboardingEmail({
   firstName = "there",
-  membershipUrl = "https://shrutiturner.co.uk/#work-with-me",
-  scheduleUrl = "https://shrutiturner.co.uk/coaching/apply",
+  offersUrl = "https://shrutiturner.co.uk/#work-with-me",
+  applyUrl = "https://shrutiturner.co.uk/coaching/apply",
+  dashboardUrl = "https://shrutiturner.co.uk/dashboard/coaching",
+  healthUrl = "https://shrutiturner.co.uk/dashboard/health",
+  hasOneToOneApplication = false,
 }: OnboardingEmailProps) {
+  const preview = hasOneToOneApplication
+    ? `Your account is ready, ${firstName} — you can now track your 1:1 application`
+    : `Your account is ready, ${firstName}`;
+
   return (
-    <EmailLayout preview={`Getting the most from your account, ${firstName}`}>
+    <EmailLayout preview={preview}>
       <Text
         style={{
           ...headingStyle,
@@ -31,15 +41,22 @@ export default function OnboardingEmail({
           marginBottom: "24px",
         }}
       >
-        Make the most of your 1:1 account
+        Your studio account is ready
       </Text>
 
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
-      <Text style={bodyTextStyle}>
-        {"You've"} been here for a few days now and I wanted to share a few things that will help
-        you get the most out of your account.
-      </Text>
+      {hasOneToOneApplication ? (
+        <Text style={bodyTextStyle}>
+          Your account is now set up, so you can use your dashboard to track your 1:1 application,
+          payment invitations, health details and account information in one place.
+        </Text>
+      ) : (
+        <Text style={bodyTextStyle}>
+          Your account is now set up. You can use it to manage your health details, account
+          information and any future 1:1 application or payment invitation.
+        </Text>
+      )}
 
       {/* Step Cards */}
       <Section
@@ -78,7 +95,7 @@ export default function OnboardingEmail({
               marginBottom: "8px",
             }}
           >
-            Compare 1:1 offers
+            {hasOneToOneApplication ? "Open your 1:1 dashboard" : "Explore 1:1 offers"}
           </Text>
           <Text
             style={{
@@ -88,10 +105,12 @@ export default function OnboardingEmail({
               marginBottom: "16px",
             }}
           >
-            Review the current 1:1 offers and the kind of support each one offers before you apply.
+            {hasOneToOneApplication
+              ? "Your dashboard shows your application status and the next action when there is one."
+              : "Review the current 1:1 offers and the kind of support each one offers before you apply."}
           </Text>
           <Link
-            href={membershipUrl}
+            href={hasOneToOneApplication ? dashboardUrl : offersUrl}
             style={{
               fontFamily: fonts.body,
               color: colors.brandAccent,
@@ -100,7 +119,7 @@ export default function OnboardingEmail({
               textDecoration: "underline",
             }}
           >
-            {"Compare options \u2192"}
+            {hasOneToOneApplication ? "Open dashboard \u2192" : "Compare options \u2192"}
           </Link>
         </Section>
 
@@ -134,7 +153,7 @@ export default function OnboardingEmail({
               marginBottom: "8px",
             }}
           >
-            Apply before payment
+            {hasOneToOneApplication ? "Keep your details current" : "Apply before payment"}
           </Text>
           <Text
             style={{
@@ -144,11 +163,12 @@ export default function OnboardingEmail({
               marginBottom: "16px",
             }}
           >
-            1:1 support starts with an application so Shruti can confirm the best fit before any
-            payment opens.
+            {hasOneToOneApplication
+              ? "Health and account details help Shruti review suitability and support you safely."
+              : "1:1 support starts with an application so Shruti can confirm the best fit before any payment opens."}
           </Text>
           <Link
-            href={scheduleUrl}
+            href={hasOneToOneApplication ? healthUrl : applyUrl}
             style={{
               fontFamily: fonts.body,
               color: colors.brandAccent,
@@ -157,7 +177,9 @@ export default function OnboardingEmail({
               textDecoration: "underline",
             }}
           >
-            {"Apply for 1:1 support \u2192"}
+            {hasOneToOneApplication
+              ? "Review health details \u2192"
+              : "Apply for 1:1 support \u2192"}
           </Link>
         </Section>
 
@@ -191,7 +213,7 @@ export default function OnboardingEmail({
               marginBottom: "8px",
             }}
           >
-            Complete your account details
+            {hasOneToOneApplication ? "Watch for Shruti's reply" : "Complete your account details"}
           </Text>
           <Text
             style={{
@@ -201,11 +223,12 @@ export default function OnboardingEmail({
               marginBottom: "16px",
             }}
           >
-            If your application is accepted, payment happens through the website after you sign in
-            and accept the relevant terms.
+            {hasOneToOneApplication
+              ? "If your application is accepted, payment opens through the website after the relevant terms are accepted."
+              : "If your application is accepted, payment happens through the website after you sign in and accept the relevant terms."}
           </Text>
           <Link
-            href={scheduleUrl}
+            href={hasOneToOneApplication ? dashboardUrl : applyUrl}
             style={{
               fontFamily: fonts.body,
               color: colors.brandAccent,
@@ -214,22 +237,24 @@ export default function OnboardingEmail({
               textDecoration: "underline",
             }}
           >
-            {"Open the application \u2192"}
+            {hasOneToOneApplication
+              ? "View application status \u2192"
+              : "Open the application \u2192"}
           </Link>
         </Section>
       </Section>
 
       <Section style={{ textAlign: "center" as const, marginTop: "20px", marginBottom: "28px" }}>
-        <Link href={scheduleUrl} style={buttonStyle}>
-          Apply for 1:1 support
+        <Link href={hasOneToOneApplication ? dashboardUrl : applyUrl} style={buttonStyle}>
+          {hasOneToOneApplication ? "Open your 1:1 dashboard" : "Apply for 1:1 support"}
         </Link>
       </Section>
 
       <Hr style={dividerStyle} />
 
       <Text style={{ ...mutedTextStyle, fontSize: "14px" }}>
-        If you have any questions about 1:1 offers or just want some guidance on where to start,
-        simply reply to this email. {"I'm"} here to help.
+        If you have any questions about 1:1 offers, your application or where to start, simply reply
+        to this email.
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>

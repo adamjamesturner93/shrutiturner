@@ -395,7 +395,9 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
   }).catch(() => null);
 
   if (onboardingJustCompleted && updated.email) {
-    await sendWelcomeEmail(updated.email, updated.firstName || "there").catch(() => null);
+    await sendWelcomeEmail(updated.email, updated.firstName || "there", updated.id).catch(
+      () => null
+    );
   }
 
   return {
