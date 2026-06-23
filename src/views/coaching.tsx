@@ -242,7 +242,7 @@ export function CoachingPage() {
                     {tier.supportLevel === "programme"
                       ? "Monthly programme + review"
                       : tier.supportLevel === "guided"
-                        ? "Weekly programme + revie"
+                        ? "Weekly programme + review"
                         : tier.supportLevel === "accountability"
                           ? "Accountability"
                           : "Highest touch"}
