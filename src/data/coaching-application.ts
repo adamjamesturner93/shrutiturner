@@ -24,31 +24,31 @@ export const coachingApplicationTierOptions: Array<{
   description: string;
   payloadTier: CoachingApplicationPayloadTier;
 }> = [
-    {
-      value: "guided_accountability",
-      title: "Guided Accountability",
-      description: "Lighter-touch accountability and review prompts for people with their own plan.",
-      payloadTier: "personal_programme",
-    },
-    {
-      value: "independent_training_plan",
-      title: "Independent Training Plan",
-      description: "Tailored programme writing and monthly review delivered through Everfit.",
-      payloadTier: "personal_programme",
-    },
-    {
-      value: "guided_training_plan",
-      title: "Guided Training Plan",
-      description: "Bespoke programming plus closer written review and accountability.",
-      payloadTier: "coached_plan",
-    },
-    {
-      value: "one_to_one_coaching",
-      title: "1:1 Offers",
-      description: "Highest-touch coaching with messaging, reactive adjustments and a monthly call.",
-      payloadTier: "coaching",
-    },
-  ];
+  {
+    value: "guided_accountability",
+    title: "Guided Accountability",
+    description: "Lighter-touch accountability and review prompts for people with their own plan.",
+    payloadTier: "personal_programme",
+  },
+  {
+    value: "independent_training_plan",
+    title: "Independent Training Plan",
+    description: "Tailored programme writing and monthly review delivered through Everfit.",
+    payloadTier: "personal_programme",
+  },
+  {
+    value: "guided_training_plan",
+    title: "Guided Training Plan",
+    description: "Bespoke programming plus closer written review and accountability.",
+    payloadTier: "coached_plan",
+  },
+  {
+    value: "one_to_one_coaching",
+    title: "1:1 Offers",
+    description: "Highest-touch coaching with messaging, reactive adjustments and a monthly call.",
+    payloadTier: "coaching",
+  },
+];
 
 export const coachingApplicationQuestions: CoachingApplicationQuestion[] = [
   {
@@ -56,7 +56,10 @@ export const coachingApplicationQuestions: CoachingApplicationQuestion[] = [
     label: "Do you have a life or sporting event you are training for?",
     type: "textarea",
     required: true,
-    placeholder: "For example: wedding, 10K race, HYROX, hiking trip, surgery prep, or something else.",
+    placeholder:
+      "For example: wedding, 10K race, HYROX, hiking trip, surgery prep, or something else.",
+    helpText:
+      "Recreational events and amateur sport goals are welcome. Paid or professional athletic performance support may sit outside Shruti's insurance scope, so please mention it here if relevant.",
   },
   {
     id: "conditions",

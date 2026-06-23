@@ -20,6 +20,8 @@ export type LegalDocumentSeed = {
 
 const EFFECTIVE_DATE = "2026-03-12";
 const VERSION = "2026-03-12";
+const ONE_TO_ONE_SCOPE_EFFECTIVE_DATE = "2026-06-23";
+const ONE_TO_ONE_SCOPE_VERSION = "2026-06-23";
 
 export const HEALTH_DATA_CONSENT = {
   version: VERSION,
@@ -33,8 +35,8 @@ export const LEGAL_DOCUMENTS: LegalDocumentSeed[] = [
     id: "legal-terms",
     slug: "terms",
     title: "Terms & Conditions",
-    version: VERSION,
-    effectiveDate: EFFECTIVE_DATE,
+    version: ONE_TO_ONE_SCOPE_VERSION,
+    effectiveDate: ONE_TO_ONE_SCOPE_EFFECTIVE_DATE,
     seoTitle: "Terms & Conditions - Shruti Turner",
     seoDescription:
       "Terms and conditions covering memberships, classes, coaching, retreats, payments, bookings and service use.",
@@ -57,6 +59,8 @@ You must be 18 or over to create an account or buy services through this website
 You must provide accurate information when you create an account, complete health forms, book services or make payments.
 
 You are responsible for keeping your login details secure and for activity that happens through your account.
+
+Shruti Turner's services are for adults seeking wellbeing, recreational fitness, health-sensitive movement support, injury recovery or prevention, or amateur sport support. They are not professional athlete performance coaching, paid athletic performance support or preparation for paid professional sport.
 
 4. Service overview
 
@@ -83,6 +87,8 @@ You are responsible for:
 - telling us if your symptoms, diagnosis, medication or capacity changes
 
 We may refuse, limit, pause or end participation where we reasonably believe a service is unsafe or unsuitable without further medical input.
+
+We may also refuse, limit, pause or end participation where the service requested appears to fall outside Shruti Turner's training, qualification or insurance scope, including paid or professional athletic performance support.
 
 6. Health & Liability Waiver
 
@@ -438,8 +444,8 @@ If we introduce optional analytics or marketing technologies in future, we will 
     id: "legal-health-waiver",
     slug: "health-declaration",
     title: "Health & Liability Waiver",
-    version: VERSION,
-    effectiveDate: EFFECTIVE_DATE,
+    version: ONE_TO_ONE_SCOPE_VERSION,
+    effectiveDate: ONE_TO_ONE_SCOPE_EFFECTIVE_DATE,
     seoTitle: "Health & Liability Waiver - Shruti Turner",
     seoDescription:
       "Health and liability waiver for classes, coaching, retreats and other physical services.",
@@ -449,6 +455,8 @@ I understand that Shruti Turner's services may include strength training, yoga, 
 
 I understand that these services are educational movement, training and support services. They are not medical diagnosis, treatment, rehabilitation or emergency care.
 
+I understand that these services do not include professional athlete performance coaching, paid athletic performance support or preparation for paid professional sport.
+
 2. My responsibilities
 
 I confirm that I am responsible for:
@@ -457,6 +465,7 @@ I confirm that I am responsible for:
 - disclosing relevant health information honestly
 - stopping or modifying activity if I feel unsafe
 - informing my coach or instructor about changes in symptoms, diagnosis, medication or capacity
+- telling Shruti if my goals or participation relate to paid or professional sport
 
 I understand that my body may fluctuate and that choosing rest, adaptation or a lower-intensity option is valid.
 
@@ -594,8 +603,8 @@ If you experience or witness misuse of the service, contact tech@thechronicyogin
     id: "legal-coaching-agreement",
     slug: "coaching-agreement",
     title: "1:1 Agreement",
-    version: VERSION,
-    effectiveDate: EFFECTIVE_DATE,
+    version: ONE_TO_ONE_SCOPE_VERSION,
+    effectiveDate: ONE_TO_ONE_SCOPE_EFFECTIVE_DATE,
     seoTitle: "1:1 Agreement - Shruti Turner",
     seoDescription:
       "The coaching-specific agreement covering scope, communication, check-ins, Everfit and client responsibilities.",
@@ -611,12 +620,15 @@ Coaching may include programming, written review, check-ins, calls, messaging, E
 
 1:1 support is collaborative. It is not crisis support, psychotherapy, emergency medical support or a guarantee of specific results.
 
+1:1 support does not include professional athlete performance coaching, paid athletic performance support or preparation for paid professional sport. If your goals relate to paid or professional sport, Shruti may be unable to offer the service or may recommend a different professional.
+
 3. Client responsibilities
 
 As a coaching client or applicant, you agree to:
 - provide honest information about your goals, history, symptoms and capacity
 - complete check-ins and requested forms as accurately as possible
 - communicate when something is not working or your circumstances change
+- tell Shruti if your goals or participation relate to paid or professional sport
 - use the support channel and cadence appropriate to your tier
 - make your own decisions about participation and seek medical advice where needed
 
