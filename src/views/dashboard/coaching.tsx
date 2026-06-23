@@ -217,7 +217,7 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
           title: "Application reviewed",
           body:
             data.application.decisionReason ||
-            "Shruti has reviewed your application and this coaching offer is not the right fit right now.",
+            "Shruti has reviewed your application and this coaching offer is not the right fit at the moment.",
           primaryHref: "/coaching",
           primaryLabel: "Explore Coaching",
           secondaryHref: "/contact",
@@ -449,14 +449,14 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
       setData((current) =>
         current?.application
           ? {
-            ...current,
-            state: "withdrawn",
-            application: {
-              ...current.application,
-              status: "withdrawn",
-              waitlistLeftAt: payload.data?.waitlistLeftAt || new Date().toISOString(),
-            },
-          }
+              ...current,
+              state: "withdrawn",
+              application: {
+                ...current.application,
+                status: "withdrawn",
+                waitlistLeftAt: payload.data?.waitlistLeftAt || new Date().toISOString(),
+              },
+            }
           : current
       );
       setShowLeaveWaitlistDialog(false);
