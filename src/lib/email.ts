@@ -10,6 +10,7 @@ import ClassUnbookingEmail from "../emails/class-unbooking";
 import SubscriptionNoticeEmail from "../emails/subscription-notice";
 import NewsletterEmail from "../emails/newsletter";
 import { getBaseSiteUrlFromEnv } from "@/lib/env";
+import { db } from "@/lib/db";
 import { sendPostmarkReactEmail } from "@/lib/postmark/client";
 import { getClassOperationalSettings } from "@/lib/classes/settings-service";
 import {
@@ -26,6 +27,36 @@ import {
 const POSTMARK_API_KEY = process.env.POSTMARK_API_KEY || "POSTMARK_API_TEST";
 void POSTMARK_API_KEY;
 const APP_URL = getBaseSiteUrlFromEnv();
+
+async function hasExistingOneToOneApplication(params: { email: string; userId?: string | null }) {
+  const normalizedEmail = params.email.trim().toLowerCase();
+  const applicationFilters =
+    params.userId && normalizedEmail
+      ? [{ userId: params.userId }, { applicantEmail: normalizedEmail }]
+      : normalizedEmail
+        ? [{ applicantEmail: normalizedEmail }]
+        : params.userId
+          ? [{ userId: params.userId }]
+          : [];
+
+  const [application, profile] = await Promise.all([
+    applicationFilters.length
+      ? db.coachingApplication.findFirst({
+          where: { OR: applicationFilters },
+          select: { id: true },
+          orderBy: { createdAt: "desc" },
+        })
+      : Promise.resolve(null),
+    params.userId
+      ? db.coachingClientProfile.findUnique({
+          where: { userId: params.userId },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
+  return Boolean(application || profile);
+}
 
 type ClassLifecycleDeliveryOptions = {
   category: "transactional";
@@ -100,26 +131,44 @@ END:VEVENT
 END:VCALENDAR`.trim();
 }
 
-export async function sendWelcomeEmail(email: string, firstName: string) {
+export async function sendWelcomeEmail(email: string, firstName: string, userId?: string | null) {
   try {
+    const hasOneToOneApplication = await hasExistingOneToOneApplication({ email, userId }).catch(
+      () => false
+    );
     const react = OnboardingEmail({
       firstName,
-      membershipUrl: `${APP_URL}/#work-with-me`,
-      scheduleUrl: `${APP_URL}/coaching/apply`,
+      offersUrl: `${APP_URL}/#work-with-me`,
+      applyUrl: `${APP_URL}/coaching/apply`,
+      dashboardUrl: `${APP_URL}/dashboard/coaching`,
+      healthUrl: `${APP_URL}/dashboard/health`,
+      hasOneToOneApplication,
     });
+
+    const textBody = hasOneToOneApplication
+      ? [
+          `Hi ${firstName || "there"},`,
+          "",
+          "Your studio account is ready.",
+          "You can now use your dashboard to track your 1:1 application, payment invitations, health details and account information.",
+          `1:1 dashboard: ${APP_URL}/dashboard/coaching`,
+          `Health details: ${APP_URL}/dashboard/health`,
+        ]
+      : [
+          `Hi ${firstName || "there"},`,
+          "",
+          "Your studio account is ready.",
+          "You can use it to manage your health details, account information and any future 1:1 application or payment invitation.",
+          `Explore 1:1 offers: ${APP_URL}/#work-with-me`,
+          `Apply for 1:1 support: ${APP_URL}/coaching/apply`,
+        ];
 
     await sendPostmarkReactEmail({
       to: email,
       subject: "Your studio account is ready",
       category: "transactional",
       react,
-      textBody: [
-        `Hi ${firstName || "there"},`,
-        "",
-        "Your studio account is ready.",
-        `Compare 1:1 offers: ${APP_URL}/#work-with-me`,
-        `Apply for 1:1 support: ${APP_URL}/coaching/apply`,
-      ].join("\n"),
+      textBody: textBody.join("\n"),
       tag: "account-welcome",
       templateKey: "account-welcome",
       metadata: {
