@@ -66,7 +66,10 @@ export const coachingTiers: CoachingTierMarketing[] = [
       "Guidance around training structure and recovery",
       "Space to reflect and ask questions",
     ],
-    boundaries: ["Does not include a tailored training programme"],
+    boundaries: [
+      "Does not include a tailored training programme",
+      "Does not include nutrition guidance",
+    ],
     expectedNextStep: "Submit a short application so Shruti can check fit and boundaries.",
   },
   {
@@ -88,7 +91,7 @@ export const coachingTiers: CoachingTierMarketing[] = [
       "Monthly check-in via app",
       "Monthly programme adjustments",
     ],
-    boundaries: ["Does not include weekly review"],
+    boundaries: ["Does not include weekly review", "Does not include nutrition guidance"],
     expectedNextStep:
       "Apply with training context, equipment, preferences and health considerations.",
   },
@@ -112,6 +115,7 @@ export const coachingTiers: CoachingTierMarketing[] = [
       "Weekly check-in via app",
       "Weekly programme adjustments",
       "Greater accountability and progression support",
+      "Nutrition guidance",
     ],
     boundaries: ["Does not include ongoing 1:1 messaging access"],
     expectedNextStep:
@@ -140,6 +144,7 @@ export const coachingTiers: CoachingTierMarketing[] = [
       "Ongoing messaging support, typically within 24 hours",
       "Reactive adjustments as needed",
       "Monthly coaching call",
+      "Nutrition guidance",
     ],
     boundaries: ["Coaching is not emergency, crisis, medical or rehabilitation care"],
     expectedNextStep: "Apply with health context, call availability and messaging expectations.",
