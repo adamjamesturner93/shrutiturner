@@ -158,7 +158,7 @@ export function CoachingPage() {
         <SectionHeading
           eyebrow="Choose Your Offer"
           title="The support stays personalised. The touch level changes."
-          description="Choose the closest offer and apply. Checkout is only created after Shruti accepts the application."
+          description="Most people start with the Guided Training Plan: personalised training through the app, weekly check-ins, and ongoing support to help you build strength, confidence and routine that fits with your body, goals and real life. Not sure which option is right? Apply for 1:1 support and I’ll recommend the best fit."
           align="center"
         />
         <div id="tiers" className="mt-12 grid gap-6 md:grid-cols-3 lg:gap-8">
@@ -180,7 +180,7 @@ export function CoachingPage() {
               >
                 {highlighted ? (
                   <span className="bg-brand-accent text-brand-white absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs tracking-[0.16em] uppercase">
-                    Most popular
+                    Best value
                   </span>
                 ) : null}
                 {highest ? (
@@ -240,9 +240,9 @@ export function CoachingPage() {
                     }
                   >
                     {tier.supportLevel === "programme"
-                      ? "Programme + review"
+                      ? "Monthly programme + review"
                       : tier.supportLevel === "guided"
-                        ? "Guided review"
+                        ? "Weekly programme + review"
                         : tier.supportLevel === "accountability"
                           ? "Accountability"
                           : "Highest touch"}

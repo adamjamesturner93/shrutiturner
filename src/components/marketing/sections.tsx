@@ -51,7 +51,7 @@ export function SectionHeading({
   const centered = align === "center";
 
   return (
-    <div className={cn(centered ? "mx-auto max-w-3xl text-center" : "max-w-3xl", className)}>
+    <div className={cn(centered ? "mx-auto max-w-5xl text-center" : "max-w-3xl", className)}>
       {eyebrow ? (
         <p
           className={cn(

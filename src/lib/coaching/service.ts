@@ -487,7 +487,7 @@ export async function updateAdminCoachingApplication(input: {
         decisionReason: updated.decisionReason || nextDecisionReason || "",
         dashboardUrl,
       }),
-      textBody: `Hi ${existing.applicantFirstName},\n\nThank you for applying for ${tierLabel}. Shruti has reviewed your application and this coaching offer is not the right fit right now.\n\nA note from Shruti:\n${updated.decisionReason || nextDecisionReason}\n\nDashboard: ${dashboardUrl}`,
+      textBody: `Hi ${existing.applicantFirstName},\n\nThank you for applying for ${tierLabel}. Shruti has reviewed your application and this coaching offer is not the right fit at the moment.\n\nA note from Shruti:\n${updated.decisionReason || nextDecisionReason}\n\nDashboard: ${dashboardUrl}`,
       tag: "coaching-application-rejected",
       templateKey: "coaching-application-rejected",
       metadata: {

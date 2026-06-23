@@ -868,7 +868,7 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
 
           {activeTab === "notifications" ? (
             <div className="space-y-8">
-              <div className="bg-background space-y-4 rounded-lg border p-6">
+              {/* <div className="bg-background space-y-4 rounded-lg border p-6">
                 <div className="mb-2 flex items-center gap-3">
                   <Bell className="text-primary h-5 w-5" />
                   <h2 className="text-xl">Coaching & Resource Notifications</h2>
@@ -917,7 +917,7 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
                     />
                   </label>
                 </div>
-              </div>
+              </div> */}
 
               <div className="bg-background space-y-4 rounded-lg border p-6">
                 <div className="mb-2 flex items-center gap-3">
@@ -927,7 +927,7 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
                 <div className="space-y-3">
                   <label className="flex items-center justify-between py-2">
                     <div>
-                      <span className="text-sm">Newsletter & Updates</span>
+                      <span className="text-sm">Newsletter & Blog Updates</span>
                       <p className="text-muted-foreground text-xs">
                         Articles, coaching updates and training insights
                       </p>
