@@ -163,7 +163,7 @@ export async function submitCoachingApplication(input: {
   await Promise.allSettled([
     sendPostmarkReactEmail({
       to: applicantEmail,
-      subject: "Your coaching application has been received",
+      subject: "Your 1:1 application has been received",
       react: CoachingApplicationConfirmationEmail({
         firstName: applicantFirstName,
         tierLabel,
@@ -180,7 +180,7 @@ export async function submitCoachingApplication(input: {
     }),
     sendPostmarkReactEmail({
       to: getNotificationInbox("COACHING_APPLICATION_NOTIFICATION_EMAIL"),
-      subject: `New coaching application: ${applicantFirstName} ${applicantLastName}`,
+      subject: `New 1:1 application: ${applicantFirstName} ${applicantLastName}`,
       react: CoachingApplicationNotificationEmail({
         name: `${applicantFirstName} ${applicantLastName}`.trim(),
         email: applicantEmail,
@@ -188,7 +188,7 @@ export async function submitCoachingApplication(input: {
         summary,
         adminUrl,
       }),
-      textBody: `New coaching application from ${applicantFirstName} ${applicantLastName}\nEmail: ${applicantEmail}\nTier: ${tierLabel}\n\n${summary.join("\n")}\n\nReview: ${adminUrl}`,
+      textBody: `New 1:1 application from ${applicantFirstName} ${applicantLastName}\nEmail: ${applicantEmail}\nTier: ${tierLabel}\n\n${summary.join("\n")}\n\nReview: ${adminUrl}`,
       tag: "coaching-application-notification",
       templateKey: "coaching-application-notification",
       replyTo: applicantEmail,
@@ -454,14 +454,14 @@ export async function updateAdminCoachingApplication(input: {
     const dashboardUrl = buildAbsoluteUrl("/dashboard/coaching");
     await sendPostmarkReactEmail({
       to: existing.applicantEmail,
-      subject: "Your coaching application has been approved",
+      subject: "Your 1:1 application has been approved",
       react: CoachingApplicationApprovedEmail({
         firstName: existing.applicantFirstName,
         tierLabel,
         dashboardUrl,
         decisionReason: updated.decisionReason,
       }),
-      textBody: `Hi ${existing.applicantFirstName},\n\nYour application for ${tierLabel} has been approved. Sign in to your Private Studio to complete payment and start onboarding.${updated.decisionReason ? `\n\nA note from Shruti:\n${updated.decisionReason}` : ""}\n\nContinue: ${dashboardUrl}`,
+      textBody: `Hi ${existing.applicantFirstName},\n\nYour application for ${tierLabel} has been approved. Sign in to your dashboard to complete payment and start onboarding.${updated.decisionReason ? `\n\nA note from Shruti:\n${updated.decisionReason}` : ""}\n\nContinue: ${dashboardUrl}`,
       tag: "coaching-application-approved",
       templateKey: "coaching-application-approved",
       metadata: {
@@ -480,14 +480,14 @@ export async function updateAdminCoachingApplication(input: {
     const dashboardUrl = buildAbsoluteUrl("/dashboard/coaching");
     await sendPostmarkReactEmail({
       to: existing.applicantEmail,
-      subject: "Your coaching application has been reviewed",
+      subject: "Your 1:1 application has been reviewed",
       react: CoachingApplicationRejectedEmail({
         firstName: existing.applicantFirstName,
         tierLabel,
         decisionReason: updated.decisionReason || nextDecisionReason || "",
         dashboardUrl,
       }),
-      textBody: `Hi ${existing.applicantFirstName},\n\nThank you for applying for ${tierLabel}. Shruti has reviewed your application and this coaching offer is not the right fit at the moment.\n\nA note from Shruti:\n${updated.decisionReason || nextDecisionReason}\n\nDashboard: ${dashboardUrl}`,
+      textBody: `Hi ${existing.applicantFirstName},\n\nThank you for applying for ${tierLabel}. Shruti has reviewed your application and this 1:1 offer is not the right fit at the moment.\n\nA note from Shruti:\n${updated.decisionReason || nextDecisionReason}\n\nDashboard: ${dashboardUrl}`,
       tag: "coaching-application-rejected",
       templateKey: "coaching-application-rejected",
       metadata: {
@@ -506,14 +506,14 @@ export async function updateAdminCoachingApplication(input: {
     const dashboardUrl = buildAbsoluteUrl("/dashboard/coaching");
     await sendPostmarkReactEmail({
       to: existing.applicantEmail,
-      subject: "You are on the coaching waiting list",
+      subject: "You are on the 1:1 waiting list",
       react: CoachingApplicationWaitlistedEmail({
         firstName: existing.applicantFirstName,
         tierLabel,
         dashboardUrl,
         decisionReason: updated.decisionReason || nextDecisionReason || "",
       }),
-      textBody: `Hi ${existing.applicantFirstName},\n\nShruti has reviewed your application for ${tierLabel}. There is not capacity to start coaching immediately, so you have been added to the coaching waiting list.${updated.decisionReason || nextDecisionReason ? `\n\nA note from Shruti:\n${updated.decisionReason || nextDecisionReason}` : ""}\n\nYou do not need to pay now. If a place opens, Shruti will email you with the next step. You can leave the waiting list from your coaching dashboard.\n\nDashboard: ${dashboardUrl}`,
+      textBody: `Hi ${existing.applicantFirstName},\n\nShruti has reviewed your application for ${tierLabel}. There is not capacity to start 1:1 support immediately, so you have been added to the 1:1 waiting list.${updated.decisionReason || nextDecisionReason ? `\n\nA note from Shruti:\n${updated.decisionReason || nextDecisionReason}` : ""}\n\nYou do not need to pay now. If a place opens, Shruti will email you with the next step. You can leave the waiting list from your dashboard.\n\nDashboard: ${dashboardUrl}`,
       tag: "coaching-application-waitlisted",
       templateKey: "coaching-application-waitlisted",
       metadata: {
@@ -614,14 +614,14 @@ export async function leaveCoachingWaitlist(userId: string) {
   const adminUrl = buildAbsoluteUrl("/admin/coaching");
   await sendPostmarkReactEmail({
     to: getNotificationInbox("COACHING_WAITLIST_NOTIFICATION_EMAIL"),
-    subject: `Coaching waiting list left: ${clientName || application.applicantEmail}`,
+    subject: `1:1 waiting list left: ${clientName || application.applicantEmail}`,
     react: CoachingWaitlistLeftNotificationEmail({
       clientName: clientName || application.applicantEmail,
       clientEmail: application.applicantEmail,
       tierLabel,
       adminUrl,
     }),
-    textBody: `${clientName || application.applicantEmail} has left the coaching waiting list.\nEmail: ${application.applicantEmail}\nApplication: ${tierLabel}\n\nAdmin: ${adminUrl}`,
+    textBody: `${clientName || application.applicantEmail} has left the 1:1 waiting list.\nEmail: ${application.applicantEmail}\nApplication: ${tierLabel}\n\nAdmin: ${adminUrl}`,
     tag: "coaching-waitlist-left",
     templateKey: "coaching-waitlist-left",
     metadata: {
@@ -777,7 +777,7 @@ export async function createCoachingPackageChangeRequest(input: {
   const clientName = profile.user.firstName || profile.user.name || "there";
   await sendPostmarkReactEmail({
     to: profile.user.email,
-    subject: "Review your coaching package change",
+    subject: "Review your 1:1 package change",
     react: CoachingPackageChangeRequestedEmail({
       firstName: clientName,
       fromLabel: offerKeyToLabel(fromOfferKey, profile.tier),
@@ -786,7 +786,7 @@ export async function createCoachingPackageChangeRequest(input: {
       dashboardUrl,
       note: request.note,
     }),
-    textBody: `Hi ${clientName},\n\nShruti has suggested moving your coaching package from ${offerKeyToLabel(fromOfferKey, profile.tier)} to ${targetOffer.name}. Sign in to your coaching dashboard to review and confirm the change.${request.note ? `\n\nA note from Shruti:\n${request.note}` : ""}\n\nReview: ${dashboardUrl}`,
+    textBody: `Hi ${clientName},\n\nShruti has suggested moving your 1:1 package from ${offerKeyToLabel(fromOfferKey, profile.tier)} to ${targetOffer.name}. Sign in to your dashboard to review and confirm the change.${request.note ? `\n\nA note from Shruti:\n${request.note}` : ""}\n\nReview: ${dashboardUrl}`,
     tag: "coaching-package-change-requested",
     templateKey: "coaching-package-change-requested",
     metadata: {

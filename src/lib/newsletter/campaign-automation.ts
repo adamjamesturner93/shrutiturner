@@ -200,7 +200,17 @@ function getLinkedId(value: unknown) {
 function readAssetUrl(fields: Record<string, unknown> | undefined) {
   const file = fields?.file;
   if (!file || typeof file !== "object" || Array.isArray(file)) return "";
-  const url = (file as { url?: unknown }).url;
+  const fileRecord = file as Record<string, unknown>;
+  const directUrl = fileRecord.url;
+  if (typeof directUrl === "string" && directUrl.trim()) {
+    return directUrl.startsWith("//") ? `https:${directUrl}` : directUrl.trim();
+  }
+
+  const localizedFile = Object.values(fileRecord).find(
+    (item): item is { url?: unknown } =>
+      Boolean(item) && typeof item === "object" && !Array.isArray(item) && "url" in item
+  );
+  const url = localizedFile?.url;
   if (typeof url !== "string" || !url.trim()) return "";
   return url.startsWith("//") ? `https:${url}` : url.trim();
 }

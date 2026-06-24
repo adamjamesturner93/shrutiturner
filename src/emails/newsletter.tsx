@@ -39,6 +39,13 @@ const listStyle = {
   margin: "0 0 8px 0",
 };
 
+function normalizeImageSrc(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "#" || trimmed.toLowerCase() === "undefined") return "";
+  if (trimmed.startsWith("//")) return `https:${trimmed}`;
+  return trimmed;
+}
+
 function parseInline(input: string): InlineToken[] {
   const tokens: InlineToken[] = [];
   const pattern = /(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|\[[^\]]+\]\([^)]+\))/g;
@@ -134,9 +141,12 @@ function parseNewsletterMarkdown(markdown: string): MarkdownBlock[] {
 
     const imageMatch = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
     if (imageMatch) {
+      const src = normalizeImageSrc(imageMatch[2]);
       flushParagraph();
       flushList();
-      blocks.push({ type: "image", alt: imageMatch[1], src: imageMatch[2] });
+      if (src) {
+        blocks.push({ type: "image", alt: imageMatch[1], src });
+      }
       continue;
     }
 
@@ -372,9 +382,10 @@ export default function NewsletterEmail({
           </Text>
 
           <Text style={bodyTextStyle}>
-            Maybe try that new class with your trusted studio or increase the weight on your barbell
-            slightly. Try a variation that feels unfamiliar. Or, if you often push yourself too far,
-            perhaps experiment with stopping earlier.
+            Maybe choose one familiar movement and make the dose more precise. That might mean
+            adding a little load, reducing the range, taking longer rests or stopping earlier than
+            usual. The useful question is not whether it looked impressive, but whether it helped
+            you build trust and recover well.
           </Text>
 
           <Text

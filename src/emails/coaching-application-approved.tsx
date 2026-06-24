@@ -16,12 +16,12 @@ export default function CoachingApplicationApprovedEmail({
   decisionReason,
 }: CoachingApplicationApprovedEmailProps) {
   return (
-    <EmailLayout preview="Your coaching application has been approved">
+    <EmailLayout preview="Your 1:1 application has been approved">
       <Text style={headingStyle}>Your application is approved</Text>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
         Your application for {tierLabel} has been reviewed and approved. The next step is to sign in
-        to your Private Studio and complete the coaching payment.
+        to your dashboard and complete payment.
       </Text>
       {decisionReason ? (
         <Section
@@ -45,13 +45,13 @@ export default function CoachingApplicationApprovedEmail({
         }}
       >
         <Text style={bodyTextStyle}>What happens after payment:</Text>
-        <Text style={mutedTextStyle}>1. Your coaching client profile is opened.</Text>
+        <Text style={mutedTextStyle}>1. Your 1:1 support profile is opened.</Text>
         <Text style={mutedTextStyle}>2. Shruti sets up the agreed support in Everfit.</Text>
         <Text style={mutedTextStyle}>3. Your onboarding status appears in your dashboard.</Text>
       </Section>
       <Section style={{ textAlign: "center" }}>
         <Link href={dashboardUrl} style={buttonStyle}>
-          Continue to coaching dashboard
+          Continue to your dashboard
         </Link>
       </Section>
     </EmailLayout>

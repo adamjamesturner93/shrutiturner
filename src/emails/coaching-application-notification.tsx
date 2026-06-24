@@ -18,8 +18,8 @@ export default function CoachingApplicationNotificationEmail({
   adminUrl,
 }: CoachingApplicationNotificationEmailProps) {
   return (
-    <EmailLayout preview={`New coaching application from ${name}`}>
-      <Text style={headingStyle}>New coaching application</Text>
+    <EmailLayout preview={`New 1:1 application from ${name}`}>
+      <Text style={headingStyle}>New 1:1 application</Text>
       <Text style={bodyTextStyle}>
         {name} has submitted a new application for {tierLabel}.
       </Text>

@@ -18,11 +18,11 @@ export default function CoachingCancellationNotificationEmail({
   adminUrl,
 }: CoachingCancellationNotificationEmailProps) {
   return (
-    <EmailLayout preview={`Coaching cancellation scheduled for ${clientName}`}>
-      <Text style={headingStyle}>Coaching cancellation scheduled</Text>
+    <EmailLayout preview={`1:1 cancellation scheduled for ${clientName}`}>
+      <Text style={headingStyle}>1:1 cancellation scheduled</Text>
       <Text style={bodyTextStyle}>
-        {clientName} has scheduled coaching cancellation. Their next payment is still due and will
-        be their final coaching payment.
+        {clientName} has scheduled 1:1 cancellation. Their next payment is still due and will be
+        their final 1:1 payment.
       </Text>
       <Section
         style={{
@@ -43,7 +43,7 @@ export default function CoachingCancellationNotificationEmail({
       </Section>
       <Section style={{ textAlign: "center" }}>
         <Link href={adminUrl} style={buttonStyle}>
-          Open coaching admin
+          Open 1:1 admin
         </Link>
       </Section>
     </EmailLayout>

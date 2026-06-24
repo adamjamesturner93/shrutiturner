@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sendEmailBatchMock = vi.fn();
+const renderMock = vi.fn();
 const emailCampaignFindUniqueMock = vi.fn();
 const emailCampaignFindFirstMock = vi.fn();
 const emailCampaignFindManyMock = vi.fn();
@@ -13,7 +14,7 @@ const emailDeliveryAttemptCreateMock = vi.fn();
 const getEntriesMock = vi.fn();
 
 vi.mock("@react-email/render", () => ({
-  render: vi.fn().mockResolvedValue("<html>Email</html>"),
+  render: renderMock,
 }));
 
 vi.mock("postmark", () => ({
@@ -73,6 +74,7 @@ const { processDueContentfulCampaigns, triggerContentfulPublishCampaign } =
 describe("triggerContentfulPublishCampaign", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    renderMock.mockResolvedValue("<html>Email</html>");
     process.env.POSTMARK_FROM_EMAIL = "Shruti <hello@example.com>";
     emailCampaignFindUniqueMock.mockResolvedValue(null);
     emailCampaignFindFirstMock.mockResolvedValue(null);
@@ -241,6 +243,49 @@ describe("triggerContentfulPublishCampaign", () => {
         TextBody: expect.stringContaining("Hope you enjoy,\nShruti"),
       }),
     ]);
+  });
+
+  it("passes the Contentful blog cover asset URL into the blog email", async () => {
+    getEntriesMock.mockResolvedValue({
+      items: [
+        {
+          sys: { id: "blog_123" },
+          fields: {
+            title: "Training Around Flares",
+            slug: "training-around-flares",
+            excerpt: "A practical article about adapting training.",
+            coverImageAsset: { sys: { id: "asset_123" } },
+          },
+        },
+      ],
+      includes: {
+        Asset: [
+          {
+            sys: { id: "asset_123" },
+            fields: {
+              file: {
+                url: "//images.ctfassets.net/space/asset/shruti-paddle.jpg",
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    await expect(
+      triggerContentfulPublishCampaign({
+        contentType: "blogPost",
+        contentfulEntryId: "blog_123",
+        contentfulVersion: "7",
+      })
+    ).resolves.toEqual({ skipped: false, campaignId: "campaign_123" });
+
+    const renderedElement = renderMock.mock.calls[0]?.[0] as unknown;
+    const serialized = JSON.stringify(renderedElement, (_key, value: unknown) =>
+      typeof value === "symbol" ? value.toString() : value
+    );
+    expect(serialized).toContain("https://images.ctfassets.net/space/asset/shruti-paddle.jpg");
+    expect(serialized).not.toContain("images.unsplash.com");
   });
 
   it("does not resend a blog campaign when the same post is republished with a new Contentful version", async () => {

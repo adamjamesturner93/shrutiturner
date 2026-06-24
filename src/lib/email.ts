@@ -88,6 +88,18 @@ function getClassLifecycleSupportLine() {
   return `Need help? Contact Shruti: ${APP_URL}/contact`;
 }
 
+function classLifecycleEmailsEnabled() {
+  return process.env.ENABLE_CLASS_EMAILS === "true";
+}
+
+function moveWellLifecycleEmailsEnabled() {
+  return process.env.ENABLE_MOVE_WELL_EMAILS === "true";
+}
+
+function skippedEmail(reason: string) {
+  return { success: true, skipped: true, reason };
+}
+
 function toMinutesLabel(minutes: number) {
   if (minutes % 60 === 0) {
     const hours = minutes / 60;
@@ -108,7 +120,7 @@ export function buildCalendarInvite(params: {
   const { eventName, startTime, durationMinutes, description } = params;
   const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
   const method = params.method || "REQUEST";
-  const location = params.location || "Private Studio (online)";
+  const location = params.location || "Online session";
 
   const formatDate = (date: Date) => date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
 
@@ -201,6 +213,8 @@ export async function sendBookingConfirmation(
   }
 ) {
   try {
+    if (!classLifecycleEmailsEnabled()) return skippedEmail("class_emails_disabled");
+
     const settings = await getClassOperationalSettings();
     // Format date & time using the user's saved preferences
     const formattedDate = formatDate(classDateObj, userPrefs);
@@ -214,8 +228,8 @@ export async function sendBookingConfirmation(
       eventName: className,
       startTime: classDateObj,
       durationMinutes,
-      description: `Join from your Private Studio: ${classUrl}`,
-      location: "Private Studio (online)",
+      description: `Join your online class: ${classUrl}`,
+      location: "Online class",
       url: classUrl,
       method: "REQUEST",
     });
@@ -225,7 +239,7 @@ export async function sendBookingConfirmation(
       classDate: formattedDate,
       classTime: formattedTime,
       classDuration: `${durationMinutes} minutes`,
-      classLocation: "Private Studio (online)",
+      classLocation: "Online class",
       manageBookingUrl: classUrl,
       creditRefundWindowLabel: toMinutesLabel(settings.creditRefundWindowMinutes),
       preJoinWindowLabel: toMinutesLabel(settings.preJoinWindowMinutes),
@@ -271,6 +285,8 @@ export async function sendWaitlistJoinedEmail(
   userPrefs: I18nPreferences = DEFAULT_PREFS
 ) {
   try {
+    if (!classLifecycleEmailsEnabled()) return skippedEmail("class_emails_disabled");
+
     const formattedDate = formatDate(classDateObj, userPrefs);
     const formattedTime = formatTime(classDateObj, userPrefs);
     const react = ClassWaitlistEmail({
@@ -326,6 +342,8 @@ export async function sendWaitlistPromotedEmail(
   userPrefs: I18nPreferences = DEFAULT_PREFS
 ) {
   try {
+    if (!classLifecycleEmailsEnabled()) return skippedEmail("class_emails_disabled");
+
     const formattedDate = formatDate(classDateObj, userPrefs);
     const formattedTime = formatTime(classDateObj, userPrefs);
     const invite = buildCalendarInvite({
@@ -386,6 +404,8 @@ export async function sendClassReminder(
   }
 ) {
   try {
+    if (!classLifecycleEmailsEnabled()) return skippedEmail("class_emails_disabled");
+
     const preJoinWindowMinutes =
       options?.preJoinWindowMinutes ?? (await getClassOperationalSettings()).preJoinWindowMinutes;
     const lateJoinCutoffMinutes =
@@ -482,6 +502,8 @@ export async function sendSubscriptionNoticeEmail(params: {
   metadata?: Record<string, string>;
 }) {
   try {
+    if (!moveWellLifecycleEmailsEnabled()) return skippedEmail("move_well_emails_disabled");
+
     const react = SubscriptionNoticeEmail({
       preview: params.preview,
       title: params.title,
@@ -531,6 +553,8 @@ export async function sendInstructorNotification(
   durationMinutes = 60
 ) {
   try {
+    if (!classLifecycleEmailsEnabled()) return skippedEmail("class_emails_disabled");
+
     const settings = await getClassOperationalSettings();
     const formattedDate = startsAt
       ? formatDate(startsAt, ADMIN_PREFS)
@@ -611,6 +635,8 @@ export async function sendClassCancellation(
   durationMinutes = 60
 ) {
   try {
+    if (!classLifecycleEmailsEnabled()) return skippedEmail("class_emails_disabled");
+
     const invite = buildCalendarInvite({
       eventName: className,
       startTime: startsAt,
@@ -669,6 +695,8 @@ export async function sendClassUnbooking(
   userPrefs: I18nPreferences = DEFAULT_PREFS
 ) {
   try {
+    if (!classLifecycleEmailsEnabled()) return skippedEmail("class_emails_disabled");
+
     const formattedDate = formatDate(classDateObj, userPrefs);
     const formattedTime = formatTime(classDateObj, userPrefs);
     const invite = buildCalendarInvite({
@@ -690,7 +718,7 @@ export async function sendClassUnbooking(
       to: email,
       subject: `Booking cancelled: ${className}`,
       react,
-      textBody: `Hi ${firstName},\n\nYour booking for ${className} on ${formattedDate} at ${formattedTime} has been cancelled.\n\nBrowse upcoming classes: ${APP_URL}/dashboard/schedule\n\n${getClassLifecycleSupportLine()}`,
+      textBody: `Hi ${firstName},\n\nYour booking for ${className} on ${formattedDate} at ${formattedTime} has been cancelled.\n\nManage your account: ${APP_URL}/dashboard\n\n${getClassLifecycleSupportLine()}`,
       tag: "class-unbooking",
       templateKey: "class-unbooking",
       ...getClassLifecycleDeliveryOptions({

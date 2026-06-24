@@ -420,14 +420,14 @@ async function sendCoachingPaymentReceivedNotification(input: {
   const adminUrl = `${APP_URL}/admin/coaching`;
   await sendPostmarkReactEmail({
     to: getNotificationInbox("COACHING_PAYMENT_NOTIFICATION_EMAIL"),
-    subject: `Coaching payment received: ${input.clientName}`,
+    subject: `1:1 payment received: ${input.clientName}`,
     react: CoachingPaymentNotificationEmail({
       clientName: input.clientName,
       clientEmail: input.clientEmail,
       tierLabel: input.tierLabel,
       adminUrl,
     }),
-    textBody: `Coaching payment received from ${input.clientName}\nEmail: ${input.clientEmail}\nTier: ${input.tierLabel}\n\nCreate or update the client manually in Everfit, then update their setup status in admin.\n\nAdmin: ${adminUrl}`,
+    textBody: `1:1 payment received from ${input.clientName}\nEmail: ${input.clientEmail}\nTier: ${input.tierLabel}\n\nCreate or update the client manually in Everfit, then update their setup status in admin.\n\nAdmin: ${adminUrl}`,
     tag: "coaching-payment-received",
     templateKey: "coaching-payment-received",
     metadata: { applicationId: input.applicationId },
@@ -456,7 +456,7 @@ async function sendCoachingCancellationNotification(input: {
 
   await sendPostmarkReactEmail({
     to: getNotificationInbox("COACHING_CANCELLATION_NOTIFICATION_EMAIL"),
-    subject: `Coaching cancellation scheduled: ${clientName}`,
+    subject: `1:1 cancellation scheduled: ${clientName}`,
     react: CoachingCancellationNotificationEmail({
       clientName,
       clientEmail: user.email,
@@ -464,7 +464,7 @@ async function sendCoachingCancellationNotification(input: {
       endsAt: endsAtLabel,
       adminUrl,
     }),
-    textBody: `Coaching cancellation scheduled for ${clientName}\nEmail: ${user.email}\nFinal payment: ${nextPaymentLabel}\nBilling/access end: ${endsAtLabel}\n\nPlan the Everfit handover and access changes manually.\n\nAdmin: ${adminUrl}`,
+    textBody: `1:1 cancellation scheduled for ${clientName}\nEmail: ${user.email}\nFinal payment: ${nextPaymentLabel}\nBilling/access end: ${endsAtLabel}\n\nPlan the Everfit handover and access changes manually.\n\nAdmin: ${adminUrl}`,
     tag: "coaching-cancellation-scheduled",
     templateKey: "coaching-cancellation-scheduled",
     metadata: { userId: input.userId },

@@ -97,12 +97,13 @@ export default function ReferralRewardEmail({
       </Section>
 
       <Text style={bodyTextStyle}>
-        Your credit can be used towards any class or pack. Ready to put it to good use?
+        This retired template is kept for historical reference and should not be used for live
+        sends.
       </Text>
 
       <Section style={{ textAlign: "center" as const, marginBottom: "28px" }}>
         <Link href={scheduleUrl} style={buttonStyle}>
-          Browse the schedule
+          Contact Shruti
         </Link>
       </Section>
 

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { sendPostmarkReactEmailMock, getClassOperationalSettingsMock } = vi.hoisted(() => ({
   sendPostmarkReactEmailMock: vi.fn(),
@@ -15,6 +15,18 @@ vi.mock("@/lib/classes/settings-service", () => ({
 
 vi.mock("@/lib/env", () => ({
   getBaseSiteUrlFromEnv: () => "https://shrutiturner.co.uk",
+  getDatabaseUrl: () => "postgresql://user:pass@localhost:5432/test",
+}));
+
+vi.mock("@/lib/db", () => ({
+  db: {
+    coachingApplication: {
+      findFirst: vi.fn(),
+    },
+    coachingClientProfile: {
+      findUnique: vi.fn(),
+    },
+  },
 }));
 
 const {
@@ -22,14 +34,20 @@ const {
   sendClassCancellation,
   sendClassReminder,
   sendClassUnbooking,
+  sendSubscriptionNoticeEmail,
   sendInstructorNotification,
   sendWaitlistJoinedEmail,
   sendWaitlistPromotedEmail,
 } = await import("@/lib/email");
 
 describe("class lifecycle emails", () => {
+  const originalClassEmailFlag = process.env.ENABLE_CLASS_EMAILS;
+  const originalMoveWellEmailFlag = process.env.ENABLE_MOVE_WELL_EMAILS;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.ENABLE_CLASS_EMAILS;
+    delete process.env.ENABLE_MOVE_WELL_EMAILS;
     sendPostmarkReactEmailMock.mockResolvedValue({ success: true });
     getClassOperationalSettingsMock.mockResolvedValue({
       creditRefundWindowMinutes: 180,
@@ -39,7 +57,22 @@ describe("class lifecycle emails", () => {
     });
   });
 
+  afterEach(() => {
+    if (originalClassEmailFlag === undefined) {
+      delete process.env.ENABLE_CLASS_EMAILS;
+    } else {
+      process.env.ENABLE_CLASS_EMAILS = originalClassEmailFlag;
+    }
+
+    if (originalMoveWellEmailFlag === undefined) {
+      delete process.env.ENABLE_MOVE_WELL_EMAILS;
+    } else {
+      process.env.ENABLE_MOVE_WELL_EMAILS = originalMoveWellEmailFlag;
+    }
+  });
+
   it("uses retryable transactional Postmark delivery with class metadata and support contact", async () => {
+    process.env.ENABLE_CLASS_EMAILS = "true";
     const startsAt = new Date("2026-03-24T12:30:00.000Z");
     const userPrefs = {
       timezone: "Europe/London",
@@ -157,5 +190,42 @@ describe("class lifecycle emails", () => {
       })
     );
     expect(calls[3].textBody).toContain("First-time joins close 5 minutes after the start time.");
+  });
+
+  it("skips hidden class and Move Well lifecycle emails unless explicitly enabled", async () => {
+    const startsAt = new Date("2026-03-24T12:30:00.000Z");
+
+    await expect(
+      sendBookingConfirmation(
+        "member@example.com",
+        "Ava",
+        "Lifecycle Strength",
+        "2026-03-24",
+        "12:30",
+        startsAt
+      )
+    ).resolves.toEqual({
+      success: true,
+      skipped: true,
+      reason: "class_emails_disabled",
+    });
+
+    await expect(
+      sendSubscriptionNoticeEmail({
+        email: "member@example.com",
+        firstName: "Ava",
+        subject: "Move Well notice",
+        preview: "Move Well notice",
+        title: "Move Well notice",
+        paragraphs: ["Legacy membership notice."],
+        tag: "subscription-test",
+      })
+    ).resolves.toEqual({
+      success: true,
+      skipped: true,
+      reason: "move_well_emails_disabled",
+    });
+
+    expect(sendPostmarkReactEmailMock).not.toHaveBeenCalled();
   });
 });

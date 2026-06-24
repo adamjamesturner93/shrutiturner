@@ -79,14 +79,12 @@ export default function ClassUnbookingEmail({
       </Section>
 
       <Text style={bodyTextStyle}>
-        {
-          "If this was a mistake, or you'd like to join a different session, you can browse upcoming classes below."
-        }
+        {"If this was a mistake, reply to this email and we can help."}
       </Text>
 
       <Section style={{ textAlign: "center" as const, marginBottom: "8px" }}>
         <Link href={rebookUrl} style={buttonStyle}>
-          Browse upcoming classes
+          Contact Shruti
         </Link>
       </Section>
 

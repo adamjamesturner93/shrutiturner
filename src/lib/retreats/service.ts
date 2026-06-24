@@ -26,7 +26,6 @@ import { assertCurrentAcceptances } from "@/lib/legal/acceptance-service";
 import { getCurrentPolicyVersions } from "@/lib/legal/policy-service";
 import { sendPostmarkReactEmail } from "@/lib/postmark/client";
 import RetreatBookingEmail from "@/emails/retreat-booking";
-import RetreatBalanceDueEmail from "@/emails/retreat-balance-due";
 
 const RETREAT_PAYMENT_WINDOW_MS = 30 * 60 * 1000;
 
@@ -692,30 +691,6 @@ async function sendDepositConfirmationEmail(bookingId: string) {
     },
     dispatchMode: "immediate_best_effort",
   });
-
-  if (booking.balanceAmountPence > 0 && booking.balancePaymentUrlToken) {
-    const paymentUrl = buildAbsoluteUrl(`/retreats/balance/${booking.balancePaymentUrlToken}`);
-    await sendPostmarkReactEmail({
-      to: booking.purchaserEmail,
-      subject: `${booking.retreatDate.retreatTitleSnapshot}: balance payment link`,
-      react: RetreatBalanceDueEmail({
-        firstName: booking.purchaserFirstName,
-        retreatName: booking.retreatDate.retreatTitleSnapshot,
-        retreatDates: formatDateRange(booking.retreatDate.startsAt, booking.retreatDate.endsAt),
-        balanceAmount: formatCurrency(booking.balanceAmountPence, booking.currency),
-        dueDate: booking.balanceDueAt ? formatDate(booking.balanceDueAt) : "Before arrival",
-        paymentUrl,
-      }),
-      textBody: `Your balance payment link for ${booking.retreatDate.retreatTitleSnapshot}\nAmount due: ${formatCurrency(booking.balanceAmountPence, booking.currency)}\nDue by: ${booking.balanceDueAt ? formatDate(booking.balanceDueAt) : "Before arrival"}\nPay here: ${paymentUrl}`,
-      tag: "retreat-balance-due",
-      templateKey: "retreat-balance-due",
-      metadata: {
-        bookingId: booking.id,
-        retreatSlug: booking.retreatDate.retreatSlug,
-      },
-      dispatchMode: "immediate_best_effort",
-    });
-  }
 }
 
 export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.Session) {

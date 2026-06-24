@@ -1,5 +1,6 @@
 import { render } from "@react-email/render";
 import { describe, expect, it } from "vitest";
+import BlogPostEmail from "@/emails/blog-post";
 import ClassBookingEmail from "@/emails/class-booking";
 import NewsletterEmail from "@/emails/newsletter";
 
@@ -57,5 +58,45 @@ describe("EmailLayout categories", () => {
     expect(html).toContain("Recovery caption");
     expect(html).not.toContain("Bonnie taking some time");
     expect(html).not.toContain("Private Studio");
+  });
+
+  it("does not render malformed newsletter images without a source", async () => {
+    const html = await render(
+      NewsletterEmail({
+        firstName: "Taylor",
+        subject: "Monthly note",
+        bodyContent: "Thank you.\n\n![Happy Bonnie](undefined)",
+      })
+    );
+
+    expect(html).not.toContain('alt="Happy Bonnie"');
+    expect(html).not.toContain("Happy Bonnie</p>");
+  });
+
+  it("normalises protocol-relative Contentful newsletter image URLs", async () => {
+    const html = await render(
+      NewsletterEmail({
+        firstName: "Taylor",
+        subject: "Monthly note",
+        bodyContent: "![Happy Bonnie](//images.ctfassets.net/space/asset/happy-bonnie.jpg)",
+      })
+    );
+
+    expect(html).toContain('alt="Happy Bonnie"');
+    expect(html).toContain("https://images.ctfassets.net/space/asset/happy-bonnie.jpg");
+    expect(html).not.toContain('src="//images.ctfassets.net');
+  });
+
+  it("does not use a static fallback image for blog post emails", async () => {
+    const html = await render(
+      BlogPostEmail({
+        firstName: "Taylor",
+        postTitle: "A current post",
+        postExcerpt: "Current excerpt.",
+        postUrl: "https://shrutiturner.test/blog/current-post",
+      })
+    );
+
+    expect(html).not.toContain("images.unsplash.com");
   });
 });

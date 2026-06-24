@@ -14,7 +14,7 @@ export default function CoachingApplicationConfirmationEmail({
   dashboardUrl,
 }: CoachingApplicationConfirmationEmailProps) {
   return (
-    <EmailLayout preview="Your coaching application has been received">
+    <EmailLayout preview="Your 1:1 application has been received">
       <Text style={headingStyle}>Application received</Text>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
@@ -40,7 +40,7 @@ export default function CoachingApplicationConfirmationEmail({
       </Section>
       <Section style={{ textAlign: "center" }}>
         <Link href={dashboardUrl} style={buttonStyle}>
-          View coaching dashboard
+          View your dashboard
         </Link>
       </Section>
     </EmailLayout>

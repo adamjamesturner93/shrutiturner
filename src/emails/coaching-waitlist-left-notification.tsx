@@ -16,10 +16,10 @@ export default function CoachingWaitlistLeftNotificationEmail({
   adminUrl,
 }: CoachingWaitlistLeftNotificationEmailProps) {
   return (
-    <EmailLayout preview={`${clientName} left the coaching waiting list`}>
-      <Text style={headingStyle}>Someone left the coaching waiting list</Text>
+    <EmailLayout preview={`${clientName} left the 1:1 waiting list`}>
+      <Text style={headingStyle}>Someone left the 1:1 waiting list</Text>
       <Text style={bodyTextStyle}>
-        {clientName} has left the coaching waiting list from their coaching dashboard.
+        {clientName} has left the 1:1 waiting list from their dashboard.
       </Text>
       <Section
         style={{
@@ -34,7 +34,7 @@ export default function CoachingWaitlistLeftNotificationEmail({
       </Section>
       <Section style={{ textAlign: "center" }}>
         <Link href={adminUrl} style={buttonStyle}>
-          View coaching admin
+          View 1:1 admin
         </Link>
       </Section>
     </EmailLayout>

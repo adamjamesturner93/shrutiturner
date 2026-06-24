@@ -63,8 +63,8 @@ export default function BirthdayEmail({
       </Text>
 
       <Text style={bodyTextStyle}>
-        As a small thank you for being part of this community, {"here's"} a credit to use towards
-        any class:
+        This retired template is kept for historical reference and should not be used for live
+        sends.
       </Text>
 
       {/* Credit Code Card */}
@@ -142,14 +142,15 @@ export default function BirthdayEmail({
 
       <Section style={{ textAlign: "center" as const, marginBottom: "28px" }}>
         <Link href={scheduleUrl} style={buttonStyle}>
-          Browse the schedule
+          Contact Shruti
         </Link>
       </Section>
 
       <Hr style={dividerStyle} />
 
       <Text style={mutedTextStyle}>
-        This credit is valid for 30 days from today and can be used towards any class booking.
+        This retired template is kept for historical reference and should not be used for live
+        sends.
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>

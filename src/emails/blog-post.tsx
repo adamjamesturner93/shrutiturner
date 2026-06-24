@@ -26,7 +26,7 @@ export default function BlogPostEmail({
   firstName = "there",
   postTitle = "Why Strength Training Matters When You Have Chronic Illness",
   postExcerpt = "Exploring the evidence for resistance training in managing autoimmune conditions, chronic pain and fatigue \u2014 and how to start without pushing past your limits.",
-  postImageUrl = "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=520&h=260&fit=crop",
+  postImageUrl,
   postUrl = "https://shrutiturner.co.uk/blog/strength-training-chronic-illness",
   publishDate = "4 March 2026",
   tags = ["Strength Training", "Chronic Illness", "Evidence-Based"],

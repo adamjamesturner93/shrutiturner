@@ -30,7 +30,7 @@ export default function ClassBookingEmail({
   classDate = "Thursday, 6 March 2026",
   classTime = "9:30 AM",
   classDuration = "60 minutes",
-  classLocation = "Private Studio (online)",
+  classLocation = "Online class",
   instructorNote = "No special equipment needed for this session — just a mat and yourself. We'll be working on building capacity through slow, intentional movement.",
   manageBookingUrl = "https://shrutiturner.co.uk/account/bookings",
   creditRefundWindowLabel = "3 hours",
@@ -164,7 +164,7 @@ export default function ClassBookingEmail({
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>
-        See you on the mat,
+        See you soon,
         <br />
         Shruti
       </Text>

@@ -138,8 +138,8 @@ export default function WinBackEmail({
             margin: "0 0 12px 0",
           }}
         >
-          {"There's"} no need to dive straight into the deep end. A restorative session or gentle
-          flow is a lovely way to reconnect.
+          This retired template is kept for historical reference and should not be used for live
+          sends.
         </Text>
         <Link
           href={scheduleUrl}
@@ -151,7 +151,7 @@ export default function WinBackEmail({
             textDecoration: "underline",
           }}
         >
-          {"View the schedule \u2192"}
+          {"Contact Shruti \u2192"}
         </Link>
       </Section>
 
@@ -203,7 +203,7 @@ export default function WinBackEmail({
 
       <Section style={{ textAlign: "center" as const, marginBottom: "28px" }}>
         <Link href={scheduleUrl} style={buttonStyle}>
-          Browse the schedule
+          Contact Shruti
         </Link>
       </Section>
 

@@ -7,9 +7,9 @@ describe("buildCalendarInvite", () => {
       eventName: "Seeded Timetable Strength",
       startTime: new Date("2026-03-25T18:00:00.000Z"),
       durationMinutes: 45,
-      description: "Join from the private studio dashboard.",
+      description: "Join your online class.",
       method: "REQUEST",
-      location: "Private Studio (online)",
+      location: "Online class",
       url: "https://shrutiturner.co.uk/dashboard/classes/strength/join?sessionId=session_123",
     });
 
@@ -17,7 +17,7 @@ describe("buildCalendarInvite", () => {
     expect(invite).toContain("SUMMARY:Seeded Timetable Strength");
     expect(invite).toContain("DTSTART:20260325T180000Z");
     expect(invite).toContain("DTEND:20260325T184500Z");
-    expect(invite).toContain("LOCATION:Private Studio (online)");
+    expect(invite).toContain("LOCATION:Online class");
     expect(invite).toContain(
       "URL:https://shrutiturner.co.uk/dashboard/classes/strength/join?sessionId=session_123"
     );

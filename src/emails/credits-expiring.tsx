@@ -94,7 +94,7 @@ export default function CreditsExpiringEmail({
 
       <Section style={{ textAlign: "center" as const, marginBottom: "28px" }}>
         <Link href={scheduleUrl} style={buttonStyle}>
-          Browse the schedule
+          Contact Shruti
         </Link>
       </Section>
 
@@ -106,7 +106,7 @@ export default function CreditsExpiringEmail({
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>
-        See you on the mat,
+        Take care,
         <br />
         Shruti
       </Text>

@@ -16,11 +16,7 @@ interface RetreatRemainderEmailProps {
   retreatDates?: string;
   remainderAmount?: string;
   dueDate?: string;
-  bankName?: string;
-  accountName?: string;
-  sortCode?: string;
-  accountNumber?: string;
-  paymentReference?: string;
+  paymentUrl?: string;
   retreatDetailsUrl?: string;
 }
 
@@ -30,13 +26,11 @@ export default function RetreatRemainderEmail({
   retreatDates = "18 - 20 September 2026",
   remainderAmount = "\u00a3445.00",
   dueDate = "18 August 2026",
-  bankName = "Starling Bank",
-  accountName = "Shruti Turner",
-  sortCode = "60-83-71",
-  accountNumber = "12345678",
-  paymentReference = "RT-2026-0342",
+  paymentUrl,
   retreatDetailsUrl = "https://shrutiturner.co.uk/retreats/rest-and-restore",
 }: RetreatRemainderEmailProps) {
+  const balanceUrl = paymentUrl || retreatDetailsUrl;
+
   return (
     <EmailLayout preview={`Retreat balance due: ${remainderAmount} by ${dueDate}`}>
       <Text
@@ -147,7 +141,7 @@ export default function RetreatRemainderEmail({
         </Section>
       </Section>
 
-      {/* Bank Details Card */}
+      {/* Payment Link Card */}
       <Section
         style={{
           backgroundColor: colors.secondaryBg,
@@ -167,64 +161,16 @@ export default function RetreatRemainderEmail({
             margin: "0 0 20px 0",
           }}
         >
-          Bank Transfer Details
+          Payment Details
         </Text>
-
-        {[
-          { label: "Bank", value: bankName },
-          { label: "Account name", value: accountName },
-          { label: "Sort code", value: sortCode },
-          { label: "Account number", value: accountNumber },
-          { label: "Payment reference", value: paymentReference },
-        ].map((item) => (
-          <Section key={item.label} style={{ marginBottom: "14px" }}>
-            <Text
-              style={{
-                fontFamily: fonts.body,
-                color: colors.muted,
-                fontSize: "13px",
-                margin: "0 0 2px 0",
-              }}
-            >
-              {item.label}
-            </Text>
-            <Text
-              style={{
-                fontFamily: fonts.body,
-                color: colors.brandDark,
-                fontSize: "16px",
-                fontWeight: "500",
-                margin: "0",
-                letterSpacing:
-                  item.label === "Sort code" || item.label === "Account number" ? "0.06em" : "0",
-              }}
-            >
-              {item.value}
-            </Text>
-          </Section>
-        ))}
-
-        <Section
-          style={{
-            backgroundColor: "rgba(75, 91, 50, 0.08)",
-            borderRadius: "6px",
-            padding: "12px 16px",
-            marginTop: "8px",
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: fonts.body,
-              color: colors.brandAccent,
-              fontSize: "13px",
-              fontWeight: "500",
-              margin: "0",
-              lineHeight: "1.5",
-            }}
-          >
-            Please use your payment reference ({paymentReference}) so I can match your payment to
-            your booking.
-          </Text>
+        <Text style={mutedTextStyle}>
+          Use the secure payment link below to pay the remaining balance. If you have already paid,
+          you can ignore this reminder.
+        </Text>
+        <Section style={{ textAlign: "center" as const, marginTop: "20px" }}>
+          <Link href={balanceUrl} style={buttonStyle}>
+            Pay remaining balance
+          </Link>
         </Section>
       </Section>
 

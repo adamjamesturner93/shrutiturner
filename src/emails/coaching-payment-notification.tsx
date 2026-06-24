@@ -16,8 +16,8 @@ export default function CoachingPaymentNotificationEmail({
   adminUrl,
 }: CoachingPaymentNotificationEmailProps) {
   return (
-    <EmailLayout preview={`Coaching payment received from ${clientName}`}>
-      <Text style={headingStyle}>Coaching payment received</Text>
+    <EmailLayout preview={`1:1 payment received from ${clientName}`}>
+      <Text style={headingStyle}>1:1 payment received</Text>
       <Text style={bodyTextStyle}>
         {clientName} has completed payment for {tierLabel}. They are ready for manual Everfit setup.
       </Text>
@@ -38,7 +38,7 @@ export default function CoachingPaymentNotificationEmail({
       </Section>
       <Section style={{ textAlign: "center" }}>
         <Link href={adminUrl} style={buttonStyle}>
-          Open coaching admin
+          Open 1:1 admin
         </Link>
       </Section>
     </EmailLayout>

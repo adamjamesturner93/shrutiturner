@@ -25,11 +25,11 @@ export default function CoachingPackageChangeRequestedEmail({
       : "The new price is intended to apply from your next Stripe invoice.";
 
   return (
-    <EmailLayout preview="Review your coaching package change">
-      <Text style={headingStyle}>Review your coaching package change</Text>
+    <EmailLayout preview="Review your 1:1 package change">
+      <Text style={headingStyle}>Review your 1:1 package change</Text>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
-        Shruti has suggested moving your coaching package from {fromLabel} to {toLabel}.
+        Shruti has suggested moving your 1:1 package from {fromLabel} to {toLabel}.
       </Text>
       <Section
         style={{
@@ -40,9 +40,7 @@ export default function CoachingPackageChangeRequestedEmail({
         }}
       >
         <Text style={bodyTextStyle}>What happens next:</Text>
-        <Text style={mutedTextStyle}>
-          1. Sign in to your coaching dashboard and review the new package.
-        </Text>
+        <Text style={mutedTextStyle}>1. Sign in to your dashboard and review the new package.</Text>
         <Text style={mutedTextStyle}>
           2. Confirm the change after reviewing the current terms and health waiver.
         </Text>
