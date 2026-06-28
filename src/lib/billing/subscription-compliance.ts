@@ -111,9 +111,9 @@ export function getMembershipLifecycleDates(startedAt = new Date()) {
 export function isInInitialCoolingOff(
   membership:
     | {
-      initialCoolingOffEndsAt?: Date | null;
-      status?: MembershipStatus | null;
-    }
+        initialCoolingOffEndsAt?: Date | null;
+        status?: MembershipStatus | null;
+      }
     | null
     | undefined,
   now = new Date()
@@ -127,9 +127,9 @@ export function isInInitialCoolingOff(
 export function isInRenewalCoolingOff(
   membership:
     | {
-      renewalCoolingOffEndsAt?: Date | null;
-      status?: MembershipStatus | null;
-    }
+        renewalCoolingOffEndsAt?: Date | null;
+        status?: MembershipStatus | null;
+      }
     | null
     | undefined,
   now = new Date()
@@ -260,8 +260,8 @@ export async function sendMembershipCancellationNotice(params: {
   const refundParagraph =
     params.refundAmountPence && params.refundAmountPence > 0
       ? [
-        `A refund of ${formatMoney(params.refundAmountPence)} has been initiated to your original payment method.`,
-      ]
+          `A refund of ${formatMoney(params.refundAmountPence)} has been initiated to your original payment method.`,
+        ]
       : [];
 
   return sendAndRecordNotice({
@@ -282,17 +282,17 @@ export async function sendMembershipCancellationNotice(params: {
     title: params.immediate ? "Membership ended" : "Cancellation confirmed",
     paragraphs: params.immediate
       ? [
-        `Your Move Well Membership has been cancelled with immediate effect on ${endLabel}.`,
-        ...refundParagraph,
-        "You can return to the membership page at any time to start again or use credit packs instead.",
-      ]
+          `Your Move Well Membership has been cancelled with immediate effect on ${endLabel}.`,
+          ...refundParagraph,
+          "You can return to the membership page at any time to start again or use credit packs instead.",
+        ]
       : [
-        `We have received your request to cancel your Move Well Membership.`,
-        `Your membership remains active until ${endLabel}, after which it will not renew.`,
-        "You can still use your dashboard to manage classes and, if needed, resume renewal before the end date.",
-      ],
+          `We have received your request to cancel your Move Well Membership.`,
+          `Your membership remains active until ${endLabel}, after which it will not renew.`,
+          "You can still use your dashboard to manage classes and, if needed, resume renewal before the end date.",
+        ],
     ctaLabel: "Open membership settings",
-    ctaUrl: `${APP_URL}/dashboard/membership`,
+    ctaUrl: `${APP_URL}/dashboard/coaching`,
     footnote: "This email is your written cancellation acknowledgement and end-of-contract notice.",
     metadata: {
       membershipId: params.membershipId,
@@ -332,7 +332,7 @@ export async function sendRenewalCoolingOffNotice(params: {
       "You can cancel online from your Membership dashboard. If you do nothing, your subscription continues as normal.",
     ],
     ctaLabel: "Review membership",
-    ctaUrl: `${APP_URL}/dashboard/membership`,
+    ctaUrl: `${APP_URL}/dashboard/coaching`,
     footnote: "This notice is sent separately from your general billing emails.",
     metadata: {
       membershipId: params.membershipId,
@@ -370,7 +370,7 @@ export async function sendMembershipCheckoutConfirmationNotice(params: {
     paragraphs: copy.paragraphs,
     tag: "subscription-checkout-confirmation",
     ctaLabel: "Open membership settings",
-    ctaUrl: `${APP_URL}/dashboard/membership`,
+    ctaUrl: `${APP_URL}/dashboard/coaching`,
     footnote:
       "This email repeats the trial, billing, cancellation and immediate-start details from checkout.",
     metadata: {
@@ -421,7 +421,7 @@ export async function sendTrialReminderNotice(params: {
       "You can cancel online from your Membership dashboard at any time before the trial ends.",
     ],
     ctaLabel: "Manage membership",
-    ctaUrl: `${APP_URL}/dashboard/membership`,
+    ctaUrl: `${APP_URL}/dashboard/coaching`,
     footnote: "This is your statutory reminder that the trial period is about to end.",
     metadata: {
       membershipId: params.membershipId,
@@ -454,7 +454,7 @@ export async function sendMonthlyReminderNotice(params: {
       `Your next statutory rolling reminder will be due around ${nextNoticeLabel}.`,
     ],
     ctaLabel: "Review membership",
-    ctaUrl: `${APP_URL}/dashboard/membership`,
+    ctaUrl: `${APP_URL}/dashboard/coaching`,
     footnote: "This reminder is part of our recurring subscription information duties.",
     metadata: {
       membershipId: params.membershipId,
@@ -488,7 +488,7 @@ export async function sendAnnualRenewalReminderNotice(params: {
       "If the annual renewal goes ahead, you will receive a separate renewal cooling-off notice on the day the new annual term begins.",
     ],
     ctaLabel: "Manage membership",
-    ctaUrl: `${APP_URL}/dashboard/membership`,
+    ctaUrl: `${APP_URL}/dashboard/coaching`,
     footnote: "This reminder is sent before the start of the new annual term.",
     metadata: {
       membershipId: params.membershipId,
@@ -777,7 +777,7 @@ export function getMembershipComplianceStatus(params: {
     renewalCoolingOffEndsAt: toIsoDate(membership?.renewalCoolingOffEndsAt),
     renewalCoolingOffKind:
       membership?.renewalCoolingOffKind === "trial_conversion" ||
-        membership?.renewalCoolingOffKind === "annual_renewal"
+      membership?.renewalCoolingOffKind === "annual_renewal"
         ? membership.renewalCoolingOffKind
         : null,
   };

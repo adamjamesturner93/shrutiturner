@@ -10,35 +10,6 @@ export interface PageContent {
   seo: SeoContent;
 }
 
-export interface SmallGroupProgrammeWeekContent {
-  weekNumber: number;
-  title: string;
-  focus?: string;
-  sessionTitles?: string[];
-}
-
-export interface SmallGroupTemplateContent {
-  id: string;
-  slug: string;
-  title: string;
-  subtitle?: string;
-  shortSummary: string;
-  fullDescription?: string;
-  longDescription?: string;
-  outcomes: string[];
-  durationLabel: string;
-  durationWeeks?: number;
-  cohortSize: number;
-  sessionsPerWeek?: number;
-  defaultPricePence?: number;
-  whoItsFor?: string[];
-  equipment?: string[];
-  inclusions?: string[];
-  weekByWeek?: SmallGroupProgrammeWeekContent[];
-}
-
-export type SmallGroupProgrammeContent = SmallGroupTemplateContent;
-
 export interface RetreatRoomOptionContent {
   id: string;
   label: string;
@@ -168,30 +139,6 @@ export interface AuthorProfileContent {
   active?: boolean;
 }
 
-export interface ClassDefinitionContent {
-  id: string;
-  slug: string;
-  name: string;
-  type: "Yoga" | "Strength" | "HIIT";
-  classCategory?: "yoga" | "strength" | "small-group";
-  day: string;
-  time: string;
-  duration: string;
-  level: string;
-  maxSpaces: number;
-  shortDescription: string;
-  longDescription: string;
-  whatToExpect: string[];
-  whoItsFor: string[];
-  equipment: string[];
-  benefits: string[];
-  instructor: string;
-  defaultInstructorProfileEntryId?: string;
-  seoTitle: string;
-  seoDescription: string;
-  seoKeywords: string;
-}
-
 export interface InstructorProfileContent {
   id: string;
   slug: string;
@@ -213,7 +160,7 @@ export interface TestimonialContent {
   quote: string;
   authorName: string;
   authorCondition?: string;
-  service?: "yoga" | "strength" | "pt" | "retreat" | "small-group" | "general";
+  service?: "pt" | "retreat" | "general";
   featured?: boolean;
 }
 

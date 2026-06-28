@@ -177,9 +177,8 @@ export function AdminDashboard({
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Live online classes, retreats, small groups, class credits and Move Well membership
-              are intentionally hidden from public, user and admin navigation while coaching is the
-              active offer.
+              Weekly classes, class credits, memberships and small groups have been retired.
+              Retreats and 1:1 services remain the active paid offers.
             </p>
           </CardContent>
         </Card>

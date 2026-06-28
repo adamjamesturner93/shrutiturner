@@ -5,38 +5,10 @@ import { auth } from "@/lib/auth";
 import { isOwnerAdminRole } from "@/lib/authz/roles";
 import { claimReferralCode } from "@/lib/referrals/referral-service";
 import { sanitizeRedirectPath } from "@/lib/navigation/safe-redirect";
-import { createCreditCheckoutSession } from "@/lib/billing/billing-service";
-import {
-  buildCreditCheckoutReturnPaths,
-  buildPricingFallbackPath,
-  firstSearchParam,
-} from "@/lib/billing/checkout-flow";
+import { firstSearchParam } from "@/lib/billing/checkout-flow";
 
 interface PostLoginPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
-}
-
-async function resolvePricingCheckout(
-  userId: string,
-  params: Record<string, string | string[] | undefined>
-) {
-  const kind = firstSearchParam(params.kind);
-
-  if (kind === "credits") {
-    const bundleValue = firstSearchParam(params.bundle);
-    const bundle =
-      bundleValue === "1" ? 1 : bundleValue === "3" ? 3 : bundleValue === "10" ? 10 : null;
-    if (bundle) {
-      return createCreditCheckoutSession(
-        userId,
-        bundle,
-        undefined,
-        buildCreditCheckoutReturnPaths(bundle)
-      );
-    }
-  }
-
-  return null;
 }
 
 async function PostLoginRedirect({ searchParams }: PostLoginPageProps) {
@@ -58,18 +30,7 @@ async function PostLoginRedirect({ searchParams }: PostLoginPageProps) {
   }
 
   if (intent === "pricing-checkout") {
-    if (firstSearchParam(params.kind) === "membership") {
-      const interval = firstSearchParam(params.interval) === "annual" ? "annual" : "monthly";
-      redirect(`/dashboard/membership?subscribe=1&interval=${interval}&source=pricing`);
-    }
-    try {
-      const checkout = await resolvePricingCheckout(session.user.id, params);
-      if (checkout?.checkoutUrl) {
-        redirect(checkout.checkoutUrl);
-      }
-    } catch {
-      redirect(buildPricingFallbackPath(params));
-    }
+    redirect("/dashboard/coaching");
   }
 
   if (redirectParam) {

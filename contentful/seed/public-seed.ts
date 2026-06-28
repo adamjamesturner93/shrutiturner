@@ -1,7 +1,5 @@
 import { blogAuthors, blogPosts } from "../../src/data/blog-data.ts";
-import { classDetails } from "../../src/data/schedule-data.ts";
 import { retreats } from "../../src/data/retreat-data.ts";
-import { smallGroupTemplates } from "../../src/data/small-group-programmes.ts";
 
 function compactImageUrl(raw: string): string {
   try {
@@ -30,31 +28,6 @@ function compactImageUrl(raw: string): string {
     return raw.slice(0, 255);
   }
 }
-
-export const CLASS_TEMPLATE_SEED = {
-  contentType: "classDefinition",
-  entries: classDetails.map((c) => ({
-    name: c.name,
-    slug: c.slug,
-    type: c.type,
-    classCategory: c.type === "Yoga" ? "yoga" : c.type === "HIIT" ? "small-group" : "strength",
-    level: c.level,
-    defaultDay: c.day,
-    defaultTime: c.time,
-    duration: c.duration,
-    maxCapacity: c.maxSpaces,
-    shortDescription: c.shortDescription,
-    longDescription: c.longDescription,
-    whatToExpect: c.whatToExpect,
-    whoItsFor: c.whoItsFor,
-    equipment: c.equipment,
-    benefits: c.benefits,
-    defaultInstructorProfileSlug: "shruti-turner",
-    seoTitle: c.seoTitle,
-    seoDescription: c.seoDescription,
-    seoKeywords: c.seoKeywords,
-  })),
-};
 
 export const INSTRUCTOR_PROFILE_SEED = {
   contentType: "instructorProfile",
@@ -107,7 +80,7 @@ export const TESTIMONIAL_SEED = {
         "Finally, a yoga teacher who understands chronic illness, injury history and real recovery needs.",
       authorName: "Sarah",
       authorCondition: "Hypermobility EDS",
-      service: "yoga",
+      service: "general",
       featured: true,
     },
     {
@@ -115,16 +88,15 @@ export const TESTIMONIAL_SEED = {
       quote: "I've built more strength in 12 weeks than in years of trying generic programmes.",
       authorName: "James",
       authorCondition: "Rheumatoid Arthritis",
-      service: "strength",
+      service: "pt",
       featured: true,
     },
     {
-      slug: "testimonial-elena-small-group",
-      quote:
-        "The small group programme gave me accountability and a community that actually gets it.",
+      slug: "testimonial-elena-1-1",
+      quote: "The 1:1 support gave me accountability and a plan that actually matched my life.",
       authorName: "Elena",
       authorCondition: "Chronic Fatigue",
-      service: "small-group",
+      service: "pt",
       featured: true,
     },
     {
@@ -151,7 +123,7 @@ export const TESTIMONIAL_SEED = {
         "Every option felt intentional. I never felt like I was being given the watered-down version.",
       authorName: "Ali",
       authorCondition: "Post-surgical recovery",
-      service: "yoga",
+      service: "general",
       featured: false,
     },
     {
@@ -160,32 +132,10 @@ export const TESTIMONIAL_SEED = {
         "I can carry shopping, climb stairs and trust my knees more. Those are the wins that matter.",
       authorName: "Rachel",
       authorCondition: "Osteoarthritis",
-      service: "strength",
+      service: "pt",
       featured: true,
     },
   ],
-};
-
-export const SMALL_GROUP_PROGRAMME_SEED = {
-  contentType: "smallGroupProgramme",
-  entries: smallGroupTemplates.map((programme) => ({
-    slug: programme.slug,
-    title: programme.title,
-    subtitle: programme.subtitle,
-    shortSummary: programme.shortSummary,
-    fullDescription: programme.fullDescription,
-    longDescription: programme.longDescription,
-    outcomes: programme.outcomes,
-    durationLabel: programme.durationLabel,
-    durationWeeks: programme.durationWeeks,
-    cohortSize: programme.cohortSize,
-    sessionsPerWeek: programme.sessionsPerWeek,
-    defaultPricePence: programme.defaultPricePence,
-    whoItsFor: programme.whoItsFor,
-    equipment: programme.equipment,
-    inclusions: programme.inclusions,
-    weekByWeek: programme.weekByWeek,
-  })),
 };
 
 const venueEntries = new Map<
@@ -432,30 +382,12 @@ export const FAQ_SEED = {
   contentType: "faqItem",
   entries: [
     {
-      slug: "faq-pricing-class-credits",
-      question: "Can I use class credits on any class?",
-      answer:
-        "Yes. Drop-in, 3-class and 10-class bundles can be used on any yoga, strength, or HIIT class in the schedule. Monthly membership classes work the same way.",
-      category: "pricing",
-      targetPage: "pricing",
-      sortOrder: 10,
-    },
-    {
-      slug: "faq-pricing-bundles-vs-memberships",
-      question: "What's the difference between bundles and memberships?",
-      answer:
-        "Bundles give you a set number of credits to use flexibly within a time window. Memberships give you a weekly class allowance that renews monthly. If you attend regularly, memberships are better value.",
-      category: "pricing",
-      sortOrder: 20,
-      targetPage: "pricing",
-    },
-    {
       slug: "faq-pricing-refunds",
       question: "Do you offer refunds?",
       answer:
-        "For 1:1 training: no refunds after sessions begin, but we can pause for illness or flare. For class bundles: unused credits can be transferred. For memberships: cancel anytime with 30 days' notice. For retreats: see individual retreat cancellation policies.",
+        "For 1:1 services, refund and cancellation terms are confirmed before payment. For retreats, see the individual retreat terms because deposits and balance deadlines vary.",
       category: "pricing",
-      sortOrder: 30,
+      sortOrder: 10,
       targetPage: "pricing",
     },
     {
@@ -464,7 +396,7 @@ export const FAQ_SEED = {
       answer:
         "Limited sliding scale spots are available for people on disability benefits or experiencing financial hardship. Please contact us directly to discuss options.",
       category: "pricing",
-      sortOrder: 40,
+      sortOrder: 20,
       targetPage: "pricing",
     },
     {
@@ -473,7 +405,7 @@ export const FAQ_SEED = {
       answer:
         "Some private health insurance policies may cover 1:1 personal training or exercise therapy. Check with your provider. We can provide invoices and documentation to support your claim.",
       category: "pricing",
-      sortOrder: 50,
+      sortOrder: 30,
       targetPage: "pricing",
     },
     {
@@ -482,7 +414,7 @@ export const FAQ_SEED = {
       answer:
         "Every 1:1 engagement is tailored. Your conditions, goals and support needs determine the programming. Submit an enquiry and we will provide a clear quote with no obligation.",
       category: "pricing",
-      sortOrder: 60,
+      sortOrder: 40,
       targetPage: "pricing",
     },
     {
@@ -531,33 +463,6 @@ export const FAQ_SEED = {
       targetPage: "retreats",
     },
     {
-      slug: "faq-classes-first-class",
-      question: "What should I book for my first class?",
-      answer:
-        "If you are unsure, start with an adaptive yoga class or contact us before booking. We can help you choose based on symptoms, confidence and what kind of support you want.",
-      category: "classes",
-      sortOrder: 10,
-      targetPage: "classes",
-    },
-    {
-      slug: "faq-classes-access-needs",
-      question: "Can classes be adapted around pain, fatigue, or mobility needs?",
-      answer:
-        "Yes. Classes include options for range, load, pace and rest. Please share anything important before class so the teacher can plan useful alternatives.",
-      category: "classes",
-      sortOrder: 20,
-      targetPage: "classes",
-    },
-    {
-      slug: "faq-schedule-missed-class",
-      question: "What happens if I miss a booked class?",
-      answer:
-        "If you cancel within the stated cancellation window, your credit is returned. Late cancellations and no-shows may use the credit because spaces are limited.",
-      category: "schedule",
-      sortOrder: 10,
-      targetPage: "schedule",
-    },
-    {
       slug: "faq-blog-medical-advice",
       question: "Is the blog medical advice?",
       answer:
@@ -570,7 +475,7 @@ export const FAQ_SEED = {
       slug: "faq-newsletter-frequency",
       question: "How often will I receive emails?",
       answer:
-        "Usually once or twice a month, with occasional updates about new resources, classes, or retreats. You can unsubscribe at any time.",
+        "Usually once or twice a month, with occasional updates about new resources, articles, 1:1 services or retreats. You can unsubscribe at any time.",
       category: "newsletter",
       sortOrder: 10,
       targetPage: "blog",
@@ -594,7 +499,8 @@ export const LEAD_MAGNET_SEED = {
     {
       slug: "why-some-bodies-need-strength-before-more-stretching",
       title: "Why Some Bodies Need Strength Before More Stretching",
-      hookText: 'Get the free guide to your inbox - "Why Some Bodies Need Strength Before More Stretching"',
+      hookText:
+        'Get the free guide to your inbox - "Why Some Bodies Need Strength Before More Stretching"',
       landingHeadline: "Why Some Bodies Need Strength Before More Stretching",
       landingDescription:
         "A free guide exploring stability, control and capacity in flexible bodies.",
@@ -666,9 +572,9 @@ export const NEWSLETTER_TEMPLATE_SEED = {
     {
       slug: "monthly-update-default",
       title: "Monthly Update",
-      subject: "This month: classes, resources and upcoming retreats",
+      subject: "This month: resources and upcoming retreats",
       previewText: "Your monthly update from Shruti Turner.",
-      body: "Hi {{firstName}},\n\nThis month we are focusing on sustainable consistency: adapting classes around symptoms, using rest weeks well and choosing the right starting point.\n\nNew on the blog:\n- How to Choose Between Yoga, Strengthand 1:1 Coaching\n- Why Rest Weeks Belong in Strength Programmes\n\nSee you soon,\nShruti",
+      body: "Hi {{firstName}},\n\nThis month we are focusing on sustainable consistency: adapting movement around symptoms, using rest weeks well and choosing the right starting point.\n\nNew on the blog:\n- How to Choose Between Yoga, Strength and 1:1 Support\n- Why Rest Weeks Belong in Strength Programmes\n\nSee you soon,\nShruti",
       segmentation: "all_subscribers",
     },
     {
@@ -702,8 +608,6 @@ export const NEWSLETTER_TEMPLATE_SEED = {
 export const SEED_GROUPS = [
   AUTHOR_PROFILE_SEED,
   INSTRUCTOR_PROFILE_SEED,
-  CLASS_TEMPLATE_SEED,
-  SMALL_GROUP_PROGRAMME_SEED,
   RETREAT_VENUE_SEED,
   RETREAT_TEMPLATE_SEED,
   BLOG_SEED,

@@ -3,7 +3,6 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { STRIPE_API_VERSION } from "../../src/lib/billing/stripe-config";
 
-type CreditBundleKey = "1" | "3" | "10";
 type CoachingPriceKey =
   | "guided_accountability"
   | "independent_training_plan"
@@ -22,15 +21,6 @@ type SeedItem = {
   recurring?: {
     interval: "month" | "year";
   };
-};
-
-const MEMBERSHIP_MONTHLY_AMOUNT_GBP = 3500;
-const MEMBERSHIP_ANNUAL_AMOUNT_GBP = 35000;
-
-const CREDIT_BUNDLE_AMOUNTS_GBP: Record<CreditBundleKey, number> = {
-  1: 900,
-  3: 2400,
-  10: 7000,
 };
 
 const COACHING_AMOUNTS_GBP: Record<CoachingPriceKey, number> = {
@@ -73,70 +63,12 @@ function loadLocalEnvFiles() {
   loadEnvFile(path.resolve(process.cwd(), ".env"));
 }
 
-const MEMBERSHIP_ITEMS: SeedItem[] = [
-  {
-    key: "membership_movewell_monthly",
-    envVar: "STRIPE_PRICE_MEMBERSHIP_MOVEWELL_MONTHLY",
-    productName: "Move Well Membership",
-    productDescription: "Monthly membership with unlimited weekly classes.",
-    productSku: `${APP_PREFIX}_membership_movewell`,
-    lookupKey: `${APP_PREFIX}_membership_movewell_monthly`,
-    unitAmount: MEMBERSHIP_MONTHLY_AMOUNT_GBP,
-    currency: CURRENCY,
-    recurring: { interval: "month" },
-  },
-  {
-    key: "membership_movewell_annual",
-    envVar: "STRIPE_PRICE_MEMBERSHIP_MOVEWELL_ANNUAL",
-    productName: "Move Well Membership (Annual)",
-    productDescription: "Annual membership with unlimited weekly classes.",
-    productSku: `${APP_PREFIX}_membership_movewell`,
-    lookupKey: `${APP_PREFIX}_membership_movewell_annual`,
-    unitAmount: MEMBERSHIP_ANNUAL_AMOUNT_GBP,
-    currency: CURRENCY,
-    recurring: { interval: "year" },
-  },
-];
-
-const CREDIT_ITEMS: SeedItem[] = [
-  {
-    key: "credits_1",
-    envVar: "STRIPE_PRICE_CREDITS_1",
-    productName: "Class Credits - Drop-in (1 class)",
-    productDescription: "Single class credit.",
-    productSku: `${APP_PREFIX}_credits_1`,
-    lookupKey: `${APP_PREFIX}_credits_1_once`,
-    unitAmount: CREDIT_BUNDLE_AMOUNTS_GBP["1"],
-    currency: CURRENCY,
-  },
-  {
-    key: "credits_3",
-    envVar: "STRIPE_PRICE_CREDITS_3",
-    productName: "Class Credits - 3 Class Bundle",
-    productDescription: "Three class credits.",
-    productSku: `${APP_PREFIX}_credits_3`,
-    lookupKey: `${APP_PREFIX}_credits_3_once`,
-    unitAmount: CREDIT_BUNDLE_AMOUNTS_GBP["3"],
-    currency: CURRENCY,
-  },
-  {
-    key: "credits_10",
-    envVar: "STRIPE_PRICE_CREDITS_10",
-    productName: "Class Credits - 10 Class Bundle",
-    productDescription: "Ten class credits.",
-    productSku: `${APP_PREFIX}_credits_10`,
-    lookupKey: `${APP_PREFIX}_credits_10_once`,
-    unitAmount: CREDIT_BUNDLE_AMOUNTS_GBP["10"],
-    currency: CURRENCY,
-  },
-];
-
 const COACHING_ITEMS: SeedItem[] = [
   {
     key: "coaching_guided_accountability_monthly",
     envVar: "STRIPE_PRICE_COACHING_GUIDED_ACCOUNTABILITY_MONTHLY",
-    productName: "Coaching - Guided Accountability",
-    productDescription: "Monthly Guided Accountability coaching subscription.",
+    productName: "1:1 Offers - Guided Accountability",
+    productDescription: "Monthly Guided Accountability subscription.",
     productSku: `${APP_PREFIX}_coaching_guided_accountability`,
     lookupKey: `${APP_PREFIX}_coaching_guided_accountability_monthly`,
     unitAmount: COACHING_AMOUNTS_GBP.guided_accountability,
@@ -146,8 +78,8 @@ const COACHING_ITEMS: SeedItem[] = [
   {
     key: "coaching_independent_training_plan_monthly",
     envVar: "STRIPE_PRICE_COACHING_INDEPENDENT_TRAINING_PLAN_MONTHLY",
-    productName: "Coaching - Personalised Training Plan",
-    productDescription: "Monthly Personalised Training Plan coaching subscription.",
+    productName: "1:1 Offers - Independent Training Plan",
+    productDescription: "Monthly Independent Training Plan subscription.",
     productSku: `${APP_PREFIX}_coaching_independent_training_plan`,
     lookupKey: `${APP_PREFIX}_coaching_independent_training_plan_monthly`,
     unitAmount: COACHING_AMOUNTS_GBP.independent_training_plan,
@@ -157,8 +89,8 @@ const COACHING_ITEMS: SeedItem[] = [
   {
     key: "coaching_guided_training_plan_monthly",
     envVar: "STRIPE_PRICE_COACHING_GUIDED_TRAINING_PLAN_MONTHLY",
-    productName: "Coaching - Guided Training Plan",
-    productDescription: "Monthly Guided Training Plan coaching subscription.",
+    productName: "1:1 Offers - Guided Training Plan",
+    productDescription: "Monthly Guided Training Plan subscription.",
     productSku: `${APP_PREFIX}_coaching_guided_training_plan`,
     lookupKey: `${APP_PREFIX}_coaching_guided_training_plan_monthly`,
     unitAmount: COACHING_AMOUNTS_GBP.guided_training_plan,
@@ -168,7 +100,7 @@ const COACHING_ITEMS: SeedItem[] = [
   {
     key: "coaching_one_to_one_coaching_monthly",
     envVar: "STRIPE_PRICE_COACHING_ONE_TO_ONE_COACHING_MONTHLY",
-    productName: "Coaching - 1:1 Coaching",
+    productName: "1:1 Offers - 1:1 Coaching",
     productDescription: "Monthly 1:1 Coaching subscription.",
     productSku: `${APP_PREFIX}_coaching_one_to_one_coaching`,
     lookupKey: `${APP_PREFIX}_coaching_one_to_one_coaching_monthly`,
@@ -259,7 +191,7 @@ async function main() {
     typescript: true,
   });
 
-  const seedItems = [...MEMBERSHIP_ITEMS, ...CREDIT_ITEMS, ...COACHING_ITEMS];
+  const seedItems = [...COACHING_ITEMS];
   const envOutput: Array<{ envVar: string; priceId: string }> = [];
 
   for (const item of seedItems) {

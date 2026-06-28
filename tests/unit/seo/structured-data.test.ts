@@ -7,7 +7,6 @@ vi.mock("@/lib/app-url", () => ({
 const {
   createBlogSchema,
   createBreadcrumbListSchema,
-  createClassCourseSchema,
   createFaqPageSchema,
   createOrganizationSchema,
   createRetreatEventSchema,
@@ -55,34 +54,7 @@ describe("structured data helpers", () => {
     });
   });
 
-  it("builds class, blog, retreat, FAQ and breadcrumb schemas", () => {
-    expect(
-      createClassCourseSchema({
-        id: "class_1",
-        slug: "adaptive-strength",
-        name: "Adaptive Strength",
-        type: "Strength",
-        day: "Monday",
-        time: "10:00",
-        duration: "45 min",
-        level: "All levels",
-        maxSpaces: 12,
-        shortDescription: "Strength class",
-        longDescription: "Long description",
-        whatToExpect: [],
-        whoItsFor: [],
-        equipment: [],
-        benefits: [],
-        instructor: "Shruti Turner",
-        seoTitle: "Adaptive Strength",
-        seoDescription: "Strength class",
-        seoKeywords: "strength",
-      })
-    ).toMatchObject({
-      "@type": "Course",
-      url: "https://shrutiturner.co.uk/classes/adaptive-strength",
-    });
-
+  it("builds blog, retreat, FAQ and breadcrumb schemas", () => {
     expect(
       createBlogSchema({
         posts: [{ id: "post", title: "Post", excerpt: "Excerpt", date: "2026-04-01" }],
@@ -136,7 +108,7 @@ describe("structured data helpers", () => {
 
     const breadcrumbs = createBreadcrumbListSchema([
       { name: "Home", path: "/" },
-      { name: "Classes", path: "/classes" },
+      { name: "1:1 Offers", path: "/coaching" },
     ]);
     expect(breadcrumbs["@type"]).toBe("BreadcrumbList");
     expect(breadcrumbs.itemListElement).toEqual([

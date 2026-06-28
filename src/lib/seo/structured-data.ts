@@ -1,9 +1,5 @@
 import { buildAbsoluteUrl } from "@/lib/app-url";
-import type {
-  ClassDefinitionContent,
-  FaqItemContent,
-  RetreatCombinedContent,
-} from "@/lib/content/types";
+import type { FaqItemContent, RetreatCombinedContent } from "@/lib/content/types";
 import type { JsonLdData } from "@/components/json-ld";
 
 const ORGANIZATION_NAME = "Shruti Turner";
@@ -93,37 +89,6 @@ export function createServiceSchema(input: {
         url: buildAbsoluteUrl(input.path),
       },
     },
-  };
-}
-
-export function createClassesItemListSchema(classes: ClassDefinitionContent[]): JsonLdData {
-  return {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    name: "Move Well Classes",
-    itemListElement: classes.map((classDefinition, index) => ({
-      "@type": "ListItem",
-      position: index + 1,
-      url: buildAbsoluteUrl(`/classes/${classDefinition.slug}`),
-      name: classDefinition.name,
-    })),
-  };
-}
-
-export function createClassCourseSchema(classDefinition: ClassDefinitionContent): JsonLdData {
-  return {
-    "@context": "https://schema.org",
-    "@type": "Course",
-    name: classDefinition.name,
-    description: classDefinition.shortDescription,
-    url: buildAbsoluteUrl(`/classes/${classDefinition.slug}`),
-    provider: {
-      "@type": "Organization",
-      name: ORGANIZATION_NAME,
-      sameAs: buildAbsoluteUrl("/"),
-    },
-    courseMode: "online",
-    educationalLevel: classDefinition.level,
   };
 }
 

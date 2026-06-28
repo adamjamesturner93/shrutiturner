@@ -196,7 +196,10 @@ export function LoginPage({
                     <div className="border-brand-accent/20 bg-brand-accent/10 mb-6 flex items-start gap-3 rounded-[1.3rem] border p-4">
                       <Gift className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
                       <div>
-                        <p className="text-sm">Your free class gift will be added after sign-in.</p>
+                        <p className="text-sm">
+                          This referral link points to a retired class-credit offer. You can still
+                          sign in and explore the current 1:1 services.
+                        </p>
                       </div>
                     </div>
                   )}

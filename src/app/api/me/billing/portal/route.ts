@@ -16,7 +16,7 @@ export const POST = handleApiRoute(
 
     try {
       const result = await createBillingPortalSession(sessionUser!.id, {
-        returnPath: sanitizeRedirectPath(body.returnPath) || "/dashboard/membership",
+        returnPath: sanitizeRedirectPath(body.returnPath) || "/dashboard/coaching",
       });
       return apiOk(result);
     } catch (error) {

@@ -12,9 +12,6 @@ import {
   ReferralLedgerType,
   RetreatBookingStatus,
   RetreatPaymentStatus,
-  SmallGroupEnrollmentStatus,
-  SmallGroupProgrammeStatus,
-  SmallGroupSessionStatus,
   UserRole,
 } from "@prisma/client";
 import {
@@ -23,7 +20,6 @@ import {
   CURRENT_TERMS_VERSION,
 } from "../src/data/legal-documents.ts";
 import { retreats } from "../src/data/retreat-data.ts";
-import { smallGroupTemplates } from "../src/data/small-group-programmes.ts";
 import { SUBSCRIPTION_DISCLOSURE_VERSION } from "../src/lib/billing/subscription-disclosure.ts";
 
 function readEnvValue(key: "DIRECT_URL" | "DATABASE_URL"): string | undefined {
@@ -163,12 +159,6 @@ const LOCAL_SCENARIO_USERS = [
 
 function datePlus(days: number) {
   return new Date(Date.now() + days * 86400000);
-}
-
-function atUtcTime(date: Date, hours: number, minutes = 0) {
-  const value = new Date(date);
-  value.setUTCHours(hours, minutes, 0, 0);
-  return value;
 }
 
 function toSeedKey(value: string) {
@@ -903,150 +893,6 @@ async function seedRetreatInventory(retreatUserId: string, instructorUserId?: st
   });
 }
 
-async function seedSmallGroupProgramme(userId: string, instructorUserId?: string | null) {
-  const template = smallGroupTemplates.find((item) => item.slug === "foundations-to-confidence");
-  if (!template) return;
-
-  const runSlug = "foundations-to-confidence-local-may-2026";
-  const startDate = new Date("2026-05-12T18:00:00.000Z");
-  const sessionStartsAt = Array.from({ length: 6 }, (_, index) =>
-    atUtcTime(datePlus(7 + index * 7), 18, 30)
-  );
-
-  const programme = await prisma.smallGroupProgramme.upsert({
-    where: { runSlug },
-    update: {
-      slug: runSlug,
-      templateSlug: template.slug,
-      templateContentfulEntryId: template.id,
-      title: template.title,
-      subtitle: template.subtitle ?? null,
-      shortDescription: template.shortSummary,
-      description: template.fullDescription,
-      longDescription: template.longDescription,
-      durationLabel: template.durationLabel,
-      durationWeeks: template.durationWeeks ?? 6,
-      cohortSize: template.cohortSize,
-      startDate,
-      endDate: sessionStartsAt[sessionStartsAt.length - 1],
-      scheduleLabel: "Tuesdays 18:30",
-      pricePence: template.defaultPricePence ?? 18000,
-      sessionsPerWeek: 1,
-      totalSessions: sessionStartsAt.length,
-      status: SmallGroupProgrammeStatus.open,
-      ctaLabel: "Reserve your place",
-      ctaHref: `/classes/small-groups/${template.slug}?run=${runSlug}`,
-      featuredBadge: "Seeded live run",
-      whoItsForJson: template.whoItsFor as unknown as Prisma.JsonArray,
-      equipmentJson: template.equipment as unknown as Prisma.JsonArray,
-      inclusionsJson: template.inclusions as unknown as Prisma.JsonArray,
-      weekByWeekJson: template.weekByWeek as unknown as Prisma.JsonArray,
-      contentfulEntryId: runSlug,
-    },
-    create: {
-      slug: runSlug,
-      runSlug,
-      templateSlug: template.slug,
-      templateContentfulEntryId: template.id,
-      title: template.title,
-      subtitle: template.subtitle ?? null,
-      shortDescription: template.shortSummary,
-      description: template.fullDescription,
-      longDescription: template.longDescription,
-      durationLabel: template.durationLabel,
-      durationWeeks: template.durationWeeks ?? 6,
-      cohortSize: template.cohortSize,
-      startDate,
-      endDate: sessionStartsAt[sessionStartsAt.length - 1],
-      scheduleLabel: "Tuesdays 18:30",
-      pricePence: template.defaultPricePence ?? 18000,
-      sessionsPerWeek: 1,
-      totalSessions: sessionStartsAt.length,
-      status: SmallGroupProgrammeStatus.open,
-      ctaLabel: "Reserve your place",
-      ctaHref: `/classes/small-groups/${template.slug}?run=${runSlug}`,
-      featuredBadge: "Seeded live run",
-      whoItsForJson: template.whoItsFor as unknown as Prisma.JsonArray,
-      equipmentJson: template.equipment as unknown as Prisma.JsonArray,
-      inclusionsJson: template.inclusions as unknown as Prisma.JsonArray,
-      weekByWeekJson: template.weekByWeek as unknown as Prisma.JsonArray,
-      contentfulEntryId: runSlug,
-    },
-  });
-
-  await prisma.smallGroupProgrammeSession.deleteMany({
-    where: { programmeId: programme.id },
-  });
-
-  await prisma.smallGroupProgrammeSession.createMany({
-    data: sessionStartsAt.map((startsAt, index) => ({
-      id: `seed_small_group_session_${index + 1}`,
-      programmeId: programme.id,
-      instructorUserId: instructorUserId || undefined,
-      title: template.weekByWeek?.[index]?.title || `Week ${index + 1}`,
-      startsAt,
-      endsAt: new Date(startsAt.getTime() + 60 * 60 * 1000),
-      sequenceNumber: index + 1,
-      status: SmallGroupSessionStatus.scheduled,
-    })),
-  });
-
-  if (instructorUserId) {
-    await prisma.smallGroupProgrammeInstructorAssignment.upsert({
-      where: { id: "seed_small_group_assignment" },
-      update: {
-        programmeId: programme.id,
-        userId: instructorUserId,
-      },
-      create: {
-        id: "seed_small_group_assignment",
-        programmeId: programme.id,
-        userId: instructorUserId,
-      },
-    });
-  }
-
-  await prisma.smallGroupProgrammeEnrollment.upsert({
-    where: { id: "seed_small_group_enrollment" },
-    update: {
-      programmeId: programme.id,
-      userId,
-      attendeeName: "Maya Monthly",
-      attendeeEmail: "member-monthly@shrutiturner.local",
-      sessionsAttended: 0,
-      progressSummary: "Seeded open programme enrolment for local QA.",
-      status: SmallGroupEnrollmentStatus.active,
-      pricePaidPence: template.defaultPricePence ?? 18000,
-      paymentWindowExpiresAt: null,
-      complianceSnapshotJson: {
-        versions: {
-          terms: CURRENT_TERMS_VERSION,
-          healthWaiver: CURRENT_HEALTH_WAIVER_VERSION,
-          healthData: CURRENT_HEALTH_DATA_CONSENT_VERSION,
-        },
-      },
-    },
-    create: {
-      id: "seed_small_group_enrollment",
-      programmeId: programme.id,
-      userId,
-      attendeeName: "Maya Monthly",
-      attendeeEmail: "member-monthly@shrutiturner.local",
-      sessionsAttended: 0,
-      progressSummary: "Seeded open programme enrolment for local QA.",
-      status: SmallGroupEnrollmentStatus.active,
-      pricePaidPence: template.defaultPricePence ?? 18000,
-      complianceSnapshotJson: {
-        versions: {
-          terms: CURRENT_TERMS_VERSION,
-          healthWaiver: CURRENT_HEALTH_WAIVER_VERSION,
-          healthData: CURRENT_HEALTH_DATA_CONSENT_VERSION,
-        },
-      },
-    },
-  });
-}
-
 async function main() {
   console.log("Running existing billing/class seed dataset...");
   runSeedBillingDataset();
@@ -1075,9 +921,6 @@ async function main() {
 
   console.log("Seeding retreat inventory and balance-due booking...");
   await seedRetreatInventory(retreatUser.id, instructor?.id);
-
-  console.log("Seeding a live small-group programme run...");
-  await seedSmallGroupProgramme(monthlyReadyUser.id, instructor?.id);
 
   console.log("Local bootstrap seed complete.");
   console.log(`Login with ${monthlyReadyUser.email} using code ${DEFAULT_MEMBER_AUTH_CODE}`);

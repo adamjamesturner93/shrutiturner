@@ -34,7 +34,7 @@ type LegalGuardModalProps = {
 
 const NAV_ITEMS = [
   { path: "/dashboard", label: "Studio Lobby", icon: LayoutDashboard, exact: true },
-  { path: "/dashboard/coaching", label: "Coaching", icon: Compass },
+  { path: "/dashboard/coaching", label: "1:1 Offers", icon: Compass },
   { path: "/dashboard/health", label: "Health Profile", icon: HeartPulse },
   { path: "/dashboard/account", label: "Account", icon: Settings },
 ];
@@ -104,7 +104,8 @@ function LegalGuardModal({
                 <Link href="/health-declaration" className="text-primary underline" target="_blank">
                   Health & Liability Waiver
                 </Link>
-                and I understand that I participate in all classes and programmes at my own risk
+                and I understand that I participate in all 1:1 services, retreats and movement
+                activities at my own risk
               </span>
             </label>
           </div>

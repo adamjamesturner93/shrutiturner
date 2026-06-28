@@ -10,13 +10,8 @@ const chromePath = chromium.executablePath();
 
 const staticRoutes = [
   "/",
-  "/about",
   "/acceptable-use",
   "/blog",
-  "/classes",
-  "/classes/small-groups",
-  "/classes/strength",
-  "/classes/yoga",
   "/coaching",
   "/coaching-agreement",
   "/coaching/apply",
@@ -25,12 +20,10 @@ const staticRoutes = [
   "/cookies",
   "/health-declaration",
   "/login",
-  "/pricing",
   "/privacy",
   "/pt",
   "/refund-policy",
   "/retreats",
-  "/schedule",
   "/signup",
   "/subscribe",
   "/terms",
@@ -44,7 +37,6 @@ const skipPathPatterns = [
   /^\/r\//,
   /^\/retreats\/balance\//,
   /^\/programmes\//,
-  /^\/classes\/small-group\/[^/]+\/checkout$/,
   /^\/retreats\/[^/]+\/checkout$/,
 ];
 

@@ -1,48 +1,23 @@
-import {
-  BillingEventStatus,
-  CreditEntryType,
-  MembershipBillingInterval,
-  MembershipStatus,
-  Prisma,
-} from "@prisma/client";
+import { BillingEventStatus, Prisma } from "@prisma/client";
 import type Stripe from "stripe";
 import { db } from "@/lib/db";
 import { getBaseSiteUrlFromEnv } from "@/lib/env";
 import { getStripeClient } from "@/lib/billing/stripe-client";
-import {
-  CREDIT_BUNDLE_CONFIG,
-  MEMBERSHIP_CONFIG,
-  MEMBERSHIP_TRIAL_DAYS,
-  assertPriceConfigured,
-} from "@/lib/billing/price-map";
-import { getActiveCatalogItem, resolvePromotionCodeDiscount } from "@/lib/billing/catalog-service";
-import {
-  sendMembershipCheckoutConfirmationNotice,
-  sendRenewalCoolingOffNotice,
-} from "@/lib/billing/subscription-compliance";
+import { assertPriceConfigured } from "@/lib/billing/price-map";
+import { getActiveCatalogItem } from "@/lib/billing/catalog-service";
 import { processStripeDisputeEvent } from "@/lib/billing/dispute-service";
-import {
-  openMembershipDunningFromInvoice,
-  recoverMembershipDunningCase,
-} from "@/lib/billing/dunning-service";
 import {
   computeReferralDiscountPence,
   consumeReferralDiscount,
 } from "@/lib/referrals/referral-discount-service";
-import { addCredits } from "@/lib/credits/credit-service";
-import { bookClassSession } from "@/lib/classes/booking-service";
-import { startOrSwitchMembership } from "@/lib/membership/membership-service";
-import { qualifyReferral } from "@/lib/referrals/referral-service";
 import { processGiftPurchaseCheckoutCompleted } from "@/lib/gifts/service";
 import { processRetreatCheckoutCompleted } from "@/lib/retreats/service";
-import { processSmallGroupCheckoutCompleted } from "@/lib/small-groups/service";
 import { getNotificationInbox, sendPostmarkReactEmail } from "@/lib/postmark/client";
 import { coachingTiers, type CoachingOfferKey } from "@/data/marketing";
 import CoachingPaymentNotificationEmail from "@/emails/coaching-payment-notification";
 import CoachingCancellationNotificationEmail from "@/emails/coaching-cancellation-notification";
 
 const APP_URL = getBaseSiteUrlFromEnv();
-const STRIPE_METADATA_VALUE_MAX_LENGTH = 500;
 
 function startOfUtcDay(date: Date) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
@@ -51,10 +26,6 @@ function startOfUtcDay(date: Date) {
 function endOfUtcDay(date: Date) {
   const start = startOfUtcDay(date);
   return new Date(start.getTime() + 86400000);
-}
-
-function addDays(date: Date, days: number) {
-  return new Date(date.getTime() + days * 86400000);
 }
 
 function extractPaidAmountPence(payloadJson: Prisma.JsonValue, type: string) {
@@ -74,64 +45,11 @@ function extractPaidAmountPence(payloadJson: Prisma.JsonValue, type: string) {
   return 0;
 }
 
-function compactMembershipComplianceSnapshot(snapshot?: Record<string, unknown>) {
-  if (!snapshot) return null;
-
-  const acceptanceStates = Array.isArray(snapshot.acceptanceStates)
-    ? snapshot.acceptanceStates
-        .filter((state): state is Record<string, unknown> => {
-          return Boolean(state) && typeof state === "object" && !Array.isArray(state);
-        })
-        .map((state) => ({
-          type: typeof state.type === "string" ? state.type : undefined,
-          acceptanceEventId:
-            typeof state.acceptanceEventId === "string" ? state.acceptanceEventId : undefined,
-          policyVersionId:
-            typeof state.policyVersionId === "string" ? state.policyVersionId : undefined,
-          version: typeof state.version === "string" ? state.version : undefined,
-        }))
-    : [];
-
-  const subscriptionDisclosure =
-    snapshot.subscriptionDisclosure &&
-    typeof snapshot.subscriptionDisclosure === "object" &&
-    !Array.isArray(snapshot.subscriptionDisclosure)
-      ? (snapshot.subscriptionDisclosure as Record<string, unknown>)
-      : null;
-
-  return {
-    acceptanceStates,
-    immediateStartAcceptanceEventId:
-      typeof snapshot.immediateStartAcceptanceEventId === "string"
-        ? snapshot.immediateStartAcceptanceEventId
-        : undefined,
-    disclosureVersion:
-      typeof subscriptionDisclosure?.version === "string"
-        ? subscriptionDisclosure.version
-        : undefined,
-    billingInterval:
-      typeof subscriptionDisclosure?.billingInterval === "string"
-        ? subscriptionDisclosure.billingInterval
-        : undefined,
-  };
-}
-
-function stringifyStripeMetadataJson(value: unknown) {
-  if (!value) return "";
-  const serialized = JSON.stringify(value);
-  return serialized.length <= STRIPE_METADATA_VALUE_MAX_LENGTH ? serialized : "";
-}
-
-function stripeMetadataValue(value: string | undefined | null) {
-  if (!value) return "";
-  return value.slice(0, STRIPE_METADATA_VALUE_MAX_LENGTH);
-}
-
 export async function recomputeBillingMetricDaily(day: Date) {
   const from = startOfUtcDay(day);
   const to = endOfUtcDay(day);
 
-  const [paidEvents, failedPaymentsCount, activeSubs, churnedMembersCount] = await Promise.all([
+  const [paidEvents, failedPaymentsCount] = await Promise.all([
     db.billingEvent.findMany({
       where: {
         status: BillingEventStatus.processed,
@@ -147,23 +65,12 @@ export async function recomputeBillingMetricDaily(day: Date) {
         processedAt: { gte: from, lt: to },
       },
     }),
-    db.membershipSubscription.findMany({
-      where: { status: { in: [MembershipStatus.active, MembershipStatus.past_due] } },
-      select: { pricePence: true },
-    }),
-    db.membershipSubscription.count({
-      where: {
-        status: { in: [MembershipStatus.cancelled, MembershipStatus.expired] },
-        updatedAt: { gte: from, lt: to },
-      },
-    }),
   ]);
 
   const cashCollectedPence = paidEvents.reduce(
     (sum, event) => sum + extractPaidAmountPence(event.payloadJson, event.type),
     0
   );
-  const mrrPence = activeSubs.reduce((sum, sub) => sum + sub.pricePence, 0);
 
   await db.billingMetricDaily.upsert({
     where: { date: from },
@@ -171,16 +78,16 @@ export async function recomputeBillingMetricDaily(day: Date) {
       date: from,
       cashCollectedPence,
       failedPaymentsCount,
-      activeMembersCount: activeSubs.length,
-      mrrPence,
-      churnedMembersCount,
+      activeMembersCount: 0,
+      mrrPence: 0,
+      churnedMembersCount: 0,
     },
     update: {
       cashCollectedPence,
       failedPaymentsCount,
-      activeMembersCount: activeSubs.length,
-      mrrPence,
-      churnedMembersCount,
+      activeMembersCount: 0,
+      mrrPence: 0,
+      churnedMembersCount: 0,
     },
   });
 }
@@ -219,7 +126,7 @@ export async function createBillingPortalSession(
   const stripe = getStripeClient();
   const session = await stripe.billingPortal.sessions.create({
     customer: customerId,
-    return_url: `${APP_URL}${options?.returnPath || "/dashboard/membership"}`,
+    return_url: `${APP_URL}${options?.returnPath || "/dashboard/coaching"}`,
   });
 
   if (!session.url) {
@@ -357,29 +264,6 @@ async function createOneTimeCouponIfNeeded(discountPence: number) {
     duration: "once",
     name: "Referral credit",
   });
-}
-
-function chooseDiscount(params: { referralPence: number; promoPence: number }) {
-  if (params.promoPence > params.referralPence) {
-    return { source: "promo" as const, amountPence: params.promoPence };
-  }
-  if (params.referralPence > 0) {
-    return { source: "referral" as const, amountPence: params.referralPence };
-  }
-  return { source: "none" as const, amountPence: 0 };
-}
-
-function bundleToCatalogKey(bundleSize: 1 | 3 | 10) {
-  if (bundleSize === 1) return "credits_1" as const;
-  if (bundleSize === 3) return "credits_3" as const;
-  return "credits_10" as const;
-}
-
-function planToCatalogKey(plan: "movewell", billingInterval: MembershipBillingInterval) {
-  if (plan === "movewell" && billingInterval === "annual") {
-    return "membership_movewell_annual" as const;
-  }
-  return "membership_movewell_monthly" as const;
 }
 
 function coachingOfferToCatalogKey(offerKey: CoachingOfferKey) {
@@ -628,71 +512,23 @@ export async function createCreditCheckoutSession(
       sessionId?: string;
     };
   }
-) {
-  const catalog = await getActiveCatalogItem(bundleToCatalogKey(bundleSize));
-  assertPriceConfigured(catalog.stripePriceId, `CATALOG_PRICE_CREDITS_${bundleSize}`);
-
-  const [customerId, referralDiscountPence, promoDiscount] = await Promise.all([
-    getOrCreateStripeCustomer(userId),
-    computeReferralDiscountPence(userId, catalog.unitAmountPence),
-    promotionCode
-      ? resolvePromotionCodeDiscount(promotionCode, catalog.unitAmountPence)
-      : Promise.resolve(null),
-  ]);
-  const chosen = chooseDiscount({
-    referralPence: referralDiscountPence,
-    promoPence: promoDiscount?.discountPence || 0,
-  });
-
-  const coupon =
-    chosen.source === "referral" ? await createOneTimeCouponIfNeeded(chosen.amountPence) : null;
-  const stripe = getStripeClient();
-
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    customer: customerId,
-    success_url: `${APP_URL}${options?.successPath || "/dashboard/membership?checkout=success"}`,
-    cancel_url: `${APP_URL}${options?.cancelPath || "/dashboard/membership?checkout=cancelled"}`,
-    line_items: [
-      {
-        price: catalog.stripePriceId,
-        quantity: 1,
-      },
-    ],
-    discounts:
-      chosen.source === "promo" && promoDiscount
-        ? [{ promotion_code: promoDiscount.promotionCodeId }]
-        : coupon
-          ? [{ coupon: coupon.id }]
-          : undefined,
-    metadata: {
-      userId,
-      kind: "credits",
-      bundleSize: String(bundleSize),
-      referralDiscountPence: chosen.source === "referral" ? String(chosen.amountPence) : "0",
-      promoCode: chosen.source === "promo" ? promoDiscount?.code || "" : "",
-      discountSource: chosen.source,
-      bookingClassSlug: options?.bookingIntent?.classSlug || "",
-      bookingSessionId: options?.bookingIntent?.sessionId || "",
-    },
-  });
-
-  if (!session.url) {
-    throw new Error("STRIPE_CHECKOUT_URL_MISSING");
-  }
-
-  return {
-    checkoutUrl: session.url,
-    sessionId: session.id,
-    discountPence: chosen.amountPence,
-    discountSource: chosen.source,
-  };
+): Promise<{
+  checkoutUrl: string;
+  sessionId: string;
+  discountPence: number;
+  discountSource: string;
+}> {
+  void userId;
+  void bundleSize;
+  void promotionCode;
+  void options;
+  throw new Error("CLASS_CREDITS_RETIRED");
 }
 
 export async function createMembershipCheckoutSession(
   userId: string,
   plan: "movewell",
-  billingInterval: MembershipBillingInterval,
+  billingInterval: "monthly" | "annual",
   promotionCode?: string,
   offer?: "movewell",
   options?: {
@@ -703,71 +539,19 @@ export async function createMembershipCheckoutSession(
     complianceSnapshot?: Record<string, unknown>;
     immediateStartSummary?: string;
   }
-) {
-  const catalog = await getActiveCatalogItem(planToCatalogKey(plan, billingInterval));
-  assertPriceConfigured(catalog.stripePriceId, `CATALOG_PRICE_MEMBERSHIP_${plan.toUpperCase()}`);
-
-  const [customerId, referralDiscountPence, promoDiscount] = await Promise.all([
-    getOrCreateStripeCustomer(userId),
-    computeReferralDiscountPence(userId, catalog.unitAmountPence),
-    promotionCode
-      ? resolvePromotionCodeDiscount(promotionCode, catalog.unitAmountPence)
-      : Promise.resolve(null),
-  ]);
-  const chosen = chooseDiscount({
-    referralPence: referralDiscountPence,
-    promoPence: promoDiscount?.discountPence || 0,
-  });
-
-  const coupon =
-    chosen.source === "referral" ? await createOneTimeCouponIfNeeded(chosen.amountPence) : null;
-  const stripe = getStripeClient();
-  const disclosureAcceptedAtIso = options?.disclosureAcceptedAt?.toISOString();
-  const complianceSnapshotMetadata = stringifyStripeMetadataJson(
-    compactMembershipComplianceSnapshot(options?.complianceSnapshot)
-  );
-
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    customer: customerId,
-    success_url: `${APP_URL}${options?.successPath || "/dashboard/membership?checkout=success"}`,
-    cancel_url: `${APP_URL}${options?.cancelPath || "/dashboard/membership?checkout=cancelled"}`,
-    line_items: [{ price: catalog.stripePriceId, quantity: 1 }],
-    discounts:
-      chosen.source === "promo" && promoDiscount
-        ? [{ promotion_code: promoDiscount.promotionCodeId }]
-        : coupon
-          ? [{ coupon: coupon.id }]
-          : undefined,
-    subscription_data: {
-      trial_period_days: MEMBERSHIP_TRIAL_DAYS,
-    },
-    metadata: {
-      userId,
-      kind: "membership",
-      plan,
-      billingInterval,
-      offer: offer || "",
-      referralDiscountPence: chosen.source === "referral" ? String(chosen.amountPence) : "0",
-      promoCode: chosen.source === "promo" ? promoDiscount?.code || "" : "",
-      discountSource: chosen.source,
-      disclosureVersion: options?.disclosureVersion || "",
-      disclosureAcceptedAt: disclosureAcceptedAtIso || "",
-      immediateStartSummary: stripeMetadataValue(options?.immediateStartSummary),
-      complianceSnapshotJson: complianceSnapshotMetadata,
-    },
-  });
-
-  if (!session.url) {
-    throw new Error("STRIPE_CHECKOUT_URL_MISSING");
-  }
-
-  return {
-    checkoutUrl: session.url,
-    sessionId: session.id,
-    discountPence: chosen.amountPence,
-    discountSource: chosen.source,
-  };
+): Promise<{
+  checkoutUrl: string;
+  sessionId: string;
+  discountPence: number;
+  discountSource: string;
+}> {
+  void userId;
+  void plan;
+  void billingInterval;
+  void promotionCode;
+  void offer;
+  void options;
+  throw new Error("MOVE_WELL_MEMBERSHIP_RETIRED");
 }
 
 function unixToDate(unix: number | null | undefined) {
@@ -781,39 +565,6 @@ function getStripeSubscriptionPeriodEnd(
     .current_period_end;
 }
 
-function getInvoiceSubscriptionId(invoice: Stripe.Invoice) {
-  const subscription = (
-    invoice as Stripe.Invoice & {
-      subscription?: string | { id?: string | null } | null;
-    }
-  ).subscription;
-  if (typeof subscription === "string") return subscription;
-  return subscription?.id || undefined;
-}
-
-async function resolvePlanFromStripePriceId(
-  stripePriceId?: string | null
-): Promise<{ plan: "movewell"; billingInterval: MembershipBillingInterval } | null> {
-  if (!stripePriceId) return null;
-  if (stripePriceId === MEMBERSHIP_CONFIG.movewell.stripePriceIdMonthly) {
-    return { plan: "movewell", billingInterval: "monthly" };
-  }
-  if (stripePriceId === MEMBERSHIP_CONFIG.movewell.stripePriceIdAnnual) {
-    return { plan: "movewell", billingInterval: "annual" };
-  }
-  const catalog = await db.billingCatalogItem.findFirst({
-    where: { stripePriceId, active: true },
-    select: { key: true },
-  });
-  if (catalog?.key === "membership_movewell_monthly") {
-    return { plan: "movewell", billingInterval: "monthly" };
-  }
-  if (catalog?.key === "membership_movewell_annual") {
-    return { plan: "movewell", billingInterval: "annual" };
-  }
-  return null;
-}
-
 async function processCheckoutCompleted(event: Stripe.Event, session: Stripe.Checkout.Session) {
   const userId = session.metadata?.userId;
   if (!userId) return;
@@ -821,60 +572,6 @@ async function processCheckoutCompleted(event: Stripe.Event, session: Stripe.Che
   const kind = session.metadata?.kind;
   const discountPence = Number(session.metadata?.referralDiscountPence || "0") || 0;
   const sourceRef = `stripe:checkout:${session.id}`;
-
-  if (kind === "credits") {
-    const bundleSize = Number(session.metadata?.bundleSize || "0");
-    if (bundleSize !== 1 && bundleSize !== 3 && bundleSize !== 10) return;
-
-    const alreadyGranted = await db.creditLedgerEntry.findFirst({
-      where: { stripeCheckoutSessionId: session.id },
-      select: { id: true },
-    });
-    if (!alreadyGranted) {
-      const bundle = CREDIT_BUNDLE_CONFIG[bundleSize];
-      const expiresAt = new Date(Date.now() + bundle.expiryDays * 86400000);
-      await addCredits({
-        userId,
-        amount: bundle.credits,
-        type: CreditEntryType.purchase,
-        description: bundle.label,
-        sourceRef,
-        expiresAt,
-        stripeCheckoutSessionId: session.id,
-        stripePaymentIntentId:
-          typeof session.payment_intent === "string" ? session.payment_intent : undefined,
-      });
-    }
-
-    if (discountPence > 0) {
-      const applied = await db.referralLedgerEntry.findFirst({
-        where: {
-          userId,
-          stripeCheckoutSessionId: session.id,
-        },
-      });
-      if (!applied) {
-        await consumeReferralDiscount({
-          userId,
-          amountPence: discountPence,
-          description: `Referral credit applied to ${sourceRef}`,
-          stripeCheckoutSessionId: session.id,
-        });
-      }
-    }
-
-    const bookingSessionId = session.metadata?.bookingSessionId;
-    if (bookingSessionId) {
-      await bookClassSession(bookingSessionId, userId).catch((error) => {
-        console.error("[billing] failed to complete post-credit class booking", {
-          checkoutSessionId: session.id,
-          userId,
-          bookingSessionId,
-          error,
-        });
-      });
-    }
-  }
 
   if (kind === "coaching") {
     const applicationId = session.metadata?.applicationId;
@@ -952,233 +649,16 @@ async function processCheckoutCompleted(event: Stripe.Event, session: Stripe.Che
     }
   }
 
-  if (kind === "membership") {
-    const plan = session.metadata?.plan;
-    if (plan !== "movewell") return;
-
-    const subscriptionId =
-      typeof session.subscription === "string"
-        ? session.subscription
-        : (session.subscription?.id ?? undefined);
-    if (!subscriptionId) return;
-
-    const stripe = getStripeClient();
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-    const item = subscription.items.data[0];
-    const stripePriceId = item?.price?.id || undefined;
-    const resolved = await resolvePlanFromStripePriceId(stripePriceId);
-    const billingIntervalFromMeta =
-      session.metadata?.billingInterval === "annual" ? "annual" : "monthly";
-    const billingInterval = resolved?.billingInterval || billingIntervalFromMeta;
-
-    const membership = await startOrSwitchMembership({
-      userId,
-      plan,
-      billingInterval,
-      stripeSubscriptionId: subscription.id,
-      stripePriceId,
-      nextPeriodEnd: unixToDate(getStripeSubscriptionPeriodEnd(subscription)),
-      disclosureVersion: session.metadata?.disclosureVersion || undefined,
-      disclosureAcceptedAt: session.metadata?.disclosureAcceptedAt
-        ? new Date(session.metadata.disclosureAcceptedAt)
-        : undefined,
-      complianceSnapshotJson: session.metadata?.complianceSnapshotJson
-        ? JSON.parse(session.metadata.complianceSnapshotJson)
-        : undefined,
-      startedAt: session.created ? new Date(session.created * 1000) : new Date(),
-    });
-
-    const membershipUser = await db.user.findUnique({
-      where: { id: userId },
-      select: { email: true, firstName: true, name: true },
-    });
-
-    if (membershipUser?.email && membership.trialEndsAt) {
-      const immediateStartSummary =
-        typeof session.metadata?.immediateStartSummary === "string"
-          ? session.metadata.immediateStartSummary
-          : null;
-
-      await sendMembershipCheckoutConfirmationNotice({
-        membershipId: membership.id,
-        userId,
-        email: membershipUser.email,
-        firstName: membershipUser.firstName || membershipUser.name || "there",
-        billingInterval,
-        pricePence: membership.pricePence,
-        trialEndsAt: membership.trialEndsAt,
-        immediateStartSummary,
-      });
-    }
-
-    if (discountPence > 0) {
-      const applied = await db.referralLedgerEntry.findFirst({
-        where: {
-          userId,
-          stripeCheckoutSessionId: session.id,
-        },
-      });
-      if (!applied) {
-        await consumeReferralDiscount({
-          userId,
-          amountPence: discountPence,
-          description: `Referral credit applied to ${sourceRef}`,
-          stripeCheckoutSessionId: session.id,
-        });
-      }
-    }
-  }
-
-  if (kind === "credits") {
-    await qualifyReferral({
-      referredUserId: userId,
-      notes: "Auto-qualified on first paid purchase.",
-    }).catch(() => null);
-  }
+  if (kind === "credits" || kind === "membership") return;
 }
 
 async function processInvoicePaid(event: Stripe.Event, invoice: Stripe.Invoice) {
-  const stripeCustomerId =
-    typeof invoice.customer === "string" ? invoice.customer : (invoice.customer?.id ?? null);
-  if (!stripeCustomerId) return;
-
-  const user = await db.user.findUnique({
-    where: { stripeCustomerId },
-    select: { id: true },
-  });
-  if (!user) return;
-
-  const existingMembership = await db.membershipSubscription.findFirst({
-    where: { userId: user.id },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      trialEndsAt: true,
-      latestInvoicePaidAt: true,
-      billingInterval: true,
-    },
-  });
-
-  const subscriptionId = getInvoiceSubscriptionId(invoice);
-  if (!subscriptionId) return;
-
-  const line = invoice.lines.data[0] as Stripe.InvoiceLineItem & {
-    price?: { id?: string | null } | null;
-  };
-  const stripePriceId = line?.price?.id || null;
-  const resolvedPlan = await resolvePlanFromStripePriceId(stripePriceId);
-  if (!resolvedPlan) return;
-
-  const updatedMembership = await startOrSwitchMembership({
-    userId: user.id,
-    plan: resolvedPlan.plan,
-    billingInterval: resolvedPlan.billingInterval,
-    stripeSubscriptionId: subscriptionId,
-    stripePriceId: stripePriceId || undefined,
-    nextPeriodEnd: unixToDate(line?.period?.end),
-  });
-
-  const invoicePaidAt = new Date();
-  const shouldOpenRenewalCoolingOff =
-    Boolean(existingMembership?.trialEndsAt && !existingMembership.latestInvoicePaidAt) ||
-    resolvedPlan.billingInterval === "annual";
-
-  const membershipWithCoolingOff = shouldOpenRenewalCoolingOff
-    ? await db.membershipSubscription.update({
-        where: { id: updatedMembership.id },
-        data: {
-          latestInvoiceId: invoice.id,
-          latestInvoiceAmountPence: invoice.amount_paid || 0,
-          latestInvoicePaidAt: invoicePaidAt,
-          renewalCoolingOffStartedAt: invoicePaidAt,
-          renewalCoolingOffEndsAt: addDays(invoicePaidAt, 14),
-          renewalCoolingOffKind:
-            existingMembership?.trialEndsAt && !existingMembership.latestInvoicePaidAt
-              ? "trial_conversion"
-              : "annual_renewal",
-        },
-        include: {
-          user: {
-            select: {
-              email: true,
-              firstName: true,
-              name: true,
-            },
-          },
-        },
-      })
-    : await db.membershipSubscription.update({
-        where: { id: updatedMembership.id },
-        data: {
-          latestInvoiceId: invoice.id,
-          latestInvoiceAmountPence: invoice.amount_paid || 0,
-          latestInvoicePaidAt: invoicePaidAt,
-        },
-        include: {
-          user: {
-            select: {
-              email: true,
-              firstName: true,
-              name: true,
-            },
-          },
-        },
-      });
-
-  await recoverMembershipDunningCase({
-    userId: user.id,
-    membershipId: updatedMembership.id,
-    stripeInvoiceId: invoice.id || null,
-  });
-
-  if (
-    shouldOpenRenewalCoolingOff &&
-    membershipWithCoolingOff.user.email &&
-    membershipWithCoolingOff.renewalCoolingOffEndsAt
-  ) {
-    await sendRenewalCoolingOffNotice({
-      membershipId: membershipWithCoolingOff.id,
-      userId: user.id,
-      email: membershipWithCoolingOff.user.email,
-      firstName:
-        membershipWithCoolingOff.user.firstName || membershipWithCoolingOff.user.name || "there",
-      renewalKind:
-        membershipWithCoolingOff.renewalCoolingOffKind === "trial_conversion"
-          ? "trial_conversion"
-          : "annual_renewal",
-      renewalDate: invoicePaidAt,
-      coolingOffEndsAt: membershipWithCoolingOff.renewalCoolingOffEndsAt,
-    });
-  }
-
-  const metadataDiscount = Number(invoice.metadata?.referralDiscountPence || "0") || 0;
-  if (metadataDiscount > 0) {
-    const alreadyApplied = await db.referralLedgerEntry.findFirst({
-      where: {
-        userId: user.id,
-        stripeInvoiceId: invoice.id,
-      },
-      select: { id: true },
-    });
-
-    if (!alreadyApplied) {
-      await consumeReferralDiscount({
-        userId: user.id,
-        amountPence: metadataDiscount,
-        description: `Referral credit applied to invoice ${invoice.id}`,
-        stripeInvoiceId: invoice.id,
-      });
-    }
-  }
-
-  await qualifyReferral({
-    referredUserId: user.id,
-    notes: "Auto-qualified on first paid subscription invoice.",
-  }).catch(() => null);
+  void event;
+  void invoice;
 }
 
 async function processInvoicePaymentFailed(invoice: Stripe.Invoice) {
-  await openMembershipDunningFromInvoice(invoice);
+  void invoice;
 }
 
 async function processCoachingSubscriptionUpdated(subscription: Stripe.Subscription) {
@@ -1205,51 +685,8 @@ async function processCoachingSubscriptionUpdated(subscription: Stripe.Subscript
 }
 
 async function processSubscriptionUpdated(subscription: Stripe.Subscription) {
-  const user = await db.user.findUnique({
-    where: { stripeCustomerId: String(subscription.customer) },
-    select: { id: true },
-  });
-  if (!user) return;
-
   const handledCoaching = await processCoachingSubscriptionUpdated(subscription);
   if (handledCoaching) return;
-
-  const existing = await db.membershipSubscription.findFirst({
-    where: { userId: user.id },
-    orderBy: { createdAt: "desc" },
-  });
-  if (!existing) return;
-
-  const status: MembershipStatus =
-    subscription.status === "active"
-      ? MembershipStatus.active
-      : subscription.status === "past_due"
-        ? MembershipStatus.past_due
-        : subscription.status === "canceled"
-          ? MembershipStatus.cancelled
-          : subscription.status === "incomplete_expired"
-            ? MembershipStatus.expired
-            : MembershipStatus.paused;
-  const stripePriceId = subscription.items.data[0]?.price?.id || null;
-  const resolved = await resolvePlanFromStripePriceId(stripePriceId);
-  const resolvedPricePence =
-    resolved?.billingInterval === "annual"
-      ? MEMBERSHIP_CONFIG.movewell.annualPricePence
-      : MEMBERSHIP_CONFIG.movewell.monthlyPricePence;
-
-  await db.membershipSubscription.update({
-    where: { id: existing.id },
-    data: {
-      status,
-      billingInterval: resolved?.billingInterval ?? existing.billingInterval,
-      pricePence: resolved ? resolvedPricePence : existing.pricePence,
-      stripePriceId: stripePriceId || existing.stripePriceId,
-      cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
-      stripeCurrentPeriodEnd: unixToDate(getStripeSubscriptionPeriodEnd(subscription)),
-      renewsAt: unixToDate(getStripeSubscriptionPeriodEnd(subscription)),
-      endsAt: subscription.cancel_at ? unixToDate(subscription.cancel_at) : null,
-    },
-  });
 }
 
 async function linkStripeCustomerToUser(params: {
@@ -1379,10 +816,7 @@ async function handleStripeEvent(event: Stripe.Event) {
     if (handledGift) {
       return;
     }
-    const handledProgramme = await processSmallGroupCheckoutCompleted(session);
-    if (!handledProgramme) {
-      await processCheckoutCompleted(event, session);
-    }
+    await processCheckoutCompleted(event, session);
     return;
   }
 

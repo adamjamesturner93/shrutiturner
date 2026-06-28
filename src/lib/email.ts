@@ -12,7 +12,6 @@ import NewsletterEmail from "../emails/newsletter";
 import { getBaseSiteUrlFromEnv } from "@/lib/env";
 import { db } from "@/lib/db";
 import { sendPostmarkReactEmail } from "@/lib/postmark/client";
-import { getClassOperationalSettings } from "@/lib/classes/settings-service";
 import {
   type I18nPreferences,
   ADMIN_PREFS,
@@ -27,6 +26,12 @@ import {
 const POSTMARK_API_KEY = process.env.POSTMARK_API_KEY || "POSTMARK_API_TEST";
 void POSTMARK_API_KEY;
 const APP_URL = getBaseSiteUrlFromEnv();
+const LEGACY_CLASS_EMAIL_SETTINGS = {
+  preJoinWindowMinutes: 10,
+  lateJoinCutoffMinutes: 10,
+  creditRefundWindowMinutes: 180,
+  emptyClassAutoCancelWindowMinutes: 180,
+};
 
 async function hasExistingOneToOneApplication(params: { email: string; userId?: string | null }) {
   const normalizedEmail = params.email.trim().toLowerCase();
@@ -89,7 +94,7 @@ function getClassLifecycleSupportLine() {
 }
 
 function classLifecycleEmailsEnabled() {
-  return process.env.ENABLE_CLASS_EMAILS === "true";
+  return false;
 }
 
 function moveWellLifecycleEmailsEnabled() {
@@ -215,7 +220,7 @@ export async function sendBookingConfirmation(
   try {
     if (!classLifecycleEmailsEnabled()) return skippedEmail("class_emails_disabled");
 
-    const settings = await getClassOperationalSettings();
+    const settings = LEGACY_CLASS_EMAIL_SETTINGS;
     // Format date & time using the user's saved preferences
     const formattedDate = formatDate(classDateObj, userPrefs);
     const formattedTime = formatTime(classDateObj, userPrefs);
@@ -407,9 +412,9 @@ export async function sendClassReminder(
     if (!classLifecycleEmailsEnabled()) return skippedEmail("class_emails_disabled");
 
     const preJoinWindowMinutes =
-      options?.preJoinWindowMinutes ?? (await getClassOperationalSettings()).preJoinWindowMinutes;
+      options?.preJoinWindowMinutes ?? LEGACY_CLASS_EMAIL_SETTINGS.preJoinWindowMinutes;
     const lateJoinCutoffMinutes =
-      options?.lateJoinCutoffMinutes ?? (await getClassOperationalSettings()).lateJoinCutoffMinutes;
+      options?.lateJoinCutoffMinutes ?? LEGACY_CLASS_EMAIL_SETTINGS.lateJoinCutoffMinutes;
     const formattedTime = formatTimeString(classTime, userPrefs);
     const react = ClassReminderEmail({
       firstName,
@@ -555,7 +560,7 @@ export async function sendInstructorNotification(
   try {
     if (!classLifecycleEmailsEnabled()) return skippedEmail("class_emails_disabled");
 
-    const settings = await getClassOperationalSettings();
+    const settings = LEGACY_CLASS_EMAIL_SETTINGS;
     const formattedDate = startsAt
       ? formatDate(startsAt, ADMIN_PREFS)
       : formatDate(classDate, ADMIN_PREFS);

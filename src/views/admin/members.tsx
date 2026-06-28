@@ -6,16 +6,7 @@ import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
 import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
-import {
-  Search,
-  ChevronRight,
-  Users,
-  UserCheck,
-  UserX,
-  Pause,
-  Shield,
-  AlertTriangle,
-} from "lucide-react";
+import { Search, ChevronRight, Users, UserCheck, UserX, Pause, Shield } from "lucide-react";
 import type { AdminMemberListItemDto } from "@/lib/api/types";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 
@@ -34,28 +25,13 @@ const STATUS_CONFIG: Record<
   past_due: { label: "Past due", variant: "destructive" },
 };
 
-/** Compute at-risk status for a member */
-function getAtRiskStatus(m: AdminMember): "high" | "medium" | "credits-expiring" | null {
-  const today = new Date();
-  const twoWeeksAgo = new Date(today.getTime() - 14 * 86400000);
-  const fourWeeksAgo = new Date(today.getTime() - 28 * 86400000);
-  const lastClass = m.lastClassDate ? new Date(m.lastClassDate) : null;
-  if (m.status !== "active") return null;
-  if (lastClass && lastClass < fourWeeksAgo && m.membershipPlan) return "high";
-  if (lastClass && lastClass < twoWeeksAgo) return "medium";
-  if (!m.membershipPlan && m.creditBalance > 0 && m.creditBalance <= 2) return "credits-expiring";
-  return null;
-}
-
 export function AdminMembers() {
   const [adminMembers, setAdminMembers] = useState<AdminMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [planFilter, setPlanFilter] = useState<string>("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
-  const [riskFilter, setRiskFilter] = useState<string>("all");
 
   useEffect(() => {
     let active = true;
@@ -79,19 +55,6 @@ export function AdminMembers() {
     };
   }, []);
 
-  const atRiskCounts = useMemo(() => {
-    let high = 0,
-      medium = 0,
-      creditsExpiring = 0;
-    adminMembers.forEach((m) => {
-      const risk = getAtRiskStatus(m);
-      if (risk === "high") high++;
-      else if (risk === "medium") medium++;
-      else if (risk === "credits-expiring") creditsExpiring++;
-    });
-    return { high, medium, creditsExpiring, total: high + medium + creditsExpiring };
-  }, [adminMembers]);
-
   const filtered = useMemo(() => {
     return adminMembers.filter((m) => {
       const matchesSearch =
@@ -103,23 +66,13 @@ export function AdminMembers() {
         (statusFilter === "lapsed"
           ? m.status === "expired" || m.status === "cancelled"
           : m.status === statusFilter);
-      const matchesPlan =
-        planFilter === "all" ||
-        (planFilter === "none" && !m.membershipPlan) ||
-        m.membershipPlan === planFilter;
       const matchesRole =
         roleFilter === "all" ||
         (roleFilter === "instructor" && m.isInstructor) ||
         (roleFilter === "coaching" && m.isCoachingClient);
-      const matchesRisk = (() => {
-        if (riskFilter === "all") return true;
-        const risk = getAtRiskStatus(m);
-        if (riskFilter === "any-risk") return risk !== null;
-        return risk === riskFilter;
-      })();
-      return matchesSearch && matchesStatus && matchesPlan && matchesRole && matchesRisk;
+      return matchesSearch && matchesStatus && matchesRole;
     });
-  }, [adminMembers, search, statusFilter, planFilter, roleFilter, riskFilter]);
+  }, [adminMembers, search, statusFilter, roleFilter]);
 
   const statusCounts = useMemo(() => {
     const counts = { active: 0, paused: 0, cancelled: 0, expired: 0, past_due: 0 };
@@ -128,6 +81,11 @@ export function AdminMembers() {
     });
     return counts;
   }, [adminMembers]);
+
+  const coachingClientCount = useMemo(
+    () => adminMembers.filter((member) => member.isCoachingClient).length,
+    [adminMembers]
+  );
 
   return (
     <AdminLayout title="Members - Admin">
@@ -153,9 +111,9 @@ export function AdminMembers() {
             detail="cancelled or expired"
           />
           <AppMetricCard
-            label="At risk"
-            value={atRiskCounts.total}
-            detail="members needing follow-up"
+            label="Coaching clients"
+            value={coachingClientCount}
+            detail="linked to a 1:1 profile"
           />
         </AppMetricGrid>
 
@@ -203,19 +161,6 @@ export function AdminMembers() {
             />
             <span>{statusCounts.expired + statusCounts.cancelled} lapsed</span>
           </button>
-          {atRiskCounts.total > 0 && (
-            <button
-              onClick={() => setRiskFilter(riskFilter === "any-risk" ? "all" : "any-risk")}
-              className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors ${
-                riskFilter !== "all"
-                  ? "border border-amber-300 bg-amber-100 text-amber-800"
-                  : "bg-amber-50 text-amber-700 hover:bg-amber-100"
-              }`}
-            >
-              <AlertTriangle className="h-4 w-4" />
-              <span>{atRiskCounts.total} at risk</span>
-            </button>
-          )}
         </div>
 
         {/* Filters */}
@@ -247,17 +192,6 @@ export function AdminMembers() {
                   <option value="cancelled">Cancelled</option>
                 </select>
                 <select
-                  aria-label="Filter members by plan"
-                  value={planFilter}
-                  onChange={(e) => setPlanFilter(e.target.value)}
-                  className="border-border bg-background rounded-md border px-3 py-2 text-sm"
-                >
-                  <option value="all">All plans</option>
-                  <option value="instructor">Instructor</option>
-                  <option value="movewell">Move Well</option>
-                  <option value="none">Pay as you Go</option>
-                </select>
-                <select
                   aria-label="Filter members by role"
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value)}
@@ -266,18 +200,6 @@ export function AdminMembers() {
                   <option value="all">All roles</option>
                   <option value="instructor">Instructors</option>
                   <option value="coaching">Coaching clients</option>
-                </select>
-                <select
-                  aria-label="Filter members by risk"
-                  value={riskFilter}
-                  onChange={(e) => setRiskFilter(e.target.value)}
-                  className="border-border bg-background rounded-md border px-3 py-2 text-sm"
-                >
-                  <option value="all">All risks</option>
-                  <option value="any-risk">Any risk</option>
-                  <option value="high">High risk</option>
-                  <option value="medium">Medium risk</option>
-                  <option value="credits-expiring">Credits expiring</option>
                 </select>
               </div>
             </div>
@@ -307,13 +229,10 @@ export function AdminMembers() {
 
 function MemberRow({ member }: { member: AdminMember }) {
   const statusConfig = STATUS_CONFIG[member.status];
-  const riskStatus = getAtRiskStatus(member);
 
   return (
     <Link href={`/admin/members/${member.id}`}>
-      <Card
-        className={`hover:border-brand-accent/30 cursor-pointer transition-colors ${riskStatus === "high" ? "border-amber-300/50" : ""}`}
-      >
+      <Card className="hover:border-brand-accent/30 cursor-pointer transition-colors">
         <CardContent className="py-4">
           <div className="flex items-center gap-4">
             {/* Avatar */}
@@ -328,24 +247,6 @@ function MemberRow({ member }: { member: AdminMember }) {
                   {member.firstName} {member.lastName}
                 </p>
                 <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
-                {riskStatus && (
-                  <Badge
-                    className={
-                      riskStatus === "high"
-                        ? "border-red-200 bg-red-50 text-xs text-red-700"
-                        : riskStatus === "medium"
-                          ? "border-amber-200 bg-amber-50 text-xs text-amber-700"
-                          : "border-orange-200 bg-orange-50 text-xs text-orange-700"
-                    }
-                  >
-                    <AlertTriangle className="mr-0.5 h-3 w-3" />
-                    {riskStatus === "high"
-                      ? "High risk"
-                      : riskStatus === "medium"
-                        ? "At risk"
-                        : "Credits expiring"}
-                  </Badge>
-                )}
               </div>
               <p className="text-muted-foreground truncate text-xs">
                 {member.email} · {member.membershipLabel}
@@ -370,14 +271,6 @@ function MemberRow({ member }: { member: AdminMember }) {
 
             {/* Stats */}
             <div className="text-muted-foreground hidden items-center gap-6 text-sm md:flex">
-              <div className="text-center">
-                <p className="text-brand-dark">{member.totalBookings}</p>
-                <p className="text-xs">bookings</p>
-              </div>
-              <div className="text-center">
-                <p className="text-brand-dark">{member.creditBalance}</p>
-                <p className="text-xs">credits</p>
-              </div>
               <div className="text-center">
                 <p className="text-brand-dark">{member.referralsCount}</p>
                 <p className="text-xs">referrals</p>

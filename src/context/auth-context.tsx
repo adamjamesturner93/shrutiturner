@@ -524,7 +524,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const discountedPrice = Math.max(0, membership.price - referralBalance);
       return `£${referralBalance} off your next renewal (${membership.label} — £${discountedPrice} instead of £${membership.price})`;
     }
-    return "£10 off your next class pack or membership purchase";
+    return "£10 off an eligible future purchase";
   }, [referralBalance, membership]);
 
   const resetLocalState = useCallback(() => {
@@ -805,38 +805,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return deducted;
   }, []);
 
-  const purchaseCredits = useCallback(
-    async (count: number) => {
-      try {
-        const response = await fetch("/api/me/credits/checkout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ bundleSize: count }),
-        });
-        if (!response.ok) return;
-        const payload = (await response.json().catch(() => null)) as unknown;
-        const data = isApiSuccess<{ checkoutUrl?: string }>(payload)
-          ? payload.data
-          : (payload as { checkoutUrl?: string } | null);
-        if (data?.checkoutUrl && typeof window !== "undefined") {
-          window.location.href = data.checkoutUrl;
-          return;
-        }
-        await loadMembershipState();
-      } catch {
-        // keep UI stable
-      }
-    },
-    [loadMembershipState]
-  );
+  const purchaseCredits = useCallback(async (count: number) => {
+    void count;
+    if (typeof window !== "undefined") {
+      window.location.href = "/dashboard/coaching";
+    }
+  }, []);
 
   const purchaseDropIn = useCallback(() => {
     void purchaseCredits(1);
   }, [purchaseCredits]);
 
   const upgradeMembership = useCallback(async (plan: "movewell") => {
+    void plan;
     if (typeof window !== "undefined") {
-      window.location.href = `/dashboard/membership?subscribe=1&interval=monthly&plan=${plan}`;
+      window.location.href = "/dashboard/coaching";
     }
   }, []);
 
@@ -1044,8 +1027,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (remaining <= 0) {
         return {
           allowed: false,
-          reason:
-            "You've used all your weekly classes. Purchase additional credits or wait until next week.",
+          reason: "Recordings are not available as a standalone class benefit.",
           consumesCredit: false,
         };
       }

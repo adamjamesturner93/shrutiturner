@@ -18,10 +18,10 @@ import { LocalMediaPreview } from "./local-media-preview";
 import type { RoomMode } from "./video-room";
 
 interface PreJoinLobbyProps {
-  className: string;
-  classTime: string;
-  classDuration: string;
-  classLevel: string;
+  sessionName: string;
+  sessionTime: string;
+  sessionDuration: string;
+  sessionLevel?: string;
   instructor: string;
   equipment: string[];
   registeredCount: number;
@@ -36,10 +36,10 @@ interface PreJoinLobbyProps {
 }
 
 export function PreJoinLobby({
-  className: classTitle,
-  classTime,
-  classDuration,
-  classLevel,
+  sessionName,
+  sessionTime,
+  sessionDuration,
+  sessionLevel,
   instructor,
   equipment,
   registeredCount,
@@ -61,11 +61,11 @@ export function PreJoinLobby({
       <div className="w-full max-w-3xl">
         {/* Header */}
         <div className="mb-8 text-center">
-          <h1 className="text-2xl text-white">{classTitle}</h1>
+          <h1 className="text-2xl text-white">{sessionName}</h1>
           <div className="mt-2 flex items-center justify-center gap-4 text-sm text-white/50">
             <span className="flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" />
-              {classTime} · {classDuration}
+              {sessionTime} · {sessionDuration}
             </span>
             <span>{instructor}</span>
             <span className="flex items-center gap-1">
@@ -73,7 +73,7 @@ export function PreJoinLobby({
               {registeredCount}/{maxSpaces}
             </span>
           </div>
-          {mode !== "live-class" && (
+          {mode !== "focus" && (
             <div className="mt-2 flex items-center justify-center gap-2">
               <Badge className="border-brand-accent/30 bg-brand-accent/20 text-brand-accent-light">
                 <EyeOff className="mr-1 h-3 w-3" />
@@ -97,10 +97,11 @@ export function PreJoinLobby({
               <button
                 type="button"
                 onClick={() => setIsMuted(!isMuted)}
-                className={`rounded-full p-3 transition-colors ${isMuted
-                  ? "bg-red-500/20 text-red-400"
-                  : "bg-white/10 text-white hover:bg-white/15"
-                  }`}
+                className={`rounded-full p-3 transition-colors ${
+                  isMuted
+                    ? "bg-red-500/20 text-red-400"
+                    : "bg-white/10 text-white hover:bg-white/15"
+                }`}
                 aria-label={isMuted ? "Turn microphone on" : "Turn microphone off"}
               >
                 {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
@@ -108,10 +109,11 @@ export function PreJoinLobby({
               <button
                 type="button"
                 onClick={() => setIsCameraOn(!isCameraOn)}
-                className={`rounded-full p-3 transition-colors ${!isCameraOn
-                  ? "bg-red-500/20 text-red-400"
-                  : "bg-white/10 text-white hover:bg-white/15"
-                  }`}
+                className={`rounded-full p-3 transition-colors ${
+                  !isCameraOn
+                    ? "bg-red-500/20 text-red-400"
+                    : "bg-white/10 text-white hover:bg-white/15"
+                }`}
                 aria-label={isCameraOn ? "Turn camera off" : "Turn camera on"}
               >
                 {isCameraOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
@@ -146,19 +148,21 @@ export function PreJoinLobby({
 
             {/* Class info */}
             <div className="space-y-2 rounded-lg bg-white/5 p-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-white/50">Level</span>
-                <span className="text-white/80">{classLevel}</span>
-              </div>
+              {sessionLevel ? (
+                <div className="flex justify-between text-sm">
+                  <span className="text-white/50">Level</span>
+                  <span className="text-white/80">{sessionLevel}</span>
+                </div>
+              ) : null}
               <div className="flex justify-between text-sm">
                 <span className="text-white/50">View mode</span>
                 <span className="text-white/80">
-                  {mode === "live-class"
+                  {mode === "focus"
                     ? "Focus (instructor only)"
                     : "Community to start, instructor can switch to focus"}
                 </span>
               </div>
-              {mode !== "live-class" && (
+              {mode !== "focus" && (
                 <div className="flex justify-between text-sm">
                   <span className="text-white/50">Community mode</span>
                   <span className="text-white/80">Instructor controlled</span>
@@ -199,7 +203,7 @@ export function PreJoinLobby({
                 onClick={() => onJoin({ isMuted, isCameraOn })}
                 className="bg-brand-accent hover:bg-brand-accent/90 h-12 w-full text-white"
               >
-                Join Class
+                Join session
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
               <button

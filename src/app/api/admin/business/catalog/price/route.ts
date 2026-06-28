@@ -6,11 +6,6 @@ import {
 } from "@/lib/billing/catalog-service";
 
 const validKeys = new Set([
-  "membership_movewell_monthly",
-  "membership_movewell_annual",
-  "credits_1",
-  "credits_3",
-  "credits_10",
   "coaching_guided_accountability_monthly",
   "coaching_independent_training_plan_monthly",
   "coaching_guided_training_plan_monthly",

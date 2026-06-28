@@ -100,7 +100,7 @@ export function PricingPage({ faqs }: PricingPageProps) {
           },
           {
             label: "Separate billing",
-            detail: "Coaching is billed independently from any future Move Well class offer.",
+            detail: "1:1 services are billed independently from retreat and workshop offers.",
           },
         ]}
         aside={

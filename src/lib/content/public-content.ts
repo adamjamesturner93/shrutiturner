@@ -3,7 +3,6 @@ import { LEGAL_DOCUMENTS } from "@/data/legal-documents";
 import { getEntries, getEntryById, getEntryBySlug } from "./contentful-client";
 import type {
   BlogPostContent,
-  ClassDefinitionContent,
   GlobalContent,
   InstructorProfileContent,
   LeadMagnetContent,
@@ -16,16 +15,10 @@ import type {
   RetreatTemplateContent,
   RetreatVenueContent,
   SeoContent,
-  SmallGroupTemplateContent,
   FaqItemContent,
   TestimonialContent,
   AuthorProfileContent,
 } from "./types";
-
-type ScheduleDay = {
-  day: string;
-  classes: ClassDefinitionContent[];
-};
 
 function createMissingContentError(contentType: string, detail: string) {
   return new Error(`CONTENTFUL_CONTENT_MISSING: ${contentType} ${detail}`);
@@ -63,22 +56,6 @@ function optionalStringField(fields: Record<string, unknown>, field: string) {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
-function requireNumberField(
-  contentType: string,
-  item: { sys: { id: string }; fields: Record<string, unknown> },
-  field: string
-) {
-  const value = Number(item.fields[field]);
-  if (Number.isFinite(value)) {
-    return value;
-  }
-
-  throw createMissingContentError(
-    contentType,
-    `entry "${item.sys.id}" is missing required numeric field "${field}"`
-  );
-}
-
 function requireRenderedField(
   contentType: string,
   item: { sys: { id: string }; fields: Record<string, unknown> },
@@ -98,19 +75,6 @@ function requireRenderedField(
 function parseStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((v): v is string => typeof v === "string");
-}
-
-function parseObjectArray<T>(
-  value: unknown,
-  mapper: (item: Record<string, unknown>) => T | null
-): T[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => {
-      if (!item || typeof item !== "object" || Array.isArray(item)) return null;
-      return mapper(item as Record<string, unknown>);
-    })
-    .filter((item): item is T => Boolean(item));
 }
 
 function getLinkedEntryId(value: unknown): string | undefined {
@@ -630,90 +594,6 @@ export async function getBlogPostSlugByContentfulEntryId(entryId: string): Promi
   return typeof slug === "string" && slug.trim() ? slug.trim() : null;
 }
 
-export async function getClassDefinitions(): Promise<ClassDefinitionContent[]> {
-  const res = await getEntries<Record<string, unknown>>("classDefinition", { limit: 300 });
-  return requireContentfulItems("classDefinition", res).map((item) => ({
-    id: String(item.sys.id),
-    slug: requireStringField("classDefinition", item, "slug"),
-    name: requireStringField("classDefinition", item, "name"),
-    type: requireStringField("classDefinition", item, "type") as "Yoga" | "Strength" | "HIIT",
-    classCategory: requireStringField("classDefinition", item, "classCategory") as
-      | "yoga"
-      | "strength"
-      | "small-group",
-    day: optionalStringField(item.fields, "defaultDay") || "Monday",
-    time: optionalStringField(item.fields, "defaultTime") || "09:00",
-    duration: requireStringField("classDefinition", item, "duration"),
-    level: requireStringField("classDefinition", item, "level"),
-    maxSpaces: requireNumberField("classDefinition", item, "maxCapacity"),
-    shortDescription: requireStringField("classDefinition", item, "shortDescription"),
-    longDescription: requireStringField("classDefinition", item, "longDescription"),
-    whatToExpect: parseStringArray(item.fields.whatToExpect),
-    whoItsFor: parseStringArray(item.fields.whoItsFor),
-    equipment: parseStringArray(item.fields.equipment),
-    benefits: parseStringArray(item.fields.benefits),
-    instructor: optionalStringField(item.fields, "instructorName") || "Shruti Turner",
-    defaultInstructorProfileEntryId: getLinkedEntryId(item.fields.defaultInstructorProfile),
-    seoTitle:
-      optionalStringField(item.fields, "seoTitle") ||
-      requireStringField("classDefinition", item, "name"),
-    seoDescription:
-      optionalStringField(item.fields, "seoDescription") ||
-      requireStringField("classDefinition", item, "shortDescription"),
-    seoKeywords: optionalStringField(item.fields, "seoKeywords") || "",
-  }));
-}
-
-export async function getSmallGroupTemplates(): Promise<SmallGroupTemplateContent[]> {
-  const res = await getEntries<Record<string, unknown>>("smallGroupProgramme", {
-    limit: 100,
-    order: "fields.title",
-  });
-  return requireContentfulItems("smallGroupProgramme", res).map((item) => ({
-    id: String(item.sys.id),
-    slug: requireStringField("smallGroupProgramme", item, "slug"),
-    title: requireStringField("smallGroupProgramme", item, "title"),
-    subtitle: optionalStringField(item.fields, "subtitle"),
-    shortSummary: requireStringField("smallGroupProgramme", item, "shortSummary"),
-    fullDescription: optionalStringField(item.fields, "fullDescription"),
-    longDescription: optionalStringField(item.fields, "longDescription"),
-    outcomes: parseStringArray(item.fields.outcomes),
-    durationLabel: requireStringField("smallGroupProgramme", item, "durationLabel"),
-    durationWeeks:
-      item.fields.durationWeeks === undefined ? undefined : Number(item.fields.durationWeeks),
-    cohortSize: requireNumberField("smallGroupProgramme", item, "cohortSize"),
-    sessionsPerWeek:
-      item.fields.sessionsPerWeek === undefined ? undefined : Number(item.fields.sessionsPerWeek),
-    defaultPricePence:
-      item.fields.defaultPricePence === undefined
-        ? undefined
-        : Number(item.fields.defaultPricePence),
-    whoItsFor: parseStringArray(item.fields.whoItsFor),
-    equipment: parseStringArray(item.fields.equipment),
-    inclusions: parseStringArray(item.fields.inclusions),
-    weekByWeek: parseObjectArray(item.fields.weekByWeek, (week) => {
-      const weekNumber = Number(week.weekNumber);
-      if (!Number.isFinite(weekNumber) || weekNumber <= 0) return null;
-      return {
-        weekNumber,
-        title: String(week.title || `Week ${weekNumber}`),
-        focus: week.focus ? String(week.focus) : undefined,
-        sessionTitles: parseStringArray(week.sessionTitles),
-      };
-    }),
-  }));
-}
-
-export async function getSmallGroupTemplateBySlug(
-  slug: string
-): Promise<SmallGroupTemplateContent | null> {
-  const programmes = await getSmallGroupTemplates();
-  return programmes.find((programme) => programme.slug === slug) || null;
-}
-
-export const getSmallGroupProgrammes = getSmallGroupTemplates;
-export const getSmallGroupProgrammeBySlug = getSmallGroupTemplateBySlug;
-
 export async function getInstructorProfiles(): Promise<InstructorProfileContent[]> {
   const res = await getEntries<Record<string, unknown>>("instructorProfile", { limit: 300 });
   return requireContentfulItems("instructorProfile", res).map((item) => ({
@@ -740,29 +620,6 @@ export async function getInstructorProfilesByIds(
   const all = await getInstructorProfiles();
   const wanted = new Set(ids);
   return all.filter((p) => wanted.has(p.id));
-}
-
-export async function getClassDefinitionsByCategory(
-  category: "yoga" | "strength" | "small-group"
-): Promise<ClassDefinitionContent[]> {
-  const defs = await getClassDefinitions();
-  return defs.filter((d) => {
-    const inferredCategory =
-      d.classCategory ||
-      (d.type === "Yoga" ? "yoga" : d.type === "HIIT" ? "small-group" : "strength");
-    return inferredCategory === category;
-  });
-}
-
-export async function getClassDefinitionBySlug(
-  slug: string
-): Promise<ClassDefinitionContent | null> {
-  const defs = await getClassDefinitions();
-  return defs.find((d) => d.slug === slug) || null;
-}
-
-export async function getScheduleByDayContent(): Promise<ScheduleDay[]> {
-  return [];
 }
 
 export async function getRetreatTemplates(): Promise<RetreatTemplateContent[]> {
@@ -833,7 +690,7 @@ export async function getRetreatsCombined(): Promise<RetreatCombinedContent[]> {
 }
 
 export async function getTestimonials(
-  service?: "yoga" | "strength" | "pt" | "retreat" | "small-group" | "general"
+  service?: "pt" | "retreat" | "general"
 ): Promise<TestimonialContent[]> {
   const query: Record<string, string | number | boolean | undefined> = {
     limit: 200,
@@ -853,13 +710,7 @@ export async function getTestimonials(
     authorName: String(item.fields.authorName || "Anonymous"),
     authorCondition: item.fields.authorCondition ? String(item.fields.authorCondition) : undefined,
     service: item.fields.service
-      ? (String(item.fields.service) as
-          | "yoga"
-          | "strength"
-          | "pt"
-          | "retreat"
-          | "small-group"
-          | "general")
+      ? (String(item.fields.service) as "pt" | "retreat" | "general")
       : undefined,
     featured: Boolean(item.fields.featured),
   }));

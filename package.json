@@ -54,8 +54,6 @@
     "prisma:seed:preview": "node --experimental-strip-types --experimental-specifier-resolution=node prisma/seed-preview.ts",
     "prisma:seed:billing": "node --experimental-strip-types --experimental-specifier-resolution=node prisma/seed-billing.ts",
     "data:import:legacy": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/data/import-legacy.ts",
-    "classes:publish-sessions": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/classes/publish-upcoming-sessions.ts",
-    "classes:process-three-hour-cutoff": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/classes/process-three-hour-cutoff.ts",
     "stripe:seed:products": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/stripe/seed-products.ts",
     "sync:postmark": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/sync/postmark.ts",
     "sync:stripe:metrics": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/sync/stripe-metrics.ts"

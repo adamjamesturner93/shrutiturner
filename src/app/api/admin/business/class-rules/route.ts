@@ -1,46 +1,15 @@
-import {
-  getClassOperationalSettings,
-  updateClassOperationalSettings,
-} from "@/lib/classes/settings-service";
-import { apiOk, handleApiRoute, parseJsonBody } from "@/lib/api/route";
+import { NextResponse } from "next/server";
 
-export const GET = handleApiRoute(
-  async () => {
-    const settings = await getClassOperationalSettings();
-    return apiOk(settings);
-  },
-  { auth: "staff_admin" }
-);
+const retiredResponse = () =>
+  NextResponse.json(
+    { message: "Weekly class rules have been retired. Online retreat rooms use retreat settings." },
+    { status: 410 }
+  );
 
-export const PATCH = handleApiRoute(
-  async ({ request, requestId, requestIp, path, sessionUser }) => {
-    const body = await parseJsonBody<{
-      preJoinWindowMinutes?: number;
-      lateJoinCutoffMinutes?: number;
-      creditRefundWindowMinutes?: number;
-      emptyClassAutoCancelWindowMinutes?: number;
-    }>(request);
+export async function GET() {
+  return retiredResponse();
+}
 
-    const settings = await updateClassOperationalSettings({
-      preJoinWindowMinutes:
-        typeof body.preJoinWindowMinutes === "number" ? body.preJoinWindowMinutes : undefined,
-      lateJoinCutoffMinutes:
-        typeof body.lateJoinCutoffMinutes === "number" ? body.lateJoinCutoffMinutes : undefined,
-      creditRefundWindowMinutes:
-        typeof body.creditRefundWindowMinutes === "number"
-          ? body.creditRefundWindowMinutes
-          : undefined,
-      emptyClassAutoCancelWindowMinutes:
-        typeof body.emptyClassAutoCancelWindowMinutes === "number"
-          ? body.emptyClassAutoCancelWindowMinutes
-          : undefined,
-      actorUserId: sessionUser?.id,
-      requestId,
-      requestPath: path,
-      requestIp,
-    });
-
-    return apiOk(settings);
-  },
-  { auth: "staff_admin" }
-);
+export async function PATCH() {
+  return retiredResponse();
+}

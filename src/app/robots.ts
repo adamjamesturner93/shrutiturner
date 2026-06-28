@@ -64,7 +64,6 @@ export default function robots(): MetadataRoute.Robots {
         "/email",
         "/r/",
         "/gift/redeem/",
-        "/classes/small-groups/*/checkout",
         "/retreats/*/checkout",
         "/retreats/balance/",
         "/subscribe",

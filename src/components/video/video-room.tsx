@@ -18,7 +18,6 @@ import { Badge } from "../ui/badge";
 import { ChatPanel, type ChatMessage } from "./chat-panel";
 import { DeviceSelector } from "./device-selector";
 import { useAuth } from "../../context/auth-context";
-import type { ClassSessionDetailDto } from "@/lib/api/types";
 import {
   attachTrack,
   createManagedCallObject,
@@ -28,17 +27,19 @@ import {
   type DailyCallObject,
   type DailyParticipant,
 } from "@/lib/daily/client";
-import type { RoomMode as SharedRoomMode } from "@/lib/classes/room-mode";
 
-export type RoomMode = SharedRoomMode;
+export type RoomMode = "focus" | "community";
 
 type VideoRoomProps = {
-  sessionId?: string;
+  roomId?: string;
+  roomTokenPath?: string;
+  attendancePath?: string;
+  communityModePath?: string;
   mode: RoomMode;
   isInstructor: boolean;
-  className: string;
-  classTime: string;
-  classDuration: string;
+  sessionName: string;
+  sessionTime: string;
+  sessionDuration: string;
   registeredCount: number;
   initialMuted?: boolean;
   initialCameraOn?: boolean;
@@ -100,12 +101,15 @@ function isRetryableRoomJoinError(message: string) {
 }
 
 export function VideoRoom({
-  sessionId,
+  roomId,
+  roomTokenPath,
+  attendancePath,
+  communityModePath,
   mode,
   isInstructor,
-  className: classTitle,
-  classTime,
-  classDuration,
+  sessionName,
+  sessionTime,
+  sessionDuration,
   registeredCount,
   initialMuted = false,
   initialCameraOn = true,
@@ -125,7 +129,7 @@ export function VideoRoom({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showSelfView, setShowSelfView] = useState(true);
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
-  const [showChat, setShowChat] = useState(mode !== "live-class" && chatEnabled);
+  const [showChat, setShowChat] = useState(mode !== "focus" && chatEnabled);
   const [communityMode, setCommunityMode] = useState(initialCommunityMode);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isEnding, setIsEnding] = useState(false);
@@ -133,9 +137,7 @@ export function VideoRoom({
   const [joinAttempt, setJoinAttempt] = useState(0);
   const [isAutoRetrying, setIsAutoRetrying] = useState(false);
   const [canRetryJoin, setCanRetryJoin] = useState(false);
-  const [instructorConsiderations, setInstructorConsiderations] = useState<
-    InstructorConsideration[]
-  >([]);
+  const [instructorConsiderations] = useState<InstructorConsideration[]>([]);
   const [pendingAcceptances, setPendingAcceptances] = useState<AcceptanceRequirementState[]>([]);
   const [isRecordingAcceptanceSubmitting, setIsRecordingAcceptanceSubmitting] = useState(false);
   const [acceptanceError, setAcceptanceError] = useState("");
@@ -192,7 +194,7 @@ export function VideoRoom({
 
   const sendChatMessage = useCallback(
     async (text: string) => {
-      if (!callObject?.sendAppMessage || mode === "live-class" || !chatEnabled) return;
+      if (!callObject?.sendAppMessage || mode === "focus" || !chatEnabled) return;
 
       const timestamp = new Date();
       const message: ChatMessage = {
@@ -242,14 +244,15 @@ export function VideoRoom({
         const localParticipant = Object.values(targetCallObject.participants() || {}).find(
           (participant) => Boolean(participant.local)
         );
-        await fetch(`/api/classes/sessions/${sessionId}/attendance`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "left",
-            dailyParticipantId: localParticipant?.session_id || null,
-          }),
-        }).catch(() => undefined);
+        if (attendancePath)
+          await fetch(attendancePath, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "left",
+              dailyParticipantId: localParticipant?.session_id || null,
+            }),
+          }).catch(() => undefined);
         hasRecordedJoinRef.current = false;
       }
 
@@ -261,7 +264,7 @@ export function VideoRoom({
         onLeaveRef.current(reason);
       }
     },
-    [sessionId]
+    [attendancePath]
   );
 
   useEffect(() => {
@@ -272,71 +275,25 @@ export function VideoRoom({
     setPendingAcceptances([]);
     setAcceptanceError("");
     setStatusText("Connecting to the live room...");
-  }, [sessionId]);
+  }, [roomId]);
 
   useEffect(() => {
-    if (!isInstructor || !sessionId) {
-      setInstructorConsiderations([]);
-      return;
-    }
-
-    let active = true;
-    let intervalId: ReturnType<typeof setInterval> | null = null;
-
-    const loadConsiderations = async () => {
-      try {
-        const response = await fetch(`/api/admin/classes/sessions/${sessionId}`, {
-          cache: "no-store",
-        });
-        if (!response.ok) {
-          return;
-        }
-        const payload = (await response.json()) as ClassSessionDetailDto;
-        if (!active) return;
-        setInstructorConsiderations(
-          payload.bookings
-            .filter(
-              (booking) =>
-                booking.status === "booked" &&
-                (booking.preClassFlareToday || booking.healthConditions.length > 0)
-            )
-            .map((booking) => ({
-              bookingId: booking.id,
-              name: `${booking.firstName} ${booking.lastName}`.trim() || booking.email,
-              healthConditions: booking.healthConditions,
-              preClassEnergyLevel: booking.preClassEnergyLevel,
-              preClassFlareToday: booking.preClassFlareToday,
-            }))
-        );
-      } catch {
-        // Keep the live room available even if summary refresh fails.
-      }
-    };
-
-    void loadConsiderations();
-    intervalId = setInterval(() => {
-      void loadConsiderations();
-    }, 15_000);
-
-    return () => {
-      active = false;
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [isInstructor, sessionId]);
+    void isInstructor;
+  }, [isInstructor]);
 
   useEffect(() => {
     let cancelled = false;
     let nextCallObject: DailyCallObject | null = null;
     let retryTimeout: ReturnType<typeof setTimeout> | null = null;
 
-    if (!sessionId) {
+    if (!roomId || !roomTokenPath) {
       setRoomError("This live room is not configured yet.");
       return;
     }
 
     void (async () => {
       try {
-        const response = await fetch(`/api/classes/sessions/${sessionId}/room-token`, {
+        const response = await fetch(roomTokenPath, {
           method: "POST",
           cache: "no-store",
         });
@@ -393,13 +350,13 @@ export function VideoRoom({
             }
 
             if (payloadData.action === "remove") {
-              setStatusText("The instructor has removed you from class.");
+              setStatusText("The instructor has removed you from the room.");
               void leaveRoom(nextCallObject, false, "removed");
             }
           }
 
           if (payloadData.type === "room-ended") {
-            setStatusText("Class has ended.");
+            setStatusText("The session has ended.");
             void leaveRoom(nextCallObject, false, "ended");
           }
 
@@ -450,14 +407,15 @@ export function VideoRoom({
         const localParticipant = Object.values(nextCallObject.participants() || {}).find(
           (participant) => Boolean(participant.local)
         );
-        await fetch(`/api/classes/sessions/${sessionId}/attendance`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "joined",
-            dailyParticipantId: localParticipant?.session_id || null,
-          }),
-        }).catch(() => undefined);
+        if (attendancePath)
+          await fetch(attendancePath, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "joined",
+              dailyParticipantId: localParticipant?.session_id || null,
+            }),
+          }).catch(() => undefined);
 
         mapParticipants(nextCallObject);
         setCommunityMode(Boolean(payload.communityModeEnabled));
@@ -509,12 +467,14 @@ export function VideoRoom({
     };
   }, [
     appendChatMessage,
+    attendancePath,
     initialCameraOn,
     initialMuted,
     joinAttempt,
     leaveRoom,
     mapParticipants,
-    sessionId,
+    roomId,
+    roomTokenPath,
   ]);
 
   const toggleLocalAudio = async () => {
@@ -549,7 +509,8 @@ export function VideoRoom({
   const toggleCommunityMode = async () => {
     if (!isInstructor) return;
     const nextValue = !communityMode;
-    const response = await fetch(`/api/classes/sessions/${sessionId}/community-mode`, {
+    if (!communityModePath) return;
+    const response = await fetch(communityModePath, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ enabled: nextValue }),
@@ -602,7 +563,7 @@ export function VideoRoom({
               type: acceptance.type,
               surface: acceptance.surface,
               metadataJson: {
-                sessionId,
+                roomId,
                 isRecorded,
                 chatEnabled,
               },
@@ -751,9 +712,9 @@ export function VideoRoom({
             className={`h-2 w-2 rounded-full ${isReady ? "animate-pulse bg-red-500" : "bg-amber-400"}`}
           />
           <div className="min-w-0">
-            <h1 className="truncate text-sm">{classTitle}</h1>
+            <h1 className="truncate text-sm">{sessionName}</h1>
             <p className="text-xs text-white/50">
-              {classTime} · {classDuration}
+              {sessionTime} · {sessionDuration}
             </p>
           </div>
         </div>
@@ -766,14 +727,15 @@ export function VideoRoom({
             </span>
           </div>
 
-          {mode !== "live-class" || isInstructor ? (
+          {mode !== "focus" || isInstructor ? (
             <button
               onClick={() => void toggleCommunityMode()}
               disabled={!isInstructor}
-              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs transition-colors ${communityMode
-                ? "bg-brand-accent text-white"
-                : "bg-white/5 text-white/60 hover:bg-white/10"
-                } ${!isInstructor ? "cursor-default" : ""}`}
+              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs transition-colors ${
+                communityMode
+                  ? "bg-brand-accent text-white"
+                  : "bg-white/5 text-white/60 hover:bg-white/10"
+              } ${!isInstructor ? "cursor-default" : ""}`}
               title={communityMode ? "Community mode enabled" : "Focus mode enabled"}
             >
               {communityMode ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
@@ -885,7 +847,7 @@ export function VideoRoom({
           icon={isFullscreen ? Minimize : Maximize}
           label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
         />
-        {mode !== "live-class" && chatEnabled ? (
+        {mode !== "focus" && chatEnabled ? (
           <ControlButton
             active={showChat}
             onClick={() => setShowChat((value) => !value)}
@@ -936,12 +898,13 @@ function ControlButton({
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center gap-1 rounded-lg p-2 transition-colors sm:px-3 sm:py-2 ${danger
-        ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
-        : active
-          ? "bg-white/10 text-white hover:bg-white/15"
-          : "bg-white/5 text-white/50 hover:bg-white/10"
-        }`}
+      className={`flex flex-col items-center gap-1 rounded-lg p-2 transition-colors sm:px-3 sm:py-2 ${
+        danger
+          ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+          : active
+            ? "bg-white/10 text-white hover:bg-white/15"
+            : "bg-white/5 text-white/50 hover:bg-white/10"
+      }`}
       title={label}
     >
       <Icon className="h-5 w-5" />

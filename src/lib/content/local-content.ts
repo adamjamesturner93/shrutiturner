@@ -1,16 +1,12 @@
-import { classDetails, getScheduleByDay, type ClassDetail } from "@/data/schedule-data";
 import { CANONICAL_LEAD_MAGNET } from "@/lib/newsletter/lead-magnet";
 import { retreats } from "@/data/retreat-data";
 import { LEGAL_DOCUMENTS } from "@/data/legal-documents";
-import { smallGroupTemplates } from "@/data/small-group-programmes";
 import type {
   LegalDocumentContent,
-  ClassDefinitionContent,
   GlobalContent,
   NewsletterSignupContent,
   PageContent,
   RetreatInstanceContent,
-  SmallGroupTemplateContent,
 } from "./types";
 
 export const LOCAL_GLOBAL_CONTENT: GlobalContent = {
@@ -29,20 +25,6 @@ export const LOCAL_PAGE_CONTENT: Record<string, PageContent> = {
         "Science-backed strength and yoga coaching for adults with chronic illness, autoimmune conditions, and complex bodies.",
     },
   },
-  classes: {
-    slug: "classes",
-    seo: {
-      title: "Move Well Classes",
-      description:
-        "Move Well Classes are live online yoga and strength sessions designed for complex bodies.",
-    },
-  },
-  "classes-yoga": { slug: "classes-yoga", seo: { title: "Yoga Classes" } },
-  "classes-strength": { slug: "classes-strength", seo: { title: "Strength Classes" } },
-  "classes-small-groups": {
-    slug: "classes-small-groups",
-    seo: { title: "Small Group Programmes" },
-  },
   pt: { slug: "pt", seo: { title: "Personal Training" } },
   coaching: {
     slug: "coaching",
@@ -57,7 +39,6 @@ export const LOCAL_PAGE_CONTENT: Record<string, PageContent> = {
     slug: "coaching-personal-programme",
     seo: { title: "Independent Training Plan" },
   },
-  pricing: { slug: "pricing", seo: { title: "Pricing" } },
   terms: { slug: "terms", seo: { title: "Terms & Conditions" } },
   privacy: { slug: "privacy", seo: { title: "Privacy Policy" } },
   cookies: { slug: "cookies", seo: { title: "Cookie Policy" } },
@@ -65,15 +46,10 @@ export const LOCAL_PAGE_CONTENT: Record<string, PageContent> = {
   "refund-policy": { slug: "refund-policy", seo: { title: "Refund & Cancellation Policy" } },
   "acceptable-use": { slug: "acceptable-use", seo: { title: "Acceptable Use Policy" } },
   "coaching-agreement": { slug: "coaching-agreement", seo: { title: "Coaching Agreement" } },
-  about: { slug: "about", seo: { title: "About" } },
   contact: { slug: "contact", seo: { title: "Contact" } },
-  schedule: { slug: "schedule", seo: { title: "Schedule" } },
   retreats: { slug: "retreats", seo: { title: "Retreats" } },
   blog: { slug: "blog", seo: { title: "Blog" } },
 };
-
-export const LOCAL_CLASS_DEFINITIONS: ClassDefinitionContent[] = classDetails as ClassDetail[];
-export const LOCAL_SMALL_GROUP_PROGRAMMES: SmallGroupTemplateContent[] = smallGroupTemplates;
 
 export const LOCAL_LEGAL_DOCUMENTS: LegalDocumentContent[] = LEGAL_DOCUMENTS;
 
@@ -112,9 +88,3 @@ export const LOCAL_RETREAT_INSTANCES: RetreatInstanceContent[] = retreats.flatMa
     roomOptions: d.roomOptions,
   }))
 );
-
-type ScheduleDay = ReturnType<typeof getScheduleByDay>[number];
-
-export function getLocalScheduleByDay(): ScheduleDay[] {
-  return getScheduleByDay();
-}

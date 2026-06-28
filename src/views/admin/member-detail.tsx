@@ -22,18 +22,12 @@ import {
   ArrowLeft,
   Mail,
   Calendar,
-  CreditCard,
-  Gift,
-  Bookmark,
   Bell,
   Edit3,
   Save,
   HeartPulse,
   Shield,
   UserCheck,
-  Plus,
-  Minus,
-  Clock,
   Send,
   Download,
   Trash2,
@@ -58,13 +52,6 @@ export function AdminMemberDetail() {
     Array<{ id: string; name: string; slug: string; headline?: string }>
   >([]);
   const [isCoachingClient, setIsCoachingClient] = useState(false);
-  const [creditBalance, setCreditBalance] = useState(0);
-  const [creditAmount, setCreditAmount] = useState("");
-  const [creditReason, setCreditReason] = useState("");
-  const [creditAction, setCreditAction] = useState<"add" | "remove">("add");
-  const [creditHistory, setCreditHistory] = useState<
-    { date: string; action: "add" | "remove"; amount: number; reason: string; by: string }[]
-  >([]);
   const [showMessageForm, setShowMessageForm] = useState(false);
   const [messageSubject, setMessageSubject] = useState("");
   const [messageBody, setMessageBody] = useState("");
@@ -84,16 +71,6 @@ export function AdminMemberDetail() {
     setIsInstructor(Boolean(data.isInstructor));
     setInstructorProfileEntryId(data.instructorProfileEntryId || "");
     setIsCoachingClient(Boolean(data.isCoachingClient));
-    setCreditBalance(data.creditBalance || 0);
-    setCreditHistory(
-      (data.creditHistory || []).map((entry) => ({
-        date: entry.date,
-        action: entry.amount >= 0 ? "add" : "remove",
-        amount: Math.abs(entry.amount),
-        reason: entry.reason,
-        by: entry.by,
-      }))
-    );
   };
 
   useEffect(() => {
@@ -220,44 +197,6 @@ export function AdminMemberDetail() {
           : `Coaching Client role removed from ${member.firstName}`
       );
     }
-  };
-
-  const handleCreditSubmit = () => {
-    const amount = parseInt(creditAmount);
-    if (!amount || amount <= 0) {
-      toast.error("Please enter a valid number of credits.");
-      return;
-    }
-    if (!creditReason.trim()) {
-      toast.error("Please provide a reason for this adjustment.");
-      return;
-    }
-    if (creditAction === "remove" && amount > creditBalance) {
-      toast.error(`Cannot remove ${amount} credits — only ${creditBalance} available.`);
-      return;
-    }
-
-    void (async () => {
-      const delta = creditAction === "add" ? amount : -amount;
-      const res = await fetch(`/api/admin/members/${member.id}/credits/adjust`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ delta, reason: creditReason.trim() }),
-      });
-      if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { message?: string };
-        toast.error(payload.message || "Failed to adjust credits.");
-        return;
-      }
-      const updated = (await res.json()) as typeof member;
-      if (!updated) return;
-      applyMemberState(updated);
-      toast.success(
-        `${creditAction === "add" ? "Added" : "Removed"} ${amount} credit${amount !== 1 ? "s" : ""}`
-      );
-      setCreditAmount("");
-      setCreditReason("");
-    })();
   };
 
   const handleSendMessage = async () => {
@@ -495,35 +434,28 @@ export function AdminMemberDetail() {
         )}
 
         {/* Stats grid */}
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <Card>
             <CardContent className="pt-6 text-center">
-              <CreditCard className="text-brand-accent mx-auto h-5 w-5" />
-              <p className="text-brand-dark mt-2 text-2xl">{member.membershipLabel}</p>
-              <p className="text-muted-foreground text-xs">Membership</p>
+              <UserCheck className="text-brand-accent mx-auto h-5 w-5" />
+              <p className="text-brand-dark mt-2 text-2xl">{isCoachingClient ? "Yes" : "No"}</p>
+              <p className="text-muted-foreground text-xs">1:1 client</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <Bookmark className="text-brand-accent mx-auto h-5 w-5" />
-              <p className="text-brand-dark mt-2 text-2xl">{member.totalBookings}</p>
-              <p className="text-muted-foreground text-xs">Total bookings</p>
+              <Shield className="text-brand-accent mx-auto h-5 w-5" />
+              <p className="text-brand-dark mt-2 text-2xl">{isInstructor ? "Yes" : "No"}</p>
+              <p className="text-muted-foreground text-xs">Instructor access</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <CreditCard className="text-brand-accent mx-auto h-5 w-5" />
-              <p className="text-brand-dark mt-2 text-2xl">{creditBalance}</p>
-              <p className="text-muted-foreground text-xs">Credits remaining</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <Gift className="text-brand-accent mx-auto h-5 w-5" />
-              <p className="text-brand-dark mt-2 text-2xl">{member.referralsCount}</p>
-              <p className="text-muted-foreground text-xs">
-                Referrals (£{member.referralBalance} balance)
+              <Mail className="text-brand-accent mx-auto h-5 w-5" />
+              <p className="text-brand-dark mt-2 text-2xl">
+                {member.marketingEmails ? "On" : "Off"}
               </p>
+              <p className="text-muted-foreground text-xs">Marketing emails</p>
             </CardContent>
           </Card>
         </div>
@@ -558,7 +490,7 @@ export function AdminMemberDetail() {
                     )}
                   </div>
                   <p className="text-muted-foreground mt-1 text-xs">
-                    Grants admin access, unlimited class membership and ability to lead classes.
+                    Grants admin access and links the member to a public instructor profile.
                   </p>
                 </label>
               </div>
@@ -599,7 +531,7 @@ export function AdminMemberDetail() {
                   </SelectContent>
                 </Select>
                 <p className="text-muted-foreground text-xs">
-                  Required when assigning instructor role. Used for class bio display.
+                  Required when assigning instructor role. Used for retreat and article bio display.
                 </p>
               </div>
               <div className="border-border/60 bg-secondary/30 flex items-start gap-4 rounded-lg border p-4">
@@ -716,138 +648,6 @@ export function AdminMemberDetail() {
             </CardContent>
           </Card>
 
-          {/* Manage Credits */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <CreditCard className="text-brand-accent h-5 w-5" />
-                Manage Credits
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              {/* Current balance callout */}
-              <div className="border-brand-accent/20 bg-brand-accent/5 flex items-center justify-between rounded-lg border p-3">
-                <span className="text-muted-foreground text-sm">Current balance</span>
-                <span className="text-brand-dark text-xl">
-                  {creditBalance} credit{creditBalance !== 1 ? "s" : ""}
-                </span>
-              </div>
-
-              {/* Add/Remove form */}
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <div className="w-32">
-                    <Label htmlFor="credit-action" className="sr-only">
-                      Action
-                    </Label>
-                    <Select
-                      value={creditAction}
-                      onValueChange={(v) => setCreditAction(v as "add" | "remove")}
-                    >
-                      <SelectTrigger id="credit-action">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="add">
-                          <span className="flex items-center gap-1.5">
-                            <Plus className="text-brand-accent h-3.5 w-3.5" /> Add
-                          </span>
-                        </SelectItem>
-                        <SelectItem value="remove">
-                          <span className="flex items-center gap-1.5">
-                            <Minus className="h-3.5 w-3.5 text-red-500" /> Remove
-                          </span>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="w-24">
-                    <Label htmlFor="credit-amount" className="sr-only">
-                      Amount
-                    </Label>
-                    <Input
-                      id="credit-amount"
-                      type="number"
-                      min="1"
-                      placeholder="Qty"
-                      value={creditAmount}
-                      onChange={(e) => setCreditAmount(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="credit-reason" className="sr-only">
-                    Reason
-                  </Label>
-                  <Input
-                    id="credit-reason"
-                    placeholder="Reason (e.g. Goodwill credit, Bundle purchase)"
-                    value={creditReason}
-                    onChange={(e) => setCreditReason(e.target.value)}
-                  />
-                </div>
-                <Button
-                  onClick={handleCreditSubmit}
-                  size="sm"
-                  className={
-                    creditAction === "add"
-                      ? "bg-brand-accent hover:bg-brand-accent/90 text-white"
-                      : "bg-red-600 text-white hover:bg-red-700"
-                  }
-                >
-                  {creditAction === "add" ? (
-                    <>
-                      <Plus className="h-4 w-4" /> Add Credits
-                    </>
-                  ) : (
-                    <>
-                      <Minus className="h-4 w-4" /> Remove Credits
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {/* Recent history */}
-              {creditHistory.length > 0 && (
-                <div className="border-border/50 border-t pt-4">
-                  <p className="text-muted-foreground mb-3 flex items-center gap-1.5 text-xs">
-                    <Clock className="h-3.5 w-3.5" /> Recent credit history
-                  </p>
-                  <div className="space-y-2">
-                    {creditHistory.slice(0, 5).map((entry, i) => (
-                      <div
-                        key={i}
-                        className="border-border/30 flex items-start justify-between border-b py-1.5 text-sm last:border-0"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs ${entry.action === "add"
-                                  ? "bg-brand-accent/10 text-brand-accent"
-                                  : "bg-red-50 text-red-600"
-                                }`}
-                            >
-                              {entry.action === "add" ? "+" : "−"}
-                              {entry.amount}
-                            </span>
-                            <span className="text-muted-foreground truncate">{entry.reason}</span>
-                          </div>
-                        </div>
-                        <div className="text-muted-foreground ml-3 text-xs whitespace-nowrap">
-                          {new Date(entry.date).toLocaleDateString("en-GB", {
-                            day: "numeric",
-                            month: "short",
-                          })}
-                          <span className="ml-1.5 opacity-60">· {entry.by}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
           {/* Notes */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -899,10 +699,10 @@ export function AdminMemberDetail() {
             </CardContent>
           </Card>
 
-          {/* Subscriptions */}
+          {/* Email preferences */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Subscriptions</CardTitle>
+              <CardTitle className="text-lg">Email Preferences</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -927,75 +727,14 @@ export function AdminMemberDetail() {
                 <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
                   <div className="flex items-center gap-3">
                     <Bell className="text-brand-accent h-4 w-4" />
-                    <span className="text-sm">Class reminders</span>
+                    <span className="text-sm">Service updates</span>
                   </div>
-                  <Badge variant={member.classReminders ? "default" : "outline"}>
-                    {member.classReminders ? "Enabled" : "Disabled"}
-                  </Badge>
-                </div>
-                <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
-                  <div className="flex items-center gap-3">
-                    <Bell className="text-brand-accent h-4 w-4" />
-                    <span className="text-sm">Schedule updates</span>
-                  </div>
-                  <Badge variant={member.scheduleUpdates ? "default" : "outline"}>
-                    {member.scheduleUpdates ? "Enabled" : "Disabled"}
-                  </Badge>
-                </div>
-                <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
-                  <div className="flex items-center gap-3">
-                    <Bell className="text-brand-accent h-4 w-4" />
-                    <span className="text-sm">Programme announcements</span>
-                  </div>
-                  <Badge variant={member.programAnnouncements ? "default" : "outline"}>
-                    {member.programAnnouncements ? "Enabled" : "Disabled"}
-                  </Badge>
+                  <Badge variant="outline">Transactional only</Badge>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
-
-        {/* Activity summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="border-border/50 flex items-center justify-between border-b py-2">
-                <span className="text-muted-foreground text-sm">Last class attended</span>
-                <span className="text-sm">
-                  {member.lastClassDate
-                    ? new Date(member.lastClassDate).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })
-                    : "No completed classes yet"}
-                </span>
-              </div>
-              <div className="border-border/50 flex items-center justify-between border-b py-2">
-                <span className="text-muted-foreground text-sm">Member since</span>
-                <span className="text-sm">
-                  {new Date(member.joinedDate).toLocaleDateString("en-GB", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </span>
-              </div>
-              <div className="border-border/50 flex items-center justify-between border-b py-2">
-                <span className="text-muted-foreground text-sm">Referral code</span>
-                <span className="font-mono text-sm">{member.referralCode}</span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-muted-foreground text-sm">Referral earnings (lifetime)</span>
-                <span className="text-sm">£{member.referralBalance}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </AdminLayout>
   );

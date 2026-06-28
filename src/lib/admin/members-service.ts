@@ -1,38 +1,17 @@
-import { ClassBookingStatus, MembershipStatus, UserRole } from "@prisma/client";
+import { MembershipStatus, UserRole } from "@prisma/client";
 import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { db } from "@/lib/db";
-import { adjustCredits, getCreditBalance } from "@/lib/credits/credit-service";
 import { getReferralBalancePence } from "@/lib/referrals/referral-discount-service";
 import { HEALTH_CATEGORIES } from "@/data/health-profile-data";
 import { getInstructorProfilesByIds } from "@/lib/content";
 import type { AdminHealthProfileDto } from "@/lib/api/types";
 
 function mapMembershipLabel(plan: string | null, status?: MembershipStatus | null) {
-  if (!plan) return "Pay as you Go";
+  if (!plan) return "No 1:1 service linked";
   if (plan === "instructor") return "Unlimited (instructor)";
-  const title = plan === "movewell" ? "Move Well Membership" : "Unknown";
+  const title = plan === "movewell" ? "Retired Move Well Membership" : "Unknown";
   if (status && status !== "active") return `${title} (${status.replaceAll("_", " ")})`;
   return title;
-}
-
-function toRiskStatus(params: {
-  status: MembershipStatus | null;
-  lastClassDate: Date | null;
-  membershipPlan: string | null;
-  creditBalance: number;
-}) {
-  const today = Date.now();
-  const lastClassTs = params.lastClassDate?.getTime() ?? 0;
-  const twoWeeksAgo = today - 14 * 86400000;
-  const fourWeeksAgo = today - 28 * 86400000;
-
-  if (params.status !== "active") return null;
-  if (params.membershipPlan && lastClassTs && lastClassTs < fourWeeksAgo) return "high";
-  if (lastClassTs && lastClassTs < twoWeeksAgo) return "medium";
-  if (!params.membershipPlan && params.creditBalance > 0 && params.creditBalance <= 2) {
-    return "credits-expiring";
-  }
-  return null;
 }
 
 const CONDITION_LOOKUP = new Map(
@@ -125,53 +104,6 @@ function toNotificationSnapshot(input: {
   };
 }
 
-async function getBookingMetrics(userIds: string[]) {
-  if (userIds.length === 0) {
-    return new Map<string, { totalBookings: number; lastClassDate: Date | null }>();
-  }
-
-  const bookings = await db.classBooking.findMany({
-    where: {
-      userId: { in: userIds },
-    },
-    select: {
-      userId: true,
-      status: true,
-      session: {
-        select: {
-          startsAtUtc: true,
-        },
-      },
-    },
-  });
-
-  const now = Date.now();
-  const metrics = new Map<string, { totalBookings: number; lastClassDate: Date | null }>();
-
-  for (const userId of userIds) {
-    metrics.set(userId, { totalBookings: 0, lastClassDate: null });
-  }
-
-  for (const booking of bookings) {
-    const current = metrics.get(booking.userId) || { totalBookings: 0, lastClassDate: null };
-    current.totalBookings += 1;
-    const sessionStartsAt = booking.session.startsAtUtc;
-    const isActiveOrHistorical =
-      booking.status !== ClassBookingStatus.cancelled && sessionStartsAt.getTime() <= now;
-
-    if (
-      isActiveOrHistorical &&
-      (!current.lastClassDate || sessionStartsAt.getTime() > current.lastClassDate.getTime())
-    ) {
-      current.lastClassDate = sessionStartsAt;
-    }
-
-    metrics.set(booking.userId, current);
-  }
-
-  return metrics;
-}
-
 export async function listAdminMembers(filters: {
   search?: string;
   status?: string;
@@ -202,11 +134,6 @@ export async function listAdminMembers(filters: {
         where: { status: "rewarded" },
         select: { id: true },
       },
-      creditLedgerEntries: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: { createdAt: true },
-      },
       notificationPreference: {
         select: {
           marketingEmails: true,
@@ -233,23 +160,14 @@ export async function listAdminMembers(filters: {
   );
   const profiles = await getInstructorProfilesByIds(profileIds);
   const profileNameById = new Map(profiles.map((p) => [p.id, p.name]));
-  const bookingMetrics = await getBookingMetrics(users.map((user) => user.id));
 
   const rows = await Promise.all(
     users.map(async (user) => {
       const membership = user.membershipSubscriptions[0] || null;
-      const creditBalance = await getCreditBalance(user.id);
       const referralBalancePence = await getReferralBalancePence(user.id);
-      const metrics = bookingMetrics.get(user.id) || { totalBookings: 0, lastClassDate: null };
       const notification = toNotificationSnapshot({
         notificationPreference: user.notificationPreference,
         newsletterSubscriber: user.newsletterSubscriber,
-      });
-      const risk = toRiskStatus({
-        status: membership?.status || null,
-        membershipPlan: membership?.plan || null,
-        lastClassDate: metrics.lastClassDate,
-        creditBalance,
       });
 
       return {
@@ -270,12 +188,12 @@ export async function listAdminMembers(filters: {
             | "expired"
             | "past_due"
             | undefined) || "active",
-        creditBalance,
+        creditBalance: 0,
         referralCode: user.referralCode || "",
         referralsCount: user.referralEventsCreated.length,
         referralBalance: Math.floor(referralBalancePence / 100),
-        totalBookings: metrics.totalBookings,
-        lastClassDate: metrics.lastClassDate?.toISOString().slice(0, 10) || null,
+        totalBookings: 0,
+        lastClassDate: null,
         notes: user.adminNotes || "",
         ...notification,
         isInstructor: Boolean(user.instructorProfileEntryId),
@@ -284,7 +202,7 @@ export async function listAdminMembers(filters: {
           ? profileNameById.get(user.instructorProfileEntryId) || null
           : null,
         isCoachingClient: user.isCoachingClient,
-        risk,
+        risk: null,
       };
     })
   );
@@ -315,10 +233,6 @@ export async function getAdminMemberDetail(userId: string) {
         orderBy: { createdAt: "desc" },
         take: 1,
       },
-      creditLedgerEntries: {
-        orderBy: { createdAt: "desc" },
-        take: 20,
-      },
       referralEventsCreated: {
         where: { status: "rewarded" },
         select: { id: true },
@@ -347,12 +261,7 @@ export async function getAdminMemberDetail(userId: string) {
   if (!user) return null;
 
   const membership = user.membershipSubscriptions[0] || null;
-  const creditBalance = await getCreditBalance(user.id);
   const referralBalancePence = await getReferralBalancePence(user.id);
-  const metrics = (await getBookingMetrics([user.id])).get(user.id) || {
-    totalBookings: 0,
-    lastClassDate: null,
-  };
   const profile = user.instructorProfileEntryId
     ? (await getInstructorProfilesByIds([user.instructorProfileEntryId]))[0]
     : null;
@@ -379,26 +288,19 @@ export async function getAdminMemberDetail(userId: string) {
         | "expired"
         | "past_due"
         | undefined) || "active",
-    creditBalance,
+    creditBalance: 0,
     referralCode: user.referralCode || "",
     referralsCount: user.referralEventsCreated.length,
     referralBalance: Math.floor(referralBalancePence / 100),
-    totalBookings: metrics.totalBookings,
-    lastClassDate: metrics.lastClassDate?.toISOString().slice(0, 10) || null,
+    totalBookings: 0,
+    lastClassDate: null,
     notes: user.adminNotes || "",
     ...notification,
     isInstructor: Boolean(user.instructorProfileEntryId),
     instructorProfileEntryId: user.instructorProfileEntryId || null,
     instructorProfileName: profile?.name || null,
     isCoachingClient: user.isCoachingClient,
-    creditHistory: user.creditLedgerEntries.map((entry) => ({
-      id: entry.id,
-      date: entry.createdAt.toISOString().slice(0, 10),
-      amount: entry.amount,
-      reason: entry.description,
-      type: entry.type,
-      by: entry.createdByUserId || "system",
-    })),
+    creditHistory: [],
     healthProfile: toAdminHealthProfile(user.healthProfile),
   };
 }
@@ -507,35 +409,6 @@ export async function adminAdjustCredits(params: {
   requestPath?: string | null;
   requestIp?: string | null;
 }) {
-  const beforeBalance = await getCreditBalance(params.userId);
-  await adjustCredits({
-    userId: params.userId,
-    adminUserId: params.adminUserId,
-    delta: params.delta,
-    reason: params.reason,
-  });
-
-  const member = await getAdminMemberDetail(params.userId);
-
-  if (member) {
-    await createAdminActionLog({
-      actorUserId: params.adminUserId,
-      actionType: "member_credits_adjusted",
-      targetType: "user",
-      targetId: params.userId,
-      reason: params.reason,
-      requestId: params.requestId,
-      requestPath: params.requestPath,
-      requestIp: params.requestIp,
-      oldValueJson: {
-        creditBalance: beforeBalance,
-      },
-      newValueJson: {
-        creditBalance: member.creditBalance,
-        delta: params.delta,
-      },
-    });
-  }
-
-  return member;
+  void params;
+  throw new Error("CLASS_CREDITS_RETIRED");
 }

@@ -61,7 +61,7 @@ async function sendDunningNotice(params: {
   const firstName = dunningCase.user.firstName || dunningCase.user.name || "there";
   const amount = formatMoney(dunningCase.amountDuePence);
   const graceEnd = formatDate(dunningCase.graceExtendedUntil || dunningCase.graceEndsAt);
-  const portalUrl = `${APP_URL}/dashboard/membership`;
+  const portalUrl = `${APP_URL}/dashboard/coaching`;
   const isRecovery = params.kind === "recovered";
   const isSuspended = params.kind === "suspended";
 

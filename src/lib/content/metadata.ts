@@ -14,10 +14,6 @@ const DEFAULT_SEO_KEYWORDS = [
 
 const PAGE_PATHS: Record<string, string> = {
   home: "/",
-  classes: "/classes",
-  "classes-yoga": "/classes#yoga",
-  "classes-strength": "/classes#strength",
-  "classes-small-groups": "/classes/small-groups",
   pt: "/coaching",
   coaching: "/coaching",
   "coaching-apply": "/coaching/apply",
@@ -32,7 +28,6 @@ const PAGE_PATHS: Record<string, string> = {
   "coaching-agreement": "/coaching-agreement",
   about: "/about",
   contact: "/contact",
-  schedule: "/schedule",
   retreats: "/retreats",
   blog: "/blog",
 };

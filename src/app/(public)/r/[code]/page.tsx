@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ReferralLandingPage } from "@/views/referral-landing";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "You\'ve Been Invited",
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <ReferralLandingPage />;
+  redirect("/coaching");
 }

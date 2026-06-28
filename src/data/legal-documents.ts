@@ -39,10 +39,10 @@ export const LEGAL_DOCUMENTS: LegalDocumentSeed[] = [
     effectiveDate: ONE_TO_ONE_SCOPE_EFFECTIVE_DATE,
     seoTitle: "Terms & Conditions - Shruti Turner",
     seoDescription:
-      "Terms and conditions covering memberships, classes, coaching, retreats, payments, bookings and service use.",
+      "Terms and conditions covering 1:1 services, retreats, payments, bookings and service use.",
     body: `1. About these terms
 
-These Terms & Conditions govern your use of the Shruti Turner website, your account and any services you buy, book or access through the platform. This includes Move Well Classes, memberships, credit packs, small group programmes, retreats, digital content and 1:1 services.
+These Terms & Conditions govern your use of the Shruti Turner website, your account and any services you buy, book or access through the platform. This includes 1:1 services, retreats, workshops, online retreat rooms, digital content and educational resources.
 
 By creating an account, booking a service or using the website, you agree to these terms.
 
@@ -65,12 +65,9 @@ Shruti Turner's services are for adults seeking wellbeing, recreational fitness,
 4. Service overview
 
 Services available through the platform may include:
-- Move Well Membership
-- class credit packs
-- live online classes
-- small group programmes
 - one-to-one coaching and training support
 - retreats, workshops and other events
+- online retreat rooms and live calls
 - educational and digital resources
 
 Specific service details, inclusions and prices are shown on the relevant page at the time of purchase or booking.
@@ -102,47 +99,25 @@ You may not impersonate another person, share access to paid services inappropri
 
 We may suspend or restrict access where we reasonably suspect misuse, fraud, abuse or behaviour that creates risk for other clients, instructors or the business.
 
-8. Memberships
+8. Subscriptions and recurring 1:1 services
 
-Move Well Membership terms, pricing, billing interval and included benefits are shown on the pricing and membership pages.
+Some 1:1 services may be billed on a recurring basis. The relevant service page, acceptance email or checkout flow will show the price, billing interval, inclusions and cancellation terms before payment.
 
-Memberships renew automatically unless cancelled in accordance with the published cancellation rules.
+Recurring service benefits are personal to the named account holder and cannot be transferred unless we expressly agree otherwise.
 
-Before a membership checkout is completed, we provide subscription-specific pre-contract information covering price, renewal timing, reminder notices, cancellation method and cooling-off rights.
+9. Bookings, attendance and live access
 
-If you enter a membership online, you can also cancel it online from your membership dashboard.
+Retreats, workshops, calls and online rooms are subject to availability and any booking window shown in the product.
 
-We send separate reminder and end-of-contract notices for memberships, including reminders before the free trial ends, before annual renewals and periodic reminders for rolling monthly memberships.
+Late cancellation, attendance and access handling are governed by the booking rules published in the product at the time of booking.
 
-Memberships include statutory cooling-off rights where required by consumer law, including an initial cooling-off period after signup and further renewal cooling-off rights after trial conversion and annual renewals.
+Online rooms may include a late-join cutoff. If a participant has not joined within the permitted window, entry may be refused for safety and session-quality reasons.
 
-Membership benefits are personal to the named account holder and cannot be transferred unless we expressly agree otherwise.
+We may record attendance, room joins, room leaves, moderator actions and related operational events to manage online rooms, retreats and service delivery.
 
-9. Credit packs
+10. Live room conduct
 
-Credit packs give access to the number of classes shown at purchase.
-
-Credits:
-- are personal to the named account holder
-- expire in line with the expiry window shown at purchase
-- do not auto-renew
-- cannot be exchanged for cash
-
-Where a class is cancelled by us, the relevant credit will be restored or an appropriate alternative will be provided.
-
-10. Class booking, attendance and late entry
-
-Class bookings are subject to availability and any booking window shown in the product.
-
-Late cancellation, no-show, waitlist and attendance handling are governed by the booking rules published in the product at the time of booking.
-
-Live classes may include a late-join cutoff. If a participant has not joined within the permitted window, entry may be refused for safety and class-quality reasons.
-
-We may record attendance, room joins, room leaves, moderator actions and related operational events to manage classes, no-shows and service delivery.
-
-11. Live room conduct
-
-During live classes, events and coaching calls, you must behave respectfully toward instructors and other participants.
+During online rooms, events, retreats and 1:1 calls, you must behave respectfully toward instructors and other participants.
 
 You must not:
 - harass, intimidate or disrupt others
@@ -152,15 +127,15 @@ You must not:
 
 We may mute, remove, suspend or restrict participants where conduct is unsafe or disruptive.
 
-12. Coaching services
+11. 1:1 services
 
-Coaching services may include programming, check-ins, calls, reviews, messaging, Everfit access and related support, depending on the tier purchased or agreed.
+1:1 services may include programming, check-ins, calls, reviews, messaging, Everfit access and related support, depending on the offer purchased or agreed.
 
-Response times, review cadence and inclusions vary by tier. The specific package or agreement you purchase governs what is included.
+Response times, review cadence and inclusions vary by offer. The specific package or agreement you purchase governs what is included.
 
 1:1 services are not unlimited medical support, crisis support or emergency communication channels.
 
-13. Retreats, workshops and events
+12. Retreats, workshops and events
 
 Retreats and in-person or hybrid events may require additional forms, screening, waiver acceptance or travel information.
 
@@ -168,7 +143,7 @@ You are responsible for arranging your own travel, insurance and any personal re
 
 Travel insurance with appropriate medical and cancellation cover is strongly recommended and may be mandatory for some retreats.
 
-14. Payments
+13. Payments
 
 Payments are processed securely by Stripe or another named payment provider. We do not store full payment card details.
 
@@ -176,25 +151,25 @@ You must pay all charges due at the point required by the relevant service.
 
 If payment fails, we may suspend access, cancel a booking or prevent further bookings until payment is resolved.
 
-15. Refunds and cancellations
+14. Refunds and cancellations
 
 Refund and cancellation terms vary by service. The Refund & Cancellation Policy published at /refund-policy forms part of these terms.
 
 Where a more specific service page sets out additional cancellation terms, those service-specific terms also apply.
 
-16. Intellectual property
+15. Intellectual property
 
-All website content, class materials, programme materials, videos, recordings, copy, branding and educational resources remain the intellectual property of Shruti Turner unless stated otherwise.
+All website content, 1:1 materials, retreat materials, videos, recordings, copy, branding and educational resources remain the intellectual property of Shruti Turner unless stated otherwise.
 
 You receive a personal, non-transferable licence to use purchased materials for your own personal use only.
 
 You must not copy, resell, distribute, upload or commercially exploit these materials without written permission.
 
-17. Acceptable use
+16. Acceptable use
 
 Your use of the website and services is also subject to the Acceptable Use Policy at /acceptable-use.
 
-18. Liability
+17. Liability
 
 Nothing in these terms excludes or limits liability that cannot lawfully be excluded or limited under applicable law.
 
@@ -202,13 +177,13 @@ Subject to that, we are not liable for indirect or consequential loss, loss of p
 
 Our total liability in relation to any claim connected with paid services will, to the fullest extent permitted by law, be limited to the amount paid by you for the relevant service giving rise to the claim.
 
-19. Changes to services or terms
+18. Changes to services or terms
 
-We may update services, schedules, pricing, policies and these terms from time to time.
+We may update services, availability, pricing, policies and these terms from time to time.
 
 Where changes materially affect ongoing services or legal rights, we will take reasonable steps to notify account holders. Continued use of the platform after the updated terms take effect constitutes acceptance of the updated version.
 
-20. Governing law and contact
+19. Governing law and contact
 
 These terms are governed by the laws of England and Wales.
 
@@ -237,7 +212,7 @@ This policy explains how we collect, use, store, share and protect personal data
 - visit the website
 - create an account
 - subscribe to emails
-- book classes, memberships, credits, programmes, retreats or 1:1 services
+- buy or book 1:1 services, retreats, workshops or online rooms
 - complete health, 1:1, retreat or support forms
 - contact us directly
 
@@ -246,7 +221,7 @@ This policy explains how we collect, use, store, share and protect personal data
 Depending on how you use the website or services, we may collect:
 - name, email address, phone numberand account details
 - date of birth, timezone and account preferences
-- booking, attendance, membership, credit-pack and billing history
+- booking, attendance, retreat, 1:1 service and billing history
 - referral and promotion activity
 - contact and support messages
 - newsletter and marketing preferences
@@ -276,9 +251,9 @@ We collect data:
 
 We use personal data to:
 - create and manage accounts
-- deliver memberships, bookings, credits, classes, coaching, retreats and related support
-- personalise programming and class adaptations
-- manage attendance, room access, waitlists and no-shows
+- deliver bookings, 1:1 services, retreats, online rooms and related support
+- personalise programming, adaptations and support
+- manage attendance, room access and service delivery
 - process payments, invoices, refunds and account actions
 - send transactional emails and service updates
 - respond to enquiries and support requests
@@ -302,7 +277,7 @@ We use third-party processors and service providers to operate the business. The
 - Stripe for payments and checkout
 - Postmark for transactional email delivery
 - Google where sign-in or related account services are used
-- Daily for live class and live-room service delivery
+- Daily for live-room service delivery where online rooms are used
 - Contentful for website and content management
 - Cloudflare Turnstile for spam prevention and security checks
 - hosting, infrastructure, analytics and support vendors needed to run the site
@@ -384,7 +359,7 @@ We use strictly necessary and functional technologies to:
 - support checkout, booking and account flows
 - remember interface preferences
 - remember newsletter popup or consent states
-- remember device preferences for live classes where relevant
+- remember device preferences for online rooms where relevant
 
 3. Strictly necessary technologies
 
@@ -401,7 +376,7 @@ Examples used by this platform may include:
 We also use functional browser storage for product experience features such as:
 - sidebar state and UI preferences
 - newsletter popup suppression
-- saved media-device preferences for live classes
+- saved media-device preferences for online rooms
 
 These technologies help the site remember settings you have already chosen.
 
@@ -410,7 +385,7 @@ These technologies help the site remember settings you have already chosen.
 The site may involve third-party technologies from providers such as:
 - Stripe, for checkout and payment processing
 - Google, where account sign-in or related services are used
-- Daily, for live class and live-room functionality
+- Daily, for online-room functionality
 - Cloudflare Turnstile, for bot and spam prevention
 
 These services may set their own cookies or related browser state when their tools are used.
@@ -448,10 +423,10 @@ If we introduce optional analytics or marketing technologies in future, we will 
     effectiveDate: ONE_TO_ONE_SCOPE_EFFECTIVE_DATE,
     seoTitle: "Health & Liability Waiver - Shruti Turner",
     seoDescription:
-      "Health and liability waiver for classes, coaching, retreats and other physical services.",
+      "Health and liability waiver for 1:1 services, retreats and other physical services.",
     body: `1. Understanding the service
 
-I understand that Shruti Turner's services may include strength training, yoga, movement coaching, classes, programmes, retreats and related physical activity.
+I understand that Shruti Turner's services may include strength training, yoga, movement coaching, 1:1 support, retreats, workshops and related physical activity.
 
 I understand that these services are educational movement, training and support services. They are not medical diagnosis, treatment, rehabilitation or emergency care.
 
@@ -493,57 +468,39 @@ I also understand that additional health questions or screening may be required 
     effectiveDate: EFFECTIVE_DATE,
     seoTitle: "Refund & Cancellation Policy - Shruti Turner",
     seoDescription:
-      "Refund and cancellation terms for memberships, credits, classes, programmes, coaching and retreats.",
+      "Refund and cancellation terms for 1:1 services, retreats, workshops and related services.",
     body: `1. General approach
 
-We aim to be clear and fair about cancellations, refunds, pauses and credits.
+We aim to be clear and fair about cancellations, refunds and pauses.
 
 Different services operate differently, so the specific product page and booking flow should always be checked at the time of purchase. This policy explains the general rules that apply across the platform.
 
-2. Memberships
+2. 1:1 services
 
-Memberships renew automatically until cancelled.
+Because 1:1 services reserve capacity, planning time, review time and support availability, refunds are not usually available once a paid 1:1 service period has started unless required by law or stated in the specific offer terms.
 
-You can cancel a membership online from your membership dashboard.
-
-If you cancel outside a statutory cooling-off period, your access usually continues until the end of the paid billing period unless stated otherwise in the product flow.
-
-If you cancel during an applicable statutory cooling-off period, we will process any refund required by consumer law. Where the law allows for a pro-rata deduction for services already supplied during a renewal cooling-off period, that deduction may be applied.
-
-We also send written cancellation acknowledgements and end-of-contract notices for memberships on a durable medium.
-
-3. Credit packs and class bookings
-
-Credit packs do not auto-renew and cannot usually be refunded once purchased unless required by law.
-
-Where a class booking is cancelled within the permitted cancellation window, the credit used for that booking will normally be returned to your account.
-
-If you miss a class, join too late to attend or cancel outside the permitted cancellation window, the credit or entitlement may be treated as used.
-
-4. Small group programmes and coaching services
-
-Because programmes and coaching reserve capacity, planning time, review time and support availability, refunds are not usually available once a programme or coaching period has started.
+If a recurring 1:1 service is cancelled under the agreed notice structure, Shruti will confirm when the final payment and final service period apply.
 
 Where appropriate, we may at our discretion offer:
 - a pause
 - a reschedule
-- a future-credit style arrangement
+- a future service adjustment
 
 This is not guaranteed and will depend on the service, timing and circumstances.
 
-5. Retreats and events
+3. Retreats and events
 
 Retreat or event cancellation terms are shown on the relevant retreat or event page and may vary by venue or supplier commitments.
 
 Unless a more specific page states otherwise, retreat bookings are normally non-refundable within the short-notice period before the event because accommodation and venue costs have already been committed.
 
-6. Medical issues and chronic illness fluctuations
+4. Medical issues and chronic illness fluctuations
 
 We recognise that chronic illness and pain can be unpredictable.
 
 If you need to cancel or pause because of illness, flare or another genuine health issue, please contact us as early as possible. Where we reasonably can, we will try to find a fair solution. However, this does not create an automatic right to a refund outside the published terms.
 
-7. Consumer rights and contact
+5. Consumer rights and contact
 
 Nothing in this policy limits any legal rights you may have under applicable consumer law.
 
@@ -557,10 +514,10 @@ If you have a cancellation or refund question, contact tech@thechronicyogini.com
     effectiveDate: EFFECTIVE_DATE,
     seoTitle: "Acceptable Use Policy - Shruti Turner",
     seoDescription:
-      "Rules for using the website, classes, live rooms and community spaces safely and respectfully.",
+      "Rules for using the website, online rooms and community spaces safely and respectfully.",
     body: `1. Purpose
 
-This Acceptable Use Policy explains the standards expected when using the website, your account, live rooms, bookings, classes and related services.
+This Acceptable Use Policy explains the standards expected when using the website, your account, online rooms, bookings and related services.
 
 2. Respectful behaviour
 
@@ -583,10 +540,10 @@ You must not:
 - upload or transmit malware, spam or abusive content
 - scrape, copy or automate access to the site in a way that harms the service
 
-5. Live classes and coaching spaces
+5. Online rooms and 1:1 spaces
 
 When using live rooms, chat, audio or video features, you must not:
-- disrupt the class or coaching session
+- disrupt the online room or 1:1 session
 - record or redistribute sessions without permission
 - use offensive, abusive, sexually explicit or unlawful content
 - misuse moderator or community features
@@ -652,7 +609,7 @@ Coaching communication is for service delivery only and must not be used for eme
 
 7. 1:1 service changes
 
-1:1 services are billed separately from any current or future class membership, credit, workshop or retreat offer.
+1:1 services are billed separately from any workshop or retreat offer unless a specific written offer says otherwise.
 
 If your 1:1 service changes, your billing and service entitlement may also change. Shruti will confirm the timing and any payment impact before the change is applied.
 

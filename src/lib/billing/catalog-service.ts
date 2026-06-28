@@ -2,23 +2,11 @@ import type Stripe from "stripe";
 import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { db } from "@/lib/db";
 import { getStripeClient } from "@/lib/billing/stripe-client";
-import { CREDIT_BUNDLE_CONFIG, MEMBERSHIP_CONFIG } from "@/lib/billing/price-map";
 import { coachingTiers, type CoachingOfferKey } from "@/data/marketing";
 
-export type BillingCatalogKey =
-  | "membership_movewell_monthly"
-  | "membership_movewell_annual"
-  | "credits_1"
-  | "credits_3"
-  | "credits_10"
-  | `coaching_${CoachingOfferKey}_monthly`;
+export type BillingCatalogKey = `coaching_${CoachingOfferKey}_monthly`;
 
 const CATALOG_KEYS: BillingCatalogKey[] = [
-  "membership_movewell_monthly",
-  "membership_movewell_annual",
-  "credits_1",
-  "credits_3",
-  "credits_10",
   "coaching_guided_accountability_monthly",
   "coaching_independent_training_plan_monthly",
   "coaching_guided_training_plan_monthly",
@@ -38,43 +26,12 @@ function parsePenceFromPriceLabel(priceLabel: string) {
 
 function defaultFromEnv(key: BillingCatalogKey) {
   const coachingTier = getCoachingTierForCatalogKey(key);
-  if (coachingTier) {
-    const envKey = `STRIPE_PRICE_COACHING_${coachingTier.id.toUpperCase()}_MONTHLY`;
-    return {
-      stripePriceId: process.env[envKey] || "",
-      unitAmountPence: parsePenceFromPriceLabel(coachingTier.priceLabel),
-    };
-  }
-
-  switch (key) {
-    case "membership_movewell_monthly":
-      return {
-        stripePriceId: MEMBERSHIP_CONFIG.movewell.stripePriceIdMonthly,
-        unitAmountPence: MEMBERSHIP_CONFIG.movewell.monthlyPricePence,
-      };
-    case "membership_movewell_annual":
-      return {
-        stripePriceId: MEMBERSHIP_CONFIG.movewell.stripePriceIdAnnual,
-        unitAmountPence: MEMBERSHIP_CONFIG.movewell.annualPricePence,
-      };
-    case "credits_1":
-      return {
-        stripePriceId: CREDIT_BUNDLE_CONFIG[1].stripePriceId,
-        unitAmountPence: CREDIT_BUNDLE_CONFIG[1].pricePence,
-      };
-    case "credits_3":
-      return {
-        stripePriceId: CREDIT_BUNDLE_CONFIG[3].stripePriceId,
-        unitAmountPence: CREDIT_BUNDLE_CONFIG[3].pricePence,
-      };
-    case "credits_10":
-      return {
-        stripePriceId: CREDIT_BUNDLE_CONFIG[10].stripePriceId,
-        unitAmountPence: CREDIT_BUNDLE_CONFIG[10].pricePence,
-      };
-    default:
-      return { stripePriceId: "", unitAmountPence: 0 };
-  }
+  if (!coachingTier) return { stripePriceId: "", unitAmountPence: 0 };
+  const envKey = `STRIPE_PRICE_COACHING_${coachingTier.id.toUpperCase()}_MONTHLY`;
+  return {
+    stripePriceId: process.env[envKey] || "",
+    unitAmountPence: parsePenceFromPriceLabel(coachingTier.priceLabel),
+  };
 }
 
 function catalogMetaForKey(key: BillingCatalogKey) {
@@ -89,38 +46,7 @@ function catalogMetaForKey(key: BillingCatalogKey) {
     };
   }
 
-  switch (key) {
-    case "membership_movewell_monthly":
-      return {
-        name: "Membership · Move Well (Monthly)",
-        recurring: "month" as const,
-        fallbackPence: MEMBERSHIP_CONFIG.movewell.monthlyPricePence,
-      };
-    case "membership_movewell_annual":
-      return {
-        name: "Membership · Move Well (Annual)",
-        recurring: "year" as const,
-        fallbackPence: MEMBERSHIP_CONFIG.movewell.annualPricePence,
-      };
-    case "credits_1":
-      return {
-        name: "Credits · 1 class",
-        recurring: null,
-        fallbackPence: CREDIT_BUNDLE_CONFIG[1].pricePence,
-      };
-    case "credits_3":
-      return {
-        name: "Credits · 3 classes",
-        recurring: null,
-        fallbackPence: CREDIT_BUNDLE_CONFIG[3].pricePence,
-      };
-    case "credits_10":
-      return {
-        name: "Credits · 10 classes",
-        recurring: null,
-        fallbackPence: CREDIT_BUNDLE_CONFIG[10].pricePence,
-      };
-  }
+  throw new Error(`UNSUPPORTED_BILLING_CATALOG_KEY:${key}`);
 }
 
 export async function getActiveCatalogItem(key: BillingCatalogKey) {

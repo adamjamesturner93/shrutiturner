@@ -540,73 +540,9 @@ export type DashboardSummaryDto = {
   healthDeclarationStatus: HealthDeclarationStatusDto;
   healthDeclarationLastConfirmedAt: string;
   healthDeclarationNeedsReview: boolean;
-  upcomingClasses: Array<{
-    bookingId: string;
-    sessionId: string;
-    classSlug: string;
-    className: string;
-    classType: string;
-    startsAtUtc: string;
-    durationMinutes: number;
-    entitlementType: "membership" | "credit" | "manual";
-  }>;
-  attendance: {
-    attendedCount: number;
-    thisWeekBookedCount: number;
-    currentStreakWeeks: number;
-    lastAttendedAt: string | null;
-  };
-  favourites: Array<{
-    classSlug: string;
-    className: string;
-    classType: string;
-    startsAtUtc: string | null;
-  }>;
-  suggestedClasses: Array<{
-    sessionId: string;
-    classSlug: string;
-    className: string;
-    classType: string;
-    startsAtUtc: string;
-    durationMinutes: number;
-  }>;
-  membership: MembershipStateDto["membership"];
-  credits: MembershipStateDto["credits"];
-  referral: MembershipStateDto["referral"];
 };
 
-export type AdminDashboardSummaryDto = {
-  today: {
-    date: string;
-    sessions: number;
-    liveNow: number;
-    booked: number;
-    capacity: number;
-  };
-  upcoming: Array<{
-    id: string;
-    title: string;
-    type: string;
-    startsAtUtc: string;
-    durationMinutes: number;
-    bookedCount: number;
-    capacity: number;
-    status: "draft" | "scheduled" | "live" | "completed" | "cancelled";
-  }>;
-  nearFull: Array<{
-    id: string;
-    title: string;
-    type: string;
-    startsAtUtc: string;
-    bookedCount: number;
-    capacity: number;
-  }>;
-  trends: Array<{
-    date: string;
-    booked: number;
-    attended: number;
-  }>;
-};
+export type AdminDashboardSummaryDto = Record<string, never>;
 
 export type AdminEmailDeliveryHealthDto = {
   failedCount: number;

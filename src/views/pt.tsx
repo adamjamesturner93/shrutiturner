@@ -159,11 +159,11 @@ export function PTPage() {
 
           <div className="mt-12 text-center">
             <p className="text-muted-foreground mx-auto max-w-2xl">
-              <strong>Not sure if 1:1 is right for you?</strong> Try{" "}
-              <Link href="/classes" className="text-primary underline">
-                group classes
+              <strong>Not sure if 1:1 is right for you?</strong> Read through the current{" "}
+              <Link href="/coaching" className="text-primary underline">
+                1:1 offers
               </Link>{" "}
-              first. You can always upgrade later.
+              first, or contact Shruti with a question before applying.
             </p>
           </div>
         </div>

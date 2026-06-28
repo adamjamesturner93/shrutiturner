@@ -1,8 +1,7 @@
-import { BillingRefundStatus, CreditEntryType, Prisma } from "@prisma/client";
+import { BillingRefundStatus, Prisma } from "@prisma/client";
 import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { getStripeClient } from "@/lib/billing/stripe-client";
 import { recordSubscriptionComplianceEvent } from "@/lib/billing/subscription-compliance";
-import { addCredits } from "@/lib/credits/credit-service";
 import { db } from "@/lib/db";
 
 type StripeInvoiceWithPaymentIntent = Awaited<
@@ -85,45 +84,7 @@ export async function createMembershipRefund(input: {
   }
 
   if (input.refundAsCredit) {
-    const creditAmount = input.creditAmount || Math.max(1, Math.round(input.amountPence / 900));
-    const refund = await db.billingRefund.create({
-      data: {
-        userId: membership.userId,
-        membershipId: input.membershipId,
-        actorUserId: input.actorUserId,
-        amountPence: input.amountPence,
-        reason: input.reason,
-        refundedAsCredit: true,
-        status: BillingRefundStatus.credited,
-        stripeInvoiceId: membership.latestInvoiceId,
-        metadataJson: { creditAmount } as Prisma.InputJsonValue,
-      },
-    });
-    await addCredits({
-      userId: membership.userId,
-      amount: creditAmount,
-      type: CreditEntryType.admin_adjustment,
-      description: `Membership refund credit: ${input.reason}`,
-      sourceRef: `membership_refund:${refund.id}`,
-      stripeInvoiceId: membership.latestInvoiceId,
-      createdByUserId: input.actorUserId,
-    });
-    await createAdminActionLog({
-      actorUserId: input.actorUserId,
-      actionType: "membership_refund_credit_issued",
-      targetType: "membership",
-      targetId: input.membershipId,
-      reason: input.reason,
-      requestId: input.requestId,
-      requestPath: input.requestPath,
-      requestIp: input.requestIp,
-      newValueJson: {
-        amountPence: input.amountPence,
-        creditAmount,
-        billingRefundId: refund.id,
-      },
-    });
-    return refund;
+    throw new Error("CLASS_CREDITS_RETIRED");
   }
 
   const stripe = getStripeClient();
