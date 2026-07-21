@@ -244,10 +244,10 @@ export function UnsubscribePage() {
                   Use the secure link from your email, or enter the address you want removed and
                   we&apos;ll send a confirmation link. If you&apos;re having trouble, contact{" "}
                   <a
-                    href="mailto:tech@thechronicyogini.com"
+                    href="mailto:shruti@shrutiturner.co.uk"
                     className="text-primary font-medium underline decoration-2 underline-offset-3"
                   >
-                    tech@thechronicyogini.com
+                    shruti@shrutiturner.co.uk
                   </a>
                   .
                 </p>

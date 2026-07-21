@@ -1,4 +1,4 @@
-import contentfulManagement from "contentful-management";
+import { createClient } from "contentful-management";
 import { getContentfulScriptEnv } from "./env.ts";
 
 const RETIRED_CONTENT_TYPES = [
@@ -27,7 +27,6 @@ type ContentfulEnvironment = {
 };
 
 const { spaceId, environmentId, managementToken } = getContentfulScriptEnv();
-const { createClient } = contentfulManagement;
 
 const dryRun = process.env.CONTENTFUL_PRUNE_CONFIRM !== "delete-retired-types";
 
@@ -86,9 +85,11 @@ async function run() {
   }
 }
 
-run().catch((err) => {
+try {
+  await run();
+} catch (err) {
   const message = err instanceof Error ? err.message : String(err);
   const code = (err as { code?: string } | undefined)?.code;
   console.error(`Prune failed${code ? ` (${code})` : ""}: ${message}`);
   process.exitCode = 1;
-});
+}

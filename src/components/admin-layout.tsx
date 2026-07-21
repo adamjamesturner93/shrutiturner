@@ -18,6 +18,7 @@ import {
   ArrowLeft,
   TrendingUp,
   Shield,
+  CalendarDays,
 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -29,6 +30,7 @@ interface AdminLayoutProps {
 const NAV_ITEMS = [
   { path: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { path: "/admin/coaching", label: "Coaching", icon: Compass },
+  { path: "/admin/retreats", label: "Retreats", icon: CalendarDays },
   { path: "/admin/members", label: "Members", icon: Users },
   { path: "/admin/blog-comments", label: "Blog Comments", icon: MessageCircle },
   { path: "/admin/newsletter", label: "Newsletter", icon: Mail },

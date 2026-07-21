@@ -303,6 +303,24 @@ export function HomePage({ recentPosts, testimonials }: HomePageProps) {
             ))}
           </div>
         </div>
+        <div className="border-brand-white/12 bg-brand-white/7 mt-8 grid gap-6 rounded-[1.6rem] border p-6 shadow-[0_20px_60px_rgba(0,0,0,0.12)] md:grid-cols-[auto_1fr_auto] md:items-center">
+          <div className="bg-brand-accent-light/15 flex h-12 w-12 items-center justify-center rounded-2xl">
+            <CalendarDays className="text-brand-accent-light h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-xl">Retreats for movement, rest and recovery.</h3>
+            <p className="text-brand-white/72 mt-2 text-sm leading-relaxed">
+              Small retreat experiences for people who want adaptive movement, thoughtful pacing and
+              space to recover without pressure to perform wellness.
+            </p>
+          </div>
+          <Button asChild variant="secondary" className="justify-between">
+            <Link href="/retreats">
+              Explore retreats
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
       </MarketingSection>
 
       <MarketingSection id="work-with-me" className="bg-brand-dark text-brand-white">

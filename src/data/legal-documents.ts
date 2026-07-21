@@ -50,7 +50,7 @@ By creating an account, booking a service or using the website, you agree to the
 
 Shruti Turner provides rehabilitation-informed strength and yoga services for adults including people living with chronic illness, pain, fatigue, autoimmune conditions and hypermobility.
 
-For general enquiries, email tech@thechronicyogini.com.
+For general enquiries, email shruti@shrutiturner.co.uk.
 
 3. Eligibility
 
@@ -214,7 +214,7 @@ These terms are governed by the laws of England and Wales.
 
 Any dispute arising in connection with these terms or the services will be subject to the courts of England and Wales, unless mandatory consumer law requires otherwise.
 
-For questions about these terms, contact tech@thechronicyogini.com.`,
+For questions about these terms, contact shruti@shrutiturner.co.uk.`,
   },
   {
     id: "legal-privacy",
@@ -547,7 +547,7 @@ If you need to cancel or pause because of illness, flare or another genuine heal
 
 Nothing in this policy limits any legal rights you may have under applicable consumer law.
 
-If you have a cancellation or refund question, contact tech@thechronicyogini.com as soon as possible and include the relevant service, booking or order details.`,
+If you have a cancellation or refund question, contact shruti@shrutiturner.co.uk as soon as possible and include the relevant service, booking or order details.`,
   },
   {
     id: "legal-acceptable-use",
@@ -597,7 +597,7 @@ If we reasonably believe this policy has been breached, we may remove content, c
 
 7. Reporting concerns
 
-If you experience or witness misuse of the service, contact tech@thechronicyogini.com so it can be reviewed.`,
+If you experience or witness misuse of the service, contact shruti@shrutiturner.co.uk so it can be reviewed.`,
   },
   {
     id: "legal-coaching-agreement",

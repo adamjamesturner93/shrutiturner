@@ -485,10 +485,10 @@ export function ContactPage() {
                   <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
                     You can email{" "}
                     <a
-                      href="mailto:tech@thechronicyogini.com"
+                      href="mailto:shruti@shrutiturner.co.uk"
                       className="text-primary font-medium underline decoration-2 underline-offset-3"
                     >
-                      tech@thechronicyogini.com
+                      shruti@shrutiturner.co.uk
                     </a>{" "}
                     directly if that is easier.
                   </p>

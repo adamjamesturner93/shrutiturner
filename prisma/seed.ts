@@ -11,6 +11,9 @@ import {
   PrismaClient,
   ReferralLedgerType,
   RetreatBookingStatus,
+  RetreatBookingUnit,
+  RetreatDepositType,
+  RetreatInventoryType,
   RetreatPaymentStatus,
   SmallGroupEnrollmentStatus,
   SmallGroupProgrammeStatus,
@@ -176,6 +179,27 @@ function toSeedKey(value: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
+}
+
+function subtractDays(date: Date, days: number) {
+  return new Date(date.getTime() - days * 86400000);
+}
+
+function seedDateTime(dateValue: string, fallbackTime: string) {
+  return new Date(dateValue.includes("T") ? dateValue : `${dateValue}T${fallbackTime}.000Z`);
+}
+
+function calculateSeedDepositPence(input: {
+  totalPence: number;
+  depositType: "percentage" | "fixed_amount" | "full_payment";
+  depositPercentageBasisPoints?: number;
+  fixedDepositAmountPence?: number;
+}) {
+  if (input.depositType === "full_payment") return input.totalPence;
+  if (input.depositType === "fixed_amount") {
+    return Math.min(input.fixedDepositAmountPence ?? input.totalPence, input.totalPence);
+  }
+  return Math.round((input.totalPence * (input.depositPercentageBasisPoints ?? 0)) / 10000);
 }
 
 function runSeedBillingDataset() {
@@ -642,13 +666,13 @@ async function seedScenarioUsers(
 }
 
 async function seedAdminUsers() {
-  const adminEmails = (process.env.ADMIN_EMAILS || "tech@thechronicyogini.com")
+  const adminEmails = (process.env.ADMIN_EMAILS || "shruti@shrutiturner.co.uk")
     .split(",")
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean);
 
   for (const email of adminEmails) {
-    const isPrimaryInstructor = email === "tech@thechronicyogini.com";
+    const isPrimaryInstructor = email === "shruti@shrutiturner.co.uk";
     await upsertUser({
       email,
       firstName: isPrimaryInstructor ? "Shruti" : "Admin",
@@ -682,7 +706,7 @@ async function seedCurrentAcceptancesForLocalUsers(
       OR: [
         { email: { endsWith: "@example.com" } },
         { email: { endsWith: "@shrutiturner.local" } },
-        { email: { equals: "tech@thechronicyogini.com" } },
+        { email: { equals: "shruti@shrutiturner.co.uk" } },
       ],
     },
     select: {
@@ -705,20 +729,43 @@ async function seedRetreatInventory(retreatUserId: string, instructorUserId?: st
   for (const retreat of retreats) {
     for (const date of retreat.dates) {
       const retreatDateId = `seed_retreat_date_${retreat.slug}_${date.id}`;
+      const startsAt = seedDateTime(date.startDateTime || date.startDate, "15:00:00");
+      const endsAt = seedDateTime(date.endDateTime || date.endDate, "10:00:00");
+      const balanceDueAt = date.balanceDueDaysBeforeStart
+        ? subtractDays(startsAt, date.balanceDueDaysBeforeStart)
+        : null;
+      const firstRate =
+        date.roomOptions[0]?.ratePlans[0]?.totalPricePence ?? retreat.normalPrice * 100;
+      const firstDeposit = calculateSeedDepositPence({
+        totalPence: firstRate,
+        depositType: date.depositType,
+        depositPercentageBasisPoints: date.depositPercentageBasisPoints,
+        fixedDepositAmountPence: date.fixedDepositAmountPence,
+      });
       const retreatDate = await prisma.retreatDate.upsert({
         where: { externalDateId: date.id },
         update: {
           retreatSlug: retreat.slug,
           retreatTitleSnapshot: retreat.title,
           retreatLocationSnapshot: retreat.location,
-          startsAt: new Date(`${date.startDate}T15:00:00.000Z`),
-          endsAt: new Date(`${date.endDate}T10:00:00.000Z`),
+          retreatType: date.retreatType,
+          timezone: "Europe/London",
+          startsAt,
+          endsAt,
           capacity: date.totalSpaces,
           status: date.availableSpaces > 0 ? "open" : "sold_out",
           currency: retreat.currency,
-          pricePence: retreat.normalPrice * 100,
-          depositAmountPence: date.roomOptions[0]?.depositPence ?? 30000,
-          balanceDueAt: datePlus(45),
+          pricePence: firstRate,
+          depositAmountPence: firstDeposit,
+          balanceDueAt,
+          isRecorded: date.isRecorded === true,
+          replayAccessDurationDays: date.replayAccessDurationDays ?? null,
+          paymentPlanSnapshotJson: {
+            depositType: date.depositType,
+            depositPercentageBasisPoints: date.depositPercentageBasisPoints ?? null,
+            fixedDepositAmountPence: date.fixedDepositAmountPence ?? null,
+            balanceDueDaysBeforeStart: date.balanceDueDaysBeforeStart ?? null,
+          },
         },
         create: {
           id: retreatDateId,
@@ -726,19 +773,56 @@ async function seedRetreatInventory(retreatUserId: string, instructorUserId?: st
           retreatSlug: retreat.slug,
           retreatTitleSnapshot: retreat.title,
           retreatLocationSnapshot: retreat.location,
-          startsAt: new Date(`${date.startDate}T15:00:00.000Z`),
-          endsAt: new Date(`${date.endDate}T10:00:00.000Z`),
+          retreatType: date.retreatType,
+          timezone: "Europe/London",
+          startsAt,
+          endsAt,
           capacity: date.totalSpaces,
           status: date.availableSpaces > 0 ? "open" : "sold_out",
           currency: retreat.currency,
-          pricePence: retreat.normalPrice * 100,
-          depositAmountPence: date.roomOptions[0]?.depositPence ?? 30000,
-          balanceDueAt: datePlus(45),
+          pricePence: firstRate,
+          depositAmountPence: firstDeposit,
+          balanceDueAt,
+          isRecorded: date.isRecorded === true,
+          replayAccessDurationDays: date.replayAccessDurationDays ?? null,
+          paymentPlanSnapshotJson: {
+            depositType: date.depositType,
+            depositPercentageBasisPoints: date.depositPercentageBasisPoints ?? null,
+            fixedDepositAmountPence: date.fixedDepositAmountPence ?? null,
+            balanceDueDaysBeforeStart: date.balanceDueDaysBeforeStart ?? null,
+          },
         },
       });
 
       for (const roomOption of date.roomOptions) {
-        await prisma.retreatRoomOption.upsert({
+        const authoritativePricePence =
+          roomOption.ratePlans[0]?.totalPricePence ?? roomOption.normalPricePence;
+        const authoritativeDepositPence = calculateSeedDepositPence({
+          totalPence: authoritativePricePence,
+          depositType: date.depositType,
+          depositPercentageBasisPoints: date.depositPercentageBasisPoints,
+          fixedDepositAmountPence: date.fixedDepositAmountPence,
+        });
+        const inventoryPool = await prisma.retreatInventoryPool.upsert({
+          where: { id: `seed_retreat_inventory_${retreat.slug}_${date.id}_${roomOption.id}` },
+          update: {
+            retreatDateId: retreatDate.id,
+            inventoryType: roomOption.inventoryType as RetreatInventoryType,
+            name: roomOption.label,
+            totalQuantity: roomOption.inventoryQuantity,
+            active: true,
+          },
+          create: {
+            id: `seed_retreat_inventory_${retreat.slug}_${date.id}_${roomOption.id}`,
+            retreatDateId: retreatDate.id,
+            inventoryType: roomOption.inventoryType as RetreatInventoryType,
+            name: roomOption.label,
+            totalQuantity: roomOption.inventoryQuantity,
+            active: true,
+          },
+        });
+
+        const dbRoomOption = await prisma.retreatRoomOption.upsert({
           where: {
             retreatDateId_externalRoomOptionId: {
               retreatDateId: retreatDate.id,
@@ -746,32 +830,135 @@ async function seedRetreatInventory(retreatUserId: string, instructorUserId?: st
             },
           },
           update: {
+            inventoryPoolId: inventoryPool.id,
             label: roomOption.label,
             description: roomOption.description,
             roomType: roomOption.type,
+            bookingUnit: roomOption.bookingUnit as RetreatBookingUnit,
             guestsIncluded: roomOption.guestsIncluded,
+            guestCountPerUnit: roomOption.guestCountPerUnit ?? null,
+            physicalRoomCount: roomOption.physicalRoomCount ?? null,
+            bedsPerPhysicalRoom: roomOption.bedsPerPhysicalRoom ?? null,
+            allowedGuestCountsJson: roomOption.allowedGuestCounts ?? Prisma.JsonNull,
             capacity: roomOption.capacity,
             availableSpots: roomOption.availableSpots,
-            pricePence: roomOption.normalPricePence,
-            depositAmountPence: roomOption.depositPence ?? 30000,
+            pricePence: authoritativePricePence,
+            pricePerPersonPence: roomOption.pricePerPersonPence ?? null,
+            roomCount:
+              roomOption.bookingUnit === "whole_room"
+                ? roomOption.inventoryQuantity
+                : (roomOption.physicalRoomCount ?? 0),
+            depositAmountPence: authoritativeDepositPence,
             isWaitlistOnly: roomOption.isWaitlistOnly === true,
+            displayOrder: roomOption.displayOrder ?? 0,
+            active: true,
           },
           create: {
             id: `seed_retreat_room_${retreat.slug}_${roomOption.id}`,
             retreatDateId: retreatDate.id,
+            inventoryPoolId: inventoryPool.id,
             externalRoomOptionId: roomOption.id,
             label: roomOption.label,
             description: roomOption.description,
             roomType: roomOption.type,
+            bookingUnit: roomOption.bookingUnit as RetreatBookingUnit,
             guestsIncluded: roomOption.guestsIncluded,
+            guestCountPerUnit: roomOption.guestCountPerUnit ?? null,
+            physicalRoomCount: roomOption.physicalRoomCount ?? null,
+            bedsPerPhysicalRoom: roomOption.bedsPerPhysicalRoom ?? null,
+            allowedGuestCountsJson: roomOption.allowedGuestCounts ?? Prisma.JsonNull,
             capacity: roomOption.capacity,
             availableSpots: roomOption.availableSpots,
-            pricePence: roomOption.normalPricePence,
-            depositAmountPence: roomOption.depositPence ?? 30000,
+            pricePence: authoritativePricePence,
+            pricePerPersonPence: roomOption.pricePerPersonPence ?? null,
+            roomCount:
+              roomOption.bookingUnit === "whole_room"
+                ? roomOption.inventoryQuantity
+                : (roomOption.physicalRoomCount ?? 0),
+            depositAmountPence: authoritativeDepositPence,
             isWaitlistOnly: roomOption.isWaitlistOnly === true,
+            displayOrder: roomOption.displayOrder ?? 0,
+            active: true,
           },
         });
+
+        for (const ratePlan of roomOption.ratePlans) {
+          await prisma.retreatRatePlan.upsert({
+            where: {
+              roomOptionId_guestCount: {
+                roomOptionId: dbRoomOption.id,
+                guestCount: ratePlan.guestCount,
+              },
+            },
+            update: {
+              totalPricePence: ratePlan.totalPricePence,
+              earlyBirdPricePence: ratePlan.earlyBirdPricePence ?? null,
+              earlyBirdEndsAt: ratePlan.earlyBirdEndsAt ? new Date(ratePlan.earlyBirdEndsAt) : null,
+              currency: retreat.currency,
+              active: true,
+            },
+            create: {
+              id: `seed_retreat_rate_${retreat.slug}_${date.id}_${roomOption.id}_${ratePlan.guestCount}`,
+              roomOptionId: dbRoomOption.id,
+              guestCount: ratePlan.guestCount,
+              totalPricePence: ratePlan.totalPricePence,
+              earlyBirdPricePence: ratePlan.earlyBirdPricePence ?? null,
+              earlyBirdEndsAt: ratePlan.earlyBirdEndsAt ? new Date(ratePlan.earlyBirdEndsAt) : null,
+              currency: retreat.currency,
+              active: true,
+            },
+          });
+        }
+
+        const roomUnitCount =
+          roomOption.bookingUnit === "whole_room"
+            ? roomOption.inventoryQuantity
+            : (roomOption.physicalRoomCount ?? 0);
+        for (let index = 1; index <= roomUnitCount; index += 1) {
+          await prisma.retreatRoomUnit.upsert({
+            where: {
+              retreatDateId_roomOptionId_label: {
+                retreatDateId: retreatDate.id,
+                roomOptionId: dbRoomOption.id,
+                label: `${roomOption.label} ${index}`,
+              },
+            },
+            update: {
+              status: "available",
+            },
+            create: {
+              id: `seed_retreat_room_unit_${retreat.slug}_${date.id}_${roomOption.id}_${index}`,
+              retreatDateId: retreatDate.id,
+              roomOptionId: dbRoomOption.id,
+              label: `${roomOption.label} ${index}`,
+              status: "available",
+            },
+          });
+        }
       }
+
+      await prisma.retreatDepositRule.upsert({
+        where: { id: `seed_retreat_deposit_rule_${retreat.slug}_${date.id}` },
+        update: {
+          retreatDateId: retreatDate.id,
+          depositType: date.depositType as RetreatDepositType,
+          depositPercentageBasisPoints: date.depositPercentageBasisPoints ?? null,
+          fixedDepositAmountPence: date.fixedDepositAmountPence ?? null,
+          balanceDueAt,
+          balanceDueDaysBeforeStart: date.balanceDueDaysBeforeStart ?? null,
+          active: true,
+        },
+        create: {
+          id: `seed_retreat_deposit_rule_${retreat.slug}_${date.id}`,
+          retreatDateId: retreatDate.id,
+          depositType: date.depositType as RetreatDepositType,
+          depositPercentageBasisPoints: date.depositPercentageBasisPoints ?? null,
+          fixedDepositAmountPence: date.fixedDepositAmountPence ?? null,
+          balanceDueAt,
+          balanceDueDaysBeforeStart: date.balanceDueDaysBeforeStart ?? null,
+          active: true,
+        },
+      });
 
       if (instructorUserId) {
         await prisma.retreatDateInstructorAssignment.upsert({
@@ -790,15 +977,15 @@ async function seedRetreatInventory(retreatUserId: string, instructorUserId?: st
     }
   }
 
-  const sankalpaDate = await prisma.retreatDate.findUniqueOrThrow({
-    where: { externalDateId: "1a" },
+  const seedRetreatDate = await prisma.retreatDate.findUniqueOrThrow({
+    where: { externalDateId: "pause-move-breathe-stirling-2026-09-18" },
     include: { roomOptions: true },
   });
   const roomOption =
-    sankalpaDate.roomOptions.find((item) => item.externalRoomOptionId === "1a-single-room") ||
-    sankalpaDate.roomOptions[0];
+    seedRetreatDate.roomOptions.find((item) => item.externalRoomOptionId === "shared-twin-bed") ||
+    seedRetreatDate.roomOptions[0];
   if (!roomOption) {
-    throw new Error("Seed retreat room option missing for Sankalpa.");
+    throw new Error("Seed retreat room option missing for Pause, Move, Breathe.");
   }
 
   const depositAmountPence = Math.min(
@@ -810,7 +997,7 @@ async function seedRetreatInventory(retreatUserId: string, instructorUserId?: st
   await prisma.retreatBooking.upsert({
     where: { id: "seed_retreat_booking_balance_due" },
     update: {
-      retreatDateId: sankalpaDate.id,
+      retreatDateId: seedRetreatDate.id,
       roomOptionId: roomOption.id,
       purchaserUserId: retreatUserId,
       attendeeUserId: retreatUserId,
@@ -843,7 +1030,7 @@ async function seedRetreatInventory(retreatUserId: string, instructorUserId?: st
           ? RetreatBookingStatus.balance_due
           : RetreatBookingStatus.paid_in_full,
       balancePaymentUrlToken: "seed-balance-due-token",
-      balanceDueAt: datePlus(45),
+      balanceDueAt: seedRetreatDate.balanceDueAt,
       depositPaidAt: datePlus(-12),
       bookedAt: datePlus(-20),
       complianceSnapshotJson: {
@@ -856,7 +1043,7 @@ async function seedRetreatInventory(retreatUserId: string, instructorUserId?: st
     },
     create: {
       id: "seed_retreat_booking_balance_due",
-      retreatDateId: sankalpaDate.id,
+      retreatDateId: seedRetreatDate.id,
       roomOptionId: roomOption.id,
       purchaserUserId: retreatUserId,
       attendeeUserId: retreatUserId,
@@ -889,7 +1076,7 @@ async function seedRetreatInventory(retreatUserId: string, instructorUserId?: st
           ? RetreatBookingStatus.balance_due
           : RetreatBookingStatus.paid_in_full,
       balancePaymentUrlToken: "seed-balance-due-token",
-      balanceDueAt: datePlus(45),
+      balanceDueAt: seedRetreatDate.balanceDueAt,
       depositPaidAt: datePlus(-12),
       bookedAt: datePlus(-20),
       complianceSnapshotJson: {

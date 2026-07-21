@@ -13,9 +13,13 @@ vi.mock("@/lib/classes/settings-service", () => ({
   getClassOperationalSettings: getClassOperationalSettingsMock,
 }));
 
-vi.mock("@/lib/env", () => ({
-  getBaseSiteUrlFromEnv: () => "https://shrutiturner.co.uk",
-}));
+vi.mock("@/lib/env", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/env")>();
+  return {
+    ...actual,
+    getBaseSiteUrlFromEnv: () => "https://shrutiturner.co.uk",
+  };
+});
 
 const {
   sendBookingConfirmation,

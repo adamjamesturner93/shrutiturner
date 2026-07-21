@@ -141,8 +141,9 @@ export async function getActiveCatalogItem(key: BillingCatalogKey) {
     throw new Error(`INVALID_PRICE:${fallback.stripePriceId}`);
   }
 
-  const inserted = await db.billingCatalogItem.create({
-    data: {
+  return db.billingCatalogItem.upsert({
+    where: { key },
+    create: {
       key,
       stripeProductId: typeof price.product === "string" ? price.product : price.product.id,
       stripePriceId: price.id,
@@ -150,9 +151,14 @@ export async function getActiveCatalogItem(key: BillingCatalogKey) {
       unitAmountPence: price.unit_amount || fallback.unitAmountPence,
       active: true,
     },
+    update: {
+      stripeProductId: typeof price.product === "string" ? price.product : price.product.id,
+      stripePriceId: price.id,
+      currency: (price.currency || "gbp").toUpperCase(),
+      unitAmountPence: price.unit_amount || fallback.unitAmountPence,
+      active: true,
+    },
   });
-
-  return inserted;
 }
 
 export async function listBillingCatalog() {
@@ -204,21 +210,23 @@ export async function createOrActivateCatalogPrice(input: {
     metadata: { catalogKey: input.key },
   });
 
-  await db.$transaction(async (tx) => {
-    await tx.billingCatalogItem.updateMany({
-      where: { key: input.key, active: true },
-      data: { active: false },
-    });
-    await tx.billingCatalogItem.create({
-      data: {
-        key: input.key,
-        stripeProductId: productId,
-        stripePriceId: price.id,
-        currency: (price.currency || "gbp").toUpperCase(),
-        unitAmountPence: price.unit_amount || input.unitAmountPence,
-        active: true,
-      },
-    });
+  await db.billingCatalogItem.upsert({
+    where: { key: input.key },
+    create: {
+      key: input.key,
+      stripeProductId: productId,
+      stripePriceId: price.id,
+      currency: (price.currency || "gbp").toUpperCase(),
+      unitAmountPence: price.unit_amount || input.unitAmountPence,
+      active: true,
+    },
+    update: {
+      stripeProductId: productId,
+      stripePriceId: price.id,
+      currency: (price.currency || "gbp").toUpperCase(),
+      unitAmountPence: price.unit_amount || input.unitAmountPence,
+      active: true,
+    },
   });
 
   const result = {

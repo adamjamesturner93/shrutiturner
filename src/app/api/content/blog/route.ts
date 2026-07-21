@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { getBlogPosts } from "@/lib/content";
 
 export async function GET() {
+  await connection();
   const posts = await getBlogPosts();
   return NextResponse.json({ items: posts });
 }

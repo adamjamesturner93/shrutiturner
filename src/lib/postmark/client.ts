@@ -6,7 +6,7 @@ import { ServerClient } from "postmark";
 import { db } from "@/lib/db";
 import { env, getPostmarkToken } from "@/lib/env";
 
-const FALLBACK_FROM = "Shruti Turner <shruti@thechronicyogini.com>";
+const FALLBACK_FROM = "Shruti Turner <shruti@shrutiturner.co.uk>";
 
 export type EmailCategory = "marketing" | "transactional";
 export type EmailDispatchMode = "immediate_required" | "immediate_best_effort";

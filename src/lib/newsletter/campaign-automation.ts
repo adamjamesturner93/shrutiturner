@@ -26,7 +26,7 @@ type CampaignRecipient = {
 };
 
 const POSTMARK_FROM_EMAIL =
-  process.env.POSTMARK_FROM_EMAIL || "Shruti Turner <shruti@thechronicyogini.com>";
+  process.env.POSTMARK_FROM_EMAIL || "Shruti Turner <shruti@shrutiturner.co.uk>";
 const POSTMARK_STREAM = getPostmarkMessageStream("marketing");
 const AUTO_SKIP_CAMPAIGN_STATUSES = new Set([
   "sending",

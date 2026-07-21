@@ -9,7 +9,14 @@ import { HealthProfileEditor } from "../../components/health-profile-editor";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { AppPageHeader } from "@/components/app-surface";
-import { ArrowRight, CheckCircle, Shield, HeartPulse, AlertTriangle } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  CheckCircle,
+  Shield,
+  HeartPulse,
+  AlertTriangle,
+} from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import type { DashboardSummaryDto, OnboardingStateDto } from "@/lib/api/types";
 import {
@@ -579,11 +586,11 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
           <div>
             <h2 className="text-xl">Where do you want to start?</h2>
             <p className="text-muted-foreground mt-1 text-sm">
-              These are the three areas Shruti needs you to keep current while you work together.
+              Keep your 1:1 support, retreat bookings, health context and account details current.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Link
               href="/dashboard/coaching"
               className="bg-background rounded-lg border p-5 transition-shadow hover:shadow-md"
@@ -594,6 +601,19 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
               </div>
               <p className="text-muted-foreground text-sm">
                 Follow your application, onboarding, billing and cancellation steps in one place.
+              </p>
+            </Link>
+
+            <Link
+              href="/dashboard/retreats"
+              className="bg-background rounded-lg border p-5 transition-shadow hover:shadow-md"
+            >
+              <div className="mb-2 flex items-center gap-3">
+                <CalendarDays className="text-primary h-5 w-5" />
+                <h3 className="text-lg">Retreats</h3>
+              </div>
+              <p className="text-muted-foreground text-sm">
+                Review retreat bookings, deposits, balances, room details and joining information.
               </p>
             </Link>
 

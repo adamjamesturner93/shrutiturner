@@ -13,7 +13,10 @@ import type {
   PageContent,
   RetreatCombinedContent,
   RetreatInstanceContent,
+  RetreatPaymentPlanContent,
+  RetreatRoomOptionContent,
   RetreatTemplateContent,
+  RetreatScheduleDayContent,
   RetreatVenueContent,
   SeoContent,
   SmallGroupTemplateContent,
@@ -100,6 +103,164 @@ function parseStringArray(value: unknown): string[] {
   return value.filter((v): v is string => typeof v === "string");
 }
 
+function requireDateField(
+  contentType: string,
+  item: { sys: { id: string }; fields: Record<string, unknown> },
+  field: string
+) {
+  const value = item.fields[field];
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "string" && value.trim()) return value.trim();
+  throw createMissingContentError(
+    contentType,
+    `entry "${item.sys.id}" is missing required date field "${field}"`
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function parseRetreatRoomOptions(value: unknown): RetreatRoomOptionContent[] {
+  const rawOptions = Array.isArray(value)
+    ? value
+    : isRecord(value) && Array.isArray(value.options)
+      ? value.options
+      : [];
+
+  return rawOptions.filter(isRecord).map((option, index): RetreatRoomOptionContent => {
+    const id =
+      typeof option.id === "string" && option.id.trim() ? option.id.trim() : `room-${index + 1}`;
+    const normalPricePence =
+      typeof option.normalPricePence === "number"
+        ? option.normalPricePence
+        : typeof option.pricePence === "number"
+          ? option.pricePence
+          : 0;
+    const capacity = typeof option.capacity === "number" ? option.capacity : 0;
+    const ratePlans = Array.isArray(option.ratePlans)
+      ? option.ratePlans.filter(isRecord).map((ratePlan, rateIndex) => ({
+          id:
+            typeof ratePlan.id === "string" && ratePlan.id.trim()
+              ? ratePlan.id.trim()
+              : `${id}-${rateIndex + 1}`,
+          guestCount:
+            typeof ratePlan.guestCount === "number"
+              ? Math.max(Math.trunc(ratePlan.guestCount), 1)
+              : 1,
+          totalPricePence:
+            typeof ratePlan.totalPricePence === "number"
+              ? Math.max(Math.trunc(ratePlan.totalPricePence), 0)
+              : normalPricePence,
+          earlyBirdPricePence:
+            typeof ratePlan.earlyBirdPricePence === "number"
+              ? Math.max(Math.trunc(ratePlan.earlyBirdPricePence), 0)
+              : undefined,
+          earlyBirdEndsAt:
+            typeof ratePlan.earlyBirdEndsAt === "string" ? ratePlan.earlyBirdEndsAt : undefined,
+          currency: typeof ratePlan.currency === "string" ? ratePlan.currency : undefined,
+        }))
+      : undefined;
+    const allowedGuestCounts = Array.isArray(option.allowedGuestCounts)
+      ? option.allowedGuestCounts
+          .filter((count): count is number => typeof count === "number")
+          .map((count) => Math.max(Math.trunc(count), 1))
+      : ratePlans?.map((ratePlan) => ratePlan.guestCount);
+    return {
+      id,
+      label: typeof option.label === "string" ? option.label : id,
+      description: typeof option.description === "string" ? option.description : "",
+      type:
+        option.type === "single" || option.type === "shared_private" || option.type === "virtual"
+          ? option.type
+          : "shared_twin",
+      bookingUnit:
+        option.bookingUnit === "whole_room" ||
+        option.bookingUnit === "ticket" ||
+        option.bookingUnit === "addon" ||
+        option.bookingUnit === "online_live_place"
+          ? option.bookingUnit
+          : "bed_space",
+      guestsIncluded:
+        typeof option.guestsIncluded === "number" ? Math.max(option.guestsIncluded, 1) : 1,
+      guestCountPerUnit:
+        typeof option.guestCountPerUnit === "number"
+          ? Math.max(Math.trunc(option.guestCountPerUnit), 1)
+          : undefined,
+      allowedGuestCounts,
+      capacity,
+      availableSpots: typeof option.availableSpots === "number" ? option.availableSpots : capacity,
+      earlyBirdPricePence:
+        typeof option.earlyBirdPricePence === "number" ? option.earlyBirdPricePence : undefined,
+      normalPricePence,
+      ratePlans,
+      pricePerPersonPence:
+        typeof option.pricePerPersonPence === "number" ? option.pricePerPersonPence : undefined,
+      roomCount: typeof option.roomCount === "number" ? option.roomCount : undefined,
+      depositPence: typeof option.depositPence === "number" ? option.depositPence : undefined,
+      isWaitlistOnly: option.isWaitlistOnly === true,
+    };
+  });
+}
+
+function parseRetreatPaymentPlan(value: unknown): RetreatPaymentPlanContent | undefined {
+  if (!isRecord(value) || !Array.isArray(value.instalments)) return undefined;
+  const instalments: RetreatPaymentPlanContent["instalments"] = value.instalments
+    .filter(isRecord)
+    .map((instalment) => ({
+      label: typeof instalment.label === "string" ? instalment.label : "Payment",
+      kind:
+        instalment.kind === "deposit" ||
+        instalment.kind === "scheduled" ||
+        instalment.kind === "balance" ||
+        instalment.kind === "full_payment"
+          ? instalment.kind
+          : undefined,
+      amountPence: typeof instalment.amountPence === "number" ? instalment.amountPence : undefined,
+      percent: typeof instalment.percent === "number" ? instalment.percent : undefined,
+      dueDate: typeof instalment.dueDate === "string" ? instalment.dueDate : undefined,
+      dueDaysBeforeStart:
+        typeof instalment.dueDaysBeforeStart === "number"
+          ? instalment.dueDaysBeforeStart
+          : undefined,
+    }));
+  return instalments.length > 0 ? { instalments } : undefined;
+}
+
+function parseRetreatSchedule(value: unknown): RetreatScheduleDayContent[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.filter(isRecord).map((day, index) => {
+    const dayLabel =
+      typeof day.day === "string" && day.day.trim() ? day.day.trim() : `Day ${index + 1}`;
+    const title = typeof day.title === "string" && day.title.trim() ? day.title.trim() : undefined;
+    const items = Array.isArray(day.items)
+      ? day.items.filter(isRecord).map((item) => ({
+          startTime: typeof item.startTime === "string" ? item.startTime : "",
+          endTime: typeof item.endTime === "string" ? item.endTime : undefined,
+          title: typeof item.title === "string" ? item.title : "Session",
+          description: typeof item.description === "string" ? item.description : undefined,
+          category: typeof item.category === "string" ? item.category : undefined,
+          isOptional: item.isOptional === true,
+        }))
+      : [];
+    const activities = parseStringArray(day.activities);
+
+    return {
+      day: title || dayLabel,
+      title,
+      activities:
+        activities.length > 0
+          ? activities
+          : items.map((item) => {
+              const time = item.endTime ? `${item.startTime}-${item.endTime}` : item.startTime;
+              return `${time} ${item.title}`.trim();
+            }),
+      items,
+    };
+  });
+}
+
 function parseObjectArray<T>(
   value: unknown,
   mapper: (item: Record<string, unknown>) => T | null
@@ -174,6 +335,27 @@ function readContentfulAssetAlt(fields: Record<string, unknown> | undefined) {
   const title = fields?.title;
   if (typeof title === "string" && title.trim()) return title.trim();
   return null;
+}
+
+function readImageUrlFromFields(
+  fields: Record<string, unknown>,
+  assets: Array<{ sys: { id: string }; fields: Record<string, unknown> }> | undefined,
+  linkFields: string[],
+  urlFields: string[]
+) {
+  for (const field of linkFields) {
+    const assetId = getLinkedEntryId(fields[field]);
+    const asset = getIncludedAssetById(assets, assetId);
+    const assetUrl = readContentfulAssetUrl(asset?.fields);
+    if (assetUrl) return toContentfulImageUrl(assetUrl);
+  }
+
+  for (const field of urlFields) {
+    const value = optionalStringField(fields, field);
+    if (value) return toContentfulImageUrl(value);
+  }
+
+  return undefined;
 }
 
 function renderRichTextNode(node: unknown): string {
@@ -377,16 +559,23 @@ function combineRetreats(
       title: template.title,
       subtitle: template.subtitle,
       location: venue?.displayLocation || venue?.name || "TBC",
-      imageUrl: "",
+      imageUrl: template.imageUrl || "",
       shortDescription: template.shortDescription,
       fullDescription: template.fullDescription,
       dates: sorted.map((i) => ({
         id: i.id,
+        retreatType: i.retreatType,
+        timezone: i.timezone,
         startDate: i.startDate,
         endDate: i.endDate,
         availableSpaces: i.availableSpaces,
         totalSpaces: i.totalSpaces,
         roomOptions: i.roomOptions || [],
+        paymentPlan: i.paymentPlan,
+        payInFullDiscountEnabled: i.payInFullDiscountEnabled,
+        refundNotes: i.refundNotes,
+        onlineJoiningNotes: i.onlineJoiningNotes,
+        instructorProfileSlugs: i.instructorProfileSlugs,
       })),
       earlyBirdPrice: first.earlyBirdPrice,
       earlyBirdDeadline: first.earlyBirdDeadline,
@@ -394,12 +583,21 @@ function combineRetreats(
       currency: first.currency,
       included: template.included,
       notIncluded: template.notIncluded,
-      schedule: [],
-      accommodation: venue?.accommodationType || venue?.description || "",
+      schedule: template.schedule,
+      accommodation:
+        template.accommodationDescription || venue?.accommodationType || venue?.description || "",
       suitableFor: template.suitableFor,
+      experienceType: template.experienceType,
+      deliveryMode: template.deliveryMode,
+      durationLabel: template.durationLabel,
+      audienceDescription: template.audienceDescription,
+      experienceLevel: template.experienceLevel,
+      foodAndDrinkDescription: template.foodAndDrinkDescription,
+      whatToBring: template.whatToBring,
       venueId: venue?.id,
       venueSlug: venue?.slug,
       venueName: venue?.name,
+      venue,
     });
   }
 
@@ -770,16 +968,45 @@ export async function getRetreatTemplates(): Promise<RetreatTemplateContent[]> {
     limit: 200,
     include: 1,
   });
-  return requireContentfulItems("retreatTemplate", res).map((item) => ({
+  if (!res?.items?.length) return [];
+  return res.items.map((item) => ({
     id: String(item.sys.id),
     slug: requireStringField("retreatTemplate", item, "slug"),
     title: requireStringField("retreatTemplate", item, "title"),
     subtitle: requireStringField("retreatTemplate", item, "subtitle"),
     shortDescription: requireStringField("retreatTemplate", item, "shortDescription"),
     fullDescription: requireStringField("retreatTemplate", item, "fullDescription"),
+    experienceType:
+      item.fields.experienceType === "residential_retreat" ||
+      item.fields.experienceType === "day_retreat" ||
+      item.fields.experienceType === "online_workshop" ||
+      item.fields.experienceType === "in_person_workshop" ||
+      item.fields.experienceType === "course"
+        ? item.fields.experienceType
+        : undefined,
+    deliveryMode:
+      item.fields.deliveryMode === "in_person" ||
+      item.fields.deliveryMode === "online_live" ||
+      item.fields.deliveryMode === "online_on_demand" ||
+      item.fields.deliveryMode === "hybrid"
+        ? item.fields.deliveryMode
+        : undefined,
+    durationLabel: optionalStringField(item.fields, "durationLabel"),
+    audienceDescription: optionalStringField(item.fields, "audienceDescription"),
+    experienceLevel: optionalStringField(item.fields, "experienceLevel"),
+    imageUrl: readImageUrlFromFields(
+      item.fields,
+      res.includes?.Asset,
+      ["heroImage", "heroImageAsset", "coverImageAsset"],
+      ["imageUrl", "heroImageUrl", "coverImageUrl"]
+    ),
     suitableFor: parseStringArray(item.fields.suitableFor),
     included: parseStringArray(item.fields.included),
     notIncluded: parseStringArray(item.fields.notIncluded),
+    whatToBring: parseStringArray(item.fields.whatToBring),
+    foodAndDrinkDescription: optionalStringField(item.fields, "foodAndDrinkDescription"),
+    schedule: parseRetreatSchedule(item.fields.schedule),
+    accommodationDescription: optionalStringField(item.fields, "accommodationDescription"),
     seoTitle: optionalStringField(item.fields, "seoTitle"),
     seoDescription: optionalStringField(item.fields, "seoDescription"),
     venueId:
@@ -794,7 +1021,61 @@ export async function getRetreatTemplates(): Promise<RetreatTemplateContent[]> {
 }
 
 export async function getRetreatInstances(): Promise<RetreatInstanceContent[]> {
-  return [];
+  const res = await getEntries<Record<string, unknown>>("retreatInstance", {
+    limit: 200,
+    include: 2,
+    order: "fields.startDate",
+  });
+  if (!res?.items?.length) return [];
+
+  return res.items.map((item) => {
+    const templateId = getLinkedEntryId(item.fields.template);
+    const linkedTemplate = getIncludedEntryById(res.includes?.Entry, templateId);
+    const templateSlug =
+      optionalStringField(item.fields, "templateSlug") ||
+      (linkedTemplate ? requireStringField("retreatTemplate", linkedTemplate, "slug") : "");
+    if (!templateSlug) {
+      throw createMissingContentError(
+        "retreatInstance",
+        `entry "${item.sys.id}" is missing template or templateSlug`
+      );
+    }
+
+    const instructorProfileSlugs = Array.isArray(item.fields.instructorProfiles)
+      ? item.fields.instructorProfiles
+          .map((ref) => {
+            const id = getLinkedEntryId(ref);
+            const linkedInstructor = getIncludedEntryById(res.includes?.Entry, id);
+            return linkedInstructor
+              ? optionalStringField(linkedInstructor.fields, "slug")
+              : undefined;
+          })
+          .filter((slug): slug is string => Boolean(slug))
+      : [];
+
+    return {
+      id: String(item.sys.id),
+      templateSlug,
+      retreatType: item.fields.retreatType === "online" ? "online" : "in_person",
+      timezone: optionalStringField(item.fields, "timezone") || "Europe/London",
+      startDate: requireDateField("retreatInstance", item, "startDate"),
+      endDate: requireDateField("retreatInstance", item, "endDate"),
+      availableSpaces: requireNumberField("retreatInstance", item, "availableSpaces"),
+      totalSpaces: requireNumberField("retreatInstance", item, "totalSpaces"),
+      earlyBirdPrice: requireNumberField("retreatInstance", item, "earlyBirdPrice"),
+      normalPrice: requireNumberField("retreatInstance", item, "normalPrice"),
+      earlyBirdDeadline:
+        optionalStringField(item.fields, "earlyBirdDeadline") ||
+        requireDateField("retreatInstance", item, "startDate"),
+      currency: optionalStringField(item.fields, "currency") || "GBP",
+      roomOptions: parseRetreatRoomOptions(item.fields.roomOptions),
+      paymentPlan: parseRetreatPaymentPlan(item.fields.paymentPlan),
+      payInFullDiscountEnabled: item.fields.payInFullDiscountEnabled !== false,
+      refundNotes: optionalStringField(item.fields, "refundNotes"),
+      onlineJoiningNotes: optionalStringField(item.fields, "onlineJoiningNotes"),
+      instructorProfileSlugs,
+    };
+  });
 }
 
 export async function getRetreatVenues(): Promise<RetreatVenueContent[]> {
@@ -819,6 +1100,18 @@ export async function getRetreatVenues(): Promise<RetreatVenueContent[]> {
     accessibilityNotes: item.fields.accessibilityNotes
       ? String(item.fields.accessibilityNotes)
       : undefined,
+    addressLine1: optionalStringField(item.fields, "addressLine1"),
+    addressLine2: optionalStringField(item.fields, "addressLine2"),
+    townOrCity: optionalStringField(item.fields, "townOrCity"),
+    region: optionalStringField(item.fields, "region"),
+    postcode: optionalStringField(item.fields, "postcode"),
+    country: optionalStringField(item.fields, "country"),
+    arrivalInformation: optionalStringField(item.fields, "arrivalInformation"),
+    travelByTrain: optionalStringField(item.fields, "travelByTrain"),
+    travelByCar: optionalStringField(item.fields, "travelByCar"),
+    travelByAir: optionalStringField(item.fields, "travelByAir"),
+    localTransferInformation: optionalStringField(item.fields, "localTransferInformation"),
+    kitchenAccessDescription: optionalStringField(item.fields, "kitchenAccessDescription"),
   }));
 }
 

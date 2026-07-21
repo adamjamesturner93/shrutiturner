@@ -1,253 +1,333 @@
+"use client";
+
 import { useState } from "react";
+import { Calendar, CheckCircle, Info, Link2, PoundSterling, Video } from "lucide-react";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "../ui/dialog";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Textarea } from "../ui/textarea";
-import { PoundSterling, Info, Link2, CheckCircle } from "lucide-react";
 
 interface CreateRetreatModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreate?: (data: CreateRetreatData) => void;
+  onCreate?: (data: CreateRetreatData) => Promise<void> | void;
 }
 
 export interface CreateRetreatData {
-  contentfulEntryId: string;
-  contentfulTitle: string;
-  startDate: string;
-  endDate: string;
-  totalSpaces: number;
-  earlyBirdPrice: number;
-  earlyBirdDeadline: string;
-  normalPrice: number;
-  internalNotes: string;
+  retreatSlug: string;
+  title: string;
+  location: string;
+  retreatType: "in_person" | "online";
+  startsAt: string;
+  endsAt: string;
+  capacity: number;
+  pricePence: number;
+  earlyBirdPricePence?: number | null;
+  earlyBirdEndsAt?: string | null;
 }
 
-// Mock Contentful retreat entries — in production these would be fetched via the Contentful API
-const CONTENTFUL_RETREAT_TEMPLATES = [
+const EXISTING_EXPERIENCE_SLUGS = [
   {
-    entryId: "ctfl_sankalpa",
-    title: "Sankalpa",
-    subtitle: "A Yoga Retreat for Inclusive Movement and Recovery",
-    location: "Portuguese Countryside",
-    description: "5 days of rehabilitation-informed yoga, strength work and community.",
+    slug: "pause-move-breathe-stirling",
+    title: "Pause, Move, Breathe: A Yoga Weekend in Stirling",
+    location: "Near Stirling, Scotland",
+    retreatType: "in_person" as const,
   },
   {
-    entryId: "ctfl_virtual_immersion",
-    title: "Virtual Immersion Weekend",
-    subtitle: "An Online Retreat for People Who Cannot Travel",
-    location: "Online (Live via Video)",
-    description: "2-day live online retreat bringing the retreat experience home.",
+    slug: "wild-ground-highland-perthshire",
+    title: "Wild Ground: Yoga, Walking and Rest in Highland Perthshire",
+    location: "Grandtully / Balnaguard area, Highland Perthshire, Scotland",
+    retreatType: "in_person" as const,
+  },
+  {
+    slug: "sankalpa-online-workshop",
+    title: "Sankalpa: A Two-Hour Pause for Reflection and Intention",
+    location: "Online (live through this website)",
+    retreatType: "online" as const,
   },
 ];
 
+function toPence(value: string) {
+  const pounds = Number(value);
+  if (!Number.isFinite(pounds) || pounds < 0) return 0;
+  return Math.round(pounds * 100);
+}
+
 export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetreatModalProps) {
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [totalSpaces, setTotalSpaces] = useState<number>(12);
-  const [earlyBirdPrice, setEarlyBirdPrice] = useState<number>(0);
-  const [earlyBirdDeadline, setEarlyBirdDeadline] = useState("");
-  const [normalPrice, setNormalPrice] = useState<number>(0);
-  const [internalNotes, setInternalNotes] = useState("");
+  const [retreatSlug, setRetreatSlug] = useState("sankalpa-online-workshop");
+  const [title, setTitle] = useState("Sankalpa: A Two-Hour Pause for Reflection and Intention");
+  const [location, setLocation] = useState("Online (live through this website)");
+  const [retreatType, setRetreatType] = useState<"in_person" | "online">("online");
+  const [startsAt, setStartsAt] = useState("");
+  const [endsAt, setEndsAt] = useState("");
+  const [capacity, setCapacity] = useState(30);
+  const [pricePounds, setPricePounds] = useState("29");
+  const [earlyBirdPricePounds, setEarlyBirdPricePounds] = useState("");
+  const [earlyBirdEndsAt, setEarlyBirdEndsAt] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
-  const template = CONTENTFUL_RETREAT_TEMPLATES.find((t) => t.entryId === selectedTemplate);
+  const hasEarlyBirdPrice = earlyBirdPricePounds.trim().length > 0;
+  const hasEarlyBirdEndDate = earlyBirdEndsAt.length > 0;
+  const canSubmit =
+    retreatSlug.trim().length > 0 &&
+    title.trim().length > 0 &&
+    location.trim().length > 0 &&
+    startsAt.length > 0 &&
+    endsAt.length > 0 &&
+    capacity > 0 &&
+    hasEarlyBirdPrice === hasEarlyBirdEndDate;
 
-  const handleCreate = () => {
-    if (!template || !startDate || !endDate || !normalPrice) return;
-    onCreate?.({
-      contentfulEntryId: template.entryId,
-      contentfulTitle: template.title,
-      startDate,
-      endDate,
-      totalSpaces,
-      earlyBirdPrice,
-      earlyBirdDeadline,
-      normalPrice,
-      internalNotes,
-    });
-    handleClose();
-  };
+  function applyPreset(slug: string) {
+    const preset = EXISTING_EXPERIENCE_SLUGS.find((item) => item.slug === slug);
+    if (!preset) {
+      setRetreatSlug(slug);
+      return;
+    }
+    setRetreatSlug(preset.slug);
+    setTitle(preset.title);
+    setLocation(preset.location);
+    setRetreatType(preset.retreatType);
+    setCapacity(preset.retreatType === "online" ? 30 : 10);
+    setPricePounds(preset.retreatType === "online" ? "29" : "425");
+    setEarlyBirdPricePounds("");
+    setEarlyBirdEndsAt("");
+  }
 
-  const handleClose = () => {
-    setSelectedTemplate("");
-    setStartDate("");
-    setEndDate("");
-    setTotalSpaces(12);
-    setEarlyBirdPrice(0);
-    setEarlyBirdDeadline("");
-    setNormalPrice(0);
-    setInternalNotes("");
+  function resetAndClose() {
+    setSubmitting(false);
+    setSubmitError("");
     onOpenChange(false);
-  };
+  }
+
+  async function handleCreate() {
+    if (!canSubmit || submitting) return;
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      await onCreate?.({
+        retreatSlug: retreatSlug.trim(),
+        title: title.trim(),
+        location: location.trim(),
+        retreatType,
+        startsAt: new Date(startsAt).toISOString(),
+        endsAt: new Date(endsAt).toISOString(),
+        capacity,
+        pricePence: toPence(pricePounds),
+        earlyBirdPricePence: hasEarlyBirdPrice ? toPence(earlyBirdPricePounds) : null,
+        earlyBirdEndsAt: hasEarlyBirdEndDate ? new Date(earlyBirdEndsAt).toISOString() : null,
+      });
+      resetAndClose();
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Failed to create date.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+    <Dialog open={open} onOpenChange={resetAndClose}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Schedule Retreat Instance</DialogTitle>
+          <DialogTitle>Create retreat or workshop date</DialogTitle>
           <DialogDescription>
-            Select a retreat template from Contentful, then set dates, capacity and pricing for
-            this instance.
+            Create the operational date, ticket inventory and payment setup for an existing
+            Contentful experience slug.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          {/* Contentful info */}
+        <div className="space-y-5 py-2">
           <div className="text-muted-foreground bg-secondary/50 flex items-start gap-2 rounded-md p-3 text-xs">
             <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
             <span>
-              Retreat descriptions, photos, accommodation details, schedule and location info are
-              managed in Contentful. Here you set the operational details for a specific instance
-              (dates, spaces, pricing).
+              Editorial copy, images and long-form details stay in Contentful. This form creates the
+              dated booking record in the website database. Online workshops get a live ticket
+              option and full-payment rule automatically.
             </span>
           </div>
 
-          {/* Template selection */}
           <div className="space-y-2">
-            <Label className="flex items-center gap-2">
+            <Label htmlFor="retreat-preset" className="flex items-center gap-2">
               <Link2 className="h-4 w-4" />
-              Contentful retreat template
+              Existing experience
             </Label>
-            <div className="space-y-2">
-              {CONTENTFUL_RETREAT_TEMPLATES.map((t) => (
-                <button
-                  key={t.entryId}
-                  onClick={() => setSelectedTemplate(t.entryId)}
-                  className={`w-full rounded-lg border p-3 text-left transition-colors ${selectedTemplate === t.entryId
-                    ? "border-brand-accent bg-brand-accent/5"
-                    : "border-border hover:bg-secondary/30"
-                    }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm">{t.title}</p>
-                      <p className="text-muted-foreground text-xs">{t.subtitle}</p>
-                      <p className="text-muted-foreground mt-1 text-xs">{t.location}</p>
-                    </div>
-                    {selectedTemplate === t.entryId && (
-                      <CheckCircle className="text-brand-accent h-4 w-4 flex-shrink-0" />
-                    )}
-                  </div>
-                </button>
+            <select
+              id="retreat-preset"
+              value={retreatSlug}
+              onChange={(event) => applyPreset(event.target.value)}
+              className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-10 w-full rounded-md border px-3 py-2 text-sm transition-colors outline-none focus-visible:ring-[3px]"
+            >
+              {EXISTING_EXPERIENCE_SLUGS.map((experience) => (
+                <option key={experience.slug} value={experience.slug}>
+                  {experience.title}
+                </option>
               ))}
+            </select>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="retreat-slug">Contentful experience slug</Label>
+              <Input
+                id="retreat-slug"
+                value={retreatSlug}
+                onChange={(event) => setRetreatSlug(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="retreat-type" className="flex items-center gap-2">
+                <Video className="h-4 w-4" />
+                Type
+              </Label>
+              <select
+                id="retreat-type"
+                value={retreatType}
+                onChange={(event) =>
+                  setRetreatType(event.target.value === "online" ? "online" : "in_person")
+                }
+                className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-10 w-full rounded-md border px-3 py-2 text-sm transition-colors outline-none focus-visible:ring-[3px]"
+              >
+                <option value="online">Online workshop</option>
+                <option value="in_person">In-person retreat</option>
+              </select>
             </div>
           </div>
 
-          {template && (
-            <>
-              {/* Date range */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="retreat-start">Start date</Label>
-                  <input
-                    id="retreat-start"
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full rounded-md border px-3 py-1 text-sm transition-colors outline-none focus-visible:ring-[3px]"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="retreat-end">End date</Label>
-                  <input
-                    id="retreat-end"
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full rounded-md border px-3 py-1 text-sm transition-colors outline-none focus-visible:ring-[3px]"
-                  />
-                </div>
-              </div>
+          <div className="space-y-2">
+            <Label htmlFor="retreat-title">Public title snapshot</Label>
+            <Input
+              id="retreat-title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+            />
+          </div>
 
-              {/* Capacity */}
+          <div className="space-y-2">
+            <Label htmlFor="retreat-location">Location snapshot</Label>
+            <Input
+              id="retreat-location"
+              value={location}
+              onChange={(event) => setLocation(event.target.value)}
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="retreat-start" className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Starts
+              </Label>
+              <input
+                id="retreat-start"
+                type="datetime-local"
+                value={startsAt}
+                onChange={(event) => setStartsAt(event.target.value)}
+                className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-10 w-full rounded-md border px-3 py-2 text-sm transition-colors outline-none focus-visible:ring-[3px]"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="retreat-end">Ends</Label>
+              <input
+                id="retreat-end"
+                type="datetime-local"
+                value={endsAt}
+                onChange={(event) => setEndsAt(event.target.value)}
+                className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-10 w-full rounded-md border px-3 py-2 text-sm transition-colors outline-none focus-visible:ring-[3px]"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="retreat-capacity">Capacity</Label>
+              <Input
+                id="retreat-capacity"
+                type="number"
+                min={1}
+                max={200}
+                value={capacity}
+                onChange={(event) => setCapacity(Number.parseInt(event.target.value, 10) || 0)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="retreat-price" className="flex items-center gap-2">
+                <PoundSterling className="h-4 w-4" />
+                Standard price
+              </Label>
+              <Input
+                id="retreat-price"
+                type="number"
+                min={0}
+                step={1}
+                value={pricePounds}
+                onChange={(event) => setPricePounds(event.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-lg border p-4">
+            <div>
+              <p className="text-sm font-medium">Early bird pricing</p>
+              <p className="text-muted-foreground mt-1 text-xs">
+                Optional. If set, checkout uses this lower price until the end date, then
+                automatically reverts to the standard price.
+              </p>
+            </div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="retreat-capacity">Total spaces</Label>
-                <Input
-                  id="retreat-capacity"
-                  type="number"
-                  min={2}
-                  max={30}
-                  value={totalSpaces}
-                  onChange={(e) => setTotalSpaces(parseInt(e.target.value) || 0)}
-                />
-              </div>
-
-              {/* Pricing */}
-              <div className="space-y-3">
-                <p className="flex items-center gap-2 text-sm">
+                <Label htmlFor="retreat-early-bird-price" className="flex items-center gap-2">
                   <PoundSterling className="h-4 w-4" />
-                  Pricing
-                </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="retreat-early-price">Early bird price (£)</Label>
-                    <Input
-                      id="retreat-early-price"
-                      type="number"
-                      min={0}
-                      step={50}
-                      value={earlyBirdPrice}
-                      onChange={(e) => setEarlyBirdPrice(parseInt(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="retreat-early-deadline">Early bird deadline</Label>
-                    <input
-                      id="retreat-early-deadline"
-                      type="date"
-                      value={earlyBirdDeadline}
-                      onChange={(e) => setEarlyBirdDeadline(e.target.value)}
-                      className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full rounded-md border px-3 py-1 text-sm transition-colors outline-none focus-visible:ring-[3px]"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="retreat-normal-price">Normal price (£)</Label>
-                  <Input
-                    id="retreat-normal-price"
-                    type="number"
-                    min={0}
-                    step={50}
-                    value={normalPrice}
-                    onChange={(e) => setNormalPrice(parseInt(e.target.value) || 0)}
-                  />
-                </div>
-              </div>
-
-              {/* Internal notes */}
-              <div className="space-y-2">
-                <Label htmlFor="retreat-notes">Internal notes</Label>
-                <Textarea
-                  id="retreat-notes"
-                  placeholder="Any notes about this specific instance (e.g. venue changes, co-facilitator)..."
-                  value={internalNotes}
-                  onChange={(e) => setInternalNotes(e.target.value)}
-                  rows={2}
+                  Early bird price
+                </Label>
+                <Input
+                  id="retreat-early-bird-price"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={earlyBirdPricePounds}
+                  onChange={(event) => setEarlyBirdPricePounds(event.target.value)}
+                  placeholder="Optional"
                 />
               </div>
-            </>
-          )}
+              <div className="space-y-2">
+                <Label htmlFor="retreat-early-bird-end">Early bird ends</Label>
+                <input
+                  id="retreat-early-bird-end"
+                  type="datetime-local"
+                  value={earlyBirdEndsAt}
+                  onChange={(event) => setEarlyBirdEndsAt(event.target.value)}
+                  className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-10 w-full rounded-md border px-3 py-2 text-sm transition-colors outline-none focus-visible:ring-[3px]"
+                />
+              </div>
+            </div>
+            {hasEarlyBirdPrice !== hasEarlyBirdEndDate ? (
+              <p className="mt-3 text-xs text-red-700">
+                Add both an early bird price and an end date, or leave both blank.
+              </p>
+            ) : null}
+          </div>
+
+          {submitError ? (
+            <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {submitError}
+            </div>
+          ) : null}
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={handleClose}>
+          <Button variant="ghost" onClick={resetAndClose}>
             Cancel
           </Button>
-          <Button
-            onClick={handleCreate}
-            disabled={!template || !startDate || !endDate || !normalPrice}
-            className="bg-brand-accent hover:bg-brand-accent/90"
-          >
-            Create Retreat Instance
+          <Button onClick={handleCreate} disabled={!canSubmit || submitting}>
+            <CheckCircle className="mr-2 h-4 w-4" />
+            {submitting ? "Creating..." : "Create date"}
           </Button>
         </DialogFooter>
       </DialogContent>

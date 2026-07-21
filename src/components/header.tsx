@@ -21,6 +21,7 @@ export function Header() {
 
   const navLinks = [
     { path: "/coaching", label: "1:1 Offers" },
+    { path: "/retreats", label: "Retreats" },
     { path: "/blog", label: "Blog" },
   ];
 

@@ -233,6 +233,7 @@ export type RetreatBookingSummaryDto = {
   id: string;
   retreatSlug: string;
   retreatTitle: string;
+  retreatType: string;
   location: string;
   startsAt: string;
   endsAt: string;
@@ -246,12 +247,23 @@ export type RetreatBookingSummaryDto = {
   dietaryRequirements: string | null;
   medicalConditions: string | null;
   mobilityNeeds: string | null;
+  dailyRoomUrl: string | null;
   canPayBalance: boolean;
 };
 
 export type RetreatBookingDetailDto = RetreatBookingSummaryDto & {
   emergencyContactName: string;
   emergencyContactPhone: string;
+  onlineAccess: {
+    entitled: boolean;
+    liveAccessEnabled: boolean;
+    liveAccessStartsAt: string | null;
+    liveAccessEndsAt: string | null;
+    replayAccessEnabled: boolean;
+    replayAvailableAt: string | null;
+    replayExpiresAt: string | null;
+    replayAssetId: string | null;
+  } | null;
 };
 
 export type ReplayAssetSummaryDto = {
@@ -291,6 +303,7 @@ export type AdminCoachingApplicationDto = {
   createdAt: string;
   reviewedAt: string | null;
   approvedAt: string | null;
+  paymentReminderSentAt: string | null;
   waitlistedAt: string | null;
   waitlistLeftAt: string | null;
   userId: string | null;
@@ -336,6 +349,7 @@ export type AdminRetreatSummaryDto = {
   startDate: string;
   endDate: string;
   status: string;
+  retreatType: string;
   bookedSpaces: number;
   totalSpaces: number;
   revenuePence: number;
@@ -351,19 +365,35 @@ export type AdminRetreatDetailDto = {
   startDate: string;
   endDate: string;
   status: string;
+  retreatType: string;
+  dailyRoomUrl: string | null;
+  roomSetupStatus: string;
+  roomSetupError: string | null;
   capacity: number;
   revenuePence: number;
   depositAmountPence: number;
   pricePence: number;
   singleRoomSupplementPence: number;
   balanceDueAt: string | null;
+  ratePlans: Array<{
+    id: string;
+    roomOptionId: string;
+    roomLabel: string;
+    guestCount: number;
+    totalPricePence: number;
+    earlyBirdPricePence: number | null;
+    earlyBirdEndsAt: string | null;
+    active: boolean;
+  }>;
   bookings: Array<{
     id: string;
     purchaserName: string;
     purchaserEmail: string;
     attendeeName: string;
     attendeeEmail: string;
+    attendeeCount: number;
     roomType: string | null;
+    roomUnitLabel: string | null;
     dietaryRequirements: string | null;
     medicalConditions: string | null;
     mobilityNeeds: string | null;
@@ -372,6 +402,18 @@ export type AdminRetreatDetailDto = {
     depositPaidPence: number;
     balancePaidPence: number;
     totalPricePence: number;
+    payInFullDiscountPence: number;
+    nonRefundableAmountPence: number;
+    instalments: Array<{
+      id: string;
+      sequence: number;
+      kind: string;
+      label: string;
+      amountPence: number;
+      status: string;
+      dueAt: string | null;
+      paidAt: string | null;
+    }>;
     bookedAt: string;
   }>;
 };

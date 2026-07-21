@@ -2,10 +2,24 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Calendar, ChevronRight, MapPin, Mountain, PoundSterling, Users } from "lucide-react";
+import {
+  Calendar,
+  ChevronRight,
+  MapPin,
+  Mountain,
+  Plus,
+  PoundSterling,
+  Users,
+  Video,
+} from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  CreateRetreatModal,
+  type CreateRetreatData,
+} from "@/components/admin/create-retreat-modal";
 import type { AdminRetreatSummaryDto } from "@/lib/api/types";
 
 function formatCurrency(pence: number) {
@@ -36,6 +50,7 @@ export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSumma
   const [retreats, setRetreats] = useState<AdminRetreatSummaryDto[]>(initialData || []);
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
     if (initialData) return;
@@ -61,6 +76,27 @@ export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSumma
     };
   }, [initialData]);
 
+  async function reloadRetreats() {
+    const response = await fetch("/api/admin/retreats", { cache: "no-store" });
+    if (!response.ok) throw new Error("Failed to load retreats.");
+    const payload = (await response.json()) as AdminRetreatSummaryDto[];
+    setRetreats(payload);
+  }
+
+  async function handleCreate(data: CreateRetreatData) {
+    setError("");
+    const response = await fetch("/api/admin/retreats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      throw new Error(payload?.message || "Failed to create retreat or workshop date.");
+    }
+    await reloadRetreats();
+  }
+
   const summary = useMemo(() => {
     const totalRevenuePence = retreats.reduce((sum, retreat) => sum + retreat.revenuePence, 0);
     const totalBooked = retreats.reduce((sum, retreat) => sum + retreat.bookedSpaces, 0);
@@ -73,12 +109,18 @@ export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSumma
   return (
     <AdminLayout title="Retreats - Admin">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-brand-dark text-2xl">Retreat Management</h1>
-          <p className="text-muted-foreground mt-1">
-            Live retreat bookings, payment status and operational capacity across all published
-            dates.
-          </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-brand-dark text-2xl">Retreats and Workshops</h1>
+            <p className="text-muted-foreground mt-1">
+              Live bookings, payment status and operational capacity across retreats and online
+              workshops.
+            </p>
+          </div>
+          <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" />
+            Create date
+          </Button>
         </div>
 
         {error ? (
@@ -94,7 +136,7 @@ export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSumma
                 <Mountain className="text-brand-accent h-5 w-5" />
                 <div>
                   <p className="text-brand-dark text-2xl">{retreats.length}</p>
-                  <p className="text-muted-foreground text-xs">Retreat dates</p>
+                  <p className="text-muted-foreground text-xs">Retreat/workshop dates</p>
                 </div>
               </div>
             </CardContent>
@@ -133,6 +175,7 @@ export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSumma
               retreat.totalSpaces > 0
                 ? Math.round((retreat.bookedSpaces / retreat.totalSpaces) * 100)
                 : 0;
+            const Icon = retreat.retreatType === "online" ? Video : Mountain;
 
             return (
               <Link key={retreat.id} href={`/admin/retreats/${retreat.id}`}>
@@ -140,12 +183,15 @@ export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSumma
                   <CardContent className="py-5">
                     <div className="flex items-start gap-4">
                       <div className="bg-brand-accent/10 flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg">
-                        <Mountain className="text-brand-accent h-6 w-6" />
+                        <Icon className="text-brand-accent h-6 w-6" />
                       </div>
 
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-base">{retreat.title}</p>
+                          <Badge variant="outline">
+                            {retreat.retreatType === "online" ? "online workshop" : "in-person"}
+                          </Badge>
                           <Badge variant={statusVariant(retreat.status)}>
                             {retreat.status.replaceAll("_", " ")}
                           </Badge>
@@ -203,6 +249,11 @@ export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSumma
             </CardContent>
           </Card>
         ) : null}
+        <CreateRetreatModal
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          onCreate={handleCreate}
+        />
       </div>
     </AdminLayout>
   );

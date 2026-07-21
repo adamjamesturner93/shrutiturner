@@ -177,6 +177,11 @@ export function Footer() {
                   1:1 Offers
                 </Link>
               </li>
+              <li>
+                <Link href="/retreats" className="hover:text-brand-accent-light transition-colors">
+                  Retreats
+                </Link>
+              </li>
             </ul>
           </nav>
 

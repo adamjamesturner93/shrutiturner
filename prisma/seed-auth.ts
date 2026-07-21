@@ -33,14 +33,14 @@ if (!connectionString) {
 const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
 
-const adminEmails = (process.env.ADMIN_EMAILS || "tech@thechronicyogini.com")
+const adminEmails = (process.env.ADMIN_EMAILS || "shruti@shrutiturner.co.uk")
   .split(",")
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
 
 async function main() {
   for (const email of adminEmails) {
-    const isPrimaryInstructor = email === "tech@thechronicyogini.com";
+    const isPrimaryInstructor = email === "shruti@shrutiturner.co.uk";
     const firstName = isPrimaryInstructor ? "Shruti" : "Admin";
     const lastName = isPrimaryInstructor ? "Turner" : "User";
     const name = `${firstName} ${lastName}`.trim();

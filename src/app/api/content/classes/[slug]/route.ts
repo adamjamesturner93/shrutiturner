@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { connection, NextRequest, NextResponse } from "next/server";
 import { getClassDefinitionBySlug } from "@/lib/content";
 
 export async function GET(_: NextRequest, context: { params: Promise<{ slug: string }> }) {
+  await connection();
   const { slug } = await context.params;
   const item = await getClassDefinitionBySlug(slug);
   if (!item) {

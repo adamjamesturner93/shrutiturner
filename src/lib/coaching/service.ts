@@ -17,6 +17,7 @@ import CoachingApplicationConfirmationEmail from "@/emails/coaching-application-
 import CoachingApplicationNotificationEmail from "@/emails/coaching-application-notification";
 import CoachingApplicationRejectedEmail from "@/emails/coaching-application-rejected";
 import CoachingApplicationWaitlistedEmail from "@/emails/coaching-application-waitlisted";
+import CoachingPaymentReminderEmail from "@/emails/coaching-payment-reminder";
 import CoachingPackageChangeRequestedEmail from "@/emails/coaching-package-change-requested";
 import CoachingWaitlistLeftNotificationEmail from "@/emails/coaching-waitlist-left-notification";
 
@@ -377,6 +378,7 @@ export async function listAdminCoachingApplications(params?: { status?: string; 
       createdAt: row.createdAt.toISOString(),
       reviewedAt: row.reviewedAt?.toISOString() || null,
       approvedAt: row.approvedAt?.toISOString() || null,
+      paymentReminderSentAt: row.paymentReminderSentAt?.toISOString() || null,
       waitlistedAt: row.waitlistedAt?.toISOString() || null,
       waitlistLeftAt: row.waitlistLeftAt?.toISOString() || null,
       userId: row.userId,
@@ -582,6 +584,93 @@ export async function updateAdminCoachingApplication(input: {
       },
       metadataJson: {
         convertToClient: input.convertToClient === true,
+      },
+    });
+  }
+
+  return updated;
+}
+
+export async function sendCoachingPaymentReminder(input: {
+  applicationId: string;
+  actorUserId?: string | null;
+  requestId?: string | null;
+  requestPath?: string | null;
+  requestIp?: string | null;
+}) {
+  const application = await db.coachingApplication.findUnique({
+    where: { id: input.applicationId },
+    include: {
+      clientProfile: {
+        select: { id: true, status: true },
+      },
+      user: {
+        select: { id: true },
+      },
+    },
+  });
+  if (!application) throw new Error("NOT_FOUND");
+  if (application.status !== "approved") {
+    throw new Error("COACHING_PAYMENT_REMINDER_NOT_ALLOWED");
+  }
+  if (!application.userId || !application.user) {
+    throw new Error("COACHING_PAYMENT_REMINDER_ACCOUNT_REQUIRED");
+  }
+  if (application.clientProfile) {
+    throw new Error("COACHING_PAYMENT_REMINDER_NOT_ALLOWED");
+  }
+
+  const offerKey = getOfferKeyFromAnswers(application.answersJson as CoachingApplicationAnswerMap);
+  const tierLabel = offerKeyToLabel(offerKey, application.tier);
+  const dashboardUrl = buildAbsoluteUrl("/dashboard/coaching");
+
+  await sendPostmarkReactEmail({
+    to: application.applicantEmail,
+    subject: "A reminder to complete your 1:1 payment",
+    react: CoachingPaymentReminderEmail({
+      firstName: application.applicantFirstName,
+      tierLabel,
+      dashboardUrl,
+    }),
+    textBody: `Hi ${application.applicantFirstName},\n\nA friendly reminder that your application for ${tierLabel} has been approved.\n\nWhen you are ready, sign in to your Private Studio, review the agreements and complete payment from your dashboard.\n\nContinue: ${dashboardUrl}`,
+    tag: "coaching-payment-reminder",
+    templateKey: "coaching-payment-reminder",
+    metadata: {
+      applicationId: application.id,
+      tier: application.tier,
+    },
+    dispatchMode: "immediate_best_effort",
+  });
+
+  const paymentReminderSentAt = new Date();
+  const updated = await db.coachingApplication.update({
+    where: { id: application.id },
+    data: {
+      paymentReminderSentAt,
+      paymentReminderSentByUserId: input.actorUserId || null,
+    },
+  });
+
+  if (input.actorUserId) {
+    await createAdminActionLog({
+      actorUserId: input.actorUserId,
+      actionType: "coaching_payment_reminder_sent",
+      targetType: "coaching_application",
+      targetId: application.id,
+      requestId: input.requestId,
+      requestPath: input.requestPath,
+      requestIp: input.requestIp,
+      oldValueJson: {
+        paymentReminderSentAt: application.paymentReminderSentAt,
+        paymentReminderSentByUserId: application.paymentReminderSentByUserId,
+      },
+      newValueJson: {
+        paymentReminderSentAt: updated.paymentReminderSentAt,
+        paymentReminderSentByUserId: updated.paymentReminderSentByUserId,
+      },
+      metadataJson: {
+        tier: application.tier,
+        applicantEmail: application.applicantEmail,
       },
     });
   }

@@ -1,6 +1,7 @@
 import { GiftPurchaseStatus, RetreatBookingStatus, RetreatPaymentStatus } from "@prisma/client";
 import type Stripe from "stripe";
 import { db } from "@/lib/db";
+import { ensureRetreatOnlineAccessEntitlement } from "@/lib/retreats/service";
 import { buildAbsoluteUrl } from "@/lib/app-url";
 import { assertNoResourceDisputeHold } from "@/lib/billing/dispute-service";
 import { sendPostmarkReactEmail } from "@/lib/postmark/client";
@@ -176,7 +177,7 @@ export async function getGiftRedemptionState(code: string): Promise<PublicGiftRe
               roomLabel: gift.retreatRoomOption.label,
               startDate: gift.retreatDate.startsAt.toISOString(),
               endDate: gift.retreatDate.endsAt.toISOString(),
-              guestsIncluded: gift.retreatRoomOption.guestsIncluded,
+              guestsIncluded: gift.retreatGuestCount ?? gift.retreatRoomOption.guestsIncluded,
             }
           : null,
       programme:
@@ -250,8 +251,12 @@ export async function redeemGiftPurchase(input: {
     if (!gift.retreatDate || !gift.retreatRoomOption) {
       throw new Error("INVALID_GIFT");
     }
+    const retreatGuestCount = Math.max(
+      gift.retreatGuestCount ?? gift.retreatRoomOption.guestsIncluded,
+      1
+    );
     if (
-      gift.retreatRoomOption.guestsIncluded > 1 &&
+      retreatGuestCount > 1 &&
       (!input.guestTwoFirstName?.trim() ||
         !input.guestTwoLastName?.trim() ||
         !input.guestTwoEmail?.trim())
@@ -287,7 +292,8 @@ export async function redeemGiftPurchase(input: {
           roomType: gift.retreatRoomOption.label,
           roomOptionLabelSnapshot: gift.retreatRoomOption.label,
           roomOptionTypeSnapshot: gift.retreatRoomOption.roomType,
-          guestsIncluded: gift.retreatRoomOption.guestsIncluded,
+          attendeeCount: retreatGuestCount,
+          guestsIncluded: retreatGuestCount,
           giftPurchaseId: gift.id,
           totalPricePence: gift.totalPaidPence,
           depositAmountPence: gift.totalPaidPence,
@@ -299,6 +305,51 @@ export async function redeemGiftPurchase(input: {
           bookingStatus: RetreatBookingStatus.paid_in_full,
           bookedAt: gift.purchasedAt || new Date(),
           depositPaidAt: gift.purchasedAt || new Date(),
+          attendees: {
+            create: [
+              {
+                userId: user.id,
+                email: attendeeEmail,
+                firstName: attendeeFirstName,
+                lastName: attendeeLastName,
+                displayName: `${attendeeFirstName} ${attendeeLastName}`.trim(),
+                isPrimary: true,
+                isPurchaser: attendeeEmail === normalizeEmail(gift.purchaserEmail),
+                status: "claimed",
+                claimedAt: new Date(),
+              },
+              ...(retreatGuestCount > 1 && input.guestTwoEmail
+                ? [
+                    {
+                      email: normalizeEmail(input.guestTwoEmail),
+                      firstName: normalizeText(input.guestTwoFirstName || "", 80),
+                      lastName: normalizeText(input.guestTwoLastName || "", 80),
+                      displayName: `${normalizeText(
+                        input.guestTwoFirstName || "",
+                        80
+                      )} ${normalizeText(input.guestTwoLastName || "", 80)}`.trim(),
+                      isPrimary: false,
+                      isPurchaser:
+                        normalizeEmail(input.guestTwoEmail) === normalizeEmail(gift.purchaserEmail),
+                    },
+                  ]
+                : []),
+            ],
+          },
+          items: {
+            create: {
+              itemType:
+                gift.retreatDate.retreatType === "online" ? "online_live_place" : "accommodation",
+              inventoryPoolId: gift.retreatRoomOption.inventoryPoolId,
+              roomOptionId: gift.retreatRoomOption.id,
+              ratePlanId: gift.retreatRatePlanId,
+              quantity: 1,
+              guestCount: retreatGuestCount,
+              unitPricePence: gift.totalPaidPence,
+              totalPricePence: gift.totalPaidPence,
+              currency: gift.currency,
+            },
+          },
         },
       });
 
@@ -314,6 +365,7 @@ export async function redeemGiftPurchase(input: {
       return created;
     });
 
+    await ensureRetreatOnlineAccessEntitlement(booking.id);
     return { type: "retreat" as const, bookingId: booking.id };
   }
 

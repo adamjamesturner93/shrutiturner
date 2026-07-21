@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { getFaqItems, getFaqItemsFor } from "@/lib/content";
 
 export async function GET(request: Request) {
+  await connection();
   const { searchParams } = new URL(request.url);
   const page = searchParams.get("page");
   const section = searchParams.get("section");

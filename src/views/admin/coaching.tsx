@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ClipboardList, Filter, RefreshCcw, Sparkles } from "lucide-react";
+import { ClipboardList, Filter, Mail, RefreshCcw, Sparkles } from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -151,6 +151,7 @@ export function AdminCoaching({
   const [activeTab, setActiveTab] = useState<CoachingPipelineTab>("new");
   const [tierFilter, setTierFilter] = useState("all");
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [reminderSendingId, setReminderSendingId] = useState<string | null>(null);
   const [cancellingUserId, setCancellingUserId] = useState<string | null>(null);
   const [notesDrafts, setNotesDrafts] = useState<Record<string, string>>({});
   const [decisionDrafts, setDecisionDrafts] = useState<Record<string, string>>({});
@@ -306,6 +307,30 @@ export function AdminCoaching({
     }
   };
 
+  const sendPaymentReminder = async (application: AdminCoachingApplicationDto) => {
+    setReminderSendingId(application.id);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch(
+        `/api/admin/coaching/applications/${application.id}/payment-reminder`,
+        { method: "POST" }
+      );
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) {
+        throw new Error(payload?.message || "Failed to send payment reminder.");
+      }
+      setNotice(`Payment reminder sent to ${application.applicantName}.`);
+      await loadApplications();
+    } catch (reminderError) {
+      setError(
+        reminderError instanceof Error ? reminderError.message : "Failed to send payment reminder."
+      );
+    } finally {
+      setReminderSendingId(null);
+    }
+  };
+
   const updateProfileStatus = async (
     application: AdminCoachingApplicationDto,
     status: "onboarding" | "active" | "paused" | "completed"
@@ -416,14 +441,14 @@ export function AdminCoaching({
       });
       const payload = (await response.json().catch(() => null)) as
         | (Partial<
-          ApiSuccess<{
-            nextPaymentAt: string;
-            endsAt: string;
-          }>
-        > & {
-          error?: { message?: string };
-          message?: string;
-        })
+            ApiSuccess<{
+              nextPaymentAt: string;
+              endsAt: string;
+            }>
+          > & {
+            error?: { message?: string };
+            message?: string;
+          })
         | null;
       if (!response.ok || !payload?.data) {
         throw new Error(
@@ -651,7 +676,7 @@ export function AdminCoaching({
                         }
                         placeholder={
                           application.status === "converted" ||
-                            application.isLinkedUserCoachingClient
+                          application.isLinkedUserCoachingClient
                             ? "Decision notes are locked after conversion. Use internal notes for ongoing context."
                             : "Shown to the client in approval/rejection email and their coaching dashboard. Required before rejection."
                         }
@@ -680,8 +705,8 @@ export function AdminCoaching({
                       ) : null}
 
                       {application.status === "submitted" ||
-                        application.status === "under_review" ||
-                        application.status === "follow_up_needed" ? (
+                      application.status === "under_review" ||
+                      application.status === "follow_up_needed" ? (
                         <Button
                           disabled={savingId === application.id}
                           onClick={() =>
@@ -694,8 +719,8 @@ export function AdminCoaching({
                       ) : null}
 
                       {application.status === "under_review" ||
-                        application.status === "follow_up_needed" ||
-                        application.status === "waitlisted" ? (
+                      application.status === "follow_up_needed" ||
+                      application.status === "waitlisted" ? (
                         <>
                           <Button
                             disabled={savingId === application.id}
@@ -732,15 +757,38 @@ export function AdminCoaching({
                       ) : null}
 
                       {application.status === "approved" ? (
-                        <p className="text-muted-foreground rounded-lg border p-3 text-xs leading-relaxed">
-                          Approved and awaiting client payment from their Coaching dashboard.
-                        </p>
+                        <div className="text-muted-foreground space-y-3 rounded-lg border p-3 text-xs leading-relaxed">
+                          <p>
+                            Approved and awaiting client payment from their dashboard. The reminder
+                            links them back to the website so agreements and payment stay attached
+                            to their account.
+                          </p>
+                          {application.paymentReminderSentAt ? (
+                            <p>
+                              Last reminder sent {formatDateTime(application.paymentReminderSentAt)}
+                              .
+                            </p>
+                          ) : null}
+                          <Button
+                            className="w-full"
+                            disabled={
+                              reminderSendingId === application.id ||
+                              savingId === application.id ||
+                              !application.userId
+                            }
+                            onClick={() => void sendPaymentReminder(application)}
+                            variant="outline"
+                          >
+                            <Mail className="mr-2 h-4 w-4" />
+                            Send payment reminder
+                          </Button>
+                        </div>
                       ) : null}
 
                       {application.status === "under_review" ||
-                        application.status === "follow_up_needed" ||
-                        application.status === "approved" ||
-                        application.status === "waitlisted" ? (
+                      application.status === "follow_up_needed" ||
+                      application.status === "approved" ||
+                      application.status === "waitlisted" ? (
                         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                           <p className="text-sm text-amber-950">Manual/pro-bono conversion</p>
                           <p className="mt-1 text-xs leading-relaxed text-amber-800">
@@ -819,7 +867,7 @@ export function AdminCoaching({
                                       size="sm"
                                       variant={
                                         application.coachingProfile?.everfitConnectionStatus ===
-                                          value
+                                        value
                                           ? "default"
                                           : "outline"
                                       }

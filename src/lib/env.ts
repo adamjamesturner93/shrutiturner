@@ -100,7 +100,7 @@ export function getDatabaseUrl() {
 }
 
 export function getAdminEmailAllowlist() {
-  return (env.ADMIN_EMAILS || "tech@thechronicyogini.com,shruti@shrutiturner.com")
+  return (env.ADMIN_EMAILS || "shruti@shrutiturner.co.uk")
     .split(",")
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean);

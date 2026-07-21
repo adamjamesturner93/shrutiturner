@@ -17,12 +17,17 @@ function now() {
   return new Date();
 }
 
-const REPLAY_RESOURCE_TYPES = ["small_group_programme_session", "class_session"] as const;
+const REPLAY_RESOURCE_TYPES = [
+  "small_group_programme_session",
+  "class_session",
+  "retreat_date",
+] as const;
 
 type ReplayResourceType = (typeof REPLAY_RESOURCE_TYPES)[number];
 
 const replayAssetInclude = {
   classSession: true,
+  retreatDate: true,
   smallGroupProgrammeSession: {
     include: {
       programme: {
@@ -72,6 +77,11 @@ function getReplayTitle(asset: {
       title: string;
     };
   } | null;
+  retreatDate?: {
+    retreatTitleSnapshot: string;
+    startsAt: Date;
+    endsAt: Date;
+  } | null;
 }) {
   if (asset.classSession) {
     return {
@@ -79,6 +89,15 @@ function getReplayTitle(asset: {
       subtitle: "Class replay",
       startsAt: asset.classSession.startsAtUtc.toISOString(),
       endsAt: asset.classSession.endsAtUtc.toISOString(),
+    };
+  }
+
+  if (asset.retreatDate) {
+    return {
+      title: asset.retreatDate.retreatTitleSnapshot,
+      subtitle: "Workshop replay",
+      startsAt: asset.retreatDate.startsAt.toISOString(),
+      endsAt: asset.retreatDate.endsAt.toISOString(),
     };
   }
 
@@ -199,8 +218,86 @@ export async function syncReplayAssetFromDailyWebhook(input: {
   if (updated.resourceType === "class_session" && updated.classSessionId) {
     await createClassReplayEntitlements(updated.id, updated.classSessionId);
   }
+  if (updated.resourceType === "retreat_date" && updated.retreatDateId) {
+    await createRetreatReplayEntitlements(updated.id, updated.retreatDateId, updated.completedAt);
+  }
 
   return updated;
+}
+
+async function createRetreatReplayEntitlements(
+  replayAssetId: string,
+  retreatDateId: string,
+  completedAt: Date | null
+) {
+  const retreatDate = await db.retreatDate.findUnique({
+    where: { id: retreatDateId },
+    select: {
+      replayAccessDurationDays: true,
+      onlineAccessEntitlements: {
+        where: {
+          userId: { not: null },
+          accessType: { in: ["replay_only", "live_and_replay"] },
+        },
+      },
+    },
+  });
+  if (!retreatDate) return;
+
+  const replayAvailableAt = completedAt || now();
+  const replayExpiresAt = new Date(
+    replayAvailableAt.getTime() +
+      Math.max(retreatDate.replayAccessDurationDays || 0, 1) * 24 * 60 * 60 * 1000
+  );
+  const attendeeEntitlements = retreatDate.onlineAccessEntitlements.filter(
+    (entitlement): entitlement is typeof entitlement & { userId: string } =>
+      Boolean(entitlement.userId)
+  );
+
+  await db.$transaction([
+    db.retreatDate.update({
+      where: { id: retreatDateId },
+      data: { replayAvailable: true },
+    }),
+    db.replayAsset.update({
+      where: { id: replayAssetId },
+      data: { deleteAfterAt: replayExpiresAt },
+    }),
+    ...attendeeEntitlements.map((entitlement) =>
+      db.retreatOnlineAccessEntitlement.update({
+        where: { id: entitlement.id },
+        data: {
+          replayAccessEnabled: true,
+          replayAvailableAt,
+          replayExpiresAt,
+        },
+      })
+    ),
+    ...attendeeEntitlements.map((entitlement) =>
+      db.replayEntitlement.upsert({
+        where: {
+          replayAssetId_userId_accessType: {
+            replayAssetId,
+            userId: entitlement.userId,
+            accessType: ReplayEntitlementAccessType.participant,
+          },
+        },
+        create: {
+          replayAssetId,
+          userId: entitlement.userId,
+          accessType: ReplayEntitlementAccessType.participant,
+          startsAt: replayAvailableAt,
+          endsAt: replayExpiresAt,
+        },
+        update: {
+          startsAt: replayAvailableAt,
+          endsAt: replayExpiresAt,
+          revokedAt: null,
+          revokedByUserId: null,
+        },
+      })
+    ),
+  ]);
 }
 
 async function createClassReplayEntitlements(replayAssetId: string, classSessionId: string) {

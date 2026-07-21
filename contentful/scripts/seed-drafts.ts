@@ -1,9 +1,19 @@
 import { SEED_GROUPS } from "../seed/public-seed.ts";
-import contentfulManagement from "contentful-management";
+import { createClient } from "contentful-management";
 import { getContentfulScriptEnv } from "./env.ts";
 
 const { spaceId, environmentId, managementToken } = getContentfulScriptEnv();
-const { createClient } = contentfulManagement;
+const publishSeed = process.env.CONTENTFUL_PUBLISH_SEED === "true";
+const requestedContentTypes = new Set(
+  (process.env.CONTENTFUL_SEED_TYPES || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+);
+const seedGroups =
+  requestedContentTypes.size > 0
+    ? SEED_GROUPS.filter((group) => requestedContentTypes.has(group.contentType))
+    : SEED_GROUPS;
 
 const client = createClient({ accessToken: managementToken }, { type: "legacy" });
 
@@ -11,6 +21,7 @@ type ContentfulEntry = {
   sys: { id: string };
   fields: Record<string, Record<string, unknown>>;
   update: () => Promise<ContentfulEntry>;
+  publish: () => Promise<ContentfulEntry>;
 };
 
 type ContentfulEnvironment = {
@@ -123,7 +134,10 @@ async function upsertDraftEntry(
 
   if (existing) {
     existing.fields = normalizeEntryFields(normalizedEntry);
-    await existing.update();
+    const updated = await existing.update();
+    if (publishSeed) {
+      await updated.publish();
+    }
 
     return { action: "updated", id: existing.sys.id };
   }
@@ -131,6 +145,9 @@ async function upsertDraftEntry(
   const created = await environment.createEntry(contentType, {
     fields: normalizeEntryFields(normalizedEntry),
   });
+  if (publishSeed) {
+    await created.publish();
+  }
 
   return { action: "created", id: created.sys.id };
 }
@@ -151,7 +168,7 @@ async function run() {
   const report: Record<string, { created: number; updated: number }> = {};
 
   // Seed all groups except groups requiring link resolution first.
-  for (const group of SEED_GROUPS.filter(
+  for (const group of seedGroups.filter(
     (g) =>
       g.contentType !== "retreatTemplate" &&
       g.contentType !== "newsletterSignupContent" &&
@@ -169,7 +186,7 @@ async function run() {
     }
   }
 
-  const classDefinitionGroup = SEED_GROUPS.find((g) => g.contentType === "classDefinition");
+  const classDefinitionGroup = seedGroups.find((g) => g.contentType === "classDefinition");
   if (classDefinitionGroup) {
     report.classDefinition = { created: 0, updated: 0 };
 
@@ -203,7 +220,7 @@ async function run() {
     }
   }
 
-  const blogPostGroup = SEED_GROUPS.find((g) => g.contentType === "blogPost");
+  const blogPostGroup = seedGroups.find((g) => g.contentType === "blogPost");
   if (blogPostGroup) {
     report.blogPost = { created: 0, updated: 0 };
 
@@ -234,9 +251,7 @@ async function run() {
     }
   }
 
-  const newsletterSignupGroup = SEED_GROUPS.find(
-    (g) => g.contentType === "newsletterSignupContent"
-  );
+  const newsletterSignupGroup = seedGroups.find((g) => g.contentType === "newsletterSignupContent");
   if (newsletterSignupGroup) {
     report.newsletterSignupContent = { created: 0, updated: 0 };
 
@@ -267,7 +282,7 @@ async function run() {
     }
   }
 
-  const retreatTemplateGroup = SEED_GROUPS.find((g) => g.contentType === "retreatTemplate");
+  const retreatTemplateGroup = seedGroups.find((g) => g.contentType === "retreatTemplate");
   if (retreatTemplateGroup) {
     report.retreatTemplate = { created: 0, updated: 0 };
 
@@ -296,11 +311,16 @@ async function run() {
 
   console.log("Draft seed completed:");
   console.table(report);
+  if (publishSeed) {
+    console.log(`Published seeded entries in Contentful environment: ${environmentId}`);
+  }
 }
 
-run().catch((err) => {
+try {
+  await run();
+} catch (err) {
   const message = err instanceof Error ? err.message : String(err);
   const code = (err as { code?: string } | undefined)?.code;
   console.error(`Seed failed${code ? ` (${code})` : ""}: ${message}`);
   process.exitCode = 1;
-});
+}

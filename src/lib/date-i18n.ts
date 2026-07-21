@@ -162,9 +162,32 @@ export function formatDateRange(
 ): string {
   const s = typeof start === "string" ? new Date(start) : start;
   const e = typeof end === "string" ? new Date(end) : end;
+  const calendarParts = (date: Date) => {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      day: "numeric",
+      month: "numeric",
+      year: "numeric",
+      timeZone: prefs.timezone,
+    }).formatToParts(date);
+    return {
+      day: parts.find((part) => part.type === "day")?.value,
+      month: parts.find((part) => part.type === "month")?.value,
+      year: parts.find((part) => part.type === "year")?.value,
+    };
+  };
+  const startParts = calendarParts(s);
+  const endParts = calendarParts(e);
+
+  if (
+    startParts.day === endParts.day &&
+    startParts.month === endParts.month &&
+    startParts.year === endParts.year
+  ) {
+    return formatDate(s, prefs);
+  }
 
   // If same month/year, compact format
-  if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()) {
+  if (startParts.month === endParts.month && startParts.year === endParts.year) {
     const locale = getLocale(prefs.dateFormat);
     const month = s.toLocaleDateString(locale, {
       month: "long",

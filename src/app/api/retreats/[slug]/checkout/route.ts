@@ -6,7 +6,9 @@ import { createRetreatCheckout } from "@/lib/retreats/service";
 type RetreatCheckoutBody = {
   retreatDateId?: unknown;
   roomOptionId?: unknown;
+  guestCount?: unknown;
   purchaseMode?: unknown;
+  paymentOption?: unknown;
   purchaserFirstName?: unknown;
   purchaserLastName?: unknown;
   purchaserEmail?: unknown;
@@ -47,7 +49,9 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
       retreatSlug: slug,
       retreatDateId: typeof body.retreatDateId === "string" ? body.retreatDateId : "",
       roomOptionId: typeof body.roomOptionId === "string" ? body.roomOptionId : "",
+      guestCount: typeof body.guestCount === "number" ? body.guestCount : undefined,
       purchaseMode: body.purchaseMode === "gift" ? "gift" : "self",
+      paymentOption: body.paymentOption === "pay_in_full" ? "pay_in_full" : "deposit",
       purchaserUserId: session?.user?.id || null,
       purchaserFirstName:
         typeof body.purchaserFirstName === "string" ? body.purchaserFirstName : "",
@@ -96,6 +100,8 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
         error.message === "RETREAT_DATE_UNAVAILABLE" ||
         error.message === "ROOM_OPTION_NOT_FOUND" ||
         error.message === "ROOM_OPTION_UNAVAILABLE" ||
+        error.message === "RETREAT_GUEST_COUNT_INVALID" ||
+        error.message === "RETREAT_RATE_PLAN_NOT_FOUND" ||
         error.message === "SECOND_GUEST_REQUIRED" ||
         error.message === "RECIPIENT_REQUIRED")
     ) {

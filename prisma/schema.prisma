@@ -242,6 +242,68 @@ enum RetreatPaymentStatus {
   failed
 }
 
+enum RetreatInstalmentKind {
+  deposit
+  scheduled
+  balance
+  full_payment
+}
+
+enum RetreatInstalmentStatus {
+  pending
+  paid
+  refunded
+  cancelled
+  failed
+}
+
+enum RetreatRoomUnitStatus {
+  available
+  assigned
+  unavailable
+}
+
+enum RetreatAttendeeStatus {
+  pending_claim
+  claimed
+  cancelled
+}
+
+enum RetreatInventoryType {
+  bed_space
+  room
+  ticket
+  addon
+  online_live_place
+}
+
+enum RetreatBookingUnit {
+  bed_space
+  whole_room
+  ticket
+  addon
+  online_live_place
+}
+
+enum RetreatBookingItemType {
+  accommodation
+  ticket
+  addon
+  online_live_place
+}
+
+enum RetreatDepositType {
+  percentage
+  fixed_amount
+  full_payment
+}
+
+enum RetreatOnlineAccessType {
+  live_only
+  replay_only
+  live_and_replay
+}
+
 enum GiftType {
   retreat
   small_group
@@ -441,8 +503,8 @@ model User {
   referralLedgerEntries                 ReferralLedgerEntry[]
   membershipSubscriptions               MembershipSubscription[]
   membershipDunningCases                MembershipDunningCase[]
-  billingRefunds                        BillingRefund[]                          @relation("BillingRefundUser")
-  billingRefundActions                  BillingRefund[]                          @relation("BillingRefundActor")
+  billingRefunds                        BillingRefund[]                           @relation("BillingRefundUser")
+  billingRefundActions                  BillingRefund[]                           @relation("BillingRefundActor")
   subscriptionComplianceEvents          SubscriptionComplianceEvent[]
   creditLedgerEntries                   CreditLedgerEntry[]
   billingEvents                         BillingEvent[]                            @relation("UserBillingEvents")
@@ -465,6 +527,8 @@ model User {
   giftPurchasesRedeemed                 GiftPurchase[]                            @relation("GiftPurchaseRedeemer")
   retreatBookingsPurchased              RetreatBooking[]                          @relation("RetreatBookingPurchaser")
   retreatBookingsAttending              RetreatBooking[]                          @relation("RetreatBookingAttendee")
+  retreatAttendees                      RetreatAttendee[]
+  retreatOnlineAccessEntitlements       RetreatOnlineAccessEntitlement[]
   coachingApplications                  CoachingApplication[]
   coachingProfile                       CoachingClientProfile?
   coachingPackageChangeRequests         CoachingPackageChangeRequest[]            @relation("CoachingPackageChangeClient")
@@ -513,8 +577,8 @@ model PolicyDocumentVersion {
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
-  publishedBy      User?             @relation("PolicyVersionPublishedBy", fields: [publishedByUserId], references: [id], onDelete: SetNull)
-  acceptanceEvents AcceptanceEvent[]
+  publishedBy           User?                  @relation("PolicyVersionPublishedBy", fields: [publishedByUserId], references: [id], onDelete: SetNull)
+  acceptanceEvents      AcceptanceEvent[]
   guestAcceptanceEvents GuestAcceptanceEvent[]
 
   @@unique([type, version])
@@ -644,20 +708,20 @@ model RefundRule {
 }
 
 model PrivacyRequest {
-  id              String               @id @default(cuid())
-  userId          String
-  actorUserId     String
-  type            PrivacyRequestType
-  status          PrivacyRequestStatus @default(pending)
-  summaryChecksum String?
-  summaryJson     Json?
-  exportSectionsJson Json?
+  id                  String               @id @default(cuid())
+  userId              String
+  actorUserId         String
+  type                PrivacyRequestType
+  status              PrivacyRequestStatus @default(pending)
+  summaryChecksum     String?
+  summaryJson         Json?
+  exportSectionsJson  Json?
   exportRowCountsJson Json?
-  blockReason     String?
-  generatedAt     DateTime?
-  executedAt      DateTime?
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
+  blockReason         String?
+  generatedAt         DateTime?
+  executedAt          DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   user  User @relation("PrivacyRequestSubject", fields: [userId], references: [id], onDelete: Cascade)
   actor User @relation("PrivacyRequestActor", fields: [actorUserId], references: [id], onDelete: Restrict)
@@ -767,12 +831,12 @@ model ScheduledJobRun {
 }
 
 model ScheduledJobLease {
-  jobName      String   @id
-  leaseId      String   @unique
-  actorUserId  String?
-  leasedUntil  DateTime
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  jobName     String   @id
+  leaseId     String   @unique
+  actorUserId String?
+  leasedUntil DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   actor User? @relation("ScheduledJobLeaseActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
@@ -1076,20 +1140,20 @@ model BillingMetricDaily {
 }
 
 model BillingRefund {
-  id              String              @id @default(cuid())
-  userId          String
-  membershipId    String
-  actorUserId     String?
-  status          BillingRefundStatus @default(pending)
-  amountPence     Int
-  reason          String
-  refundedAsCredit Boolean            @default(false)
-  stripeRefundId  String?             @unique
-  stripeInvoiceId String?
-  paymentIntentId String?
-  metadataJson    Json?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  id               String              @id @default(cuid())
+  userId           String
+  membershipId     String
+  actorUserId      String?
+  status           BillingRefundStatus @default(pending)
+  amountPence      Int
+  reason           String
+  refundedAsCredit Boolean             @default(false)
+  stripeRefundId   String?             @unique
+  stripeInvoiceId  String?
+  paymentIntentId  String?
+  metadataJson     Json?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 
   user       User                   @relation("BillingRefundUser", fields: [userId], references: [id], onDelete: Cascade)
   actor      User?                  @relation("BillingRefundActor", fields: [actorUserId], references: [id], onDelete: SetNull)
@@ -1398,8 +1462,8 @@ model EmailDelivery {
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 
-  user     User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
-  campaign EmailCampaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  user     User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  campaign EmailCampaign?         @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   attempts EmailDeliveryAttempt[]
   events   EmailEvent[]
 
@@ -1533,12 +1597,12 @@ model NewsletterSubscriber {
 }
 
 model NewsletterSignupEvent {
-  id          String   @id @default(cuid())
-  hashedEmail String
-  source      String
-  eventType   String
+  id           String   @id @default(cuid())
+  hashedEmail  String
+  source       String
+  eventType    String
   metadataJson Json?
-  createdAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
 
   @@index([eventType, createdAt])
   @@index([source, createdAt])
@@ -1546,65 +1610,176 @@ model NewsletterSignupEvent {
 }
 
 model RetreatDate {
-  id                          String            @id @default(cuid())
-  externalDateId              String            @unique
+  id                          String               @id @default(cuid())
+  externalDateId              String               @unique
   retreatSlug                 String
   retreatTitleSnapshot        String
   retreatLocationSnapshot     String
+  retreatType                 String               @default("in_person")
+  timezone                    String               @default("Europe/London")
   startsAt                    DateTime
   endsAt                      DateTime
   capacity                    Int
-  status                      RetreatDateStatus @default(open)
-  currency                    String            @default("GBP")
+  status                      RetreatDateStatus    @default(open)
+  currency                    String               @default("GBP")
   pricePence                  Int
   depositAmountPence          Int
-  singleRoomSupplementPence   Int               @default(0)
+  singleRoomSupplementPence   Int                  @default(0)
   balanceDueAt                DateTime?
-  isRecorded                  Boolean           @default(false)
+  isRecorded                  Boolean              @default(false)
   recordingScope              String?
-  replayAvailable             Boolean           @default(false)
+  replayAvailable             Boolean              @default(false)
   replayAccessDurationDays    Int?
-  chatEnabled                 Boolean           @default(true)
-  participantMicDefaultMuted  Boolean           @default(false)
-  participantCameraDefaultOff Boolean           @default(false)
+  chatEnabled                 Boolean              @default(true)
+  participantMicDefaultMuted  Boolean              @default(false)
+  participantCameraDefaultOff Boolean              @default(false)
+  paymentPlanSnapshotJson     Json?
+  refundPolicySnapshotJson    Json?
+  payInFullDiscountEnabled    Boolean              @default(true)
+  payInFullDiscountPercent    Int                  @default(5)
+  payInFullDiscountCapPence   Int                  @default(5000)
+  dailyRoomName               String?
+  dailyRoomUrl                String?
+  onlineRoomSetupStatus       ClassRoomSetupStatus @default(pending)
+  onlineRoomSetupError        String?
   refundRuleId                String?
-  createdAt                   DateTime          @default(now())
-  updatedAt                   DateTime          @updatedAt
+  bookingOpensAt              DateTime?
+  bookingClosesAt             DateTime?
+  createdAt                   DateTime             @default(now())
+  updatedAt                   DateTime             @updatedAt
 
-  bookings              RetreatBooking[]
-  roomOptions           RetreatRoomOption[]
-  giftPurchases         GiftPurchase[]
-  replayAssets          ReplayAsset[]
-  refundRule            RefundRule?                       @relation(fields: [refundRuleId], references: [id], onDelete: SetNull)
-  instructorAssignments RetreatDateInstructorAssignment[]
+  bookings                 RetreatBooking[]
+  roomOptions              RetreatRoomOption[]
+  roomUnits                RetreatRoomUnit[]
+  inventoryPools           RetreatInventoryPool[]
+  depositRules             RetreatDepositRule[]
+  addons                   RetreatAddon[]
+  onlineAccessEntitlements RetreatOnlineAccessEntitlement[]
+  giftPurchases            GiftPurchase[]
+  replayAssets             ReplayAsset[]
+  refundRule               RefundRule?                       @relation(fields: [refundRuleId], references: [id], onDelete: SetNull)
+  instructorAssignments    RetreatDateInstructorAssignment[]
 
   @@index([retreatSlug, startsAt])
   @@index([status, startsAt])
+  @@index([retreatType, startsAt])
+  @@index([dailyRoomName])
   @@index([refundRuleId])
 }
 
 model RetreatRoomOption {
-  id                   String   @id @default(cuid())
-  retreatDateId        String
-  externalRoomOptionId String
-  label                String
-  description          String?
-  roomType             String
-  guestsIncluded       Int      @default(1)
-  capacity             Int
-  availableSpots       Int
-  pricePence           Int
-  depositAmountPence   Int?
-  isWaitlistOnly       Boolean  @default(false)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                     String             @id @default(cuid())
+  retreatDateId          String
+  inventoryPoolId        String?
+  externalRoomOptionId   String
+  label                  String
+  description            String?
+  roomType               String
+  bookingUnit            RetreatBookingUnit @default(bed_space)
+  guestsIncluded         Int                @default(1)
+  guestCountPerUnit      Int?
+  physicalRoomCount      Int?
+  bedsPerPhysicalRoom    Int?
+  allowedGuestCountsJson Json?
+  capacity               Int
+  availableSpots         Int
+  pricePence             Int
+  pricePerPersonPence    Int?
+  roomCount              Int                @default(0)
+  depositAmountPence     Int?
+  isWaitlistOnly         Boolean            @default(false)
+  displayOrder           Int                @default(0)
+  active                 Boolean            @default(true)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
 
-  retreatDate   RetreatDate      @relation(fields: [retreatDateId], references: [id], onDelete: Cascade)
+  retreatDate   RetreatDate           @relation(fields: [retreatDateId], references: [id], onDelete: Cascade)
+  inventoryPool RetreatInventoryPool? @relation(fields: [inventoryPoolId], references: [id], onDelete: SetNull)
+  ratePlans     RetreatRatePlan[]
+  bookingItems  RetreatBookingItem[]
   bookings      RetreatBooking[]
+  roomUnits     RetreatRoomUnit[]
   giftPurchases GiftPurchase[]
 
   @@unique([retreatDateId, externalRoomOptionId])
   @@index([retreatDateId, availableSpots])
+  @@index([inventoryPoolId])
+  @@index([retreatDateId, active, displayOrder])
+}
+
+model RetreatInventoryPool {
+  id            String               @id @default(cuid())
+  retreatDateId String
+  inventoryType RetreatInventoryType
+  name          String
+  totalQuantity Int
+  active        Boolean              @default(true)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  retreatDate  RetreatDate          @relation(fields: [retreatDateId], references: [id], onDelete: Cascade)
+  roomOptions  RetreatRoomOption[]
+  addons       RetreatAddon[]
+  bookingItems RetreatBookingItem[]
+
+  @@index([retreatDateId, inventoryType, active])
+}
+
+model RetreatRatePlan {
+  id                  String    @id @default(cuid())
+  roomOptionId        String
+  guestCount          Int
+  totalPricePence     Int
+  earlyBirdPricePence Int?
+  earlyBirdEndsAt     DateTime?
+  currency            String    @default("GBP")
+  active              Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  roomOption    RetreatRoomOption    @relation(fields: [roomOptionId], references: [id], onDelete: Cascade)
+  bookingItems  RetreatBookingItem[]
+  giftPurchases GiftPurchase[]
+
+  @@unique([roomOptionId, guestCount])
+  @@index([roomOptionId, active])
+  @@index([earlyBirdEndsAt])
+}
+
+model RetreatDepositRule {
+  id                           String             @id @default(cuid())
+  retreatDateId                String
+  depositType                  RetreatDepositType
+  depositPercentageBasisPoints Int?
+  fixedDepositAmountPence      Int?
+  balanceDueAt                 DateTime?
+  balanceDueDaysBeforeStart    Int?
+  active                       Boolean            @default(true)
+  createdAt                    DateTime           @default(now())
+  updatedAt                    DateTime           @updatedAt
+
+  retreatDate RetreatDate @relation(fields: [retreatDateId], references: [id], onDelete: Cascade)
+
+  @@index([retreatDateId, active])
+}
+
+model RetreatRoomUnit {
+  id            String                @id @default(cuid())
+  retreatDateId String
+  roomOptionId  String
+  label         String
+  status        RetreatRoomUnitStatus @default(available)
+  notes         String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  retreatDate RetreatDate       @relation(fields: [retreatDateId], references: [id], onDelete: Cascade)
+  roomOption  RetreatRoomOption @relation(fields: [roomOptionId], references: [id], onDelete: Cascade)
+  bookings    RetreatBooking[]
+
+  @@unique([retreatDateId, roomOptionId, label])
+  @@index([retreatDateId, status])
+  @@index([roomOptionId, status])
 }
 
 model RetreatDateInstructorAssignment {
@@ -1624,6 +1799,7 @@ model RetreatBooking {
   id                           String               @id @default(cuid())
   retreatDateId                String
   roomOptionId                 String?
+  roomUnitId                   String?
   purchaserUserId              String?
   attendeeUserId               String?
   purchaserFirstName           String
@@ -1642,6 +1818,7 @@ model RetreatBooking {
   guestTwoLastName             String?
   guestTwoEmail                String?
   guestTwoDietaryRequirements  String?
+  attendeeCount                Int                  @default(1)
   singleRoomRequested          Boolean              @default(false)
   roomType                     String?
   roomOptionLabelSnapshot      String?
@@ -1652,6 +1829,8 @@ model RetreatBooking {
   acceptedHealthWaiverVersion  String?
   acceptedHealthDataVersion    String?
   totalPricePence              Int
+  payInFullDiscountPence       Int                  @default(0)
+  nonRefundableAmountPence     Int                  @default(0)
   depositAmountPence           Int
   balanceAmountPence           Int
   depositPaidPence             Int                  @default(0)
@@ -1666,27 +1845,163 @@ model RetreatBooking {
   balancePaymentUrlToken       String?              @unique
   balanceDueAt                 DateTime?
   complianceSnapshotJson       Json?
+  paymentPlanSnapshotJson      Json?
+  refundPolicySnapshotJson     Json?
   bookedAt                     DateTime             @default(now())
+  holdExpiresAt                DateTime?
   depositPaidAt                DateTime?
   balancePaidAt                DateTime?
   cancelledAt                  DateTime?
   createdAt                    DateTime             @default(now())
   updatedAt                    DateTime             @updatedAt
 
-  retreatDate   RetreatDate        @relation(fields: [retreatDateId], references: [id], onDelete: Restrict)
-  roomOption    RetreatRoomOption? @relation(fields: [roomOptionId], references: [id], onDelete: SetNull)
-  purchaserUser User?              @relation("RetreatBookingPurchaser", fields: [purchaserUserId], references: [id], onDelete: SetNull)
-  attendeeUser  User?              @relation("RetreatBookingAttendee", fields: [attendeeUserId], references: [id], onDelete: SetNull)
-  giftPurchase  GiftPurchase?      @relation("GiftPurchaseRetreatBooking", fields: [giftPurchaseId], references: [id], onDelete: SetNull)
-  guestAcceptanceEvents GuestAcceptanceEvent[]
+  retreatDate              RetreatDate                      @relation(fields: [retreatDateId], references: [id], onDelete: Restrict)
+  roomOption               RetreatRoomOption?               @relation(fields: [roomOptionId], references: [id], onDelete: SetNull)
+  roomUnit                 RetreatRoomUnit?                 @relation(fields: [roomUnitId], references: [id], onDelete: SetNull)
+  purchaserUser            User?                            @relation("RetreatBookingPurchaser", fields: [purchaserUserId], references: [id], onDelete: SetNull)
+  attendeeUser             User?                            @relation("RetreatBookingAttendee", fields: [attendeeUserId], references: [id], onDelete: SetNull)
+  giftPurchase             GiftPurchase?                    @relation("GiftPurchaseRetreatBooking", fields: [giftPurchaseId], references: [id], onDelete: SetNull)
+  guestAcceptanceEvents    GuestAcceptanceEvent[]
+  attendees                RetreatAttendee[]
+  instalments              RetreatBookingInstalment[]
+  items                    RetreatBookingItem[]
+  onlineAccessEntitlements RetreatOnlineAccessEntitlement[]
 
   @@index([retreatDateId, bookingStatus])
   @@index([roomOptionId, bookingStatus])
+  @@index([roomUnitId, bookingStatus])
   @@index([purchaserUserId, bookingStatus])
   @@index([attendeeUserId, bookingStatus])
   @@index([purchaserEmail, bookingStatus])
   @@index([attendeeEmail, bookingStatus])
   @@index([paymentStatus, balanceDueAt])
+  @@index([bookingStatus, holdExpiresAt])
+}
+
+model RetreatBookingItem {
+  id              String                 @id @default(cuid())
+  bookingId       String
+  itemType        RetreatBookingItemType
+  inventoryPoolId String?
+  roomOptionId    String?
+  ratePlanId      String?
+  addonId         String?
+  quantity        Int
+  guestCount      Int
+  unitPricePence  Int
+  totalPricePence Int
+  currency        String                 @default("GBP")
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  booking       RetreatBooking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  inventoryPool RetreatInventoryPool? @relation(fields: [inventoryPoolId], references: [id], onDelete: SetNull)
+  roomOption    RetreatRoomOption?    @relation(fields: [roomOptionId], references: [id], onDelete: SetNull)
+  ratePlan      RetreatRatePlan?      @relation(fields: [ratePlanId], references: [id], onDelete: SetNull)
+  addon         RetreatAddon?         @relation(fields: [addonId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId])
+  @@index([inventoryPoolId])
+  @@index([roomOptionId])
+  @@index([addonId])
+}
+
+model RetreatAttendee {
+  id          String                @id @default(cuid())
+  bookingId   String
+  userId      String?
+  email       String
+  firstName   String
+  lastName    String
+  displayName String
+  isPrimary   Boolean               @default(false)
+  isPurchaser Boolean               @default(false)
+  status      RetreatAttendeeStatus @default(pending_claim)
+  claimToken  String?               @unique
+  claimedAt   DateTime?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  booking RetreatBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user    User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId, status])
+  @@index([email, status])
+  @@index([userId, status])
+}
+
+model RetreatBookingInstalment {
+  id                       String                  @id @default(cuid())
+  bookingId                String
+  sequence                 Int
+  kind                     RetreatInstalmentKind
+  label                    String
+  amountPence              Int
+  dueAt                    DateTime?
+  status                   RetreatInstalmentStatus @default(pending)
+  stripeCheckoutSessionId  String?                 @unique
+  stripePaymentIntentId    String?
+  publicPaymentToken       String?                 @unique
+  paidAt                   DateTime?
+  lastReminderSentAt       DateTime?
+  lastReminderMode         String?
+  lastReminderSentByUserId String?
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+
+  booking RetreatBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingId, sequence])
+  @@index([bookingId, status])
+  @@index([publicPaymentToken])
+}
+
+model RetreatAddon {
+  id               String   @id @default(cuid())
+  retreatDateId    String
+  inventoryPoolId  String?
+  name             String
+  description      String?
+  pricePence       Int
+  currency         String   @default("GBP")
+  requiresTimeSlot Boolean  @default(false)
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  retreatDate   RetreatDate           @relation(fields: [retreatDateId], references: [id], onDelete: Cascade)
+  inventoryPool RetreatInventoryPool? @relation(fields: [inventoryPoolId], references: [id], onDelete: SetNull)
+  bookingItems  RetreatBookingItem[]
+
+  @@index([retreatDateId, active])
+  @@index([inventoryPoolId])
+}
+
+model RetreatOnlineAccessEntitlement {
+  id                  String                  @id @default(cuid())
+  bookingId           String
+  retreatDateId       String
+  userId              String?
+  attendeeEmail       String
+  accessType          RetreatOnlineAccessType
+  liveAccessEnabled   Boolean                 @default(false)
+  replayAccessEnabled Boolean                 @default(false)
+  liveAccessStartsAt  DateTime?
+  liveAccessEndsAt    DateTime?
+  replayAvailableAt   DateTime?
+  replayExpiresAt     DateTime?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  booking     RetreatBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  retreatDate RetreatDate    @relation(fields: [retreatDateId], references: [id], onDelete: Cascade)
+  user        User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId])
+  @@index([retreatDateId, attendeeEmail])
+  @@index([userId, retreatDateId])
+  @@index([liveAccessStartsAt, liveAccessEndsAt])
+  @@index([replayAvailableAt, replayExpiresAt])
 }
 
 model GiftPurchase {
@@ -1712,6 +2027,8 @@ model GiftPurchase {
   stripePaymentIntentId   String?
   retreatDateId           String?
   retreatRoomOptionId     String?
+  retreatRatePlanId       String?
+  retreatGuestCount       Int?
   smallGroupProgrammeId   String?
   expiresAt               DateTime?
   purchasedAt             DateTime?
@@ -1719,19 +2036,21 @@ model GiftPurchase {
   createdAt               DateTime           @default(now())
   updatedAt               DateTime           @updatedAt
 
-  purchaserUser       User?                          @relation("GiftPurchasePurchaser", fields: [purchaserUserId], references: [id], onDelete: SetNull)
-  redeemedByUser      User?                          @relation("GiftPurchaseRedeemer", fields: [redeemedByUserId], references: [id], onDelete: SetNull)
-  retreatDate         RetreatDate?                   @relation(fields: [retreatDateId], references: [id], onDelete: SetNull)
-  retreatRoomOption   RetreatRoomOption?             @relation(fields: [retreatRoomOptionId], references: [id], onDelete: SetNull)
-  smallGroupProgramme SmallGroupProgramme?           @relation(fields: [smallGroupProgrammeId], references: [id], onDelete: SetNull)
-  retreatBooking      RetreatBooking?                @relation("GiftPurchaseRetreatBooking")
-  enrolment           SmallGroupProgrammeEnrollment? @relation("GiftPurchaseProgrammeEnrollment")
+  purchaserUser         User?                          @relation("GiftPurchasePurchaser", fields: [purchaserUserId], references: [id], onDelete: SetNull)
+  redeemedByUser        User?                          @relation("GiftPurchaseRedeemer", fields: [redeemedByUserId], references: [id], onDelete: SetNull)
+  retreatDate           RetreatDate?                   @relation(fields: [retreatDateId], references: [id], onDelete: SetNull)
+  retreatRoomOption     RetreatRoomOption?             @relation(fields: [retreatRoomOptionId], references: [id], onDelete: SetNull)
+  retreatRatePlan       RetreatRatePlan?               @relation(fields: [retreatRatePlanId], references: [id], onDelete: SetNull)
+  smallGroupProgramme   SmallGroupProgramme?           @relation(fields: [smallGroupProgrammeId], references: [id], onDelete: SetNull)
+  retreatBooking        RetreatBooking?                @relation("GiftPurchaseRetreatBooking")
+  enrolment             SmallGroupProgrammeEnrollment? @relation("GiftPurchaseProgrammeEnrollment")
   guestAcceptanceEvents GuestAcceptanceEvent[]
 
   @@index([status, type, createdAt])
   @@index([recipientEmail, status])
   @@index([purchaserEmail, status])
   @@index([retreatDateId, status])
+  @@index([retreatRatePlanId])
   @@index([smallGroupProgrammeId, status])
 }
 
@@ -1748,9 +2067,9 @@ model GuestAcceptanceEvent {
   giftPurchaseId    String?
   createdAt         DateTime       @default(now())
 
-  policyVersion PolicyDocumentVersion? @relation(fields: [policyVersionId], references: [id], onDelete: SetNull)
-  retreatBooking RetreatBooking?       @relation(fields: [retreatBookingId], references: [id], onDelete: Cascade)
-  giftPurchase   GiftPurchase?         @relation(fields: [giftPurchaseId], references: [id], onDelete: Cascade)
+  policyVersion  PolicyDocumentVersion? @relation(fields: [policyVersionId], references: [id], onDelete: SetNull)
+  retreatBooking RetreatBooking?        @relation(fields: [retreatBookingId], references: [id], onDelete: Cascade)
+  giftPurchase   GiftPurchase?          @relation(fields: [giftPurchaseId], references: [id], onDelete: Cascade)
 
   @@index([purchaserEmail, acceptedAt])
   @@index([policyVersionId, acceptedAt])
@@ -1778,6 +2097,8 @@ model CoachingApplication {
   waitlistLeftAt                   DateTime?
   approvedAt                       DateTime?
   convertedAt                      DateTime?
+  paymentReminderSentAt            DateTime?
+  paymentReminderSentByUserId      String?
   createdAt                        DateTime                  @default(now())
   updatedAt                        DateTime                  @updatedAt
 
@@ -1811,10 +2132,10 @@ model CoachingClientProfile {
   createdAt                      DateTime                @default(now())
   updatedAt                      DateTime                @updatedAt
 
-  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  application CoachingApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
-  sessions    CoachingSession[]
-  checkIns    CoachingCheckIn[]
+  user                  User                           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application           CoachingApplication?           @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  sessions              CoachingSession[]
+  checkIns              CoachingCheckIn[]
   packageChangeRequests CoachingPackageChangeRequest[]
 
   @@index([status, updatedAt])

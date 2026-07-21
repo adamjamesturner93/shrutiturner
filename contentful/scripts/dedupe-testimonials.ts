@@ -1,8 +1,7 @@
-import contentfulManagement from "contentful-management";
+import { createClient } from "contentful-management";
 import { getContentfulScriptEnv } from "./env.ts";
 
 const { spaceId, environmentId, managementToken } = getContentfulScriptEnv();
-const { createClient } = contentfulManagement;
 
 const client = createClient({ accessToken: managementToken }, { type: "legacy" });
 

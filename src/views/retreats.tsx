@@ -14,7 +14,17 @@ import {
 } from "@/components/marketing/sections";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/use-i18n";
-import type { FaqItemContent, RetreatCombinedContent } from "@/lib/content/types";
+import { getRetreatCardImageSrc } from "@/lib/retreats/images";
+import {
+  getEffectiveRetreatRatePricePence,
+  isRetreatEarlyBirdActive,
+  type RetreatRatePlanInput,
+} from "@/lib/retreats/pricing";
+import type {
+  FaqItemContent,
+  RetreatCombinedContent,
+  RetreatRoomOptionContent,
+} from "@/lib/content/types";
 
 interface RetreatsPageProps {
   retreats?: RetreatCombinedContent[];
@@ -47,7 +57,7 @@ const DEFAULT_RETREAT_FAQS: FaqItemContent[] = [
     slug: "faq-retreats-cancellation",
     question: "What is the cancellation policy?",
     answer:
-      "Full refund if cancelled more than 60 days before retreat. 50% refund 30 to 60 days before. No refund within 30 days unless we can fill your space.",
+      "For in-person retreats, deposits are non-refundable. If you have paid in full, the refundable amount is the total paid minus the deposit when cancellation is more than 8 weeks before the retreat starts. Within 8 weeks, retreat payments are non-refundable unless stated otherwise.",
     sortOrder: 40,
   },
   {
@@ -63,10 +73,27 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
   const retreatData = retreats ?? [];
   const retreatFaqs = faqs && faqs.length > 0 ? faqs : DEFAULT_RETREAT_FAQS;
   const { fmtDateRange, fmtDateShort } = useI18n();
+  const heroImageSrc = retreatData[0]
+    ? getRetreatCardImageSrc(retreatData[0])
+    : "/images/shruti-coaching.jpeg";
+
+  const getRoomRatePlans = (roomOption: RetreatRoomOptionContent): RetreatRatePlanInput[] => {
+    if (roomOption.ratePlans?.length) return roomOption.ratePlans;
+    return [
+      {
+        guestCount: roomOption.guestCountPerUnit || roomOption.guestsIncluded || 1,
+        totalPricePence: roomOption.normalPricePence,
+        earlyBirdPricePence: roomOption.earlyBirdPricePence,
+        earlyBirdEndsAt: undefined,
+      },
+    ];
+  };
 
   const getStartingPrice = (retreat: RetreatCombinedContent) => {
     const prices = retreat.dates.flatMap((date) =>
-      date.roomOptions.map((roomOption) => roomOption.normalPricePence)
+      date.roomOptions.flatMap((roomOption) =>
+        getRoomRatePlans(roomOption).map((ratePlan) => getEffectiveRetreatRatePricePence(ratePlan))
+      )
     );
 
     return prices.length > 0 ? Math.min(...prices) : retreat.normalPrice * 100;
@@ -74,14 +101,50 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
 
   const getStartingDeposit = (retreat: RetreatCombinedContent) => {
     const deposits = retreat.dates.flatMap((date) =>
-      date.roomOptions.map((roomOption) =>
-        roomOption.depositPence && roomOption.depositPence > 0
-          ? roomOption.depositPence
-          : Math.min(roomOption.normalPricePence, 30000)
+      date.roomOptions.flatMap((roomOption) =>
+        getRoomRatePlans(roomOption).map((ratePlan) => {
+          const effectivePricePence = getEffectiveRetreatRatePricePence(ratePlan);
+          if (roomOption.depositPence && roomOption.depositPence > 0) {
+            return roomOption.normalPricePence > 0
+              ? Math.min(
+                  effectivePricePence,
+                  Math.round(
+                    (effectivePricePence * roomOption.depositPence) / roomOption.normalPricePence
+                  )
+                )
+              : Math.min(effectivePricePence, roomOption.depositPence);
+          }
+
+          return Math.min(effectivePricePence, 30000);
+        })
       )
     );
 
     return deposits.length > 0 ? Math.min(...deposits) : 0;
+  };
+
+  const getEarliestActiveEarlyBirdDeadline = (retreat: RetreatCombinedContent) => {
+    const deadlines = retreat.dates.flatMap((date) =>
+      date.roomOptions.flatMap((roomOption) =>
+        getRoomRatePlans(roomOption)
+          .filter((ratePlan) =>
+            isRetreatEarlyBirdActive({
+              earlyBirdPricePence: ratePlan.earlyBirdPricePence,
+              earlyBirdEndsAt: ratePlan.earlyBirdEndsAt,
+              totalPricePence: ratePlan.totalPricePence,
+            })
+          )
+          .map((ratePlan) => ratePlan.earlyBirdEndsAt)
+          .filter((deadline): deadline is string | Date => Boolean(deadline))
+      )
+    );
+
+    if (deadlines.length === 0) return null;
+    return deadlines
+      .map((deadline) => new Date(deadline))
+      .filter((deadline) => !Number.isNaN(deadline.getTime()))
+      .sort((a, b) => a.getTime() - b.getTime())[0]
+      ?.toISOString();
   };
 
   const formatMoney = (pence: number) =>
@@ -130,7 +193,7 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
           <div className="border-brand-white/10 bg-brand-white/8 mx-auto max-w-xl overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
             <div className="aspect-[4/5] overflow-hidden rounded-[1.45rem]">
               <ImageWithFallback
-                src="https://images.unsplash.com/photo-1732456593210-e2d1570be82b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b2dhJTIwcmV0cmVhdCUyMHBvcnR1Z2FsJTIwY291bnRyeXNpZGV8ZW58MXx8fHwxNzcxNTkxNjQ5fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
+                src={heroImageSrc}
                 alt="Retreat location for adaptive movement and rest"
                 className="h-full w-full object-cover"
               />
@@ -163,7 +226,7 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
         items={[
           {
             label: "Pacing",
-            detail: "Sessions are optional, adaptable andd balanced with genuine downtime.",
+            detail: "Sessions are optional, adaptable and balanced with genuine downtime.",
           },
           {
             label: "Teaching",
@@ -184,11 +247,11 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
       <StorySplit
         eyebrow="Retreat Philosophy"
         title="These are not mainstream retreats."
-        description="The aim is not to pack the schedule. It is to create a thoughtful container where movement, restand community can all feel safe enough to matter."
+        description="The aim is not to pack the schedule. It is to create a thoughtful container where movement, rest and community can all feel safe enough to matter."
         body={
           <div className="space-y-6">
             <p className="text-muted-foreground text-lg leading-relaxed">
-              Many retreat spaces quietly reward people who can do the most, stay the longestand
+              Many retreat spaces quietly reward people who can do the most, stay the longest and
               bounce back the fastest. That is not the standard here.
             </p>
             <div className="grid gap-4 md:grid-cols-2">
@@ -245,11 +308,7 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
             >
               <div className="relative aspect-[4/3]">
                 <ImageWithFallback
-                  src={
-                    retreat.slug === "sankalpa"
-                      ? "https://images.unsplash.com/photo-1732456593210-e2d1570be82b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b2dhJTIwcmV0cmVhdCUyMHBvcnR1Z2FsJTIwY291bnRyeXNpZGV8ZW58MXx8fHwxNzcxNTkxNjQ5fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-                      : "https://images.unsplash.com/photo-1762729882448-ac748afc54ed?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzY290dGlzaCUyMGhpZ2hsYW5kcyUyMHdpbnRlciUyMHJldHJlYXR8ZW58MXx8fHwxNzcxNTkxNjQ5fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-                  }
+                  src={getRetreatCardImageSrc(retreat)}
                   alt={retreat.title}
                   className="h-full w-full object-cover"
                 />
@@ -298,8 +357,10 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
                   <div>
                     <p className="text-3xl">{formatMoney(getStartingPrice(retreat))}</p>
                     <p className="text-muted-foreground mt-1 text-sm">
-                      Deposit from {formatMoney(getStartingDeposit(retreat))} · early bird until{" "}
-                      {fmtDateShort(retreat.earlyBirdDeadline)}
+                      Deposit from {formatMoney(getStartingDeposit(retreat))}
+                      {getEarliestActiveEarlyBirdDeadline(retreat)
+                        ? ` · early bird until ${fmtDateShort(getEarliestActiveEarlyBirdDeadline(retreat) || "")}`
+                        : ""}
                     </p>
                   </div>
                   <Button asChild className="bg-brand-dark text-brand-white hover:bg-brand-dark/90">

@@ -44,13 +44,37 @@ export interface RetreatRoomOptionContent {
   label: string;
   description: string;
   type: "shared_twin" | "single" | "shared_private" | "virtual";
+  bookingUnit?: "bed_space" | "whole_room" | "ticket" | "addon" | "online_live_place";
   guestsIncluded: number;
+  guestCountPerUnit?: number;
+  allowedGuestCounts?: number[];
   capacity: number;
   availableSpots: number;
   earlyBirdPricePence?: number;
   normalPricePence: number;
+  ratePlans?: Array<{
+    id?: string;
+    guestCount: number;
+    totalPricePence: number;
+    earlyBirdPricePence?: number;
+    earlyBirdEndsAt?: string;
+    currency?: string;
+  }>;
+  pricePerPersonPence?: number;
+  roomCount?: number;
   depositPence?: number;
   isWaitlistOnly?: boolean;
+}
+
+export interface RetreatPaymentPlanContent {
+  instalments: Array<{
+    label: string;
+    kind?: "deposit" | "scheduled" | "balance" | "full_payment";
+    amountPence?: number;
+    percent?: number;
+    dueDate?: string;
+    dueDaysBeforeStart?: number;
+  }>;
 }
 
 export interface GlobalContent {
@@ -224,9 +248,24 @@ export interface RetreatTemplateContent {
   subtitle: string;
   shortDescription: string;
   fullDescription: string;
+  experienceType?:
+    | "residential_retreat"
+    | "day_retreat"
+    | "online_workshop"
+    | "in_person_workshop"
+    | "course";
+  deliveryMode?: "in_person" | "online_live" | "online_on_demand" | "hybrid";
+  durationLabel?: string;
+  audienceDescription?: string;
+  experienceLevel?: string;
   suitableFor: string[];
   included: string[];
   notIncluded: string[];
+  whatToBring?: string[];
+  foodAndDrinkDescription?: string;
+  schedule: RetreatScheduleDayContent[];
+  accommodationDescription?: string;
+  imageUrl?: string;
   seoTitle?: string;
   seoDescription?: string;
   venueId?: string;
@@ -245,11 +284,41 @@ export interface RetreatVenueContent {
   accommodationType?: string;
   facilities?: string[];
   accessibilityNotes?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  townOrCity?: string;
+  region?: string;
+  postcode?: string;
+  country?: string;
+  arrivalInformation?: string;
+  travelByTrain?: string;
+  travelByCar?: string;
+  travelByAir?: string;
+  localTransferInformation?: string;
+  kitchenAccessDescription?: string;
+}
+
+export interface RetreatScheduleItemContent {
+  startTime: string;
+  endTime?: string;
+  title: string;
+  description?: string;
+  category?: string;
+  isOptional?: boolean;
+}
+
+export interface RetreatScheduleDayContent {
+  day: string;
+  title?: string;
+  activities: string[];
+  items?: RetreatScheduleItemContent[];
 }
 
 export interface RetreatInstanceContent {
   id: string;
   templateSlug: string;
+  retreatType?: "in_person" | "online";
+  timezone?: string;
   startDate: string;
   endDate: string;
   availableSpaces: number;
@@ -259,6 +328,11 @@ export interface RetreatInstanceContent {
   earlyBirdDeadline: string;
   currency: string;
   roomOptions?: RetreatRoomOptionContent[];
+  paymentPlan?: RetreatPaymentPlanContent;
+  payInFullDiscountEnabled?: boolean;
+  refundNotes?: string;
+  onlineJoiningNotes?: string;
+  instructorProfileSlugs?: string[];
 }
 
 export interface RetreatCombinedContent {
@@ -272,11 +346,18 @@ export interface RetreatCombinedContent {
   fullDescription: string;
   dates: Array<{
     id: string;
+    retreatType?: "in_person" | "online";
+    timezone?: string;
     startDate: string;
     endDate: string;
     availableSpaces: number;
     totalSpaces: number;
     roomOptions: RetreatRoomOptionContent[];
+    paymentPlan?: RetreatPaymentPlanContent;
+    payInFullDiscountEnabled?: boolean;
+    refundNotes?: string;
+    onlineJoiningNotes?: string;
+    instructorProfileSlugs?: string[];
   }>;
   earlyBirdPrice: number;
   earlyBirdDeadline: string;
@@ -284,10 +365,18 @@ export interface RetreatCombinedContent {
   currency: string;
   included: string[];
   notIncluded: string[];
-  schedule: Array<{ day: string; activities: string[] }>;
+  schedule: RetreatScheduleDayContent[];
   accommodation: string;
   suitableFor: string[];
+  experienceType?: RetreatTemplateContent["experienceType"];
+  deliveryMode?: RetreatTemplateContent["deliveryMode"];
+  durationLabel?: string;
+  audienceDescription?: string;
+  experienceLevel?: string;
+  foodAndDrinkDescription?: string;
+  whatToBring?: string[];
   venueId?: string;
   venueSlug?: string;
   venueName?: string;
+  venue?: RetreatVenueContent;
 }

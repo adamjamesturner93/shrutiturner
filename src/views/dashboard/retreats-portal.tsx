@@ -11,12 +11,14 @@ import {
   MapPin,
   MessageCircle,
   Shield,
+  Video,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { DashboardSkeleton } from "@/components/dashboard-skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { VideoRoom } from "@/components/video/video-room";
 import type { RetreatBookingDetailDto } from "@/lib/api/types";
 
 function formatDateRange(start: string, end: string) {
@@ -62,6 +64,8 @@ export function DashboardRetreatDetail({
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState("");
   const [payingBalance, setPayingBalance] = useState(false);
+  const [showOnlineRoom, setShowOnlineRoom] = useState(false);
+  const [openingReplay, setOpeningReplay] = useState(false);
 
   useEffect(() => {
     if (initialData || !id) return;
@@ -115,6 +119,32 @@ export function DashboardRetreatDetail({
     }
   };
 
+  const openReplay = async () => {
+    const replayAssetId = booking?.onlineAccess?.replayAssetId;
+    if (!replayAssetId) return;
+    setOpeningReplay(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/me/replays/${replayAssetId}`, { cache: "no-store" });
+      const payload = (await response.json().catch(() => null)) as {
+        playbackUrl?: string;
+        message?: string;
+      } | null;
+      if (!response.ok || !payload?.playbackUrl) {
+        throw new Error(payload?.message || "The replay is not available right now.");
+      }
+      window.open(payload.playbackUrl, "_blank", "noopener,noreferrer");
+    } catch (replayError) {
+      setError(
+        replayError instanceof Error
+          ? replayError.message
+          : "The replay is not available right now."
+      );
+    } finally {
+      setOpeningReplay(false);
+    }
+  };
+
   if (loading) {
     return (
       <DashboardLayout title="Retreat Booking - Private Studio">
@@ -133,6 +163,29 @@ export function DashboardRetreatDetail({
           </Button>
         </div>
       </DashboardLayout>
+    );
+  }
+
+  if (showOnlineRoom) {
+    return (
+      <VideoRoom
+        sessionId={booking.id}
+        roomTokenEndpoint={`/api/retreats/bookings/${booking.id}/room-token`}
+        attendanceEndpoint={null}
+        mode="retreat"
+        isInstructor={false}
+        className={booking.retreatTitle}
+        classTime={new Intl.DateTimeFormat("en-GB", {
+          dateStyle: "medium",
+          timeStyle: "short",
+        }).format(new Date(booking.startsAt))}
+        classDuration="Online workshop"
+        registeredCount={1}
+        initialMuted
+        initialCameraOn={false}
+        initialCommunityMode
+        onLeave={() => setShowOnlineRoom(false)}
+      />
     );
   }
 
@@ -218,8 +271,8 @@ export function DashboardRetreatDetail({
                   </p>
                   <p className="mt-1">
                     {booking.dietaryRequirements ||
-                      booking.mobilityNeeds ||
-                      booking.medicalConditions
+                    booking.mobilityNeeds ||
+                    booking.medicalConditions
                       ? "Yes"
                       : "None provided"}
                   </p>
@@ -260,8 +313,8 @@ export function DashboardRetreatDetail({
                   </div>
                 ) : null}
                 {!booking.dietaryRequirements &&
-                  !booking.mobilityNeeds &&
-                  !booking.medicalConditions ? (
+                !booking.mobilityNeeds &&
+                !booking.medicalConditions ? (
                   <p className="text-muted-foreground">
                     No additional health or accessibility notes have been saved with this booking.
                   </p>
@@ -275,9 +328,9 @@ export function DashboardRetreatDetail({
               </CardHeader>
               <CardContent className="space-y-3 text-sm leading-relaxed">
                 <p className="text-muted-foreground">
-                  Keep an eye on your inbox for travel details, arrival guidance and any
-                  pre-retreat notes. If your access or health needs change before the retreat,
-                  please update Shruti as early as possible.
+                  Keep an eye on your inbox for travel details, arrival guidance and any pre-retreat
+                  notes. If your access or health needs change before the retreat, please update
+                  Shruti as early as possible.
                 </p>
                 <Button asChild variant="outline">
                   <Link href="/contact">
@@ -287,6 +340,50 @@ export function DashboardRetreatDetail({
                 </Button>
               </CardContent>
             </Card>
+
+            {booking.retreatType === "online" ? (
+              <Card className="border-brand-accent/20 rounded-[1.5rem]">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Video className="text-brand-accent h-5 w-5" />
+                    Online room
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm leading-relaxed">
+                  {booking.onlineAccess?.entitled ? (
+                    <>
+                      <p className="text-muted-foreground">
+                        Your booking includes protected access to the live workshop. The room opens
+                        shortly before the scheduled start time.
+                      </p>
+                      <Button
+                        type="button"
+                        onClick={() => setShowOnlineRoom(true)}
+                        disabled={!booking.onlineAccess.liveAccessEnabled}
+                      >
+                        Join online room
+                        <Video className="ml-2 h-4 w-4" />
+                      </Button>
+                      {booking.onlineAccess.replayAssetId ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => void openReplay()}
+                          disabled={openingReplay}
+                        >
+                          {openingReplay ? "Opening replay..." : "Watch replay"}
+                        </Button>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      The online room is not ready yet. Shruti will share joining details before the
+                      retreat starts.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ) : null}
           </div>
 
           <div className="space-y-6">
@@ -354,9 +451,9 @@ export function DashboardRetreatDetail({
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <p className="text-muted-foreground">
-                  This dashboard keeps your booking, payment status and key details in one place.
-                  If you need a fresh balance link or want to change anything on file, get in touch
-                  and we can sort it manually.
+                  This dashboard keeps your booking, payment status and key details in one place. If
+                  you need a fresh balance link or want to change anything on file, get in touch and
+                  we can sort it manually.
                 </p>
                 <Button asChild variant="outline" className="w-full">
                   <Link href="/contact">

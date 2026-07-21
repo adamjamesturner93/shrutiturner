@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Calendar, CheckCircle2, MapPin, Mountain } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { DashboardSkeleton } from "@/components/dashboard-skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { RetreatBookingSummaryDto } from "@/lib/api/types";
-import { getUpcomingRetreats } from "@/data/retreat-data";
 
 function formatDateRange(start: string, end: string) {
   const formatter = new Intl.DateTimeFormat("en-GB", {
@@ -67,14 +66,6 @@ export function DashboardRetreats({
     };
   }, [initialData]);
 
-  const upcomingRetreats = useMemo(
-    () =>
-      getUpcomingRetreats().filter(
-        (retreat) => !bookings.some((booking) => booking.retreatSlug === retreat.slug)
-      ),
-    [bookings]
-  );
-
   if (loading) {
     return (
       <DashboardLayout title="Retreats - Private Studio">
@@ -89,8 +80,8 @@ export function DashboardRetreats({
         <div>
           <h1 className="text-3xl">Your Retreats</h1>
           <p className="text-muted-foreground mt-2 max-w-2xl">
-            View booking status, balance payments and the essentials for any retreat you have
-            booked through the studio.
+            View booking status, balance payments and the essentials for any retreat you have booked
+            through the studio.
           </p>
         </div>
 
@@ -169,10 +160,10 @@ export function DashboardRetreats({
                           Balance due
                           {booking.balanceDueAt
                             ? ` by ${new Intl.DateTimeFormat("en-GB", {
-                              day: "numeric",
-                              month: "long",
-                              year: "numeric",
-                            }).format(new Date(booking.balanceDueAt))}`
+                                day: "numeric",
+                                month: "long",
+                                year: "numeric",
+                              }).format(new Date(booking.balanceDueAt))}`
                             : ""}
                           .
                         </div>
@@ -207,48 +198,23 @@ export function DashboardRetreats({
 
         <section className="space-y-4">
           <h2 className="text-xl">Explore upcoming retreats</h2>
-          {upcomingRetreats.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-muted-foreground">No upcoming retreats are open right now.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {upcomingRetreats.map((retreat) => (
-                <Card key={retreat.id}>
-                  <CardHeader>
-                    <CardTitle className="text-lg">{retreat.title}</CardTitle>
-                    <p className="text-muted-foreground text-sm">{retreat.subtitle}</p>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                      <MapPin className="h-4 w-4" />
-                      {retreat.location}
-                    </div>
-                    {retreat.dates[0] ? (
-                      <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                        <Calendar className="h-4 w-4" />
-                        {formatDateRange(retreat.dates[0].startDate, retreat.dates[0].endDate)}
-                      </div>
-                    ) : null}
-                    <div className="flex items-center justify-between pt-2">
-                      <div>
-                        <p className="text-lg">{formatCurrency(retreat.earlyBirdPrice * 100)}</p>
-                        <p className="text-muted-foreground text-xs">Current from price</p>
-                      </div>
-                      <Button asChild variant="outline">
-                        <Link href={`/retreats/${retreat.slug}`}>
-                          View retreat
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </Link>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+          <Card>
+            <CardContent className="flex flex-col gap-4 py-8 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-lg">See current retreat dates</p>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  Retreat availability is managed from the live retreat listings rather than local
+                  dashboard copy.
+                </p>
+              </div>
+              <Button asChild>
+                <Link href="/retreats">
+                  View retreats
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
         </section>
       </div>
     </DashboardLayout>

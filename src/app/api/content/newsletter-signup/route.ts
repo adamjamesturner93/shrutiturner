@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { getNewsletterSignupContent } from "@/lib/content";
 
 export async function GET() {
+  await connection();
   const item = await getNewsletterSignupContent();
   return NextResponse.json(item);
 }

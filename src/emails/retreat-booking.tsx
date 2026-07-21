@@ -21,6 +21,7 @@ interface RetreatBookingEmailProps {
   remainderDueDate?: string;
   retreatDetailsUrl?: string;
   transactionRef?: string;
+  paidInFull?: boolean;
 }
 
 export default function RetreatBookingEmail({
@@ -34,9 +35,32 @@ export default function RetreatBookingEmail({
   remainderDueDate = "18 August 2026",
   retreatDetailsUrl = "https://shrutiturner.co.uk/retreats/rest-and-restore",
   transactionRef = "RT-2026-0342",
+  paidInFull = false,
 }: RetreatBookingEmailProps) {
+  const paymentRows = [
+    { label: "Total retreat price", value: totalPrice },
+    {
+      label: paidInFull ? "Paid in full" : "Deposit paid",
+      value: paidInFull ? totalPrice : depositAmount,
+      highlight: true,
+    },
+    ...(paidInFull
+      ? []
+      : [
+          { label: "Remainder due", value: remainderAmount },
+          { label: "Due by", value: remainderDueDate },
+        ]),
+    { label: "Reference", value: transactionRef },
+  ];
+
   return (
-    <EmailLayout preview={`Retreat deposit received: ${retreatName}`}>
+    <EmailLayout
+      preview={
+        paidInFull
+          ? `Retreat payment received: ${retreatName}`
+          : `Retreat deposit received: ${retreatName}`
+      }
+    >
       <Text
         style={{
           ...headingStyle,
@@ -54,15 +78,17 @@ export default function RetreatBookingEmail({
           marginBottom: "24px",
         }}
       >
-        Deposit received — {"you're"} confirmed.
+        {paidInFull
+          ? "Payment received — you're confirmed."
+          : "Deposit received — you're confirmed."}
       </Text>
 
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
       <Text style={bodyTextStyle}>
-        {
-          "Wonderful news — your deposit has been received and your place on the retreat is now secured. I'm so pleased you'll be joining."
-        }
+        {paidInFull
+          ? "Wonderful news — your payment has been received and your place on the retreat is now secured. I'm so pleased you'll be joining."
+          : "Wonderful news — your deposit has been received and your place on the retreat is now secured. I'm so pleased you'll be joining."}
       </Text>
 
       {/* Retreat Details Card */}
@@ -145,20 +171,14 @@ export default function RetreatBookingEmail({
         </Text>
 
         {/* Row items */}
-        {[
-          { label: "Total retreat price", value: totalPrice },
-          { label: "Deposit paid", value: depositAmount, highlight: true },
-          { label: "Remainder due", value: remainderAmount },
-          { label: "Due by", value: remainderDueDate },
-          { label: "Reference", value: transactionRef },
-        ].map((item, i) => (
+        {paymentRows.map((item, i) => (
           <Section
             key={item.label}
             style={{
               display: "flex",
-              marginBottom: i < 4 ? "10px" : "0",
-              paddingBottom: i < 4 ? "10px" : "0",
-              borderBottom: i < 4 ? `1px solid ${colors.border}` : "none",
+              marginBottom: i < paymentRows.length - 1 ? "10px" : "0",
+              paddingBottom: i < paymentRows.length - 1 ? "10px" : "0",
+              borderBottom: i < paymentRows.length - 1 ? `1px solid ${colors.border}` : "none",
             }}
           >
             <Text

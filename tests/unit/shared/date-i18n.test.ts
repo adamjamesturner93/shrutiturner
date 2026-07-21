@@ -66,6 +66,15 @@ describe("date-i18n", () => {
     );
   });
 
+  it("formats a single-day range as one date in the user's timezone", () => {
+    expect(formatDateRange("2026-11-15T10:00:00.000Z", "2026-11-15T12:00:00.000Z", GB_PREFS)).toBe(
+      "15 November 2026"
+    );
+    expect(formatDateRange("2026-11-16T00:30:00.000Z", "2026-11-16T02:00:00.000Z", US_PREFS)).toBe(
+      "November 15, 2026"
+    );
+  });
+
   it("returns stable timezone abbreviations and London offsets", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-15T12:00:00.000Z"));

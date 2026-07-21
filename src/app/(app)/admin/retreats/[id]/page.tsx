@@ -1,7 +1,15 @@
 import { connection } from "next/server";
-import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
+import { AdminRetreatDetail } from "@/views/admin/retreat-detail";
+import { getAdminRetreatDetail } from "@/lib/retreats/service";
 
-export default async function Page() {
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   await connection();
-  redirect("/admin/coaching");
+  const { id } = await params;
+  const initialData = await getAdminRetreatDetail(id).catch((error) => {
+    if (error instanceof Error && error.message === "NOT_FOUND") return null;
+    throw error;
+  });
+  if (!initialData) notFound();
+  return <AdminRetreatDetail initialData={initialData} />;
 }

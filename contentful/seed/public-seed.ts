@@ -188,39 +188,10 @@ export const SMALL_GROUP_PROGRAMME_SEED = {
   })),
 };
 
-const venueEntries = new Map<
-  string,
-  {
-    slug: string;
-    name: string;
-    displayLocation: string;
-    description: string;
-    address: string;
-    accommodationOptions: string[];
-    travelInformation: string;
-    accommodationType: string;
-    facilities: string[];
-    accessibilityNotes: string;
-  }
->();
+const venueEntries = new Map<string, (typeof retreats)[number]["venue"]>();
 for (const retreat of retreats) {
-  const slug =
-    retreat.slug === "virtual-immersion"
-      ? "online"
-      : retreat.location.toLowerCase().replace(/\s+/g, "-");
-  if (!venueEntries.has(slug)) {
-    venueEntries.set(slug, {
-      slug,
-      name: retreat.location,
-      displayLocation: retreat.location,
-      description: retreat.accommodation,
-      address: retreat.location,
-      accommodationOptions: [retreat.accommodation],
-      travelInformation: "Travel details provided after booking confirmation.",
-      accommodationType: retreat.accommodation,
-      facilities: [],
-      accessibilityNotes: "Contact us to discuss accessibility requirements for this venue.",
-    });
+  if (!venueEntries.has(retreat.venue.slug)) {
+    venueEntries.set(retreat.venue.slug, retreat.venue);
   }
 }
 
@@ -237,13 +208,22 @@ export const RETREAT_TEMPLATE_SEED = {
     slug: r.slug,
     shortDescription: r.shortDescription,
     fullDescription: r.fullDescription,
+    experienceType: r.experienceType,
+    deliveryMode: r.deliveryMode,
+    durationLabel: r.durationLabel,
+    audienceDescription: r.audienceDescription,
+    experienceLevel: r.experienceLevel,
+    heroImageUrl: r.imageUrl,
     suitableFor: r.suitableFor,
     included: r.included,
     notIncluded: r.notIncluded,
+    whatToBring: r.whatToBring || [],
+    foodAndDrinkDescription: r.foodAndDrinkDescription,
+    schedule: r.schedule,
+    accommodationDescription: r.accommodation,
     seoTitle: `${r.title} - ${r.subtitle}`,
     seoDescription: r.shortDescription,
-    venueSlug:
-      r.slug === "virtual-immersion" ? "online" : r.location.toLowerCase().replace(/\s+/g, "-"),
+    venueSlug: r.venue.slug,
   })),
 };
 
@@ -594,7 +574,8 @@ export const LEAD_MAGNET_SEED = {
     {
       slug: "why-some-bodies-need-strength-before-more-stretching",
       title: "Why Some Bodies Need Strength Before More Stretching",
-      hookText: 'Get the free guide to your inbox - "Why Some Bodies Need Strength Before More Stretching"',
+      hookText:
+        'Get the free guide to your inbox - "Why Some Bodies Need Strength Before More Stretching"',
       landingHeadline: "Why Some Bodies Need Strength Before More Stretching",
       landingDescription:
         "A free guide exploring stability, control and capacity in flexible bodies.",

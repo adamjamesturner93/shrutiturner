@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Compass, MailWarning, MessageCircle, Shield, TrendingUp } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  Compass,
+  MailWarning,
+  MessageCircle,
+  Shield,
+  TrendingUp,
+} from "lucide-react";
 import { AdminLayout } from "../../components/admin-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
@@ -48,11 +56,12 @@ export function AdminDashboard({
         <AppPageHeader
           eyebrow="Admin overview"
           title="Instructor Dashboard"
-          description="Coaching applications, clients, newsletter and business operations."
+          description="Coaching applications, retreats, clients, newsletter and business operations."
         />
 
         <AppMetricGrid>
           <AppMetricCard label="Coaching" value="Active" detail="applications and clients" />
+          <AppMetricCard label="Retreats" value="Enabled" detail="dates, rooms and balances" />
           <AppMetricCard label="Newsletter" value="Live" detail="subscribers and campaigns" />
           <AppMetricCard
             label="Email delivery"
@@ -127,6 +136,12 @@ export function AdminDashboard({
               icon: Compass,
             },
             {
+              href: "/admin/retreats",
+              title: "Retreats",
+              body: "Manage retreat dates, room capacity, bookings, deposits and balance emails.",
+              icon: CalendarDays,
+            },
+            {
               href: "/admin/newsletter",
               title: "Newsletter",
               body: "Review subscribers, Contentful-triggered campaigns and delivery status.",
@@ -177,9 +192,8 @@ export function AdminDashboard({
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Live online classes, retreats, small groups, class credits and Move Well membership
-              are intentionally hidden from public, user and admin navigation while coaching is the
-              active offer.
+              Live online classes, small groups, class credits and Move Well membership remain
+              hidden. Retreats are enabled for public discovery, client bookings and admin testing.
             </p>
           </CardContent>
         </Card>

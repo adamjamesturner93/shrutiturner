@@ -1,7 +1,9 @@
 import { connection } from "next/server";
-import { redirect } from "next/navigation";
+import { AdminRetreats } from "@/views/admin/retreats";
+import { getAdminRetreatSummaries } from "@/lib/retreats/service";
 
 export default async function Page() {
   await connection();
-  redirect("/admin/coaching");
+  const initialData = await getAdminRetreatSummaries();
+  return <AdminRetreats initialData={initialData} />;
 }

@@ -1,12 +1,92 @@
 import type { RetreatRoomOptionContent } from "@/lib/content/types";
 
+export type RetreatDeliveryMode = "in_person" | "online_live";
+export type RetreatExperienceType = "residential_retreat" | "online_workshop";
+export type RetreatBookingUnit = "bed_space" | "whole_room" | "online_live_place";
+export type RetreatInventoryType = "bed_space" | "room" | "online_live_place";
+export type RetreatDepositType = "percentage" | "fixed_amount" | "full_payment";
+
+export interface RetreatRatePlanSeed {
+  guestCount: number;
+  totalPricePence: number;
+  earlyBirdPricePence?: number;
+  earlyBirdEndsAt?: string;
+}
+
+export interface RetreatRoomOptionSeed extends RetreatRoomOptionContent {
+  slug: string;
+  bookingUnit: RetreatBookingUnit;
+  inventoryType: RetreatInventoryType;
+  inventoryQuantity: number;
+  guestCountPerUnit?: number;
+  physicalRoomCount?: number;
+  bedsPerPhysicalRoom?: number;
+  allowedGuestCounts?: number[];
+  ratePlans: RetreatRatePlanSeed[];
+  displayOrder?: number;
+}
+
+export interface RetreatScheduleItemSeed {
+  startTime: string;
+  endTime?: string;
+  title: string;
+  description?: string;
+  category:
+    | "yoga"
+    | "movement"
+    | "meditation"
+    | "breathwork"
+    | "food"
+    | "outdoors"
+    | "workshop"
+    | "free_time"
+    | "arrival"
+    | "departure"
+    | "other";
+  isOptional?: boolean;
+}
+
 export interface RetreatDate {
   id: string;
   startDate: string;
   endDate: string;
+  startDateTime?: string;
+  endDateTime?: string;
+  retreatType: "in_person" | "online";
   availableSpaces: number;
   totalSpaces: number;
-  roomOptions: RetreatRoomOptionContent[];
+  roomOptions: RetreatRoomOptionSeed[];
+  depositType: RetreatDepositType;
+  depositPercentageBasisPoints?: number;
+  fixedDepositAmountPence?: number;
+  balanceDueDaysBeforeStart?: number;
+  replayAccessDurationDays?: number;
+  isRecorded?: boolean;
+}
+
+export interface RetreatVenueSeed {
+  slug: string;
+  name: string;
+  displayLocation: string;
+  description: string;
+  address: string;
+  accommodationOptions: string[];
+  travelInformation: string;
+  accommodationType: string;
+  facilities: string[];
+  accessibilityNotes: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  townOrCity?: string;
+  region?: string;
+  postcode?: string;
+  country?: string;
+  arrivalInformation?: string;
+  travelByTrain?: string;
+  travelByCar?: string;
+  travelByAir?: string;
+  localTransferInformation?: string;
+  kitchenAccessDescription?: string;
 }
 
 export interface Retreat {
@@ -14,6 +94,11 @@ export interface Retreat {
   title: string;
   subtitle: string;
   slug: string;
+  experienceType: RetreatExperienceType;
+  deliveryMode: RetreatDeliveryMode;
+  durationLabel: string;
+  audienceDescription: string;
+  experienceLevel: string;
   location: string;
   imageUrl: string;
   shortDescription: string;
@@ -27,410 +112,743 @@ export interface Retreat {
   notIncluded: string[];
   schedule: {
     day: string;
+    title: string;
     activities: string[];
+    items: RetreatScheduleItemSeed[];
   }[];
   accommodation: string;
   suitableFor: string[];
+  foodAndDrinkDescription: string;
+  whatToBring?: string[];
+  venue: RetreatVenueSeed;
 }
 
-function roomOption(input: RetreatRoomOptionContent): RetreatRoomOptionContent {
+function roomOption(input: RetreatRoomOptionSeed): RetreatRoomOptionSeed {
   return input;
 }
 
+const powisHouseVenue: RetreatVenueSeed = {
+  slug: "powis-house-estate",
+  name: "Powis House Estate",
+  displayLocation: "Near Stirling, Scotland",
+  description:
+    "A historic countryside estate close to Stirling, with gardens and woodland, indoor and outdoor spaces for practice and comfortable self-catering accommodation. The retreat makes use of the estate as a place to gather, practise and rest, while remaining accessible from central Scotland.",
+  address: "Powis House Estate\nNear Stirling\nScotland",
+  accommodationOptions: [
+    "Shared twin bed spaces",
+    "Private king rooms for one or two guests",
+    "Self-catering accommodation with kitchen access",
+  ],
+  travelInformation:
+    "Stirling is the recommended railway arrival point. Powis House Estate is approximately 10 minutes from Stirling station by road. Guests can coordinate shared taxis and lifts from Stirling station where possible. The venue is well placed for travel from central Scotland, including Glasgow and Edinburgh.",
+  accommodationType: "Historic countryside estate with self-catering accommodation",
+  facilities: [
+    "Gardens and woodland",
+    "Indoor and outdoor practice spaces",
+    "Kitchen access for drinks and simple snacks",
+  ],
+  accessibilityNotes: "Contact Shruti before booking to discuss access needs for this venue.",
+  addressLine1: "Powis House Estate",
+  region: "Near Stirling",
+  country: "Scotland",
+  arrivalInformation: "Arrival and check-in are between 16:00 and 18:00 on Friday.",
+  travelByTrain:
+    "Stirling is the recommended railway arrival point. Powis House Estate is approximately 10 minutes from Stirling station by road.",
+  travelByCar:
+    "The venue is well placed for travel from central Scotland, including Glasgow and Edinburgh.",
+  localTransferInformation:
+    "Guests can coordinate shared taxis and lifts from Stirling station where possible.",
+  kitchenAccessDescription:
+    "The kitchen is available throughout the retreat for making drinks and simple snacks between meals.",
+};
+
+const ballintaggartVenue: RetreatVenueSeed = {
+  slug: "ballintaggart-farm",
+  name: "Ballintaggart Farm",
+  displayLocation: "Grandtully / Balnaguard area, Highland Perthshire, Scotland",
+  description:
+    "Ballintaggart Farm is a rural Highland Perthshire base near Grandtully, surrounded by countryside and within easy reach of both Pitlochry and Aberfeldy.",
+  address: "Ballintaggart Farm\nGrandtully\nPitlochry\nPH9 0PX\nScotland",
+  accommodationOptions: [
+    "Private ensuite rooms",
+    "King room for two guests booking together",
+    "Shared twin bed spaces",
+  ],
+  travelInformation:
+    "Pitlochry is the recommended railway arrival point. Guests travelling by public transport should travel to Pitlochry and use the retreat's configured local transfer information. Local transfer type for this seed: shared taxi coordination available.",
+  accommodationType: "Rural self-catering accommodation with a strong food focus",
+  facilities: [
+    "Countryside setting",
+    "Outdoor space",
+    "Sauna access",
+    "Self-catering accommodation",
+    "Proximity to walking and outdoor activities",
+  ],
+  accessibilityNotes: "Contact Shruti before booking to discuss access needs for this venue.",
+  addressLine1: "Ballintaggart Farm",
+  townOrCity: "Grandtully",
+  region: "Pitlochry",
+  postcode: "PH9 0PX",
+  country: "Scotland",
+  arrivalInformation:
+    "Guests travelling by public transport should travel to Pitlochry and use the configured local transfer information.",
+  travelByTrain: "Pitlochry is the recommended railway arrival point.",
+  localTransferInformation: "Shared taxi coordination is available for this sample retreat.",
+};
+
+const onlineVenue: RetreatVenueSeed = {
+  slug: "online",
+  name: "Online",
+  displayLocation: "Online (live through this website)",
+  description: "Live online delivery through the Shruti Turner website.",
+  address: "Online",
+  accommodationOptions: ["Live online access"],
+  travelInformation: "No travel required. Join from a quiet space with a reliable connection.",
+  accommodationType: "Online live workshop",
+  facilities: ["Live stream", "Replay access when published"],
+  accessibilityNotes:
+    "Contact Shruti before booking if there is anything that would make the online session easier to access.",
+  country: "Online",
+  arrivalInformation:
+    "Sign in to the website before the live-access window opens and join from your retreat dashboard.",
+};
+
 export const retreats: Retreat[] = [
   {
-    id: "1",
-    title: "Sankalpa",
-    subtitle: "A Yoga Retreat for Inclusive Movement and Recovery",
-    slug: "sankalpa",
-    location: "Portuguese Countryside",
-    imageUrl: "yoga retreat portugal countryside",
+    id: "pause-move-breathe-stirling",
+    title: "Pause, Move, Breathe: A Yoga Weekend in Stirling",
+    subtitle: "A relaxed weekend of yoga, movement, good food and space to slow down",
+    slug: "pause-move-breathe-stirling",
+    experienceType: "residential_retreat",
+    deliveryMode: "in_person",
+    durationLabel: "3 days / 2 nights",
+    audienceDescription:
+      "Adults of all genders. Suitable for a range of yoga experience, including people who are relatively new to yoga.",
+    experienceLevel: "All levels",
+    location: "Near Stirling, Scotland",
+    imageUrl: "/images/shruti-coaching.jpeg",
     shortDescription:
-      "Five days of rehabilitation-informed yoga, strength work and community for people with chronic illness, autoimmune conditions and injury recovery needs.",
-    fullDescription: `This is not a mainstream yoga retreat. This is a carefully designed experience for people whose bodies require intelligent, evidence-based approaches to movement.
+      "A relaxed weekend of yoga, movement, good food, fresh air and proper time to slow down. This is not a packed schedule or a weekend of trying to become a new person. The retreat is designed to give you space to move, rest, spend time outdoors and reconnect with the things that help you feel more like yourself.",
+    fullDescription: `Join Shruti for a small, relaxed weekend in the Scottish countryside, with yoga, movement, good food and enough free time to genuinely enjoy being away.
 
-Sankalpa means "intention" in Sanskrit. This retreat is about setting intentions that honour your body's reality, building capacity without bypassing limitations and learning in a space where fluctuating symptoms are expected rather than awkward.
+Across the weekend we will practise in different ways. Some sessions will be energising and playful, with elements of strength, balance and mobility. Others will be slower and quieter.
 
-You'll practise rehabilitation-informed yoga, learn about strength training principles for chronic illness, autoimmune conditions and injury recovery, connect with others who understand chronic illness and rest in the Portuguese countryside.
+There will be time outside, time to eat together and plenty of time that has deliberately not been filled with activities.
 
-This is for people who are tired of pretending their bodies are simple.`,
+You can come on your own, with a friend or with a partner. The retreat is open to adults of all genders and is suitable for different levels of yoga experience.
+
+Nothing on the schedule is compulsory. This is your weekend too.`,
     dates: [
       {
-        id: "1a",
-        startDate: "2026-09-15",
+        id: "pause-move-breathe-stirling-2026-09-18",
+        startDate: "2026-09-18",
         endDate: "2026-09-20",
-        availableSpaces: 8,
-        totalSpaces: 12,
-        roomOptions: [
-          roomOption({
-            id: "1a-shared-twin",
-            label: "Shared Twin",
-            description:
-              "Twin-share accommodation with ensuite bathroom. Ideal if you are happy to share.",
-            type: "shared_twin",
-            guestsIncluded: 1,
-            capacity: 8,
-            availableSpots: 6,
-            earlyBirdPricePence: 145000,
-            normalPricePence: 165000,
-            depositPence: 30000,
-          }),
-          roomOption({
-            id: "1a-single-room",
-            label: "Single Room",
-            description: "A private room for one person for the full retreat stay.",
-            type: "single",
-            guestsIncluded: 1,
-            capacity: 2,
-            availableSpots: 1,
-            earlyBirdPricePence: 165000,
-            normalPricePence: 185000,
-            depositPence: 30000,
-          }),
-          roomOption({
-            id: "1a-private-double",
-            label: "Private Double for Two",
-            description: "Private double room reserved for you and one guest.",
-            type: "shared_private",
-            guestsIncluded: 2,
-            capacity: 2,
-            availableSpots: 1,
-            earlyBirdPricePence: 280000,
-            normalPricePence: 320000,
-            depositPence: 60000,
-          }),
-        ],
-      },
-      {
-        id: "1b",
-        startDate: "2026-10-20",
-        endDate: "2026-10-25",
+        startDateTime: "2026-09-18T16:00:00.000+01:00",
+        endDateTime: "2026-09-20T14:00:00.000+01:00",
+        retreatType: "in_person",
         availableSpaces: 10,
-        totalSpaces: 12,
-        roomOptions: [
-          roomOption({
-            id: "1b-shared-twin",
-            label: "Shared Twin",
-            description:
-              "Twin-share accommodation with ensuite bathroom. Ideal if you are happy to share.",
-            type: "shared_twin",
-            guestsIncluded: 1,
-            capacity: 8,
-            availableSpots: 8,
-            earlyBirdPricePence: 145000,
-            normalPricePence: 165000,
-            depositPence: 30000,
-          }),
-          roomOption({
-            id: "1b-single-room",
-            label: "Single Room",
-            description: "A private room for one person for the full retreat stay.",
-            type: "single",
-            guestsIncluded: 1,
-            capacity: 2,
-            availableSpots: 1,
-            earlyBirdPricePence: 165000,
-            normalPricePence: 185000,
-            depositPence: 30000,
-          }),
-          roomOption({
-            id: "1b-private-double",
-            label: "Private Double for Two",
-            description: "Private double room reserved for you and one guest.",
-            type: "shared_private",
-            guestsIncluded: 2,
-            capacity: 2,
-            availableSpots: 1,
-            earlyBirdPricePence: 280000,
-            normalPricePence: 320000,
-            depositPence: 60000,
-          }),
-        ],
-      },
-    ],
-    earlyBirdPrice: 1450,
-    earlyBirdDeadline: "2026-07-01",
-    normalPrice: 1650,
-    currency: "GBP",
-    included: [
-      "Five nights shared accommodation",
-      "All meals, tailored to dietary requirements",
-      "Daily yoga sessions (morning and evening)",
-      "Strength workshop for chronic illness, autoimmune conditions and injury recovery",
-      "Movement workshops and education",
-      "Pool and outdoor space access",
-      "Airport transfers from Lisbon",
-      "Small group size (max 12 people)",
-    ],
-    notIncluded: [
-      "Flights to Lisbon",
-      "Travel insurance (required)",
-      "Personal expenses",
-      "Optional private room upgrade",
-    ],
-    schedule: [
-      {
-        day: "Day 1 - Arrival",
-        activities: [
-          "Airport pickup from Lisbon (afternoon)",
-          "Welcome dinner and introductions",
-          "Gentle evening yoga and intention setting",
-        ],
-      },
-      {
-        day: "Day 2-4 - Full Days",
-        activities: [
-          "Morning yoga practice (90 mins)",
-          "Breakfast",
-          "Workshop or strength session",
-          "Lunch and free time (pool, rest, explore)",
-          "Afternoon tea",
-          "Evening yoga or restorative practice",
-          "Dinner",
-        ],
-      },
-      {
-        day: "Day 5 - Departure",
-        activities: [
-          "Morning yoga practice",
-          "Breakfast",
-          "Closing circle and reflection",
-          "Airport transfers to Lisbon",
-        ],
-      },
-    ],
-    accommodation:
-      "A traditional Portuguese villa with shared twin rooms, a small number of private rooms and one private double option for two guests. Ensuite bathrooms, pool and calm outdoor space included.",
-    suitableFor: [
-      "People with chronic illness or autoimmune conditions",
-      "Anyone with psoriatic arthritis, rheumatoid arthritis, or chronic pain",
-      "People with hypermobility or long-term injuries",
-      "Those frustrated by mainstream yoga approaches",
-      "Anyone wanting evidence-based movement in a supportive environment",
-    ],
-  },
-  {
-    id: "2",
-    title: "Strength & Stillness",
-    subtitle: "Winter Retreat for Inclusive Movement and Recovery",
-    slug: "strength-stillness-winter",
-    location: "Scottish Highlands",
-    imageUrl: "scottish highlands winter retreat",
-    shortDescription:
-      "Four days of strength training, restorative yoga and community in the Scottish Highlands for people managing chronic conditions.",
-    fullDescription: `A winter retreat designed for people living with chronic illness, autoimmune conditions, or injury recovery who want to build strength and find stillness.
-
-This retreat combines evidence-based strength training principles with restorative yoga practices, all adapted for people managing chronic illness, autoimmune conditions and chronic pain.
-
-Set in the Scottish Highlands, you'll have space to rest, move intelligently and connect with others who understand the reality of living with chronic conditions.
-
-Small group, led by Shruti Turner with a guest physiotherapist.`,
-    dates: [
-      {
-        id: "2a",
-        startDate: "2027-01-18",
-        endDate: "2027-01-22",
-        availableSpaces: 6,
         totalSpaces: 10,
+        depositType: "percentage",
+        depositPercentageBasisPoints: 2000,
+        balanceDueDaysBeforeStart: 56,
         roomOptions: [
           roomOption({
-            id: "2a-shared-twin",
-            label: "Twin Share",
-            description: "Twin-share room with ensuite bathroom.",
+            id: "shared-twin-bed",
+            slug: "shared-twin-bed",
+            label: "Shared Twin Bed",
+            description: "One bed in a twin room shared with one other retreat guest.",
             type: "shared_twin",
+            bookingUnit: "bed_space",
+            inventoryType: "bed_space",
+            inventoryQuantity: 6,
             guestsIncluded: 1,
-            capacity: 8,
-            availableSpots: 5,
-            earlyBirdPricePence: 95000,
-            normalPricePence: 110000,
-            depositPence: 25000,
+            guestCountPerUnit: 1,
+            physicalRoomCount: 3,
+            bedsPerPhysicalRoom: 2,
+            capacity: 6,
+            availableSpots: 6,
+            normalPricePence: 42500,
+            depositPence: 8500,
+            ratePlans: [
+              {
+                guestCount: 1,
+                totalPricePence: 42500,
+                earlyBirdPricePence: 39500,
+                earlyBirdEndsAt: "2026-08-14T22:59:59.000Z",
+              },
+            ],
+            displayOrder: 1,
           }),
           roomOption({
-            id: "2a-single-room",
-            label: "Single Room",
-            description: "Private room with more space for rest and decompression.",
-            type: "single",
+            id: "private-king-room",
+            slug: "private-king-room",
+            label: "Private King Room",
+            description: "A private king room for one or two guests.",
+            type: "shared_private",
+            bookingUnit: "whole_room",
+            inventoryType: "room",
+            inventoryQuantity: 2,
             guestsIncluded: 1,
             capacity: 2,
-            availableSpots: 1,
-            earlyBirdPricePence: 110000,
-            normalPricePence: 125000,
-            depositPence: 30000,
+            availableSpots: 2,
+            roomCount: 2,
+            normalPricePence: 52500,
+            depositPence: 10500,
+            allowedGuestCounts: [1, 2],
+            ratePlans: [
+              {
+                guestCount: 1,
+                totalPricePence: 52500,
+                earlyBirdPricePence: 49500,
+                earlyBirdEndsAt: "2026-08-14T22:59:59.000Z",
+              },
+              {
+                guestCount: 2,
+                totalPricePence: 91000,
+                earlyBirdPricePence: 86000,
+                earlyBirdEndsAt: "2026-08-14T22:59:59.000Z",
+              },
+            ],
+            displayOrder: 2,
           }),
         ],
       },
     ],
-    earlyBirdPrice: 950,
-    earlyBirdDeadline: "2026-11-01",
-    normalPrice: 1100,
+    earlyBirdPrice: 395,
+    earlyBirdDeadline: "2026-08-14T22:59:59.000Z",
+    normalPrice: 425,
     currency: "GBP",
     included: [
-      "Four nights accommodation (twin share)",
-      "All meals and snacks",
-      "Daily strength training sessions",
-      "Restorative yoga sessions",
-      "Movement workshops with guest physiotherapist",
-      "Use of gym equipment and facilities",
-      "Small group coaching",
+      "two nights' accommodation",
+      "all scheduled yoga and movement sessions",
+      "slower practices and guided relaxation sessions",
+      "brunch and dinner as scheduled",
+      "tea and basic refreshment provision",
+      "use of the kitchen for making simple snacks",
+      "use of agreed retreat spaces and grounds",
     ],
     notIncluded: [
-      "Transport to and from the venue",
-      "Travel insurance (required)",
-      "Personal expenses",
-      "Optional private room upgrade",
+      "travel to and from the retreat",
+      "travel insurance",
+      "personal purchases",
+      "optional external activities not explicitly listed as included",
     ],
     schedule: [
       {
-        day: "Day 1 - Arrival",
+        day: "Day 1",
+        title: "Arrive and Exhale",
         activities: [
-          "Arrive in the afternoon",
-          "Welcome and orientation",
-          "Light movement session",
-          "Dinner and group introduction",
+          "16:00-18:00 Arrival and check-in",
+          "18:00-19:00 Welcome and grounding practice",
+          "19:30 Dinner",
+          "21:00-21:30 Optional guided relaxation",
+        ],
+        items: [
+          {
+            startTime: "16:00",
+            endTime: "18:00",
+            title: "Arrival and check-in",
+            category: "arrival",
+          },
+          {
+            startTime: "18:00",
+            endTime: "19:00",
+            title: "Welcome and grounding practice",
+            category: "yoga",
+          },
+          { startTime: "19:30", title: "Dinner", category: "food" },
+          {
+            startTime: "21:00",
+            endTime: "21:30",
+            title: "Optional guided relaxation",
+            category: "meditation",
+            isOptional: true,
+          },
         ],
       },
       {
-        day: "Day 2-3 - Full Days",
+        day: "Day 2",
+        title: "Move, Explore and Restore",
         activities: [
-          "Morning strength training session",
-          "Breakfast",
-          "Workshop: programming for chronic illness, autoimmune conditions and injury recovery",
-          "Lunch and rest time",
-          "Afternoon restorative yoga or optional walk",
-          "Evening session and reflection",
-          "Dinner",
+          "08:00-09:30 Morning yoga practice",
+          "10:00 Brunch",
+          "11:30-13:30 Outdoor time or local walk",
+          "13:30-16:00 Free time",
+          "16:00-17:30 Movement workshop",
+          "19:00 Dinner",
+          "21:00 Optional slow practice or meditation",
+        ],
+        items: [
+          {
+            startTime: "08:00",
+            endTime: "09:30",
+            title: "Morning yoga practice",
+            description:
+              "A progressive practice combining mobility, strength, balance and flowing movement, with options offered throughout.",
+            category: "yoga",
+          },
+          { startTime: "10:00", title: "Brunch", category: "food" },
+          {
+            startTime: "11:30",
+            endTime: "13:30",
+            title: "Outdoor time or local walk",
+            category: "outdoors",
+          },
+          { startTime: "13:30", endTime: "16:00", title: "Free time", category: "free_time" },
+          {
+            startTime: "16:00",
+            endTime: "17:30",
+            title: "Movement workshop",
+            description:
+              "An exploratory session based around a theme such as balance, strength, mobility or inversions, adapted to the group.",
+            category: "workshop",
+          },
+          { startTime: "19:00", title: "Dinner", category: "food" },
+          {
+            startTime: "21:00",
+            title: "Optional slow practice or meditation",
+            category: "meditation",
+            isOptional: true,
+          },
         ],
       },
       {
-        day: "Day 4 - Departure",
-        activities: ["Morning yoga practice", "Breakfast and closing circle", "Depart by midday"],
+        day: "Day 3",
+        title: "Reflect and Return",
+        activities: [
+          "08:00-09:15 Slow flow and breathwork",
+          "10:00 Brunch",
+          "11:30-12:45 Closing workshop and reflective practice",
+          "13:00-14:00 Closing circle and departures",
+        ],
+        items: [
+          {
+            startTime: "08:00",
+            endTime: "09:15",
+            title: "Slow flow and breathwork",
+            category: "breathwork",
+          },
+          { startTime: "10:00", title: "Brunch", category: "food" },
+          {
+            startTime: "11:30",
+            endTime: "12:45",
+            title: "Closing workshop and reflective practice",
+            category: "workshop",
+          },
+          {
+            startTime: "13:00",
+            endTime: "14:00",
+            title: "Closing circle and departures",
+            category: "departure",
+          },
+        ],
       },
     ],
     accommodation:
-      "A comfortable lodge with twin rooms, a small number of private rooms, communal spaces and easy access to equipment and outdoor rest areas.",
+      "Shared twin bed spaces and private king rooms at Powis House Estate. One shared twin booking reserves one bed space, not a whole twin room.",
     suitableFor: [
-      "People wanting to learn strength training for chronic conditions",
-      "Those managing autoimmune arthritis or chronic pain",
-      "Anyone looking for evidence-based approaches to building capacity",
-      "People who want small group coaching and community",
-      "Those ready to challenge the 'just rest' narrative",
+      "Adults of all genders",
+      "People with a range of yoga experience",
+      "People who are relatively new to yoga",
+      "People who want movement, rest and time outdoors without a packed schedule",
     ],
+    foodAndDrinkDescription:
+      "Brunch and dinner are included. The kitchen is also available to guests throughout the retreat for making drinks and simple snacks between meals.",
+    venue: powisHouseVenue,
   },
   {
-    id: "3",
-    title: "Virtual Immersion Weekend",
-    subtitle: "An Online Retreat for People Who Cannot Travel",
-    slug: "virtual-immersion",
-    location: "Online (Live via Video)",
-    imageUrl: "online yoga class laptop home",
+    id: "wild-ground-highland-perthshire",
+    title: "Wild Ground: Yoga, Walking and Rest in Highland Perthshire",
+    subtitle: "Three nights with yoga, walks, good food and enough time to switch off",
+    slug: "wild-ground-highland-perthshire",
+    experienceType: "residential_retreat",
+    deliveryMode: "in_person",
+    durationLabel: "4 days / 3 nights",
+    audienceDescription:
+      "Adults of all genders who enjoy movement and time outdoors, with options to adapt or rest.",
+    experienceLevel: "All levels",
+    location: "Grandtully / Balnaguard area, Highland Perthshire, Scotland",
+    imageUrl: "/images/shruti.jpeg",
     shortDescription:
-      "A two-day live online retreat bringing the retreat experience home — adaptive yoga, strength workshops, community connection and rest.",
-    fullDescription: `Not everyone can travel to a retreat. Whether it's finances, health limitations, caring responsibilities, or simply that travelling triggers your symptoms, you deserve a retreat experience too.
+      "Three nights in Highland Perthshire with yoga, walks, good food and plenty of time to switch off. Wild Ground is for people who enjoy moving their bodies but do not want every minute of a retreat scheduled for them.",
+    fullDescription: `Wild Ground is a slightly more active retreat built around movement, time outdoors, food and rest.
 
-Virtual Immersion Weekend is a fully live, interactive two-day online retreat that brings the depth and community of an in-person retreat into your home. This is not a set of pre-recorded videos. Every session is live, every interaction is real.
+Mornings begin with yoga. Some practices will flow; some will focus more closely on strength, mobility and balance. During the day there will be time to explore the landscape on foot, alongside genuinely unstructured time back at the venue.
 
-You'll move through adaptive yoga, learn strength training principles, connect with a small group who understand chronic illness and have genuine rest built into the schedule.`,
+Evenings slow down.
+
+There is no pressure to attend every session. Take the longer walk or choose the shorter option. Join the slower evening practice or have an early night. Read, talk, nap or sit outside for a while.
+
+The point is not to fit as much as possible into four days away. It is to move, eat well, spend time outside and return home feeling rested rather than needing a holiday from your retreat.
+
+Open to adults of all genders.`,
     dates: [
       {
-        id: "3a",
-        startDate: "2026-06-13",
-        endDate: "2026-06-14",
-        availableSpaces: 14,
-        totalSpaces: 20,
+        id: "wild-ground-highland-perthshire-2026-10-22",
+        startDate: "2026-10-22",
+        endDate: "2026-10-25",
+        startDateTime: "2026-10-22T15:00:00.000+01:00",
+        endDateTime: "2026-10-25T14:00:00.000+00:00",
+        retreatType: "in_person",
+        availableSpaces: 10,
+        totalSpaces: 10,
+        depositType: "percentage",
+        depositPercentageBasisPoints: 2500,
+        balanceDueDaysBeforeStart: 70,
         roomOptions: [
           roomOption({
-            id: "3a-online-pass",
-            label: "Virtual Retreat Pass",
-            description: "Live online access for one person, including the full weekend.",
-            type: "virtual",
+            id: "private-ensuite-room",
+            slug: "private-ensuite-room",
+            label: "Private Ensuite Room",
+            description: "A private ensuite room for one retreat guest.",
+            type: "single",
+            bookingUnit: "whole_room",
+            inventoryType: "room",
+            inventoryQuantity: 4,
             guestsIncluded: 1,
-            capacity: 20,
-            availableSpots: 14,
-            earlyBirdPricePence: 12000,
-            normalPricePence: 15000,
-            depositPence: 12000,
+            capacity: 4,
+            availableSpots: 4,
+            roomCount: 4,
+            normalPricePence: 72500,
+            depositPence: 18125,
+            allowedGuestCounts: [1],
+            ratePlans: [
+              {
+                guestCount: 1,
+                totalPricePence: 72500,
+                earlyBirdPricePence: 68500,
+                earlyBirdEndsAt: "2026-09-04T22:59:59.000Z",
+              },
+            ],
+            displayOrder: 1,
           }),
-        ],
-      },
-      {
-        id: "3b",
-        startDate: "2026-11-07",
-        endDate: "2026-11-08",
-        availableSpaces: 20,
-        totalSpaces: 20,
-        roomOptions: [
           roomOption({
-            id: "3b-online-pass",
-            label: "Virtual Retreat Pass",
-            description: "Live online access for one person, including the full weekend.",
-            type: "virtual",
+            id: "king-room-for-two",
+            slug: "king-room-for-two",
+            label: "King Room for Two",
+            description: "A private king room for two retreat guests booking together.",
+            type: "shared_private",
+            bookingUnit: "whole_room",
+            inventoryType: "room",
+            inventoryQuantity: 1,
+            guestsIncluded: 2,
+            capacity: 1,
+            availableSpots: 1,
+            roomCount: 1,
+            normalPricePence: 115000,
+            depositPence: 28750,
+            allowedGuestCounts: [2],
+            ratePlans: [
+              {
+                guestCount: 2,
+                totalPricePence: 115000,
+                earlyBirdPricePence: 109500,
+                earlyBirdEndsAt: "2026-09-04T22:59:59.000Z",
+              },
+            ],
+            displayOrder: 2,
+          }),
+          roomOption({
+            id: "shared-twin-bed",
+            slug: "shared-twin-bed",
+            label: "Shared Twin Bed",
+            description: "One bed in a twin room shared with one other retreat guest.",
+            type: "shared_twin",
+            bookingUnit: "bed_space",
+            inventoryType: "bed_space",
+            inventoryQuantity: 4,
             guestsIncluded: 1,
-            capacity: 20,
-            availableSpots: 20,
-            earlyBirdPricePence: 12000,
-            normalPricePence: 15000,
-            depositPence: 12000,
+            guestCountPerUnit: 1,
+            physicalRoomCount: 2,
+            bedsPerPhysicalRoom: 2,
+            capacity: 4,
+            availableSpots: 4,
+            normalPricePence: 62500,
+            depositPence: 15625,
+            ratePlans: [
+              {
+                guestCount: 1,
+                totalPricePence: 62500,
+                earlyBirdPricePence: 59000,
+                earlyBirdEndsAt: "2026-09-04T22:59:59.000Z",
+              },
+            ],
+            displayOrder: 3,
           }),
         ],
       },
     ],
-    earlyBirdPrice: 120,
-    earlyBirdDeadline: "2026-05-01",
-    normalPrice: 150,
+    earlyBirdPrice: 590,
+    earlyBirdDeadline: "2026-09-04T22:59:59.000Z",
+    normalPrice: 625,
     currency: "GBP",
     included: [
-      "All live sessions over two days",
-      "Adaptive yoga sessions",
-      "Strength training workshop",
-      "Community connection sessions",
-      "Digital welcome pack with schedule and equipment list",
-      "Live access to every included session",
-      "Printable movement guides to keep",
+      "three nights' accommodation",
+      "all scheduled yoga and movement sessions",
+      "guided walks or organised outdoor sessions",
+      "meals as listed",
+      "retreat workshops",
+      "slower evening practices",
+      "one group sauna session",
     ],
-    notIncluded: ["Physical equipment (list provided in advance)", "Food and drink"],
+    notIncluded: [
+      "travel to and from the venue",
+      "travel insurance",
+      "personal purchases",
+      "optional treatments or activities not explicitly included",
+    ],
     schedule: [
       {
-        day: "Day 1 - Saturday",
+        day: "Day 1",
+        title: "Land",
         activities: [
-          "10:00 Welcome circle and introductions",
-          "10:30 Adaptive Yoga Flow",
-          "12:00 Strength workshop: foundations for chronic illness, autoimmune conditions and injury recovery",
-          "14:15 Movement exploration",
-          "15:30 Restorative yoga",
+          "15:00-17:00 Arrival and settle in",
+          "17:30 Welcome and mobility practice",
+          "19:00 Dinner",
+          "21:00 Optional guided relaxation",
+        ],
+        items: [
+          {
+            startTime: "15:00",
+            endTime: "17:00",
+            title: "Arrival and settle in",
+            category: "arrival",
+          },
+          { startTime: "17:30", title: "Welcome and mobility practice", category: "movement" },
+          { startTime: "19:00", title: "Dinner", category: "food" },
+          {
+            startTime: "21:00",
+            title: "Optional guided relaxation",
+            category: "meditation",
+            isOptional: true,
+          },
         ],
       },
       {
-        day: "Day 2 - Sunday",
+        day: "Day 2",
+        title: "Ground",
         activities: [
-          "10:00 Morning check-in and gentle movement",
-          "10:30 Yoga for nervous system regulation",
-          "12:00 Strength workshop: building your own practice",
-          "14:00 Community Q&A",
-          "14:45 Final restorative practice",
+          "08:00 Morning strength and flow practice",
+          "09:30 Breakfast",
+          "11:00-14:00 Guided walk and lunch",
+          "14:30-17:00 Free time",
+          "17:00 Lower-body mobility workshop",
+          "19:00 Dinner",
+          "21:00 Optional meditation",
+        ],
+        items: [
+          { startTime: "08:00", title: "Morning strength and flow practice", category: "yoga" },
+          { startTime: "09:30", title: "Breakfast", category: "food" },
+          {
+            startTime: "11:00",
+            endTime: "14:00",
+            title: "Guided walk and lunch",
+            category: "outdoors",
+          },
+          { startTime: "14:30", endTime: "17:00", title: "Free time", category: "free_time" },
+          { startTime: "17:00", title: "Lower-body mobility workshop", category: "workshop" },
+          { startTime: "19:00", title: "Dinner", category: "food" },
+          {
+            startTime: "21:00",
+            title: "Optional meditation",
+            category: "meditation",
+            isOptional: true,
+          },
+        ],
+      },
+      {
+        day: "Day 3",
+        title: "Explore",
+        activities: [
+          "08:00 Morning yoga practice",
+          "09:30 Breakfast",
+          "11:00 Choice of longer or shorter walk",
+          "14:00 Lunch",
+          "15:00-17:00 Free time",
+          "17:30 Restorative practice",
+          "19:30 Dinner",
+        ],
+        items: [
+          { startTime: "08:00", title: "Morning yoga practice", category: "yoga" },
+          { startTime: "09:30", title: "Breakfast", category: "food" },
+          { startTime: "11:00", title: "Choice of longer or shorter walk", category: "outdoors" },
+          { startTime: "14:00", title: "Lunch", category: "food" },
+          { startTime: "15:00", endTime: "17:00", title: "Free time", category: "free_time" },
+          { startTime: "17:30", title: "Restorative practice", category: "yoga" },
+          { startTime: "19:30", title: "Dinner", category: "food" },
+        ],
+      },
+      {
+        day: "Day 4",
+        title: "Return",
+        activities: [
+          "08:00 Final morning practice",
+          "09:30 Breakfast",
+          "11:00 Workshop: Building a Sustainable Home Practice",
+          "12:30 Lunch",
+          "14:00 Closing and departure",
+        ],
+        items: [
+          { startTime: "08:00", title: "Final morning practice", category: "yoga" },
+          { startTime: "09:30", title: "Breakfast", category: "food" },
+          {
+            startTime: "11:00",
+            title: "Workshop: Building a Sustainable Home Practice",
+            category: "workshop",
+          },
+          { startTime: "12:30", title: "Lunch", category: "food" },
+          { startTime: "14:00", title: "Closing and departure", category: "departure" },
         ],
       },
     ],
     accommodation:
-      "Your own home. A printable setup guide is included so you can create a calmer space with props, a chairand whatever support you already have.",
+      "Sample Shruti Turner retreat configuration for development and booking testing. These are not venue-published room prices.",
     suitableFor: [
-      "People who cannot travel to in-person retreats",
-      "Anyone managing chronic illness, autoimmune conditions, or chronic pain",
-      "Those wanting a structured weekend of movement and rest",
-      "People curious about retreats but not ready for the in-person commitment",
-      "Carers or parents who need to stay close to home",
+      "Adults of all genders",
+      "People who enjoy movement and time outside",
+      "People who want active options without every minute being scheduled",
     ],
+    foodAndDrinkDescription:
+      "Meals are included throughout the retreat, with breakfast, lunch or a packed lunch depending on the day's activities, and dinner in the evening.",
+    venue: ballintaggartVenue,
+  },
+  {
+    id: "sankalpa-online-workshop",
+    title: "Sankalpa: A Two-Hour Pause for Reflection and Intention",
+    subtitle: "Gentle movement, reflection, journalling and deep rest online",
+    slug: "sankalpa-online-workshop",
+    experienceType: "online_workshop",
+    deliveryMode: "online_live",
+    durationLabel: "2 hours",
+    audienceDescription:
+      "Adults of all genders. No previous yoga or meditation experience is required.",
+    experienceLevel: "No previous experience required",
+    location: "Online (live through this website)",
+    imageUrl: "/images/shruti.jpeg",
+    shortDescription:
+      "A two-hour online practice combining gentle movement, reflection, journalling and deep rest. Rather than creating another list of goals, this workshop gives you space to slow down and consider the direction you want to move in.",
+    fullDescription: `You probably do not need another list of things to achieve.
+
+This two-hour online workshop is an opportunity to pause before rushing into whatever comes next.
+
+Through gentle movement, breath, guided reflection, journalling and yoga nidra, we will create some quiet space to explore what matters to you and what you would like to carry forward.
+
+We will explore the idea of Sankalpa as an intention or inner resolve.
+
+This is not a productivity exercise and there is no expectation that you arrive with a grand plan to reinvent your life.
+
+No previous yoga or meditation experience is required.
+
+Bring something comfortable to lie on, a notebook and a pen.`,
+    dates: [
+      {
+        id: "sankalpa-online-workshop-2026-11-15",
+        startDate: "2026-11-15",
+        endDate: "2026-11-15",
+        startDateTime: "2026-11-15T10:00:00.000+00:00",
+        endDateTime: "2026-11-15T12:00:00.000+00:00",
+        retreatType: "online",
+        availableSpaces: 30,
+        totalSpaces: 30,
+        depositType: "full_payment",
+        fixedDepositAmountPence: 2900,
+        replayAccessDurationDays: 7,
+        isRecorded: true,
+        roomOptions: [
+          roomOption({
+            id: "live-workshop-ticket",
+            slug: "live-workshop-ticket",
+            label: "Live Workshop Ticket",
+            description:
+              "Live online workshop access with replay access for seven days once published.",
+            type: "virtual",
+            bookingUnit: "online_live_place",
+            inventoryType: "online_live_place",
+            inventoryQuantity: 30,
+            guestsIncluded: 1,
+            guestCountPerUnit: 1,
+            capacity: 30,
+            availableSpots: 30,
+            normalPricePence: 2900,
+            depositPence: 2900,
+            ratePlans: [
+              {
+                guestCount: 1,
+                totalPricePence: 2900,
+                earlyBirdPricePence: 2500,
+                earlyBirdEndsAt: "2026-10-16T22:59:59.000Z",
+              },
+            ],
+            displayOrder: 1,
+          }),
+        ],
+      },
+    ],
+    earlyBirdPrice: 25,
+    earlyBirdDeadline: "2026-10-16T22:59:59.000Z",
+    normalPrice: 29,
+    currency: "GBP",
+    included: ["live online workshop", "replay access for seven days once published"],
+    notIncluded: ["1:1 support", "equipment", "ongoing access after the replay window closes"],
+    schedule: [
+      {
+        day: "Workshop",
+        title: "Sankalpa Online Workshop",
+        activities: [
+          "00:00-00:10 Arrival and grounding",
+          "00:10-00:35 Gentle movement",
+          "00:35-00:50 Breathwork and settling practice",
+          "00:50-01:10 Introduction to Sankalpa and guided reflection",
+          "01:10-01:25 Journalling",
+          "01:25-01:50 Yoga nidra and intention practice",
+          "01:50-02:00 Quiet closing",
+        ],
+        items: [
+          {
+            startTime: "00:00",
+            endTime: "00:10",
+            title: "Arrival and grounding",
+            category: "meditation",
+          },
+          { startTime: "00:10", endTime: "00:35", title: "Gentle movement", category: "movement" },
+          {
+            startTime: "00:35",
+            endTime: "00:50",
+            title: "Breathwork and settling practice",
+            category: "breathwork",
+          },
+          {
+            startTime: "00:50",
+            endTime: "01:10",
+            title: "Introduction to Sankalpa and guided reflection",
+            category: "workshop",
+          },
+          { startTime: "01:10", endTime: "01:25", title: "Journalling", category: "workshop" },
+          {
+            startTime: "01:25",
+            endTime: "01:50",
+            title: "Yoga nidra and intention practice",
+            category: "meditation",
+          },
+          { startTime: "01:50", endTime: "02:00", title: "Quiet closing", category: "meditation" },
+        ],
+      },
+    ],
+    accommodation: "Online live workshop delivered through the website.",
+    suitableFor: [
+      "Adults of all genders",
+      "People with no previous yoga or meditation experience",
+      "People who want reflection and rest without turning it into another productivity task",
+    ],
+    foodAndDrinkDescription: "Bring anything you would like to drink during the session.",
+    whatToBring: [
+      "yoga mat or comfortable floor space",
+      "blanket",
+      "pillow or cushion",
+      "notebook or journal",
+      "pen",
+      "somewhere comfortable to lie down",
+    ],
+    venue: onlineVenue,
   },
 ];
-
-export function getRetreatBySlug(slug: string): Retreat | undefined {
-  return retreats.find((retreat) => retreat.slug === slug);
-}
-
-export function getRetreatById(id: string): Retreat | undefined {
-  return retreats.find((retreat) => retreat.id === id);
-}
-
-export function getUpcomingRetreats(): Retreat[] {
-  const now = new Date();
-  return retreats.filter((retreat) => retreat.dates.some((date) => new Date(date.startDate) > now));
-}

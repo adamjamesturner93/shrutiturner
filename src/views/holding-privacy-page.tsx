@@ -82,10 +82,10 @@ export function HoldingPrivacyPage() {
                   You can unsubscribe at any time using the link included in holding-page emails.
                   You can also request access, correction, or deletion by contacting{" "}
                   <a
-                    href="mailto:tech@thechronicyogini.com"
+                    href="mailto:shruti@shrutiturner.co.uk"
                     className="underline decoration-white/35 underline-offset-4"
                   >
-                    tech@thechronicyogini.com
+                    shruti@shrutiturner.co.uk
                   </a>
                   .
                 </p>
@@ -97,7 +97,7 @@ export function HoldingPrivacyPage() {
                 Back
               </Link>
               <a
-                href="mailto:tech@thechronicyogini.com"
+                href="mailto:shruti@shrutiturner.co.uk"
                 className="underline decoration-white/35 underline-offset-4"
               >
                 Contact privacy support

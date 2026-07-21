@@ -8,14 +8,20 @@ import {
   ArrowLeft,
   Calendar,
   Download,
+  ExternalLink,
   MapPin,
   PoundSterling,
+  Save,
+  Send,
   Users,
+  Video,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { AdminRetreatDetailDto, AdminRetreatEvidenceDto } from "@/lib/api/types";
 
 function formatCurrency(pence: number) {
@@ -33,6 +39,13 @@ function formatDateRange(start: string, end: string) {
     year: "numeric",
   });
   return `${formatter.format(new Date(start))} - ${formatter.format(new Date(end))}`;
+}
+
+function toDateTimeLocal(value: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 16);
 }
 
 function badgeVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
@@ -67,6 +80,31 @@ export function AdminRetreatDetail({
   const [evidence, setEvidence] = useState<AdminRetreatEvidenceDto | null>(null);
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState("");
+  const [actionMessage, setActionMessage] = useState("");
+  const [actionLoading, setActionLoading] = useState<
+    "" | "online-room" | "balance-due" | "chaser" | "early-bird"
+  >("");
+  const [earlyBirdDrafts, setEarlyBirdDrafts] = useState<
+    Record<string, { pricePounds: string; endsAt: string }>
+  >({});
+
+  useEffect(() => {
+    if (!retreat) return;
+    setEarlyBirdDrafts(
+      Object.fromEntries(
+        retreat.ratePlans.map((ratePlan) => [
+          ratePlan.id,
+          {
+            pricePounds:
+              ratePlan.earlyBirdPricePence === null
+                ? ""
+                : (ratePlan.earlyBirdPricePence / 100).toFixed(2),
+            endsAt: toDateTimeLocal(ratePlan.earlyBirdEndsAt),
+          },
+        ])
+      )
+    );
+  }, [retreat]);
 
   useEffect(() => {
     if (initialData || !id) return;
@@ -135,6 +173,104 @@ export function AdminRetreatDetail({
     return { paidInFull, balanceDue, specialRequirements };
   }, [retreat]);
 
+  const runRetreatAction = async (
+    action: "online-room" | "balance-due" | "chaser",
+    request: () => Promise<Response>
+  ) => {
+    setActionLoading(action);
+    setActionMessage("");
+    setError("");
+    try {
+      const response = await request();
+      const payload = (await response.json().catch(() => null)) as
+        | AdminRetreatDetailDto
+        | { sent?: number; skipped?: number; message?: string }
+        | null;
+      if (!response.ok) {
+        throw new Error(
+          payload && "message" in payload && payload.message
+            ? payload.message
+            : "The retreat action failed."
+        );
+      }
+      if (action === "online-room" && payload && "id" in payload) {
+        setRetreat(payload);
+        setActionMessage("Online room created.");
+      } else if (payload && "sent" in payload) {
+        setActionMessage(`Emails sent: ${payload.sent}. Skipped: ${payload.skipped ?? 0}.`);
+      } else {
+        setActionMessage("Action complete.");
+      }
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : "The retreat action failed.");
+    } finally {
+      setActionLoading("");
+    }
+  };
+
+  const saveEarlyBirdRates = async () => {
+    setActionLoading("early-bird");
+    setActionMessage("");
+    setError("");
+    try {
+      const ratePlans = retreat.ratePlans.map((ratePlan) => {
+        const draft = earlyBirdDrafts[ratePlan.id] || { pricePounds: "", endsAt: "" };
+        const hasPrice = draft.pricePounds.trim().length > 0;
+        const hasEndDate = draft.endsAt.length > 0;
+        if (hasPrice !== hasEndDate) {
+          throw new Error(
+            `${ratePlan.roomLabel} for ${ratePlan.guestCount} ${ratePlan.guestCount === 1 ? "guest" : "guests"} needs both a price and deadline.`
+          );
+        }
+        if (!hasPrice) {
+          return {
+            ratePlanId: ratePlan.id,
+            earlyBirdPricePence: null,
+            earlyBirdEndsAt: null,
+          };
+        }
+        const earlyBirdPricePence = Math.round(Number(draft.pricePounds) * 100);
+        if (
+          !Number.isFinite(earlyBirdPricePence) ||
+          earlyBirdPricePence < 0 ||
+          earlyBirdPricePence >= ratePlan.totalPricePence
+        ) {
+          throw new Error(
+            `${ratePlan.roomLabel} early-bird price must be lower than the standard price.`
+          );
+        }
+        return {
+          ratePlanId: ratePlan.id,
+          earlyBirdPricePence,
+          earlyBirdEndsAt: new Date(draft.endsAt).toISOString(),
+        };
+      });
+
+      const response = await fetch(`/api/admin/retreats/${retreat.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ratePlans }),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | AdminRetreatDetailDto
+        | { message?: string }
+        | null;
+      if (!response.ok || !payload || !("id" in payload)) {
+        throw new Error(
+          payload && "message" in payload && payload.message
+            ? payload.message
+            : "Failed to update early-bird pricing."
+        );
+      }
+      setRetreat(payload);
+      setActionMessage("Early-bird pricing updated.");
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Failed to update pricing.");
+    } finally {
+      setActionLoading("");
+    }
+  };
+
   if (loading) {
     return (
       <AdminLayout title="Retreat - Admin">
@@ -193,6 +329,8 @@ export function AdminRetreatDetail({
                     "Attendee",
                     "Attendee Email",
                     "Room Type",
+                    "Assigned Room",
+                    "Attendee Count",
                     "Payment Status",
                     "Booking Status",
                     "Dietary",
@@ -205,6 +343,8 @@ export function AdminRetreatDetail({
                     booking.attendeeName,
                     booking.attendeeEmail,
                     booking.roomType || "",
+                    booking.roomUnitLabel || "",
+                    String(booking.attendeeCount || 1),
                     booking.paymentStatus,
                     booking.bookingStatus,
                     booking.dietaryRequirements || "",
@@ -219,6 +359,17 @@ export function AdminRetreatDetail({
             </Button>
           </div>
         </div>
+
+        {error ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {error}
+          </div>
+        ) : null}
+        {actionMessage ? (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+            {actionMessage}
+          </div>
+        ) : null}
 
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
@@ -250,6 +401,81 @@ export function AdminRetreatDetail({
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-lg">Early-bird pricing</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <p className="text-muted-foreground text-sm">
+                Set pricing separately for each room and guest count. Clear both fields to remove an
+                early-bird rate. Stripe uses the active server-calculated rate when checkout is
+                created.
+              </p>
+              <div className="space-y-4">
+                {retreat.ratePlans.map((ratePlan) => {
+                  const draft = earlyBirdDrafts[ratePlan.id] || {
+                    pricePounds: "",
+                    endsAt: "",
+                  };
+                  const label = `${ratePlan.roomLabel} · ${ratePlan.guestCount} ${ratePlan.guestCount === 1 ? "guest" : "guests"}`;
+                  return (
+                    <div
+                      key={ratePlan.id}
+                      className="grid gap-4 rounded-lg border p-4 md:grid-cols-[1.2fr_0.8fr_1fr] md:items-end"
+                    >
+                      <div>
+                        <p className="font-medium">{label}</p>
+                        <p className="text-muted-foreground mt-1 text-sm">
+                          Standard price {formatCurrency(ratePlan.totalPricePence)}
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`early-price-${ratePlan.id}`}>Early-bird price (£)</Label>
+                        <Input
+                          id={`early-price-${ratePlan.id}`}
+                          type="number"
+                          min="0"
+                          max={(ratePlan.totalPricePence - 1) / 100}
+                          step="0.01"
+                          value={draft.pricePounds}
+                          onChange={(event) =>
+                            setEarlyBirdDrafts((current) => ({
+                              ...current,
+                              [ratePlan.id]: { ...draft, pricePounds: event.target.value },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`early-end-${ratePlan.id}`}>Available until</Label>
+                        <Input
+                          id={`early-end-${ratePlan.id}`}
+                          type="datetime-local"
+                          max={toDateTimeLocal(retreat.startDate)}
+                          value={draft.endsAt}
+                          onChange={(event) =>
+                            setEarlyBirdDrafts((current) => ({
+                              ...current,
+                              [ratePlan.id]: { ...draft, endsAt: event.target.value },
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <Button
+                type="button"
+                disabled={actionLoading !== ""}
+                onClick={() => void saveEarlyBirdRates()}
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {actionLoading === "early-bird" ? "Saving..." : "Save early-bird pricing"}
+              </Button>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Payment structure</CardTitle>
@@ -284,6 +510,100 @@ export function AdminRetreatDetail({
                       }).format(new Date(retreat.balanceDueAt))
                     : "Before arrival"}
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Operational actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              {retreat.retreatType === "online" ? (
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-start gap-3">
+                    <Video className="text-brand-accent mt-1 h-5 w-5" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium">Online room</p>
+                      <p className="text-muted-foreground mt-1">
+                        Status: {retreat.roomSetupStatus.replaceAll("_", " ")}
+                      </p>
+                      {retreat.dailyRoomUrl ? (
+                        <a
+                          href={retreat.dailyRoomUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-brand-accent mt-2 inline-flex items-center gap-1 underline"
+                        >
+                          Open room
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      ) : null}
+                      {retreat.roomSetupError ? (
+                        <p className="mt-2 text-red-700">{retreat.roomSetupError}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    className="mt-4 w-full"
+                    disabled={actionLoading !== ""}
+                    onClick={() =>
+                      void runRetreatAction("online-room", () =>
+                        fetch(`/api/admin/retreats/${retreat.id}/online-room`, {
+                          method: "POST",
+                        })
+                      )
+                    }
+                  >
+                    <Video className="mr-2 h-4 w-4" />
+                    {actionLoading === "online-room" ? "Creating..." : "Create or refresh room"}
+                  </Button>
+                </div>
+              ) : null}
+
+              <div className="rounded-lg border p-4">
+                <p className="font-medium">Balance emails</p>
+                <p className="text-muted-foreground mt-1">
+                  Send the balance due email when balances are ready to collect. Use chasers after
+                  the first due email has gone out.
+                </p>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={actionLoading !== ""}
+                    onClick={() =>
+                      void runRetreatAction("balance-due", () =>
+                        fetch(`/api/admin/retreats/${retreat.id}/balance-emails`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ mode: "due" }),
+                        })
+                      )
+                    }
+                  >
+                    <Send className="mr-2 h-4 w-4" />
+                    {actionLoading === "balance-due" ? "Sending..." : "Send due email"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={actionLoading !== ""}
+                    onClick={() =>
+                      void runRetreatAction("chaser", () =>
+                        fetch(`/api/admin/retreats/${retreat.id}/balance-emails`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ mode: "chaser" }),
+                        })
+                      )
+                    }
+                  >
+                    <Send className="mr-2 h-4 w-4" />
+                    {actionLoading === "chaser" ? "Sending..." : "Send chaser"}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -421,7 +741,13 @@ export function AdminRetreatDetail({
                       <p>{booking.purchaserName}</p>
                       <p className="text-muted-foreground mt-1 text-xs">{booking.purchaserEmail}</p>
                     </td>
-                    <td className="py-3 pr-4">{booking.roomType || "Shared"}</td>
+                    <td className="py-3 pr-4">
+                      <p>{booking.roomType || "Shared"}</p>
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        {booking.roomUnitLabel || "Not assigned"} · {booking.attendeeCount || 1}{" "}
+                        {(booking.attendeeCount || 1) === 1 ? "person" : "people"}
+                      </p>
+                    </td>
                     <td className="py-3 pr-4">
                       <div className="flex flex-col gap-1">
                         <Badge variant={badgeVariant(booking.paymentStatus)}>

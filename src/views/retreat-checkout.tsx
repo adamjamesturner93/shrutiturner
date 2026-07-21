@@ -28,6 +28,10 @@ import {
   CURRENT_HEALTH_WAIVER_VERSION,
   CURRENT_TERMS_VERSION,
 } from "@/data/legal-documents";
+import {
+  getEffectiveRetreatRatePricePence,
+  isRetreatEarlyBirdActive,
+} from "@/lib/retreats/pricing";
 import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content/types";
 import { useI18n } from "@/lib/use-i18n";
 
@@ -52,6 +56,64 @@ function getDepositAmountPence(roomOption: RetreatRoomOptionContent) {
   return Math.min(roomOption.normalPricePence, 30000);
 }
 
+function getDepositAmountForPricePence(
+  roomOption: RetreatRoomOptionContent,
+  totalPricePence: number
+) {
+  const baseDepositPence = getDepositAmountPence(roomOption);
+  if (roomOption.normalPricePence > 0 && baseDepositPence > 0) {
+    return Math.min(
+      totalPricePence,
+      Math.round((totalPricePence * baseDepositPence) / roomOption.normalPricePence)
+    );
+  }
+  if (totalPricePence <= 25000) return totalPricePence;
+  return Math.min(totalPricePence, 30000);
+}
+
+function getRoomRatePlans(roomOption: RetreatRoomOptionContent) {
+  if (roomOption.ratePlans && roomOption.ratePlans.length > 0) {
+    return [...roomOption.ratePlans].sort((a, b) => a.guestCount - b.guestCount);
+  }
+  return [
+    {
+      guestCount: roomOption.guestsIncluded,
+      totalPricePence: roomOption.normalPricePence,
+      earlyBirdPricePence: roomOption.earlyBirdPricePence,
+      currency: "GBP",
+    },
+  ];
+}
+
+function getDefaultGuestCount(roomOption: RetreatRoomOptionContent | null | undefined) {
+  if (!roomOption) return 1;
+  return getRoomRatePlans(roomOption)[0]?.guestCount || 1;
+}
+
+function getGuestCountLabel(guestCount: number) {
+  if (guestCount === 1) return "Just me";
+  if (guestCount === 2) return "Two people";
+  return `${guestCount} people`;
+}
+
+function getEarlyBirdSavingPence(ratePlan: ReturnType<typeof getRoomRatePlans>[number]) {
+  if (
+    !isRetreatEarlyBirdActive({
+      earlyBirdPricePence: ratePlan.earlyBirdPricePence,
+      earlyBirdEndsAt: ratePlan.earlyBirdEndsAt,
+      totalPricePence: ratePlan.totalPricePence,
+    })
+  ) {
+    return 0;
+  }
+  return Math.max(ratePlan.totalPricePence - getEffectiveRetreatRatePricePence(ratePlan), 0);
+}
+
+function getPayInFullDiscountPence(totalPricePence: number, enabled: boolean) {
+  if (!enabled || totalPricePence <= 0) return 0;
+  return Math.min(Math.round(totalPricePence * 0.05), 5000);
+}
+
 function getDefaultRoomOptionId(date: RetreatCombinedContent["dates"][number] | null | undefined) {
   if (!date) return "";
   return (
@@ -68,6 +130,8 @@ function getRoomAvailabilityLabel(roomOption: RetreatRoomOptionContent) {
 }
 
 function getRoomGuestLabel(roomOption: RetreatRoomOptionContent) {
+  const ratePlans = getRoomRatePlans(roomOption);
+  if (ratePlans.length > 1) return "Choose guest count";
   return roomOption.guestsIncluded > 1
     ? `Includes ${roomOption.guestsIncluded} guests`
     : "For one guest";
@@ -80,14 +144,19 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
 
   const queryDateId = searchParams.get("date");
   const queryRoomId = searchParams.get("room");
+  const queryGuestCount = Number(searchParams.get("guests") || "");
   const checkoutState = searchParams.get("checkout");
   const isGiftDefault = searchParams.get("gift") === "1";
 
   const [purchaseMode, setPurchaseMode] = useState<"self" | "gift">(
     isGiftDefault ? "gift" : "self"
   );
+  const [paymentOption, setPaymentOption] = useState<"deposit" | "pay_in_full">("deposit");
   const [selectedDateId, setSelectedDateId] = useState(queryDateId || retreat?.dates[0]?.id || "");
   const [selectedRoomId, setSelectedRoomId] = useState(queryRoomId || "");
+  const [selectedGuestCount, setSelectedGuestCount] = useState(
+    Number.isFinite(queryGuestCount) && queryGuestCount > 0 ? Math.trunc(queryGuestCount) : 1
+  );
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingLegalAcceptances, setPendingLegalAcceptances] = useState<PendingAcceptance[]>([]);
@@ -137,7 +206,13 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
     if (!selectedDate) return;
     const validRoom = selectedDate.roomOptions.find((option) => option.id === selectedRoomId);
     if (!validRoom) {
-      setSelectedRoomId(getDefaultRoomOptionId(selectedDate));
+      const nextRoomId = getDefaultRoomOptionId(selectedDate);
+      const nextRoom =
+        selectedDate.roomOptions.find((roomOption) => roomOption.id === nextRoomId) ||
+        selectedDate.roomOptions[0] ||
+        null;
+      setSelectedRoomId(nextRoomId);
+      setSelectedGuestCount(getDefaultGuestCount(nextRoom));
     }
   }, [selectedDate, selectedRoomId]);
 
@@ -158,6 +233,21 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
     selectedDate?.roomOptions.find((option) => option.id === selectedRoomId) ||
     selectedDate?.roomOptions[0] ||
     null;
+  const selectedRoomRatePlans = useMemo(
+    () => (selectedRoom ? getRoomRatePlans(selectedRoom) : []),
+    [selectedRoom]
+  );
+  const selectedRatePlan =
+    selectedRoomRatePlans.find((ratePlan) => ratePlan.guestCount === selectedGuestCount) ||
+    selectedRoomRatePlans[0] ||
+    null;
+
+  useEffect(() => {
+    if (!selectedRoom || !selectedRatePlan) return;
+    if (selectedRatePlan.guestCount !== selectedGuestCount) {
+      setSelectedGuestCount(selectedRatePlan.guestCount);
+    }
+  }, [selectedGuestCount, selectedRatePlan, selectedRoom]);
 
   if (!retreat) {
     return (
@@ -178,9 +268,23 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
     );
   }
 
-  const totalPricePence = selectedRoom?.normalPricePence ?? 0;
-  const depositAmountPence = selectedRoom ? getDepositAmountPence(selectedRoom) : 0;
-  const balanceAmountPence = Math.max(totalPricePence - depositAmountPence, 0);
+  const totalPricePence = selectedRatePlan?.totalPricePence ?? selectedRoom?.normalPricePence ?? 0;
+  const effectiveTotalPricePence = selectedRatePlan
+    ? getEffectiveRetreatRatePricePence(selectedRatePlan)
+    : totalPricePence;
+  const depositAmountPence = selectedRoom
+    ? getDepositAmountForPricePence(selectedRoom, effectiveTotalPricePence)
+    : 0;
+  const payInFullDiscountEnabled = selectedDate?.payInFullDiscountEnabled !== false;
+  const payInFullDiscountPence = getPayInFullDiscountPence(
+    effectiveTotalPricePence,
+    payInFullDiscountEnabled
+  );
+  const payInFullTotalPence = Math.max(effectiveTotalPricePence - payInFullDiscountPence, 0);
+  const isPayingInFull = purchaseMode === "gift" || paymentOption === "pay_in_full";
+  const dueTodayPence = isPayingInFull ? payInFullTotalPence : depositAmountPence;
+  const depositBalanceAmountPence = Math.max(effectiveTotalPricePence - depositAmountPence, 0);
+  const balanceAmountPence = isPayingInFull ? 0 : depositBalanceAmountPence;
   const termsSatisfied = Boolean(user?.hasAgreedToTerms || formData.agreedToTerms);
   const waiverSatisfied = Boolean(user?.hasAgreedToHealth || formData.agreedToHealth);
   const healthDataSatisfied = Boolean(
@@ -258,7 +362,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
       }
 
       if (
-        selectedRoom.guestsIncluded > 1 &&
+        selectedGuestCount > 1 &&
         (!formData.guestTwoFirstName.trim() ||
           !formData.guestTwoLastName.trim() ||
           !formData.guestTwoEmail.trim())
@@ -297,7 +401,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
         body: JSON.stringify({
           retreatDateId: selectedDate.id,
           roomOptionId: selectedRoom.id,
+          guestCount: selectedGuestCount,
           purchaseMode,
+          paymentOption: purchaseMode === "gift" ? "pay_in_full" : paymentOption,
           purchaserFirstName,
           purchaserLastName,
           purchaserEmail,
@@ -357,7 +463,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
         ) {
           throw new Error(
             payload.message ||
-            "The retreat legal agreements have changed. Refresh this page and review the latest versions before continuing."
+              "The retreat legal agreements have changed. Refresh this page and review the latest versions before continuing."
           );
         }
         throw new Error(payload?.message || "Failed to start checkout.");
@@ -409,9 +515,15 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                     <>
                       <p>
                         {purchaseMode === "gift"
-                          ? `${formatMoney(totalPricePence, retreat.currency)} due today`
-                          : `${formatMoney(depositAmountPence, retreat.currency)} deposit today`}
+                          ? `${formatMoney(payInFullTotalPence, retreat.currency)} due today`
+                          : `${formatMoney(dueTodayPence, retreat.currency)} due today`}
                       </p>
+                      {isPayingInFull && payInFullDiscountPence > 0 ? (
+                        <p>
+                          Includes {formatMoney(payInFullDiscountPence, retreat.currency)} pay in
+                          full discount
+                        </p>
+                      ) : null}
                       <p>{selectedRoom.label}</p>
                     </>
                   ) : (
@@ -474,10 +586,11 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                       <button
                         key={date.id}
                         type="button"
-                        className={`rounded-[1.25rem] border p-4 text-left transition-colors ${isSelected
-                          ? "border-brand-accent bg-brand-accent/5"
-                          : "hover:bg-secondary/20"
-                          }`}
+                        className={`rounded-[1.25rem] border p-4 text-left transition-colors ${
+                          isSelected
+                            ? "border-brand-accent bg-brand-accent/5"
+                            : "hover:bg-secondary/20"
+                        }`}
                         onClick={() => setSelectedDateId(date.id)}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -509,11 +622,15 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                           key={roomOption.id}
                           type="button"
                           disabled={isUnavailable}
-                          className={`rounded-[1.25rem] border p-5 text-left transition-colors ${isSelected
-                            ? "border-brand-accent bg-brand-accent/5"
-                            : "hover:bg-secondary/20"
-                            } ${isUnavailable ? "opacity-60" : ""}`}
-                          onClick={() => setSelectedRoomId(roomOption.id)}
+                          className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
+                            isSelected
+                              ? "border-brand-accent bg-brand-accent/5"
+                              : "hover:bg-secondary/20"
+                          } ${isUnavailable ? "opacity-60" : ""}`}
+                          onClick={() => {
+                            setSelectedRoomId(roomOption.id);
+                            setSelectedGuestCount(getDefaultGuestCount(roomOption));
+                          }}
                         >
                           <div className="flex flex-wrap items-start justify-between gap-4">
                             <div className="space-y-2">
@@ -544,11 +661,51 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
 
                             <div className="text-right">
                               <p className="text-2xl">
-                                {formatMoney(roomOption.normalPricePence, retreat.currency)}
+                                {formatMoney(
+                                  getRoomRatePlans(roomOption)[0]
+                                    ? getEffectiveRetreatRatePricePence(
+                                        getRoomRatePlans(roomOption)[0]
+                                      )
+                                    : roomOption.normalPricePence,
+                                  retreat.currency
+                                )}
                               </p>
+                              {getRoomRatePlans(roomOption)[0] &&
+                              isRetreatEarlyBirdActive({
+                                earlyBirdPricePence:
+                                  getRoomRatePlans(roomOption)[0]?.earlyBirdPricePence,
+                                earlyBirdEndsAt: getRoomRatePlans(roomOption)[0]?.earlyBirdEndsAt,
+                                totalPricePence:
+                                  getRoomRatePlans(roomOption)[0]?.totalPricePence ||
+                                  roomOption.normalPricePence,
+                              }) ? (
+                                <p className="text-muted-foreground mt-1 text-xs">
+                                  Early bird saves{" "}
+                                  {formatMoney(
+                                    getEarlyBirdSavingPence(getRoomRatePlans(roomOption)[0]),
+                                    retreat.currency
+                                  )}
+                                  . Standard{" "}
+                                  {formatMoney(
+                                    getRoomRatePlans(roomOption)[0]?.totalPricePence ||
+                                      roomOption.normalPricePence,
+                                    retreat.currency
+                                  )}
+                                </p>
+                              ) : null}
                               <p className="text-muted-foreground mt-1 text-sm">
                                 Deposit today{" "}
-                                {formatMoney(getDepositAmountPence(roomOption), retreat.currency)}
+                                {formatMoney(
+                                  getDepositAmountForPricePence(
+                                    roomOption,
+                                    getRoomRatePlans(roomOption)[0]
+                                      ? getEffectiveRetreatRatePricePence(
+                                          getRoomRatePlans(roomOption)[0]
+                                        )
+                                      : roomOption.normalPricePence
+                                  ),
+                                  retreat.currency
+                                )}
                               </p>
                             </div>
                           </div>
@@ -557,10 +714,98 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                     })}
                   </div>
                 ) : null}
+                {selectedRoom && selectedRoomRatePlans.length > 1 ? (
+                  <div className="mt-6">
+                    <p className="text-muted-foreground text-sm">
+                      How many people will stay in this room?
+                    </p>
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      {selectedRoomRatePlans.map((ratePlan) => (
+                        <button
+                          key={ratePlan.guestCount}
+                          type="button"
+                          onClick={() => setSelectedGuestCount(ratePlan.guestCount)}
+                          className={`rounded-[1rem] border p-4 text-left transition-colors ${
+                            selectedGuestCount === ratePlan.guestCount
+                              ? "border-brand-accent bg-brand-accent/5"
+                              : "hover:bg-secondary/20"
+                          }`}
+                        >
+                          <p className="text-base">{getGuestCountLabel(ratePlan.guestCount)}</p>
+                          <p className="text-muted-foreground mt-1 text-sm">
+                            {formatMoney(
+                              getEffectiveRetreatRatePricePence(ratePlan),
+                              retreat.currency
+                            )}{" "}
+                            total
+                          </p>
+                          {isRetreatEarlyBirdActive({
+                            earlyBirdPricePence: ratePlan.earlyBirdPricePence,
+                            earlyBirdEndsAt: ratePlan.earlyBirdEndsAt,
+                            totalPricePence: ratePlan.totalPricePence,
+                          }) ? (
+                            <p className="text-muted-foreground mt-1 text-xs">
+                              Early bird saves{" "}
+                              {formatMoney(getEarlyBirdSavingPence(ratePlan), retreat.currency)}.
+                              Standard {formatMoney(ratePlan.totalPricePence, retreat.currency)}.
+                            </p>
+                          ) : null}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
+              {purchaseMode === "self" && selectedRoom ? (
+                <div className="marketing-panel rounded-[1.5rem] p-6">
+                  <h2 className="text-2xl">3. Choose how to pay</h2>
+                  <div className="mt-6 grid gap-4 md:grid-cols-2">
+                    <button
+                      type="button"
+                      className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
+                        paymentOption === "deposit"
+                          ? "border-brand-accent bg-brand-accent/5"
+                          : "hover:bg-secondary/20"
+                      }`}
+                      onClick={() => setPaymentOption("deposit")}
+                    >
+                      <p className="text-xl">Pay deposit</p>
+                      <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                        Pay {formatMoney(depositAmountPence, retreat.currency)} today. The remaining{" "}
+                        {formatMoney(depositBalanceAmountPence, retreat.currency)} is paid later by
+                        balance link.
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
+                        paymentOption === "pay_in_full"
+                          ? "border-brand-accent bg-brand-accent/5"
+                          : "hover:bg-secondary/20"
+                      }`}
+                      onClick={() => setPaymentOption("pay_in_full")}
+                    >
+                      <p className="text-xl">Pay in full</p>
+                      <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                        Pay {formatMoney(payInFullTotalPence, retreat.currency)} today
+                        {payInFullDiscountPence > 0
+                          ? ` including a ${formatMoney(
+                              payInFullDiscountPence,
+                              retreat.currency
+                            )} discount.`
+                          : "."}
+                      </p>
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="marketing-panel rounded-[1.5rem] p-6">
-                <h2 className="text-2xl">3. Purchaser details</h2>
+                <h2 className="text-2xl">
+                  {purchaseMode === "self" ? "4" : "3"}. Purchaser details
+                </h2>
                 <div className="mt-6 grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="purchaserFirstName">First name</Label>
@@ -635,7 +880,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
 
                     {formData.bookingForAnotherAttendee ? (
                       <div className="mt-6">
-                        <h2 className="text-2xl">4. Attendee details</h2>
+                        <h2 className="text-2xl">5. Attendee details</h2>
                         <div className="mt-6 grid gap-4 md:grid-cols-2">
                           <div className="space-y-2">
                             <Label htmlFor="attendeeFirstName">First name</Label>
@@ -686,7 +931,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                   </div>
 
                   <div className="marketing-panel rounded-[1.5rem] p-6">
-                    <h2 className="text-2xl">5. Health, access and emergency details</h2>
+                    <h2 className="text-2xl">6. Health, access and emergency details</h2>
                     <div className="mt-6 grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="phone">Phone</Label>
@@ -772,9 +1017,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                     </div>
                   </div>
 
-                  {selectedRoom && selectedRoom.guestsIncluded > 1 ? (
+                  {selectedRoom && selectedGuestCount > 1 ? (
                     <div className="rounded-[1.5rem] border p-6">
-                      <h2 className="text-2xl">6. Second guest details</h2>
+                      <h2 className="text-2xl">7. Second guest details</h2>
                       <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
                         This room reserves space for two guests, so please add the second guest now.
                       </p>
@@ -840,7 +1085,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                   ) : null}
 
                   <div className="rounded-[1.5rem] border p-6">
-                    <h2 className="text-2xl">7. Agreements</h2>
+                    <h2 className="text-2xl">8. Agreements</h2>
 
                     {user?.hasAgreedToTerms ? (
                       <div className="mt-6 flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
@@ -1051,7 +1296,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                   ? "Redirecting..."
                   : purchaseMode === "gift"
                     ? "Continue to gift checkout"
-                    : "Continue to deposit checkout"}
+                    : paymentOption === "pay_in_full"
+                      ? "Continue to full payment"
+                      : "Continue to deposit checkout"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </form>
@@ -1081,7 +1328,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                 </div>
                 <div className="flex items-start justify-between gap-3">
                   <span className="text-muted-foreground">Guests</span>
-                  <span>{selectedRoom ? getRoomGuestLabel(selectedRoom) : "TBC"}</span>
+                  <span>{selectedRoom ? getGuestCountLabel(selectedGuestCount) : "TBC"}</span>
                 </div>
               </div>
 
@@ -1103,19 +1350,33 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                     ) : (
                       <>
                         <div className="flex items-center justify-between gap-4">
-                          <span className="text-muted-foreground">Deposit today</span>
+                          <span className="text-muted-foreground">Due today</span>
                           <span className="text-xl">
-                            {formatMoney(depositAmountPence, retreat.currency)}
+                            {formatMoney(dueTodayPence, retreat.currency)}
                           </span>
                         </div>
-                        <div className="mt-3 flex items-center justify-between gap-4">
-                          <span className="text-muted-foreground">Balance later</span>
-                          <span>{formatMoney(balanceAmountPence, retreat.currency)}</span>
-                        </div>
-                        <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                          The balance will be payable later from your dashboard or the secure link
-                          sent by email.
-                        </p>
+                        {isPayingInFull ? (
+                          <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                            This pays the retreat balance in full
+                            {payInFullDiscountPence > 0
+                              ? ` and includes a ${formatMoney(
+                                  payInFullDiscountPence,
+                                  retreat.currency
+                                )} discount.`
+                              : "."}
+                          </p>
+                        ) : (
+                          <>
+                            <div className="mt-3 flex items-center justify-between gap-4">
+                              <span className="text-muted-foreground">Balance later</span>
+                              <span>{formatMoney(balanceAmountPence, retreat.currency)}</span>
+                            </div>
+                            <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                              The balance will be payable later from your dashboard or the secure
+                              link sent by email.
+                            </p>
+                          </>
+                        )}
                       </>
                     )}
                   </div>

@@ -25,7 +25,7 @@ const SOCIAL_LINKS = [
     label: "Facebook",
   },
   {
-    href: "mailto:tech@thechronicyogini.com",
+    href: "mailto:shruti@shrutiturner.co.uk",
     icon: Mail,
     label: "Email",
   },

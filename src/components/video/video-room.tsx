@@ -34,6 +34,8 @@ export type RoomMode = SharedRoomMode;
 
 type VideoRoomProps = {
   sessionId?: string;
+  roomTokenEndpoint?: string;
+  attendanceEndpoint?: string | null;
   mode: RoomMode;
   isInstructor: boolean;
   className: string;
@@ -101,6 +103,8 @@ function isRetryableRoomJoinError(message: string) {
 
 export function VideoRoom({
   sessionId,
+  roomTokenEndpoint,
+  attendanceEndpoint,
   mode,
   isInstructor,
   className: classTitle,
@@ -336,10 +340,13 @@ export function VideoRoom({
 
     void (async () => {
       try {
-        const response = await fetch(`/api/classes/sessions/${sessionId}/room-token`, {
-          method: "POST",
-          cache: "no-store",
-        });
+        const response = await fetch(
+          roomTokenEndpoint || `/api/classes/sessions/${sessionId}/room-token`,
+          {
+            method: "POST",
+            cache: "no-store",
+          }
+        );
         const payload = (await response.json().catch(() => ({}))) as {
           token?: string;
           roomUrl?: string;
@@ -450,14 +457,20 @@ export function VideoRoom({
         const localParticipant = Object.values(nextCallObject.participants() || {}).find(
           (participant) => Boolean(participant.local)
         );
-        await fetch(`/api/classes/sessions/${sessionId}/attendance`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "joined",
-            dailyParticipantId: localParticipant?.session_id || null,
-          }),
-        }).catch(() => undefined);
+        const resolvedAttendanceEndpoint =
+          attendanceEndpoint === undefined
+            ? `/api/classes/sessions/${sessionId}/attendance`
+            : attendanceEndpoint;
+        if (resolvedAttendanceEndpoint) {
+          await fetch(resolvedAttendanceEndpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "joined",
+              dailyParticipantId: localParticipant?.session_id || null,
+            }),
+          }).catch(() => undefined);
+        }
 
         mapParticipants(nextCallObject);
         setCommunityMode(Boolean(payload.communityModeEnabled));
@@ -514,7 +527,9 @@ export function VideoRoom({
     joinAttempt,
     leaveRoom,
     mapParticipants,
+    roomTokenEndpoint,
     sessionId,
+    attendanceEndpoint,
   ]);
 
   const toggleLocalAudio = async () => {
@@ -770,10 +785,11 @@ export function VideoRoom({
             <button
               onClick={() => void toggleCommunityMode()}
               disabled={!isInstructor}
-              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs transition-colors ${communityMode
-                ? "bg-brand-accent text-white"
-                : "bg-white/5 text-white/60 hover:bg-white/10"
-                } ${!isInstructor ? "cursor-default" : ""}`}
+              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs transition-colors ${
+                communityMode
+                  ? "bg-brand-accent text-white"
+                  : "bg-white/5 text-white/60 hover:bg-white/10"
+              } ${!isInstructor ? "cursor-default" : ""}`}
               title={communityMode ? "Community mode enabled" : "Focus mode enabled"}
             >
               {communityMode ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
@@ -936,12 +952,13 @@ function ControlButton({
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center gap-1 rounded-lg p-2 transition-colors sm:px-3 sm:py-2 ${danger
-        ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
-        : active
-          ? "bg-white/10 text-white hover:bg-white/15"
-          : "bg-white/5 text-white/50 hover:bg-white/10"
-        }`}
+      className={`flex flex-col items-center gap-1 rounded-lg p-2 transition-colors sm:px-3 sm:py-2 ${
+        danger
+          ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+          : active
+            ? "bg-white/10 text-white hover:bg-white/15"
+            : "bg-white/5 text-white/50 hover:bg-white/10"
+      }`}
       title={label}
     >
       <Icon className="h-5 w-5" />
