@@ -29,6 +29,7 @@ export interface CreateRetreatData {
   endsAt: string;
   capacity: number;
   pricePence: number;
+  paymentPolicy: "deposit" | "full_payment";
   earlyBirdPricePence?: number | null;
   earlyBirdEndsAt?: string | null;
 }
@@ -69,6 +70,7 @@ export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetre
   const [endsAt, setEndsAt] = useState("");
   const [capacity, setCapacity] = useState(30);
   const [pricePounds, setPricePounds] = useState("29");
+  const [paymentPolicy, setPaymentPolicy] = useState<"deposit" | "full_payment">("full_payment");
   const [earlyBirdPricePounds, setEarlyBirdPricePounds] = useState("");
   const [earlyBirdEndsAt, setEarlyBirdEndsAt] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -95,6 +97,7 @@ export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetre
     setTitle(preset.title);
     setLocation(preset.location);
     setRetreatType(preset.retreatType);
+    setPaymentPolicy(preset.retreatType === "online" ? "full_payment" : "deposit");
     setCapacity(preset.retreatType === "online" ? 30 : 10);
     setPricePounds(preset.retreatType === "online" ? "29" : "425");
     setEarlyBirdPricePounds("");
@@ -121,6 +124,7 @@ export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetre
         endsAt: new Date(endsAt).toISOString(),
         capacity,
         pricePence: toPence(pricePounds),
+        paymentPolicy: retreatType === "online" ? "full_payment" : paymentPolicy,
         earlyBirdPricePence: hasEarlyBirdPrice ? toPence(earlyBirdPricePounds) : null,
         earlyBirdEndsAt: hasEarlyBirdEndDate ? new Date(earlyBirdEndsAt).toISOString() : null,
       });
@@ -189,15 +193,37 @@ export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetre
               <select
                 id="retreat-type"
                 value={retreatType}
-                onChange={(event) =>
-                  setRetreatType(event.target.value === "online" ? "online" : "in_person")
-                }
+                onChange={(event) => {
+                  const nextType = event.target.value === "online" ? "online" : "in_person";
+                  setRetreatType(nextType);
+                  setPaymentPolicy(nextType === "online" ? "full_payment" : "deposit");
+                }}
                 className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-10 w-full rounded-md border px-3 py-2 text-sm transition-colors outline-none focus-visible:ring-[3px]"
               >
                 <option value="online">Online workshop</option>
                 <option value="in_person">In-person retreat</option>
               </select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="retreat-payment-policy">Payment policy</Label>
+            <select
+              id="retreat-payment-policy"
+              value={retreatType === "online" ? "full_payment" : paymentPolicy}
+              disabled={retreatType === "online"}
+              onChange={(event) =>
+                setPaymentPolicy(event.target.value === "full_payment" ? "full_payment" : "deposit")
+              }
+              className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-10 w-full rounded-md border px-3 py-2 text-sm transition-colors outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <option value="deposit">Deposit, then balance later</option>
+              <option value="full_payment">Full payment required</option>
+            </select>
+            <p className="text-muted-foreground text-xs">
+              Full-payment-only dates do not receive the separate pay-in-full discount. Online
+              workshops always require full payment.
+            </p>
           </div>
 
           <div className="space-y-2">

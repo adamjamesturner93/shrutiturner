@@ -1,5 +1,5 @@
 import { connection, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { createAdminRetreatDate, getAdminRetreatSummaries } from "@/lib/retreats/service";
 
@@ -57,6 +57,7 @@ export async function POST(request: Request) {
     const endsAt = parseDateField(stringField(body, "endsAt"));
     const capacity = numberField(body, "capacity");
     const pricePence = numberField(body, "pricePence");
+    const paymentPolicyValue = stringField(body, "paymentPolicy");
     const earlyBirdPricePence = numberField(body, "earlyBirdPricePence");
     const earlyBirdEndsAtValue = stringField(body, "earlyBirdEndsAt");
     const earlyBirdEndsAt = earlyBirdEndsAtValue ? parseDateField(earlyBirdEndsAtValue) : null;
@@ -82,6 +83,12 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    if (paymentPolicyValue !== "deposit" && paymentPolicyValue !== "full_payment") {
+      return NextResponse.json(
+        { message: "Payment policy must be deposit or full_payment." },
+        { status: 400 }
+      );
+    }
 
     if (
       (earlyBirdPricePence !== null && !earlyBirdEndsAt) ||
@@ -102,6 +109,7 @@ export async function POST(request: Request) {
       endsAt,
       capacity,
       pricePence,
+      paymentPolicy: retreatTypeValue === "online" ? "full_payment" : paymentPolicyValue,
       earlyBirdPricePence,
       earlyBirdEndsAt,
     });
@@ -109,6 +117,7 @@ export async function POST(request: Request) {
     revalidatePath("/retreats");
     revalidatePath(`/retreats/${retreatSlug}`);
     revalidatePath("/admin/retreats");
+    revalidateTag("retreats-public", "max");
 
     return NextResponse.json({ id: retreatDate.id }, { status: 201 });
   } catch (error) {

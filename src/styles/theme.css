@@ -267,7 +267,7 @@
   body {
     @apply bg-background text-foreground;
     font-family:
-      "Inter",
+      var(--font-inter),
       system-ui,
       -apple-system,
       sans-serif;
@@ -288,7 +288,7 @@
   h4,
   h5,
   h6 {
-    font-family: "Libre Baskerville", Georgia, serif;
+    font-family: var(--font-libre-baskerville), Georgia, serif;
     font-weight: 700;
   }
 
@@ -781,7 +781,7 @@
     margin-right: 0;
     background: var(--secondary);
     border-radius: var(--radius);
-    font-family: "Libre Baskerville", Georgia, serif;
+    font-family: var(--font-libre-baskerville), Georgia, serif;
     font-style: italic;
     color: var(--foreground);
   }

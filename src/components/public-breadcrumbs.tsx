@@ -41,7 +41,7 @@ export function PublicBreadcrumbs({
                     <BreadcrumbPage
                       className={cn(
                         "block max-w-[13rem] truncate sm:max-w-xs md:max-w-md",
-                        inverted ? "text-brand-accent-light" : "text-foreground"
+                        inverted ? "text-brand-white" : "text-foreground"
                       )}
                       title={item.name}
                     >
@@ -52,8 +52,10 @@ export function PublicBreadcrumbs({
                       <Link
                         href={item.href}
                         className={cn(
-                          "whitespace-nowrap",
-                          inverted ? "hover:text-brand-accent-light" : undefined
+                          "rounded-sm whitespace-nowrap underline-offset-4 transition-colors focus-visible:ring-2 focus-visible:outline-none",
+                          inverted
+                            ? "text-brand-white/80 hover:text-brand-white focus-visible:ring-brand-accent-light focus-visible:ring-offset-brand-dark hover:underline focus-visible:ring-offset-2"
+                            : "hover:text-foreground focus-visible:ring-ring hover:underline focus-visible:ring-offset-2"
                         )}
                       >
                         {item.name}

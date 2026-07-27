@@ -62,6 +62,7 @@ export interface RetreatDate {
   balanceDueDaysBeforeStart?: number;
   replayAccessDurationDays?: number;
   isRecorded?: boolean;
+  payInFullDiscountEnabled?: boolean;
 }
 
 export interface RetreatVenueSeed {
@@ -752,6 +753,7 @@ Bring something comfortable to lie on, a notebook and a pen.`,
         totalSpaces: 30,
         depositType: "full_payment",
         fixedDepositAmountPence: 2900,
+        payInFullDiscountEnabled: false,
         replayAccessDurationDays: 7,
         isRecorded: true,
         roomOptions: [
@@ -789,7 +791,7 @@ Bring something comfortable to lie on, a notebook and a pen.`,
     normalPrice: 29,
     currency: "GBP",
     included: ["live online workshop", "replay access for seven days once published"],
-    notIncluded: ["1:1 support", "equipment", "ongoing access after the replay window closes"],
+    notIncluded: [],
     schedule: [
       {
         day: "Workshop",
@@ -834,13 +836,13 @@ Bring something comfortable to lie on, a notebook and a pen.`,
         ],
       },
     ],
-    accommodation: "Online live workshop delivered through the website.",
+    accommodation: "",
     suitableFor: [
       "Adults of all genders",
       "People with no previous yoga or meditation experience",
       "People who want reflection and rest without turning it into another productivity task",
     ],
-    foodAndDrinkDescription: "Bring anything you would like to drink during the session.",
+    foodAndDrinkDescription: "",
     whatToBring: [
       "yoga mat or comfortable floor space",
       "blanket",

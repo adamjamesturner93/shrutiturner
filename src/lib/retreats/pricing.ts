@@ -78,6 +78,27 @@ export type RetreatInstalmentDraft = {
   dueAt: Date | null;
 };
 
+export function canExtendPublishedEarlyBirdRate(input: {
+  existingPricePence: number | null;
+  existingEndsAt: Date | null;
+  submittedPricePence: number | null;
+  submittedEndsAt: Date | null;
+  retreatStartsAt: Date;
+}) {
+  if (input.submittedPricePence !== input.existingPricePence) return false;
+
+  if (input.existingPricePence === null) {
+    return input.submittedEndsAt === null;
+  }
+
+  if (!input.existingEndsAt || !input.submittedEndsAt) return false;
+
+  return (
+    input.submittedEndsAt.getTime() >= input.existingEndsAt.getTime() &&
+    input.submittedEndsAt.getTime() < input.retreatStartsAt.getTime()
+  );
+}
+
 const DEFAULT_PAY_IN_FULL_DISCOUNT_PERCENT = 5;
 const DEFAULT_PAY_IN_FULL_DISCOUNT_CAP_PENCE = 5000;
 const DEFAULT_ONLINE_REFUND_CUTOFF_DAYS = 14;

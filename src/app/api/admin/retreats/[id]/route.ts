@@ -1,5 +1,5 @@
 import { connection, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { getAdminRetreatDetail, updateAdminRetreatEarlyBirdRates } from "@/lib/retreats/service";
 
@@ -70,6 +70,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     revalidatePath(`/retreats/${detail.retreatSlug}`);
     revalidatePath("/admin/retreats");
     revalidatePath(`/admin/retreats/${id}`);
+    revalidateTag("retreats-public", "max");
     return NextResponse.json(detail);
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
@@ -80,6 +81,16 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     }
     if (error instanceof Error && error.message === "NOT_FOUND") {
       return NextResponse.json({ message: "Retreat not found." }, { status: 404 });
+    }
+    if (error instanceof Error && error.message === "RETREAT_PRICING_LOCKED") {
+      return NextResponse.json(
+        {
+          code: "RETREAT_PRICING_LOCKED",
+          message:
+            "Published prices are locked. You may only extend an existing early-bird deadline.",
+        },
+        { status: 409 }
+      );
     }
     if (
       error instanceof Error &&

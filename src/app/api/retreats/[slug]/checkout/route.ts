@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { auth } from "@/lib/auth";
 import { isAcceptanceRequiredError } from "@/lib/legal/acceptance-service";
 import { createRetreatCheckout } from "@/lib/retreats/service";
@@ -91,8 +92,18 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
       recipientMessage: typeof body.recipientMessage === "string" ? body.recipientMessage : "",
       deliveryTarget: body.deliveryTarget === "buyer" ? "buyer" : "recipient",
     });
+    revalidateTag("retreats-public", "max");
     return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof Error && error.message === "USER_NOT_FOUND") {
+      return NextResponse.json(
+        {
+          code: "SESSION_INVALID",
+          message: "Your account session is no longer valid. Please sign in again.",
+        },
+        { status: 401 }
+      );
+    }
     if (
       error instanceof Error &&
       (error.message === "RETREAT_NOT_FOUND" ||

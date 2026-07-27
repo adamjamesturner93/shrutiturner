@@ -156,6 +156,8 @@ export function HomePage({ recentPosts, testimonials }: HomePageProps) {
                   src="/images/shruti.jpeg"
                   alt="Shruti Turner hiking in the mountains"
                   className="h-full w-full object-cover"
+                  preload
+                  sizes="(max-width: 1024px) 100vw, 42vw"
                 />
               </div>
             </div>

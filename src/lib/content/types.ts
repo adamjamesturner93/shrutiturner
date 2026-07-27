@@ -354,6 +354,7 @@ export interface RetreatCombinedContent {
     totalSpaces: number;
     roomOptions: RetreatRoomOptionContent[];
     paymentPlan?: RetreatPaymentPlanContent;
+    paymentPolicy?: "deposit" | "full_payment";
     payInFullDiscountEnabled?: boolean;
     refundNotes?: string;
     onlineJoiningNotes?: string;

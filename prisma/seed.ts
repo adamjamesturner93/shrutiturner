@@ -760,6 +760,7 @@ async function seedRetreatInventory(retreatUserId: string, instructorUserId?: st
           balanceDueAt,
           isRecorded: date.isRecorded === true,
           replayAccessDurationDays: date.replayAccessDurationDays ?? null,
+          payInFullDiscountEnabled: date.payInFullDiscountEnabled ?? true,
           paymentPlanSnapshotJson: {
             depositType: date.depositType,
             depositPercentageBasisPoints: date.depositPercentageBasisPoints ?? null,
@@ -785,6 +786,7 @@ async function seedRetreatInventory(retreatUserId: string, instructorUserId?: st
           balanceDueAt,
           isRecorded: date.isRecorded === true,
           replayAccessDurationDays: date.replayAccessDurationDays ?? null,
+          payInFullDiscountEnabled: date.payInFullDiscountEnabled ?? true,
           paymentPlanSnapshotJson: {
             depositType: date.depositType,
             depositPercentageBasisPoints: date.depositPercentageBasisPoints ?? null,

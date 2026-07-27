@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import Stripe from "stripe";
 import { getStripeClient } from "@/lib/billing/stripe-client";
 import { processStripeWebhookEvent } from "@/lib/billing/billing-service";
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
     const event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
 
     await processStripeWebhookEvent(event as Stripe.Event);
+    revalidateTag("retreats-public", "max");
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("POST /api/webhooks/stripe failed", error);

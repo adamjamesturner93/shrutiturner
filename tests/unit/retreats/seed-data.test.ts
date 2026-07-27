@@ -109,11 +109,16 @@ describe("retreat seed contract", () => {
       experienceType: "online_workshop",
       deliveryMode: "online_live",
       durationLabel: "2 hours",
+      accommodation: "",
+      foodAndDrinkDescription: "",
+      notIncluded: [],
     });
     expect(date).toMatchObject({
       retreatType: "online",
       totalSpaces: 30,
       depositType: "full_payment",
+      fixedDepositAmountPence: 2900,
+      payInFullDiscountEnabled: false,
       replayAccessDurationDays: 7,
     });
     expect(ticket).toMatchObject({

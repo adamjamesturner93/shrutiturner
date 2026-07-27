@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
@@ -12,6 +13,7 @@ import {
   Check,
   Gift,
   Mail,
+  MonitorPlay,
   ShieldCheck,
   Users,
 } from "lucide-react";
@@ -268,6 +270,12 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
     );
   }
 
+  const isOnlineExperience =
+    retreat.deliveryMode === "online_live" ||
+    retreat.deliveryMode === "online_on_demand" ||
+    retreat.dates.every((date) => date.retreatType === "online");
+  const experienceLabel = isOnlineExperience ? "workshop" : "retreat";
+  const optionLabel = isOnlineExperience ? "ticket" : "room";
   const totalPricePence = selectedRatePlan?.totalPricePence ?? selectedRoom?.normalPricePence ?? 0;
   const effectiveTotalPricePence = selectedRatePlan
     ? getEffectiveRetreatRatePricePence(selectedRatePlan)
@@ -275,13 +283,19 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
   const depositAmountPence = selectedRoom
     ? getDepositAmountForPricePence(selectedRoom, effectiveTotalPricePence)
     : 0;
-  const payInFullDiscountEnabled = selectedDate?.payInFullDiscountEnabled !== false;
+  const requiresFullPayment =
+    selectedDate?.paymentPolicy === "full_payment" ||
+    (effectiveTotalPricePence > 0 && depositAmountPence >= effectiveTotalPricePence);
+  const effectivePaymentOption =
+    purchaseMode === "gift" || requiresFullPayment ? "pay_in_full" : paymentOption;
+  const payInFullDiscountEnabled =
+    !requiresFullPayment && selectedDate?.payInFullDiscountEnabled !== false;
   const payInFullDiscountPence = getPayInFullDiscountPence(
     effectiveTotalPricePence,
     payInFullDiscountEnabled
   );
   const payInFullTotalPence = Math.max(effectiveTotalPricePence - payInFullDiscountPence, 0);
-  const isPayingInFull = purchaseMode === "gift" || paymentOption === "pay_in_full";
+  const isPayingInFull = effectivePaymentOption === "pay_in_full";
   const dueTodayPence = isPayingInFull ? payInFullTotalPence : depositAmountPence;
   const depositBalanceAmountPence = Math.max(effectiveTotalPricePence - depositAmountPence, 0);
   const balanceAmountPence = isPayingInFull ? 0 : depositBalanceAmountPence;
@@ -335,13 +349,13 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
     setIsSubmitting(true);
 
     if (!selectedDate || !selectedRoom) {
-      setError("Please choose a retreat date and room option before continuing.");
+      setError(`Please choose a ${experienceLabel} date and ${optionLabel} before continuing.`);
       setIsSubmitting(false);
       return;
     }
 
     if (selectedRoom.isWaitlistOnly || selectedRoom.availableSpots <= 0) {
-      setError("That room option is no longer available.");
+      setError(`That ${optionLabel} is no longer available.`);
       setIsSubmitting(false);
       return;
     }
@@ -403,7 +417,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
           roomOptionId: selectedRoom.id,
           guestCount: selectedGuestCount,
           purchaseMode,
-          paymentOption: purchaseMode === "gift" ? "pay_in_full" : paymentOption,
+          paymentOption: effectivePaymentOption,
           purchaserFirstName,
           purchaserLastName,
           purchaserEmail,
@@ -466,6 +480,12 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
               "The retreat legal agreements have changed. Refresh this page and review the latest versions before continuing."
           );
         }
+        if (response.status === 401 && payload?.code === "SESSION_INVALID") {
+          const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+          await signOut({ redirect: false }).catch(() => null);
+          window.location.assign(`/login?redirect=${encodeURIComponent(returnTo)}`);
+          return;
+        }
         throw new Error(payload?.message || "Failed to start checkout.");
       }
 
@@ -480,7 +500,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
     <Layout>
       <SEO
         title={`Book ${retreat.title} - Shruti Turner`}
-        description={`Select your retreat date and room for ${retreat.title}.`}
+        description={`Select your ${experienceLabel} date and ${optionLabel} for ${retreat.title}.`}
         canonicalUrl={`https://shrutiturner.co.uk/retreats/${retreat.slug}/checkout`}
         noIndex
       />
@@ -492,13 +512,15 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
             className="text-brand-accent-light inline-flex items-center gap-2 text-sm hover:underline"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to retreat details
+            Back to {experienceLabel} details
           </Link>
 
           <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_0.9fr] lg:items-center lg:gap-10">
             <div>
               <h1 className="text-4xl leading-tight md:text-5xl">
-                {purchaseMode === "gift" ? "Gift This Retreat" : "Complete Your Retreat Booking"}
+                {purchaseMode === "gift"
+                  ? `Gift This ${isOnlineExperience ? "Workshop" : "Retreat"}`
+                  : `Complete Your ${isOnlineExperience ? "Workshop" : "Retreat"} Booking`}
               </h1>
               <p className="text-brand-white/80 mt-4 max-w-2xl text-lg leading-relaxed">
                 {retreat.title} · {retreat.location}
@@ -527,7 +549,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                       <p>{selectedRoom.label}</p>
                     </>
                   ) : (
-                    <p>Select a date and room to confirm the amount due.</p>
+                    <p>Select a date and {optionLabel} to confirm the amount due.</p>
                   )}
                 </div>
               </div>
@@ -543,7 +565,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
                 {purchaseMode === "gift"
                   ? "Payment received. The gift email is on its way."
-                  : "Your deposit has been received. A confirmation and balance payment link have been sent to your email."}
+                  : requiresFullPayment
+                    ? "Payment received. Your booking confirmation has been sent by email."
+                    : "Your deposit has been received. A confirmation and balance payment link have been sent to your email."}
               </div>
             ) : null}
             {checkoutState === "cancelled" ? (
@@ -610,7 +634,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
               </div>
 
               <div className="marketing-panel rounded-[1.5rem] p-6">
-                <h2 className="text-2xl">2. Choose your room</h2>
+                <h2 className="text-2xl">2. Choose your {optionLabel}</h2>
                 {selectedDate ? (
                   <div className="mt-6 grid gap-4">
                     {selectedDate.roomOptions.map((roomOption) => {
@@ -632,8 +656,8 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                             setSelectedGuestCount(getDefaultGuestCount(roomOption));
                           }}
                         >
-                          <div className="flex flex-wrap items-start justify-between gap-4">
-                            <div className="space-y-2">
+                          <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                            <div className="min-w-0 space-y-2">
                               <div className="flex flex-wrap items-center gap-3">
                                 <p className="text-xl">{roomOption.label}</p>
                                 <span className="bg-secondary/60 rounded-full px-3 py-1 text-xs tracking-[0.16em] uppercase">
@@ -649,17 +673,26 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                                   {getRoomGuestLabel(roomOption)}
                                 </span>
                                 <span className="inline-flex items-center gap-2">
-                                  <BedDouble className="h-4 w-4" />
-                                  {roomOption.type === "single"
-                                    ? "Private room"
-                                    : roomOption.type === "shared_private"
-                                      ? "Private double room"
-                                      : "Shared accommodation"}
+                                  {isOnlineExperience ? (
+                                    <>
+                                      <MonitorPlay className="h-4 w-4" />
+                                      Live and replay access
+                                    </>
+                                  ) : (
+                                    <>
+                                      <BedDouble className="h-4 w-4" />
+                                      {roomOption.type === "single"
+                                        ? "Private room"
+                                        : roomOption.type === "shared_private"
+                                          ? "Private double room"
+                                          : "Shared accommodation"}
+                                    </>
+                                  )}
                                 </span>
                               </div>
                             </div>
 
-                            <div className="text-right">
+                            <div className="border-brand-dark/10 border-t pt-4 text-left md:min-w-40 md:border-t-0 md:pt-0 md:text-right">
                               <p className="text-2xl">
                                 {formatMoney(
                                   getRoomRatePlans(roomOption)[0]
@@ -694,7 +727,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                                 </p>
                               ) : null}
                               <p className="text-muted-foreground mt-1 text-sm">
-                                Deposit today{" "}
+                                {selectedDate?.paymentPolicy === "full_payment"
+                                  ? "Due today "
+                                  : "Deposit today "}
                                 {formatMoney(
                                   getDepositAmountForPricePence(
                                     roomOption,
@@ -717,7 +752,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                 {selectedRoom && selectedRoomRatePlans.length > 1 ? (
                   <div className="mt-6">
                     <p className="text-muted-foreground text-sm">
-                      How many people will stay in this room?
+                      How many people will use this {optionLabel}?
                     </p>
                     <div className="mt-3 grid gap-3 md:grid-cols-2">
                       {selectedRoomRatePlans.map((ratePlan) => (
@@ -760,45 +795,55 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
               {purchaseMode === "self" && selectedRoom ? (
                 <div className="marketing-panel rounded-[1.5rem] p-6">
                   <h2 className="text-2xl">3. Choose how to pay</h2>
-                  <div className="mt-6 grid gap-4 md:grid-cols-2">
-                    <button
-                      type="button"
-                      className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
-                        paymentOption === "deposit"
-                          ? "border-brand-accent bg-brand-accent/5"
-                          : "hover:bg-secondary/20"
-                      }`}
-                      onClick={() => setPaymentOption("deposit")}
-                    >
-                      <p className="text-xl">Pay deposit</p>
+                  {requiresFullPayment ? (
+                    <div className="border-brand-accent bg-brand-accent/5 mt-6 rounded-[1.25rem] border p-5">
+                      <p className="text-xl">Full payment required</p>
                       <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                        Pay {formatMoney(depositAmountPence, retreat.currency)} today. The remaining{" "}
-                        {formatMoney(depositBalanceAmountPence, retreat.currency)} is paid later by
-                        balance link.
+                        Pay {formatMoney(effectiveTotalPricePence, retreat.currency)} today. No
+                        balance is due later and no separate pay-in-full discount applies.
                       </p>
-                    </button>
+                    </div>
+                  ) : (
+                    <div className="mt-6 grid gap-4 md:grid-cols-2">
+                      <button
+                        type="button"
+                        className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
+                          paymentOption === "deposit"
+                            ? "border-brand-accent bg-brand-accent/5"
+                            : "hover:bg-secondary/20"
+                        }`}
+                        onClick={() => setPaymentOption("deposit")}
+                      >
+                        <p className="text-xl">Pay deposit</p>
+                        <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                          Pay {formatMoney(depositAmountPence, retreat.currency)} today. The
+                          remaining {formatMoney(depositBalanceAmountPence, retreat.currency)} is
+                          paid later by balance link.
+                        </p>
+                      </button>
 
-                    <button
-                      type="button"
-                      className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
-                        paymentOption === "pay_in_full"
-                          ? "border-brand-accent bg-brand-accent/5"
-                          : "hover:bg-secondary/20"
-                      }`}
-                      onClick={() => setPaymentOption("pay_in_full")}
-                    >
-                      <p className="text-xl">Pay in full</p>
-                      <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                        Pay {formatMoney(payInFullTotalPence, retreat.currency)} today
-                        {payInFullDiscountPence > 0
-                          ? ` including a ${formatMoney(
-                              payInFullDiscountPence,
-                              retreat.currency
-                            )} discount.`
-                          : "."}
-                      </p>
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
+                          paymentOption === "pay_in_full"
+                            ? "border-brand-accent bg-brand-accent/5"
+                            : "hover:bg-secondary/20"
+                        }`}
+                        onClick={() => setPaymentOption("pay_in_full")}
+                      >
+                        <p className="text-xl">Pay in full</p>
+                        <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                          Pay {formatMoney(payInFullTotalPence, retreat.currency)} today
+                          {payInFullDiscountPence > 0
+                            ? ` including a ${formatMoney(
+                                payInFullDiscountPence,
+                                retreat.currency
+                              )} discount.`
+                            : "."}
+                        </p>
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : null}
 
@@ -1296,7 +1341,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                   ? "Redirecting..."
                   : purchaseMode === "gift"
                     ? "Continue to gift checkout"
-                    : paymentOption === "pay_in_full"
+                    : effectivePaymentOption === "pay_in_full"
                       ? "Continue to full payment"
                       : "Continue to deposit checkout"}
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -1321,9 +1366,11 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                   </span>
                 </div>
                 <div className="flex items-start justify-between gap-3">
-                  <span className="text-muted-foreground">Room</span>
+                  <span className="text-muted-foreground">
+                    {isOnlineExperience ? "Ticket" : "Room"}
+                  </span>
                   <span className="max-w-[14rem] text-right">
-                    {selectedRoom?.label || "Select a room"}
+                    {selectedRoom?.label || `Select a ${optionLabel}`}
                   </span>
                 </div>
                 <div className="flex items-start justify-between gap-3">
@@ -1340,11 +1387,11 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                         <div className="flex items-center justify-between gap-4">
                           <span className="text-muted-foreground">Due today</span>
                           <span className="text-xl">
-                            {formatMoney(totalPricePence, retreat.currency)}
+                            {formatMoney(payInFullTotalPence, retreat.currency)}
                           </span>
                         </div>
                         <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                          Gift purchases reserve this exact room and date in full.
+                          Gift purchases reserve this exact {optionLabel} and date in full.
                         </p>
                       </>
                     ) : (
@@ -1357,7 +1404,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                         </div>
                         {isPayingInFull ? (
                           <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                            This pays the retreat balance in full
+                            This pays the {experienceLabel} balance in full
                             {payInFullDiscountPence > 0
                               ? ` and includes a ${formatMoney(
                                   payInFullDiscountPence,
@@ -1387,14 +1434,15 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                       <p className="text-muted-foreground leading-relaxed">
                         {purchaseMode === "gift"
                           ? "The recipient completes their own attendee and health details securely when they redeem the gift."
-                          : "Health and access details are collected now so the retreat can be delivered safely and appropriately."}
+                          : `Health and access details are collected now so the ${experienceLabel} can be delivered safely and appropriately.`}
                       </p>
                     </div>
                     <div className="flex items-start gap-3 rounded-xl border p-4">
                       <AlertCircle className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
                       <p className="text-muted-foreground leading-relaxed">
-                        Please contact Shruti before booking if you have accessibility questions
-                        about the venue or room set-up.
+                        {isOnlineExperience
+                          ? "Please contact Shruti before booking if you have accessibility or online access questions."
+                          : "Please contact Shruti before booking if you have accessibility questions about the venue or room set-up."}
                       </p>
                     </div>
                   </div>
@@ -1403,7 +1451,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
 
               <div className="text-muted-foreground mt-6 border-t pt-6 text-sm">
                 <p>
-                  Retreat: {retreat.location}
+                  {isOnlineExperience ? "Workshop" : "Retreat"}: {retreat.location}
                   {selectedDate ? ` · ${fmtDate(selectedDate.startDate)}` : ""}
                 </p>
               </div>

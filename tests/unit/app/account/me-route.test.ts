@@ -63,6 +63,21 @@ describe("GET /api/me", () => {
       error: { code: "UNAUTHORIZED", message: "Unauthorized" },
     });
   });
+
+  it("maps a deleted account behind an old session to a sign-in response", async () => {
+    getAccountMock.mockRejectedValue(new Error("USER_NOT_FOUND"));
+
+    const response = await route.GET(new Request("http://localhost/api/me"));
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      error: {
+        code: "SESSION_INVALID",
+        message: "Your account session is no longer valid. Please sign in again.",
+      },
+    });
+  });
 });
 
 describe("PATCH /api/me", () => {
@@ -140,6 +155,21 @@ describe("PATCH /api/me", () => {
       error: {
         code: "UNDER_18",
         message: "You must be 18 or over to use this service.",
+      },
+    });
+  });
+
+  it("maps a deleted account behind an old session to a sign-in response", async () => {
+    updateAccountMock.mockRejectedValue(new Error("USER_NOT_FOUND"));
+
+    const response = await route.PATCH(createPatchRequest({ firstName: "Reader" }));
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      error: {
+        code: "SESSION_INVALID",
+        message: "Your account session is no longer valid. Please sign in again.",
       },
     });
   });

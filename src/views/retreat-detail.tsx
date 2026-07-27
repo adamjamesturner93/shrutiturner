@@ -11,6 +11,7 @@ import {
   Clock,
   Gift,
   MapPin,
+  MonitorPlay,
   X,
 } from "lucide-react";
 import { Layout } from "@/components/layout";
@@ -142,6 +143,21 @@ function getGuestCountLabel(guestCount: number) {
   return `${guestCount} people`;
 }
 
+function getScheduleDateLabel(startDate: string | undefined, dayIndex: number) {
+  if (!startDate) return "";
+  const isoDay = startDate.slice(0, 10);
+  const date = new Date(`${isoDay}T12:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return "";
+  date.setUTCDate(date.getUTCDate() + dayIndex);
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
 export function RetreatDetailPage({
   retreat: retreatProp,
   otherRetreatsAtVenue = [],
@@ -231,6 +247,15 @@ export function RetreatDetailPage({
     );
   }
 
+  const isOnlineExperience =
+    retreat.deliveryMode === "online_live" ||
+    retreat.deliveryMode === "online_on_demand" ||
+    retreat.dates.every((date) => date.retreatType === "online");
+  const isFullPaymentOnly =
+    retreat.dates.length > 0 &&
+    retreat.dates.every((date) => date.paymentPolicy === "full_payment");
+  const experienceLabel = isOnlineExperience ? "workshop" : "retreat";
+  const optionLabel = isOnlineExperience ? "ticket" : "room";
   const checkoutHref =
     selectedDate && selectedRoom
       ? `/retreats/${retreat.slug}/checkout?date=${selectedDate.id}&room=${selectedRoom.id}&guests=${selectedGuestCount}`
@@ -244,7 +269,7 @@ export function RetreatDetailPage({
       <div className="space-y-3">
         <Button asChild className="w-full" size="lg" disabled={!selectedDate || !selectedRoom}>
           <Link href={checkoutHref}>
-            Choose this retreat
+            Book this {experienceLabel}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>
@@ -308,7 +333,7 @@ export function RetreatDetailPage({
                 <span className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 rounded-full border px-4 py-2 text-sm">
                   From {formatMoney(priceFromPence, retreat.currency)}
                 </span>
-                {depositFromPence > 0 ? (
+                {depositFromPence > 0 && !isFullPaymentOnly ? (
                   <span className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 rounded-full border px-4 py-2 text-sm">
                     Deposit from {formatMoney(depositFromPence, retreat.currency)}
                   </span>
@@ -325,7 +350,7 @@ export function RetreatDetailPage({
                   size="lg"
                   className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
                 >
-                  <Link href="#booking">Choose Your Date</Link>
+                  <a href="#booking">Choose Your Date</a>
                 </Button>
                 <Button
                   asChild
@@ -345,6 +370,8 @@ export function RetreatDetailPage({
                     src={heroImageSrc}
                     alt={retreat.title}
                     className="h-full min-h-[20rem] w-full object-cover"
+                    preload
+                    sizes="(max-width: 1024px) 100vw, 48vw"
                   />
                 </div>
                 <div className="grid gap-3">
@@ -406,7 +433,11 @@ export function RetreatDetailPage({
 
             <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
               <h2 className="text-3xl md:text-4xl">What&apos;s included</h2>
-              <div className="mt-6 grid gap-8 md:grid-cols-2">
+              <div
+                className={`mt-6 grid gap-8 ${
+                  retreat.notIncluded.length > 0 && !isOnlineExperience ? "md:grid-cols-2" : ""
+                }`}
+              >
                 <div>
                   <ul className="space-y-3">
                     {retreat.included.map((item) => (
@@ -417,31 +448,35 @@ export function RetreatDetailPage({
                     ))}
                   </ul>
                 </div>
-                <div>
-                  <h3 className="mb-4 text-xl">Not included</h3>
-                  <ul className="space-y-3">
-                    {retreat.notIncluded.map((item) => (
-                      <li key={item} className="flex items-start gap-3">
-                        <X className="text-muted-foreground mt-0.5 h-5 w-5 flex-shrink-0" />
-                        <span className="text-muted-foreground">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                {retreat.notIncluded.length > 0 && !isOnlineExperience ? (
+                  <div>
+                    <h3 className="mb-4 text-xl">Not included</h3>
+                    <ul className="space-y-3">
+                      {retreat.notIncluded.map((item) => (
+                        <li key={item} className="flex items-start gap-3">
+                          <X className="text-muted-foreground mt-0.5 h-5 w-5 flex-shrink-0" />
+                          <span className="text-muted-foreground">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </div>
             </div>
 
             <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
-              <h2 className="text-3xl md:text-4xl">Daily rhythm</h2>
+              <h2 className="text-3xl md:text-4xl">
+                {isOnlineExperience ? "Workshop schedule" : "Daily rhythm"}
+              </h2>
               {retreat.schedule.length > 0 ? (
                 <div className="mt-6 space-y-5">
-                  {retreat.schedule.map((day) => (
+                  {retreat.schedule.map((day, dayIndex) => (
                     <div
                       key={day.day}
                       className="border-brand-dark/10 bg-brand-warm/45 rounded-[1.25rem] border p-5"
                     >
                       <p className="text-brand-accent text-xs tracking-[0.16em] uppercase">
-                        {day.day}
+                        {getScheduleDateLabel(selectedDate?.startDate, dayIndex) || day.day}
                       </p>
                       <h3 className="mt-1 text-xl">{day.title || day.day}</h3>
                       <ul className="text-muted-foreground mt-4 space-y-4 text-sm leading-relaxed">
@@ -461,7 +496,10 @@ export function RetreatDetailPage({
                                     {activity.startTime}
                                     {activity.endTime ? `-${activity.endTime}` : ""} ·{" "}
                                     {activity.title}
-                                    {activity.isOptional ? " (optional)" : ""}
+                                    {activity.isOptional &&
+                                    !activity.title.toLowerCase().includes("optional")
+                                      ? " (optional)"
+                                      : ""}
                                   </span>
                                   {activity.description ? (
                                     <span className="mt-1 block">{activity.description}</span>
@@ -482,7 +520,7 @@ export function RetreatDetailPage({
               )}
             </div>
 
-            {retreat.foodAndDrinkDescription ? (
+            {retreat.foodAndDrinkDescription && !isOnlineExperience ? (
               <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
                 <h2 className="text-3xl md:text-4xl">Food and drink</h2>
                 <p className="text-muted-foreground mt-4 leading-relaxed">
@@ -534,10 +572,14 @@ export function RetreatDetailPage({
               </div>
             ) : null}
 
-            <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
-              <h2 className="text-3xl md:text-4xl">Accommodation</h2>
-              <p className="text-muted-foreground mt-4 leading-relaxed">{retreat.accommodation}</p>
-            </div>
+            {!isOnlineExperience && retreat.accommodation ? (
+              <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+                <h2 className="text-3xl md:text-4xl">Accommodation</h2>
+                <p className="text-muted-foreground mt-4 leading-relaxed">
+                  {retreat.accommodation}
+                </p>
+              </div>
+            ) : null}
 
             {otherRetreatsAtVenue.length > 0 ? (
               <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
@@ -563,20 +605,23 @@ export function RetreatDetailPage({
           <aside>
             <div
               id="booking"
-              className="marketing-panel rounded-[1.9rem] p-6 shadow-sm lg:sticky lg:top-24 lg:flex lg:max-h-[calc(100dvh-7rem)] lg:flex-col lg:overflow-hidden"
+              tabIndex={-1}
+              className="marketing-panel scroll-mt-24 rounded-[1.9rem] p-6 shadow-sm lg:sticky lg:top-24 lg:flex lg:max-h-[calc(100dvh-7rem)] lg:flex-col lg:overflow-hidden"
             >
               <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-2">
                 <p className="text-brand-accent text-sm tracking-[0.16em] uppercase">
-                  Book this retreat
+                  Book this {experienceLabel}
                 </p>
                 <div className="mt-4 flex items-baseline gap-3">
                   <span className="text-4xl">{formatMoney(priceFromPence, retreat.currency)}</span>
                   <span className="text-muted-foreground text-sm">from</span>
                 </div>
-                {depositFromPence > 0 ? (
+                {depositFromPence > 0 && !isFullPaymentOnly ? (
                   <p className="text-muted-foreground mt-2 text-sm">
                     Deposit from {formatMoney(depositFromPence, retreat.currency)}, balance later
                   </p>
+                ) : isFullPaymentOnly ? (
+                  <p className="text-muted-foreground mt-2 text-sm">Full payment at checkout</p>
                 ) : null}
                 {hasEarlyBirdPricing ? (
                   <p className="text-muted-foreground mt-3 text-sm">
@@ -630,7 +675,7 @@ export function RetreatDetailPage({
 
                 {selectedDate ? (
                   <div className="mt-8">
-                    <h3 className="text-lg">Choose your room</h3>
+                    <h3 className="text-lg">Choose your {optionLabel}</h3>
                     <div className="mt-4 grid gap-3">
                       {selectedDate.roomOptions.map((roomOption) => {
                         const isSelected = roomOption.id === selectedRoom?.id;
@@ -735,22 +780,28 @@ export function RetreatDetailPage({
                   <div className="flex items-start gap-3 rounded-xl border p-4">
                     <AlertCircle className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
                     <p className="text-muted-foreground">
-                      Room choice, deposit and any gifted place are all reserved against this
-                      selected retreat date.
+                      {isOnlineExperience
+                        ? "Your ticket, price and any gifted place are reserved against this workshop date."
+                        : "Room choice, deposit and any gifted place are all reserved against this selected retreat date."}
                     </p>
                   </div>
                   <div className="flex items-start gap-3 rounded-xl border p-4">
-                    <BedDouble className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
+                    {isOnlineExperience ? (
+                      <MonitorPlay className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
+                    ) : (
+                      <BedDouble className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
+                    )}
                     <p className="text-muted-foreground">
-                      Accessibility and room questions are welcome before you book. Use the contact
-                      form if you need to check suitability first.
+                      {isOnlineExperience
+                        ? "Access questions are welcome before you book. Use the contact form if you need to check the online set-up first."
+                        : "Accessibility and room questions are welcome before you book. Use the contact form if you need to check suitability first."}
                     </p>
                   </div>
                 </div>
 
                 <div className="mt-8 border-t pt-6">
                   <Button asChild variant="outline" className="w-full">
-                    <Link href="/contact">Ask a question about this retreat</Link>
+                    <Link href="/contact">Ask a question about this {experienceLabel}</Link>
                   </Button>
                 </div>
               </div>

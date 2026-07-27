@@ -150,6 +150,8 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
                 src={post.coverImage}
                 alt={post.coverAlt}
                 className="h-full max-h-[28rem] w-full rounded-[1.45rem] object-cover"
+                preload
+                sizes="(max-width: 1024px) 100vw, 48vw"
               />
             </div>
           </div>

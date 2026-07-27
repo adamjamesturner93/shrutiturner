@@ -187,7 +187,8 @@ export function BlogPage({ posts }: BlogPageProps) {
                 Evidence based health and movement posts
               </h1>
               <p className="text-brand-white/80 mt-5 max-w-2xl text-lg leading-relaxed md:text-[1.35rem]">
-                Making science accessible without the jargon or fluff, just clear explanations to empower you to understand your body.
+                Making science accessible without the jargon or fluff, just clear explanations to
+                empower you to understand your body.
               </p>
             </div>
 
@@ -285,6 +286,8 @@ export function BlogPage({ posts }: BlogPageProps) {
                     src={featuredPost.coverImage}
                     alt={featuredPost.coverAlt}
                     className="h-full min-h-[18rem] w-full object-cover"
+                    preload
+                    sizes="(max-width: 1024px) 100vw, 52vw"
                   />
                 </Link>
                 <div className="flex flex-col justify-center space-y-5 p-6 md:p-8">

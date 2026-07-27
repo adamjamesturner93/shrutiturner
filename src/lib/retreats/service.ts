@@ -13,6 +13,7 @@ import {
   RetreatPaymentStatus,
 } from "@prisma/client";
 import type Stripe from "stripe";
+import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/lib/db";
 import { buildAbsoluteUrl, getBaseSiteUrl } from "@/lib/app-url";
 import { getStripeClient } from "@/lib/billing/stripe-client";
@@ -42,10 +43,12 @@ import RetreatBalanceDueEmail from "@/emails/retreat-balance-due";
 import { createSessionRoom, isDailyConfigured } from "@/lib/daily/service";
 import {
   buildRetreatInstalmentPlan,
+  canExtendPublishedEarlyBirdRate,
   calculatePayInFullDiscount,
   calculateRetreatNonRefundableAmount,
   getEffectiveRetreatRatePricePence,
   quoteRetreatAccommodation,
+  type RetreatDepositRuleInput,
   type RetreatPaymentPlan,
   type RetreatType,
 } from "@/lib/retreats/pricing";
@@ -331,7 +334,9 @@ async function assertRoomInventoryAvailableForUpdate(
   roomOptionId: string,
   capacity: number
 ) {
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${roomOptionId}))`;
+  await tx.$queryRaw`
+    SELECT pg_advisory_xact_lock(hashtext(${roomOptionId})) IS NULL AS "acquired"
+  `;
   const now = new Date();
   const [bookingCount, giftCount] = await Promise.all([
     tx.retreatBooking.count({
@@ -365,7 +370,11 @@ async function assertRoomInventoryAvailableForUpdate(
 }
 
 type OperationalRetreatDate = Prisma.RetreatDateGetPayload<{
-  include: { roomOptions: { include: { ratePlans: true } }; bookings: true };
+  include: {
+    roomOptions: { include: { ratePlans: true } };
+    bookings: true;
+    depositRules: true;
+  };
 }>;
 
 function toPublicRoomType(value: string): RetreatRoomOptionContent["type"] {
@@ -457,6 +466,9 @@ async function mapOperationalDate(
     (sum, booking) => sum + Math.max(booking.attendeeCount || booking.guestsIncluded || 1, 1),
     0
   );
+  const activeDepositRule = date.depositRules.find((rule) => rule.active);
+  const paymentPolicy =
+    activeDepositRule?.depositType === RetreatDepositType.full_payment ? "full_payment" : "deposit";
 
   return {
     id: date.externalDateId,
@@ -470,6 +482,7 @@ async function mapOperationalDate(
       roomOptions.length > 0 ? Math.max(roomOptionCapacity, date.capacity) : date.capacity,
     roomOptions,
     paymentPlan: undefined,
+    paymentPolicy,
     payInFullDiscountEnabled: date.payInFullDiscountEnabled,
     refundNotes: undefined,
     onlineJoiningNotes: undefined,
@@ -579,6 +592,10 @@ async function getBookableOperationalDates(slug?: string): Promise<OperationalRe
         orderBy: { displayOrder: "asc" },
       },
       bookings: true,
+      depositRules: {
+        where: { active: true },
+        orderBy: { createdAt: "desc" },
+      },
     },
     orderBy: { startsAt: "asc" },
   });
@@ -791,7 +808,13 @@ async function getSyncedRetreatDateAndRoomOption(input: {
       retreatSlug: input.retreatSlug,
       externalDateId: input.retreatDateId,
     },
-    include: { roomOptions: { include: { ratePlans: true } } },
+    include: {
+      roomOptions: { include: { ratePlans: true } },
+      depositRules: {
+        where: { active: true },
+        orderBy: { createdAt: "desc" },
+      },
+    },
   });
   if (retreatDate.status !== "open") {
     throw new Error("RETREAT_DATE_UNAVAILABLE");
@@ -816,6 +839,10 @@ async function getSyncedRetreatDateAndRoomOption(input: {
 export async function getOperationalRetreatBySlug(
   slug: string
 ): Promise<RetreatCombinedContent | null> {
+  "use cache";
+  cacheLife({ stale: 30, revalidate: 60, expire: 300 });
+  cacheTag("retreats-public");
+
   const [templates, venues, operationalDates] = await Promise.all([
     getRetreatTemplates(),
     getRetreatVenues(),
@@ -830,6 +857,10 @@ export async function getOperationalRetreatBySlug(
 }
 
 export async function listOperationalRetreats(): Promise<RetreatCombinedContent[]> {
+  "use cache";
+  cacheLife({ stale: 30, revalidate: 60, expire: 300 });
+  cacheTag("retreats-public");
+
   const [templates, venues, operationalDates] = await Promise.all([
     getRetreatTemplates(),
     getRetreatVenues(),
@@ -893,6 +924,13 @@ export async function createRetreatCheckout(input: {
   paymentOption?: "deposit" | "pay_in_full";
 }) {
   if (input.purchaserUserId) {
+    const purchaser = await db.user.findUnique({
+      where: { id: input.purchaserUserId },
+      select: { id: true, deletedAt: true },
+    });
+    if (!purchaser || purchaser.deletedAt) {
+      throw new Error("USER_NOT_FOUND");
+    }
     await assertNoUserCheckoutDisputeHold(input.purchaserUserId);
   }
 
@@ -951,15 +989,39 @@ export async function createRetreatCheckout(input: {
   const selectedTotalPricePence = selectedRatePlan
     ? getEffectiveRetreatRatePricePence(selectedRatePlan)
     : roomOption.pricePence;
-  const selectedDepositPence =
-    roomOption.depositAmountPence && roomOption.pricePence > 0
-      ? Math.min(
-          selectedTotalPricePence,
-          Math.round(
-            (selectedTotalPricePence * roomOption.depositAmountPence) / roomOption.pricePence
-          )
-        )
-      : getDepositAmountPence(selectedTotalPricePence);
+  const configuredDepositRule = retreatDate.depositRules.find((rule) => rule.active);
+  const depositRule: RetreatDepositRuleInput =
+    configuredDepositRule?.depositType === RetreatDepositType.full_payment
+      ? { depositType: "full_payment" }
+      : configuredDepositRule?.depositType === RetreatDepositType.percentage &&
+          configuredDepositRule.depositPercentageBasisPoints
+        ? {
+            depositType: "percentage",
+            depositPercentageBasisPoints: configuredDepositRule.depositPercentageBasisPoints,
+          }
+        : configuredDepositRule?.depositType === RetreatDepositType.fixed_amount &&
+            configuredDepositRule.fixedDepositAmountPence !== null
+          ? {
+              depositType: "fixed_amount",
+              fixedDepositAmountPence: configuredDepositRule.fixedDepositAmountPence,
+            }
+          : {
+              depositType: "fixed_amount",
+              fixedDepositAmountPence:
+                roomOption.depositAmountPence && roomOption.pricePence > 0
+                  ? Math.min(
+                      selectedTotalPricePence,
+                      Math.round(
+                        (selectedTotalPricePence * roomOption.depositAmountPence) /
+                          roomOption.pricePence
+                      )
+                    )
+                  : getDepositAmountPence(selectedTotalPricePence),
+            };
+  const requiresFullPayment = depositRule.depositType === "full_payment";
+  const effectivePaymentOption = requiresFullPayment
+    ? "pay_in_full"
+    : (input.paymentOption ?? "deposit");
   const quote = quoteRetreatAccommodation({
     bookingUnit: roomOption.bookingUnit,
     quantity: 1,
@@ -967,10 +1029,7 @@ export async function createRetreatCheckout(input: {
     allowedGuestCounts,
     guestCountPerUnit: roomOption.guestCountPerUnit,
     ratePlans,
-    depositRule: {
-      depositType: "fixed_amount",
-      fixedDepositAmountPence: selectedDepositPence,
-    },
+    depositRule,
     currency: retreatDate.currency,
   });
 
@@ -998,7 +1057,7 @@ export async function createRetreatCheckout(input: {
 
     const giftPayInFullDiscountPence = calculatePayInFullDiscount(
       quote.totalPricePence,
-      retreatDate.payInFullDiscountEnabled,
+      !requiresFullPayment && retreatDate.payInFullDiscountEnabled,
       retreatDate.payInFullDiscountPercent,
       retreatDate.payInFullDiscountCapPence
     );
@@ -1113,17 +1172,21 @@ export async function createRetreatCheckout(input: {
 
   const payInFullDiscountPence = calculatePayInFullDiscount(
     quote.totalPricePence,
-    input.paymentOption === "pay_in_full" && retreatDate.payInFullDiscountEnabled,
+    effectivePaymentOption === "pay_in_full" &&
+      !requiresFullPayment &&
+      retreatDate.payInFullDiscountEnabled,
     retreatDate.payInFullDiscountPercent,
     retreatDate.payInFullDiscountCapPence
   );
   const payableTotalPence = Math.max(0, quote.totalPricePence - payInFullDiscountPence);
   const depositAmountPence = Math.min(quote.depositPence, payableTotalPence);
   const retreatType = parseRetreatType(retreatDate.retreatType);
+  const refundDepositPence =
+    requiresFullPayment && retreatType === "in_person" ? 0 : depositAmountPence;
   const refundPolicySnapshot = getRetreatRefundPolicySnapshot({
     retreatType,
     totalPence: payableTotalPence,
-    depositPence: depositAmountPence,
+    depositPence: refundDepositPence,
     startsAt: retreatDate.startsAt,
   });
   const nonRefundableAmountPence = refundPolicySnapshot.nonRefundableAmountPence;
@@ -1133,7 +1196,7 @@ export async function createRetreatCheckout(input: {
     depositPence: depositAmountPence,
     startsAt: retreatDate.startsAt,
     paymentPlan,
-    payInFull: input.paymentOption === "pay_in_full",
+    payInFull: effectivePaymentOption === "pay_in_full",
   });
   const initialInstalment = instalmentDrafts[0];
   if (!initialInstalment) {
@@ -2000,6 +2063,7 @@ export type CreateAdminRetreatDateInput = {
   endsAt: Date;
   capacity: number;
   pricePence: number;
+  paymentPolicy: "deposit" | "full_payment";
   earlyBirdPricePence?: number | null;
   earlyBirdEndsAt?: Date | null;
 };
@@ -2038,6 +2102,13 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
 
   const externalDateId = buildRetreatDateExternalId(input);
   const isOnline = input.retreatType === "online";
+  const requiresFullPayment = isOnline || input.paymentPolicy === "full_payment";
+  const depositAmountPence = requiresFullPayment
+    ? input.pricePence
+    : Math.round(input.pricePence * 0.2);
+  const balanceDueAt = requiresFullPayment
+    ? null
+    : new Date(input.startsAt.getTime() - 56 * 86400000);
 
   return db.$transaction(async (tx) => {
     const retreatDate = await tx.retreatDate.create({
@@ -2054,14 +2125,15 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
         status: "open",
         currency: "GBP",
         pricePence: input.pricePence,
-        depositAmountPence: isOnline ? input.pricePence : Math.round(input.pricePence * 0.2),
-        balanceDueAt: isOnline ? null : new Date(input.startsAt.getTime() - 56 * 86400000),
+        depositAmountPence,
+        balanceDueAt,
         isRecorded: isOnline,
         replayAccessDurationDays: isOnline ? 7 : null,
+        payInFullDiscountEnabled: !requiresFullPayment,
         paymentPlanSnapshotJson: {
-          depositType: isOnline ? "full_payment" : "percentage",
-          depositPercentageBasisPoints: isOnline ? null : 2000,
-          balanceDueDaysBeforeStart: isOnline ? null : 56,
+          depositType: requiresFullPayment ? "full_payment" : "percentage",
+          depositPercentageBasisPoints: requiresFullPayment ? null : 2000,
+          balanceDueDaysBeforeStart: requiresFullPayment ? null : 56,
         },
       },
     });
@@ -2101,7 +2173,7 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
         capacity: input.capacity,
         availableSpots: input.capacity,
         pricePence: input.pricePence,
-        depositAmountPence: isOnline ? input.pricePence : Math.round(input.pricePence * 0.2),
+        depositAmountPence,
         displayOrder: 1,
         active: true,
       },
@@ -2122,11 +2194,13 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
     await tx.retreatDepositRule.create({
       data: {
         retreatDateId: retreatDate.id,
-        depositType: isOnline ? RetreatDepositType.full_payment : RetreatDepositType.percentage,
-        depositPercentageBasisPoints: isOnline ? null : 2000,
-        fixedDepositAmountPence: isOnline ? input.pricePence : null,
-        balanceDueAt: isOnline ? null : new Date(input.startsAt.getTime() - 56 * 86400000),
-        balanceDueDaysBeforeStart: isOnline ? null : 56,
+        depositType: requiresFullPayment
+          ? RetreatDepositType.full_payment
+          : RetreatDepositType.percentage,
+        depositPercentageBasisPoints: requiresFullPayment ? null : 2000,
+        fixedDepositAmountPence: null,
+        balanceDueAt,
+        balanceDueDaysBeforeStart: requiresFullPayment ? null : 56,
         active: true,
       },
     });
@@ -2331,6 +2405,10 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
           ratePlans: { orderBy: { guestCount: "asc" } },
         },
       },
+      depositRules: {
+        where: { active: true },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
   if (!bookingRows) throw new Error("NOT_FOUND");
@@ -2339,6 +2417,7 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
     (sum, booking) => sum + booking.depositPaidPence + booking.balancePaidPence,
     0
   );
+  const activeDepositRule = bookingRows.depositRules[0];
 
   return {
     id: bookingRows.id,
@@ -2358,6 +2437,11 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
     pricePence: bookingRows.pricePence,
     singleRoomSupplementPence: bookingRows.singleRoomSupplementPence,
     balanceDueAt: bookingRows.balanceDueAt?.toISOString() || null,
+    paymentPolicy:
+      activeDepositRule?.depositType === RetreatDepositType.full_payment
+        ? ("full_payment" as const)
+        : ("deposit" as const),
+    pricingLocked: true,
     ratePlans: bookingRows.roomOptions.flatMap((roomOption) =>
       roomOption.ratePlans.map((ratePlan) => ({
         id: ratePlan.id,
@@ -2428,7 +2512,12 @@ export async function updateAdminRetreatEarlyBirdRates(
         roomOptions: {
           select: {
             ratePlans: {
-              select: { id: true, totalPricePence: true },
+              select: {
+                id: true,
+                totalPricePence: true,
+                earlyBirdPricePence: true,
+                earlyBirdEndsAt: true,
+              },
             },
           },
         },
@@ -2445,6 +2534,20 @@ export async function updateAdminRetreatEarlyBirdRates(
     for (const update of updates) {
       const ratePlan = ratePlanById.get(update.ratePlanId);
       if (!ratePlan) throw new Error("INVALID_EARLY_BIRD");
+
+      if (
+        !canExtendPublishedEarlyBirdRate({
+          existingPricePence: ratePlan.earlyBirdPricePence,
+          existingEndsAt: ratePlan.earlyBirdEndsAt,
+          submittedPricePence: update.earlyBirdPricePence,
+          submittedEndsAt: update.earlyBirdEndsAt,
+          retreatStartsAt: retreatDate.startsAt,
+        })
+      ) {
+        throw new Error("RETREAT_PRICING_LOCKED");
+      }
+
+      if (ratePlan.earlyBirdPricePence === null) continue;
 
       const hasPrice = update.earlyBirdPricePence !== null;
       const hasEndDate = update.earlyBirdEndsAt !== null;

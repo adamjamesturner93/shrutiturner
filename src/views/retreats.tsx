@@ -123,6 +123,10 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
     return deposits.length > 0 ? Math.min(...deposits) : 0;
   };
 
+  const isFullPaymentOnly = (retreat: RetreatCombinedContent) =>
+    retreat.dates.length > 0 &&
+    retreat.dates.every((date) => date.paymentPolicy === "full_payment");
+
   const getEarliestActiveEarlyBirdDeadline = (retreat: RetreatCombinedContent) => {
     const deadlines = retreat.dates.flatMap((date) =>
       date.roomOptions.flatMap((roomOption) =>
@@ -196,6 +200,8 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
                 src={heroImageSrc}
                 alt="Retreat location for adaptive movement and rest"
                 className="h-full w-full object-cover"
+                preload
+                sizes="(max-width: 1024px) 100vw, 42vw"
               />
             </div>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -357,7 +363,9 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
                   <div>
                     <p className="text-3xl">{formatMoney(getStartingPrice(retreat))}</p>
                     <p className="text-muted-foreground mt-1 text-sm">
-                      Deposit from {formatMoney(getStartingDeposit(retreat))}
+                      {isFullPaymentOnly(retreat)
+                        ? "Full payment at checkout"
+                        : `Deposit from ${formatMoney(getStartingDeposit(retreat))}`}
                       {getEarliestActiveEarlyBirdDeadline(retreat)
                         ? ` · early bird until ${fmtDateShort(getEarliestActiveEarlyBirdDeadline(retreat) || "")}`
                         : ""}

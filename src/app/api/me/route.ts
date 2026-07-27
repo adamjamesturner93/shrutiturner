@@ -12,9 +12,13 @@ function siteUrlFromRequest(request: Request) {
 
 export const GET = handleApiRoute(
   async ({ request, sessionUser }) => {
-    await connection();
-    const account = await getAccount(sessionUser!.id, siteUrlFromRequest(request));
-    return apiOk(account);
+    try {
+      await connection();
+      const account = await getAccount(sessionUser!.id, siteUrlFromRequest(request));
+      return apiOk(account);
+    } catch (error) {
+      mapUpdateError(error);
+    }
   },
   { auth: "user" }
 );
@@ -69,6 +73,13 @@ export const PATCH = handleApiRoute(
 
 function mapUpdateError(error: unknown): never {
   if (error instanceof Error) {
+    if (error.message === "USER_NOT_FOUND") {
+      throw new ApiError(
+        401,
+        "SESSION_INVALID",
+        "Your account session is no longer valid. Please sign in again."
+      );
+    }
     if (error.message === "INVALID_DOB") {
       throw new ApiError(400, "INVALID_DOB", "Date of birth is invalid.");
     }

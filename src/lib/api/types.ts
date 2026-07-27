@@ -375,6 +375,8 @@ export type AdminRetreatDetailDto = {
   pricePence: number;
   singleRoomSupplementPence: number;
   balanceDueAt: string | null;
+  paymentPolicy: "deposit" | "full_payment";
+  pricingLocked: boolean;
   ratePlans: Array<{
     id: string;
     roomOptionId: string;

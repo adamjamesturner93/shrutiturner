@@ -81,6 +81,8 @@ export function CoachingPage() {
                   src="/images/shruti-coaching.jpeg"
                   alt="Shruti Turner running by the sea"
                   className="h-full w-full object-cover"
+                  preload
+                  sizes="(max-width: 1024px) 100vw, 42vw"
                 />
               </div>
             </div>

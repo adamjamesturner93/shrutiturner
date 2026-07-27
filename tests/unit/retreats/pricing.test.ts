@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildRetreatInstalmentPlan,
+  canExtendPublishedEarlyBirdRate,
   calculateDepositFromRule,
   calculateOnlineNonRefundableAmount,
   calculatePayInFullDiscount,
@@ -29,6 +30,66 @@ describe("retreat pricing", () => {
         depositPercentageBasisPoints: 2500,
       })
     ).toBe(2500);
+  });
+
+  it("requires the full authoritative price when deposits are disabled", () => {
+    const quote = quoteRetreatAccommodation({
+      bookingUnit: "online_live_place",
+      quantity: 1,
+      guestCount: 1,
+      guestCountPerUnit: 1,
+      ratePlans: [{ id: "online-ticket", guestCount: 1, totalPricePence: 2900 }],
+      depositRule: { depositType: "full_payment" },
+    });
+
+    expect(quote).toMatchObject({
+      totalPricePence: 2900,
+      depositPence: 2900,
+      balancePence: 0,
+    });
+    expect(calculatePayInFullDiscount(quote.totalPricePence, false)).toBe(0);
+  });
+
+  it("only allows an existing published early-bird deadline to be extended", () => {
+    const existingEndsAt = new Date("2026-08-01T23:00:00.000Z");
+    const retreatStartsAt = new Date("2026-09-18T15:00:00.000Z");
+
+    expect(
+      canExtendPublishedEarlyBirdRate({
+        existingPricePence: 39500,
+        existingEndsAt,
+        submittedPricePence: 39500,
+        submittedEndsAt: new Date("2026-08-14T23:00:00.000Z"),
+        retreatStartsAt,
+      })
+    ).toBe(true);
+    expect(
+      canExtendPublishedEarlyBirdRate({
+        existingPricePence: 39500,
+        existingEndsAt,
+        submittedPricePence: 39000,
+        submittedEndsAt: new Date("2026-08-14T23:00:00.000Z"),
+        retreatStartsAt,
+      })
+    ).toBe(false);
+    expect(
+      canExtendPublishedEarlyBirdRate({
+        existingPricePence: 39500,
+        existingEndsAt,
+        submittedPricePence: 39500,
+        submittedEndsAt: new Date("2026-07-31T23:00:00.000Z"),
+        retreatStartsAt,
+      })
+    ).toBe(false);
+    expect(
+      canExtendPublishedEarlyBirdRate({
+        existingPricePence: null,
+        existingEndsAt: null,
+        submittedPricePence: 39500,
+        submittedEndsAt: new Date("2026-08-14T23:00:00.000Z"),
+        retreatStartsAt,
+      })
+    ).toBe(false);
   });
 
   it("quotes shared bed spaces as one guest and one inventory unit per quantity", () => {

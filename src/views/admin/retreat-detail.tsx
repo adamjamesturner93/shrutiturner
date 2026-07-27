@@ -263,7 +263,7 @@ export function AdminRetreatDetail({
         );
       }
       setRetreat(payload);
-      setActionMessage("Early-bird pricing updated.");
+      setActionMessage("Early-bird deadlines updated.");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Failed to update pricing.");
     } finally {
@@ -407,9 +407,8 @@ export function AdminRetreatDetail({
             </CardHeader>
             <CardContent className="space-y-5">
               <p className="text-muted-foreground text-sm">
-                Set pricing separately for each room and guest count. Clear both fields to remove an
-                early-bird rate. Stripe uses the active server-calculated rate when checkout is
-                created.
+                Published prices are locked so guests see the same offer. You can extend an existing
+                early-bird deadline, but cannot change, add or remove its price.
               </p>
               <div className="space-y-4">
                 {retreat.ratePlans.map((ratePlan) => {
@@ -438,12 +437,7 @@ export function AdminRetreatDetail({
                           max={(ratePlan.totalPricePence - 1) / 100}
                           step="0.01"
                           value={draft.pricePounds}
-                          onChange={(event) =>
-                            setEarlyBirdDrafts((current) => ({
-                              ...current,
-                              [ratePlan.id]: { ...draft, pricePounds: event.target.value },
-                            }))
-                          }
+                          disabled={retreat.pricingLocked}
                         />
                       </div>
                       <div className="space-y-2">
@@ -451,8 +445,10 @@ export function AdminRetreatDetail({
                         <Input
                           id={`early-end-${ratePlan.id}`}
                           type="datetime-local"
+                          min={toDateTimeLocal(ratePlan.earlyBirdEndsAt)}
                           max={toDateTimeLocal(retreat.startDate)}
                           value={draft.endsAt}
+                          disabled={ratePlan.earlyBirdPricePence === null}
                           onChange={(event) =>
                             setEarlyBirdDrafts((current) => ({
                               ...current,
@@ -467,11 +463,14 @@ export function AdminRetreatDetail({
               </div>
               <Button
                 type="button"
-                disabled={actionLoading !== ""}
+                disabled={
+                  actionLoading !== "" ||
+                  !retreat.ratePlans.some((ratePlan) => ratePlan.earlyBirdPricePence !== null)
+                }
                 onClick={() => void saveEarlyBirdRates()}
               >
                 <Save className="mr-2 h-4 w-4" />
-                {actionLoading === "early-bird" ? "Saving..." : "Save early-bird pricing"}
+                {actionLoading === "early-bird" ? "Saving..." : "Save early-bird deadlines"}
               </Button>
             </CardContent>
           </Card>
@@ -488,8 +487,14 @@ export function AdminRetreatDetail({
                 <p className="mt-1">{formatCurrency(retreat.pricePence)}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs tracking-wide uppercase">Deposit</p>
-                <p className="mt-1">{formatCurrency(retreat.depositAmountPence)}</p>
+                <p className="text-muted-foreground text-xs tracking-wide uppercase">
+                  Payment policy
+                </p>
+                <p className="mt-1">
+                  {retreat.paymentPolicy === "full_payment"
+                    ? "Full payment required"
+                    : `Deposit ${formatCurrency(retreat.depositAmountPence)}`}
+                </p>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs tracking-wide uppercase">
@@ -502,13 +507,15 @@ export function AdminRetreatDetail({
                   Balance due date
                 </p>
                 <p className="mt-1">
-                  {retreat.balanceDueAt
-                    ? new Intl.DateTimeFormat("en-GB", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      }).format(new Date(retreat.balanceDueAt))
-                    : "Before arrival"}
+                  {retreat.paymentPolicy === "full_payment"
+                    ? "No balance; full payment is taken at checkout"
+                    : retreat.balanceDueAt
+                      ? new Intl.DateTimeFormat("en-GB", {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        }).format(new Date(retreat.balanceDueAt))
+                      : "Before arrival"}
                 </p>
               </div>
             </CardContent>
