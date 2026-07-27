@@ -14,4 +14,21 @@ describe("renderInlineMarkdown", () => {
     expect(html).not.toContain("__strength__");
     expect(html).not.toContain("**control**");
   });
+
+  it("renders mapped Contentful links as anchors", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(
+        Fragment,
+        null,
+        renderInlineMarkdown(
+          "Photo by [Ambitious Studio | Rick Barrett](https://unsplash.com/@weareambitious?utm_source=unsplash&utm_medium=referral)"
+        )
+      )
+    );
+
+    expect(html).toContain(
+      'href="https://unsplash.com/@weareambitious?utm_source=unsplash&amp;utm_medium=referral"'
+    );
+    expect(html).toContain(">Ambitious Studio | Rick Barrett</a>");
+  });
 });
