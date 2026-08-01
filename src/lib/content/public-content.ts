@@ -312,6 +312,39 @@ function createFallbackAvatar(name: string) {
   return `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(name)}`;
 }
 
+function isSafeContentLink(href: string) {
+  return (
+    /^https?:\/\//i.test(href) ||
+    /^mailto:/i.test(href) ||
+    (href.startsWith("/") && !href.startsWith("//")) ||
+    href.startsWith("#")
+  );
+}
+
+function decodeBasicHtmlEntities(value: string) {
+  return value
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#(?:39|x27);/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
+}
+
+function renderLegacyHtmlLinks(value: string) {
+  return value.replace(
+    /<a\b[^>]*\bhref\s*=\s*(["'])(.*?)\1[^>]*>([\s\S]*?)<\/a>/gi,
+    (_match, _quote: string, rawHref: string, rawLabel: string) => {
+      const href = decodeBasicHtmlEntities(rawHref.trim());
+      const label = decodeBasicHtmlEntities(rawLabel.replace(/<[^>]*>/g, "").trim());
+
+      if (!label) return "";
+      if (!isSafeContentLink(href)) return label;
+
+      return `[${label.replace(/\]/g, "")}](${href.replace(/\)/g, "%29")})`;
+    }
+  );
+}
+
 function toContentfulImageUrl(rawUrl: string, width = 1200) {
   const url = rawUrl.startsWith("//") ? `https:${rawUrl}` : rawUrl;
   if (!url.includes("images.ctfassets.net") && !url.includes("images.contentful.com")) {
@@ -368,6 +401,7 @@ function renderRichTextNode(node: unknown): string {
     value?: unknown;
     content?: unknown;
     marks?: unknown;
+    data?: unknown;
   };
   const nodeType = typeof richNode.nodeType === "string" ? richNode.nodeType : "";
 
@@ -388,6 +422,14 @@ function renderRichTextNode(node: unknown): string {
     ? richNode.content.map(renderRichTextNode).join("")
     : "";
 
+  if (nodeType === "hyperlink") {
+    const data =
+      richNode.data && typeof richNode.data === "object" && !Array.isArray(richNode.data)
+        ? (richNode.data as Record<string, unknown>)
+        : {};
+    const href = typeof data.uri === "string" ? data.uri.trim() : "";
+    return href && isSafeContentLink(href) ? `[${children}](${href})` : children;
+  }
   if (nodeType === "heading-2") return `\n## ${children.trim()}\n`;
   if (nodeType === "heading-3") return `\n### ${children.trim()}\n`;
   if (nodeType === "paragraph") return `${children.trim()}\n\n`;
@@ -399,8 +441,8 @@ function renderRichTextNode(node: unknown): string {
 }
 
 function renderContentfulRichText(value: unknown) {
-  if (typeof value === "string") return value;
-  return renderRichTextNode(value)
+  if (typeof value === "string") return renderLegacyHtmlLinks(value);
+  return renderLegacyHtmlLinks(renderRichTextNode(value))
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
@@ -481,15 +523,18 @@ function mapAuthorProfile(
   const avatarAssetId = getLinkedEntryId(fields.avatarImageAsset);
   const avatarAsset = getIncludedAssetById(includes?.Asset, avatarAssetId);
   const avatarAssetUrl = readContentfulAssetUrl(avatarAsset?.fields);
+  const slug = String(fields.slug || slugify(name) || id);
+  const stableShrutiAvatar = slug === "shruti-turner" ? "/images/shruti.jpeg" : "";
   const avatarUrl =
     avatarAssetUrl ||
+    stableShrutiAvatar ||
     (typeof fields.avatarImageUrl === "string" && fields.avatarImageUrl.trim()
       ? fields.avatarImageUrl.trim()
       : "");
 
   return {
     id,
-    slug: String(fields.slug || slugify(name) || id),
+    slug,
     name,
     role: fields.role ? String(fields.role) : undefined,
     bio: fields.bio ? String(fields.bio) : "",

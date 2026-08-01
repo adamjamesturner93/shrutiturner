@@ -126,6 +126,89 @@ describe("Contentful public content mapping", () => {
     expect(posts[0]?.content).toContain("Intro **paragraph**.");
   });
 
+  it("converts legacy HTML photo-credit links into safe Markdown", async () => {
+    mocks.getEntries.mockResolvedValueOnce({
+      ...blogPostResponse,
+      items: [
+        {
+          ...blogPostResponse.items[0],
+          fields: {
+            ...blogPostResponse.items[0].fields,
+            content:
+              'Photo by <a href="https://unsplash.com/@author?utm_source=test&amp;utm_medium=referral">Photographer</a> on <a href="https://unsplash.com/photos/example">Unsplash</a>',
+          },
+        },
+      ],
+    });
+
+    const posts = await getBlogPosts();
+
+    expect(posts[0]?.content).toBe(
+      "Photo by [Photographer](https://unsplash.com/@author?utm_source=test&utm_medium=referral) on [Unsplash](https://unsplash.com/photos/example)"
+    );
+    expect(posts[0]?.content).not.toContain("<a");
+  });
+
+  it("uses the bundled Shruti portrait when no Contentful author asset is linked", async () => {
+    mocks.getEntries.mockResolvedValueOnce({
+      ...blogPostResponse,
+      includes: {
+        ...blogPostResponse.includes,
+        Entry: [
+          {
+            sys: { id: "author_1" },
+            fields: {
+              name: "Dr Shruti Turner",
+              slug: "shruti-turner",
+              bio: "Shruti bio",
+              avatarImageUrl: "https://media.licdn.com/expired-profile-image",
+              active: true,
+            },
+          },
+        ],
+      },
+    });
+
+    const posts = await getBlogPosts();
+
+    expect(posts[0]?.authors?.[0]?.avatarImageUrl).toBe("/images/shruti.jpeg");
+  });
+
+  it("maps safe Contentful rich-text hyperlinks to Markdown", async () => {
+    mocks.getEntries.mockResolvedValueOnce({
+      ...blogPostResponse,
+      items: [
+        {
+          ...blogPostResponse.items[0],
+          fields: {
+            ...blogPostResponse.items[0].fields,
+            content: {
+              nodeType: "document",
+              content: [
+                {
+                  nodeType: "paragraph",
+                  content: [
+                    { nodeType: "text", value: "Read " },
+                    {
+                      nodeType: "hyperlink",
+                      data: { uri: "https://example.com/article" },
+                      content: [{ nodeType: "text", value: "the article" }],
+                    },
+                    { nodeType: "text", value: "." },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      ],
+    });
+
+    const posts = await getBlogPosts();
+
+    expect(posts[0]?.content).toBe("Read [the article](https://example.com/article).");
+  });
+
   it("loads draft blog previews from the Contentful preview API", async () => {
     const preview = await getBlogPostPreviewBySlug("contentful-post");
 
