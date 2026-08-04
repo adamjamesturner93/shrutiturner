@@ -927,12 +927,20 @@ async function seedRetreatInventory(retreatUserId: string, instructorUserId?: st
             },
             update: {
               status: "available",
+              capacityUnits:
+                roomOption.bookingUnit === "bed_space"
+                  ? Math.max(roomOption.bedsPerPhysicalRoom ?? 1, 1)
+                  : 1,
             },
             create: {
               id: `seed_retreat_room_unit_${retreat.slug}_${date.id}_${roomOption.id}_${index}`,
               retreatDateId: retreatDate.id,
               roomOptionId: dbRoomOption.id,
               label: `${roomOption.label} ${index}`,
+              capacityUnits:
+                roomOption.bookingUnit === "bed_space"
+                  ? Math.max(roomOption.bedsPerPhysicalRoom ?? 1, 1)
+                  : 1,
               status: "available",
             },
           });

@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getBaseSiteUrl } from "@/lib/app-url";
 import { getBlogPosts } from "@/lib/content";
+import { listOperationalRetreats } from "@/lib/retreats/service";
 import { HOLDING_SITEMAP_PATHS, isHoldingStage } from "@/lib/site-stage";
 
 const STATIC_ROUTES = [
@@ -15,6 +16,7 @@ const STATIC_ROUTES = [
   "/health-declaration",
   "/privacy",
   "/refund-policy",
+  "/retreats",
   "/terms",
 ] as const;
 
@@ -37,7 +39,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     url: toAbsoluteUrl(path),
   }));
 
-  const [postsResult] = await Promise.allSettled([getBlogPosts()]);
+  const [postsResult, retreatsResult] = await Promise.allSettled([
+    getBlogPosts(),
+    listOperationalRetreats(),
+  ]);
 
   const postEntries: MetadataRoute.Sitemap =
     postsResult.status === "fulfilled"
@@ -47,5 +52,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }))
       : [];
 
-  return dedupeEntries([...staticEntries, ...postEntries]);
+  const retreatEntries: MetadataRoute.Sitemap =
+    retreatsResult.status === "fulfilled"
+      ? retreatsResult.value.map((retreat) => ({
+          url: toAbsoluteUrl(`/retreats/${retreat.slug}`),
+          lastModified: retreat.dates[0]?.startDate
+            ? new Date(retreat.dates[0].startDate)
+            : undefined,
+        }))
+      : [];
+
+  return dedupeEntries([...staticEntries, ...postEntries, ...retreatEntries]);
 }

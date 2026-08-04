@@ -1,11 +1,26 @@
-import { GiftPurchaseStatus, RetreatBookingStatus, RetreatPaymentStatus } from "@prisma/client";
+import {
+  AcceptanceType,
+  GiftPurchaseStatus,
+  RetreatBookingStatus,
+  RetreatPaymentStatus,
+} from "@prisma/client";
 import type Stripe from "stripe";
 import { db } from "@/lib/db";
-import { ensureRetreatOnlineAccessEntitlement } from "@/lib/retreats/service";
+import {
+  assignRoomUnitAfterPayment,
+  ensureRetreatOnlineAccessEntitlement,
+} from "@/lib/retreats/service";
 import { buildAbsoluteUrl } from "@/lib/app-url";
 import { assertNoResourceDisputeHold } from "@/lib/billing/dispute-service";
+import { getStripeClient } from "@/lib/billing/stripe-client";
 import { sendPostmarkReactEmail } from "@/lib/postmark/client";
 import GiftRedemptionEmail from "@/emails/gift-redemption";
+import RetreatBookingAdminEmail from "@/emails/retreat-booking-admin";
+import RetreatGiftRefundEmail from "@/emails/retreat-gift-refund";
+import { assertCurrentAcceptances } from "@/lib/legal/acceptance-service";
+import { getAdminEmailAllowlist } from "@/lib/env";
+import { calculateRetreatRefund } from "@/lib/retreats/pricing";
+import { createAdminActionLog } from "@/lib/admin/action-log-service";
 
 export type PublicGiftRedemptionState =
   | { state: "invalid"; gift: null }
@@ -49,11 +64,68 @@ function normalizeText(value: string, max: number) {
   return value.trim().slice(0, max);
 }
 
+async function lockGiftPurchase(
+  tx: Parameters<Parameters<typeof db.$transaction>[0]>[0],
+  giftPurchaseId: string
+) {
+  await tx.$queryRaw`
+    SELECT pg_advisory_xact_lock(hashtext(${`gift-purchase:${giftPurchaseId}`})) IS NULL AS "acquired"
+  `;
+}
+
+function formatCurrency(pence: number, currency = "GBP") {
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency }).format(pence / 100);
+}
+
+function formatDateRange(start: Date, end: Date) {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  return `${formatter.format(start)} - ${formatter.format(end)}`;
+}
+
+async function sendRetreatGiftAdminNotification(giftId: string) {
+  const gift = await db.giftPurchase.findUnique({
+    where: { id: giftId },
+    include: { retreatDate: true, retreatRoomOption: true },
+  });
+  if (!gift?.retreatDate) return;
+
+  const adminUrl = buildAbsoluteUrl(`/admin/retreats/${gift.retreatDate.id}`);
+  await Promise.allSettled(
+    getAdminEmailAllowlist().map((email) =>
+      sendPostmarkReactEmail({
+        to: email,
+        subject: `New retreat gift: ${gift.retreatDate!.retreatTitleSnapshot}`,
+        react: RetreatBookingAdminEmail({
+          purchaserName: `${gift.purchaserFirstName} ${gift.purchaserLastName}`.trim(),
+          purchaserEmail: gift.purchaserEmail,
+          retreatName: gift.retreatDate!.retreatTitleSnapshot,
+          retreatDates: formatDateRange(gift.retreatDate!.startsAt, gift.retreatDate!.endsAt),
+          selection: gift.retreatRoomOption?.label || "Retreat place",
+          guestCount: gift.retreatGuestCount || 1,
+          paymentSummary: `${formatCurrency(gift.totalPaidPence, gift.currency)} received in full.`,
+          adminUrl,
+          isGift: true,
+          recipientEmail: gift.recipientEmail,
+        }),
+        textBody: `New gift purchase for ${gift.retreatDate!.retreatTitleSnapshot}\nPurchaser: ${gift.purchaserFirstName} ${gift.purchaserLastName} (${gift.purchaserEmail})\nRecipient: ${gift.recipientEmail}\nSelection: ${gift.retreatRoomOption?.label || "Retreat place"}\nPaid: ${formatCurrency(gift.totalPaidPence, gift.currency)}\nOpen: ${adminUrl}`,
+        tag: "retreat-gift-admin",
+        templateKey: "retreat-gift-admin",
+        metadata: { giftPurchaseId: gift.id, retreatDateId: gift.retreatDate!.id },
+        dispatchMode: "immediate_best_effort",
+      })
+    )
+  );
+}
+
 async function sendGiftDeliveryEmail(giftId: string) {
   const gift = await db.giftPurchase.findUnique({
     where: { id: giftId },
   });
-  if (!gift) return;
+  if (!gift || gift.deliveryEmailSentAt) return;
 
   const redemptionUrl = buildAbsoluteUrl(`/gift/redeem/${gift.code}`);
   const to = gift.deliveryTarget === "recipient" ? gift.recipientEmail : gift.purchaserEmail;
@@ -85,6 +157,10 @@ async function sendGiftDeliveryEmail(giftId: string) {
     },
     dispatchMode: "immediate_best_effort",
   });
+  await db.giftPurchase.updateMany({
+    where: { id: gift.id, deliveryEmailSentAt: null },
+    data: { deliveryEmailSentAt: new Date() },
+  });
 }
 
 export async function processGiftPurchaseCheckoutCompleted(session: Stripe.Checkout.Session) {
@@ -103,11 +179,12 @@ export async function processGiftPurchaseCheckoutCompleted(session: Stripe.Check
 
   const gift = await db.giftPurchase.findUnique({
     where: { id: giftPurchaseId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, deliveryEmailSentAt: true },
   });
   if (!gift) return false;
 
-  if (gift.status !== GiftPurchaseStatus.purchased) {
+  const purchaseCompletedNow = gift.status !== GiftPurchaseStatus.purchased;
+  if (purchaseCompletedNow) {
     await db.giftPurchase.update({
       where: { id: giftPurchaseId },
       data: {
@@ -119,9 +196,17 @@ export async function processGiftPurchaseCheckoutCompleted(session: Stripe.Check
     });
   }
 
-  await sendGiftDeliveryEmail(giftPurchaseId).catch((error) => {
-    console.error("Failed to send gift delivery email", error);
-  });
+  if (!gift.deliveryEmailSentAt) {
+    await sendGiftDeliveryEmail(giftPurchaseId).catch((error) => {
+      console.error("Failed to send gift delivery email", error);
+    });
+  }
+
+  if (kind === "retreat_gift" && purchaseCompletedNow) {
+    await sendRetreatGiftAdminNotification(giftPurchaseId).catch((error) => {
+      console.error("Failed to send retreat gift admin notification", error);
+    });
+  }
 
   return true;
 }
@@ -144,6 +229,7 @@ export async function getGiftRedemptionState(code: string): Promise<PublicGiftRe
   if (
     gift.status === GiftPurchaseStatus.expired ||
     gift.status === GiftPurchaseStatus.cancelled ||
+    gift.status === GiftPurchaseStatus.refunded ||
     (gift.expiresAt && gift.expiresAt < now && gift.status !== GiftPurchaseStatus.redeemed)
   ) {
     return { state: "expired", gift: null };
@@ -192,6 +278,145 @@ export async function getGiftRedemptionState(code: string): Promise<PublicGiftRe
           : null,
     },
   };
+}
+
+export async function refundUnredeemedRetreatGift(input: {
+  retreatDateId: string;
+  giftPurchaseId: string;
+  actorUserId: string;
+}) {
+  const gift = await db.giftPurchase.findFirst({
+    where: {
+      id: input.giftPurchaseId,
+      retreatDateId: input.retreatDateId,
+      type: "retreat",
+    },
+    include: { retreatDate: true, retreatBooking: true },
+  });
+  if (!gift?.retreatDate) throw new Error("NOT_FOUND");
+  if (gift.retreatBooking || gift.status === GiftPurchaseStatus.redeemed) {
+    throw new Error("GIFT_ALREADY_REDEEMED");
+  }
+  if (gift.status === GiftPurchaseStatus.refunded) return gift;
+  if (
+    gift.status !== GiftPurchaseStatus.purchased &&
+    !(gift.status === GiftPurchaseStatus.cancelled && !gift.stripeRefundId)
+  ) {
+    throw new Error("GIFT_NOT_REFUNDABLE");
+  }
+  if (!gift.stripePaymentIntentId && gift.totalPaidPence > 0) {
+    throw new Error("GIFT_PAYMENT_INTENT_MISSING");
+  }
+
+  const refundableAmountPence = calculateRetreatRefund({
+    actualPaidPence: Math.max(gift.totalPaidPence - gift.refundedAmountPence, 0),
+    nonRefundableAmountPence: Math.min(gift.nonRefundableAmountPence, gift.totalPaidPence),
+    startsAt: gift.retreatDate.startsAt,
+    requestedAt: new Date(),
+    retreatType: gift.retreatDate.retreatType === "online" ? "online" : "in_person",
+  });
+
+  await db.giftPurchase.update({
+    where: { id: gift.id },
+    data: { status: GiftPurchaseStatus.cancelled },
+  });
+
+  try {
+    const stripeRefund =
+      refundableAmountPence > 0
+        ? await getStripeClient().refunds.create(
+            {
+              payment_intent: gift.stripePaymentIntentId!,
+              amount: refundableAmountPence,
+              reason: "requested_by_customer",
+              metadata: {
+                giftPurchaseId: gift.id,
+                retreatDateId: gift.retreatDate.id,
+              },
+            },
+            { idempotencyKey: `retreat-gift-refund-${gift.id}` }
+          )
+        : null;
+
+    const updated = await db.giftPurchase.update({
+      where: { id: gift.id },
+      data: {
+        status: GiftPurchaseStatus.refunded,
+        refundedAmountPence: refundableAmountPence,
+        stripeRefundId: stripeRefund?.id || null,
+        refundedAt: new Date(),
+      },
+    });
+    await Promise.allSettled([
+      sendPostmarkReactEmail({
+        to: gift.purchaserEmail,
+        subject: `${gift.retreatDate.retreatTitleSnapshot}: gift purchase cancelled`,
+        react: RetreatGiftRefundEmail({
+          firstName: gift.purchaserFirstName,
+          retreatName: gift.retreatDate.retreatTitleSnapshot,
+          refundAmount: formatCurrency(refundableAmountPence, gift.currency),
+        }),
+        textBody: `Your unredeemed gift purchase for ${gift.retreatDate.retreatTitleSnapshot} has been cancelled. Refund submitted: ${formatCurrency(refundableAmountPence, gift.currency)}.`,
+        tag: "retreat-gift-refund",
+        templateKey: "retreat-gift-refund",
+        metadata: { giftPurchaseId: gift.id, retreatDateId: gift.retreatDate.id },
+        dispatchMode: "immediate_best_effort",
+      }),
+      createAdminActionLog({
+        actorUserId: input.actorUserId,
+        actionType: "retreat_gift_refunded",
+        targetType: "gift_purchase",
+        targetId: gift.id,
+        metadataJson: { refundableAmountPence, stripeRefundId: stripeRefund?.id || null },
+      }),
+    ]);
+    return updated;
+  } catch (error) {
+    await db.giftPurchase.updateMany({
+      where: { id: gift.id, status: GiftPurchaseStatus.cancelled, stripeRefundId: null },
+      data: { status: GiftPurchaseStatus.purchased },
+    });
+    throw error;
+  }
+}
+
+export async function getMyRetreatGiftPurchases(userId: string) {
+  const gifts = await db.giftPurchase.findMany({
+    where: {
+      purchaserUserId: userId,
+      type: "retreat",
+    },
+    include: {
+      retreatDate: true,
+      retreatRoomOption: true,
+    },
+    orderBy: [{ retreatDate: { startsAt: "asc" } }, { createdAt: "desc" }],
+  });
+
+  return gifts.flatMap((gift) =>
+    gift.retreatDate
+      ? [
+          {
+            id: gift.id,
+            retreatSlug: gift.retreatDate.retreatSlug,
+            retreatTitle: gift.retreatDate.retreatTitleSnapshot,
+            location: gift.retreatDate.retreatLocationSnapshot,
+            startsAt: gift.retreatDate.startsAt.toISOString(),
+            endsAt: gift.retreatDate.endsAt.toISOString(),
+            recipientName: `${gift.recipientFirstName} ${gift.recipientLastName}`.trim(),
+            recipientEmail: gift.recipientEmail,
+            roomType: gift.retreatRoomOption?.label || null,
+            guestCount: gift.retreatGuestCount || 1,
+            status: gift.status,
+            totalPaidPence: gift.totalPaidPence,
+            refundedAmountPence: gift.refundedAmountPence,
+            purchasedAt: gift.purchasedAt?.toISOString() || null,
+            deliveredAt: gift.deliveryEmailSentAt?.toISOString() || null,
+            redeemedAt: gift.redeemedAt?.toISOString() || null,
+          },
+        ]
+      : []
+  );
 }
 
 export async function redeemGiftPurchase(input: {
@@ -255,16 +480,25 @@ export async function redeemGiftPurchase(input: {
       gift.retreatGuestCount ?? gift.retreatRoomOption.guestsIncluded,
       1
     );
-    if (
-      retreatGuestCount > 1 &&
-      (!input.guestTwoFirstName?.trim() ||
-        !input.guestTwoLastName?.trim() ||
-        !input.guestTwoEmail?.trim())
-    ) {
-      throw new Error("SECOND_GUEST_REQUIRED");
-    }
+    await assertCurrentAcceptances(user.id, [
+      { type: AcceptanceType.terms, surface: "retreat_gift_redemption" },
+      { type: AcceptanceType.health_waiver, surface: "retreat_gift_redemption" },
+      { type: AcceptanceType.health_data, surface: "retreat_gift_redemption" },
+    ]);
 
     const booking = await db.$transaction(async (tx) => {
+      await lockGiftPurchase(tx, gift.id);
+      const currentGift = await tx.giftPurchase.findUnique({
+        where: { id: gift.id },
+        select: { status: true },
+      });
+      if (!currentGift) throw new Error("INVALID_GIFT");
+      if (currentGift.status === GiftPurchaseStatus.redeemed) {
+        throw new Error("ALREADY_REDEEMED");
+      }
+      if (currentGift.status !== GiftPurchaseStatus.purchased) {
+        throw new Error("GIFT_NOT_READY");
+      }
       const created = await tx.retreatBooking.create({
         data: {
           retreatDateId: gift.retreatDateId!,
@@ -365,6 +599,7 @@ export async function redeemGiftPurchase(input: {
       return created;
     });
 
+    await assignRoomUnitAfterPayment(booking.id);
     await ensureRetreatOnlineAccessEntitlement(booking.id);
     return { type: "retreat" as const, bookingId: booking.id };
   }
@@ -374,6 +609,18 @@ export async function redeemGiftPurchase(input: {
   }
 
   const enrolment = await db.$transaction(async (tx) => {
+    await lockGiftPurchase(tx, gift.id);
+    const currentGift = await tx.giftPurchase.findUnique({
+      where: { id: gift.id },
+      select: { status: true },
+    });
+    if (!currentGift) throw new Error("INVALID_GIFT");
+    if (currentGift.status === GiftPurchaseStatus.redeemed) {
+      throw new Error("ALREADY_REDEEMED");
+    }
+    if (currentGift.status !== GiftPurchaseStatus.purchased) {
+      throw new Error("GIFT_NOT_READY");
+    }
     const created = await tx.smallGroupProgrammeEnrollment.create({
       data: {
         programmeId: gift.smallGroupProgrammeId,

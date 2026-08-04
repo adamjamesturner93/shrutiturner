@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getGiftRedemptionState, redeemGiftPurchase } from "@/lib/gifts/service";
+import { isAcceptanceRequiredError } from "@/lib/legal/acceptance-service";
 
 type RedeemBody = {
   attendeeFirstName?: unknown;
@@ -62,6 +63,9 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
     });
     return NextResponse.json(result);
   } catch (error) {
+    if (isAcceptanceRequiredError(error)) {
+      return NextResponse.json(error.details, { status: 409 });
+    }
     if (
       error instanceof Error &&
       [

@@ -5,6 +5,10 @@ import type {
   RetreatCombinedContent,
 } from "@/lib/content/types";
 import type { JsonLdData } from "@/components/json-ld";
+import {
+  getEffectiveRetreatRatePricePence,
+  isRetreatEarlyBirdActive,
+} from "@/lib/retreats/pricing";
 
 const ORGANIZATION_NAME = "Shruti Turner";
 
@@ -145,8 +149,21 @@ export function createBlogSchema(input: {
   };
 }
 
-export function createRetreatEventSchema(retreat: RetreatCombinedContent): JsonLdData {
-  const nextDate = retreat.dates[0];
+function createRetreatDateEventSchema(
+  retreat: RetreatCombinedContent,
+  retreatDate: RetreatCombinedContent["dates"][number]
+): JsonLdData {
+  const isOnline =
+    retreat.deliveryMode === "online_live" || retreat.deliveryMode === "online_on_demand";
+  const lowestPrice = retreatDate.roomOptions
+    .flatMap((option) => option.ratePlans || [])
+    .reduce<number | null>((lowest, rate) => {
+      const pricePence = isRetreatEarlyBirdActive(rate)
+        ? getEffectiveRetreatRatePricePence(rate)
+        : rate.totalPricePence;
+      const price = pricePence / 100;
+      return lowest === null || price < lowest ? price : lowest;
+    }, null);
 
   return {
     "@context": "https://schema.org",
@@ -154,20 +171,73 @@ export function createRetreatEventSchema(retreat: RetreatCombinedContent): JsonL
     name: retreat.title,
     description: retreat.shortDescription,
     url: buildAbsoluteUrl(`/retreats/${retreat.slug}`),
-    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    image: retreat.imageUrl || undefined,
+    eventAttendanceMode: isOnline
+      ? "https://schema.org/OnlineEventAttendanceMode"
+      : "https://schema.org/OfflineEventAttendanceMode",
     eventStatus: "https://schema.org/EventScheduled",
-    startDate: nextDate?.startDate,
-    endDate: nextDate?.endDate,
-    location: {
-      "@type": "Place",
-      name: retreat.venueName || retreat.location,
-      address: retreat.location,
-    },
+    startDate: retreatDate.startDate,
+    endDate: retreatDate.endDate,
+    location: isOnline
+      ? {
+          "@type": "VirtualLocation",
+          url: buildAbsoluteUrl(`/retreats/${retreat.slug}`),
+        }
+      : {
+          "@type": "Place",
+          name: retreat.venueName || retreat.location,
+          address: retreat.location,
+        },
+    offers:
+      lowestPrice !== null
+        ? {
+            "@type": "Offer",
+            url: buildAbsoluteUrl(`/retreats/${retreat.slug}`),
+            price: lowestPrice.toFixed(2),
+            priceCurrency: retreat.currency,
+            availability:
+              retreatDate.availableSpaces > 0
+                ? "https://schema.org/InStock"
+                : "https://schema.org/SoldOut",
+          }
+        : undefined,
     organizer: {
       "@type": "Organization",
       name: ORGANIZATION_NAME,
       url: buildAbsoluteUrl("/"),
     },
+  };
+}
+
+export function createRetreatEventSchemas(retreat: RetreatCombinedContent): JsonLdData[] {
+  return retreat.dates.map((retreatDate) => createRetreatDateEventSchema(retreat, retreatDate));
+}
+
+export function createRetreatEventSchema(retreat: RetreatCombinedContent): JsonLdData {
+  const firstDate = retreat.dates[0];
+  if (!firstDate) {
+    return {
+      "@context": "https://schema.org",
+      "@type": "Event",
+      name: retreat.title,
+      description: retreat.shortDescription,
+      url: buildAbsoluteUrl(`/retreats/${retreat.slug}`),
+    };
+  }
+  return createRetreatDateEventSchema(retreat, firstDate);
+}
+
+export function createRetreatItemListSchema(retreats: RetreatCombinedContent[]): JsonLdData {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Retreats and online workshops",
+    itemListElement: retreats.map((retreat, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: retreat.title,
+      url: buildAbsoluteUrl(`/retreats/${retreat.slug}`),
+    })),
   };
 }
 

@@ -11,8 +11,13 @@ import {
   ExternalLink,
   MapPin,
   PoundSterling,
+  Plus,
   Save,
   Send,
+  Trash2,
+  CirclePause,
+  Globe2,
+  Gift,
   Users,
   Video,
 } from "lucide-react";
@@ -82,11 +87,26 @@ export function AdminRetreatDetail({
   const [error, setError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
   const [actionLoading, setActionLoading] = useState<
-    "" | "online-room" | "balance-due" | "chaser" | "early-bird"
+    | ""
+    | "online-room"
+    | "balance-due"
+    | "chaser"
+    | "early-bird"
+    | "status"
+    | "cancellation"
+    | "addon"
+    | "room"
+    | "gift-refund"
   >("");
   const [earlyBirdDrafts, setEarlyBirdDrafts] = useState<
     Record<string, { pricePounds: string; endsAt: string }>
   >({});
+  const [addonDraft, setAddonDraft] = useState({
+    name: "",
+    description: "",
+    pricePounds: "",
+    totalQuantity: "",
+  });
 
   useEffect(() => {
     if (!retreat) return;
@@ -174,7 +194,7 @@ export function AdminRetreatDetail({
   }, [retreat]);
 
   const runRetreatAction = async (
-    action: "online-room" | "balance-due" | "chaser",
+    action: "online-room" | "balance-due" | "chaser" | "status" | "addon" | "room" | "gift-refund",
     request: () => Promise<Response>
   ) => {
     setActionLoading(action);
@@ -184,28 +204,96 @@ export function AdminRetreatDetail({
       const response = await request();
       const payload = (await response.json().catch(() => null)) as
         | AdminRetreatDetailDto
-        | { sent?: number; skipped?: number; message?: string }
+        | { sent?: number; skipped?: number; message?: string; errors?: string[] }
         | null;
       if (!response.ok) {
-        throw new Error(
+        const message =
           payload && "message" in payload && payload.message
             ? payload.message
-            : "The retreat action failed."
-        );
+            : "The retreat action failed.";
+        const details =
+          payload && "errors" in payload && payload.errors?.length
+            ? ` ${payload.errors.join(" ")}`
+            : "";
+        throw new Error(`${message}${details}`);
       }
-      if (action === "online-room" && payload && "id" in payload) {
+      if (
+        (action === "online-room" ||
+          action === "status" ||
+          action === "addon" ||
+          action === "room" ||
+          action === "gift-refund") &&
+        payload &&
+        "id" in payload
+      ) {
         setRetreat(payload);
-        setActionMessage("Online room created.");
+        setActionMessage(
+          action === "online-room"
+            ? "Online room created."
+            : action === "addon"
+              ? "Optional extras updated."
+              : action === "room"
+                ? "Room assignment updated."
+                : action === "gift-refund"
+                  ? "Gift purchase cancelled and refund submitted."
+                  : "Status updated."
+        );
       } else if (payload && "sent" in payload) {
         setActionMessage(`Emails sent: ${payload.sent}. Skipped: ${payload.skipped ?? 0}.`);
       } else {
         setActionMessage("Action complete.");
       }
+      return true;
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "The retreat action failed.");
+      return false;
     } finally {
       setActionLoading("");
     }
+  };
+
+  const createAddon = async () => {
+    if (!retreat) return;
+    const pricePence = Math.round(Number(addonDraft.pricePounds) * 100);
+    const totalQuantity = addonDraft.totalQuantity.trim() ? Number(addonDraft.totalQuantity) : null;
+    if (!addonDraft.name.trim()) {
+      setError("Enter a name for the optional extra.");
+      return;
+    }
+    if (!Number.isInteger(pricePence) || pricePence < 0) {
+      setError("Enter a valid price for the optional extra.");
+      return;
+    }
+    if (totalQuantity !== null && (!Number.isInteger(totalQuantity) || totalQuantity < 1)) {
+      setError("Quantity must be a whole number greater than zero, or left blank.");
+      return;
+    }
+
+    const succeeded = await runRetreatAction("addon", () =>
+      fetch(`/api/admin/retreats/${retreat.id}/addons`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: addonDraft.name,
+          description: addonDraft.description || null,
+          pricePence,
+          totalQuantity,
+        }),
+      })
+    );
+    if (succeeded) {
+      setAddonDraft({ name: "", description: "", pricePounds: "", totalQuantity: "" });
+    }
+  };
+
+  const removeAddon = async (addonId: string, addonName: string) => {
+    if (!retreat) return;
+    if (!window.confirm(`Remove ${addonName} from this retreat date?`)) return;
+    await runRetreatAction("addon", () =>
+      fetch(`/api/admin/retreats/${retreat.id}/addons?addonId=${encodeURIComponent(addonId)}`, {
+        method: "DELETE",
+      })
+    );
   };
 
   const saveEarlyBirdRates = async () => {
@@ -271,6 +359,59 @@ export function AdminRetreatDetail({
     }
   };
 
+  const decideCancellation = async (requestId: string, action: "approve" | "reject") => {
+    if (!retreat) return;
+    const reason = window.prompt(
+      action === "approve"
+        ? "Optional note to include with the approval:"
+        : "Explain why this request is being rejected:"
+    );
+    if (reason === null || (action === "reject" && !reason.trim())) return;
+    if (
+      action === "approve" &&
+      !window.confirm(
+        "Approve this cancellation and submit the calculated refund to Stripe? This cannot be undone from this screen."
+      )
+    ) {
+      return;
+    }
+    setActionLoading("cancellation");
+    setActionMessage("");
+    setError("");
+    try {
+      const response = await fetch(`/api/admin/retreats/cancellations/${requestId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, reason }),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { success: true; data: { status: string } }
+        | { success: false; error: { message: string } }
+        | null;
+      if (!response.ok || !payload || !payload.success) {
+        throw new Error(
+          payload && payload.success === false
+            ? payload.error.message
+            : "Failed to decide cancellation."
+        );
+      }
+      const detailResponse = await fetch(`/api/admin/retreats/${retreat.id}`, {
+        cache: "no-store",
+      });
+      if (!detailResponse.ok) throw new Error("Cancellation updated, but refresh failed.");
+      setRetreat((await detailResponse.json()) as AdminRetreatDetailDto);
+      setActionMessage(
+        action === "approve" ? "Cancellation approved." : "Cancellation request rejected."
+      );
+    } catch (decisionError) {
+      setError(
+        decisionError instanceof Error ? decisionError.message : "Failed to decide cancellation."
+      );
+    } finally {
+      setActionLoading("");
+    }
+  };
+
   if (loading) {
     return (
       <AdminLayout title="Retreat - Admin">
@@ -317,8 +458,45 @@ export function AdminRetreatDetail({
               </span>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Badge variant="outline">{retreat.status.replaceAll("_", " ")}</Badge>
+            {retreat.status === "draft" || retreat.status === "closed" ? (
+              <Button
+                type="button"
+                disabled={actionLoading !== ""}
+                onClick={() =>
+                  void runRetreatAction("status", () =>
+                    fetch(`/api/admin/retreats/${retreat.id}/status`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ status: "open" }),
+                    })
+                  )
+                }
+              >
+                <Globe2 className="mr-2 h-4 w-4" />
+                {retreat.status === "draft" ? "Publish" : "Reopen bookings"}
+              </Button>
+            ) : null}
+            {retreat.status === "open" || retreat.status === "sold_out" ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={actionLoading !== ""}
+                onClick={() =>
+                  void runRetreatAction("status", () =>
+                    fetch(`/api/admin/retreats/${retreat.id}/status`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ status: "closed" }),
+                    })
+                  )
+                }
+              >
+                <CirclePause className="mr-2 h-4 w-4" />
+                Close bookings
+              </Button>
+            ) : null}
             <Button
               variant="outline"
               onClick={() =>
@@ -331,6 +509,7 @@ export function AdminRetreatDetail({
                     "Room Type",
                     "Assigned Room",
                     "Attendee Count",
+                    "Optional Extras",
                     "Payment Status",
                     "Booking Status",
                     "Dietary",
@@ -345,6 +524,7 @@ export function AdminRetreatDetail({
                     booking.roomType || "",
                     booking.roomUnitLabel || "",
                     String(booking.attendeeCount || 1),
+                    booking.addons.map((addon) => `${addon.name} x ${addon.quantity}`).join("; "),
                     booking.paymentStatus,
                     booking.bookingStatus,
                     booking.dietaryRequirements || "",
@@ -518,6 +698,131 @@ export function AdminRetreatDetail({
                       : "Before arrival"}
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Optional extras</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <p className="text-muted-foreground text-sm">
+                Extras are priced and stocked for this retreat date. They can only be changed while
+                the date is a draft, before bookings open.
+              </p>
+
+              {retreat.addons.length > 0 ? (
+                <div className="space-y-3">
+                  {retreat.addons.map((addon) => (
+                    <div
+                      key={addon.id}
+                      className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-start sm:justify-between"
+                    >
+                      <div>
+                        <p className="font-medium">{addon.name}</p>
+                        {addon.description ? (
+                          <p className="text-muted-foreground mt-1 text-sm">{addon.description}</p>
+                        ) : null}
+                        <p className="text-muted-foreground mt-2 text-xs">
+                          {formatCurrency(addon.pricePence)} ·{" "}
+                          {addon.totalQuantity === null
+                            ? "No quantity limit"
+                            : `${addon.availableQuantity ?? 0} of ${addon.totalQuantity} available`}
+                        </p>
+                      </div>
+                      {retreat.status === "draft" ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          title={`Remove ${addon.name}`}
+                          aria-label={`Remove ${addon.name}`}
+                          disabled={actionLoading !== ""}
+                          onClick={() => void removeAddon(addon.id, addon.name)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm">No optional extras configured.</p>
+              )}
+
+              {retreat.status === "draft" ? (
+                <div className="space-y-4 rounded-lg border p-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="addon-name">Name</Label>
+                      <Input
+                        id="addon-name"
+                        value={addonDraft.name}
+                        onChange={(event) =>
+                          setAddonDraft((current) => ({ ...current, name: event.target.value }))
+                        }
+                        placeholder="For example, massage appointment"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="addon-description">Description</Label>
+                      <Input
+                        id="addon-description"
+                        value={addonDraft.description}
+                        onChange={(event) =>
+                          setAddonDraft((current) => ({
+                            ...current,
+                            description: event.target.value,
+                          }))
+                        }
+                        placeholder="Shown during checkout"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="addon-price">Price (£)</Label>
+                      <Input
+                        id="addon-price"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={addonDraft.pricePounds}
+                        onChange={(event) =>
+                          setAddonDraft((current) => ({
+                            ...current,
+                            pricePounds: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="addon-quantity">Available quantity (optional)</Label>
+                      <Input
+                        id="addon-quantity"
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={addonDraft.totalQuantity}
+                        onChange={(event) =>
+                          setAddonDraft((current) => ({
+                            ...current,
+                            totalQuantity: event.target.value,
+                          }))
+                        }
+                        placeholder="Unlimited"
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={actionLoading !== ""}
+                    onClick={() => void createAddon()}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    {actionLoading === "addon" ? "Saving..." : "Add optional extra"}
+                  </Button>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
 
@@ -722,6 +1027,149 @@ export function AdminRetreatDetail({
           </Card>
         </div>
 
+        {retreat.gifts.length > 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Gift className="text-brand-accent h-5 w-5" />
+                Gift purchases
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="text-muted-foreground border-b">
+                  <tr>
+                    <th className="py-3 pr-4">Purchaser</th>
+                    <th className="py-3 pr-4">Recipient</th>
+                    <th className="py-3 pr-4">Place</th>
+                    <th className="py-3 pr-4">Payment</th>
+                    <th className="py-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {retreat.gifts.map((gift) => (
+                    <tr key={gift.id} className="border-border/50 border-b">
+                      <td className="py-3 pr-4">
+                        <p>{gift.purchaserName}</p>
+                        <p className="text-muted-foreground mt-1 text-xs">{gift.purchaserEmail}</p>
+                      </td>
+                      <td className="py-3 pr-4">
+                        <p>{gift.recipientName}</p>
+                        <p className="text-muted-foreground mt-1 text-xs">{gift.recipientEmail}</p>
+                      </td>
+                      <td className="py-3 pr-4">
+                        <p>{gift.roomLabel || "Retreat place"}</p>
+                        <p className="text-muted-foreground mt-1 text-xs">
+                          {gift.guestCount} {gift.guestCount === 1 ? "guest" : "guests"}
+                        </p>
+                      </td>
+                      <td className="py-3 pr-4">
+                        <Badge variant={badgeVariant(gift.status)}>
+                          {gift.status.replaceAll("_", " ")}
+                        </Badge>
+                        <p className="text-muted-foreground mt-1 text-xs">
+                          {formatCurrency(gift.totalPaidPence - gift.refundedAmountPence)}
+                        </p>
+                      </td>
+                      <td className="py-3 text-right">
+                        {gift.status === "purchased" ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={actionLoading !== ""}
+                            onClick={() => {
+                              if (
+                                !window.confirm(
+                                  "Cancel this unredeemed gift and submit the policy-based refund? This cannot be undone."
+                                )
+                              ) {
+                                return;
+                              }
+                              void runRetreatAction("gift-refund", () =>
+                                fetch(`/api/admin/retreats/${retreat.id}/gifts/${gift.id}/refund`, {
+                                  method: "POST",
+                                })
+                              );
+                            }}
+                          >
+                            Refund gift
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">No action needed</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Cancellation requests</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {retreat.bookings.some((booking) => booking.cancellationRequests.length > 0) ? (
+              retreat.bookings.flatMap((booking) =>
+                booking.cancellationRequests.map((request) => (
+                  <div key={request.id} className="rounded-lg border p-4 text-sm">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium">{booking.purchaserName}</p>
+                          <Badge variant={badgeVariant(request.status)}>
+                            {request.status.replaceAll("_", " ")}
+                          </Badge>
+                        </div>
+                        <p className="text-muted-foreground mt-1">{booking.purchaserEmail}</p>
+                        <p className="mt-3">
+                          Calculated refund: {formatCurrency(request.refundableAmountPence)}
+                        </p>
+                        {request.reason ? (
+                          <p className="text-muted-foreground mt-2">
+                            Customer note: {request.reason}
+                          </p>
+                        ) : null}
+                        {request.adminDecisionReason ? (
+                          <p className="text-muted-foreground mt-2">
+                            Decision note: {request.adminDecisionReason}
+                          </p>
+                        ) : null}
+                      </div>
+                      {["requested", "failed"].includes(request.status) ? (
+                        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                          <Button
+                            type="button"
+                            disabled={actionLoading !== ""}
+                            onClick={() => void decideCancellation(request.id, "approve")}
+                          >
+                            {request.status === "failed" ? "Retry refund" : "Approve and refund"}
+                          </Button>
+                          {request.status === "requested" ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={actionLoading !== ""}
+                              onClick={() => void decideCancellation(request.id, "reject")}
+                            >
+                              Reject
+                            </Button>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ))
+              )
+            ) : (
+              <p className="text-muted-foreground text-sm">No cancellation requests.</p>
+            )}
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Attendee roster</CardTitle>
@@ -733,6 +1181,7 @@ export function AdminRetreatDetail({
                   <th className="py-3 pr-4">Attendee</th>
                   <th className="py-3 pr-4">Purchaser</th>
                   <th className="py-3 pr-4">Room</th>
+                  <th className="py-3 pr-4">Extras</th>
                   <th className="py-3 pr-4">Payment</th>
                   <th className="py-3 pr-4">Booked</th>
                 </tr>
@@ -750,10 +1199,60 @@ export function AdminRetreatDetail({
                     </td>
                     <td className="py-3 pr-4">
                       <p>{booking.roomType || "Shared"}</p>
-                      <p className="text-muted-foreground mt-1 text-xs">
-                        {booking.roomUnitLabel || "Not assigned"} · {booking.attendeeCount || 1}{" "}
-                        {(booking.attendeeCount || 1) === 1 ? "person" : "people"}
-                      </p>
+                      {retreat.retreatType === "online" ? (
+                        <p className="text-muted-foreground mt-1 text-xs">
+                          {booking.attendeeCount || 1}{" "}
+                          {(booking.attendeeCount || 1) === 1 ? "person" : "people"}
+                        </p>
+                      ) : (
+                        <label className="mt-1 block">
+                          <span className="sr-only">Assigned room for {booking.attendeeName}</span>
+                          <select
+                            className="border-input bg-background focus-visible:ring-ring min-h-9 rounded-md border px-2 text-xs focus-visible:ring-2 focus-visible:outline-none"
+                            value={booking.roomUnitId || ""}
+                            disabled={actionLoading !== ""}
+                            onChange={(event) =>
+                              void runRetreatAction("room", () =>
+                                fetch(`/api/admin/retreats/${retreat.id}/room-assignments`, {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    bookingId: booking.id,
+                                    roomUnitId: event.target.value || null,
+                                  }),
+                                })
+                              )
+                            }
+                          >
+                            <option value="">Not assigned</option>
+                            {retreat.roomUnits
+                              .filter((unit) => unit.roomOptionId === booking.roomOptionId)
+                              .map((unit) => (
+                                <option
+                                  key={unit.id}
+                                  value={unit.id}
+                                  disabled={
+                                    unit.id !== booking.roomUnitId &&
+                                    unit.occupiedUnits >= unit.capacityUnits
+                                  }
+                                >
+                                  {unit.label} ({unit.occupiedUnits}/{unit.capacityUnits})
+                                </option>
+                              ))}
+                          </select>
+                        </label>
+                      )}
+                    </td>
+                    <td className="py-3 pr-4">
+                      {booking.addons.length > 0 ? (
+                        booking.addons.map((addon) => (
+                          <p key={addon.id}>
+                            {addon.name} × {addon.quantity}
+                          </p>
+                        ))
+                      ) : (
+                        <span className="text-muted-foreground">None</span>
+                      )}
                     </td>
                     <td className="py-3 pr-4">
                       <div className="flex flex-col gap-1">

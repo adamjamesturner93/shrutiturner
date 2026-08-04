@@ -13,7 +13,9 @@ import {
   Check,
   Gift,
   Mail,
+  Minus,
   MonitorPlay,
+  Plus,
   ShieldCheck,
   Users,
 } from "lucide-react";
@@ -159,6 +161,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
   const [selectedGuestCount, setSelectedGuestCount] = useState(
     Number.isFinite(queryGuestCount) && queryGuestCount > 0 ? Math.trunc(queryGuestCount) : 1
   );
+  const [addonQuantities, setAddonQuantities] = useState<Record<string, number>>({});
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingLegalAcceptances, setPendingLegalAcceptances] = useState<PendingAcceptance[]>([]);
@@ -217,6 +220,36 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
       setSelectedGuestCount(getDefaultGuestCount(nextRoom));
     }
   }, [selectedDate, selectedRoomId]);
+
+  useEffect(() => {
+    if (!selectedDate || purchaseMode === "gift") {
+      setAddonQuantities({});
+      return;
+    }
+
+    const availableAddons = new Map(
+      selectedDate.addons
+        .filter((addon) => !addon.requiresTimeSlot)
+        .map((addon) => [addon.id, addon.availableQuantity])
+    );
+    setAddonQuantities((current) =>
+      Object.fromEntries(
+        Object.entries(current)
+          .filter(([addonId]) => availableAddons.has(addonId))
+          .map(([addonId, quantity]) => {
+            const availableQuantity = availableAddons.get(addonId);
+            return [
+              addonId,
+              Math.max(
+                0,
+                Math.min(quantity, availableQuantity === null ? quantity : availableQuantity)
+              ),
+            ];
+          })
+          .filter(([, quantity]) => Number(quantity) > 0)
+      )
+    );
+  }, [purchaseMode, selectedDate]);
 
   useEffect(() => {
     if (!user) return;
@@ -296,7 +329,19 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
   );
   const payInFullTotalPence = Math.max(effectiveTotalPricePence - payInFullDiscountPence, 0);
   const isPayingInFull = effectivePaymentOption === "pay_in_full";
-  const dueTodayPence = isPayingInFull ? payInFullTotalPence : depositAmountPence;
+  const selectableAddons = (selectedDate?.addons || []).filter(
+    (addon) =>
+      !addon.requiresTimeSlot && (addon.availableQuantity === null || addon.availableQuantity > 0)
+  );
+  const selectedAddons = selectableAddons
+    .map((addon) => ({ addon, quantity: addonQuantities[addon.id] || 0 }))
+    .filter((selection) => selection.quantity > 0);
+  const addonTotalPence = selectedAddons.reduce(
+    (total, selection) => total + selection.addon.pricePence * selection.quantity,
+    0
+  );
+  const dueTodayPence =
+    (isPayingInFull ? payInFullTotalPence : depositAmountPence) + addonTotalPence;
   const depositBalanceAmountPence = Math.max(effectiveTotalPricePence - depositAmountPence, 0);
   const balanceAmountPence = isPayingInFull ? 0 : depositBalanceAmountPence;
   const termsSatisfied = Boolean(user?.hasAgreedToTerms || formData.agreedToTerms);
@@ -375,15 +420,26 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
         }
       }
 
-      if (
-        selectedGuestCount > 1 &&
-        (!formData.guestTwoFirstName.trim() ||
-          !formData.guestTwoLastName.trim() ||
-          !formData.guestTwoEmail.trim())
-      ) {
-        setError("Please complete the second guest details before continuing.");
-        setIsSubmitting(false);
-        return;
+      if (selectedGuestCount > 1) {
+        const hasAnySecondGuestDetails = [
+          formData.guestTwoFirstName,
+          formData.guestTwoLastName,
+          formData.guestTwoEmail,
+          formData.guestTwoDietaryRequirements,
+        ].some((value) => value.trim().length > 0);
+
+        if (
+          hasAnySecondGuestDetails &&
+          (!formData.guestTwoFirstName.trim() ||
+            !formData.guestTwoLastName.trim() ||
+            !formData.guestTwoEmail.trim())
+        ) {
+          setError(
+            "Complete the second guest's name and email, or leave this section blank and add their details later."
+          );
+          setIsSubmitting(false);
+          return;
+        }
       }
     } else if (
       !formData.recipientFirstName.trim() ||
@@ -416,6 +472,10 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
           retreatDateId: selectedDate.id,
           roomOptionId: selectedRoom.id,
           guestCount: selectedGuestCount,
+          addons: selectedAddons.map(({ addon, quantity }) => ({
+            addonId: addon.id,
+            quantity,
+          })),
           purchaseMode,
           paymentOption: effectivePaymentOption,
           purchaserFirstName,
@@ -489,7 +549,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
         throw new Error(payload?.message || "Failed to start checkout.");
       }
 
-      window.location.href = payload.checkoutUrl;
+      window.location.assign(payload.checkoutUrl);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Failed to start checkout.");
       setIsSubmitting(false);
@@ -792,6 +852,87 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                 ) : null}
               </div>
 
+              {purchaseMode === "self" && selectableAddons.length > 0 ? (
+                <div className="marketing-panel rounded-[1.5rem] p-6">
+                  <h2 className="text-2xl">Optional extras</h2>
+                  <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                    Extras are paid today and reserved with your booking.
+                  </p>
+                  <div className="mt-6 space-y-3">
+                    {selectableAddons.map((addon) => {
+                      const quantity = addonQuantities[addon.id] || 0;
+                      const maximumQuantity = Math.min(addon.availableQuantity ?? 10, 10);
+                      return (
+                        <div
+                          key={addon.id}
+                          className="grid gap-4 rounded-[1.25rem] border p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                        >
+                          <div>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <p className="text-lg">{addon.name}</p>
+                              <span className="text-muted-foreground text-sm">
+                                {formatMoney(addon.pricePence, addon.currency)} each
+                              </span>
+                            </div>
+                            {addon.description ? (
+                              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                                {addon.description}
+                              </p>
+                            ) : null}
+                            {addon.availableQuantity !== null ? (
+                              <p className="text-muted-foreground mt-2 text-xs">
+                                {addon.availableQuantity} available
+                              </p>
+                            ) : null}
+                          </div>
+                          <div
+                            className="flex items-center gap-2"
+                            aria-label={`${addon.name} quantity`}
+                          >
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              disabled={quantity === 0}
+                              onClick={() =>
+                                setAddonQuantities((current) => ({
+                                  ...current,
+                                  [addon.id]: Math.max((current[addon.id] || 0) - 1, 0),
+                                }))
+                              }
+                              aria-label={`Remove one ${addon.name}`}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                            <output className="w-8 text-center tabular-nums" aria-live="polite">
+                              {quantity}
+                            </output>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              disabled={quantity >= maximumQuantity}
+                              onClick={() =>
+                                setAddonQuantities((current) => ({
+                                  ...current,
+                                  [addon.id]: Math.min(
+                                    (current[addon.id] || 0) + 1,
+                                    maximumQuantity
+                                  ),
+                                }))
+                              }
+                              aria-label={`Add one ${addon.name}`}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
               {purchaseMode === "self" && selectedRoom ? (
                 <div className="marketing-panel rounded-[1.5rem] p-6">
                   <h2 className="text-2xl">3. Choose how to pay</h2>
@@ -799,8 +940,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                     <div className="border-brand-accent bg-brand-accent/5 mt-6 rounded-[1.25rem] border p-5">
                       <p className="text-xl">Full payment required</p>
                       <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                        Pay {formatMoney(effectiveTotalPricePence, retreat.currency)} today. No
-                        balance is due later and no separate pay-in-full discount applies.
+                        Pay{" "}
+                        {formatMoney(effectiveTotalPricePence + addonTotalPence, retreat.currency)}{" "}
+                        today. No balance is due later and no separate pay-in-full discount applies.
                       </p>
                     </div>
                   ) : (
@@ -816,9 +958,10 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                       >
                         <p className="text-xl">Pay deposit</p>
                         <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                          Pay {formatMoney(depositAmountPence, retreat.currency)} today. The
-                          remaining {formatMoney(depositBalanceAmountPence, retreat.currency)} is
-                          paid later by balance link.
+                          Pay {formatMoney(depositAmountPence + addonTotalPence, retreat.currency)}{" "}
+                          today. The remaining{" "}
+                          {formatMoney(depositBalanceAmountPence, retreat.currency)} is paid later
+                          by balance link. Optional extras are included in today's payment.
                         </p>
                       </button>
 
@@ -833,7 +976,8 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                       >
                         <p className="text-xl">Pay in full</p>
                         <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                          Pay {formatMoney(payInFullTotalPence, retreat.currency)} today
+                          Pay {formatMoney(payInFullTotalPence + addonTotalPence, retreat.currency)}{" "}
+                          today
                           {payInFullDiscountPence > 0
                             ? ` including a ${formatMoney(
                                 payInFullDiscountPence,
@@ -1064,16 +1208,17 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
 
                   {selectedRoom && selectedGuestCount > 1 ? (
                     <div className="rounded-[1.5rem] border p-6">
-                      <h2 className="text-2xl">7. Second guest details</h2>
+                      <h2 className="text-2xl">7. Second guest details (optional for now)</h2>
                       <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                        This room reserves space for two guests, so please add the second guest now.
+                        You can add these details now or provide them later from your retreat
+                        booking. If you start this section, complete the guest&apos;s name and
+                        email.
                       </p>
                       <div className="mt-6 grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
                           <Label htmlFor="guestTwoFirstName">First name</Label>
                           <Input
                             id="guestTwoFirstName"
-                            required
                             value={formData.guestTwoFirstName}
                             onChange={(event) =>
                               setFormData((current) => ({
@@ -1087,7 +1232,6 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                           <Label htmlFor="guestTwoLastName">Last name</Label>
                           <Input
                             id="guestTwoLastName"
-                            required
                             value={formData.guestTwoLastName}
                             onChange={(event) =>
                               setFormData((current) => ({
@@ -1102,7 +1246,6 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                         <Label htmlFor="guestTwoEmail">Email</Label>
                         <Input
                           id="guestTwoEmail"
-                          required
                           type="email"
                           value={formData.guestTwoEmail}
                           onChange={(event) =>
@@ -1377,6 +1520,21 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                   <span className="text-muted-foreground">Guests</span>
                   <span>{selectedRoom ? getGuestCountLabel(selectedGuestCount) : "TBC"}</span>
                 </div>
+                {selectedAddons.length > 0 ? (
+                  <div className="border-t pt-4">
+                    <p className="text-muted-foreground mb-2">Optional extras</p>
+                    <div className="space-y-2">
+                      {selectedAddons.map(({ addon, quantity }) => (
+                        <div key={addon.id} className="flex items-start justify-between gap-3">
+                          <span>
+                            {addon.name} × {quantity}
+                          </span>
+                          <span>{formatMoney(addon.pricePence * quantity, addon.currency)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               {selectedRoom ? (

@@ -66,6 +66,16 @@ export interface RetreatRoomOptionContent {
   isWaitlistOnly?: boolean;
 }
 
+export interface RetreatAddonContent {
+  id: string;
+  name: string;
+  description?: string;
+  pricePence: number;
+  currency: string;
+  availableQuantity: number | null;
+  requiresTimeSlot: boolean;
+}
+
 export interface RetreatPaymentPlanContent {
   instalments: Array<{
     label: string;
@@ -353,6 +363,7 @@ export interface RetreatCombinedContent {
     availableSpaces: number;
     totalSpaces: number;
     roomOptions: RetreatRoomOptionContent[];
+    addons: RetreatAddonContent[];
     paymentPlan?: RetreatPaymentPlanContent;
     paymentPolicy?: "deposit" | "full_payment";
     payInFullDiscountEnabled?: boolean;
@@ -376,6 +387,8 @@ export interface RetreatCombinedContent {
   experienceLevel?: string;
   foodAndDrinkDescription?: string;
   whatToBring?: string[];
+  seoTitle?: string;
+  seoDescription?: string;
   venueId?: string;
   venueSlug?: string;
   venueName?: string;

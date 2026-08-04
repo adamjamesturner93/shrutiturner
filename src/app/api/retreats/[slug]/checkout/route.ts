@@ -34,6 +34,7 @@ type RetreatCheckoutBody = {
   recipientEmail?: unknown;
   recipientMessage?: unknown;
   deliveryTarget?: unknown;
+  addons?: unknown;
 };
 
 export async function POST(request: Request, context: { params: Promise<{ slug: string }> }) {
@@ -91,6 +92,15 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
       recipientEmail: typeof body.recipientEmail === "string" ? body.recipientEmail : "",
       recipientMessage: typeof body.recipientMessage === "string" ? body.recipientMessage : "",
       deliveryTarget: body.deliveryTarget === "buyer" ? "buyer" : "recipient",
+      addons: Array.isArray(body.addons)
+        ? body.addons.flatMap((value) => {
+            if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+            const row = value as Record<string, unknown>;
+            return typeof row.addonId === "string" && typeof row.quantity === "number"
+              ? [{ addonId: row.addonId, quantity: row.quantity }]
+              : [];
+          })
+        : [],
     });
     revalidateTag("retreats-public", "max");
     return NextResponse.json(result);
@@ -108,15 +118,38 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
       error instanceof Error &&
       (error.message === "RETREAT_NOT_FOUND" ||
         error.message === "RETREAT_DATE_NOT_FOUND" ||
-        error.message === "RETREAT_DATE_UNAVAILABLE" ||
         error.message === "ROOM_OPTION_NOT_FOUND" ||
-        error.message === "ROOM_OPTION_UNAVAILABLE" ||
         error.message === "RETREAT_GUEST_COUNT_INVALID" ||
         error.message === "RETREAT_RATE_PLAN_NOT_FOUND" ||
+        error.message === "ATTENDEE_REQUIRED" ||
         error.message === "SECOND_GUEST_REQUIRED" ||
-        error.message === "RECIPIENT_REQUIRED")
+        error.message === "RECIPIENT_REQUIRED" ||
+        error.message === "RETREAT_ADDON_INVALID" ||
+        error.message === "RETREAT_GIFT_ADDONS_UNSUPPORTED")
     ) {
-      return NextResponse.json({ message: "That retreat date is not available." }, { status: 400 });
+      return NextResponse.json(
+        { message: "Check the booking details and try again." },
+        { status: 400 }
+      );
+    }
+    if (
+      error instanceof Error &&
+      [
+        "RETREAT_DATE_UNAVAILABLE",
+        "RETREAT_BOOKING_WINDOW_CLOSED",
+        "ROOM_OPTION_UNAVAILABLE",
+        "RETREAT_ADDON_UNAVAILABLE",
+        "RETREAT_CAPACITY_UNAVAILABLE",
+      ].includes(error.message)
+    ) {
+      return NextResponse.json(
+        {
+          code: "RETREAT_AVAILABILITY_CHANGED",
+          message:
+            "Availability changed while you were booking. Refresh the page and choose from the remaining options.",
+        },
+        { status: 409 }
+      );
     }
     if (error instanceof Error && error.message === "RETREAT_LEGAL_ACCEPTANCE_REQUIRED") {
       return NextResponse.json(

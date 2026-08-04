@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ensureSubscriberLinkedToUser } from "@/lib/newsletter/subscriber-service";
+import { ensureRetreatOnlineAccessEntitlement } from "@/lib/retreats/service";
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -32,4 +33,19 @@ export async function linkPendingRecordsForUser(userId: string, emailInput: stri
       data: { purchaserUserId: userId },
     }),
   ]);
+
+  const linkedOnlineBookings = await db.retreatBooking.findMany({
+    where: {
+      attendeeUserId: userId,
+      attendeeEmail: email,
+      bookingStatus: {
+        in: ["deposit_paid", "balance_due", "paid_in_full"],
+      },
+      retreatDate: { retreatType: "online" },
+    },
+    select: { id: true },
+  });
+  await Promise.all(
+    linkedOnlineBookings.map((booking) => ensureRetreatOnlineAccessEntitlement(booking.id))
+  );
 }

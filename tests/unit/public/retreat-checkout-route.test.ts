@@ -33,6 +33,7 @@ function checkoutRequest() {
       purchaserLastName: "One",
       purchaserEmail: "reader@example.com",
       paymentOption: "pay_in_full",
+      addons: [{ addonId: "massage_1", quantity: 1 }],
     }),
   });
 }
@@ -73,8 +74,43 @@ describe("POST /api/retreats/[slug]/checkout", () => {
         retreatSlug: "sankalpa-online-workshop",
         paymentOption: "pay_in_full",
         purchaserUserId: null,
+        addons: [{ addonId: "massage_1", quantity: 1 }],
       })
     );
     expect(revalidateTagMock).toHaveBeenCalledWith("retreats-public", "max");
+  });
+
+  it.each([
+    "RETREAT_DATE_UNAVAILABLE",
+    "RETREAT_BOOKING_WINDOW_CLOSED",
+    "ROOM_OPTION_UNAVAILABLE",
+    "RETREAT_ADDON_UNAVAILABLE",
+    "RETREAT_CAPACITY_UNAVAILABLE",
+  ])("returns a conflict when availability changes: %s", async (code) => {
+    createRetreatCheckoutMock.mockRejectedValue(new Error(code));
+
+    const response = await route.POST(checkoutRequest(), {
+      params: Promise.resolve({ slug: "sankalpa-online-workshop" }),
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      code: "RETREAT_AVAILABILITY_CHANGED",
+      message:
+        "Availability changed while you were booking. Refresh the page and choose from the remaining options.",
+    });
+  });
+
+  it("returns a validation response when attendee details are missing", async () => {
+    createRetreatCheckoutMock.mockRejectedValue(new Error("ATTENDEE_REQUIRED"));
+
+    const response = await route.POST(checkoutRequest(), {
+      params: Promise.resolve({ slug: "sankalpa-online-workshop" }),
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      message: "Check the booking details and try again.",
+    });
   });
 });

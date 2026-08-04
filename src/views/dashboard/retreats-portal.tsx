@@ -12,12 +12,16 @@ import {
   MessageCircle,
   Shield,
   Video,
+  XCircle,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { DashboardSkeleton } from "@/components/dashboard-skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { VideoRoom } from "@/components/video/video-room";
 import type { RetreatBookingDetailDto } from "@/lib/api/types";
 
@@ -66,6 +70,16 @@ export function DashboardRetreatDetail({
   const [payingBalance, setPayingBalance] = useState(false);
   const [showOnlineRoom, setShowOnlineRoom] = useState(false);
   const [openingReplay, setOpeningReplay] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [requestingCancellation, setRequestingCancellation] = useState(false);
+  const [savingSecondaryGuest, setSavingSecondaryGuest] = useState(false);
+  const [secondaryGuestSaved, setSecondaryGuestSaved] = useState(false);
+  const [secondaryGuest, setSecondaryGuest] = useState({
+    firstName: initialData?.secondaryGuest?.firstName || "",
+    lastName: initialData?.secondaryGuest?.lastName || "",
+    email: initialData?.secondaryGuest?.email || "",
+    dietaryRequirements: initialData?.secondaryGuest?.dietaryRequirements || "",
+  });
 
   useEffect(() => {
     if (initialData || !id) return;
@@ -76,8 +90,11 @@ export function DashboardRetreatDetail({
       try {
         const response = await fetch(`/api/me/retreats/${id}`, { cache: "no-store" });
         if (!response.ok) throw new Error("Failed to load retreat booking.");
-        const payload = (await response.json()) as RetreatBookingDetailDto;
-        if (active) setBooking(payload);
+        const payload = (await response.json()) as {
+          success: true;
+          data: RetreatBookingDetailDto;
+        };
+        if (active) setBooking(payload.data);
       } catch (loadError) {
         if (active) {
           setError(
@@ -92,6 +109,16 @@ export function DashboardRetreatDetail({
       active = false;
     };
   }, [id, initialData]);
+
+  useEffect(() => {
+    if (!booking?.secondaryGuest) return;
+    setSecondaryGuest({
+      firstName: booking.secondaryGuest.firstName,
+      lastName: booking.secondaryGuest.lastName,
+      email: booking.secondaryGuest.email,
+      dietaryRequirements: booking.secondaryGuest.dietaryRequirements || "",
+    });
+  }, [booking?.secondaryGuest]);
 
   const balanceState = searchParams.get("balance");
 
@@ -142,6 +169,83 @@ export function DashboardRetreatDetail({
       );
     } finally {
       setOpeningReplay(false);
+    }
+  };
+
+  const requestCancellation = async () => {
+    if (!booking || !booking.canRequestCancellation) return;
+    if (
+      !window.confirm(
+        "Send this cancellation request to Shruti? Your booking remains active until it is reviewed."
+      )
+    ) {
+      return;
+    }
+    setRequestingCancellation(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/me/retreats/${booking.id}/cancellation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: cancellationReason }),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | {
+            success: true;
+            data: NonNullable<RetreatBookingDetailDto["latestCancellation"]>;
+          }
+        | { success: false; error: { message: string } }
+        | null;
+      if (!response.ok || !payload || !payload.success) {
+        throw new Error(
+          payload && payload.success === false
+            ? payload.error.message
+            : "Failed to request cancellation."
+        );
+      }
+      setBooking({
+        ...booking,
+        canRequestCancellation: false,
+        latestCancellation: payload.data,
+      });
+      setCancellationReason("");
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error ? submitError.message : "Failed to request cancellation."
+      );
+    } finally {
+      setRequestingCancellation(false);
+    }
+  };
+
+  const saveSecondaryGuest = async () => {
+    if (!booking) return;
+    setSavingSecondaryGuest(true);
+    setSecondaryGuestSaved(false);
+    setError("");
+    try {
+      const response = await fetch(`/api/me/retreats/${booking.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(secondaryGuest),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { success: true; data: RetreatBookingDetailDto }
+        | { success: false; error: { message: string } }
+        | null;
+      if (!response.ok || !payload || !payload.success) {
+        throw new Error(
+          payload && payload.success === false
+            ? payload.error.message
+            : "Failed to save the second guest."
+        );
+      }
+      setBooking(payload.data);
+      setSecondaryGuestSaved(true);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Failed to save the second guest.");
+    } finally {
+      setSavingSecondaryGuest(false);
     }
   };
 
@@ -252,6 +356,20 @@ export function DashboardRetreatDetail({
                   <p className="text-muted-foreground text-xs tracking-wide uppercase">Room</p>
                   <p className="mt-1">{booking.roomType || "Not selected"}</p>
                 </div>
+                {booking.addons.length > 0 ? (
+                  <div>
+                    <p className="text-muted-foreground text-xs tracking-wide uppercase">
+                      Optional extras
+                    </p>
+                    <div className="mt-1 space-y-1">
+                      {booking.addons.map((addon) => (
+                        <p key={addon.id}>
+                          {addon.name} × {addon.quantity}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <div>
                   <p className="text-muted-foreground text-xs tracking-wide uppercase">
                     Balance due
@@ -279,6 +397,90 @@ export function DashboardRetreatDetail({
                 </div>
               </CardContent>
             </Card>
+
+            {booking.attendeeCount > 1 ? (
+              <Card className="rounded-[1.5rem]">
+                <CardHeader>
+                  <CardTitle className="text-lg">Second guest</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    Add the person sharing this booking so Shruti can plan accommodation and food.
+                    They will provide their own health and legal agreements separately.
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="secondaryGuestFirstName">Given or chosen name</Label>
+                      <Input
+                        id="secondaryGuestFirstName"
+                        value={secondaryGuest.firstName}
+                        onChange={(event) =>
+                          setSecondaryGuest((current) => ({
+                            ...current,
+                            firstName: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="secondaryGuestLastName">Family name</Label>
+                      <Input
+                        id="secondaryGuestLastName"
+                        value={secondaryGuest.lastName}
+                        onChange={(event) =>
+                          setSecondaryGuest((current) => ({
+                            ...current,
+                            lastName: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="secondaryGuestEmail">Email</Label>
+                    <Input
+                      id="secondaryGuestEmail"
+                      type="email"
+                      value={secondaryGuest.email}
+                      onChange={(event) =>
+                        setSecondaryGuest((current) => ({
+                          ...current,
+                          email: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="secondaryGuestDietaryRequirements">
+                      Dietary requirements (optional)
+                    </Label>
+                    <Textarea
+                      id="secondaryGuestDietaryRequirements"
+                      value={secondaryGuest.dietaryRequirements}
+                      onChange={(event) =>
+                        setSecondaryGuest((current) => ({
+                          ...current,
+                          dietaryRequirements: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  {secondaryGuestSaved ? (
+                    <p className="text-sm text-emerald-700" role="status">
+                      Second guest details saved.
+                    </p>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={savingSecondaryGuest}
+                    onClick={() => void saveSecondaryGuest()}
+                  >
+                    {savingSecondaryGuest ? "Saving..." : "Save second guest"}
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : null}
 
             <Card className="rounded-[1.5rem]">
               <CardHeader>
@@ -461,6 +663,63 @@ export function DashboardRetreatDetail({
                     Contact Shruti
                   </Link>
                 </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-[1.5rem]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <XCircle className="text-brand-accent h-5 w-5" />
+                  Cancellation
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm">
+                {booking.latestCancellation ? (
+                  <div className="rounded-lg border p-4">
+                    <p className="font-medium">
+                      Request {booking.latestCancellation.status.replaceAll("_", " ")}
+                    </p>
+                    <p className="text-muted-foreground mt-2">
+                      Refund under the terms recorded for this request:{" "}
+                      {formatCurrency(booking.latestCancellation.refundableAmountPence)}.
+                    </p>
+                    {booking.latestCancellation.adminDecisionReason ? (
+                      <p className="text-muted-foreground mt-2">
+                        Shruti's note: {booking.latestCancellation.adminDecisionReason}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+                {booking.canRequestCancellation ? (
+                  <div className="space-y-3">
+                    <p className="text-muted-foreground">
+                      Requesting cancellation does not cancel the booking immediately. Shruti will
+                      review the request against the terms recorded when you booked and confirm any
+                      refund by email.
+                    </p>
+                    <Textarea
+                      value={cancellationReason}
+                      onChange={(event) => setCancellationReason(event.target.value)}
+                      maxLength={2000}
+                      placeholder="Add any context you would like Shruti to consider (optional)"
+                      aria-label="Cancellation request note"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      disabled={requestingCancellation}
+                      onClick={() => void requestCancellation()}
+                    >
+                      {requestingCancellation ? "Sending request..." : "Request cancellation"}
+                    </Button>
+                  </div>
+                ) : !booking.latestCancellation ? (
+                  <p className="text-muted-foreground">
+                    Online cancellation is not available for this booking. Contact Shruti if you
+                    need help.
+                  </p>
+                ) : null}
               </CardContent>
             </Card>
           </div>

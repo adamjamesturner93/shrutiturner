@@ -129,9 +129,13 @@ export async function POST(request: Request) {
     }
     if (
       error instanceof Error &&
-      ["INVALID_DATE_RANGE", "INVALID_CAPACITY", "INVALID_PRICE", "INVALID_EARLY_BIRD"].includes(
-        error.message
-      )
+      [
+        "INVALID_DATE_RANGE",
+        "INVALID_CAPACITY",
+        "INVALID_PRICE",
+        "INVALID_EARLY_BIRD",
+        "RETREAT_TYPE_MISMATCH",
+      ].includes(error.message)
     ) {
       return NextResponse.json({ message: "Invalid retreat date details." }, { status: 400 });
     }

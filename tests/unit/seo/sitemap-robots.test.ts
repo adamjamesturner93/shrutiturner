@@ -4,8 +4,8 @@ const mocks = vi.hoisted(() => ({
   isHoldingStage: vi.fn(),
   getBlogPosts: vi.fn(),
   getClassDefinitions: vi.fn(),
-  getRetreatsCombined: vi.fn(),
   getSmallGroupTemplates: vi.fn(),
+  listOperationalRetreats: vi.fn(),
 }));
 
 vi.mock("@/lib/app-url", () => ({
@@ -20,8 +20,11 @@ vi.mock("@/lib/site-stage", () => ({
 vi.mock("@/lib/content", () => ({
   getBlogPosts: mocks.getBlogPosts,
   getClassDefinitions: mocks.getClassDefinitions,
-  getRetreatsCombined: mocks.getRetreatsCombined,
   getSmallGroupTemplates: mocks.getSmallGroupTemplates,
+}));
+
+vi.mock("@/lib/retreats/service", () => ({
+  listOperationalRetreats: mocks.listOperationalRetreats,
 }));
 
 const { default: sitemap } = await import("@/app/sitemap");
@@ -52,7 +55,12 @@ describe("sitemap and robots", () => {
     ]);
     mocks.getClassDefinitions.mockResolvedValue([{ slug: "adaptive-strength" }]);
     mocks.getSmallGroupTemplates.mockResolvedValue([{ slug: "six-week-reset" }]);
-    mocks.getRetreatsCombined.mockResolvedValue([{ slug: "spring-retreat" }]);
+    mocks.listOperationalRetreats.mockResolvedValue([
+      {
+        slug: "spring-retreat",
+        dates: [{ startDate: "2026-05-01T10:00:00.000Z" }],
+      },
+    ]);
   });
 
   it("lists public static and dynamic routes without non-public routes", async () => {
@@ -61,10 +69,12 @@ describe("sitemap and robots", () => {
     expect(urls).toContain("https://shrutiturner.co.uk/blog/blog-post");
     expect(urls).not.toContain("https://shrutiturner.co.uk/classes/adaptive-strength");
     expect(urls).not.toContain("https://shrutiturner.co.uk/classes/small-groups/six-week-reset");
-    expect(urls).not.toContain("https://shrutiturner.co.uk/retreats/spring-retreat");
+    expect(urls).toContain("https://shrutiturner.co.uk/retreats");
+    expect(urls).toContain("https://shrutiturner.co.uk/retreats/spring-retreat");
+    expect(urls).not.toContain("https://shrutiturner.co.uk/retreats/spring-retreat/checkout");
     expect(mocks.getClassDefinitions).not.toHaveBeenCalled();
     expect(mocks.getSmallGroupTemplates).not.toHaveBeenCalled();
-    expect(mocks.getRetreatsCombined).not.toHaveBeenCalled();
+    expect(mocks.listOperationalRetreats).toHaveBeenCalledOnce();
     expect(urls).not.toContain("https://shrutiturner.co.uk/admin");
     expect(urls).not.toContain("https://shrutiturner.co.uk/api");
     expect(urls).not.toContain("https://shrutiturner.co.uk/login");

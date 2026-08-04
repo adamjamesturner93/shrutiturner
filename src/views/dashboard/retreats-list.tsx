@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Calendar, CheckCircle2, MapPin, Mountain } from "lucide-react";
+import { ArrowRight, Calendar, CheckCircle2, Gift, MapPin, Mountain } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { DashboardSkeleton } from "@/components/dashboard-skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { RetreatBookingSummaryDto } from "@/lib/api/types";
+import type { RetreatBookingSummaryDto, RetreatGiftPurchaseSummaryDto } from "@/lib/api/types";
 
 function formatDateRange(start: string, end: string) {
   const formatter = new Intl.DateTimeFormat("en-GB", {
@@ -35,24 +35,40 @@ function paymentBadge(status: string): "default" | "secondary" | "outline" | "de
 
 export function DashboardRetreats({
   initialData,
+  initialGifts,
 }: {
   initialData?: RetreatBookingSummaryDto[] | null;
+  initialGifts?: RetreatGiftPurchaseSummaryDto[] | null;
 }) {
   const [bookings, setBookings] = useState<RetreatBookingSummaryDto[]>(initialData || []);
-  const [loading, setLoading] = useState(!initialData);
+  const [gifts, setGifts] = useState<RetreatGiftPurchaseSummaryDto[]>(initialGifts || []);
+  const [loading, setLoading] = useState(!initialData || !initialGifts);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (initialData) return;
+    if (initialData && initialGifts) return;
     let active = true;
     void (async () => {
       setLoading(true);
       setError("");
       try {
-        const response = await fetch("/api/me/retreats", { cache: "no-store" });
-        if (!response.ok) throw new Error("Failed to load retreats.");
-        const payload = (await response.json()) as RetreatBookingSummaryDto[];
-        if (active) setBookings(payload);
+        const [bookingResponse, giftResponse] = await Promise.all([
+          fetch("/api/me/retreats", { cache: "no-store" }),
+          fetch("/api/me/retreat-gifts", { cache: "no-store" }),
+        ]);
+        if (!bookingResponse.ok || !giftResponse.ok) throw new Error("Failed to load retreats.");
+        const bookingPayload = (await bookingResponse.json()) as {
+          success: true;
+          data: RetreatBookingSummaryDto[];
+        };
+        const giftPayload = (await giftResponse.json()) as {
+          success: true;
+          data: RetreatGiftPurchaseSummaryDto[];
+        };
+        if (active) {
+          setBookings(bookingPayload.data);
+          setGifts(giftPayload.data);
+        }
       } catch (loadError) {
         if (active) {
           setError(loadError instanceof Error ? loadError.message : "Failed to load retreats.");
@@ -64,7 +80,7 @@ export function DashboardRetreats({
     return () => {
       active = false;
     };
-  }, [initialData]);
+  }, [initialData, initialGifts]);
 
   if (loading) {
     return (
@@ -195,6 +211,67 @@ export function DashboardRetreats({
             </div>
           )}
         </section>
+
+        {gifts.length > 0 ? (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl">Retreat gifts you purchased</h2>
+              <Badge variant="outline">{gifts.length}</Badge>
+            </div>
+            <div className="space-y-4">
+              {gifts.map((gift) => (
+                <Card key={gift.id}>
+                  <CardContent className="flex flex-col gap-4 py-6 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Gift className="text-brand-accent h-5 w-5" aria-hidden="true" />
+                        <Badge variant={gift.status === "refunded" ? "destructive" : "outline"}>
+                          {gift.status.replaceAll("_", " ")}
+                        </Badge>
+                      </div>
+                      <div>
+                        <h3 className="text-xl">{gift.retreatTitle}</h3>
+                        <p className="text-muted-foreground mt-1 text-sm">
+                          For {gift.recipientName} ({gift.recipientEmail})
+                        </p>
+                        <div className="text-muted-foreground mt-2 flex flex-wrap gap-4 text-sm">
+                          <span className="flex items-center gap-1.5">
+                            <MapPin className="h-4 w-4" aria-hidden="true" />
+                            {gift.location}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <Calendar className="h-4 w-4" aria-hidden="true" />
+                            {formatDateRange(gift.startsAt, gift.endsAt)}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-sm">
+                        {gift.roomType || "Retreat place"} · {gift.guestCount}{" "}
+                        {gift.guestCount === 1 ? "guest" : "guests"} ·{" "}
+                        {formatCurrency(gift.totalPaidPence - gift.refundedAmountPence)} paid
+                      </p>
+                      <p className="text-muted-foreground text-sm">
+                        {gift.status === "redeemed"
+                          ? "The recipient has claimed this gift."
+                          : gift.status === "refunded"
+                            ? "This gift has been cancelled and its policy-based refund submitted."
+                            : gift.deliveredAt
+                              ? "The gift email has been sent and is waiting to be claimed."
+                              : "Payment is complete and delivery is being prepared."}
+                      </p>
+                    </div>
+                    <Button asChild variant="outline" className="md:min-w-48">
+                      <Link href={`/retreats/${gift.retreatSlug}`}>
+                        Retreat details
+                        <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section className="space-y-4">
           <h2 className="text-xl">Explore upcoming retreats</h2>

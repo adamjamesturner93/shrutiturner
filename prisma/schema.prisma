@@ -218,8 +218,10 @@ enum EmailDeliveryAttemptStatus {
 }
 
 enum RetreatDateStatus {
+  draft
   open
   sold_out
+  closed
   cancelled
   completed
 }
@@ -238,6 +240,7 @@ enum RetreatPaymentStatus {
   deposit_paid
   partially_paid
   paid_in_full
+  partially_refunded
   refunded
   failed
 }
@@ -261,6 +264,22 @@ enum RetreatRoomUnitStatus {
   available
   assigned
   unavailable
+}
+
+enum RetreatCancellationStatus {
+  requested
+  approved
+  rejected
+  processing
+  completed
+  failed
+}
+
+enum RetreatRefundStatus {
+  pending
+  processing
+  succeeded
+  failed
 }
 
 enum RetreatAttendeeStatus {
@@ -315,6 +334,7 @@ enum GiftPurchaseStatus {
   redeemed
   expired
   cancelled
+  refunded
 }
 
 enum GiftDeliveryTarget {
@@ -1620,7 +1640,7 @@ model RetreatDate {
   startsAt                    DateTime
   endsAt                      DateTime
   capacity                    Int
-  status                      RetreatDateStatus    @default(open)
+  status                      RetreatDateStatus    @default(draft)
   currency                    String               @default("GBP")
   pricePence                  Int
   depositAmountPence          Int
@@ -1768,6 +1788,7 @@ model RetreatRoomUnit {
   retreatDateId String
   roomOptionId  String
   label         String
+  capacityUnits Int                   @default(1)
   status        RetreatRoomUnitStatus @default(available)
   notes         String?
   createdAt     DateTime              @default(now())
@@ -1866,6 +1887,8 @@ model RetreatBooking {
   instalments              RetreatBookingInstalment[]
   items                    RetreatBookingItem[]
   onlineAccessEntitlements RetreatOnlineAccessEntitlement[]
+  cancellationRequests     RetreatCancellationRequest[]
+  refunds                  RetreatRefund[]
 
   @@index([retreatDateId, bookingStatus])
   @@index([roomOptionId, bookingStatus])
@@ -1876,6 +1899,52 @@ model RetreatBooking {
   @@index([attendeeEmail, bookingStatus])
   @@index([paymentStatus, balanceDueAt])
   @@index([bookingStatus, holdExpiresAt])
+}
+
+model RetreatCancellationRequest {
+  id                    String                    @id @default(cuid())
+  bookingId             String
+  requestedByUserId     String?
+  requestedByEmail      String
+  reason                String?                   @db.Text
+  status                RetreatCancellationStatus @default(requested)
+  policySnapshotJson    Json
+  refundableAmountPence Int
+  adminDecisionReason   String?                   @db.Text
+  reviewedByUserId      String?
+  requestedAt           DateTime                  @default(now())
+  reviewedAt            DateTime?
+  completedAt           DateTime?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  booking RetreatBooking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  refunds RetreatRefund[]
+
+  @@index([bookingId, status, requestedAt])
+  @@index([status, requestedAt])
+}
+
+model RetreatRefund {
+  id                    String              @id @default(cuid())
+  bookingId             String
+  cancellationRequestId String?
+  amountPence           Int
+  currency              String              @default("GBP")
+  status                RetreatRefundStatus @default(pending)
+  stripeRefundIdsJson   Json?
+  failureReason         String?             @db.Text
+  initiatedByUserId     String?
+  completedAt           DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  booking             RetreatBooking              @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  cancellationRequest RetreatCancellationRequest? @relation(fields: [cancellationRequestId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId, status, createdAt])
+  @@index([cancellationRequestId])
+  @@index([status, createdAt])
 }
 
 model RetreatBookingItem {
@@ -2005,36 +2074,41 @@ model RetreatOnlineAccessEntitlement {
 }
 
 model GiftPurchase {
-  id                      String             @id @default(cuid())
-  code                    String             @unique
-  type                    GiftType
-  status                  GiftPurchaseStatus @default(pending_payment)
-  purchaserUserId         String?
-  redeemedByUserId        String?
-  purchaserFirstName      String
-  purchaserLastName       String
-  purchaserEmail          String
-  recipientFirstName      String
-  recipientLastName       String
-  recipientEmail          String
-  recipientMessage        String?            @db.Text
-  deliveryTarget          GiftDeliveryTarget
-  productSlug             String
-  productTitleSnapshot    String
-  currency                String             @default("GBP")
-  totalPaidPence          Int
-  stripeCheckoutSessionId String?            @unique
-  stripePaymentIntentId   String?
-  retreatDateId           String?
-  retreatRoomOptionId     String?
-  retreatRatePlanId       String?
-  retreatGuestCount       Int?
-  smallGroupProgrammeId   String?
-  expiresAt               DateTime?
-  purchasedAt             DateTime?
-  redeemedAt              DateTime?
-  createdAt               DateTime           @default(now())
-  updatedAt               DateTime           @updatedAt
+  id                       String             @id @default(cuid())
+  code                     String             @unique
+  type                     GiftType
+  status                   GiftPurchaseStatus @default(pending_payment)
+  purchaserUserId          String?
+  redeemedByUserId         String?
+  purchaserFirstName       String
+  purchaserLastName        String
+  purchaserEmail           String
+  recipientFirstName       String
+  recipientLastName        String
+  recipientEmail           String
+  recipientMessage         String?            @db.Text
+  deliveryTarget           GiftDeliveryTarget
+  productSlug              String
+  productTitleSnapshot     String
+  currency                 String             @default("GBP")
+  totalPaidPence           Int
+  nonRefundableAmountPence Int                @default(0)
+  refundedAmountPence      Int                @default(0)
+  stripeCheckoutSessionId  String?            @unique
+  stripePaymentIntentId    String?
+  stripeRefundId           String?            @unique
+  retreatDateId            String?
+  retreatRoomOptionId      String?
+  retreatRatePlanId        String?
+  retreatGuestCount        Int?
+  smallGroupProgrammeId    String?
+  expiresAt                DateTime?
+  purchasedAt              DateTime?
+  redeemedAt               DateTime?
+  deliveryEmailSentAt      DateTime?
+  refundedAt               DateTime?
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
 
   purchaserUser         User?                          @relation("GiftPurchasePurchaser", fields: [purchaserUserId], references: [id], onDelete: SetNull)
   redeemedByUser        User?                          @relation("GiftPurchaseRedeemer", fields: [redeemedByUserId], references: [id], onDelete: SetNull)

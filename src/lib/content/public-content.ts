@@ -616,6 +616,7 @@ function combineRetreats(
         availableSpaces: i.availableSpaces,
         totalSpaces: i.totalSpaces,
         roomOptions: i.roomOptions || [],
+        addons: [],
         paymentPlan: i.paymentPlan,
         payInFullDiscountEnabled: i.payInFullDiscountEnabled,
         refundNotes: i.refundNotes,

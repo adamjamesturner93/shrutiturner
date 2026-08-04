@@ -244,16 +244,40 @@ export type RetreatBookingSummaryDto = {
   balanceAmountPence: number;
   balanceDueAt: string | null;
   roomType: string | null;
+  attendeeCount: number;
+  addons: Array<{
+    id: string;
+    name: string;
+    quantity: number;
+    totalPricePence: number;
+  }>;
   dietaryRequirements: string | null;
   medicalConditions: string | null;
   mobilityNeeds: string | null;
   dailyRoomUrl: string | null;
   canPayBalance: boolean;
+  canRequestCancellation: boolean;
+  latestCancellation: {
+    id: string;
+    status: string;
+    reason: string | null;
+    refundableAmountPence: number;
+    adminDecisionReason: string | null;
+    requestedAt: string;
+    completedAt: string | null;
+  } | null;
 };
 
 export type RetreatBookingDetailDto = RetreatBookingSummaryDto & {
   emergencyContactName: string;
   emergencyContactPhone: string;
+  secondaryGuest: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    dietaryRequirements: string | null;
+    status: string;
+  } | null;
   onlineAccess: {
     entitled: boolean;
     liveAccessEnabled: boolean;
@@ -264,6 +288,25 @@ export type RetreatBookingDetailDto = RetreatBookingSummaryDto & {
     replayExpiresAt: string | null;
     replayAssetId: string | null;
   } | null;
+};
+
+export type RetreatGiftPurchaseSummaryDto = {
+  id: string;
+  retreatSlug: string;
+  retreatTitle: string;
+  location: string;
+  startsAt: string;
+  endsAt: string;
+  recipientName: string;
+  recipientEmail: string;
+  roomType: string | null;
+  guestCount: number;
+  status: string;
+  totalPaidPence: number;
+  refundedAmountPence: number;
+  purchasedAt: string | null;
+  deliveredAt: string | null;
+  redeemedAt: string | null;
 };
 
 export type ReplayAssetSummaryDto = {
@@ -357,6 +400,16 @@ export type AdminRetreatSummaryDto = {
   normalPricePence: number;
 };
 
+export type AdminRetreatTemplateDto = {
+  slug: string;
+  title: string;
+  location: string;
+  retreatType: "in_person" | "online";
+  capacity: number;
+  pricePence: number;
+  paymentPolicy: "deposit" | "full_payment";
+};
+
 export type AdminRetreatDetailDto = {
   id: string;
   retreatSlug: string;
@@ -387,6 +440,40 @@ export type AdminRetreatDetailDto = {
     earlyBirdEndsAt: string | null;
     active: boolean;
   }>;
+  addons: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    pricePence: number;
+    currency: string;
+    totalQuantity: number | null;
+    availableQuantity: number | null;
+    requiresTimeSlot: boolean;
+    active: boolean;
+  }>;
+  roomUnits: Array<{
+    id: string;
+    roomOptionId: string;
+    roomOptionLabel: string;
+    label: string;
+    capacityUnits: number;
+    occupiedUnits: number;
+    status: string;
+  }>;
+  gifts: Array<{
+    id: string;
+    purchaserName: string;
+    purchaserEmail: string;
+    recipientName: string;
+    recipientEmail: string;
+    roomLabel: string | null;
+    guestCount: number;
+    totalPaidPence: number;
+    refundedAmountPence: number;
+    status: string;
+    purchasedAt: string | null;
+    redeemedAt: string | null;
+  }>;
   bookings: Array<{
     id: string;
     purchaserName: string;
@@ -395,7 +482,15 @@ export type AdminRetreatDetailDto = {
     attendeeEmail: string;
     attendeeCount: number;
     roomType: string | null;
+    roomOptionId: string | null;
+    roomUnitId: string | null;
     roomUnitLabel: string | null;
+    addons: Array<{
+      id: string;
+      name: string;
+      quantity: number;
+      totalPricePence: number;
+    }>;
     dietaryRequirements: string | null;
     medicalConditions: string | null;
     mobilityNeeds: string | null;
@@ -415,6 +510,16 @@ export type AdminRetreatDetailDto = {
       status: string;
       dueAt: string | null;
       paidAt: string | null;
+    }>;
+    cancellationRequests: Array<{
+      id: string;
+      status: string;
+      reason: string | null;
+      refundableAmountPence: number;
+      adminDecisionReason: string | null;
+      requestedAt: string;
+      reviewedAt: string | null;
+      completedAt: string | null;
     }>;
     bookedAt: string;
   }>;

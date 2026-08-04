@@ -22,6 +22,7 @@ interface RetreatBookingEmailProps {
   retreatDetailsUrl?: string;
   transactionRef?: string;
   paidInFull?: boolean;
+  extras?: string[];
 }
 
 export default function RetreatBookingEmail({
@@ -36,6 +37,7 @@ export default function RetreatBookingEmail({
   retreatDetailsUrl = "https://shrutiturner.co.uk/retreats/rest-and-restore",
   transactionRef = "RT-2026-0342",
   paidInFull = false,
+  extras = [],
 }: RetreatBookingEmailProps) {
   const paymentRows = [
     { label: "Total retreat price", value: totalPrice },
@@ -116,6 +118,7 @@ export default function RetreatBookingEmail({
         {[
           { label: "Dates", value: retreatDates },
           { label: "Location", value: retreatLocation },
+          ...(extras.length > 0 ? [{ label: "Optional extras", value: extras.join(", ") }] : []),
         ].map((item) => (
           <Section key={item.label} style={{ marginBottom: "12px" }}>
             <Text

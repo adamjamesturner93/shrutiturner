@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Calendar, CheckCircle, Info, Link2, PoundSterling, Video } from "lucide-react";
 import {
   Dialog,
@@ -13,6 +13,7 @@ import {
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import type { AdminRetreatTemplateDto } from "@/lib/api/types";
 
 interface CreateRetreatModalProps {
   open: boolean;
@@ -34,27 +35,6 @@ export interface CreateRetreatData {
   earlyBirdEndsAt?: string | null;
 }
 
-const EXISTING_EXPERIENCE_SLUGS = [
-  {
-    slug: "pause-move-breathe-stirling",
-    title: "Pause, Move, Breathe: A Yoga Weekend in Stirling",
-    location: "Near Stirling, Scotland",
-    retreatType: "in_person" as const,
-  },
-  {
-    slug: "wild-ground-highland-perthshire",
-    title: "Wild Ground: Yoga, Walking and Rest in Highland Perthshire",
-    location: "Grandtully / Balnaguard area, Highland Perthshire, Scotland",
-    retreatType: "in_person" as const,
-  },
-  {
-    slug: "sankalpa-online-workshop",
-    title: "Sankalpa: A Two-Hour Pause for Reflection and Intention",
-    location: "Online (live through this website)",
-    retreatType: "online" as const,
-  },
-];
-
 function toPence(value: string) {
   const pounds = Number(value);
   if (!Number.isFinite(pounds) || pounds < 0) return 0;
@@ -62,15 +42,17 @@ function toPence(value: string) {
 }
 
 export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetreatModalProps) {
-  const [retreatSlug, setRetreatSlug] = useState("sankalpa-online-workshop");
-  const [title, setTitle] = useState("Sankalpa: A Two-Hour Pause for Reflection and Intention");
-  const [location, setLocation] = useState("Online (live through this website)");
-  const [retreatType, setRetreatType] = useState<"in_person" | "online">("online");
+  const [templates, setTemplates] = useState<AdminRetreatTemplateDto[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [retreatSlug, setRetreatSlug] = useState("");
+  const [title, setTitle] = useState("");
+  const [location, setLocation] = useState("");
+  const [retreatType, setRetreatType] = useState<"in_person" | "online">("in_person");
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
-  const [capacity, setCapacity] = useState(30);
-  const [pricePounds, setPricePounds] = useState("29");
-  const [paymentPolicy, setPaymentPolicy] = useState<"deposit" | "full_payment">("full_payment");
+  const [capacity, setCapacity] = useState(10);
+  const [pricePounds, setPricePounds] = useState("0");
+  const [paymentPolicy, setPaymentPolicy] = useState<"deposit" | "full_payment">("deposit");
   const [earlyBirdPricePounds, setEarlyBirdPricePounds] = useState("");
   const [earlyBirdEndsAt, setEarlyBirdEndsAt] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -87,8 +69,8 @@ export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetre
     capacity > 0 &&
     hasEarlyBirdPrice === hasEarlyBirdEndDate;
 
-  function applyPreset(slug: string) {
-    const preset = EXISTING_EXPERIENCE_SLUGS.find((item) => item.slug === slug);
+  const applyPreset = useCallback((slug: string, availableTemplates: AdminRetreatTemplateDto[]) => {
+    const preset = availableTemplates.find((item) => item.slug === slug);
     if (!preset) {
       setRetreatSlug(slug);
       return;
@@ -97,12 +79,40 @@ export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetre
     setTitle(preset.title);
     setLocation(preset.location);
     setRetreatType(preset.retreatType);
-    setPaymentPolicy(preset.retreatType === "online" ? "full_payment" : "deposit");
-    setCapacity(preset.retreatType === "online" ? 30 : 10);
-    setPricePounds(preset.retreatType === "online" ? "29" : "425");
+    setPaymentPolicy(preset.paymentPolicy);
+    setCapacity(preset.capacity);
+    setPricePounds(String(preset.pricePence / 100));
     setEarlyBirdPricePounds("");
     setEarlyBirdEndsAt("");
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    setTemplatesLoading(true);
+    setSubmitError("");
+    void fetch("/api/admin/retreats/templates", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Failed to load Contentful experiences.");
+        return (await response.json()) as AdminRetreatTemplateDto[];
+      })
+      .then((items) => {
+        if (!active) return;
+        setTemplates(items);
+        if (items.length > 0) applyPreset(items[0].slug, items);
+      })
+      .catch((error) => {
+        if (active) {
+          setSubmitError(error instanceof Error ? error.message : "Failed to load experiences.");
+        }
+      })
+      .finally(() => {
+        if (active) setTemplatesLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [applyPreset, open]);
 
   function resetAndClose() {
     setSubmitting(false);
@@ -165,15 +175,22 @@ export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetre
             <select
               id="retreat-preset"
               value={retreatSlug}
-              onChange={(event) => applyPreset(event.target.value)}
+              onChange={(event) => applyPreset(event.target.value, templates)}
               className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-10 w-full rounded-md border px-3 py-2 text-sm transition-colors outline-none focus-visible:ring-[3px]"
             >
-              {EXISTING_EXPERIENCE_SLUGS.map((experience) => (
+              {templates.map((experience) => (
                 <option key={experience.slug} value={experience.slug}>
                   {experience.title}
                 </option>
               ))}
             </select>
+            {templatesLoading ? (
+              <p className="text-muted-foreground text-xs">Loading published experiences...</p>
+            ) : templates.length === 0 ? (
+              <p className="text-muted-foreground text-xs">
+                Publish an experience in Contentful before creating a date.
+              </p>
+            ) : null}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -351,7 +368,7 @@ export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetre
           <Button variant="ghost" onClick={resetAndClose}>
             Cancel
           </Button>
-          <Button onClick={handleCreate} disabled={!canSubmit || submitting}>
+          <Button onClick={handleCreate} disabled={!canSubmit || submitting || templatesLoading}>
             <CheckCircle className="mr-2 h-4 w-4" />
             {submitting ? "Creating..." : "Create date"}
           </Button>

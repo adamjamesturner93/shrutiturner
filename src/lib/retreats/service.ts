@@ -4,6 +4,7 @@ import {
   GiftPurchaseStatus,
   Prisma,
   RetreatBookingStatus,
+  RetreatBookingItemType,
   RetreatBookingUnit,
   RetreatDepositType,
   RetreatInventoryType,
@@ -11,6 +12,9 @@ import {
   RetreatInstalmentStatus,
   RetreatOnlineAccessType,
   RetreatPaymentStatus,
+  RetreatDateStatus,
+  RetreatCancellationStatus,
+  RetreatRefundStatus,
 } from "@prisma/client";
 import type Stripe from "stripe";
 import { cacheLife, cacheTag } from "next/cache";
@@ -40,11 +44,19 @@ import { getCurrentPolicyVersions } from "@/lib/legal/policy-service";
 import { sendPostmarkReactEmail } from "@/lib/postmark/client";
 import RetreatBookingEmail from "@/emails/retreat-booking";
 import RetreatBalanceDueEmail from "@/emails/retreat-balance-due";
+import RetreatCancellationEmail, {
+  RetreatCancellationAdminEmail,
+} from "@/emails/retreat-cancellation";
+import RetreatBookingAdminEmail from "@/emails/retreat-booking-admin";
+import RetreatPaymentReceiptEmail from "@/emails/retreat-payment-receipt";
+import { createAdminActionLog } from "@/lib/admin/action-log-service";
+import { getAdminEmailAllowlist } from "@/lib/env";
 import { createSessionRoom, isDailyConfigured } from "@/lib/daily/service";
 import {
   buildRetreatInstalmentPlan,
   canExtendPublishedEarlyBirdRate,
   calculatePayInFullDiscount,
+  calculateRetreatRefund,
   calculateRetreatNonRefundableAmount,
   getEffectiveRetreatRatePricePence,
   quoteRetreatAccommodation,
@@ -55,6 +67,22 @@ import {
 import { getRetreatImageSrc } from "@/lib/retreats/images";
 
 const RETREAT_PAYMENT_WINDOW_MS = 30 * 60 * 1000;
+const ACTIVE_RETREAT_BOOKING_STATUSES: RetreatBookingStatus[] = [
+  RetreatBookingStatus.deposit_paid,
+  RetreatBookingStatus.balance_due,
+  RetreatBookingStatus.paid_in_full,
+];
+const OPEN_RETREAT_CANCELLATION_STATUSES: RetreatCancellationStatus[] = [
+  RetreatCancellationStatus.requested,
+  RetreatCancellationStatus.approved,
+  RetreatCancellationStatus.processing,
+  RetreatCancellationStatus.completed,
+];
+const APPROVABLE_RETREAT_CANCELLATION_STATUSES: RetreatCancellationStatus[] = [
+  RetreatCancellationStatus.requested,
+  RetreatCancellationStatus.approved,
+  RetreatCancellationStatus.failed,
+];
 
 function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
@@ -106,7 +134,13 @@ const RETREAT_LIVE_JOIN_GRACE_MS = 2 * 60 * 60 * 1000;
 export async function ensureRetreatOnlineAccessEntitlement(bookingId: string) {
   const booking = await db.retreatBooking.findUnique({
     where: { id: bookingId },
-    include: { retreatDate: true },
+    include: {
+      retreatDate: true,
+      items: {
+        where: { itemType: RetreatBookingItemType.addon },
+        include: { addon: true },
+      },
+    },
   });
   if (!booking || booking.retreatDate.retreatType !== "online") return null;
   if (!booking.attendeeUserId && !booking.purchaserUserId) return null;
@@ -192,40 +226,81 @@ function getRetreatRefundPolicySnapshot(input: {
   };
 }
 
-async function assignRoomUnitAfterPayment(bookingId: string) {
-  const booking = await db.retreatBooking.findUnique({
-    where: { id: bookingId },
-    select: {
-      id: true,
-      roomUnitId: true,
-      retreatDateId: true,
-      roomOptionId: true,
-      retreatDate: { select: { retreatType: true } },
-    },
-  });
-  if (!booking || booking.roomUnitId || !booking.roomOptionId) return;
-  if (booking.retreatDate.retreatType === "online") return;
+async function lockRetreatResource(tx: Prisma.TransactionClient, key: string) {
+  await tx.$queryRaw`
+    SELECT pg_advisory_xact_lock(hashtext(${key})) IS NULL AS "acquired"
+  `;
+}
 
-  const roomUnit = await db.retreatRoomUnit.findFirst({
-    where: {
-      retreatDateId: booking.retreatDateId,
-      roomOptionId: booking.roomOptionId,
-      status: "available",
-    },
-    orderBy: { label: "asc" },
-  });
-  if (!roomUnit) return;
+export async function assignRoomUnitAfterPayment(bookingId: string) {
+  return db.$transaction(async (tx) => {
+    const booking = await tx.retreatBooking.findUnique({
+      where: { id: bookingId },
+      select: {
+        id: true,
+        roomUnitId: true,
+        retreatDateId: true,
+        roomOptionId: true,
+        retreatDate: { select: { retreatType: true } },
+      },
+    });
+    if (!booking || booking.roomUnitId || !booking.roomOptionId) return null;
+    if (booking.retreatDate.retreatType === "online") return null;
 
-  await db.$transaction([
-    db.retreatRoomUnit.update({
-      where: { id: roomUnit.id },
-      data: { status: "assigned" },
-    }),
-    db.retreatBooking.update({
+    await lockRetreatResource(tx, `retreat-room-option:${booking.roomOptionId}`);
+    const roomUnits = await tx.retreatRoomUnit.findMany({
+      where: {
+        retreatDateId: booking.retreatDateId,
+        roomOptionId: booking.roomOptionId,
+        status: { not: "unavailable" },
+      },
+      include: {
+        bookings: {
+          where: { bookingStatus: { in: ACTIVE_RETREAT_BOOKING_STATUSES } },
+          select: { id: true },
+        },
+      },
+      orderBy: { label: "asc" },
+    });
+    const roomUnit = roomUnits.find((unit) => unit.bookings.length < unit.capacityUnits);
+    if (!roomUnit) throw new Error("ROOM_UNIT_UNAVAILABLE");
+
+    const willBeFull = roomUnit.bookings.length + 1 >= roomUnit.capacityUnits;
+    await tx.retreatBooking.update({
       where: { id: booking.id },
       data: { roomUnitId: roomUnit.id },
-    }),
-  ]);
+    });
+    await tx.retreatRoomUnit.update({
+      where: { id: roomUnit.id },
+      data: { status: willBeFull ? "assigned" : "available" },
+    });
+    return roomUnit.id;
+  });
+}
+
+async function releaseRoomUnitForBooking(bookingId: string) {
+  return db.$transaction(async (tx) => {
+    const booking = await tx.retreatBooking.findUnique({
+      where: { id: bookingId },
+      select: { id: true, roomUnitId: true },
+    });
+    if (!booking?.roomUnitId) return;
+    await lockRetreatResource(tx, `retreat-room-unit:${booking.roomUnitId}`);
+    await tx.retreatBooking.update({
+      where: { id: booking.id },
+      data: { roomUnitId: null },
+    });
+    const activeOccupancy = await tx.retreatBooking.count({
+      where: {
+        roomUnitId: booking.roomUnitId,
+        bookingStatus: { in: ACTIVE_RETREAT_BOOKING_STATUSES },
+      },
+    });
+    await tx.retreatRoomUnit.update({
+      where: { id: booking.roomUnitId },
+      data: { status: activeOccupancy > 0 ? "assigned" : "available" },
+    });
+  });
 }
 
 async function createGuestAcceptanceEventsForRetreatPurchase(input: {
@@ -300,17 +375,37 @@ async function getRetreatAndInstance(slug: string, externalDateId: string) {
 
 async function getRoomAvailability(roomOptionId: string) {
   const now = new Date();
-  const [bookingCount, giftCount] = await Promise.all([
+  const activeBookingWhere: Prisma.RetreatBookingWhereInput = {
+    OR: [
+      { bookingStatus: { in: ACTIVE_RETREAT_BOOKING_STATUSES } },
+      {
+        bookingStatus: RetreatBookingStatus.pending,
+        createdAt: { gt: new Date(now.getTime() - RETREAT_PAYMENT_WINDOW_MS) },
+      },
+    ],
+  };
+  const [bookingItems, legacyBookingCount, giftCount] = await Promise.all([
+    db.retreatBookingItem.aggregate({
+      where: {
+        roomOptionId,
+        itemType: {
+          in: [RetreatBookingItemType.accommodation, RetreatBookingItemType.online_live_place],
+        },
+        booking: activeBookingWhere,
+      },
+      _sum: { quantity: true },
+    }),
     db.retreatBooking.count({
       where: {
         roomOptionId,
-        OR: [
-          { bookingStatus: { in: ["deposit_paid", "balance_due", "paid_in_full"] } },
-          {
-            bookingStatus: "pending",
-            createdAt: { gt: new Date(now.getTime() - RETREAT_PAYMENT_WINDOW_MS) },
+        ...activeBookingWhere,
+        items: {
+          none: {
+            itemType: {
+              in: [RetreatBookingItemType.accommodation, RetreatBookingItemType.online_live_place],
+            },
           },
-        ],
+        },
       },
     }),
     db.giftPurchase.count({
@@ -326,29 +421,48 @@ async function getRoomAvailability(roomOptionId: string) {
       },
     }),
   ]);
-  return bookingCount + giftCount;
+  return (bookingItems._sum.quantity || 0) + legacyBookingCount + giftCount;
 }
 
 async function assertRoomInventoryAvailableForUpdate(
   tx: Prisma.TransactionClient,
   roomOptionId: string,
-  capacity: number
+  capacity: number,
+  requestedQuantity: number
 ) {
-  await tx.$queryRaw`
-    SELECT pg_advisory_xact_lock(hashtext(${roomOptionId})) IS NULL AS "acquired"
-  `;
+  await lockRetreatResource(tx, `retreat-room-option:${roomOptionId}`);
   const now = new Date();
-  const [bookingCount, giftCount] = await Promise.all([
+  const activeBookingWhere: Prisma.RetreatBookingWhereInput = {
+    OR: [
+      { bookingStatus: { in: ACTIVE_RETREAT_BOOKING_STATUSES } },
+      {
+        bookingStatus: RetreatBookingStatus.pending,
+        createdAt: { gt: new Date(now.getTime() - RETREAT_PAYMENT_WINDOW_MS) },
+      },
+    ],
+  };
+  const [bookingItems, legacyBookingCount, giftCount] = await Promise.all([
+    tx.retreatBookingItem.aggregate({
+      where: {
+        roomOptionId,
+        itemType: {
+          in: [RetreatBookingItemType.accommodation, RetreatBookingItemType.online_live_place],
+        },
+        booking: activeBookingWhere,
+      },
+      _sum: { quantity: true },
+    }),
     tx.retreatBooking.count({
       where: {
         roomOptionId,
-        OR: [
-          { bookingStatus: { in: ["deposit_paid", "balance_due", "paid_in_full"] } },
-          {
-            bookingStatus: "pending",
-            createdAt: { gt: new Date(now.getTime() - RETREAT_PAYMENT_WINDOW_MS) },
+        ...activeBookingWhere,
+        items: {
+          none: {
+            itemType: {
+              in: [RetreatBookingItemType.accommodation, RetreatBookingItemType.online_live_place],
+            },
           },
-        ],
+        },
       },
     }),
     tx.giftPurchase.count({
@@ -364,18 +478,106 @@ async function assertRoomInventoryAvailableForUpdate(
       },
     }),
   ]);
-  if (bookingCount + giftCount >= capacity) {
+  const reserved = (bookingItems._sum.quantity || 0) + legacyBookingCount + giftCount;
+  if (reserved + requestedQuantity > capacity) {
     throw new Error("ROOM_OPTION_UNAVAILABLE");
+  }
+}
+
+async function assertAddonInventoryAvailableForUpdate(
+  tx: Prisma.TransactionClient,
+  addonId: string,
+  requestedQuantity: number,
+  totalQuantity: number | null
+) {
+  if (totalQuantity === null) return;
+  await lockRetreatResource(tx, `retreat-addon:${addonId}`);
+  const now = new Date();
+  const reserved = await tx.retreatBookingItem.aggregate({
+    where: {
+      addonId,
+      booking: {
+        OR: [
+          { bookingStatus: { in: ACTIVE_RETREAT_BOOKING_STATUSES } },
+          {
+            bookingStatus: RetreatBookingStatus.pending,
+            createdAt: { gt: new Date(now.getTime() - RETREAT_PAYMENT_WINDOW_MS) },
+          },
+        ],
+      },
+    },
+    _sum: { quantity: true },
+  });
+  if ((reserved._sum.quantity || 0) + requestedQuantity > totalQuantity) {
+    throw new Error("RETREAT_ADDON_UNAVAILABLE");
+  }
+}
+
+async function assertRetreatCapacityAvailableForUpdate(
+  tx: Prisma.TransactionClient,
+  retreatDateId: string,
+  requestedGuests: number,
+  capacity: number
+) {
+  await lockRetreatResource(tx, `retreat-date:${retreatDateId}`);
+  const now = new Date();
+  const [bookings, gifts] = await Promise.all([
+    tx.retreatBooking.aggregate({
+      where: {
+        retreatDateId,
+        OR: [
+          { bookingStatus: { in: ACTIVE_RETREAT_BOOKING_STATUSES } },
+          {
+            bookingStatus: RetreatBookingStatus.pending,
+            createdAt: { gt: new Date(now.getTime() - RETREAT_PAYMENT_WINDOW_MS) },
+          },
+        ],
+      },
+      _sum: { attendeeCount: true },
+    }),
+    tx.giftPurchase.aggregate({
+      where: {
+        retreatDateId,
+        OR: [
+          { status: GiftPurchaseStatus.purchased },
+          {
+            status: GiftPurchaseStatus.pending_payment,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+          },
+        ],
+      },
+      _sum: { retreatGuestCount: true },
+    }),
+  ]);
+  const reservedGuests = (bookings._sum.attendeeCount || 0) + (gifts._sum.retreatGuestCount || 0);
+  if (reservedGuests + Math.max(requestedGuests, 1) > capacity) {
+    throw new Error("RETREAT_CAPACITY_UNAVAILABLE");
   }
 }
 
 type OperationalRetreatDate = Prisma.RetreatDateGetPayload<{
   include: {
     roomOptions: { include: { ratePlans: true } };
-    bookings: true;
+    bookings: { include: { items: true } };
     depositRules: true;
+    addons: { include: { inventoryPool: true } };
+    giftPurchases: true;
   };
 }>;
+
+function mapOperationalAddon(addon: OperationalRetreatDate["addons"][number], reserved: number) {
+  return {
+    id: addon.id,
+    name: addon.name,
+    description: addon.description || undefined,
+    pricePence: addon.pricePence,
+    currency: addon.currency,
+    availableQuantity: addon.inventoryPool
+      ? Math.max(addon.inventoryPool.totalQuantity - reserved, 0)
+      : null,
+    requiresTimeSlot: addon.requiresTimeSlot,
+  };
+}
 
 function toPublicRoomType(value: string): RetreatRoomOptionContent["type"] {
   if (
@@ -389,10 +591,10 @@ function toPublicRoomType(value: string): RetreatRoomOptionContent["type"] {
   return "shared_twin";
 }
 
-async function mapOperationalRoomOption(
-  roomOption: OperationalRetreatDate["roomOptions"][number]
-): Promise<RetreatRoomOptionContent> {
-  const reserved = await getRoomAvailability(roomOption.id);
+function mapOperationalRoomOption(
+  roomOption: OperationalRetreatDate["roomOptions"][number],
+  reserved: number
+): RetreatRoomOptionContent {
   const ratePlans = roomOption.ratePlans
     .filter((ratePlan) => ratePlan.active)
     .sort((a, b) => a.guestCount - b.guestCount)
@@ -453,7 +655,53 @@ function getSoonestEarlyBirdEndsAt(dates: OperationalRetreatDate[]) {
 async function mapOperationalDate(
   date: OperationalRetreatDate
 ): Promise<RetreatCombinedContent["dates"][number]> {
-  const roomOptions = await Promise.all(date.roomOptions.map(mapOperationalRoomOption));
+  const reservedRoomUnits = new Map<string, number>();
+  const reservedAddonUnits = new Map<string, number>();
+
+  for (const booking of date.bookings) {
+    const inventoryItems = booking.items.filter(
+      (item) =>
+        item.itemType === RetreatBookingItemType.accommodation ||
+        item.itemType === RetreatBookingItemType.online_live_place
+    );
+    if (inventoryItems.length > 0) {
+      for (const item of inventoryItems) {
+        if (!item.roomOptionId) continue;
+        reservedRoomUnits.set(
+          item.roomOptionId,
+          (reservedRoomUnits.get(item.roomOptionId) || 0) + item.quantity
+        );
+      }
+    } else if (booking.roomOptionId) {
+      reservedRoomUnits.set(
+        booking.roomOptionId,
+        (reservedRoomUnits.get(booking.roomOptionId) || 0) + 1
+      );
+    }
+
+    for (const item of booking.items) {
+      if (!item.addonId) continue;
+      reservedAddonUnits.set(
+        item.addonId,
+        (reservedAddonUnits.get(item.addonId) || 0) + item.quantity
+      );
+    }
+  }
+
+  for (const gift of date.giftPurchases) {
+    if (!gift.retreatRoomOptionId) continue;
+    reservedRoomUnits.set(
+      gift.retreatRoomOptionId,
+      (reservedRoomUnits.get(gift.retreatRoomOptionId) || 0) + 1
+    );
+  }
+
+  const roomOptions = date.roomOptions.map((roomOption) =>
+    mapOperationalRoomOption(roomOption, reservedRoomUnits.get(roomOption.id) || 0)
+  );
+  const addons = date.addons
+    .filter((addon) => addon.active)
+    .map((addon) => mapOperationalAddon(addon, reservedAddonUnits.get(addon.id) || 0));
   const roomOptionCapacity = roomOptions.reduce((sum, roomOption) => sum + roomOption.capacity, 0);
   const roomOptionAvailability = roomOptions.reduce(
     (sum, roomOption) => sum + roomOption.availableSpots,
@@ -481,6 +729,7 @@ async function mapOperationalDate(
     totalSpaces:
       roomOptions.length > 0 ? Math.max(roomOptionCapacity, date.capacity) : date.capacity,
     roomOptions,
+    addons,
     paymentPlan: undefined,
     paymentPolicy,
     payInFullDiscountEnabled: date.payInFullDiscountEnabled,
@@ -570,6 +819,8 @@ async function buildOperationalRetreatFromTemplate(input: {
     experienceLevel: input.template.experienceLevel,
     foodAndDrinkDescription: input.template.foodAndDrinkDescription,
     whatToBring: input.template.whatToBring,
+    seoTitle: input.template.seoTitle,
+    seoDescription: input.template.seoDescription,
     venueId: venue?.id,
     venueSlug: venue?.slug,
     venueName: venue?.name,
@@ -579,11 +830,24 @@ async function buildOperationalRetreatFromTemplate(input: {
 
 async function getBookableOperationalDates(slug?: string): Promise<OperationalRetreatDate[]> {
   const now = new Date();
+  const activeBookingWhere: Prisma.RetreatBookingWhereInput = {
+    OR: [
+      { bookingStatus: { in: ACTIVE_RETREAT_BOOKING_STATUSES } },
+      {
+        bookingStatus: RetreatBookingStatus.pending,
+        createdAt: { gt: new Date(now.getTime() - RETREAT_PAYMENT_WINDOW_MS) },
+      },
+    ],
+  };
   return db.retreatDate.findMany({
     where: {
       ...(slug ? { retreatSlug: slug } : {}),
       status: { in: ["open", "sold_out"] },
       endsAt: { gte: now },
+      AND: [
+        { OR: [{ bookingOpensAt: null }, { bookingOpensAt: { lte: now } }] },
+        { OR: [{ bookingClosesAt: null }, { bookingClosesAt: { gt: now } }] },
+      ],
     },
     include: {
       roomOptions: {
@@ -591,10 +855,29 @@ async function getBookableOperationalDates(slug?: string): Promise<OperationalRe
         include: { ratePlans: { where: { active: true }, orderBy: { guestCount: "asc" } } },
         orderBy: { displayOrder: "asc" },
       },
-      bookings: true,
+      bookings: {
+        where: activeBookingWhere,
+        include: { items: true },
+      },
       depositRules: {
         where: { active: true },
         orderBy: { createdAt: "desc" },
+      },
+      addons: {
+        where: { active: true },
+        include: { inventoryPool: true },
+        orderBy: { createdAt: "asc" },
+      },
+      giftPurchases: {
+        where: {
+          OR: [
+            { status: GiftPurchaseStatus.purchased },
+            {
+              status: GiftPurchaseStatus.pending_payment,
+              OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+            },
+          ],
+        },
       },
     },
     orderBy: { startsAt: "asc" },
@@ -785,8 +1068,17 @@ export async function syncRetreatDateFromContent(slug: string, externalDateId: s
             retreatDateId: retreatDate.id,
             roomOptionId: syncedRoomOption.id,
             label: `${roomOption.label} ${index}`,
+            capacityUnits:
+              syncedRoomOption.bookingUnit === RetreatBookingUnit.bed_space
+                ? Math.max(syncedRoomOption.bedsPerPhysicalRoom || 1, 1)
+                : 1,
           },
-          update: {},
+          update: {
+            capacityUnits:
+              syncedRoomOption.bookingUnit === RetreatBookingUnit.bed_space
+                ? Math.max(syncedRoomOption.bedsPerPhysicalRoom || 1, 1)
+                : 1,
+          },
         });
       }
     }
@@ -814,10 +1106,23 @@ async function getSyncedRetreatDateAndRoomOption(input: {
         where: { active: true },
         orderBy: { createdAt: "desc" },
       },
+      addons: {
+        where: { active: true },
+        include: { inventoryPool: true },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
   if (retreatDate.status !== "open") {
     throw new Error("RETREAT_DATE_UNAVAILABLE");
+  }
+  const now = new Date();
+  if (
+    (retreatDate.bookingOpensAt && retreatDate.bookingOpensAt > now) ||
+    (retreatDate.bookingClosesAt && retreatDate.bookingClosesAt <= now) ||
+    retreatDate.endsAt <= now
+  ) {
+    throw new Error("RETREAT_BOOKING_WINDOW_CLOSED");
   }
 
   const roomOption =
@@ -922,6 +1227,7 @@ export async function createRetreatCheckout(input: {
   recipientMessage?: string;
   deliveryTarget?: "recipient" | "buyer";
   paymentOption?: "deposit" | "pay_in_full";
+  addons?: Array<{ addonId: string; quantity: number }>;
 }) {
   if (input.purchaserUserId) {
     const purchaser = await db.user.findUnique({
@@ -1032,6 +1338,37 @@ export async function createRetreatCheckout(input: {
     depositRule,
     currency: retreatDate.currency,
   });
+  const addonSelections = (input.addons || []).map((selection) => ({
+    addonId: normalizeText(selection.addonId, 120),
+    quantity: Math.trunc(selection.quantity),
+  }));
+  if (
+    new Set(addonSelections.map((selection) => selection.addonId)).size !==
+      addonSelections.length ||
+    addonSelections.some(
+      (selection) => !selection.addonId || selection.quantity < 1 || selection.quantity > 10
+    )
+  ) {
+    throw new Error("RETREAT_ADDON_INVALID");
+  }
+  if (input.purchaseMode === "gift" && addonSelections.length > 0) {
+    throw new Error("RETREAT_GIFT_ADDONS_UNSUPPORTED");
+  }
+  const selectedAddons = addonSelections.map((selection) => {
+    const addon = retreatDate.addons.find((candidate) => candidate.id === selection.addonId);
+    if (!addon || addon.currency !== retreatDate.currency || addon.requiresTimeSlot) {
+      throw new Error("RETREAT_ADDON_INVALID");
+    }
+    return {
+      ...selection,
+      addon,
+      totalPricePence: addon.pricePence * selection.quantity,
+    };
+  });
+  const addonTotalPence = selectedAddons.reduce(
+    (sum, selection) => sum + selection.totalPricePence,
+    0
+  );
 
   const purchaserFirstName = normalizeText(input.purchaserFirstName, 80);
   const purchaserLastName = normalizeText(input.purchaserLastName, 80);
@@ -1062,9 +1399,20 @@ export async function createRetreatCheckout(input: {
       retreatDate.payInFullDiscountCapPence
     );
     const giftTotalPence = Math.max(quote.totalPricePence - giftPayInFullDiscountPence, 0);
+    const giftNonRefundableAmountPence = calculateRetreatNonRefundableAmount({
+      retreatType: parseRetreatType(retreatDate.retreatType),
+      totalPence: giftTotalPence,
+      depositPence: Math.min(quote.depositPence, giftTotalPence),
+    });
 
     const gift = await db.$transaction(async (tx) => {
-      await assertRoomInventoryAvailableForUpdate(tx, roomOption.id, roomOption.capacity);
+      await assertRetreatCapacityAvailableForUpdate(
+        tx,
+        retreatDate.id,
+        quote.totalGuestCount,
+        retreatDate.capacity
+      );
+      await assertRoomInventoryAvailableForUpdate(tx, roomOption.id, roomOption.capacity, 1);
       return tx.giftPurchase.create({
         data: {
           code: `GIFT-RT-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
@@ -1083,6 +1431,7 @@ export async function createRetreatCheckout(input: {
           productTitleSnapshot: `${retreatDate.retreatTitleSnapshot} - ${roomOption.label}`,
           currency: retreatDate.currency,
           totalPaidPence: giftTotalPence,
+          nonRefundableAmountPence: giftNonRefundableAmountPence,
           retreatDateId: retreatDate.id,
           retreatRoomOptionId: roomOption.id,
           retreatRatePlanId:
@@ -1161,15 +1510,6 @@ export async function createRetreatCheckout(input: {
     throw new Error("ATTENDEE_REQUIRED");
   }
 
-  if (
-    quote.totalGuestCount > 1 &&
-    (!input.guestTwoFirstName?.trim() ||
-      !input.guestTwoLastName?.trim() ||
-      !input.guestTwoEmail?.trim())
-  ) {
-    throw new Error("SECOND_GUEST_REQUIRED");
-  }
-
   const payInFullDiscountPence = calculatePayInFullDiscount(
     quote.totalPricePence,
     effectivePaymentOption === "pay_in_full" &&
@@ -1178,11 +1518,14 @@ export async function createRetreatCheckout(input: {
     retreatDate.payInFullDiscountPercent,
     retreatDate.payInFullDiscountCapPence
   );
-  const payableTotalPence = Math.max(0, quote.totalPricePence - payInFullDiscountPence);
-  const depositAmountPence = Math.min(quote.depositPence, payableTotalPence);
+  const payableAccommodationPence = Math.max(0, quote.totalPricePence - payInFullDiscountPence);
+  const payableTotalPence = payableAccommodationPence + addonTotalPence;
+  const accommodationDepositPence = Math.min(quote.depositPence, payableAccommodationPence);
   const retreatType = parseRetreatType(retreatDate.retreatType);
   const refundDepositPence =
-    requiresFullPayment && retreatType === "in_person" ? 0 : depositAmountPence;
+    requiresFullPayment && retreatType === "in_person"
+      ? 0
+      : accommodationDepositPence + addonTotalPence;
   const refundPolicySnapshot = getRetreatRefundPolicySnapshot({
     retreatType,
     totalPence: payableTotalPence,
@@ -1192,12 +1535,16 @@ export async function createRetreatCheckout(input: {
   const nonRefundableAmountPence = refundPolicySnapshot.nonRefundableAmountPence;
   const paymentPlan = retreatDate.paymentPlanSnapshotJson as RetreatPaymentPlan | null;
   const instalmentDrafts = buildRetreatInstalmentPlan({
-    totalPence: payableTotalPence,
-    depositPence: depositAmountPence,
+    totalPence: payableAccommodationPence,
+    depositPence: accommodationDepositPence,
     startsAt: retreatDate.startsAt,
     paymentPlan,
     payInFull: effectivePaymentOption === "pay_in_full",
-  });
+  }).map((instalment, index) =>
+    index === 0
+      ? { ...instalment, amountPence: instalment.amountPence + addonTotalPence }
+      : instalment
+  );
   const initialInstalment = instalmentDrafts[0];
   if (!initialInstalment) {
     throw new Error("RETREAT_PAYMENT_PLAN_INVALID");
@@ -1208,7 +1555,26 @@ export async function createRetreatCheckout(input: {
   );
 
   const booking = await db.$transaction(async (tx) => {
-    await assertRoomInventoryAvailableForUpdate(tx, roomOption.id, roomOption.capacity);
+    await assertRetreatCapacityAvailableForUpdate(
+      tx,
+      retreatDate.id,
+      quote.totalGuestCount,
+      retreatDate.capacity
+    );
+    await assertRoomInventoryAvailableForUpdate(
+      tx,
+      roomOption.id,
+      roomOption.capacity,
+      quote.inventoryUnitsConsumed
+    );
+    for (const selection of selectedAddons) {
+      await assertAddonInventoryAvailableForUpdate(
+        tx,
+        selection.addon.id,
+        selection.quantity,
+        selection.addon.inventoryPool?.totalQuantity ?? null
+      );
+    }
     return tx.retreatBooking.create({
       data: {
         retreatDateId: retreatDate.id,
@@ -1265,7 +1631,7 @@ export async function createRetreatCheckout(input: {
         totalPricePence: payableTotalPence,
         payInFullDiscountPence,
         nonRefundableAmountPence,
-        depositAmountPence,
+        depositAmountPence: initialInstalment.amountPence,
         balanceAmountPence,
         currency: retreatDate.currency,
         bookingStatus: "pending",
@@ -1328,21 +1694,34 @@ export async function createRetreatCheckout(input: {
           ],
         },
         items: {
-          create: {
-            itemType: retreatDate.retreatType === "online" ? "online_live_place" : "accommodation",
-            inventoryPoolId: roomOption.inventoryPoolId,
-            roomOptionId: roomOption.id,
-            ratePlanId:
-              selectedRatePlan &&
-              roomOption.ratePlans.some((plan) => plan.id === selectedRatePlan.id)
-                ? selectedRatePlan.id
-                : undefined,
-            quantity: quote.inventoryUnitsConsumed,
-            guestCount: quote.totalGuestCount,
-            unitPricePence: quote.unitPricePence,
-            totalPricePence: payableTotalPence,
-            currency: retreatDate.currency,
-          },
+          create: [
+            {
+              itemType:
+                retreatDate.retreatType === "online" ? "online_live_place" : "accommodation",
+              inventoryPoolId: roomOption.inventoryPoolId,
+              roomOptionId: roomOption.id,
+              ratePlanId:
+                selectedRatePlan &&
+                roomOption.ratePlans.some((plan) => plan.id === selectedRatePlan.id)
+                  ? selectedRatePlan.id
+                  : undefined,
+              quantity: quote.inventoryUnitsConsumed,
+              guestCount: quote.totalGuestCount,
+              unitPricePence: quote.unitPricePence,
+              totalPricePence: payableAccommodationPence,
+              currency: retreatDate.currency,
+            },
+            ...selectedAddons.map((selection) => ({
+              itemType: "addon" as const,
+              inventoryPoolId: selection.addon.inventoryPoolId,
+              addonId: selection.addon.id,
+              quantity: selection.quantity,
+              guestCount: 0,
+              unitPricePence: selection.addon.pricePence,
+              totalPricePence: selection.totalPricePence,
+              currency: selection.addon.currency,
+            })),
+          ],
         },
       },
       include: { retreatDate: true },
@@ -1365,10 +1744,7 @@ export async function createRetreatCheckout(input: {
           currency: retreatDate.currency.toLowerCase(),
           product_data: {
             name: `${retreatDate.retreatTitleSnapshot} ${initialInstalment.label.toLowerCase()}`,
-            description: `${roomOption.label} · ${formatDateRange(
-              retreatDate.startsAt,
-              retreatDate.endsAt
-            )}`,
+            description: `${roomOption.label}${selectedAddons.length ? ` + ${selectedAddons.length} extra${selectedAddons.length === 1 ? "" : "s"}` : ""} · ${formatDateRange(retreatDate.startsAt, retreatDate.endsAt)}`,
           },
           unit_amount: initialInstalment.amountPence,
         },
@@ -1429,13 +1805,22 @@ export async function createRetreatCheckout(input: {
 async function sendDepositConfirmationEmail(bookingId: string) {
   const booking = await db.retreatBooking.findUnique({
     where: { id: bookingId },
-    include: { retreatDate: true },
+    include: {
+      retreatDate: true,
+      items: {
+        where: { itemType: RetreatBookingItemType.addon },
+        include: { addon: true },
+      },
+    },
   });
   if (!booking) return;
 
   const retreatDetailsUrl = buildAbsoluteUrl(`/retreats/${booking.retreatDate.retreatSlug}`);
   const paidInFull = booking.balanceAmountPence <= 0;
   const paidAmountLabel = paidInFull ? "Payment received" : "Deposit paid";
+  const extras = booking.items.flatMap((item) =>
+    item.addon ? [`${item.addon.name} × ${item.quantity}`] : []
+  );
   await sendPostmarkReactEmail({
     to: booking.purchaserEmail,
     subject: `${booking.retreatDate.retreatTitleSnapshot}: ${
@@ -1453,8 +1838,9 @@ async function sendDepositConfirmationEmail(bookingId: string) {
       retreatDetailsUrl,
       transactionRef: booking.id,
       paidInFull,
+      extras,
     }),
-    textBody: `${paidInFull ? "Payment" : "Deposit"} received for ${booking.retreatDate.retreatTitleSnapshot}\nDates: ${formatDateRange(booking.retreatDate.startsAt, booking.retreatDate.endsAt)}\n${paidAmountLabel}: ${formatCurrency(paidInFull ? booking.totalPricePence : booking.depositAmountPence, booking.currency)}\nRemaining balance: ${formatCurrency(booking.balanceAmountPence, booking.currency)}\nDetails: ${retreatDetailsUrl}`,
+    textBody: `${paidInFull ? "Payment" : "Deposit"} received for ${booking.retreatDate.retreatTitleSnapshot}\nDates: ${formatDateRange(booking.retreatDate.startsAt, booking.retreatDate.endsAt)}\n${paidAmountLabel}: ${formatCurrency(paidInFull ? booking.totalPricePence : booking.depositAmountPence, booking.currency)}\nRemaining balance: ${formatCurrency(booking.balanceAmountPence, booking.currency)}${extras.length ? `\nExtras: ${extras.join(", ")}` : ""}\nDetails: ${retreatDetailsUrl}`,
     tag: "retreat-deposit-confirmation",
     templateKey: "retreat-deposit-confirmation",
     metadata: {
@@ -1489,6 +1875,73 @@ async function sendDepositConfirmationEmail(bookingId: string) {
   }
 }
 
+async function sendRetreatBookingAdminNotification(bookingId: string) {
+  const booking = await db.retreatBooking.findUnique({
+    where: { id: bookingId },
+    include: { retreatDate: true },
+  });
+  if (!booking) return;
+
+  const paidPence = booking.depositPaidPence + booking.balancePaidPence;
+  const paymentSummary = `${formatCurrency(paidPence, booking.currency)} received${
+    booking.balanceAmountPence > 0
+      ? `; ${formatCurrency(booking.balanceAmountPence, booking.currency)} remains`
+      : "; paid in full"
+  }.`;
+  const adminUrl = buildAbsoluteUrl(`/admin/retreats/${booking.retreatDateId}`);
+  await Promise.allSettled(
+    getAdminEmailAllowlist().map((email) =>
+      sendPostmarkReactEmail({
+        to: email,
+        subject: `New booking: ${booking.retreatDate.retreatTitleSnapshot}`,
+        react: RetreatBookingAdminEmail({
+          purchaserName: `${booking.purchaserFirstName} ${booking.purchaserLastName}`.trim(),
+          purchaserEmail: booking.purchaserEmail,
+          retreatName: booking.retreatDate.retreatTitleSnapshot,
+          retreatDates: formatDateRange(booking.retreatDate.startsAt, booking.retreatDate.endsAt),
+          selection: booking.roomOptionLabelSnapshot || booking.roomType || "Retreat place",
+          guestCount: booking.attendeeCount,
+          paymentSummary,
+          adminUrl,
+        }),
+        textBody: `New booking for ${booking.retreatDate.retreatTitleSnapshot}\nPurchaser: ${booking.purchaserFirstName} ${booking.purchaserLastName} (${booking.purchaserEmail})\nSelection: ${booking.roomOptionLabelSnapshot || booking.roomType || "Retreat place"}\nGuests: ${booking.attendeeCount}\n${paymentSummary}\nOpen: ${adminUrl}`,
+        tag: "retreat-booking-admin",
+        templateKey: "retreat-booking-admin",
+        metadata: { bookingId: booking.id, retreatDateId: booking.retreatDateId },
+        dispatchMode: "immediate_best_effort",
+      })
+    )
+  );
+}
+
+async function sendRetreatPaymentReceipt(bookingId: string, amountPaidPence: number) {
+  const booking = await db.retreatBooking.findUnique({
+    where: { id: bookingId },
+    include: { retreatDate: true },
+  });
+  if (!booking) return;
+
+  const retreatDetailsUrl = buildAbsoluteUrl(`/dashboard/retreats/${booking.id}`);
+  const totalPaidPence = booking.depositPaidPence + booking.balancePaidPence;
+  await sendPostmarkReactEmail({
+    to: booking.purchaserEmail,
+    subject: `${booking.retreatDate.retreatTitleSnapshot}: payment received`,
+    react: RetreatPaymentReceiptEmail({
+      firstName: booking.purchaserFirstName,
+      retreatName: booking.retreatDate.retreatTitleSnapshot,
+      retreatDates: formatDateRange(booking.retreatDate.startsAt, booking.retreatDate.endsAt),
+      amountPaid: formatCurrency(amountPaidPence, booking.currency),
+      totalPaid: formatCurrency(totalPaidPence, booking.currency),
+      retreatDetailsUrl,
+    }),
+    textBody: `Payment received for ${booking.retreatDate.retreatTitleSnapshot}\nAmount received: ${formatCurrency(amountPaidPence, booking.currency)}\nTotal paid: ${formatCurrency(totalPaidPence, booking.currency)}\nDetails: ${retreatDetailsUrl}`,
+    tag: "retreat-payment-receipt",
+    templateKey: "retreat-payment-receipt",
+    metadata: { bookingId: booking.id, retreatDateId: booking.retreatDateId },
+    dispatchMode: "immediate_best_effort",
+  });
+}
+
 export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.Session) {
   const bookingId = session.metadata?.bookingId;
   const kind = session.metadata?.kind;
@@ -1509,13 +1962,12 @@ export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.S
     const instalmentSequence = Number(session.metadata?.instalmentSequence || "1");
     const paidAt = new Date();
 
-    await db.$transaction(async (tx) => {
-      await tx.retreatBookingInstalment.update({
+    const paymentApplied = await db.$transaction(async (tx) => {
+      const claimed = await tx.retreatBookingInstalment.updateMany({
         where: {
-          bookingId_sequence: {
-            bookingId: booking.id,
-            sequence: instalmentSequence,
-          },
+          bookingId: booking.id,
+          sequence: instalmentSequence,
+          status: { not: RetreatInstalmentStatus.paid },
         },
         data: {
           status: RetreatInstalmentStatus.paid,
@@ -1523,6 +1975,7 @@ export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.S
           stripePaymentIntentId: paymentIntentId || undefined,
         },
       });
+      if (claimed.count === 0) return false;
 
       const instalments = await tx.retreatBookingInstalment.findMany({
         where: { bookingId: booking.id },
@@ -1585,14 +2038,30 @@ export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.S
               : booking.stripeBalancePaymentIntentId,
         },
       });
+      return true;
     });
+
+    if (!paymentApplied) return true;
 
     if (instalmentSequence === 1) {
       await assignRoomUnitAfterPayment(booking.id);
       await ensureRetreatOnlineAccessEntitlement(booking.id);
-      await sendDepositConfirmationEmail(booking.id).catch((error) => {
-        console.error("Failed to send retreat booking confirmation email", error);
+      await Promise.allSettled([
+        sendDepositConfirmationEmail(booking.id),
+        sendRetreatBookingAdminNotification(booking.id),
+      ]);
+    } else {
+      const paidInstalment = await db.retreatBookingInstalment.findUnique({
+        where: {
+          bookingId_sequence: { bookingId: booking.id, sequence: instalmentSequence },
+        },
+        select: { amountPence: true },
       });
+      if (paidInstalment) {
+        await sendRetreatPaymentReceipt(booking.id, paidInstalment.amountPence).catch((error) => {
+          console.error("Failed to send retreat payment receipt", error);
+        });
+      }
     }
     return true;
   }
@@ -1607,8 +2076,11 @@ export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.S
         ? RetreatBookingStatus.balance_due
         : RetreatBookingStatus.paid_in_full;
 
-    await db.retreatBooking.update({
-      where: { id: booking.id },
+    const claimed = await db.retreatBooking.updateMany({
+      where: {
+        id: booking.id,
+        paymentStatus: RetreatPaymentStatus.unpaid,
+      },
       data: {
         paymentStatus,
         bookingStatus,
@@ -1617,17 +2089,23 @@ export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.S
         stripeDepositPaymentIntentId: paymentIntentId || booking.stripeDepositPaymentIntentId,
       },
     });
+    if (claimed.count === 0) return true;
     await assignRoomUnitAfterPayment(booking.id);
     await ensureRetreatOnlineAccessEntitlement(booking.id);
-    await sendDepositConfirmationEmail(booking.id).catch((error) => {
-      console.error("Failed to send retreat deposit emails", error);
-    });
+    await Promise.allSettled([
+      sendDepositConfirmationEmail(booking.id),
+      sendRetreatBookingAdminNotification(booking.id),
+    ]);
     return true;
   }
 
   if (kind === "retreat_balance") {
-    await db.retreatBooking.update({
-      where: { id: booking.id },
+    const amountPaidPence = booking.balanceAmountPence;
+    const claimed = await db.retreatBooking.updateMany({
+      where: {
+        id: booking.id,
+        paymentStatus: { not: RetreatPaymentStatus.paid_in_full },
+      },
       data: {
         paymentStatus: RetreatPaymentStatus.paid_in_full,
         bookingStatus: RetreatBookingStatus.paid_in_full,
@@ -1635,6 +2113,10 @@ export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.S
         balancePaidAt: new Date(),
         stripeBalancePaymentIntentId: paymentIntentId || booking.stripeBalancePaymentIntentId,
       },
+    });
+    if (claimed.count === 0) return true;
+    await sendRetreatPaymentReceipt(booking.id, amountPaidPence).catch((error) => {
+      console.error("Failed to send retreat balance receipt", error);
     });
     return true;
   }
@@ -1833,7 +2315,12 @@ export async function getMyRetreatBookings(userId: string) {
     where: {
       OR: [{ purchaserUserId: userId }, { attendeeUserId: userId }],
     },
-    include: { retreatDate: true, roomOption: true },
+    include: {
+      retreatDate: true,
+      roomOption: true,
+      items: { where: { itemType: RetreatBookingItemType.addon }, include: { addon: true } },
+      cancellationRequests: { orderBy: { requestedAt: "desc" }, take: 1 },
+    },
     orderBy: { retreatDate: { startsAt: "asc" } },
   });
 
@@ -1852,11 +2339,32 @@ export async function getMyRetreatBookings(userId: string) {
     balanceAmountPence: booking.balanceAmountPence,
     balanceDueAt: booking.balanceDueAt?.toISOString() || null,
     roomType: booking.roomOptionLabelSnapshot || booking.roomType,
+    attendeeCount: booking.attendeeCount,
+    addons: booking.items.flatMap((item) =>
+      item.addon
+        ? [
+            {
+              id: item.addon.id,
+              name: item.addon.name,
+              quantity: item.quantity,
+              totalPricePence: item.totalPricePence,
+            },
+          ]
+        : []
+    ),
     dietaryRequirements: booking.dietaryRequirements,
     medicalConditions: booking.medicalConditions,
     mobilityNeeds: booking.mobilityNeeds,
     dailyRoomUrl: booking.retreatDate.dailyRoomUrl,
     canPayBalance: booking.paymentStatus !== "paid_in_full" && booking.balanceAmountPence > 0,
+    canRequestCancellation:
+      booking.purchaserUserId === userId &&
+      ACTIVE_RETREAT_BOOKING_STATUSES.includes(booking.bookingStatus) &&
+      booking.retreatDate.startsAt > new Date() &&
+      !booking.cancellationRequests.some((request) =>
+        OPEN_RETREAT_CANCELLATION_STATUSES.includes(request.status)
+      ),
+    latestCancellation: serializeCancellationRequest(booking.cancellationRequests[0] || null),
   }));
 }
 
@@ -1866,7 +2374,13 @@ export async function getMyRetreatBookingDetail(userId: string, bookingId: strin
       id: bookingId,
       OR: [{ purchaserUserId: userId }, { attendeeUserId: userId }],
     },
-    include: { retreatDate: true, roomOption: true },
+    include: {
+      retreatDate: true,
+      roomOption: true,
+      attendees: { orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] },
+      items: { where: { itemType: RetreatBookingItemType.addon }, include: { addon: true } },
+      cancellationRequests: { orderBy: { requestedAt: "desc" }, take: 1 },
+    },
   });
   if (!booking) throw new Error("NOT_FOUND");
 
@@ -1885,6 +2399,19 @@ export async function getMyRetreatBookingDetail(userId: string, bookingId: strin
     balanceAmountPence: booking.balanceAmountPence,
     balanceDueAt: booking.balanceDueAt?.toISOString() || null,
     roomType: booking.roomOptionLabelSnapshot || booking.roomType,
+    attendeeCount: booking.attendeeCount,
+    addons: booking.items.flatMap((item) =>
+      item.addon
+        ? [
+            {
+              id: item.addon.id,
+              name: item.addon.name,
+              quantity: item.quantity,
+              totalPricePence: item.totalPricePence,
+            },
+          ]
+        : []
+    ),
     dietaryRequirements: booking.dietaryRequirements,
     medicalConditions: booking.medicalConditions,
     mobilityNeeds: booking.mobilityNeeds,
@@ -1895,8 +2422,660 @@ export async function getMyRetreatBookingDetail(userId: string, bookingId: strin
         : null,
     emergencyContactName: booking.emergencyContactName,
     emergencyContactPhone: booking.emergencyContactPhone,
+    secondaryGuest:
+      booking.attendeeCount > 1
+        ? (() => {
+            const attendee = booking.attendees.find((entry) => !entry.isPrimary);
+            const email = attendee?.email || booking.guestTwoEmail;
+            if (!email) return null;
+            return {
+              firstName: attendee?.firstName || booking.guestTwoFirstName || "",
+              lastName: attendee?.lastName || booking.guestTwoLastName || "",
+              email,
+              dietaryRequirements: booking.guestTwoDietaryRequirements,
+              status: attendee?.status || "pending_claim",
+            };
+          })()
+        : null,
     canPayBalance: booking.paymentStatus !== "paid_in_full" && booking.balanceAmountPence > 0,
+    canRequestCancellation:
+      booking.purchaserUserId === userId &&
+      ACTIVE_RETREAT_BOOKING_STATUSES.includes(booking.bookingStatus) &&
+      booking.retreatDate.startsAt > new Date() &&
+      !booking.cancellationRequests.some((request) =>
+        OPEN_RETREAT_CANCELLATION_STATUSES.includes(request.status)
+      ),
+    latestCancellation: serializeCancellationRequest(booking.cancellationRequests[0] || null),
   };
+}
+
+export async function updateMyRetreatSecondaryGuest(input: {
+  userId: string;
+  bookingId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  dietaryRequirements?: string;
+}) {
+  const firstName = normalizeText(input.firstName, 80);
+  const lastName = normalizeText(input.lastName, 80);
+  const email = normalizeEmail(input.email);
+  const dietaryRequirements = normalizeText(input.dietaryRequirements || "", 1000) || null;
+  if (!firstName || !lastName || !email || !email.includes("@")) {
+    throw new Error("INVALID_SECONDARY_GUEST");
+  }
+
+  await db.$transaction(async (tx) => {
+    await lockRetreatResource(tx, `retreat-booking:${input.bookingId}`);
+    const booking = await tx.retreatBooking.findFirst({
+      where: { id: input.bookingId, purchaserUserId: input.userId },
+      include: { attendees: true, retreatDate: true },
+    });
+    if (!booking) throw new Error("NOT_FOUND");
+    if (
+      booking.attendeeCount < 2 ||
+      !ACTIVE_RETREAT_BOOKING_STATUSES.includes(booking.bookingStatus) ||
+      booking.retreatDate.startsAt <= new Date()
+    ) {
+      throw new Error("SECONDARY_GUEST_LOCKED");
+    }
+
+    const attendee = booking.attendees.find((entry) => !entry.isPrimary);
+    if (attendee?.status === "claimed" && normalizeEmail(attendee.email) !== email) {
+      throw new Error("SECONDARY_GUEST_ALREADY_CLAIMED");
+    }
+
+    await tx.retreatBooking.update({
+      where: { id: booking.id },
+      data: {
+        guestTwoFirstName: firstName,
+        guestTwoLastName: lastName,
+        guestTwoEmail: email,
+        guestTwoDietaryRequirements: dietaryRequirements,
+      },
+    });
+
+    if (attendee) {
+      await tx.retreatAttendee.update({
+        where: { id: attendee.id },
+        data: {
+          firstName,
+          lastName,
+          displayName: `${firstName} ${lastName}`.trim(),
+          email,
+        },
+      });
+    } else {
+      await tx.retreatAttendee.create({
+        data: {
+          bookingId: booking.id,
+          firstName,
+          lastName,
+          displayName: `${firstName} ${lastName}`.trim(),
+          email,
+          isPrimary: false,
+          isPurchaser: false,
+          status: "pending_claim",
+          claimToken: createBalanceToken(),
+        },
+      });
+    }
+  });
+
+  return getMyRetreatBookingDetail(input.userId, input.bookingId);
+}
+
+function serializeCancellationRequest(
+  request: {
+    id: string;
+    status: RetreatCancellationStatus;
+    reason: string | null;
+    refundableAmountPence: number;
+    adminDecisionReason: string | null;
+    requestedAt: Date;
+    completedAt: Date | null;
+  } | null
+) {
+  if (!request) return null;
+  return {
+    id: request.id,
+    status: request.status,
+    reason: request.reason,
+    refundableAmountPence: request.refundableAmountPence,
+    adminDecisionReason: request.adminDecisionReason,
+    requestedAt: request.requestedAt.toISOString(),
+    completedAt: request.completedAt?.toISOString() || null,
+  };
+}
+
+async function sendRetreatCancellationCustomerEmail(input: {
+  booking: {
+    id: string;
+    purchaserFirstName: string;
+    purchaserEmail: string;
+    currency: string;
+    retreatDate: {
+      retreatSlug: string;
+      retreatTitleSnapshot: string;
+      startsAt: Date;
+      endsAt: Date;
+    };
+  };
+  request: {
+    status: RetreatCancellationStatus;
+    reason: string | null;
+    refundableAmountPence: number;
+    adminDecisionReason: string | null;
+  };
+}) {
+  const emailStatus =
+    input.request.status === RetreatCancellationStatus.rejected
+      ? "rejected"
+      : input.request.status === RetreatCancellationStatus.completed
+        ? "approved"
+        : "requested";
+  const dashboardUrl = buildAbsoluteUrl(`/dashboard/retreats/${input.booking.id}`);
+  await sendPostmarkReactEmail({
+    to: input.booking.purchaserEmail,
+    subject:
+      emailStatus === "requested"
+        ? `${input.booking.retreatDate.retreatTitleSnapshot}: cancellation request received`
+        : emailStatus === "approved"
+          ? `${input.booking.retreatDate.retreatTitleSnapshot}: cancellation complete`
+          : `${input.booking.retreatDate.retreatTitleSnapshot}: cancellation request update`,
+    react: RetreatCancellationEmail({
+      firstName: input.booking.purchaserFirstName,
+      retreatName: input.booking.retreatDate.retreatTitleSnapshot,
+      retreatDates: formatDateRange(
+        input.booking.retreatDate.startsAt,
+        input.booking.retreatDate.endsAt
+      ),
+      status: emailStatus,
+      refundableAmount: formatCurrency(input.request.refundableAmountPence, input.booking.currency),
+      dashboardUrl,
+      reason: input.request.reason,
+      decisionReason: input.request.adminDecisionReason,
+    }),
+    textBody: `${input.booking.retreatDate.retreatTitleSnapshot}: cancellation request ${emailStatus}. Refund under the booking terms: ${formatCurrency(input.request.refundableAmountPence, input.booking.currency)}. View your booking: ${dashboardUrl}`,
+    tag: `retreat-cancellation-${emailStatus}`,
+    templateKey: `retreat-cancellation-${emailStatus}`,
+    metadata: {
+      bookingId: input.booking.id,
+      retreatSlug: input.booking.retreatDate.retreatSlug,
+    },
+    dispatchMode: "immediate_best_effort",
+  });
+}
+
+export async function requestRetreatCancellation(input: {
+  bookingId: string;
+  userId: string;
+  userEmail: string;
+  reason?: string | null;
+}) {
+  const requestedAt = new Date();
+  const reason = normalizeText(input.reason || "", 2000) || null;
+  const result = await db.$transaction(async (tx) => {
+    await lockRetreatResource(tx, `retreat-cancellation:${input.bookingId}`);
+    const booking = await tx.retreatBooking.findFirst({
+      where: {
+        id: input.bookingId,
+        purchaserUserId: input.userId,
+      },
+      include: {
+        retreatDate: true,
+        cancellationRequests: { orderBy: { requestedAt: "desc" }, take: 1 },
+        refunds: { where: { status: RetreatRefundStatus.succeeded } },
+      },
+    });
+    if (!booking) throw new Error("NOT_FOUND");
+    if (!ACTIVE_RETREAT_BOOKING_STATUSES.includes(booking.bookingStatus)) {
+      throw new Error("CANCELLATION_NOT_AVAILABLE");
+    }
+    if (booking.retreatDate.startsAt <= requestedAt) {
+      throw new Error("RETREAT_ALREADY_STARTED");
+    }
+
+    const latestRequest = booking.cancellationRequests[0];
+    if (latestRequest && OPEN_RETREAT_CANCELLATION_STATUSES.includes(latestRequest.status)) {
+      return { booking, request: latestRequest, created: false };
+    }
+
+    const alreadyRefundedPence = booking.refunds.reduce(
+      (sum, refund) => sum + refund.amountPence,
+      0
+    );
+    const actualPaidPence = Math.max(
+      booking.depositPaidPence + booking.balancePaidPence - alreadyRefundedPence,
+      0
+    );
+    const refundableAmountPence = calculateRetreatRefund({
+      actualPaidPence,
+      nonRefundableAmountPence: Math.min(booking.nonRefundableAmountPence, actualPaidPence),
+      startsAt: booking.retreatDate.startsAt,
+      requestedAt,
+      retreatType: booking.retreatDate.retreatType as RetreatType,
+    });
+    const policySnapshot = {
+      ...(getRetreatRefundPolicySnapshot({
+        retreatType: booking.retreatDate.retreatType as RetreatType,
+        totalPence: booking.totalPricePence,
+        depositPence: booking.depositAmountPence,
+        startsAt: booking.retreatDate.startsAt,
+      }) || {}),
+      requestedAt: requestedAt.toISOString(),
+      actualPaidPence,
+      refundableAmountPence,
+      currency: booking.currency,
+    };
+    const request = await tx.retreatCancellationRequest.create({
+      data: {
+        bookingId: booking.id,
+        requestedByUserId: input.userId,
+        requestedByEmail: normalizeEmail(input.userEmail) || booking.purchaserEmail,
+        reason,
+        refundableAmountPence,
+        policySnapshotJson: policySnapshot,
+      },
+    });
+    return { booking, request, created: true };
+  });
+
+  if (result.created) {
+    await Promise.all([
+      sendRetreatCancellationCustomerEmail({ booking: result.booking, request: result.request }),
+      ...getAdminEmailAllowlist().map((adminEmail) =>
+        sendPostmarkReactEmail({
+          to: adminEmail,
+          subject: `Cancellation request: ${result.booking.retreatDate.retreatTitleSnapshot}`,
+          react: RetreatCancellationAdminEmail({
+            customerName:
+              `${result.booking.purchaserFirstName} ${result.booking.purchaserLastName}`.trim(),
+            customerEmail: result.booking.purchaserEmail,
+            retreatName: result.booking.retreatDate.retreatTitleSnapshot,
+            retreatDates: formatDateRange(
+              result.booking.retreatDate.startsAt,
+              result.booking.retreatDate.endsAt
+            ),
+            refundableAmount: formatCurrency(
+              result.request.refundableAmountPence,
+              result.booking.currency
+            ),
+            reason: result.request.reason,
+            adminUrl: buildAbsoluteUrl(`/admin/retreats/${result.booking.retreatDateId}`),
+          }),
+          textBody: `${result.booking.purchaserEmail} requested cancellation of ${result.booking.retreatDate.retreatTitleSnapshot}. Calculated refund: ${formatCurrency(result.request.refundableAmountPence, result.booking.currency)}. Review: ${buildAbsoluteUrl(`/admin/retreats/${result.booking.retreatDateId}`)}`,
+          tag: "retreat-cancellation-admin",
+          templateKey: "retreat-cancellation-admin",
+          metadata: { bookingId: result.booking.id, requestId: result.request.id },
+          dispatchMode: "immediate_best_effort",
+        })
+      ),
+    ]).catch((error) => {
+      console.error("Failed to send retreat cancellation request email", error);
+    });
+  }
+
+  return serializeCancellationRequest(result.request);
+}
+
+export async function rejectRetreatCancellation(input: {
+  requestId: string;
+  actorUserId: string;
+  reason: string;
+}) {
+  const reason = normalizeText(input.reason, 2000);
+  if (!reason) throw new Error("DECISION_REASON_REQUIRED");
+  const result = await db.$transaction(async (tx) => {
+    await lockRetreatResource(tx, `retreat-cancellation-request:${input.requestId}`);
+    const request = await tx.retreatCancellationRequest.findUnique({
+      where: { id: input.requestId },
+      include: { booking: { include: { retreatDate: true } } },
+    });
+    if (!request) throw new Error("NOT_FOUND");
+    if (request.status === RetreatCancellationStatus.rejected) return request;
+    if (request.status !== RetreatCancellationStatus.requested) {
+      throw new Error("CANCELLATION_ALREADY_DECIDED");
+    }
+    return tx.retreatCancellationRequest.update({
+      where: { id: request.id },
+      data: {
+        status: RetreatCancellationStatus.rejected,
+        adminDecisionReason: reason,
+        reviewedByUserId: input.actorUserId,
+        reviewedAt: new Date(),
+      },
+      include: { booking: { include: { retreatDate: true } } },
+    });
+  });
+  await Promise.all([
+    sendRetreatCancellationCustomerEmail({ booking: result.booking, request: result }),
+    createAdminActionLog({
+      actorUserId: input.actorUserId,
+      actionType: "retreat_cancellation_rejected",
+      targetType: "retreat_booking",
+      targetId: result.bookingId,
+      reason,
+      metadataJson: { cancellationRequestId: result.id },
+    }),
+  ]);
+  return result;
+}
+
+export async function approveRetreatCancellation(input: {
+  requestId: string;
+  actorUserId: string;
+  reason?: string | null;
+}) {
+  const decisionReason = normalizeText(input.reason || "", 2000) || null;
+  const claimed = await db.$transaction(async (tx) => {
+    await lockRetreatResource(tx, `retreat-cancellation-request:${input.requestId}`);
+    const request = await tx.retreatCancellationRequest.findUnique({
+      where: { id: input.requestId },
+      include: {
+        booking: {
+          include: {
+            retreatDate: true,
+            instalments: { orderBy: { sequence: "desc" } },
+            refunds: { where: { status: RetreatRefundStatus.succeeded } },
+          },
+        },
+        refunds: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+    });
+    if (!request) throw new Error("NOT_FOUND");
+    if (request.status === RetreatCancellationStatus.completed) return { request, complete: true };
+    if (!APPROVABLE_RETREAT_CANCELLATION_STATUSES.includes(request.status)) {
+      throw new Error("CANCELLATION_ALREADY_DECIDED");
+    }
+    const refund = request.refunds[0]
+      ? await tx.retreatRefund.update({
+          where: { id: request.refunds[0].id },
+          data: { status: RetreatRefundStatus.processing, failureReason: null },
+        })
+      : await tx.retreatRefund.create({
+          data: {
+            bookingId: request.bookingId,
+            cancellationRequestId: request.id,
+            amountPence: request.refundableAmountPence,
+            currency: request.booking.currency,
+            status: RetreatRefundStatus.processing,
+            initiatedByUserId: input.actorUserId,
+          },
+        });
+    const updatedRequest = await tx.retreatCancellationRequest.update({
+      where: { id: request.id },
+      data: {
+        status: RetreatCancellationStatus.processing,
+        adminDecisionReason: decisionReason,
+        reviewedByUserId: input.actorUserId,
+        reviewedAt: new Date(),
+      },
+    });
+    return { request: { ...request, ...updatedRequest, refunds: [refund] }, complete: false };
+  });
+
+  if (claimed.complete) return claimed.request;
+  const { request } = claimed;
+  const booking = request.booking;
+  const refundRecord = request.refunds[0];
+  const alreadyRefundedPence = booking.refunds.reduce((sum, refund) => sum + refund.amountPence, 0);
+  const actualPaidPence = Math.max(
+    booking.depositPaidPence + booking.balancePaidPence - alreadyRefundedPence,
+    0
+  );
+  const targetRefundPence = Math.min(request.refundableAmountPence, actualPaidPence);
+
+  try {
+    const paymentSources: Array<{ paymentIntentId: string; amountPence: number }> = [];
+    const seenPaymentIntents = new Set<string>();
+    for (const instalment of booking.instalments) {
+      if (
+        instalment.status === RetreatInstalmentStatus.paid &&
+        instalment.stripePaymentIntentId &&
+        !seenPaymentIntents.has(instalment.stripePaymentIntentId)
+      ) {
+        seenPaymentIntents.add(instalment.stripePaymentIntentId);
+        paymentSources.push({
+          paymentIntentId: instalment.stripePaymentIntentId,
+          amountPence: instalment.amountPence,
+        });
+      }
+    }
+    const fallbackSources = [
+      {
+        paymentIntentId: booking.stripeBalancePaymentIntentId,
+        amountPence: booking.balancePaidPence,
+      },
+      {
+        paymentIntentId: booking.stripeDepositPaymentIntentId,
+        amountPence: booking.depositPaidPence,
+      },
+    ];
+    for (const source of fallbackSources) {
+      if (
+        source.paymentIntentId &&
+        source.amountPence > 0 &&
+        !seenPaymentIntents.has(source.paymentIntentId)
+      ) {
+        seenPaymentIntents.add(source.paymentIntentId);
+        paymentSources.push({
+          paymentIntentId: source.paymentIntentId,
+          amountPence: source.amountPence,
+        });
+      }
+    }
+    if (targetRefundPence > 0 && paymentSources.length === 0) {
+      throw new Error("RETREAT_PAYMENT_INTENT_MISSING");
+    }
+
+    let remainingPence = targetRefundPence;
+    const stripeRefunds: Array<{ id: string; amountPence: number; status: string | null }> = [];
+    const stripe = getStripeClient();
+    for (const source of paymentSources) {
+      if (remainingPence <= 0) break;
+      const amountPence = Math.min(source.amountPence, remainingPence);
+      const stripeRefund = await stripe.refunds.create(
+        {
+          payment_intent: source.paymentIntentId,
+          amount: amountPence,
+          reason: "requested_by_customer",
+          metadata: {
+            bookingId: booking.id,
+            cancellationRequestId: request.id,
+            retreatDateId: booking.retreatDateId,
+            retreatRefundId: refundRecord.id,
+          },
+        },
+        { idempotencyKey: `retreat-cancellation-${request.id}-${source.paymentIntentId}` }
+      );
+      stripeRefunds.push({
+        id: stripeRefund.id,
+        amountPence,
+        status: stripeRefund.status || null,
+      });
+      remainingPence -= amountPence;
+    }
+    if (remainingPence > 0) throw new Error("RETREAT_REFUND_SOURCE_INSUFFICIENT");
+
+    const completedAt = new Date();
+    const refundCompleted =
+      stripeRefunds.length === 0 || stripeRefunds.every((refund) => refund.status === "succeeded");
+    const fullRefund = targetRefundPence > 0 && targetRefundPence >= actualPaidPence;
+    const completed = await db.$transaction(async (tx) => {
+      await lockRetreatResource(tx, `retreat-cancellation-request:${request.id}`);
+      await tx.retreatRefund.update({
+        where: { id: refundRecord.id },
+        data: {
+          status: refundCompleted ? RetreatRefundStatus.succeeded : RetreatRefundStatus.processing,
+          stripeRefundIdsJson: stripeRefunds,
+          completedAt: refundCompleted ? completedAt : null,
+        },
+      });
+      await tx.retreatBookingInstalment.updateMany({
+        where: { bookingId: booking.id, status: RetreatInstalmentStatus.pending },
+        data: { status: RetreatInstalmentStatus.cancelled },
+      });
+      await tx.retreatOnlineAccessEntitlement.updateMany({
+        where: { bookingId: booking.id },
+        data: { liveAccessEnabled: false, replayAccessEnabled: false },
+      });
+      await tx.retreatBooking.update({
+        where: { id: booking.id },
+        data: {
+          bookingStatus: fullRefund
+            ? RetreatBookingStatus.refunded
+            : RetreatBookingStatus.cancelled,
+          paymentStatus: fullRefund
+            ? RetreatPaymentStatus.refunded
+            : targetRefundPence > 0
+              ? RetreatPaymentStatus.partially_refunded
+              : booking.paymentStatus,
+          cancelledAt: completedAt,
+        },
+      });
+      return tx.retreatCancellationRequest.update({
+        where: { id: request.id },
+        data: {
+          status: refundCompleted
+            ? RetreatCancellationStatus.completed
+            : RetreatCancellationStatus.processing,
+          completedAt: refundCompleted ? completedAt : null,
+        },
+        include: { booking: { include: { retreatDate: true } } },
+      });
+    });
+    await releaseRoomUnitForBooking(booking.id);
+    await Promise.all([
+      ...(refundCompleted
+        ? [sendRetreatCancellationCustomerEmail({ booking: completed.booking, request: completed })]
+        : []),
+      createAdminActionLog({
+        actorUserId: input.actorUserId,
+        actionType: "retreat_cancellation_approved",
+        targetType: "retreat_booking",
+        targetId: booking.id,
+        reason: decisionReason,
+        metadataJson: {
+          cancellationRequestId: request.id,
+          refundId: refundRecord.id,
+          refundedAmountPence: targetRefundPence,
+          stripeRefundIds: stripeRefunds.map((refund) => refund.id),
+        },
+      }),
+    ]);
+    return completed;
+  } catch (error) {
+    const failureReason = error instanceof Error ? error.message : "RETREAT_REFUND_FAILED";
+    await db.$transaction([
+      db.retreatRefund.update({
+        where: { id: refundRecord.id },
+        data: { status: RetreatRefundStatus.failed, failureReason },
+      }),
+      db.retreatCancellationRequest.update({
+        where: { id: request.id },
+        data: { status: RetreatCancellationStatus.failed },
+      }),
+    ]);
+    throw error;
+  }
+}
+
+type StoredStripeRefund = {
+  id: string;
+  amountPence: number;
+  status: string | null;
+};
+
+function parseStoredStripeRefunds(value: Prisma.JsonValue | null): StoredStripeRefund[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const id = "id" in item && typeof item.id === "string" ? item.id : "";
+    const amountPence =
+      "amountPence" in item && typeof item.amountPence === "number" ? item.amountPence : 0;
+    const status = "status" in item && typeof item.status === "string" ? item.status : null;
+    return id ? [{ id, amountPence, status }] : [];
+  });
+}
+
+export async function processRetreatRefundUpdated(refund: Stripe.Refund) {
+  const retreatRefundId = refund.metadata?.retreatRefundId || null;
+  let record = retreatRefundId
+    ? await db.retreatRefund.findUnique({
+        where: { id: retreatRefundId },
+        include: {
+          cancellationRequest: true,
+          booking: { include: { retreatDate: true } },
+        },
+      })
+    : null;
+
+  if (!record) {
+    const candidates = await db.retreatRefund.findMany({
+      where: { status: RetreatRefundStatus.processing },
+      include: {
+        cancellationRequest: true,
+        booking: { include: { retreatDate: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+    record =
+      candidates.find((candidate) =>
+        parseStoredStripeRefunds(candidate.stripeRefundIdsJson).some(
+          (storedRefund) => storedRefund.id === refund.id
+        )
+      ) || null;
+  }
+  if (!record) return false;
+
+  const storedRefunds = parseStoredStripeRefunds(record.stripeRefundIdsJson).map((storedRefund) =>
+    storedRefund.id === refund.id
+      ? { ...storedRefund, status: refund.status || null }
+      : storedRefund
+  );
+  const failed = storedRefunds.some((item) =>
+    ["failed", "canceled", "requires_action"].includes(item.status || "")
+  );
+  const succeeded =
+    storedRefunds.length > 0 && storedRefunds.every((item) => item.status === "succeeded");
+  const completedAt = succeeded ? new Date() : null;
+
+  const updated = await db.$transaction(async (tx) => {
+    await lockRetreatResource(tx, `retreat-refund:${record.id}`);
+    await tx.retreatRefund.update({
+      where: { id: record.id },
+      data: {
+        stripeRefundIdsJson: storedRefunds,
+        status: failed
+          ? RetreatRefundStatus.failed
+          : succeeded
+            ? RetreatRefundStatus.succeeded
+            : RetreatRefundStatus.processing,
+        failureReason: failed ? refund.failure_reason || `Stripe refund ${refund.status}` : null,
+        completedAt,
+      },
+    });
+    if (!record.cancellationRequestId) return null;
+    return tx.retreatCancellationRequest.update({
+      where: { id: record.cancellationRequestId },
+      data: {
+        status: failed
+          ? RetreatCancellationStatus.failed
+          : succeeded
+            ? RetreatCancellationStatus.completed
+            : RetreatCancellationStatus.processing,
+        completedAt,
+      },
+      include: { booking: { include: { retreatDate: true } } },
+    });
+  });
+
+  if (succeeded && updated) {
+    await sendRetreatCancellationCustomerEmail({ booking: updated.booking, request: updated });
+  }
+  return true;
 }
 
 async function getRetreatOnlineAccessState(bookingId: string, userId: string) {
@@ -2054,6 +3233,55 @@ export async function getAdminRetreatSummaries() {
   });
 }
 
+export async function getAdminRetreatTemplates() {
+  const [templates, venues, latestDates] = await Promise.all([
+    getRetreatTemplates(),
+    getRetreatVenues(),
+    db.retreatDate.findMany({
+      orderBy: { startsAt: "desc" },
+      include: {
+        roomOptions: { include: { ratePlans: { where: { active: true } } } },
+        depositRules: { where: { active: true }, orderBy: { createdAt: "desc" } },
+      },
+    }),
+  ]);
+  const latestDateBySlug = new Map<string, (typeof latestDates)[number]>();
+  for (const date of latestDates) {
+    if (!latestDateBySlug.has(date.retreatSlug)) latestDateBySlug.set(date.retreatSlug, date);
+  }
+
+  return templates.map((template) => {
+    const sourceDate = latestDateBySlug.get(template.slug);
+    const venue = getTemplateVenue(template, venues);
+    const retreatType =
+      template.deliveryMode === "online_live" ||
+      template.deliveryMode === "online_on_demand" ||
+      template.experienceType === "online_workshop"
+        ? ("online" as const)
+        : ("in_person" as const);
+    const rates = sourceDate?.roomOptions.flatMap((option) => option.ratePlans) || [];
+    const prices = rates.map((rate) => rate.totalPricePence);
+    const depositRule = sourceDate?.depositRules[0];
+
+    return {
+      slug: template.slug,
+      title: template.title,
+      location:
+        venue?.displayLocation ||
+        venue?.name ||
+        sourceDate?.retreatLocationSnapshot ||
+        (retreatType === "online" ? "Online (live through this website)" : "To be confirmed"),
+      retreatType,
+      capacity: sourceDate?.capacity || (retreatType === "online" ? 30 : 10),
+      pricePence: prices.length > 0 ? Math.min(...prices) : sourceDate?.pricePence || 0,
+      paymentPolicy:
+        retreatType === "online" || depositRule?.depositType === RetreatDepositType.full_payment
+          ? ("full_payment" as const)
+          : ("deposit" as const),
+    };
+  });
+}
+
 export type CreateAdminRetreatDateInput = {
   retreatSlug: string;
   title: string;
@@ -2100,15 +3328,62 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
     throw new Error("INVALID_EARLY_BIRD");
   }
 
+  const sourceDate = await db.retreatDate.findFirst({
+    where: { retreatSlug: input.retreatSlug },
+    orderBy: { startsAt: "desc" },
+    include: {
+      inventoryPools: true,
+      roomOptions: {
+        orderBy: { displayOrder: "asc" },
+        include: {
+          ratePlans: { orderBy: { guestCount: "asc" } },
+          roomUnits: { orderBy: { label: "asc" } },
+        },
+      },
+      depositRules: { where: { active: true }, orderBy: { createdAt: "desc" } },
+      addons: { where: { active: true }, orderBy: { createdAt: "asc" } },
+      instructorAssignments: true,
+    },
+  });
+  if (sourceDate && parseRetreatType(sourceDate.retreatType) !== input.retreatType) {
+    throw new Error("RETREAT_TYPE_MISMATCH");
+  }
+
   const externalDateId = buildRetreatDateExternalId(input);
   const isOnline = input.retreatType === "online";
-  const requiresFullPayment = isOnline || input.paymentPolicy === "full_payment";
+  const sourceDepositRule = sourceDate?.depositRules[0] || null;
+  const requiresFullPayment =
+    isOnline ||
+    input.paymentPolicy === "full_payment" ||
+    sourceDepositRule?.depositType === RetreatDepositType.full_payment;
+  const sourcePrices =
+    sourceDate?.roomOptions.flatMap((option) =>
+      option.ratePlans.filter((rate) => rate.active).map((rate) => rate.totalPricePence)
+    ) || [];
+  const standardPricePence = sourcePrices.length > 0 ? Math.min(...sourcePrices) : input.pricePence;
+  const depositPercentageBasisPoints =
+    !requiresFullPayment && sourceDepositRule?.depositType === RetreatDepositType.percentage
+      ? sourceDepositRule.depositPercentageBasisPoints
+      : !requiresFullPayment
+        ? 2000
+        : null;
+  const fixedDepositAmountPence =
+    !requiresFullPayment && sourceDepositRule?.depositType === RetreatDepositType.fixed_amount
+      ? sourceDepositRule.fixedDepositAmountPence
+      : null;
   const depositAmountPence = requiresFullPayment
-    ? input.pricePence
-    : Math.round(input.pricePence * 0.2);
-  const balanceDueAt = requiresFullPayment
+    ? standardPricePence
+    : fixedDepositAmountPence !== null
+      ? Math.min(fixedDepositAmountPence, standardPricePence)
+      : Math.round((standardPricePence * (depositPercentageBasisPoints || 2000)) / 10000);
+  const balanceDueDaysBeforeStart = requiresFullPayment
     ? null
-    : new Date(input.startsAt.getTime() - 56 * 86400000);
+    : (sourceDepositRule?.balanceDueDaysBeforeStart ?? 56);
+  const balanceDueAt =
+    requiresFullPayment || balanceDueDaysBeforeStart === null
+      ? null
+      : new Date(input.startsAt.getTime() - balanceDueDaysBeforeStart * 86400000);
+  const targetCapacity = sourceDate && !isOnline ? sourceDate.capacity : input.capacity;
 
   return db.$transaction(async (tx) => {
     const retreatDate = await tx.retreatDate.create({
@@ -2121,22 +3396,158 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
         timezone: "Europe/London",
         startsAt: input.startsAt,
         endsAt: input.endsAt,
-        capacity: input.capacity,
-        status: "open",
-        currency: "GBP",
-        pricePence: input.pricePence,
+        capacity: targetCapacity,
+        status: RetreatDateStatus.draft,
+        currency: sourceDate?.currency || "GBP",
+        pricePence: standardPricePence,
         depositAmountPence,
         balanceDueAt,
         isRecorded: isOnline,
-        replayAccessDurationDays: isOnline ? 7 : null,
-        payInFullDiscountEnabled: !requiresFullPayment,
+        replayAccessDurationDays: isOnline ? (sourceDate?.replayAccessDurationDays ?? 7) : null,
+        chatEnabled: sourceDate?.chatEnabled ?? true,
+        participantMicDefaultMuted: sourceDate?.participantMicDefaultMuted ?? false,
+        participantCameraDefaultOff: sourceDate?.participantCameraDefaultOff ?? false,
+        payInFullDiscountEnabled:
+          !requiresFullPayment && (sourceDate?.payInFullDiscountEnabled ?? true),
+        payInFullDiscountPercent: sourceDate?.payInFullDiscountPercent ?? 5,
+        payInFullDiscountCapPence: sourceDate?.payInFullDiscountCapPence ?? 5000,
+        refundRuleId: sourceDate?.refundRuleId || null,
         paymentPlanSnapshotJson: {
           depositType: requiresFullPayment ? "full_payment" : "percentage",
-          depositPercentageBasisPoints: requiresFullPayment ? null : 2000,
-          balanceDueDaysBeforeStart: requiresFullPayment ? null : 56,
+          depositPercentageBasisPoints,
+          fixedDepositAmountPence,
+          balanceDueDaysBeforeStart,
         },
       },
     });
+
+    if (sourceDate) {
+      const inventoryPoolIds = new Map<string, string>();
+      for (const pool of sourceDate.inventoryPools) {
+        const createdPool = await tx.retreatInventoryPool.create({
+          data: {
+            retreatDateId: retreatDate.id,
+            inventoryType: pool.inventoryType,
+            name: pool.name,
+            totalQuantity:
+              isOnline && pool.inventoryType === RetreatInventoryType.online_live_place
+                ? input.capacity
+                : pool.totalQuantity,
+            active: pool.active,
+          },
+        });
+        inventoryPoolIds.set(pool.id, createdPool.id);
+      }
+
+      const roomOptionIds = new Map<string, string>();
+      for (const option of sourceDate.roomOptions) {
+        const optionCapacity = isOnline ? input.capacity : option.capacity;
+        const createdOption = await tx.retreatRoomOption.create({
+          data: {
+            retreatDateId: retreatDate.id,
+            inventoryPoolId: option.inventoryPoolId
+              ? inventoryPoolIds.get(option.inventoryPoolId) || null
+              : null,
+            externalRoomOptionId: option.externalRoomOptionId,
+            label: option.label,
+            description: option.description,
+            roomType: option.roomType,
+            bookingUnit: option.bookingUnit,
+            guestsIncluded: option.guestsIncluded,
+            guestCountPerUnit: option.guestCountPerUnit,
+            physicalRoomCount: option.physicalRoomCount,
+            bedsPerPhysicalRoom: option.bedsPerPhysicalRoom,
+            allowedGuestCountsJson: option.allowedGuestCountsJson ?? undefined,
+            capacity: optionCapacity,
+            availableSpots: optionCapacity,
+            pricePence: option.pricePence,
+            pricePerPersonPence: option.pricePerPersonPence,
+            roomCount: option.roomCount,
+            depositAmountPence: requiresFullPayment ? option.pricePence : option.depositAmountPence,
+            isWaitlistOnly: false,
+            displayOrder: option.displayOrder,
+            active: option.active,
+          },
+        });
+        roomOptionIds.set(option.id, createdOption.id);
+
+        for (const ratePlan of option.ratePlans) {
+          const sourceEarlyBirdSaving =
+            ratePlan.earlyBirdPricePence === null
+              ? null
+              : Math.max(ratePlan.totalPricePence - ratePlan.earlyBirdPricePence, 0);
+          const earlyBirdPricePence = input.earlyBirdEndsAt
+            ? option.ratePlans.length === 1 && sourceDate.roomOptions.length === 1
+              ? (input.earlyBirdPricePence ?? null)
+              : sourceEarlyBirdSaving && sourceEarlyBirdSaving > 0
+                ? Math.max(ratePlan.totalPricePence - sourceEarlyBirdSaving, 0)
+                : null
+            : null;
+          await tx.retreatRatePlan.create({
+            data: {
+              roomOptionId: createdOption.id,
+              guestCount: ratePlan.guestCount,
+              totalPricePence: ratePlan.totalPricePence,
+              earlyBirdPricePence,
+              earlyBirdEndsAt: earlyBirdPricePence === null ? null : input.earlyBirdEndsAt,
+              currency: ratePlan.currency,
+              active: ratePlan.active,
+            },
+          });
+        }
+
+        for (const unit of option.roomUnits) {
+          await tx.retreatRoomUnit.create({
+            data: {
+              retreatDateId: retreatDate.id,
+              roomOptionId: createdOption.id,
+              label: unit.label,
+              capacityUnits: unit.capacityUnits,
+              status: "available",
+              notes: unit.notes,
+            },
+          });
+        }
+      }
+
+      for (const addon of sourceDate.addons) {
+        await tx.retreatAddon.create({
+          data: {
+            retreatDateId: retreatDate.id,
+            inventoryPoolId: addon.inventoryPoolId
+              ? inventoryPoolIds.get(addon.inventoryPoolId) || null
+              : null,
+            name: addon.name,
+            description: addon.description,
+            pricePence: addon.pricePence,
+            currency: addon.currency,
+            requiresTimeSlot: addon.requiresTimeSlot,
+            active: addon.active,
+          },
+        });
+      }
+
+      for (const assignment of sourceDate.instructorAssignments) {
+        await tx.retreatDateInstructorAssignment.create({
+          data: { retreatDateId: retreatDate.id, userId: assignment.userId },
+        });
+      }
+
+      await tx.retreatDepositRule.create({
+        data: {
+          retreatDateId: retreatDate.id,
+          depositType: requiresFullPayment
+            ? RetreatDepositType.full_payment
+            : sourceDepositRule?.depositType || RetreatDepositType.percentage,
+          depositPercentageBasisPoints,
+          fixedDepositAmountPence,
+          balanceDueAt,
+          balanceDueDaysBeforeStart,
+          active: true,
+        },
+      });
+      return retreatDate;
+    }
 
     const inventoryType = isOnline
       ? RetreatInventoryType.online_live_place
@@ -2197,16 +3608,176 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
         depositType: requiresFullPayment
           ? RetreatDepositType.full_payment
           : RetreatDepositType.percentage,
-        depositPercentageBasisPoints: requiresFullPayment ? null : 2000,
+        depositPercentageBasisPoints,
         fixedDepositAmountPence: null,
         balanceDueAt,
-        balanceDueDaysBeforeStart: requiresFullPayment ? null : 56,
+        balanceDueDaysBeforeStart,
         active: true,
       },
     });
 
+    if (!isOnline) {
+      await tx.retreatRoomUnit.create({
+        data: {
+          retreatDateId: retreatDate.id,
+          roomOptionId: roomOption.id,
+          label: "General capacity",
+          capacityUnits: input.capacity,
+        },
+      });
+    }
+
     return retreatDate;
   });
+}
+
+export type RetreatPublishValidation = {
+  valid: boolean;
+  errors: string[];
+};
+
+async function validateRetreatDateForPublishing(
+  retreatDateId: string
+): Promise<RetreatPublishValidation> {
+  const retreatDate = await db.retreatDate.findUnique({
+    where: { id: retreatDateId },
+    include: {
+      inventoryPools: { where: { active: true } },
+      roomOptions: {
+        where: { active: true },
+        include: {
+          ratePlans: { where: { active: true } },
+          roomUnits: true,
+        },
+      },
+      depositRules: { where: { active: true } },
+    },
+  });
+  if (!retreatDate) throw new Error("NOT_FOUND");
+
+  const errors: string[] = [];
+  const now = new Date();
+  if (retreatDate.startsAt <= now || retreatDate.endsAt <= retreatDate.startsAt) {
+    errors.push("Dates must describe a future experience.");
+  }
+  if (retreatDate.bookingOpensAt && retreatDate.bookingOpensAt >= retreatDate.startsAt) {
+    errors.push("Booking must open before the experience starts.");
+  }
+  if (retreatDate.bookingClosesAt && retreatDate.bookingClosesAt > retreatDate.startsAt) {
+    errors.push("Booking must close no later than the experience start.");
+  }
+  if (retreatDate.capacity < 1) errors.push("Capacity must be at least one place.");
+
+  const templates = await getRetreatTemplates();
+  if (!templates.some((template) => template.slug === retreatDate.retreatSlug)) {
+    errors.push("A published Contentful experience with this slug is required.");
+  }
+  if (retreatDate.inventoryPools.length === 0) {
+    errors.push("At least one active inventory pool is required.");
+  }
+  if (retreatDate.roomOptions.length === 0) {
+    errors.push(
+      retreatDate.retreatType === "online"
+        ? "At least one active ticket is required."
+        : "At least one active accommodation option is required."
+    );
+  }
+  if (retreatDate.depositRules.length !== 1) {
+    errors.push("Exactly one active payment rule is required.");
+  }
+
+  for (const option of retreatDate.roomOptions) {
+    if (option.capacity < 1) errors.push(`${option.label} must have available inventory.`);
+    if (option.ratePlans.length === 0) {
+      errors.push(`${option.label} needs at least one active price.`);
+    }
+    for (const rate of option.ratePlans) {
+      if (rate.totalPricePence < 0) errors.push(`${option.label} has an invalid price.`);
+      if (
+        (rate.earlyBirdPricePence === null) !== (rate.earlyBirdEndsAt === null) ||
+        (rate.earlyBirdPricePence !== null &&
+          (rate.earlyBirdPricePence >= rate.totalPricePence ||
+            rate.earlyBirdPricePence < 0 ||
+            rate.earlyBirdEndsAt! >= retreatDate.startsAt))
+      ) {
+        errors.push(`${option.label} has an invalid early-bird offer.`);
+      }
+    }
+
+    if (retreatDate.retreatType === "in_person") {
+      const physicalCapacity = option.roomUnits.reduce((sum, unit) => sum + unit.capacityUnits, 0);
+      if (physicalCapacity < option.capacity) {
+        errors.push(
+          `${option.label} has ${option.capacity} sellable units but only ${physicalCapacity} physical room spaces.`
+        );
+      }
+    }
+  }
+
+  const rule = retreatDate.depositRules[0];
+  if (retreatDate.retreatType === "online" && rule?.depositType !== "full_payment") {
+    errors.push("Online experiences must use full payment.");
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+export async function publishAdminRetreatDate(retreatDateId: string) {
+  const validation = await validateRetreatDateForPublishing(retreatDateId);
+  if (!validation.valid) {
+    const error = new Error("RETREAT_PUBLISH_VALIDATION_FAILED");
+    Object.assign(error, { validationErrors: validation.errors });
+    throw error;
+  }
+
+  const result = await db.retreatDate.updateMany({
+    where: { id: retreatDateId, status: RetreatDateStatus.draft },
+    data: { status: RetreatDateStatus.open },
+  });
+  if (result.count === 0) throw new Error("INVALID_STATUS_TRANSITION");
+  return getAdminRetreatDetail(retreatDateId);
+}
+
+export async function updateAdminRetreatSalesStatus(
+  retreatDateId: string,
+  requestedStatus: "open" | "closed" | "completed"
+) {
+  const current = await db.retreatDate.findUnique({
+    where: { id: retreatDateId },
+    select: { status: true, endsAt: true },
+  });
+  if (!current) throw new Error("NOT_FOUND");
+
+  if (requestedStatus === "open") {
+    if (current.status === RetreatDateStatus.draft) {
+      return publishAdminRetreatDate(retreatDateId);
+    }
+    if (current.status !== RetreatDateStatus.closed) throw new Error("INVALID_STATUS_TRANSITION");
+  } else if (requestedStatus === "closed") {
+    if (
+      current.status !== RetreatDateStatus.open &&
+      current.status !== RetreatDateStatus.sold_out
+    ) {
+      throw new Error("INVALID_STATUS_TRANSITION");
+    }
+  } else if (
+    current.endsAt > new Date() ||
+    !(
+      [
+        RetreatDateStatus.open,
+        RetreatDateStatus.closed,
+        RetreatDateStatus.sold_out,
+      ] as RetreatDateStatus[]
+    ).includes(current.status)
+  ) {
+    throw new Error("INVALID_STATUS_TRANSITION");
+  }
+
+  await db.retreatDate.update({
+    where: { id: retreatDateId },
+    data: { status: requestedStatus },
+  });
+  return getAdminRetreatDetail(retreatDateId);
 }
 
 export async function sendRetreatBalanceDueEmails(input: {
@@ -2386,6 +3957,27 @@ export async function setUpRetreatOnlineRoom(retreatDateId: string) {
   }
 }
 
+async function getAddonReservedQuantity(addonId: string) {
+  const now = new Date();
+  const result = await db.retreatBookingItem.aggregate({
+    where: {
+      addonId,
+      itemType: RetreatBookingItemType.addon,
+      booking: {
+        OR: [
+          { bookingStatus: { in: ACTIVE_RETREAT_BOOKING_STATUSES } },
+          {
+            bookingStatus: RetreatBookingStatus.pending,
+            createdAt: { gt: new Date(now.getTime() - RETREAT_PAYMENT_WINDOW_MS) },
+          },
+        ],
+      },
+    },
+    _sum: { quantity: true },
+  });
+  return result._sum.quantity || 0;
+}
+
 export async function getAdminRetreatDetail(retreatDateId: string) {
   const bookingRows = await db.retreatDate.findUnique({
     where: { id: retreatDateId },
@@ -2397,27 +3989,74 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
           instalments: {
             orderBy: { sequence: "asc" },
           },
+          cancellationRequests: {
+            orderBy: { requestedAt: "desc" },
+          },
+          items: {
+            where: { itemType: RetreatBookingItemType.addon },
+            include: { addon: true },
+          },
         },
       },
       roomOptions: {
         orderBy: { displayOrder: "asc" },
         include: {
           ratePlans: { orderBy: { guestCount: "asc" } },
+          roomUnits: {
+            orderBy: { label: "asc" },
+            include: {
+              bookings: {
+                where: { bookingStatus: { in: ACTIVE_RETREAT_BOOKING_STATUSES } },
+                select: { id: true },
+              },
+            },
+          },
         },
       },
       depositRules: {
         where: { active: true },
         orderBy: { createdAt: "desc" },
       },
+      addons: {
+        orderBy: { createdAt: "asc" },
+        include: { inventoryPool: true },
+      },
+      giftPurchases: {
+        where: { type: "retreat" },
+        include: { retreatRoomOption: true },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
   if (!bookingRows) throw new Error("NOT_FOUND");
 
-  const revenuePence = bookingRows.bookings.reduce(
-    (sum, booking) => sum + booking.depositPaidPence + booking.balancePaidPence,
-    0
-  );
+  const revenuePence =
+    bookingRows.bookings.reduce(
+      (sum, booking) => sum + booking.depositPaidPence + booking.balancePaidPence,
+      0
+    ) +
+    bookingRows.giftPurchases
+      .filter((gift) => gift.status === GiftPurchaseStatus.purchased)
+      .reduce((sum, gift) => sum + gift.totalPaidPence - gift.refundedAmountPence, 0);
   const activeDepositRule = bookingRows.depositRules[0];
+  const addons = await Promise.all(
+    bookingRows.addons.map(async (addon) => {
+      const reserved = await getAddonReservedQuantity(addon.id);
+      return {
+        id: addon.id,
+        name: addon.name,
+        description: addon.description,
+        pricePence: addon.pricePence,
+        currency: addon.currency,
+        totalQuantity: addon.inventoryPool?.totalQuantity ?? null,
+        availableQuantity: addon.inventoryPool
+          ? Math.max(addon.inventoryPool.totalQuantity - reserved, 0)
+          : null,
+        requiresTimeSlot: addon.requiresTimeSlot,
+        active: addon.active,
+      };
+    })
+  );
 
   return {
     id: bookingRows.id,
@@ -2441,7 +4080,7 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
       activeDepositRule?.depositType === RetreatDepositType.full_payment
         ? ("full_payment" as const)
         : ("deposit" as const),
-    pricingLocked: true,
+    pricingLocked: bookingRows.status !== RetreatDateStatus.draft,
     ratePlans: bookingRows.roomOptions.flatMap((roomOption) =>
       roomOption.ratePlans.map((ratePlan) => ({
         id: ratePlan.id,
@@ -2454,6 +4093,32 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
         active: ratePlan.active,
       }))
     ),
+    addons,
+    roomUnits: bookingRows.roomOptions.flatMap((roomOption) =>
+      roomOption.roomUnits.map((unit) => ({
+        id: unit.id,
+        roomOptionId: roomOption.id,
+        roomOptionLabel: roomOption.label,
+        label: unit.label,
+        capacityUnits: unit.capacityUnits,
+        occupiedUnits: unit.bookings.length,
+        status: unit.status,
+      }))
+    ),
+    gifts: bookingRows.giftPurchases.map((gift) => ({
+      id: gift.id,
+      purchaserName: `${gift.purchaserFirstName} ${gift.purchaserLastName}`.trim(),
+      purchaserEmail: gift.purchaserEmail,
+      recipientName: `${gift.recipientFirstName} ${gift.recipientLastName}`.trim(),
+      recipientEmail: gift.recipientEmail,
+      roomLabel: gift.retreatRoomOption?.label || null,
+      guestCount: gift.retreatGuestCount || 1,
+      totalPaidPence: gift.totalPaidPence,
+      refundedAmountPence: gift.refundedAmountPence,
+      status: gift.status,
+      purchasedAt: gift.purchasedAt?.toISOString() || null,
+      redeemedAt: gift.redeemedAt?.toISOString() || null,
+    })),
     bookings: bookingRows.bookings.map((booking) => ({
       id: booking.id,
       purchaserName: `${booking.purchaserFirstName} ${booking.purchaserLastName}`.trim(),
@@ -2462,7 +4127,21 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
       attendeeEmail: booking.attendeeEmail,
       attendeeCount: booking.attendeeCount,
       roomType: booking.roomOptionLabelSnapshot || booking.roomType,
+      roomOptionId: booking.roomOptionId,
+      roomUnitId: booking.roomUnitId,
       roomUnitLabel: booking.roomUnit?.label || null,
+      addons: booking.items.flatMap((item) =>
+        item.addon
+          ? [
+              {
+                id: item.addon.id,
+                name: item.addon.name,
+                quantity: item.quantity,
+                totalPricePence: item.totalPricePence,
+              },
+            ]
+          : []
+      ),
       dietaryRequirements: booking.dietaryRequirements,
       medicalConditions: booking.medicalConditions,
       mobilityNeeds: booking.mobilityNeeds,
@@ -2483,6 +4162,16 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
         dueAt: instalment.dueAt?.toISOString() || null,
         paidAt: instalment.paidAt?.toISOString() || null,
       })),
+      cancellationRequests: booking.cancellationRequests.map((request) => ({
+        id: request.id,
+        status: request.status,
+        reason: request.reason,
+        refundableAmountPence: request.refundableAmountPence,
+        adminDecisionReason: request.adminDecisionReason,
+        requestedAt: request.requestedAt.toISOString(),
+        reviewedAt: request.reviewedAt?.toISOString() || null,
+        completedAt: request.completedAt?.toISOString() || null,
+      })),
       bookedAt: booking.bookedAt.toISOString(),
     })),
   };
@@ -2493,6 +4182,91 @@ export type AdminRetreatEarlyBirdRateUpdate = {
   earlyBirdPricePence: number | null;
   earlyBirdEndsAt: Date | null;
 };
+
+export async function assignAdminRetreatRoomUnit(input: {
+  retreatDateId: string;
+  bookingId: string;
+  roomUnitId: string | null;
+  actorUserId: string;
+}) {
+  const previousRoomUnitId = await db.$transaction(async (tx) => {
+    await lockRetreatResource(tx, `retreat-booking-room:${input.bookingId}`);
+    const booking = await tx.retreatBooking.findFirst({
+      where: { id: input.bookingId, retreatDateId: input.retreatDateId },
+      select: { id: true, roomOptionId: true, roomUnitId: true, bookingStatus: true },
+    });
+    if (!booking) throw new Error("NOT_FOUND");
+    if (!ACTIVE_RETREAT_BOOKING_STATUSES.includes(booking.bookingStatus)) {
+      throw new Error("BOOKING_NOT_ACTIVE");
+    }
+
+    if (input.roomUnitId) {
+      if (!booking.roomOptionId) throw new Error("ROOM_ASSIGNMENT_INVALID");
+      await lockRetreatResource(tx, `retreat-room-unit:${input.roomUnitId}`);
+      const roomUnit = await tx.retreatRoomUnit.findFirst({
+        where: {
+          id: input.roomUnitId,
+          retreatDateId: input.retreatDateId,
+          roomOptionId: booking.roomOptionId,
+          status: { not: "unavailable" },
+        },
+        include: {
+          bookings: {
+            where: {
+              id: { not: booking.id },
+              bookingStatus: { in: ACTIVE_RETREAT_BOOKING_STATUSES },
+            },
+            select: { id: true },
+          },
+        },
+      });
+      if (!roomUnit) throw new Error("ROOM_ASSIGNMENT_INVALID");
+      if (roomUnit.bookings.length >= roomUnit.capacityUnits) {
+        throw new Error("ROOM_UNIT_UNAVAILABLE");
+      }
+    }
+
+    const previous = booking.roomUnitId;
+    await tx.retreatBooking.update({
+      where: { id: booking.id },
+      data: { roomUnitId: input.roomUnitId },
+    });
+
+    const affectedRoomUnitIds = [previous, input.roomUnitId].filter((value): value is string =>
+      Boolean(value)
+    );
+    for (const roomUnitId of new Set(affectedRoomUnitIds)) {
+      const [unit, occupiedUnits] = await Promise.all([
+        tx.retreatRoomUnit.findUnique({
+          where: { id: roomUnitId },
+          select: { capacityUnits: true, status: true },
+        }),
+        tx.retreatBooking.count({
+          where: {
+            roomUnitId,
+            bookingStatus: { in: ACTIVE_RETREAT_BOOKING_STATUSES },
+          },
+        }),
+      ]);
+      if (unit && unit.status !== "unavailable") {
+        await tx.retreatRoomUnit.update({
+          where: { id: roomUnitId },
+          data: { status: occupiedUnits >= unit.capacityUnits ? "assigned" : "available" },
+        });
+      }
+    }
+    return previous;
+  });
+
+  await createAdminActionLog({
+    actorUserId: input.actorUserId,
+    actionType: "retreat_room_assignment_updated",
+    targetType: "retreat_booking",
+    targetId: input.bookingId,
+    metadataJson: { previousRoomUnitId, roomUnitId: input.roomUnitId },
+  });
+  return getAdminRetreatDetail(input.retreatDateId);
+}
 
 export async function updateAdminRetreatEarlyBirdRates(
   retreatDateId: string,
@@ -2509,6 +4283,7 @@ export async function updateAdminRetreatEarlyBirdRates(
       select: {
         id: true,
         startsAt: true,
+        status: true,
         roomOptions: {
           select: {
             ratePlans: {
@@ -2536,6 +4311,7 @@ export async function updateAdminRetreatEarlyBirdRates(
       if (!ratePlan) throw new Error("INVALID_EARLY_BIRD");
 
       if (
+        retreatDate.status !== RetreatDateStatus.draft &&
         !canExtendPublishedEarlyBirdRate({
           existingPricePence: ratePlan.earlyBirdPricePence,
           existingEndsAt: ratePlan.earlyBirdEndsAt,
@@ -2547,7 +4323,9 @@ export async function updateAdminRetreatEarlyBirdRates(
         throw new Error("RETREAT_PRICING_LOCKED");
       }
 
-      if (ratePlan.earlyBirdPricePence === null) continue;
+      if (retreatDate.status !== RetreatDateStatus.draft && ratePlan.earlyBirdPricePence === null) {
+        continue;
+      }
 
       const hasPrice = update.earlyBirdPricePence !== null;
       const hasEndDate = update.earlyBirdEndsAt !== null;
@@ -2575,5 +4353,85 @@ export async function updateAdminRetreatEarlyBirdRates(
     );
   });
 
+  return getAdminRetreatDetail(retreatDateId);
+}
+
+export type AdminRetreatAddonInput = {
+  name: string;
+  description?: string | null;
+  pricePence: number;
+  totalQuantity?: number | null;
+};
+
+function validateAdminRetreatAddonInput(input: AdminRetreatAddonInput) {
+  const name = normalizeText(input.name, 120);
+  const description = input.description ? normalizeText(input.description, 500) : null;
+  const totalQuantity = input.totalQuantity ?? null;
+  if (
+    !name ||
+    !Number.isInteger(input.pricePence) ||
+    input.pricePence < 0 ||
+    (totalQuantity !== null && (!Number.isInteger(totalQuantity) || totalQuantity < 1))
+  ) {
+    throw new Error("INVALID_RETREAT_ADDON");
+  }
+  return { name, description, pricePence: input.pricePence, totalQuantity };
+}
+
+export async function createAdminRetreatAddon(
+  retreatDateId: string,
+  input: AdminRetreatAddonInput
+) {
+  const validated = validateAdminRetreatAddonInput(input);
+  await db.$transaction(async (tx) => {
+    const retreatDate = await tx.retreatDate.findUnique({
+      where: { id: retreatDateId },
+      select: { id: true, status: true, currency: true },
+    });
+    if (!retreatDate) throw new Error("NOT_FOUND");
+    if (retreatDate.status !== RetreatDateStatus.draft) {
+      throw new Error("RETREAT_ADDONS_LOCKED");
+    }
+
+    const inventoryPool =
+      validated.totalQuantity === null
+        ? null
+        : await tx.retreatInventoryPool.create({
+            data: {
+              retreatDateId,
+              inventoryType: RetreatInventoryType.addon,
+              name: validated.name,
+              totalQuantity: validated.totalQuantity,
+            },
+          });
+    await tx.retreatAddon.create({
+      data: {
+        retreatDateId,
+        inventoryPoolId: inventoryPool?.id || null,
+        name: validated.name,
+        description: validated.description,
+        pricePence: validated.pricePence,
+        currency: retreatDate.currency,
+      },
+    });
+  });
+  return getAdminRetreatDetail(retreatDateId);
+}
+
+export async function removeAdminRetreatAddon(retreatDateId: string, addonId: string) {
+  await db.$transaction(async (tx) => {
+    const addon = await tx.retreatAddon.findFirst({
+      where: { id: addonId, retreatDateId },
+      include: { retreatDate: { select: { status: true } }, bookingItems: { take: 1 } },
+    });
+    if (!addon) throw new Error("NOT_FOUND");
+    if (addon.retreatDate.status !== RetreatDateStatus.draft || addon.bookingItems.length > 0) {
+      throw new Error("RETREAT_ADDONS_LOCKED");
+    }
+    await tx.retreatAddon.delete({ where: { id: addon.id } });
+    if (addon.inventoryPoolId) {
+      await tx.retreatInventoryPool.delete({ where: { id: addon.inventoryPoolId } });
+    }
+  });
   return getAdminRetreatDetail(retreatDateId);
 }

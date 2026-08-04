@@ -34,7 +34,10 @@ import { bookClassSession } from "@/lib/classes/booking-service";
 import { startOrSwitchMembership } from "@/lib/membership/membership-service";
 import { qualifyReferral } from "@/lib/referrals/referral-service";
 import { processGiftPurchaseCheckoutCompleted } from "@/lib/gifts/service";
-import { processRetreatCheckoutCompleted } from "@/lib/retreats/service";
+import {
+  processRetreatCheckoutCompleted,
+  processRetreatRefundUpdated,
+} from "@/lib/retreats/service";
 import { processSmallGroupCheckoutCompleted } from "@/lib/small-groups/service";
 import { getNotificationInbox, sendPostmarkReactEmail } from "@/lib/postmark/client";
 import { coachingTiers, type CoachingOfferKey } from "@/data/marketing";
@@ -1383,6 +1386,11 @@ async function handleStripeEvent(event: Stripe.Event) {
     if (!handledProgramme) {
       await processCheckoutCompleted(event, session);
     }
+    return;
+  }
+
+  if (event.type === "refund.updated" || event.type === "refund.failed") {
+    await processRetreatRefundUpdated(event.data.object as Stripe.Refund);
     return;
   }
 

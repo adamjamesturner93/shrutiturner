@@ -11,6 +11,8 @@ const {
   createFaqPageSchema,
   createOrganizationSchema,
   createRetreatEventSchema,
+  createRetreatEventSchemas,
+  createRetreatItemListSchema,
   createServiceSchema,
   createWebPageSchema,
   createWebSiteSchema,
@@ -110,6 +112,7 @@ describe("structured data helpers", () => {
             availableSpaces: 4,
             totalSpaces: 12,
             roomOptions: [],
+            addons: [],
           },
         ],
         earlyBirdPrice: 100,
@@ -125,6 +128,61 @@ describe("structured data helpers", () => {
     ).toMatchObject({
       "@type": "Event",
       startDate: "2026-05-01",
+    });
+
+    const retreat = {
+      id: "retreat_2",
+      slug: "autumn-retreat",
+      title: "Autumn Retreat",
+      subtitle: "Two dates",
+      location: "Scotland",
+      imageUrl: "",
+      shortDescription: "Retreat",
+      fullDescription: "Retreat description",
+      dates: [
+        {
+          id: "date_1",
+          startDate: "2026-09-01",
+          endDate: "2026-09-03",
+          availableSpaces: 4,
+          totalSpaces: 10,
+          roomOptions: [],
+          addons: [],
+        },
+        {
+          id: "date_2",
+          startDate: "2026-10-01",
+          endDate: "2026-10-03",
+          availableSpaces: 2,
+          totalSpaces: 10,
+          roomOptions: [],
+          addons: [],
+        },
+      ],
+      earlyBirdPrice: 100,
+      earlyBirdDeadline: "2026-08-01",
+      normalPrice: 200,
+      currency: "GBP",
+      included: [],
+      notIncluded: [],
+      schedule: [],
+      accommodation: "Shared rooms",
+      suitableFor: [],
+    };
+
+    expect(createRetreatEventSchemas(retreat)).toHaveLength(2);
+    expect(createRetreatEventSchemas(retreat)[1]).toMatchObject({
+      "@type": "Event",
+      startDate: "2026-10-01",
+    });
+    expect(createRetreatItemListSchema([retreat])).toMatchObject({
+      "@type": "ItemList",
+      itemListElement: [
+        expect.objectContaining({
+          position: 1,
+          url: "https://shrutiturner.co.uk/retreats/autumn-retreat",
+        }),
+      ],
     });
 
     expect(
