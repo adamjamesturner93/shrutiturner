@@ -17,7 +17,9 @@ import CoachingApplicationConfirmationEmail from "@/emails/coaching-application-
 import CoachingApplicationNotificationEmail from "@/emails/coaching-application-notification";
 import CoachingApplicationRejectedEmail from "@/emails/coaching-application-rejected";
 import CoachingApplicationWaitlistedEmail from "@/emails/coaching-application-waitlisted";
+import CoachingClientConfirmedEmail from "@/emails/coaching-client-confirmed";
 import CoachingPackageChangeRequestedEmail from "@/emails/coaching-package-change-requested";
+import CoachingPaidStartRequestedEmail from "@/emails/coaching-paid-start-requested";
 import CoachingWaitlistLeftNotificationEmail from "@/emails/coaching-waitlist-left-notification";
 
 export type CoachingApplicationAnswerMap = Record<string, string>;
@@ -82,6 +84,8 @@ function tierToDefaultOfferKey(tier: CoachingSupportTier): CoachingOfferKey | nu
 function serializePendingPackageChange(
   request: {
     id: string;
+    requestType: "package_change" | "paid_start";
+    billingStartsAt: Date | null;
     fromTier: CoachingSupportTier;
     toTier: CoachingSupportTier;
     fromOfferKey: string | null;
@@ -94,6 +98,8 @@ function serializePendingPackageChange(
   if (!request) return null;
   return {
     id: request.id,
+    requestType: request.requestType,
+    billingStartsAt: request.billingStartsAt?.toISOString() || null,
     fromTier: request.fromTier,
     toTier: request.toTier,
     fromOfferKey: coachingTiers.some((offer) => offer.id === request.fromOfferKey)
@@ -248,6 +254,8 @@ export async function getMyCoachingState(userId: string): Promise<CoachingDashbo
       isCoachingClient: Boolean(user?.isCoachingClient),
       profile: {
         id: profile.id,
+        billingArrangement: profile.billingArrangement,
+        billingStartsAt: profile.billingStartsAt?.toISOString() || null,
         tier: profile.tier as NonNullable<CoachingDashboardDto["profile"]>["tier"],
         status: profile.status as NonNullable<CoachingDashboardDto["profile"]>["status"],
         everfitConnectionStatus: profile.everfitConnectionStatus as NonNullable<
@@ -387,6 +395,8 @@ export async function listAdminCoachingApplications(params?: { status?: string; 
       coachingProfile: row.clientProfile
         ? {
             id: row.clientProfile.id,
+            billingArrangement: row.clientProfile.billingArrangement,
+            billingStartsAt: row.clientProfile.billingStartsAt?.toISOString() || null,
             tier: row.clientProfile.tier,
             status: row.clientProfile.status,
             everfitConnectionStatus: row.clientProfile.everfitConnectionStatus,
@@ -433,6 +443,7 @@ export async function updateAdminCoachingApplication(input: {
   const wasApproved = existing.status === "approved" || existing.status === "converted";
   const wasDeclined = existing.status === "declined";
   const wasWaitlisted = existing.status === "waitlisted";
+  const wasConverted = existing.status === "converted";
   const now = new Date();
   const updated = await db.coachingApplication.update({
     where: { id: input.id },
@@ -534,12 +545,14 @@ export async function updateAdminCoachingApplication(input: {
         applicationId: existing.id,
         tier: existing.tier === "unsure" ? "coaching" : existing.tier,
         status: "onboarding",
+        billingArrangement: "pro_bono",
         nextCheckInDueAt: new Date(Date.now() + 7 * 86400000),
       },
       update: {
         applicationId: existing.id,
         tier: existing.tier === "unsure" ? "coaching" : existing.tier,
         status: "onboarding",
+        billingArrangement: "pro_bono",
       },
     });
 
@@ -547,6 +560,36 @@ export async function updateAdminCoachingApplication(input: {
       where: { id: existing.userId },
       data: { isCoachingClient: true },
     });
+
+    if (!wasConverted) {
+      const offerKey = getOfferKeyFromAnswers(existing.answersJson as CoachingApplicationAnswerMap);
+      const tierLabel = offerKeyToLabel(offerKey, existing.tier);
+      const dashboardUrl = buildAbsoluteUrl("/dashboard/coaching");
+      await sendPostmarkReactEmail({
+        to: existing.applicantEmail,
+        subject: "Your 1:1 support is confirmed",
+        react: CoachingClientConfirmedEmail({
+          firstName: existing.applicantFirstName,
+          tierLabel,
+          dashboardUrl,
+          decisionReason: updated.decisionReason,
+        }),
+        textBody: `Hi ${existing.applicantFirstName},\n\nYour application for ${tierLabel} has been accepted and your client profile is ready. There is no payment step for this arrangement.${updated.decisionReason ? `\n\nA note from Shruti:\n${updated.decisionReason}` : ""}\n\nSign in to your account to follow your onboarding status: ${dashboardUrl}`,
+        tag: "coaching-client-confirmed",
+        templateKey: "coaching-client-confirmed",
+        category: "transactional",
+        userId: existing.userId,
+        retryable: true,
+        metadata: {
+          applicationId: existing.id,
+          tier: existing.tier,
+          conversionMode: "admin_direct",
+        },
+        dispatchMode: "immediate_best_effort",
+      }).catch((error) => {
+        console.error("[coaching] failed to send direct conversion confirmation email", error);
+      });
+    }
   }
 
   if (input.actorUserId) {
@@ -748,6 +791,9 @@ export async function createCoachingPackageChangeRequest(input: {
     },
   });
   if (!profile) throw new Error("NOT_FOUND");
+  if (profile.billingArrangement === "pro_bono" || !profile.stripeSubscriptionId) {
+    throw new Error("COACHING_PAID_START_REQUIRED");
+  }
 
   await db.coachingPackageChangeRequest.updateMany({
     where: { profileId: profile.id, status: "pending_client_confirmation" },
@@ -816,6 +862,123 @@ export async function createCoachingPackageChangeRequest(input: {
         fromOfferKey,
         toOfferKey: input.toOfferKey,
         effectiveMode: input.effectiveMode,
+      },
+    });
+  }
+
+  return request;
+}
+
+export async function createCoachingPaidStartRequest(input: {
+  profileId: string;
+  toOfferKey: CoachingOfferKey;
+  billingStartsAt: Date;
+  note?: string;
+  actorUserId?: string | null;
+  requestId?: string | null;
+  requestPath?: string | null;
+  requestIp?: string | null;
+}) {
+  const targetOffer = coachingTiers.find((offer) => offer.id === input.toOfferKey);
+  if (!targetOffer) throw new Error("INVALID_COACHING_OFFER");
+
+  const profile = await db.coachingClientProfile.findUnique({
+    where: { id: input.profileId },
+    include: {
+      user: {
+        select: { id: true, email: true, firstName: true, name: true },
+      },
+      application: true,
+    },
+  });
+  if (!profile) throw new Error("NOT_FOUND");
+  if (profile.billingArrangement !== "pro_bono" || profile.stripeSubscriptionId) {
+    throw new Error("COACHING_PAID_START_NOT_AVAILABLE");
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (input.billingStartsAt.getTime() < today.getTime()) {
+    throw new Error("COACHING_PAID_START_DATE_INVALID");
+  }
+
+  await db.coachingPackageChangeRequest.updateMany({
+    where: { profileId: profile.id, status: "pending_client_confirmation" },
+    data: { status: "cancelled", cancelledAt: new Date() },
+  });
+
+  const fromOfferKey = profile.application
+    ? getOfferKeyFromAnswers(profile.application.answersJson as CoachingApplicationAnswerMap)
+    : tierToDefaultOfferKey(profile.tier);
+  const toTier = offerKeyToTier(input.toOfferKey);
+  const request = await db.coachingPackageChangeRequest.create({
+    data: {
+      userId: profile.userId,
+      profileId: profile.id,
+      requestedByUserId: input.actorUserId || undefined,
+      requestType: "paid_start",
+      billingStartsAt: input.billingStartsAt,
+      fromTier: profile.tier,
+      toTier,
+      fromOfferKey,
+      toOfferKey: input.toOfferKey,
+      effectiveMode: "immediate",
+      note: input.note?.trim() || null,
+    },
+  });
+
+  const dashboardUrl = buildAbsoluteUrl("/dashboard/coaching");
+  const clientName = profile.user.firstName || profile.user.name || "there";
+  const formattedStartDate = new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Europe/London",
+  }).format(input.billingStartsAt);
+  await sendPostmarkReactEmail({
+    to: profile.user.email,
+    subject: "Set up your paid 1:1 plan",
+    react: CoachingPaidStartRequestedEmail({
+      firstName: clientName,
+      offerLabel: targetOffer.name,
+      billingStartsOn: formattedStartDate,
+      dashboardUrl,
+      note: request.note,
+    }),
+    textBody: `Hi ${clientName},\n\nShruti has invited you to move onto the paid ${targetOffer.name} plan from ${formattedStartDate}. Your current pro-bono arrangement remains in place until then. Sign in to review the current agreements and add your payment details. You will not be charged before the agreed start date.${request.note ? `\n\nA note from Shruti:\n${request.note}` : ""}\n\nSet up your plan: ${dashboardUrl}`,
+    tag: "coaching-paid-start-requested",
+    templateKey: "coaching-paid-start-requested",
+    category: "transactional",
+    userId: profile.userId,
+    retryable: true,
+    metadata: {
+      paidStartRequestId: request.id,
+      userId: profile.userId,
+      toOfferKey: input.toOfferKey,
+      billingStartsAt: input.billingStartsAt.toISOString(),
+    },
+    dispatchMode: "immediate_best_effort",
+  }).catch((error) => {
+    console.error("[coaching] failed to send paid-start email", error);
+  });
+
+  if (input.actorUserId) {
+    await createAdminActionLog({
+      actorUserId: input.actorUserId,
+      actionType: "coaching_paid_start_requested",
+      targetType: "coaching_package_change_request",
+      targetId: request.id,
+      requestId: input.requestId,
+      requestPath: input.requestPath,
+      requestIp: input.requestIp,
+      newValueJson: {
+        profileId: profile.id,
+        userId: profile.userId,
+        fromTier: profile.tier,
+        toTier,
+        fromOfferKey,
+        toOfferKey: input.toOfferKey,
+        billingStartsAt: input.billingStartsAt,
       },
     });
   }

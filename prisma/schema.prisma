@@ -298,6 +298,16 @@ enum CoachingPackageChangeEffectiveMode {
   manual
 }
 
+enum CoachingPackageChangeRequestType {
+  package_change
+  paid_start
+}
+
+enum CoachingBillingArrangement {
+  paid
+  pro_bono
+}
+
 enum EverfitConnectionStatus {
   not_started
   invite_sent
@@ -441,8 +451,8 @@ model User {
   referralLedgerEntries                 ReferralLedgerEntry[]
   membershipSubscriptions               MembershipSubscription[]
   membershipDunningCases                MembershipDunningCase[]
-  billingRefunds                        BillingRefund[]                          @relation("BillingRefundUser")
-  billingRefundActions                  BillingRefund[]                          @relation("BillingRefundActor")
+  billingRefunds                        BillingRefund[]                           @relation("BillingRefundUser")
+  billingRefundActions                  BillingRefund[]                           @relation("BillingRefundActor")
   subscriptionComplianceEvents          SubscriptionComplianceEvent[]
   creditLedgerEntries                   CreditLedgerEntry[]
   billingEvents                         BillingEvent[]                            @relation("UserBillingEvents")
@@ -457,6 +467,7 @@ model User {
   classBookings                         ClassBooking[]
   classWaitlistEntries                  ClassWaitlistEntry[]
   emailDeliveries                       EmailDelivery[]
+  resolvedEmailDeliveries               EmailDelivery[]                           @relation("EmailDeliveryResolvedBy")
   emailEvents                           EmailEvent[]
   attendanceOverrides                   ClassBooking[]                            @relation("AttendanceMarkedBy")
   classAttendanceEvents                 ClassAttendanceEvent[]
@@ -513,8 +524,8 @@ model PolicyDocumentVersion {
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
-  publishedBy      User?             @relation("PolicyVersionPublishedBy", fields: [publishedByUserId], references: [id], onDelete: SetNull)
-  acceptanceEvents AcceptanceEvent[]
+  publishedBy           User?                  @relation("PolicyVersionPublishedBy", fields: [publishedByUserId], references: [id], onDelete: SetNull)
+  acceptanceEvents      AcceptanceEvent[]
   guestAcceptanceEvents GuestAcceptanceEvent[]
 
   @@unique([type, version])
@@ -644,20 +655,20 @@ model RefundRule {
 }
 
 model PrivacyRequest {
-  id              String               @id @default(cuid())
-  userId          String
-  actorUserId     String
-  type            PrivacyRequestType
-  status          PrivacyRequestStatus @default(pending)
-  summaryChecksum String?
-  summaryJson     Json?
-  exportSectionsJson Json?
+  id                  String               @id @default(cuid())
+  userId              String
+  actorUserId         String
+  type                PrivacyRequestType
+  status              PrivacyRequestStatus @default(pending)
+  summaryChecksum     String?
+  summaryJson         Json?
+  exportSectionsJson  Json?
   exportRowCountsJson Json?
-  blockReason     String?
-  generatedAt     DateTime?
-  executedAt      DateTime?
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
+  blockReason         String?
+  generatedAt         DateTime?
+  executedAt          DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   user  User @relation("PrivacyRequestSubject", fields: [userId], references: [id], onDelete: Cascade)
   actor User @relation("PrivacyRequestActor", fields: [actorUserId], references: [id], onDelete: Restrict)
@@ -767,12 +778,12 @@ model ScheduledJobRun {
 }
 
 model ScheduledJobLease {
-  jobName      String   @id
-  leaseId      String   @unique
-  actorUserId  String?
-  leasedUntil  DateTime
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  jobName     String   @id
+  leaseId     String   @unique
+  actorUserId String?
+  leasedUntil DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   actor User? @relation("ScheduledJobLeaseActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
@@ -1076,20 +1087,20 @@ model BillingMetricDaily {
 }
 
 model BillingRefund {
-  id              String              @id @default(cuid())
-  userId          String
-  membershipId    String
-  actorUserId     String?
-  status          BillingRefundStatus @default(pending)
-  amountPence     Int
-  reason          String
-  refundedAsCredit Boolean            @default(false)
-  stripeRefundId  String?             @unique
-  stripeInvoiceId String?
-  paymentIntentId String?
-  metadataJson    Json?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  id               String              @id @default(cuid())
+  userId           String
+  membershipId     String
+  actorUserId      String?
+  status           BillingRefundStatus @default(pending)
+  amountPence      Int
+  reason           String
+  refundedAsCredit Boolean             @default(false)
+  stripeRefundId   String?             @unique
+  stripeInvoiceId  String?
+  paymentIntentId  String?
+  metadataJson     Json?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 
   user       User                   @relation("BillingRefundUser", fields: [userId], references: [id], onDelete: Cascade)
   actor      User?                  @relation("BillingRefundActor", fields: [actorUserId], references: [id], onDelete: SetNull)
@@ -1393,17 +1404,24 @@ model EmailDelivery {
   lastError         String?
   providerMessageId String?
   sentAt            DateTime?
+  resolvedAt        DateTime?
+  resolvedByUserId  String?
+  resolutionCode    String?
+  resolutionNote    String?
   payloadJson       Json
   metadataJson      Json?
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 
-  user     User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
-  campaign EmailCampaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  attempts EmailDeliveryAttempt[]
-  events   EmailEvent[]
+  user       User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  resolvedBy User?                  @relation("EmailDeliveryResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  campaign   EmailCampaign?         @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  attempts   EmailDeliveryAttempt[]
+  events     EmailEvent[]
 
   @@index([status, nextRetryAt])
+  @@index([status, resolvedAt, nextRetryAt])
+  @@index([resolvedByUserId, resolvedAt])
   @@index([userId, createdAt])
   @@index([templateKey, createdAt])
   @@index([providerMessageId])
@@ -1533,12 +1551,12 @@ model NewsletterSubscriber {
 }
 
 model NewsletterSignupEvent {
-  id          String   @id @default(cuid())
-  hashedEmail String
-  source      String
-  eventType   String
+  id           String   @id @default(cuid())
+  hashedEmail  String
+  source       String
+  eventType    String
   metadataJson Json?
-  createdAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
 
   @@index([eventType, createdAt])
   @@index([source, createdAt])
@@ -1673,11 +1691,11 @@ model RetreatBooking {
   createdAt                    DateTime             @default(now())
   updatedAt                    DateTime             @updatedAt
 
-  retreatDate   RetreatDate        @relation(fields: [retreatDateId], references: [id], onDelete: Restrict)
-  roomOption    RetreatRoomOption? @relation(fields: [roomOptionId], references: [id], onDelete: SetNull)
-  purchaserUser User?              @relation("RetreatBookingPurchaser", fields: [purchaserUserId], references: [id], onDelete: SetNull)
-  attendeeUser  User?              @relation("RetreatBookingAttendee", fields: [attendeeUserId], references: [id], onDelete: SetNull)
-  giftPurchase  GiftPurchase?      @relation("GiftPurchaseRetreatBooking", fields: [giftPurchaseId], references: [id], onDelete: SetNull)
+  retreatDate           RetreatDate            @relation(fields: [retreatDateId], references: [id], onDelete: Restrict)
+  roomOption            RetreatRoomOption?     @relation(fields: [roomOptionId], references: [id], onDelete: SetNull)
+  purchaserUser         User?                  @relation("RetreatBookingPurchaser", fields: [purchaserUserId], references: [id], onDelete: SetNull)
+  attendeeUser          User?                  @relation("RetreatBookingAttendee", fields: [attendeeUserId], references: [id], onDelete: SetNull)
+  giftPurchase          GiftPurchase?          @relation("GiftPurchaseRetreatBooking", fields: [giftPurchaseId], references: [id], onDelete: SetNull)
   guestAcceptanceEvents GuestAcceptanceEvent[]
 
   @@index([retreatDateId, bookingStatus])
@@ -1719,13 +1737,13 @@ model GiftPurchase {
   createdAt               DateTime           @default(now())
   updatedAt               DateTime           @updatedAt
 
-  purchaserUser       User?                          @relation("GiftPurchasePurchaser", fields: [purchaserUserId], references: [id], onDelete: SetNull)
-  redeemedByUser      User?                          @relation("GiftPurchaseRedeemer", fields: [redeemedByUserId], references: [id], onDelete: SetNull)
-  retreatDate         RetreatDate?                   @relation(fields: [retreatDateId], references: [id], onDelete: SetNull)
-  retreatRoomOption   RetreatRoomOption?             @relation(fields: [retreatRoomOptionId], references: [id], onDelete: SetNull)
-  smallGroupProgramme SmallGroupProgramme?           @relation(fields: [smallGroupProgrammeId], references: [id], onDelete: SetNull)
-  retreatBooking      RetreatBooking?                @relation("GiftPurchaseRetreatBooking")
-  enrolment           SmallGroupProgrammeEnrollment? @relation("GiftPurchaseProgrammeEnrollment")
+  purchaserUser         User?                          @relation("GiftPurchasePurchaser", fields: [purchaserUserId], references: [id], onDelete: SetNull)
+  redeemedByUser        User?                          @relation("GiftPurchaseRedeemer", fields: [redeemedByUserId], references: [id], onDelete: SetNull)
+  retreatDate           RetreatDate?                   @relation(fields: [retreatDateId], references: [id], onDelete: SetNull)
+  retreatRoomOption     RetreatRoomOption?             @relation(fields: [retreatRoomOptionId], references: [id], onDelete: SetNull)
+  smallGroupProgramme   SmallGroupProgramme?           @relation(fields: [smallGroupProgrammeId], references: [id], onDelete: SetNull)
+  retreatBooking        RetreatBooking?                @relation("GiftPurchaseRetreatBooking")
+  enrolment             SmallGroupProgrammeEnrollment? @relation("GiftPurchaseProgrammeEnrollment")
   guestAcceptanceEvents GuestAcceptanceEvent[]
 
   @@index([status, type, createdAt])
@@ -1748,9 +1766,9 @@ model GuestAcceptanceEvent {
   giftPurchaseId    String?
   createdAt         DateTime       @default(now())
 
-  policyVersion PolicyDocumentVersion? @relation(fields: [policyVersionId], references: [id], onDelete: SetNull)
-  retreatBooking RetreatBooking?       @relation(fields: [retreatBookingId], references: [id], onDelete: Cascade)
-  giftPurchase   GiftPurchase?         @relation(fields: [giftPurchaseId], references: [id], onDelete: Cascade)
+  policyVersion  PolicyDocumentVersion? @relation(fields: [policyVersionId], references: [id], onDelete: SetNull)
+  retreatBooking RetreatBooking?        @relation(fields: [retreatBookingId], references: [id], onDelete: Cascade)
+  giftPurchase   GiftPurchase?          @relation(fields: [giftPurchaseId], references: [id], onDelete: Cascade)
 
   @@index([purchaserEmail, acceptedAt])
   @@index([policyVersionId, acceptedAt])
@@ -1792,13 +1810,15 @@ model CoachingApplication {
 }
 
 model CoachingClientProfile {
-  id                             String                  @id @default(cuid())
-  userId                         String                  @unique
-  applicationId                  String?                 @unique
+  id                             String                     @id @default(cuid())
+  userId                         String                     @unique
+  applicationId                  String?                    @unique
   tier                           CoachingSupportTier
-  status                         CoachingClientStatus    @default(onboarding)
-  everfitConnectionStatus        EverfitConnectionStatus @default(not_started)
-  stripeSubscriptionId           String?                 @unique
+  status                         CoachingClientStatus       @default(onboarding)
+  everfitConnectionStatus        EverfitConnectionStatus    @default(not_started)
+  billingArrangement             CoachingBillingArrangement @default(paid)
+  billingStartsAt                DateTime?
+  stripeSubscriptionId           String?                    @unique
   billingCancellationRequestedAt DateTime?
   billingFinalPaymentAt          DateTime?
   billingEndsAt                  DateTime?
@@ -1808,17 +1828,46 @@ model CoachingClientProfile {
   startDate                      DateTime?
   pausedAt                       DateTime?
   completedAt                    DateTime?
-  createdAt                      DateTime                @default(now())
-  updatedAt                      DateTime                @updatedAt
+  createdAt                      DateTime                   @default(now())
+  updatedAt                      DateTime                   @updatedAt
 
-  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  application CoachingApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
-  sessions    CoachingSession[]
-  checkIns    CoachingCheckIn[]
-  packageChangeRequests CoachingPackageChangeRequest[]
+  user                   User                            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application            CoachingApplication?            @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  sessions               CoachingSession[]
+  checkIns               CoachingCheckIn[]
+  packageChangeRequests  CoachingPackageChangeRequest[]
+  subscriptionProjection CoachingSubscriptionProjection?
 
   @@index([status, updatedAt])
   @@index([tier, updatedAt])
+  @@index([billingArrangement, status])
+}
+
+model CoachingSubscriptionProjection {
+  id                      String    @id @default(cuid())
+  coachingClientProfileId String    @unique
+  stripeSubscriptionId    String    @unique
+  stripeCustomerId        String?
+  stripePriceId           String?
+  status                  String
+  unitAmountPence         Int
+  quantity                Int       @default(1)
+  currency                String    @default("GBP")
+  interval                String
+  intervalCount           Int       @default(1)
+  currentPeriodStart      DateTime?
+  currentPeriodEnd        DateTime?
+  cancelAtPeriodEnd       Boolean   @default(false)
+  cancelAt                DateTime?
+  endedAt                 DateTime?
+  lastStripeEventAt       DateTime
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  coachingClientProfile CoachingClientProfile @relation(fields: [coachingClientProfileId], references: [id], onDelete: Cascade)
+
+  @@index([status, currentPeriodEnd])
+  @@index([stripeCustomerId])
 }
 
 model CoachingPackageChangeRequest {
@@ -1830,6 +1879,8 @@ model CoachingPackageChangeRequest {
   toTier               CoachingSupportTier
   fromOfferKey         String?
   toOfferKey           String
+  requestType          CoachingPackageChangeRequestType   @default(package_change)
+  billingStartsAt      DateTime?
   effectiveMode        CoachingPackageChangeEffectiveMode @default(next_invoice)
   status               CoachingPackageChangeStatus        @default(pending_client_confirmation)
   note                 String?
@@ -1847,6 +1898,7 @@ model CoachingPackageChangeRequest {
   @@index([userId, status, createdAt])
   @@index([profileId, status, createdAt])
   @@index([toOfferKey, status])
+  @@index([requestType, status, billingStartsAt])
 }
 
 model CoachingSession {

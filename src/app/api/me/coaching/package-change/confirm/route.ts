@@ -37,15 +37,18 @@ export const POST = handleApiRoute(
       return apiOk(result);
     } catch (error) {
       if (isAcceptanceRequiredError(error)) {
-        throw conflict("Current legal acceptance is required before changing coaching package.", {
+        throw conflict("Current legal acceptance is required before updating your coaching plan.", {
           requiredAcceptances: error.details.requiredAcceptances,
         });
       }
       if (error instanceof Error && error.message === "COACHING_PACKAGE_CHANGE_NOT_FOUND") {
-        throw notFound("No pending coaching package change was found.");
+        throw notFound("No pending coaching plan update was found.");
       }
       if (error instanceof Error && error.message === "COACHING_SUBSCRIPTION_NOT_FOUND") {
-        throw conflict("No active coaching subscription was found for this package change.");
+        throw conflict("No active coaching subscription was found for this plan update.");
+      }
+      if (error instanceof Error && error.message === "COACHING_PAID_START_NOT_AVAILABLE") {
+        throw conflict("Paid coaching billing has already been configured for this client.");
       }
       if (error instanceof Error && error.message.startsWith("MISSING_STRIPE_PRICE:")) {
         throw serviceUnavailable("The coaching Stripe price is not configured yet.");

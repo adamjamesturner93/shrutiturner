@@ -6,6 +6,7 @@ import { colors, fonts, bodyTextStyle, dividerStyle } from "./styles";
 interface NewsletterEmailProps {
   firstName?: string;
   subject?: string;
+  previewText?: string;
   bodyContent?: string;
   signOffImageUrl?: string;
   signOffImageAlt?: string;
@@ -222,6 +223,13 @@ function renderMarkdown(markdown: string): ReactNode {
     }
 
     if (block.type === "image") {
+      if (!/^https?:\/\//i.test(block.src)) {
+        return block.alt ? (
+          <Text key={index} style={{ ...bodyTextStyle, fontStyle: "italic" }}>
+            {block.alt}
+          </Text>
+        ) : null;
+      }
       return (
         <Section key={index} style={{ margin: "24px 0" }}>
           <Img
@@ -277,6 +285,7 @@ function renderMarkdown(markdown: string): ReactNode {
 export default function NewsletterEmail({
   firstName = "Adam",
   subject = "Expanding capacity without breaking.",
+  previewText = "A note from Shruti Turner.",
   bodyContent,
   signOffImageUrl,
   signOffImageAlt,
@@ -291,7 +300,7 @@ export default function NewsletterEmail({
   ];
 
   return (
-    <EmailLayout preview={subject} category="marketing" unsubscribeUrl={unsubscribeUrl}>
+    <EmailLayout preview={previewText} category="marketing" unsubscribeUrl={unsubscribeUrl}>
       {/* Subject as serif heading */}
       <Text
         style={{

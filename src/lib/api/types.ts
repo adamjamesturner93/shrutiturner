@@ -175,6 +175,8 @@ export type CoachingDashboardDto = {
   profile: null | {
     id: string;
     tier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
+    billingArrangement: "paid" | "pro_bono";
+    billingStartsAt: string | null;
     status: "application_pending" | "onboarding" | "active" | "paused" | "completed";
     everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue";
     nextCheckInDueAt: string | null;
@@ -186,6 +188,8 @@ export type CoachingDashboardDto = {
     billingEndsAt: string | null;
     pendingPackageChange: null | {
       id: string;
+      requestType: "package_change" | "paid_start";
+      billingStartsAt: string | null;
       fromTier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
       toTier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
       fromOfferKey:
@@ -300,6 +304,8 @@ export type AdminCoachingApplicationDto = {
   adminNotes: string;
   coachingProfile: null | {
     id: string;
+    billingArrangement: "paid" | "pro_bono";
+    billingStartsAt: string | null;
     status: "application_pending" | "onboarding" | "active" | "paused" | "completed";
     everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue";
     billingCancellationRequestedAt: string | null;
@@ -308,6 +314,8 @@ export type AdminCoachingApplicationDto = {
     tier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
     pendingPackageChange: null | {
       id: string;
+      requestType: "package_change" | "paid_start";
+      billingStartsAt: string | null;
       fromTier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
       toTier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
       fromOfferKey:
@@ -745,26 +753,31 @@ export type AdminNewsletterCampaignDetailDto = {
   unsubscribed: number;
   failedSends: number;
   deliveryRate: number;
-  openRate: number;
-  clickRate: number;
-  clickToOpenRate: number;
+  openRate: number | null;
+  clickRate: number | null;
+  clickToOpenRate: number | null;
   unsubscribeRate: number;
   bounceRate: number;
   complaintRate: number;
   audienceType?: string | null;
   triggeredBy?: string | null;
   sourceSystem: string;
+  messageStream: string | null;
+  trackingState: "available" | "awaiting" | "unavailable";
+  attentionReasons: string[];
+  errorSummary: string | null;
   topLinks: Array<{ url: string; clicks: number }>;
   eventTimeline: Array<{ date: string; opened: number; clicked: number; bounced: number }>;
 };
 
 export type AdminBusinessMetricDto = {
-  activeMembers: number;
-  totalMembers: number;
+  activeOneToOneClients: number;
+  operationalOneToOneClients: number;
+  trackedSubscriptions: number;
+  subscriptionsNeedingSync: number;
   monthlyRecurringRevenuePence: number;
-  newMembersThisMonth: number;
-  cancelledLast30Days: number;
-  churnRatePercent: number;
+  newPaidClientsThisMonth: number;
+  endingSoonCount: number;
   failedPayments7d: number;
   failedPayments30d: number;
   dataFreshnessIso: string | null;

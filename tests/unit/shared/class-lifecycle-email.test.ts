@@ -14,6 +14,10 @@ vi.mock("@/lib/classes/settings-service", () => ({
 }));
 
 vi.mock("@/lib/env", () => ({
+  env: {
+    NODE_ENV: "test",
+  },
+  getDatabaseUrl: () => "postgresql://postgres:postgres@127.0.0.1:5432/test",
   getBaseSiteUrlFromEnv: () => "https://shrutiturner.co.uk",
 }));
 

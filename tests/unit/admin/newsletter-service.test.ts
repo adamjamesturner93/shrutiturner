@@ -67,6 +67,8 @@ describe("admin newsletter reporting service", () => {
         contentfulEntryId: "entry_123",
         sentCount: 95,
         failedCount: 5,
+        stream: "broadcast",
+        errorSummary: "One recipient is inactive in Postmark.",
         sentAt: new Date("2026-04-26T09:00:00.000Z"),
         scheduledAt: null,
         createdAt: new Date("2026-04-26T08:00:00.000Z"),
@@ -77,6 +79,14 @@ describe("admin newsletter reporting service", () => {
           { type: "Bounce", metadataJson: null },
           { type: "SpamComplaint", metadataJson: null },
           { type: "Unsubscribe", metadataJson: null },
+        ],
+        emailDeliveries: [
+          {
+            status: "failed",
+            messageStream: "broadcast",
+            lastError: "One recipient is inactive in Postmark.",
+            resolvedAt: null,
+          },
         ],
       },
     ]);
@@ -117,11 +127,14 @@ describe("admin newsletter reporting service", () => {
       status: "failed_partial",
       failedSends: 5,
       sourceSystem: "Contentful",
-      delivered: 90,
-      deliveryRate: 90,
+      delivered: 95,
+      deliveryRate: 95,
       bounceRate: 1,
       complaintRate: 1,
       unsubscribeRate: 1,
+      messageStream: "broadcast",
+      attentionReasons: ["5 recipients failed", "1 spam complaint"],
+      errorSummary: "One recipient is inactive in Postmark.",
     });
     expect(summary.audienceReporting.source).toBe("landing-page");
     expect(summary.audienceReporting.sourceSegments[0]).toMatchObject({

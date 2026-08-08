@@ -53,9 +53,22 @@ describe("EmailLayout categories", () => {
     expect(html).toContain("A useful note");
     expect(html).toContain("<strong");
     expect(html).toContain("https://example.com");
-    expect(html).toContain("https://example.com/recovery.jpg");
+    expect(html).toContain('src="https://example.com/recovery.jpg"');
     expect(html).toContain("Recovery caption");
     expect(html).not.toContain("Bonnie taking some time");
     expect(html).not.toContain("Private Studio");
+  });
+
+  it("uses the Contentful preview text for the inbox preheader", async () => {
+    const html = await render(
+      NewsletterEmail({
+        firstName: "Taylor",
+        subject: "Your routine is allowed to change.",
+        previewText: "Adapting your movement is not giving up or getting back on track.",
+        bodyContent: "A short newsletter body.",
+      })
+    );
+
+    expect(html).toContain("Adapting your movement is not giving up or getting back on track.");
   });
 });

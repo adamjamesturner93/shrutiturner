@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Compass, MailWarning, MessageCircle, Shield, TrendingUp } from "lucide-react";
+import { ArrowRight, Compass, MailWarning, MessageCircle, TrendingUp } from "lucide-react";
 import { AdminLayout } from "../../components/admin-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
@@ -17,28 +17,52 @@ export function AdminDashboard({
 }) {
   void _initialData;
   const [emailHealth, setEmailHealth] = useState<AdminEmailDeliveryHealthDto | null>(null);
+  const [emailActionId, setEmailActionId] = useState<string | null>(null);
+  const [emailActionMessage, setEmailActionMessage] = useState<string | null>(null);
+
+  const refreshEmailHealth = useCallback(async () => {
+    const res = await fetch("/api/admin/email-deliveries", { cache: "no-store" });
+    if (!res.ok) return;
+    const payload = (await res.json()) as {
+      success?: boolean;
+      data?: AdminEmailDeliveryHealthDto;
+    };
+    if (payload.success && payload.data) setEmailHealth(payload.data);
+  }, []);
 
   useEffect(() => {
-    let active = true;
-    void (async () => {
-      try {
-        const res = await fetch("/api/admin/email-deliveries", { cache: "no-store" });
-        if (!res.ok) return;
-        const payload = (await res.json()) as {
-          success?: boolean;
-          data?: AdminEmailDeliveryHealthDto;
-        };
-        if (active && payload.success && payload.data) {
-          setEmailHealth(payload.data);
-        }
-      } catch {
-        if (active) setEmailHealth(null);
+    void refreshEmailHealth().catch(() => setEmailHealth(null));
+  }, [refreshEmailHealth]);
+
+  async function runEmailAction(deliveryId: string, action: "retry" | "resolve") {
+    setEmailActionId(deliveryId);
+    setEmailActionMessage(null);
+    try {
+      const response = await fetch(`/api/admin/email-deliveries/${deliveryId}/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body:
+          action === "resolve"
+            ? JSON.stringify({ note: "Dismissed from admin dashboard." })
+            : undefined,
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        error?: { message?: string };
+      } | null;
+      if (!response.ok) {
+        setEmailActionMessage(
+          payload?.error?.message || "The email delivery could not be updated."
+        );
+      } else {
+        setEmailActionMessage(
+          action === "retry" ? "Email retry requested." : "Email issue dismissed."
+        );
       }
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
+      await refreshEmailHealth();
+    } finally {
+      setEmailActionId(null);
+    }
+  }
 
   const failedEmailCount = emailHealth ? emailHealth.failedCount + emailHealth.deadLetterCount : 0;
 
@@ -70,6 +94,11 @@ export function AdminDashboard({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {emailActionMessage ? (
+                <p className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-red-900">
+                  {emailActionMessage}
+                </p>
+              ) : null}
               <div className="grid gap-3 md:grid-cols-3">
                 <Metric label="Failed" value={emailHealth.failedCount} />
                 <Metric label="Dead letter" value={emailHealth.deadLetterCount} />
@@ -89,6 +118,7 @@ export function AdminDashboard({
                       <th className="py-2 pr-3">Status</th>
                       <th className="py-2 pr-3">Attempts</th>
                       <th className="py-2">Last error</th>
+                      <th className="py-2 pl-3">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -106,8 +136,33 @@ export function AdminDashboard({
                         <td className="py-2 pr-3">
                           {delivery.attemptCount}/{delivery.maxAttempts}
                         </td>
-                        <td className="max-w-md truncate py-2">
-                          {delivery.lastError || "Unknown"}
+                        <td className="max-w-md py-2 align-top">
+                          <details>
+                            <summary className="cursor-pointer font-medium">View error</summary>
+                            <p className="mt-2 text-xs leading-relaxed break-words">
+                              {delivery.lastError || "Unknown error"}
+                            </p>
+                          </details>
+                        </td>
+                        <td className="py-2 pl-3 align-top">
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={emailActionId === delivery.id}
+                              onClick={() => void runEmailAction(delivery.id, "retry")}
+                            >
+                              Retry
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={emailActionId === delivery.id}
+                              onClick={() => void runEmailAction(delivery.id, "resolve")}
+                            >
+                              Dismiss
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -167,22 +222,6 @@ export function AdminDashboard({
             );
           })}
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Shield className="text-primary h-5 w-5" />
-              Hidden for now
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              Live online classes, retreats, small groups, class credits and Move Well membership
-              are intentionally hidden from public, user and admin navigation while coaching is the
-              active offer.
-            </p>
-          </CardContent>
-        </Card>
       </div>
     </AdminLayout>
   );
