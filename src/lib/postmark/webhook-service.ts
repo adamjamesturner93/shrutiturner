@@ -86,6 +86,22 @@ async function suppressSubscriberForCompliance(input: {
     });
   }
 
+  await db.emailDelivery.updateMany({
+    where: {
+      toEmail: input.email,
+      category: "marketing",
+      resolvedAt: null,
+      status: { in: ["failed", "dead_letter"] },
+    },
+    data: {
+      resolvedAt: now,
+      resolutionCode: "recipient_suppressed",
+      resolutionNote: `Resolved automatically after Postmark recorded ${input.type}.`,
+      retryable: false,
+      nextRetryAt: null,
+    },
+  });
+
   const userId = subscriber?.userId || input.userId;
   if (userId) {
     await db.userNotificationPreference.upsert({

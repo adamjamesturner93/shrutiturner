@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const userFindUniqueMock = vi.fn();
 const emailDeliveryFindUniqueMock = vi.fn();
 const emailDeliveryFindFirstMock = vi.fn();
+const emailDeliveryUpdateManyMock = vi.fn();
 const emailCampaignFindUniqueMock = vi.fn();
 const emailEventUpsertMock = vi.fn();
 const newsletterSubscriberFindUniqueMock = vi.fn();
@@ -17,6 +18,7 @@ vi.mock("@/lib/db", () => ({
     emailDelivery: {
       findUnique: emailDeliveryFindUniqueMock,
       findFirst: emailDeliveryFindFirstMock,
+      updateMany: emailDeliveryUpdateManyMock,
     },
     emailCampaign: {
       findUnique: emailCampaignFindUniqueMock,
@@ -42,6 +44,7 @@ describe("ingestPostmarkEvent", () => {
     userFindUniqueMock.mockResolvedValue({ id: "user_123" });
     emailDeliveryFindUniqueMock.mockResolvedValue(null);
     emailDeliveryFindFirstMock.mockResolvedValue(null);
+    emailDeliveryUpdateManyMock.mockResolvedValue({ count: 0 });
     emailCampaignFindUniqueMock.mockResolvedValue(null);
     emailEventUpsertMock.mockResolvedValue(undefined);
     newsletterSubscriberFindUniqueMock.mockResolvedValue(null);
@@ -143,6 +146,19 @@ describe("ingestPostmarkEvent", () => {
         status: "unsubscribed",
         verificationTokenHash: null,
         verificationTokenExpiresAt: null,
+      }),
+    });
+    expect(emailDeliveryUpdateManyMock).toHaveBeenCalledWith({
+      where: {
+        toEmail: "reader@example.com",
+        category: "marketing",
+        resolvedAt: null,
+        status: { in: ["failed", "dead_letter"] },
+      },
+      data: expect.objectContaining({
+        resolutionCode: "recipient_suppressed",
+        retryable: false,
+        nextRetryAt: null,
       }),
     });
     expect(userNotificationPreferenceUpsertMock).toHaveBeenCalledWith({

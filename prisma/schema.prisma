@@ -380,6 +380,16 @@ enum CoachingPackageChangeEffectiveMode {
   manual
 }
 
+enum CoachingPackageChangeRequestType {
+  package_change
+  paid_start
+}
+
+enum CoachingBillingArrangement {
+  paid
+  pro_bono
+}
+
 enum EverfitConnectionStatus {
   not_started
   invite_sent
@@ -539,6 +549,7 @@ model User {
   classBookings                         ClassBooking[]
   classWaitlistEntries                  ClassWaitlistEntry[]
   emailDeliveries                       EmailDelivery[]
+  resolvedEmailDeliveries               EmailDelivery[]                           @relation("EmailDeliveryResolvedBy")
   emailEvents                           EmailEvent[]
   attendanceOverrides                   ClassBooking[]                            @relation("AttendanceMarkedBy")
   classAttendanceEvents                 ClassAttendanceEvent[]
@@ -1477,17 +1488,24 @@ model EmailDelivery {
   lastError         String?
   providerMessageId String?
   sentAt            DateTime?
+  resolvedAt        DateTime?
+  resolvedByUserId  String?
+  resolutionCode    String?
+  resolutionNote    String?
   payloadJson       Json
   metadataJson      Json?
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 
-  user     User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
-  campaign EmailCampaign?         @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  attempts EmailDeliveryAttempt[]
-  events   EmailEvent[]
+  user       User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  resolvedBy User?                  @relation("EmailDeliveryResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  campaign   EmailCampaign?         @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  attempts   EmailDeliveryAttempt[]
+  events     EmailEvent[]
 
   @@index([status, nextRetryAt])
+  @@index([status, resolvedAt, nextRetryAt])
+  @@index([resolvedByUserId, resolvedAt])
   @@index([userId, createdAt])
   @@index([templateKey, createdAt])
   @@index([providerMessageId])
@@ -2187,13 +2205,15 @@ model CoachingApplication {
 }
 
 model CoachingClientProfile {
-  id                             String                  @id @default(cuid())
-  userId                         String                  @unique
-  applicationId                  String?                 @unique
+  id                             String                     @id @default(cuid())
+  userId                         String                     @unique
+  applicationId                  String?                    @unique
   tier                           CoachingSupportTier
-  status                         CoachingClientStatus    @default(onboarding)
-  everfitConnectionStatus        EverfitConnectionStatus @default(not_started)
-  stripeSubscriptionId           String?                 @unique
+  status                         CoachingClientStatus       @default(onboarding)
+  everfitConnectionStatus        EverfitConnectionStatus    @default(not_started)
+  billingArrangement             CoachingBillingArrangement @default(paid)
+  billingStartsAt                DateTime?
+  stripeSubscriptionId           String?                    @unique
   billingCancellationRequestedAt DateTime?
   billingFinalPaymentAt          DateTime?
   billingEndsAt                  DateTime?
@@ -2203,17 +2223,46 @@ model CoachingClientProfile {
   startDate                      DateTime?
   pausedAt                       DateTime?
   completedAt                    DateTime?
-  createdAt                      DateTime                @default(now())
-  updatedAt                      DateTime                @updatedAt
+  createdAt                      DateTime                   @default(now())
+  updatedAt                      DateTime                   @updatedAt
 
-  user                  User                           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  application           CoachingApplication?           @relation(fields: [applicationId], references: [id], onDelete: SetNull)
-  sessions              CoachingSession[]
-  checkIns              CoachingCheckIn[]
-  packageChangeRequests CoachingPackageChangeRequest[]
+  user                   User                            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application            CoachingApplication?            @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  sessions               CoachingSession[]
+  checkIns               CoachingCheckIn[]
+  packageChangeRequests  CoachingPackageChangeRequest[]
+  subscriptionProjection CoachingSubscriptionProjection?
 
   @@index([status, updatedAt])
   @@index([tier, updatedAt])
+  @@index([billingArrangement, status])
+}
+
+model CoachingSubscriptionProjection {
+  id                      String    @id @default(cuid())
+  coachingClientProfileId String    @unique
+  stripeSubscriptionId    String    @unique
+  stripeCustomerId        String?
+  stripePriceId           String?
+  status                  String
+  unitAmountPence         Int
+  quantity                Int       @default(1)
+  currency                String    @default("GBP")
+  interval                String
+  intervalCount           Int       @default(1)
+  currentPeriodStart      DateTime?
+  currentPeriodEnd        DateTime?
+  cancelAtPeriodEnd       Boolean   @default(false)
+  cancelAt                DateTime?
+  endedAt                 DateTime?
+  lastStripeEventAt       DateTime
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  coachingClientProfile CoachingClientProfile @relation(fields: [coachingClientProfileId], references: [id], onDelete: Cascade)
+
+  @@index([status, currentPeriodEnd])
+  @@index([stripeCustomerId])
 }
 
 model CoachingPackageChangeRequest {
@@ -2225,6 +2274,8 @@ model CoachingPackageChangeRequest {
   toTier               CoachingSupportTier
   fromOfferKey         String?
   toOfferKey           String
+  requestType          CoachingPackageChangeRequestType   @default(package_change)
+  billingStartsAt      DateTime?
   effectiveMode        CoachingPackageChangeEffectiveMode @default(next_invoice)
   status               CoachingPackageChangeStatus        @default(pending_client_confirmation)
   note                 String?
@@ -2242,6 +2293,7 @@ model CoachingPackageChangeRequest {
   @@index([userId, status, createdAt])
   @@index([profileId, status, createdAt])
   @@index([toOfferKey, status])
+  @@index([requestType, status, billingStartsAt])
 }
 
 model CoachingSession {

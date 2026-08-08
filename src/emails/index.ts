@@ -14,6 +14,8 @@ export { default as PurchaseConfirmationEmail } from "./purchase-confirmation";
 export { default as InstructorNotificationEmail } from "./instructor-notification";
 export { default as RetreatBookingEmail } from "./retreat-booking";
 export { default as RetreatRemainderEmail } from "./retreat-remainder";
+export { default as CoachingClientConfirmedEmail } from "./coaching-client-confirmed";
+export { default as CoachingPaidStartRequestedEmail } from "./coaching-paid-start-requested";
 export { default as CreditsExpiringEmail } from "./credits-expiring";
 export { default as OnboardingEmail } from "./onboarding";
 export { default as ReferralRewardEmail } from "./referral-reward";

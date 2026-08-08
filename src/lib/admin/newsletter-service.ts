@@ -38,15 +38,19 @@ export type AdminNewsletterCampaignSummaryDto = {
   unsubscribed: number;
   failedSends: number;
   deliveryRate: number;
-  openRate: number;
-  clickRate: number;
-  clickToOpenRate: number;
+  openRate: number | null;
+  clickRate: number | null;
+  clickToOpenRate: number | null;
   unsubscribeRate: number;
   bounceRate: number;
   complaintRate: number;
   audienceType?: string | null;
   triggeredBy?: string | null;
   sourceSystem: string;
+  messageStream: string | null;
+  trackingState: "available" | "awaiting" | "unavailable";
+  attentionReasons: string[];
+  errorSummary: string | null;
 };
 
 export type AdminNewsletterCampaignDetailDto = AdminNewsletterCampaignSummaryDto & {
@@ -132,6 +136,32 @@ function getCampaignSourceSystem(campaign: {
   }
   if (campaign.triggeredBy) return campaign.triggeredBy.replaceAll("_", " ");
   return "Manual";
+}
+
+function getCampaignTrackingState(input: { eventCount: number; sentDate: Date }) {
+  if (input.eventCount > 0) return "available" as const;
+  if (Date.now() - input.sentDate.getTime() < 15 * 60 * 1000) return "awaiting" as const;
+  return "unavailable" as const;
+}
+
+function getCampaignAttentionReasons(input: {
+  failedCount: number;
+  status: string;
+  bounceRate: number;
+  spamComplaints: number;
+  errorSummary: string | null;
+}) {
+  const reasons: string[] = [];
+  if (input.failedCount > 0) {
+    reasons.push(`${input.failedCount} recipient${input.failedCount === 1 ? "" : "s"} failed`);
+  }
+  if (input.status === "failed") reasons.push("Campaign sending failed");
+  if (input.bounceRate >= 5) reasons.push(`Bounce rate is ${input.bounceRate}%`);
+  if (input.spamComplaints > 0) {
+    reasons.push(`${input.spamComplaints} spam complaint${input.spamComplaints === 1 ? "" : "s"}`);
+  }
+  if (input.errorSummary && reasons.length === 0) reasons.push(input.errorSummary);
+  return Array.from(new Set(reasons));
 }
 
 function getCampaignRangeStart(range: string | undefined) {
@@ -351,6 +381,25 @@ export async function updateAdminSubscriber(
         status: updates.marketingEmails ? "subscribed" : "unsubscribed",
         subscribedAt: updates.marketingEmails ? new Date() : existing.subscribedAt,
         unsubscribedAt: updates.marketingEmails ? null : new Date(),
+      },
+    });
+  }
+
+  if (!updates.marketingEmails) {
+    await db.emailDelivery.updateMany({
+      where: {
+        toEmail: existing.email.trim().toLowerCase(),
+        category: "marketing",
+        resolvedAt: null,
+        status: { in: ["failed", "dead_letter"] },
+      },
+      data: {
+        resolvedAt: new Date(),
+        resolvedByUserId: updates.actorUserId || null,
+        resolutionCode: "recipient_unsubscribed",
+        resolutionNote: "Resolved automatically when the subscriber was unsubscribed.",
+        retryable: false,
+        nextRetryAt: null,
       },
     });
   }
@@ -597,6 +646,9 @@ export async function getAdminNewsletterSummary(
         emailEvents: {
           select: { type: true, metadataJson: true },
         },
+        emailDeliveries: {
+          select: { status: true, messageStream: true, lastError: true, resolvedAt: true },
+        },
       },
     }),
     db.emailCampaign.count({ where: campaignWhere }),
@@ -608,6 +660,9 @@ export async function getAdminNewsletterSummary(
       include: {
         emailEvents: {
           select: { type: true, metadataJson: true },
+        },
+        emailDeliveries: {
+          select: { status: true, messageStream: true, lastError: true, resolvedAt: true },
         },
       },
     }),
@@ -642,7 +697,27 @@ export async function getAdminNewsletterSummary(
       agg.delivered
     );
     const deliveredOrTotal = Math.max(totalRecipients, 1);
-    const delivered = Math.max(agg.delivered, campaign.sentCount - campaign.failedCount, 0);
+    const delivered = Math.max(agg.delivered, campaign.sentCount, 0);
+    const sentDate = campaign.sentAt || campaign.scheduledAt || campaign.createdAt;
+    const trackingState = getCampaignTrackingState({
+      eventCount: campaign.emailEvents.length,
+      sentDate,
+    });
+    const bounceRate = toPercent(agg.bounced, deliveredOrTotal);
+    const unresolvedDeliveryError = campaign.emailDeliveries.find(
+      (delivery) =>
+        !delivery.resolvedAt &&
+        (delivery.status === "failed" || delivery.status === "dead_letter") &&
+        delivery.lastError
+    )?.lastError;
+    const errorSummary = campaign.errorSummary || unresolvedDeliveryError || null;
+    const attentionReasons = getCampaignAttentionReasons({
+      failedCount: campaign.failedCount,
+      status: campaign.status,
+      bounceRate,
+      spamComplaints: agg.spamComplaints,
+      errorSummary,
+    });
     return {
       id: campaign.id,
       providerCampaignId: campaign.providerCampaignId,
@@ -654,7 +729,7 @@ export async function getAdminNewsletterSummary(
         campaign.status === "failed_partial"
           ? (campaign.status as "scheduled" | "sending" | "failed" | "failed_partial")
           : "sent",
-      sentDate: (campaign.sentAt || campaign.scheduledAt || campaign.createdAt).toISOString(),
+      sentDate: sentDate.toISOString(),
       totalRecipients,
       delivered,
       opened: agg.opened,
@@ -664,15 +739,25 @@ export async function getAdminNewsletterSummary(
       unsubscribed: agg.unsubscribed,
       failedSends: campaign.failedCount,
       deliveryRate: toPercent(delivered, deliveredOrTotal),
-      openRate: toPercent(agg.opened, Math.max(delivered, 1)),
-      clickRate: toPercent(agg.clicked, Math.max(delivered, 1)),
-      clickToOpenRate: toPercent(agg.clicked, Math.max(agg.opened, 1)),
+      openRate:
+        trackingState === "available" ? toPercent(agg.opened, Math.max(delivered, 1)) : null,
+      clickRate:
+        trackingState === "available" ? toPercent(agg.clicked, Math.max(delivered, 1)) : null,
+      clickToOpenRate:
+        trackingState === "available" ? toPercent(agg.clicked, Math.max(agg.opened, 1)) : null,
       unsubscribeRate: toPercent(agg.unsubscribed, deliveredOrTotal),
-      bounceRate: toPercent(agg.bounced, deliveredOrTotal),
+      bounceRate,
       complaintRate: toPercent(agg.spamComplaints, deliveredOrTotal),
       audienceType: campaign.audienceType || null,
       triggeredBy: campaign.triggeredBy || null,
       sourceSystem: getCampaignSourceSystem(campaign),
+      messageStream:
+        campaign.stream ||
+        campaign.emailDeliveries.find((delivery) => delivery.messageStream)?.messageStream ||
+        null,
+      trackingState,
+      attentionReasons,
+      errorSummary,
     };
   });
 
@@ -745,7 +830,7 @@ export async function getAdminNewsletterSummary(
       subject: campaign.subject,
       sentDate: (campaign.sentAt || campaign.scheduledAt || campaign.createdAt).toISOString(),
       sourceSystem: getCampaignSourceSystem(campaign),
-      delivered: Math.max(agg.delivered, campaign.sentCount - campaign.failedCount, 0),
+      delivered: Math.max(agg.delivered, campaign.sentCount, 0),
       opened: agg.opened,
       clicked: agg.clicked,
       unsubscribed: agg.unsubscribed,
@@ -797,6 +882,9 @@ export async function getAdminNewsletterCampaign(
         select: { type: true, eventAt: true, metadataJson: true },
         orderBy: { eventAt: "asc" },
       },
+      emailDeliveries: {
+        select: { status: true, messageStream: true, lastError: true, resolvedAt: true },
+      },
     },
   });
 
@@ -822,8 +910,28 @@ export async function getAdminNewsletterCampaign(
     agg.delivered + agg.bounced,
     agg.delivered
   );
-  const delivered = Math.max(agg.delivered, campaign.sentCount - campaign.failedCount, 0);
+  const delivered = Math.max(agg.delivered, campaign.sentCount, 0);
   const deliveredOrTotal = Math.max(totalRecipients, 1);
+  const sentDate = campaign.sentAt || campaign.scheduledAt || campaign.createdAt;
+  const trackingState = getCampaignTrackingState({
+    eventCount: campaign.emailEvents.length,
+    sentDate,
+  });
+  const bounceRate = toPercent(agg.bounced, deliveredOrTotal);
+  const unresolvedDeliveryError = campaign.emailDeliveries.find(
+    (delivery) =>
+      !delivery.resolvedAt &&
+      (delivery.status === "failed" || delivery.status === "dead_letter") &&
+      delivery.lastError
+  )?.lastError;
+  const errorSummary = campaign.errorSummary || unresolvedDeliveryError || null;
+  const attentionReasons = getCampaignAttentionReasons({
+    failedCount: campaign.failedCount,
+    status: campaign.status,
+    bounceRate,
+    spamComplaints: agg.spamComplaints,
+    errorSummary,
+  });
 
   return {
     id: campaign.id,
@@ -836,7 +944,7 @@ export async function getAdminNewsletterCampaign(
       campaign.status === "failed_partial"
         ? (campaign.status as "scheduled" | "sending" | "failed" | "failed_partial")
         : "sent",
-    sentDate: (campaign.sentAt || campaign.scheduledAt || campaign.createdAt).toISOString(),
+    sentDate: sentDate.toISOString(),
     totalRecipients,
     delivered,
     opened: agg.opened,
@@ -846,15 +954,24 @@ export async function getAdminNewsletterCampaign(
     unsubscribed: agg.unsubscribed,
     failedSends: campaign.failedCount,
     deliveryRate: toPercent(delivered, deliveredOrTotal),
-    openRate: toPercent(agg.opened, Math.max(delivered, 1)),
-    clickRate: toPercent(agg.clicked, Math.max(delivered, 1)),
-    clickToOpenRate: toPercent(agg.clicked, Math.max(agg.opened, 1)),
+    openRate: trackingState === "available" ? toPercent(agg.opened, Math.max(delivered, 1)) : null,
+    clickRate:
+      trackingState === "available" ? toPercent(agg.clicked, Math.max(delivered, 1)) : null,
+    clickToOpenRate:
+      trackingState === "available" ? toPercent(agg.clicked, Math.max(agg.opened, 1)) : null,
     unsubscribeRate: toPercent(agg.unsubscribed, deliveredOrTotal),
-    bounceRate: toPercent(agg.bounced, deliveredOrTotal),
+    bounceRate,
     complaintRate: toPercent(agg.spamComplaints, deliveredOrTotal),
     audienceType: campaign.audienceType || null,
     triggeredBy: campaign.triggeredBy || null,
     sourceSystem: getCampaignSourceSystem(campaign),
+    messageStream:
+      campaign.stream ||
+      campaign.emailDeliveries.find((delivery) => delivery.messageStream)?.messageStream ||
+      null,
+    trackingState,
+    attentionReasons,
+    errorSummary,
     topLinks: agg.topLinks,
     eventTimeline: Array.from(eventTimelineByDate.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))

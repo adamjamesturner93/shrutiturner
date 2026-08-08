@@ -25,6 +25,8 @@ const coachingClientProfileFindUniqueMock = vi.fn();
 const coachingClientProfileUpdateMock = vi.fn();
 const coachingClientProfileUpsertMock = vi.fn();
 const coachingClientProfileUpdateManyMock = vi.fn();
+const coachingPackageChangeRequestFindFirstMock = vi.fn();
+const coachingPackageChangeRequestUpdateMock = vi.fn();
 const dbTransactionMock = vi.fn();
 
 const stripeCustomerCreateMock = vi.fn();
@@ -49,6 +51,7 @@ const processStripeDisputeEventMock = vi.fn();
 const openMembershipDunningFromInvoiceMock = vi.fn();
 const recoverMembershipDunningCaseMock = vi.fn();
 const sendPostmarkReactEmailMock = vi.fn();
+const upsertCoachingSubscriptionProjectionMock = vi.fn();
 
 vi.mock("@/lib/env", () => ({
   getBaseSiteUrlFromEnv: () => "http://localhost:3000",
@@ -96,6 +99,10 @@ vi.mock("@/lib/db", () => ({
       update: coachingClientProfileUpdateMock,
       upsert: coachingClientProfileUpsertMock,
       updateMany: coachingClientProfileUpdateManyMock,
+    },
+    coachingPackageChangeRequest: {
+      findFirst: coachingPackageChangeRequestFindFirstMock,
+      update: coachingPackageChangeRequestUpdateMock,
     },
     $transaction: dbTransactionMock,
   },
@@ -176,9 +183,14 @@ vi.mock("@/lib/billing/dunning-service", () => ({
   recoverMembershipDunningCase: recoverMembershipDunningCaseMock,
 }));
 
+vi.mock("@/lib/billing/coaching-subscription-projection", () => ({
+  upsertCoachingSubscriptionProjection: upsertCoachingSubscriptionProjectionMock,
+}));
+
 const {
   createCoachingCheckoutSession,
   createMembershipCheckoutSession,
+  confirmCoachingPackageChangeRequest,
   processStripeWebhookEvent,
   scheduleCoachingCancellationAfterNextPayment,
 } = await import("@/lib/billing/billing-service");
@@ -276,17 +288,24 @@ describe("billing-service Stripe integration", () => {
     coachingClientProfileFindUniqueMock.mockResolvedValue(null);
     coachingClientProfileUpdateMock.mockResolvedValue({ id: "profile_123" });
     coachingClientProfileUpsertMock.mockResolvedValue({ id: "profile_123" });
-    coachingClientProfileUpdateManyMock.mockResolvedValue({ count: 1 });
+    coachingClientProfileUpdateManyMock.mockResolvedValue({ count: 0 });
+    coachingPackageChangeRequestFindFirstMock.mockResolvedValue(null);
+    coachingPackageChangeRequestUpdateMock.mockResolvedValue({ id: "change_123" });
     sendPostmarkReactEmailMock.mockResolvedValue({ id: "email_123" });
     dbTransactionMock.mockImplementation(async (callback) =>
       callback({
         coachingApplication: { update: coachingApplicationUpdateMock },
-        coachingClientProfile: { upsert: coachingClientProfileUpsertMock },
+        coachingClientProfile: {
+          update: coachingClientProfileUpdateMock,
+          upsert: coachingClientProfileUpsertMock,
+        },
+        coachingPackageChangeRequest: { update: coachingPackageChangeRequestUpdateMock },
         user: { update: userUpdateMock },
       })
     );
     openMembershipDunningFromInvoiceMock.mockResolvedValue({ id: "dunning_123" });
     recoverMembershipDunningCaseMock.mockResolvedValue(null);
+    upsertCoachingSubscriptionProjectionMock.mockResolvedValue(true);
     billingCatalogItemFindFirstMock.mockResolvedValue({ key: "membership_movewell_monthly" });
     mockMetricRecomputeDefaults();
   });
@@ -392,6 +411,59 @@ describe("billing-service Stripe integration", () => {
         }),
       })
     );
+  });
+
+  it("creates an idempotent Stripe checkout when a pro-bono client starts paid billing", async () => {
+    const billingStartsAt = new Date("2027-01-15T00:00:00.000Z");
+    coachingPackageChangeRequestFindFirstMock.mockResolvedValueOnce({
+      id: "change_paid_start",
+      userId: "user_123",
+      profileId: "profile_123",
+      requestType: "paid_start",
+      toOfferKey: "guided_training_plan",
+      effectiveMode: "immediate",
+      billingStartsAt,
+      profile: {
+        id: "profile_123",
+        applicationId: "application_123",
+        billingArrangement: "pro_bono",
+        stripeSubscriptionId: null,
+      },
+    });
+    getActiveCatalogItemMock.mockResolvedValueOnce({
+      stripePriceId: "price_guided_training",
+      unitAmountPence: 12000,
+      currency: "GBP",
+    });
+
+    const result = await confirmCoachingPackageChangeRequest("user_123", "change_paid_start");
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        checkoutUrl: "https://checkout.stripe.com/session",
+        packageChangeRequestId: "change_paid_start",
+        offerKey: "guided_training_plan",
+        billingStartsAt: billingStartsAt.toISOString(),
+      })
+    );
+    expect(stripeCheckoutSessionCreateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: "subscription",
+        line_items: [{ price: "price_guided_training", quantity: 1 }],
+        metadata: expect.objectContaining({
+          coachingPaidStartRequestId: "change_paid_start",
+          coachingBillingStartsAt: billingStartsAt.toISOString(),
+        }),
+        subscription_data: expect.objectContaining({
+          trial_end: Math.floor(billingStartsAt.getTime() / 1000),
+        }),
+      }),
+      { idempotencyKey: "coaching-paid-start-change_paid_start" }
+    );
+    expect(coachingPackageChangeRequestUpdateMock).toHaveBeenCalledWith({
+      where: { id: "change_paid_start" },
+      data: { clientConfirmedAt: expect.any(Date) },
+    });
   });
 
   it("schedules coaching cancellation after the next coaching payment period", async () => {
@@ -643,6 +715,139 @@ describe("billing-service Stripe integration", () => {
       membershipId: "membership_123",
       stripeInvoiceId: "in_paid",
     });
+  });
+
+  it("keeps a future paid-start checkout pro bono until its first paid invoice", async () => {
+    const billingStartsAt = new Date("2027-01-15T00:00:00.000Z");
+    billingEventFindUniqueMock.mockResolvedValue(null);
+    coachingPackageChangeRequestFindFirstMock.mockResolvedValueOnce({
+      id: "change_paid_start",
+      userId: "user_123",
+      profileId: "profile_123",
+      requestType: "paid_start",
+      billingStartsAt,
+      clientConfirmedAt: new Date("2026-08-08T10:00:00.000Z"),
+      profile: { id: "profile_123" },
+    });
+
+    await processStripeWebhookEvent(
+      event({
+        id: "evt_paid_start_checkout",
+        type: "checkout.session.completed",
+        object: {
+          id: "cs_paid_start",
+          amount_total: 0,
+          subscription: "sub_paid_start",
+          metadata: {
+            userId: "user_123",
+            kind: "coaching",
+            applicationId: "application_123",
+            offerKey: "guided_training_plan",
+            tier: "coached_plan",
+            coachingPaidStartRequestId: "change_paid_start",
+            coachingBillingStartsAt: billingStartsAt.toISOString(),
+          },
+        },
+      })
+    );
+
+    expect(coachingClientProfileUpdateMock).toHaveBeenCalledWith({
+      where: { id: "profile_123" },
+      data: expect.objectContaining({
+        applicationId: "application_123",
+        tier: "coached_plan",
+        billingArrangement: "pro_bono",
+        billingStartsAt,
+        stripeSubscriptionId: "sub_paid_start",
+      }),
+    });
+    expect(coachingPackageChangeRequestUpdateMock).toHaveBeenCalledWith({
+      where: { id: "change_paid_start" },
+      data: expect.objectContaining({
+        status: "applied",
+        stripeSubscriptionId: "sub_paid_start",
+      }),
+    });
+    expect(upsertCoachingSubscriptionProjectionMock).toHaveBeenCalledTimes(1);
+    expect(sendPostmarkReactEmailMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({ tag: "coaching-payment-received" })
+    );
+  });
+
+  it("does not activate paid coaching from a zero-value setup invoice", async () => {
+    billingEventFindUniqueMock.mockResolvedValue(null);
+    membershipSubscriptionFindFirstMock.mockResolvedValue(null);
+    billingCatalogItemFindFirstMock.mockResolvedValue(null);
+
+    await processStripeWebhookEvent(
+      event({
+        id: "evt_paid_start_zero_invoice",
+        type: "invoice.paid",
+        object: {
+          id: "in_paid_start_zero",
+          customer: "cus_123",
+          amount_paid: 0,
+          metadata: {},
+          lines: { data: [{ price: { id: "price_guided_training" } }] },
+          subscription: "sub_paid_start",
+        },
+      })
+    );
+
+    expect(coachingClientProfileUpdateManyMock).not.toHaveBeenCalled();
+    expect(sendPostmarkReactEmailMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({ tag: "coaching-payment-received" })
+    );
+  });
+
+  it("activates paid coaching and notifies Shruti after the first paid invoice", async () => {
+    billingEventFindUniqueMock.mockResolvedValue(null);
+    membershipSubscriptionFindFirstMock.mockResolvedValue(null);
+    billingCatalogItemFindFirstMock.mockResolvedValue(null);
+    coachingClientProfileUpdateManyMock.mockResolvedValueOnce({ count: 1 });
+    coachingClientProfileFindUniqueMock.mockResolvedValueOnce({
+      id: "profile_123",
+      tier: "coached_plan",
+      user: {
+        email: "taylor@example.com",
+        firstName: "Taylor",
+        lastName: "Member",
+        name: "Taylor Member",
+      },
+      application: { id: "application_123" },
+      packageChangeRequests: [{ toOfferKey: "guided_training_plan" }],
+    });
+
+    await processStripeWebhookEvent(
+      event({
+        id: "evt_paid_start_first_payment",
+        type: "invoice.paid",
+        object: {
+          id: "in_paid_start_first_payment",
+          customer: "cus_123",
+          amount_paid: 12000,
+          metadata: {},
+          lines: { data: [{ price: { id: "price_guided_training" } }] },
+          subscription: "sub_paid_start",
+        },
+      })
+    );
+
+    expect(coachingClientProfileUpdateManyMock).toHaveBeenCalledWith({
+      where: {
+        stripeSubscriptionId: "sub_paid_start",
+        billingArrangement: "pro_bono",
+        billingStartsAt: { lte: expect.any(Date) },
+      },
+      data: { billingArrangement: "paid", billingStartsAt: null },
+    });
+    expect(sendPostmarkReactEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "shruti@example.com",
+        subject: "Coaching payment received: Taylor Member",
+        tag: "coaching-payment-received",
+      })
+    );
   });
 
   it("syncs subscription cancellation status from a subscription deleted webhook", async () => {

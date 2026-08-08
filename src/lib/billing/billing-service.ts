@@ -43,6 +43,7 @@ import { getNotificationInbox, sendPostmarkReactEmail } from "@/lib/postmark/cli
 import { coachingTiers, type CoachingOfferKey } from "@/data/marketing";
 import CoachingPaymentNotificationEmail from "@/emails/coaching-payment-notification";
 import CoachingCancellationNotificationEmail from "@/emails/coaching-cancellation-notification";
+import { upsertCoachingSubscriptionProjection } from "@/lib/billing/coaching-subscription-projection";
 
 const APP_URL = getBaseSiteUrlFromEnv();
 const STRIPE_METADATA_VALUE_MAX_LENGTH = 500;
@@ -483,6 +484,9 @@ export async function createCoachingCheckoutSession(
   options?: {
     successPath?: string;
     cancelPath?: string;
+    offerKeyOverride?: CoachingOfferKey;
+    paidStartRequestId?: string;
+    billingStartsAt?: Date;
   }
 ) {
   const application = await db.coachingApplication.findFirst({
@@ -495,7 +499,9 @@ export async function createCoachingCheckoutSession(
   if (!application) throw new Error("COACHING_APPLICATION_NOT_APPROVED");
 
   const offerKey =
-    getCoachingOfferFromAnswers(application.answersJson) || fallbackOfferForTier(application.tier);
+    options?.offerKeyOverride ||
+    getCoachingOfferFromAnswers(application.answersJson) ||
+    fallbackOfferForTier(application.tier);
   const catalog = await getActiveCatalogItem(coachingOfferToCatalogKey(offerKey));
   assertPriceConfigured(catalog.stripePriceId, `CATALOG_PRICE_COACHING_${offerKey}`);
 
@@ -505,7 +511,14 @@ export async function createCoachingCheckoutSession(
   ]);
   const coupon = await createOneTimeCouponIfNeeded(referralDiscountPence);
   const stripe = getStripeClient();
-  const session = await stripe.checkout.sessions.create({
+  const billingStartSeconds = options?.billingStartsAt
+    ? Math.floor(options.billingStartsAt.getTime() / 1000)
+    : null;
+  const futureBillingStartSeconds =
+    billingStartSeconds && billingStartSeconds > Math.floor(Date.now() / 1000) + 60
+      ? billingStartSeconds
+      : null;
+  const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: "subscription",
     customer: customerId,
     success_url: `${APP_URL}${options?.successPath || "/dashboard/coaching?checkout=success"}`,
@@ -517,11 +530,28 @@ export async function createCoachingCheckoutSession(
       kind: "coaching",
       applicationId: application.id,
       offerKey,
-      tier: application.tier,
+      tier: coachingOfferToTier(offerKey),
+      coachingPaidStartRequestId: options?.paidStartRequestId || "",
+      coachingBillingStartsAt: options?.billingStartsAt?.toISOString() || "",
       referralDiscountPence: referralDiscountPence > 0 ? String(referralDiscountPence) : "0",
       discountSource: referralDiscountPence > 0 ? "referral" : "none",
     },
-  });
+    subscription_data: {
+      trial_end: futureBillingStartSeconds || undefined,
+      metadata: {
+        userId,
+        applicationId: application.id,
+        coachingOfferKey: offerKey,
+        coachingPaidStartRequestId: options?.paidStartRequestId || "",
+        coachingBillingStartsAt: options?.billingStartsAt?.toISOString() || "",
+      },
+    },
+  };
+  const session = options?.paidStartRequestId
+    ? await stripe.checkout.sessions.create(sessionParams, {
+        idempotencyKey: `coaching-paid-start-${options.paidStartRequestId}`,
+      })
+    : await stripe.checkout.sessions.create(sessionParams);
 
   if (!session.url) throw new Error("STRIPE_CHECKOUT_URL_MISSING");
 
@@ -556,6 +586,38 @@ export async function confirmCoachingPackageChangeRequest(
   const offerKey = request.toOfferKey as CoachingOfferKey;
   const offer = coachingTiers.find((tier) => tier.id === offerKey);
   if (!offer) throw new Error("INVALID_COACHING_OFFER");
+
+  if (request.requestType === "paid_start") {
+    if (
+      request.profile.billingArrangement !== "pro_bono" ||
+      request.profile.stripeSubscriptionId ||
+      !request.profile.applicationId ||
+      !request.billingStartsAt
+    ) {
+      throw new Error("COACHING_PAID_START_NOT_AVAILABLE");
+    }
+
+    const checkout = await createCoachingCheckoutSession(userId, request.profile.applicationId, {
+      offerKeyOverride: offerKey,
+      paidStartRequestId: request.id,
+      billingStartsAt: request.billingStartsAt,
+      successPath: "/dashboard/coaching?paid-plan=setup",
+      cancelPath: "/dashboard/coaching?paid-plan=cancelled",
+    });
+    await db.coachingPackageChangeRequest.update({
+      where: { id: request.id },
+      data: { clientConfirmedAt: new Date() },
+    });
+
+    return {
+      ...checkout,
+      packageChangeRequestId: request.id,
+      tier: coachingOfferToTier(offerKey),
+      offerKey,
+      effectiveMode: request.effectiveMode,
+      billingStartsAt: request.billingStartsAt.toISOString(),
+    };
+  }
 
   if (!request.profile.stripeSubscriptionId) {
     throw new Error("COACHING_SUBSCRIPTION_NOT_FOUND");
@@ -605,10 +667,13 @@ export async function confirmCoachingPackageChangeRequest(
       where: { id: request.profileId },
       data: {
         tier: coachingOfferToTier(offerKey),
+        billingArrangement: "paid",
         stripeSubscriptionId: updatedSubscription.id,
       },
     });
   });
+
+  await upsertCoachingSubscriptionProjection(updatedSubscription);
 
   return {
     packageChangeRequestId: request.id,
@@ -882,6 +947,7 @@ async function processCheckoutCompleted(event: Stripe.Event, session: Stripe.Che
   if (kind === "coaching") {
     const applicationId = session.metadata?.applicationId;
     const offerKey = session.metadata?.offerKey as CoachingOfferKey | undefined;
+    const paidStartRequestId = session.metadata?.coachingPaidStartRequestId || null;
     if (!applicationId || !offerKey || !coachingTiers.some((tier) => tier.id === offerKey)) return;
     const subscriptionId =
       typeof session.subscription === "string"
@@ -893,49 +959,101 @@ async function processCheckoutCompleted(event: Stripe.Event, session: Stripe.Che
     });
     if (!application || application.userId !== userId) return;
 
+    const paidStartRequest = paidStartRequestId
+      ? await db.coachingPackageChangeRequest.findFirst({
+          where: {
+            id: paidStartRequestId,
+            userId,
+            requestType: "paid_start",
+          },
+          include: { profile: true },
+        })
+      : null;
+    if (paidStartRequestId && !paidStartRequest) return;
+
+    const completedAt = new Date();
+    const targetTier = coachingOfferToTier(offerKey);
+
     await db.$transaction(async (tx) => {
       await tx.coachingApplication.update({
         where: { id: application.id },
         data: {
           status: "converted",
-          convertedAt: new Date(),
-          approvedAt: application.approvedAt || new Date(),
+          convertedAt: application.convertedAt || completedAt,
+          approvedAt: application.approvedAt || completedAt,
         },
       });
-      await tx.coachingClientProfile.upsert({
-        where: { userId },
-        create: {
-          userId,
-          applicationId: application.id,
-          tier: application.tier === "unsure" ? "coaching" : application.tier,
-          status: "onboarding",
-          stripeSubscriptionId: subscriptionId,
-          startDate: new Date(),
-          nextCheckInDueAt: new Date(Date.now() + 7 * 86400000),
-        },
-        update: {
-          applicationId: application.id,
-          tier: application.tier === "unsure" ? "coaching" : application.tier,
-          status: "onboarding",
-          stripeSubscriptionId: subscriptionId,
-          startDate: new Date(),
-          nextCheckInDueAt: new Date(Date.now() + 7 * 86400000),
-        },
-      });
+
+      if (paidStartRequest) {
+        const billingStartsAt = paidStartRequest.billingStartsAt || completedAt;
+        const billingHasStarted = billingStartsAt.getTime() <= completedAt.getTime();
+        await tx.coachingClientProfile.update({
+          where: { id: paidStartRequest.profileId },
+          data: {
+            applicationId: application.id,
+            tier: targetTier,
+            billingArrangement: billingHasStarted ? "paid" : "pro_bono",
+            billingStartsAt,
+            stripeSubscriptionId: subscriptionId,
+          },
+        });
+        await tx.coachingPackageChangeRequest.update({
+          where: { id: paidStartRequest.id },
+          data: {
+            status: "applied",
+            clientConfirmedAt: paidStartRequest.clientConfirmedAt || completedAt,
+            appliedAt: completedAt,
+            stripeSubscriptionId: subscriptionId,
+          },
+        });
+      } else {
+        await tx.coachingClientProfile.upsert({
+          where: { userId },
+          create: {
+            userId,
+            applicationId: application.id,
+            tier: targetTier,
+            billingArrangement: "paid",
+            status: "onboarding",
+            stripeSubscriptionId: subscriptionId,
+            startDate: completedAt,
+            nextCheckInDueAt: new Date(completedAt.getTime() + 7 * 86400000),
+          },
+          update: {
+            applicationId: application.id,
+            tier: targetTier,
+            billingArrangement: "paid",
+            status: "onboarding",
+            stripeSubscriptionId: subscriptionId,
+            startDate: completedAt,
+            nextCheckInDueAt: new Date(completedAt.getTime() + 7 * 86400000),
+          },
+        });
+      }
       await tx.user.update({
         where: { id: userId },
         data: { isCoachingClient: true },
       });
     });
 
-    await sendCoachingPaymentReceivedNotification({
-      clientName:
-        `${application.applicantFirstName} ${application.applicantLastName}`.trim() ||
-        application.applicantEmail,
-      clientEmail: application.applicantEmail,
-      tierLabel: coachingTiers.find((tier) => tier.id === offerKey)?.name || application.tier,
-      applicationId: application.id,
-    });
+    if (subscriptionId) {
+      const subscription = await getStripeClient().subscriptions.retrieve(subscriptionId);
+      await upsertCoachingSubscriptionProjection(subscription);
+    }
+
+    const paymentStartsInFuture = Boolean(
+      paidStartRequest?.billingStartsAt && paidStartRequest.billingStartsAt > completedAt
+    );
+    if (!paymentStartsInFuture) {
+      await sendCoachingPaymentReceivedNotification({
+        clientName:
+          `${application.applicantFirstName} ${application.applicantLastName}`.trim() ||
+          application.applicantEmail,
+        clientEmail: application.applicantEmail,
+        tierLabel: coachingTiers.find((tier) => tier.id === offerKey)?.name || application.tier,
+        applicationId: application.id,
+      });
+    }
 
     if (discountPence > 0) {
       const applied = await db.referralLedgerEntry.findFirst({
@@ -1064,6 +1182,49 @@ async function processInvoicePaid(event: Stripe.Event, invoice: Stripe.Invoice) 
 
   const subscriptionId = getInvoiceSubscriptionId(invoice);
   if (!subscriptionId) return;
+
+  if ((invoice.amount_paid || 0) > 0) {
+    const activation = await db.coachingClientProfile.updateMany({
+      where: {
+        stripeSubscriptionId: subscriptionId,
+        billingArrangement: "pro_bono",
+        billingStartsAt: { lte: new Date() },
+      },
+      data: { billingArrangement: "paid", billingStartsAt: null },
+    });
+
+    if (activation.count > 0) {
+      const profile = await db.coachingClientProfile.findUnique({
+        where: { stripeSubscriptionId: subscriptionId },
+        include: {
+          user: { select: { email: true, firstName: true, lastName: true, name: true } },
+          application: true,
+          packageChangeRequests: {
+            where: {
+              requestType: "paid_start",
+              stripeSubscriptionId: subscriptionId,
+            },
+            orderBy: { appliedAt: "desc" },
+            take: 1,
+          },
+        },
+      });
+      if (profile?.application) {
+        const clientName =
+          profile.user.name ||
+          `${profile.user.firstName || ""} ${profile.user.lastName || ""}`.trim() ||
+          profile.user.email;
+        await sendCoachingPaymentReceivedNotification({
+          clientName,
+          clientEmail: profile.user.email,
+          tierLabel:
+            coachingTiers.find((tier) => tier.id === profile.packageChangeRequests[0]?.toOfferKey)
+              ?.name || profile.tier,
+          applicationId: profile.application.id,
+        });
+      }
+    }
+  }
 
   const line = invoice.lines.data[0] as Stripe.InvoiceLineItem & {
     price?: { id?: string | null } | null;
@@ -1204,18 +1365,20 @@ async function processCoachingSubscriptionUpdated(subscription: Stripe.Subscript
     },
   });
 
+  await upsertCoachingSubscriptionProjection(subscription);
+
   return true;
 }
 
 async function processSubscriptionUpdated(subscription: Stripe.Subscription) {
+  const handledCoaching = await processCoachingSubscriptionUpdated(subscription);
+  if (handledCoaching) return;
+
   const user = await db.user.findUnique({
     where: { stripeCustomerId: String(subscription.customer) },
     select: { id: true },
   });
   if (!user) return;
-
-  const handledCoaching = await processCoachingSubscriptionUpdated(subscription);
-  if (handledCoaching) return;
 
   const existing = await db.membershipSubscription.findFirst({
     where: { userId: user.id },

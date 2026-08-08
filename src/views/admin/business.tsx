@@ -64,18 +64,8 @@ export function AdminBusiness() {
     let active = true;
     void (async () => {
       try {
-        const [
-          response,
-          catalogResponse,
-          discountResponse,
-          classRulesResponse,
-          settingsResponse,
-          dunningResponse,
-        ] = await Promise.all([
+        const [response, settingsResponse, dunningResponse] = await Promise.all([
           fetch("/api/admin/business", { cache: "no-store" }),
-          fetch("/api/admin/business/catalog", { cache: "no-store" }),
-          fetch("/api/admin/business/discounts", { cache: "no-store" }),
-          fetch("/api/admin/business/class-rules", { cache: "no-store" }),
           fetch("/api/admin/business/settings", { cache: "no-store" }),
           fetch("/api/admin/billing/dunning", { cache: "no-store" }),
         ]);
@@ -83,32 +73,6 @@ export function AdminBusiness() {
           const payload = (await response.json().catch(() => null)) as unknown;
           if (isApiSuccess<AdminBusinessMetricDto>(payload)) {
             setSummary(payload.data);
-          }
-        }
-        if (catalogResponse.ok && active) {
-          setCatalog(
-            ((await catalogResponse.json()) as Array<{
-              key: string;
-              stripePriceId: string;
-              unitAmountPence: number;
-              currency: string;
-            }>) || []
-          );
-        }
-        if (discountResponse.ok && active) {
-          setDiscounts(
-            ((await discountResponse.json()) as Array<{
-              stripePromotionCodeId: string;
-              code: string;
-              active: boolean;
-              type: string;
-            }>) || []
-          );
-        }
-        if (classRulesResponse.ok && active) {
-          const payload = (await classRulesResponse.json().catch(() => null)) as unknown;
-          if (isApiSuccess<ClassOperationalSettingsDto>(payload)) {
-            setClassRules(payload.data);
           }
         }
         if (settingsResponse.ok && active) {
@@ -138,7 +102,7 @@ export function AdminBusiness() {
         <AppPageHeader
           eyebrow="Business operations"
           title="Business Overview"
-          description="Stripe + membership analytics from local projections."
+          description="Stripe-backed 1:1 subscription projections and billing operations."
           meta={
             summary?.dataFreshnessIso
               ? `Data freshness: ${new Date(summary.dataFreshnessIso).toLocaleString("en-GB")}`
@@ -169,27 +133,6 @@ export function AdminBusiness() {
                 Settings
               </Button>
               <Button
-                variant={activeTab === "pricing" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveTab("pricing")}
-              >
-                Pricing
-              </Button>
-              <Button
-                variant={activeTab === "discounts" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveTab("discounts")}
-              >
-                Discount Codes
-              </Button>
-              <Button
-                variant={activeTab === "class-rules" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveTab("class-rules")}
-              >
-                Class Rules
-              </Button>
-              <Button
                 variant={activeTab === "billing" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setActiveTab("billing")}
@@ -200,26 +143,32 @@ export function AdminBusiness() {
 
             <AppMetricGrid>
               <AppMetricCard
-                label="Active members"
-                value={summary.activeMembers}
-                detail={`of ${summary.totalMembers} total`}
+                label="Active 1:1 clients"
+                value={summary.activeOneToOneClients}
+                detail={`${summary.operationalOneToOneClients} operational profiles`}
               />
               <AppMetricCard
                 label="MRR"
                 value={`£${Math.round(summary.monthlyRecurringRevenuePence / 100)}`}
-                detail="monthly recurring revenue"
+                detail={`${summary.trackedSubscriptions} Stripe subscriptions tracked`}
               />
               <AppMetricCard
-                label="New members (MTD)"
-                value={summary.newMembersThisMonth}
-                detail="joined this month"
+                label="New paid clients (MTD)"
+                value={summary.newPaidClientsThisMonth}
+                detail="subscriptions started this month"
               />
               <AppMetricCard
-                label="Churn (30d)"
-                value={`${summary.churnRatePercent}%`}
-                detail={`${summary.cancelledLast30Days} cancelled/expired`}
+                label="Ending in 30 days"
+                value={summary.endingSoonCount}
+                detail="scheduled subscription endings"
               />
             </AppMetricGrid>
+            {summary.subscriptionsNeedingSync > 0 ? (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                {summary.subscriptionsNeedingSync} coaching subscription
+                {summary.subscriptionsNeedingSync === 1 ? " needs" : "s need"} a Stripe sync.
+              </div>
+            ) : null}
             <AppMetricGrid className="lg:grid-cols-2">
               <AppMetricCard label="Failed payments (7d)" value={summary.failedPayments7d} />
               <AppMetricCard label="Failed payments (30d)" value={summary.failedPayments30d} />
@@ -706,15 +655,15 @@ export function AdminBusiness() {
                         const payload =
                           newCodeType === "percent"
                             ? {
-                              code: newCode,
-                              type: "percent",
-                              percentOff: Number(newCodeValue || 0),
-                            }
+                                code: newCode,
+                                type: "percent",
+                                percentOff: Number(newCodeValue || 0),
+                              }
                             : {
-                              code: newCode,
-                              type: "amount",
-                              amountOffPence: Number(newCodeValue || 0),
-                            };
+                                code: newCode,
+                                type: "amount",
+                                amountOffPence: Number(newCodeValue || 0),
+                              };
                         const res = await fetch("/api/admin/business/discounts", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },

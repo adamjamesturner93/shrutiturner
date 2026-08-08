@@ -135,6 +135,7 @@ export async function attemptEmailDelivery(deliveryId: string) {
       retryable: true,
       attemptCount: true,
       maxAttempts: true,
+      resolvedAt: true,
       payloadJson: true,
       metadataJson: true,
     },
@@ -142,6 +143,10 @@ export async function attemptEmailDelivery(deliveryId: string) {
 
   if (!existing) {
     throw new Error("EMAIL_DELIVERY_NOT_FOUND");
+  }
+
+  if (existing.resolvedAt) {
+    return { skipped: true as const, reason: "resolved" };
   }
 
   if (
@@ -157,6 +162,7 @@ export async function attemptEmailDelivery(deliveryId: string) {
       status: {
         in: [EmailDeliveryStatus.queued, EmailDeliveryStatus.failed],
       },
+      resolvedAt: null,
     },
     data: {
       status: EmailDeliveryStatus.sending,
@@ -225,6 +231,10 @@ export async function attemptEmailDelivery(deliveryId: string) {
           lastError: null,
           nextRetryAt: null,
           sentAt: new Date(),
+          resolvedAt: null,
+          resolvedByUserId: null,
+          resolutionCode: null,
+          resolutionNote: null,
         },
       }),
     ]);
@@ -274,6 +284,7 @@ export async function processDueEmailDeliveries(limit = 50) {
       status: {
         in: [EmailDeliveryStatus.queued, EmailDeliveryStatus.failed],
       },
+      resolvedAt: null,
       OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: now } }],
     },
     orderBy: [{ createdAt: "asc" }],

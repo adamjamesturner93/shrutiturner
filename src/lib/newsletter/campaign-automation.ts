@@ -76,6 +76,13 @@ function stringifyContentValue(value: unknown): string {
   return "";
 }
 
+function readLocalizedValue(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const record = value as Record<string, unknown>;
+  if (typeof record.nodeType === "string" || "url" in record) return value;
+  return Object.values(record).find((item) => item !== undefined && item !== null) ?? value;
+}
+
 function readTextField(fields: Record<string, unknown>, key: string) {
   const value = fields[key];
   if (typeof value === "string") return value.trim();
@@ -90,6 +97,15 @@ function readTextField(fields: Record<string, unknown>, key: string) {
       : stringifyContentValue(value).trim();
   }
   return stringifyContentValue(value).trim();
+}
+
+function hasRichTextContent(value: unknown) {
+  const localized = readLocalizedValue(value);
+  if (!localized || typeof localized !== "object" || Array.isArray(localized)) return false;
+  const record = localized as Record<string, unknown>;
+  return (
+    record.nodeType === "document" && Array.isArray(record.content) && record.content.length > 0
+  );
 }
 
 function stripMarkup(input: string) {
@@ -128,7 +144,12 @@ function getPublishReadiness(input: {
   fields: Record<string, unknown>;
 }) {
   if (input.contentType === "newsletterTemplate") {
-    if (!readStringField(input.fields, "subject") || !readStringField(input.fields, "body")) {
+    if (
+      !readStringField(input.fields, "subject") ||
+      (!hasRichTextContent(input.fields.content) &&
+        !readTextField(input.fields, "content") &&
+        !readStringField(input.fields, "body"))
+    ) {
       return { ready: false as const, reason: "missing_required_fields" };
     }
   }
@@ -146,7 +167,7 @@ async function loadEntry(contentType: SupportedContentType, entryId: string) {
   const res = await getEntries<Record<string, unknown>>(contentType, {
     "sys.id": entryId,
     limit: 1,
-    include: 2,
+    include: 3,
   });
   const entry = res?.items?.[0];
   return entry ? { ...entry, includes: res?.includes } : null;
@@ -198,11 +219,107 @@ function getLinkedId(value: unknown) {
 }
 
 function readAssetUrl(fields: Record<string, unknown> | undefined) {
-  const file = fields?.file;
+  const file = readLocalizedValue(fields?.file);
   if (!file || typeof file !== "object" || Array.isArray(file)) return "";
   const url = (file as { url?: unknown }).url;
   if (typeof url !== "string" || !url.trim()) return "";
   return url.startsWith("//") ? `https:${url}` : url.trim();
+}
+
+function readAssetAlt(fields: Record<string, unknown> | undefined) {
+  const title = readLocalizedValue(fields?.title);
+  return typeof title === "string" && title.trim() ? title.trim() : "Newsletter image";
+}
+
+function renderNewsletterRichTextNode(
+  node: unknown,
+  assets: Map<string, { url: string; alt: string }>
+): string {
+  if (!node || typeof node !== "object" || Array.isArray(node)) return "";
+  const record = node as Record<string, unknown>;
+  const nodeType = typeof record.nodeType === "string" ? record.nodeType : "";
+
+  if (nodeType === "text") {
+    let value = typeof record.value === "string" ? record.value : "";
+    const marks = Array.isArray(record.marks) ? record.marks : [];
+    for (const mark of marks) {
+      const type =
+        mark && typeof mark === "object" && "type" in mark
+          ? (mark as { type?: unknown }).type
+          : undefined;
+      if (type === "bold") value = `**${value}**`;
+      if (type === "italic") value = `_${value}_`;
+      if (type === "code") value = `\`${value}\``;
+    }
+    return value;
+  }
+
+  if (nodeType === "embedded-asset-block") {
+    const target =
+      record.data && typeof record.data === "object"
+        ? (record.data as Record<string, unknown>).target
+        : undefined;
+    const assetId = getLinkedId(target);
+    const targetFields =
+      target && typeof target === "object" && !Array.isArray(target) && "fields" in target
+        ? (target as { fields?: Record<string, unknown> }).fields
+        : undefined;
+    const directUrl = readAssetUrl(targetFields);
+    const asset =
+      assets.get(assetId) ||
+      (directUrl ? { url: directUrl, alt: readAssetAlt(targetFields) } : undefined);
+    return asset ? `\n\n![${asset.alt.replaceAll("]", "")}](${asset.url})\n\n` : "";
+  }
+
+  const children = Array.isArray(record.content)
+    ? record.content.map((child) => renderNewsletterRichTextNode(child, assets)).join("")
+    : "";
+
+  if (nodeType === "paragraph") return `${children.trim()}\n\n`;
+  if (nodeType === "heading-1") return `# ${children.trim()}\n\n`;
+  if (nodeType === "heading-2") return `## ${children.trim()}\n\n`;
+  if (nodeType === "heading-3") return `### ${children.trim()}\n\n`;
+  if (nodeType === "heading-4") return `#### ${children.trim()}\n\n`;
+  if (nodeType === "blockquote") return `> ${children.trim().replace(/\n/g, "\n> ")}\n\n`;
+  if (nodeType === "hr") return "---\n\n";
+  if (nodeType === "list-item") return children.trim();
+  if (nodeType === "unordered-list") {
+    return `${(record.content as unknown[])
+      .map((child) => `- ${renderNewsletterRichTextNode(child, assets).trim()}`)
+      .join("\n")}\n\n`;
+  }
+  if (nodeType === "ordered-list") {
+    return `${(record.content as unknown[])
+      .map((child, index) => `${index + 1}. ${renderNewsletterRichTextNode(child, assets).trim()}`)
+      .join("\n")}\n\n`;
+  }
+  if (nodeType === "hyperlink") {
+    const data =
+      record.data && typeof record.data === "object"
+        ? (record.data as Record<string, unknown>)
+        : {};
+    const uri = typeof data.uri === "string" ? data.uri.trim() : "";
+    return /^https?:\/\//i.test(uri) ? `[${children.trim()}](${uri})` : children;
+  }
+  return children;
+}
+
+function readNewsletterBody(entry: NonNullable<CampaignEntry>) {
+  const assets = new Map<string, { url: string; alt: string }>();
+  for (const asset of entry.includes?.Asset || []) {
+    const url = readAssetUrl(asset.fields);
+    if (url) assets.set(asset.sys.id, { url, alt: readAssetAlt(asset.fields) });
+  }
+
+  const content = readLocalizedValue(entry.fields.content);
+  if (content && typeof content === "object" && !Array.isArray(content)) {
+    const rendered = renderNewsletterRichTextNode(content, assets)
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    if (rendered) return rendered;
+  }
+
+  return readTextField(entry.fields, "body");
 }
 
 function readBlogCoverImageUrl(entry: NonNullable<CampaignEntry>) {
@@ -274,16 +391,22 @@ async function renderCampaignMessage(
 
   const subject =
     readStringField(fields, "subject") || readStringField(fields, "title") || "Newsletter";
-  const body = readTextField(fields, "body").replace(/\{\{\s*firstName\s*\}\}/gi, firstName);
+  const previewText = readStringField(fields, "previewText") || undefined;
+  const body = readNewsletterBody(entry).replace(/\{\{\s*firstName\s*\}\}/gi, firstName);
   const html = await render(
     NewsletterEmail({
       firstName,
       subject,
+      previewText,
       bodyContent: body,
       unsubscribeUrl,
     })
   );
-  return { subject, html, text: `${body || subject}\n\nUnsubscribe: ${unsubscribeUrl}` };
+  return {
+    subject,
+    html,
+    text: `${previewText ? `${previewText}\n\n` : ""}${body || subject}\n\nUnsubscribe: ${unsubscribeUrl}`,
+  };
 }
 
 async function createCampaignDelivery(input: {

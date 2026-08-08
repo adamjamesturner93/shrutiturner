@@ -386,7 +386,27 @@ export const PUBLIC_CONTENT_MODELS: ContentTypeDefinition[] = [
       { id: "title", name: "Title", type: "Symbol", required: true },
       { id: "subject", name: "Subject", type: "Symbol", required: true },
       { id: "previewText", name: "Preview Text", type: "Symbol" },
-      { id: "body", name: "Body", type: "Text", required: true },
+      {
+        id: "content",
+        name: "Content",
+        type: "RichText",
+        validations: [
+          {
+            enabledNodeTypes: [
+              "heading-2",
+              "heading-3",
+              "heading-4",
+              "ordered-list",
+              "unordered-list",
+              "hr",
+              "blockquote",
+              "hyperlink",
+              "embedded-asset-block",
+            ],
+          },
+        ],
+      },
+      { id: "body", name: "Legacy Body", type: "Text", omitted: true },
       {
         id: "segmentation",
         name: "Segmentation",

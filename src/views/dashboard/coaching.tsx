@@ -48,7 +48,7 @@ const statusLabels: Record<string, string> = {
   waitlisted: "Waiting list",
   approved: "Approved",
   declined: "Declined",
-  converted: "Converted",
+  converted: "Active",
   withdrawn: "Withdrawn",
   onboarding: "Onboarding",
   active: "Active",
@@ -394,7 +394,7 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
       });
       const payload = (await response.json().catch(() => null)) as {
         success?: boolean;
-        data?: { tier?: string; offerKey?: string };
+        data?: { tier?: string; offerKey?: string; checkoutUrl?: string };
         error?: {
           message?: string;
           details?: { requiredAcceptances?: AcceptanceRequirementState[] };
@@ -414,17 +414,23 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
           setPendingLegalAcceptances(requiredAcceptances);
           setPendingLegalAction("package_change");
           throw new Error(
-            "Updated legal agreements are required before changing coaching package. Review them below, then continue again."
+            "Updated legal agreements are required before updating your coaching plan. Review them below, then continue again."
           );
         }
         throw new Error(
-          payload?.error?.message || payload?.message || "Failed to confirm package change."
+          payload?.error?.message || payload?.message || "Failed to confirm the coaching update."
         );
+      }
+      if (payload.data?.checkoutUrl) {
+        window.location.assign(payload.data.checkoutUrl);
+        return;
       }
       await reloadCoaching();
     } catch (packageError) {
       setError(
-        packageError instanceof Error ? packageError.message : "Failed to confirm package change."
+        packageError instanceof Error
+          ? packageError.message
+          : "Failed to confirm the coaching update."
       );
     } finally {
       setPackageChangeLoading(false);
@@ -612,23 +618,42 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <CreditCard className="text-brand-accent h-5 w-5" />
-                Review package change
+                {data.profile.pendingPackageChange.requestType === "paid_start"
+                  ? "Set up your paid plan"
+                  : "Review package change"}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="space-y-2 text-sm leading-relaxed">
-                <p>
-                  Shruti has suggested moving your coaching from{" "}
-                  {data.profile.pendingPackageChange.fromOfferKey
-                    ? offerLabels[data.profile.pendingPackageChange.fromOfferKey]
-                    : tierLabels[data.profile.pendingPackageChange.fromTier]}{" "}
-                  to {offerLabels[data.profile.pendingPackageChange.toOfferKey]}.
-                </p>
-                <p className="text-muted-foreground">
-                  {data.profile.pendingPackageChange.effectiveMode === "immediate"
-                    ? "This change is intended to take effect straight away after confirmation."
-                    : "The new Stripe price will apply from your next invoice after confirmation."}
-                </p>
+                {data.profile.pendingPackageChange.requestType === "paid_start" ? (
+                  <>
+                    <p>
+                      Shruti has invited you to move from pro-bono support to{" "}
+                      {offerLabels[data.profile.pendingPackageChange.toOfferKey]}.
+                    </p>
+                    <p className="text-muted-foreground">
+                      Complete the secure Stripe setup now. Billing is scheduled to start on{" "}
+                      {formatDateOnly(data.profile.pendingPackageChange.billingStartsAt) ||
+                        "the agreed date"}
+                      .
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p>
+                      Shruti has suggested moving your coaching from{" "}
+                      {data.profile.pendingPackageChange.fromOfferKey
+                        ? offerLabels[data.profile.pendingPackageChange.fromOfferKey]
+                        : tierLabels[data.profile.pendingPackageChange.fromTier]}{" "}
+                      to {offerLabels[data.profile.pendingPackageChange.toOfferKey]}.
+                    </p>
+                    <p className="text-muted-foreground">
+                      {data.profile.pendingPackageChange.effectiveMode === "immediate"
+                        ? "This change is intended to take effect straight away after confirmation."
+                        : "The new Stripe price will apply from your next invoice after confirmation."}
+                    </p>
+                  </>
+                )}
                 {data.profile.pendingPackageChange.note ? (
                   <p className="text-muted-foreground">
                     Note from Shruti: {data.profile.pendingPackageChange.note}
@@ -636,7 +661,11 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
                 ) : null}
               </div>
               <Button disabled={packageChangeLoading} onClick={() => void confirmPackageChange()}>
-                {packageChangeLoading ? "Confirming..." : "Confirm package change"}
+                {packageChangeLoading
+                  ? "Continuing..."
+                  : data.profile.pendingPackageChange.requestType === "paid_start"
+                    ? "Set up paid plan"
+                    : "Confirm package change"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardContent>
@@ -699,7 +728,17 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <p className="text-muted-foreground text-xs tracking-wide uppercase">Tier</p>
-                    <p className="mt-1">{tierLabels[data.profile.tier]}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <span>{tierLabels[data.profile.tier]}</span>
+                      {data.profile.billingArrangement === "pro_bono" ? (
+                        <Badge variant="secondary">Pro bono</Badge>
+                      ) : null}
+                      {data.profile.billingStartsAt ? (
+                        <Badge variant="outline">
+                          Paid from {formatDateOnly(data.profile.billingStartsAt)}
+                        </Badge>
+                      ) : null}
+                    </div>
                   </div>
                   <div>
                     <p className="text-muted-foreground text-xs tracking-wide uppercase">Status</p>
@@ -756,7 +795,8 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
                   </p>
                 </div>
 
-                {data.profile.billingCancellationRequestedAt ? (
+                {(data.profile.billingArrangement === "paid" || data.profile.billingStartsAt) &&
+                data.profile.billingCancellationRequestedAt ? (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                     <p className="text-sm text-amber-950">Cancellation scheduled</p>
                     <p className="mt-1 text-sm leading-relaxed text-amber-800">
@@ -769,7 +809,8 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
                   </div>
                 ) : null}
 
-                {cancellationResult ? (
+                {(data.profile.billingArrangement === "paid" || data.profile.billingStartsAt) &&
+                cancellationResult ? (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                     <p className="text-sm text-amber-950">Cancellation scheduled</p>
                     <p className="mt-1 text-sm leading-relaxed text-amber-800">
@@ -804,23 +845,27 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
                       <ExternalLink className="h-4 w-4" />
                     </a>
                   </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between"
-                    disabled={billingLoading}
-                    onClick={() => void openBillingPortal()}
-                  >
-                    {billingLoading ? "Opening billing..." : "Manage Coaching Billing"}
-                    <CreditCard className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between border-amber-300 text-amber-900 hover:bg-amber-50"
-                    onClick={() => setShowCancelDialog(true)}
-                  >
-                    Request Coaching Cancellation
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
+                  {data.profile.billingArrangement === "paid" || data.profile.billingStartsAt ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-between"
+                        disabled={billingLoading}
+                        onClick={() => void openBillingPortal()}
+                      >
+                        {billingLoading ? "Opening billing..." : "Manage Coaching Billing"}
+                        <CreditCard className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-between border-amber-300 text-amber-900 hover:bg-amber-50"
+                        onClick={() => setShowCancelDialog(true)}
+                      >
+                        Request Coaching Cancellation
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </>
+                  ) : null}
                 </CardContent>
               </Card>
 
@@ -838,7 +883,8 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
                   </p>
                   <p className="text-muted-foreground">
                     Everfit remains the place where workouts and programming live. Shruti manages
-                    that setup manually after your website payment is confirmed.
+                    that setup manually and this dashboard keeps your current status and next steps
+                    together.
                   </p>
                 </CardContent>
               </Card>

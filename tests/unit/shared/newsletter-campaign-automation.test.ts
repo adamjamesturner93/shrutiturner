@@ -170,6 +170,129 @@ describe("triggerContentfulPublishCampaign", () => {
     );
   });
 
+  it("renders Contentful preview text and embedded assets into newsletter deliveries", async () => {
+    getEntriesMock.mockResolvedValue({
+      items: [
+        {
+          sys: { id: "entry_123" },
+          fields: {
+            title: "Routine update",
+            subject: "Your routine is allowed to change.",
+            previewText: "Adapting your movement is not giving up.",
+            content: {
+              nodeType: "document",
+              data: {},
+              content: [
+                {
+                  nodeType: "paragraph",
+                  data: {},
+                  content: [
+                    {
+                      nodeType: "text",
+                      value: "Hello from Contentful.",
+                      marks: [],
+                      data: {},
+                    },
+                  ],
+                },
+                {
+                  nodeType: "embedded-asset-block",
+                  data: { target: { sys: { id: "asset_123" } } },
+                  content: [],
+                },
+              ],
+            },
+          },
+        },
+      ],
+      includes: {
+        Asset: [
+          {
+            sys: { id: "asset_123" },
+            fields: {
+              title: { "en-GB": "Bonnie stretch" },
+              file: { "en-GB": { url: "//images.ctfassets.net/example/bonnie.jpg" } },
+            },
+          },
+        ],
+      },
+    });
+
+    await triggerContentfulPublishCampaign({
+      contentType: "newsletterTemplate",
+      contentfulEntryId: "entry_123",
+      contentfulVersion: "11",
+    });
+
+    expect(emailDeliveryCreateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          payloadJson: expect.objectContaining({
+            textBody: expect.stringContaining(
+              "![Bonnie stretch](https://images.ctfassets.net/example/bonnie.jpg)"
+            ),
+          }),
+        }),
+      })
+    );
+    expect(sendEmailBatchMock).toHaveBeenCalledWith([
+      expect.objectContaining({
+        TextBody: expect.stringContaining("Adapting your movement is not giving up."),
+      }),
+    ]);
+  });
+
+  it("renders an embedded asset when Contentful resolves it directly on the rich-text node", async () => {
+    getEntriesMock.mockResolvedValue({
+      items: [
+        {
+          sys: { id: "entry_123" },
+          fields: {
+            title: "Routine update",
+            subject: "Your routine is allowed to change.",
+            content: {
+              nodeType: "document",
+              data: {},
+              content: [
+                {
+                  nodeType: "embedded-asset-block",
+                  data: {
+                    target: {
+                      sys: { id: "asset_inline" },
+                      fields: {
+                        title: "Bonnie stretch",
+                        file: { url: "//images.ctfassets.net/example/bonnie-inline.jpg" },
+                      },
+                    },
+                  },
+                  content: [],
+                },
+              ],
+            },
+          },
+        },
+      ],
+    });
+
+    await triggerContentfulPublishCampaign({
+      contentType: "newsletterTemplate",
+      contentfulEntryId: "entry_123",
+      contentfulVersion: "12",
+    });
+
+    expect(emailDeliveryCreateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          payloadJson: expect.objectContaining({
+            textBody: expect.stringContaining(
+              "![Bonnie stretch](https://images.ctfassets.net/example/bonnie-inline.jpg)"
+            ),
+          }),
+        }),
+      })
+    );
+  });
+
   it("sends newly published blog posts once with a New blog post subject and excerpt", async () => {
     getEntriesMock.mockResolvedValue({
       items: [

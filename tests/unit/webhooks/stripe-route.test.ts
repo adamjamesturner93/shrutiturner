@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const constructEventMock = vi.fn();
 const processStripeWebhookEventMock = vi.fn();
+const revalidateTagMock = vi.fn();
+
+vi.mock("next/cache", () => ({
+  revalidateTag: revalidateTagMock,
+}));
 
 vi.mock("@/lib/billing/stripe-client", () => ({
   getStripeClient: () => ({

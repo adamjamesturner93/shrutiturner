@@ -71,7 +71,7 @@ describe("POST /api/me/coaching/package-change/confirm", () => {
       success: false,
       error: {
         code: "CONFLICT",
-        message: "Current legal acceptance is required before changing coaching package.",
+        message: "Current legal acceptance is required before updating your coaching plan.",
         details: acceptanceError.details,
       },
     });

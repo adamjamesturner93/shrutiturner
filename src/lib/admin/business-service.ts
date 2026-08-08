@@ -1,56 +1,55 @@
-import { MembershipStatus, UserRole } from "@prisma/client";
 import { db } from "@/lib/db";
+import {
+  monthlyRecurringValuePence,
+  refreshCoachingSubscriptionProjections,
+} from "@/lib/billing/coaching-subscription-projection";
+import type { AdminBusinessMetricDto } from "@/lib/api/types";
 
-export type AdminBusinessSummary = {
-  activeMembers: number;
-  totalMembers: number;
-  monthlyRecurringRevenuePence: number;
-  newMembersThisMonth: number;
-  cancelledLast30Days: number;
-  churnRatePercent: number;
-  failedPayments7d: number;
-  failedPayments30d: number;
-  dataFreshnessIso: string | null;
-};
+export type AdminBusinessSummary = AdminBusinessMetricDto;
 
 export async function getAdminBusinessSummary(): Promise<AdminBusinessSummary> {
+  const projectionRefresh = await refreshCoachingSubscriptionProjections().catch(() => ({
+    refreshed: 0,
+    failed: 1,
+  }));
   const now = new Date();
   const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
 
   const [
-    totalMembers,
-    activeMembers,
-    newMembersThisMonth,
-    cancelledLast30Days,
+    operationalOneToOneClients,
+    activeOneToOneClients,
+    newPaidClientsThisMonth,
     activeSubscriptions,
     failedPayments7d,
     failedPayments30d,
-    latestBillingEvent,
-    latestEmailEvent,
+    latestProjection,
+    profilesWithoutProjection,
   ] = await Promise.all([
-    db.user.count({ where: { role: { in: [UserRole.student, UserRole.member] } } }),
-    db.membershipSubscription.count({
-      where: { status: { in: [MembershipStatus.active, MembershipStatus.past_due] } },
+    db.coachingClientProfile.count({
+      where: { status: { in: ["onboarding", "active", "paused"] } },
     }),
-    db.user.count({
+    db.coachingSubscriptionProjection.count({
+      where: { status: { in: ["active", "trialing", "past_due"] } },
+    }),
+    db.coachingSubscriptionProjection.count({
       where: {
-        role: { in: [UserRole.student, UserRole.member] },
         createdAt: { gte: startOfMonth },
+        status: { in: ["active", "trialing", "past_due"] },
       },
     }),
-    db.membershipSubscription.count({
-      where: {
-        status: { in: [MembershipStatus.cancelled, MembershipStatus.expired] },
-        updatedAt: { gte: thirtyDaysAgo },
+    db.coachingSubscriptionProjection.findMany({
+      where: { status: { in: ["active", "trialing", "past_due"] } },
+      select: {
+        unitAmountPence: true,
+        quantity: true,
+        interval: true,
+        intervalCount: true,
+        cancelAt: true,
+        cancelAtPeriodEnd: true,
+        currentPeriodEnd: true,
       },
-    }),
-    db.membershipSubscription.findMany({
-      where: {
-        status: { in: [MembershipStatus.active, MembershipStatus.past_due] },
-      },
-      select: { pricePence: true },
     }),
     db.billingMetricDaily.aggregate({
       where: { date: { gte: sevenDaysAgo } },
@@ -60,40 +59,36 @@ export async function getAdminBusinessSummary(): Promise<AdminBusinessSummary> {
       where: { date: { gte: thirtyDaysAgo } },
       _sum: { failedPaymentsCount: true },
     }),
-    db.billingEvent.findFirst({
-      orderBy: { processedAt: "desc" },
-      select: { processedAt: true, createdAt: true },
+    db.coachingSubscriptionProjection.findFirst({
+      orderBy: { lastStripeEventAt: "desc" },
+      select: { lastStripeEventAt: true },
     }),
-    db.emailEvent.findFirst({
-      orderBy: { eventAt: "desc" },
-      select: { eventAt: true, createdAt: true },
+    db.coachingClientProfile.count({
+      where: { stripeSubscriptionId: { not: null }, subscriptionProjection: null },
     }),
   ]);
 
   const monthlyRecurringRevenuePence = activeSubscriptions.reduce(
-    (sum, sub) => sum + sub.pricePence,
+    (sum, subscription) => sum + monthlyRecurringValuePence(subscription),
     0
   );
-  const churnRatePercent =
-    activeMembers > 0 ? Math.round((cancelledLast30Days / activeMembers) * 100) : 0;
-
-  const freshnessCandidates = [
-    latestBillingEvent?.processedAt || latestBillingEvent?.createdAt || null,
-    latestEmailEvent?.eventAt || latestEmailEvent?.createdAt || null,
-  ].filter(Boolean) as Date[];
-  const dataFreshnessIso = freshnessCandidates.length
-    ? new Date(Math.max(...freshnessCandidates.map((d) => d.getTime()))).toISOString()
-    : null;
+  const endingSoonCount = activeSubscriptions.filter((subscription) => {
+    const end =
+      subscription.cancelAt ||
+      (subscription.cancelAtPeriodEnd ? subscription.currentPeriodEnd : null);
+    return end && end >= now && end <= new Date(now.getTime() + 30 * 86400000);
+  }).length;
 
   return {
-    activeMembers,
-    totalMembers,
+    activeOneToOneClients,
+    operationalOneToOneClients,
+    trackedSubscriptions: activeSubscriptions.length,
+    subscriptionsNeedingSync: profilesWithoutProjection + projectionRefresh.failed,
     monthlyRecurringRevenuePence,
-    newMembersThisMonth,
-    cancelledLast30Days,
-    churnRatePercent,
+    newPaidClientsThisMonth,
+    endingSoonCount,
     failedPayments7d: failedPayments7d._sum.failedPaymentsCount || 0,
     failedPayments30d: failedPayments30d._sum.failedPaymentsCount || 0,
-    dataFreshnessIso,
+    dataFreshnessIso: latestProjection?.lastStripeEventAt.toISOString() || null,
   };
 }
