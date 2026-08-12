@@ -20,9 +20,11 @@ export function Header() {
   };
 
   const navLinks = [
-    { path: "/coaching", label: "1:1 Offers" },
-    { path: "/blog", label: "Blog" },
-  ];
+    { path: "/about", label: "Meet Shruti", hidden: false },
+    { path: "/coaching", label: "Work with Shruti", hidden: false },
+    { path: "/retreats", label: "Retreats", hidden: true },
+    { path: "/blog", label: "Blog", hidden: false },
+  ].filter((link) => !link.hidden);
 
   return (
     <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
@@ -59,7 +61,7 @@ export function Header() {
           ) : (
             <>
               <Link href="/coaching/apply">
-                <Button variant="ghost">Apply for 1:1 Support</Button>
+                <Button variant="ghost">Enquire About 1:1 Support</Button>
               </Link>
               <Link href="/login">
                 <Button>Sign In</Button>
@@ -111,7 +113,7 @@ export function Header() {
                   </Link>
                   <Link href="/coaching/apply" onClick={() => setMobileMenuPath(null)}>
                     <Button variant="outline" className="w-full">
-                      Apply for 1:1 Support
+                      Enquire About 1:1 Support
                     </Button>
                   </Link>
                 </>

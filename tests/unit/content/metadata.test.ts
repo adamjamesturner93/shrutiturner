@@ -72,6 +72,43 @@ describe("content metadata helpers", () => {
     expect(metadata.alternates).toEqual({ canonical: "https://shrutiturner.co.uk/preview" });
   });
 
+  it("supports exact browser titles and distinct social-sharing copy", async () => {
+    const metadata = await buildSeoMetadata({
+      title: "Personal Training & Movement Coaching | Shruti Turner",
+      absoluteTitle: true,
+      description: "Search description",
+      canonicalUrl: "https://shrutiturner.co.uk/",
+      openGraphTitle: "Movement that works with your body | Shruti Turner",
+      openGraphDescription: "Social description",
+      image: "https://shrutiturner.co.uk/images/home-social-placeholder.jpeg",
+      imageAlt: "Shruti Turner strength training",
+    });
+
+    expect(metadata).toMatchObject({
+      title: { absolute: "Personal Training & Movement Coaching | Shruti Turner" },
+      description: "Search description",
+      alternates: { canonical: "https://shrutiturner.co.uk/" },
+      robots: { index: true, follow: true },
+      openGraph: expect.objectContaining({
+        title: "Movement that works with your body | Shruti Turner",
+        description: "Social description",
+        url: "https://shrutiturner.co.uk/",
+        images: [
+          {
+            url: "https://shrutiturner.co.uk/images/home-social-placeholder.jpeg",
+            alt: "Shruti Turner strength training",
+          },
+        ],
+      }),
+      twitter: expect.objectContaining({
+        card: "summary_large_image",
+        title: "Movement that works with your body | Shruti Turner",
+        description: "Social description",
+        images: ["https://shrutiturner.co.uk/images/home-social-placeholder.jpeg"],
+      }),
+    });
+  });
+
   it("builds legal document metadata with policy keywords", async () => {
     const metadata = await buildLegalDocumentMetadata({
       slug: "privacy",

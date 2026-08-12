@@ -173,7 +173,7 @@ export function PTPage() {
       <section className="py-20 md:py-24">
         <div className="container mx-auto max-w-2xl px-4">
           <div className="mb-12 text-center">
-            <h2 className="mb-6 text-3xl md:text-5xl">Apply for 1:1 Coaching</h2>
+            <h2 className="mb-6 text-3xl md:text-5xl">Enquire About 1:1 Coaching</h2>
             <p className="text-muted-foreground text-xl leading-relaxed">
               Fill out this application to start a conversation. I review all applications
               personally and respond within 48 hours.

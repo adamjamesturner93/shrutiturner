@@ -241,7 +241,7 @@ export function ContactPage() {
         }
         description="If you want help choosing a coaching route, understanding pricing, or explaining access needs, tell me what feels unclear. You do not need to know the right service name before you reach out."
         primaryCta={{ href: "#contact-form", label: "Open Enquiry Form" }}
-        secondaryCta={{ href: "/#work-with-me", label: "Compare Coaching Options" }}
+        secondaryCta={{ href: "/coaching", label: "Compare Coaching Options" }}
         metrics={[
           {
             label: "Best For",
@@ -503,7 +503,7 @@ export function ContactPage() {
               </p>
               <div className="mt-5 grid gap-3">
                 <Button asChild variant="outline" className="justify-between">
-                  <Link href="/#work-with-me">
+                  <Link href="/coaching">
                     Compare Coaching Options
                     <ArrowRight className="h-4 w-4" />
                   </Link>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/json-ld";
 import { HomePage } from "@/views/home";
-import { buildPageMetadata, buildSeoMetadata } from "@/lib/content/metadata";
+import { buildSeoMetadata } from "@/lib/content/metadata";
 import {
   createOrganizationSchema,
   createWebPageSchema,
@@ -9,7 +9,10 @@ import {
 } from "@/lib/seo/structured-data";
 import { getExistingPlatformUrl, isHoldingStage } from "@/lib/site-stage";
 import { HoldingPage } from "@/views/holding-page";
-import { getBlogPosts, getTestimonials } from "@/lib/content";
+import { getFeaturedTestimonials } from "@/lib/content";
+
+// Temporary social-sharing image until a dedicated 1200 × 630 asset is supplied.
+const HOME_SOCIAL_IMAGE_PLACEHOLDER = "https://shrutiturner.co.uk/images/shruti-deadlift.jpeg";
 
 export async function generateMetadata(): Promise<Metadata> {
   if (isHoldingStage()) {
@@ -21,7 +24,27 @@ export async function generateMetadata(): Promise<Metadata> {
     });
   }
 
-  return buildPageMetadata("home", "Science-backed movement coaching for adults with chronic illness, autoimmune conditions and recovering from injury");
+  return buildSeoMetadata({
+    title: "Personal Training & Movement Coaching | Shruti Turner",
+    absoluteTitle: true,
+    description:
+      "Personal training and movement coaching that brings together rehabilitation, fitness and wellbeing. Flexible support built around your body, goals and real life.",
+    canonicalUrl: "https://shrutiturner.co.uk/",
+    openGraphTitle: "Movement that works with your body, not against it | Shruti Turner",
+    openGraphDescription:
+      "Personal training and movement coaching bringing together rehabilitation, fitness and wellbeing, built around your body, your goals and your real life.",
+    image: HOME_SOCIAL_IMAGE_PLACEHOLDER,
+    imageAlt: "Shruti Turner strength training",
+    keywords: [
+      "personal training",
+      "movement coaching",
+      "strength training",
+      "rehabilitation",
+      "fitness",
+      "wellbeing",
+      "personalised training",
+    ],
+  });
 }
 
 export default async function Page() {
@@ -41,10 +64,7 @@ export default async function Page() {
     );
   }
 
-  const [blogPosts, testimonials] = await Promise.all([getBlogPosts(), getTestimonials()]);
-  const homepageTestimonials = testimonials
-    .filter((testimonial) => testimonial.featured || testimonial.service === "general")
-    .slice(0, 3);
+  const homepageTestimonials = await getFeaturedTestimonials();
 
   return (
     <>
@@ -53,14 +73,14 @@ export default async function Page() {
           createWebSiteSchema(),
           createOrganizationSchema(),
           createWebPageSchema({
-            name: "Inclusive movement coaching",
+            name: "Personal Training & Movement Coaching",
             path: "/",
             description:
-              "Science-backed movement coaching for adults with chronic illness, autoimmune conditions and recovering from injury.",
+              "Personal training and movement coaching that brings together rehabilitation, fitness and wellbeing. Flexible support built around your body, goals and real life.",
           }),
         ]}
       />
-      <HomePage recentPosts={blogPosts.slice(0, 3)} testimonials={homepageTestimonials} />
+      <HomePage testimonials={homepageTestimonials} />
     </>
   );
 }

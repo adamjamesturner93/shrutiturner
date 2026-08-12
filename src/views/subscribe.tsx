@@ -43,7 +43,7 @@ const LINKS = [
     colorClass: "text-primary bg-primary/10",
   },
   {
-    href: "/#work-with-me",
+    href: "/coaching",
     title: "Coaching Options",
     subtitle: "Compare the four current support options",
     icon: Heart,

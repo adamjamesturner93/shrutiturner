@@ -39,12 +39,17 @@ const PAGE_PATHS: Record<string, string> = {
 
 type BuildSeoMetadataInput = {
   title: string;
+  absoluteTitle?: boolean;
   description?: string | null;
   path?: string;
   canonicalUrl?: string | null;
   keywords?: string | string[] | null;
   image?: string | null;
   imageAlt?: string | null;
+  openGraphTitle?: string | null;
+  openGraphDescription?: string | null;
+  twitterTitle?: string | null;
+  twitterDescription?: string | null;
   type?: "website" | "article";
   noIndex?: boolean;
 };
@@ -77,9 +82,13 @@ export async function buildSeoMetadata(input: BuildSeoMetadataInput): Promise<Me
   const canonical = resolveCanonical(input);
   const siteName = platformSettings.businessName || global.siteName;
   const image = input.image || "/og-image.jpg";
+  const openGraphTitle = input.openGraphTitle || input.title;
+  const openGraphDescription = input.openGraphDescription || description;
+  const twitterTitle = input.twitterTitle || openGraphTitle;
+  const twitterDescription = input.twitterDescription || openGraphDescription;
 
   return {
-    title: input.title,
+    title: input.absoluteTitle ? { absolute: input.title } : input.title,
     description,
     keywords: resolveKeywords(input.keywords),
     alternates: {
@@ -89,15 +98,15 @@ export async function buildSeoMetadata(input: BuildSeoMetadataInput): Promise<Me
     openGraph: {
       type: input.type || "website",
       siteName,
-      title: input.title,
-      description,
+      title: openGraphTitle,
+      description: openGraphDescription,
       url: canonical,
       images: [{ url: image, alt: input.imageAlt || input.title }],
     },
     twitter: {
       card: "summary_large_image",
-      title: input.title,
-      description,
+      title: twitterTitle,
+      description: twitterDescription,
       images: [image],
     },
   };

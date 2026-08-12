@@ -472,7 +472,7 @@ export async function getPageContent(slug: string): Promise<PageContent | null> 
       description:
         "Personalised movement coaching for chronic illness, autoimmune conditions, wellbeing and injury recovery or prevention.",
     },
-    "coaching-apply": { title: "Apply for Coaching" },
+    "coaching-apply": { title: "Enquire About Coaching" },
     "coaching-personal-programme": { title: "Independent Training Plan" },
     blog: { title: "Blog" },
     about: { title: "About" },
@@ -877,17 +877,11 @@ export async function getRetreatsCombined(): Promise<RetreatCombinedContent[]> {
   return combineRetreats(templates, instances, venues);
 }
 
-export async function getTestimonials(
-  service?: "yoga" | "strength" | "pt" | "retreat" | "small-group" | "general"
-): Promise<TestimonialContent[]> {
-  const query: Record<string, string | number | boolean | undefined> = {
-    limit: 200,
-  };
-  if (service) {
-    query["fields.service"] = service;
-  }
-
-  const res = await getEntries<Record<string, unknown>>("testimonial", query);
+export async function getFeaturedTestimonials(): Promise<TestimonialContent[]> {
+  const res = await getEntries<Record<string, unknown>>("testimonial", {
+    "fields.featured": true,
+    limit: 3,
+  });
   if (!res?.items?.length) {
     return [];
   }

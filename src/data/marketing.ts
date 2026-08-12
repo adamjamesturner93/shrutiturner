@@ -60,7 +60,7 @@ export const coachingTiers: CoachingTierMarketing[] = [
     supportLevel: "accountability",
     purchaseModel: "application_required",
     ctaHref: "/coaching/apply?offer=guided_accountability",
-    ctaLabel: "Apply First",
+    ctaLabel: "Enquire First",
     features: [
       "Weekly check-in via app",
       "Guidance around training structure and recovery",
@@ -85,7 +85,7 @@ export const coachingTiers: CoachingTierMarketing[] = [
     supportLevel: "programme",
     purchaseModel: "application_required",
     ctaHref: "/coaching/apply?offer=independent_training_plan",
-    ctaLabel: "Apply First",
+    ctaLabel: "Enquire First",
     features: [
       "Tailored programme via app",
       "Monthly check-in via app",
@@ -93,7 +93,7 @@ export const coachingTiers: CoachingTierMarketing[] = [
     ],
     boundaries: ["Does not include weekly review", "Does not include nutrition guidance"],
     expectedNextStep:
-      "Apply with training context, equipment, preferences and health considerations.",
+      "Enquire with your training context, equipment, preferences and health considerations.",
   },
   {
     id: "guided_training_plan",
@@ -109,7 +109,7 @@ export const coachingTiers: CoachingTierMarketing[] = [
     supportLevel: "guided",
     purchaseModel: "application_required",
     ctaHref: "/coaching/apply?offer=guided_training_plan",
-    ctaLabel: "Apply First",
+    ctaLabel: "Enquire First",
     features: [
       "Tailored programme via app",
       "Weekly check-in via app",
@@ -119,7 +119,7 @@ export const coachingTiers: CoachingTierMarketing[] = [
     ],
     boundaries: ["Does not include ongoing 1:1 messaging access"],
     expectedNextStep:
-      "Apply with goals, health context, support needs, availability and expectations.",
+      "Enquire with your goals, health context, support needs, availability and expectations.",
   },
   {
     id: "one_to_one_coaching",
@@ -137,7 +137,7 @@ export const coachingTiers: CoachingTierMarketing[] = [
     supportLevel: "high",
     purchaseModel: "application_required",
     ctaHref: "/coaching/apply?offer=one_to_one_coaching",
-    ctaLabel: "Apply First",
+    ctaLabel: "Enquire First",
     features: [
       "Tailored programme via app",
       "Weekly check-in via app",
@@ -147,14 +147,15 @@ export const coachingTiers: CoachingTierMarketing[] = [
       "Nutrition guidance",
     ],
     boundaries: ["Coaching is not emergency, crisis, medical or rehabilitation care"],
-    expectedNextStep: "Apply with health context, call availability and messaging expectations.",
+    expectedNextStep:
+      "Enquire with your health context, call availability and messaging expectations.",
   },
 ];
 
 export const personalProgrammeJourney: JourneyStep[] = [
   {
     step: 1,
-    title: "Apply first",
+    title: "Enquire first",
     description: "Share enough context for Shruti to confirm the offer is a good fit.",
   },
   {
@@ -177,7 +178,7 @@ export const personalProgrammeJourney: JourneyStep[] = [
 export const applicationJourney: JourneyStep[] = [
   {
     step: 1,
-    title: "Apply",
+    title: "Enquire",
     description: "Tell us about your body, goals, training history and the support you need.",
   },
   {
@@ -202,7 +203,7 @@ export const coachingFaqs: CoachingFaq[] = [
     slug: "which-tier",
     question: "How do I know which 1:1 offer is right for me?",
     answer:
-      "Apply for the closest fit. Guided Accountability is lighter-touch accountability, Independent Training Plan is tailored programming with monthly review, Guided Training Plan adds weekly review and 1:1 Coaching is the highest-touch option for people who need a fuller coaching relationship.",
+      "Enquire about the closest fit. Guided Accountability is lighter-touch accountability, Independent Training Plan is tailored programming with monthly review, Guided Training Plan adds weekly review and 1:1 Coaching is the highest-touch option for people who need a fuller coaching relationship.",
   },
   {
     slug: "everfit",

@@ -85,7 +85,7 @@ export function CoachingApplyPage() {
     : null;
   const staticHero = {
     eyebrow: "1:1 Application",
-    heading: "Apply to work with Shruti.",
+    heading: "Enquire about working with Shruti.",
     body: "Use one form for all 1:1 offers. Choose the closest fit in the application and Shruti will confirm the right next step before any payment opens.",
     bullets: [
       "Application required before payment",
@@ -206,8 +206,8 @@ export function CoachingApplyPage() {
   return (
     <Layout>
       <SEO
-        title="Apply for 1:1 Support - Shruti Turner"
-        description="Apply for Shruti Turner's 1:1 offers, from training plans to high-touch 1:1 coaching."
+        title="Enquire About 1:1 Support - Shruti Turner"
+        description="Enquire about Shruti Turner's 1:1 offers, from training plans to high-touch 1:1 coaching."
         canonicalUrl="https://shrutiturner.co.uk/coaching/apply"
       />
 
@@ -260,7 +260,7 @@ export function CoachingApplyPage() {
           <div className="space-y-6">
             <div className="marketing-panel rounded-[1.85rem] p-6 md:p-7">
               <SectionHeading
-                eyebrow="Before You Apply"
+                eyebrow="Before You Enquire"
                 title="Use this form before any 1:1 payment."
                 description="1:1 support is application-led. If another offer is a better fit, Shruti will say so before sending any payment invitation."
               />

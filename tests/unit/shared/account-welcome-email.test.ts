@@ -8,7 +8,7 @@ describe("OnboardingEmail account welcome", () => {
     const html = await render(
       createElement(OnboardingEmail, {
         firstName: "Rhea",
-        offersUrl: "https://shrutiturner.test/#work-with-me",
+        offersUrl: "https://shrutiturner.test/coaching",
         applyUrl: "https://shrutiturner.test/coaching/apply",
       })
     );

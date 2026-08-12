@@ -26,7 +26,7 @@ interface PricingPageProps {
 const DEFAULT_PRICING_FAQS: FaqItemContent[] = [
   {
     slug: "application-first",
-    question: "Why do I need to apply before paying?",
+    question: "Why do I need to enquire before paying?",
     answer:
       "Coaching is application-led so Shruti can confirm the support level is a good fit before any subscription checkout is created.",
     sortOrder: 10,
@@ -82,9 +82,9 @@ export function PricingPage({ faqs }: PricingPageProps) {
             <span className="text-brand-accent-light"> matched to capacity.</span>
           </>
         }
-        description="Choose the closest coaching offer, then apply. Payment only opens after Shruti has reviewed your application and confirmed the right next step."
+        description="Choose the closest coaching offer, then enquire. Payment only opens after Shruti has reviewed your application and confirmed the right next step."
         primaryCta={{ href: "#coaching", label: "Compare Coaching" }}
-        secondaryCta={{ href: "/coaching/apply", label: "Apply First" }}
+        secondaryCta={{ href: "/coaching/apply", label: "Enquire First" }}
         stats={[
           { value: "4", label: "Coaching options" },
           { value: "48 hrs", label: "Usual application reply" },
@@ -110,7 +110,7 @@ export function PricingPage({ faqs }: PricingPageProps) {
             </p>
             <div className="mt-6 space-y-4">
               {[
-                "Apply with context about your body, schedule and support needs.",
+                "Enquire with context about your body, schedule and support needs.",
                 "Shruti reviews fit and confirms the right coaching offer.",
                 "Checkout opens in your coaching dashboard after acceptance.",
               ].map((item, index) => (
@@ -153,7 +153,7 @@ export function PricingPage({ faqs }: PricingPageProps) {
         <SectionHeading
           eyebrow="Coaching"
           title="Application-led coaching offers"
-          description="Choose the closest offer, then apply. Subscription checkout is only created after admin acceptance."
+          description="Choose the closest offer, then enquire. Subscription checkout is only created after admin acceptance."
           align="center"
         />
 
@@ -264,11 +264,11 @@ export function PricingPage({ faqs }: PricingPageProps) {
       <PreFooterCtaSection
         eyebrow="Ready"
         title="Start with fit before payment."
-        description="Apply with context about your body, goals, schedule and support needs. Shruti will reply with the next best step."
+        description="Enquire with context about your body, goals, schedule and support needs. Shruti will reply with the next best step."
         actions={[
           {
             href: "/coaching/apply",
-            label: "Apply for Coaching",
+            label: "Enquire About Coaching",
             icon: ArrowRight,
           },
           {

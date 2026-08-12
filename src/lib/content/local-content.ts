@@ -52,7 +52,7 @@ export const LOCAL_PAGE_CONTENT: Record<string, PageContent> = {
         "Three tiers of personalised coaching and training support for complex bodies, from independent programming to high-touch 1:1 coaching.",
     },
   },
-  "coaching-apply": { slug: "coaching-apply", seo: { title: "Apply for Coaching" } },
+  "coaching-apply": { slug: "coaching-apply", seo: { title: "Enquire About Coaching" } },
   "coaching-personal-programme": {
     slug: "coaching-personal-programme",
     seo: { title: "Independent Training Plan" },

@@ -57,11 +57,11 @@ export function CoachingPersonalProgrammePage() {
           </>
         }
         description="The Independent Training Plan is the lower-friction coaching route: tailored programming, monthly review and clearer training decisions delivered through Everfit."
-        primaryCta={{ href: "/#work-with-me", label: "Compare Options" }}
+        primaryCta={{ href: "/coaching", label: "Compare Options" }}
         secondaryCta={{ href: "/coaching", label: "Explore Coaching" }}
         stats={[
           { value: independentTier.priceLabel, label: "Monthly investment" },
-          { value: "Apply", label: "Required before payment" },
+          { value: "Enquire", label: "Required before payment" },
           { value: "Everfit", label: "Programme delivery platform" },
         ]}
         aside={
@@ -168,7 +168,7 @@ export function CoachingPersonalProgrammePage() {
       <MarketingSection className="section-divider">
         <SectionHeading
           eyebrow="How It Works"
-          title="Apply first, then move into Everfit after payment."
+          title="Enquire first, then move into Everfit after payment."
           description="The process keeps subscription checkout behind admin acceptance so the offer, boundaries and setup are agreed first."
           align="center"
         />
@@ -188,13 +188,13 @@ export function CoachingPersonalProgrammePage() {
         description="Start here if you want specialist programming now and the option to step into more support later."
         actions={[
           {
-            href: "/#work-with-me",
+            href: "/coaching",
             label: "Compare Options",
             icon: ArrowRight,
           },
           {
             href: independentTier.ctaHref,
-            label: "Apply First",
+            label: "Enquire First",
             variant: "secondary",
           },
         ]}

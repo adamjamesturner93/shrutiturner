@@ -16,7 +16,7 @@ test("personal programme page shows the refreshed hero and delivery detail", asy
   await expect(
     page.getByRole("heading", { name: "A lower-touch route with real structure behind it." })
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Apply First" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Enquire First" })).toBeVisible();
 });
 
 test("coaching application submits the selected tier and answers", async ({ page }) => {
@@ -37,7 +37,9 @@ test("coaching application submits the selected tier and answers", async ({ page
 
   await page.goto("/coaching/apply?offer=one_to_one_coaching");
 
-  await expect(page.getByRole("heading", { name: "Apply to work with Shruti." })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Enquire about working with Shruti." })
+  ).toBeVisible();
   await page.getByLabel("Name *").fill("Taylor Jordan");
   await page.getByLabel("Email *").fill("taylor@example.com");
   await page
@@ -81,8 +83,7 @@ test("coaching application submits the selected tier and answers", async ({ page
     typicalWeek: "I work at a desk, walk most days and do one yoga class when energy allows.",
     scheduleConsiderations: "My energy is best in the mornings and worse after busy work weeks.",
     equipment: "Gym access plus resistance bands at home.",
-    anythingElse:
-      "I want support that keeps me consistent without pushing through warning signs.",
+    anythingElse: "I want support that keeps me consistent without pushing through warning signs.",
     heardAbout: "Instagram.",
     offerKey: "one_to_one_coaching",
   });

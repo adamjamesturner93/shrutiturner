@@ -1,268 +1,258 @@
 "use client";
 
-import {
-  ArrowRight,
-  Award,
-  BookOpen,
-  GraduationCap,
-  Heart,
-  MessageCircle,
-  Shield,
-  Users,
-} from "lucide-react";
+import { ArrowRight, BookOpen, Dumbbell, Heart, MessageCircle, Youtube } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 import {
   EditorialHero,
   MarketingSection,
   PreFooterCtaSection,
-  ProofBand,
   PullQuote,
   SectionHeading,
-  StorySplit,
 } from "@/components/marketing/sections";
-import { SEO } from "@/components/seo";
-import { publicProofItems } from "@/data/public-refresh";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+
+const foundations = [
+  {
+    title: "Research",
+    body: "PhD-level biomechanics research and postgraduate rehabilitation study shape how I reason about movement, loading and adaptation.",
+    icon: BookOpen,
+  },
+  {
+    title: "Coaching",
+    body: "Personal training, strength and conditioning, exercise referral and yoga give us practical ways to turn that reasoning into action.",
+    icon: Dumbbell,
+  },
+  {
+    title: "Lived experience",
+    body: "Living and training with psoriatic arthritis, asthma and hypermobility keeps the work grounded in the reality of fluctuating capacity.",
+    icon: Heart,
+  },
+] as const;
+
+const qualificationGroups = [
+  {
+    value: "research-rehabilitation",
+    title: "Research & rehabilitation",
+    intro: "Academic training that informs how I understand movement, recovery and capacity.",
+    items: [
+      {
+        title: "PhD Biomechanics",
+        body: "Doctoral research informing how I think about human movement, loading and musculoskeletal behaviour.",
+      },
+      {
+        title: "Postgraduate rehabilitation",
+        body: "Rehabilitation study shaping how I approach recovery, capacity building and clinical nuance.",
+      },
+    ],
+  },
+  {
+    value: "fitness-coaching",
+    title: "Fitness & coaching",
+    intro: "Professional training for individualised strength, fitness and exercise support.",
+    items: [
+      {
+        title: "Level 4 Personal Trainer",
+        body: "Advanced personal training study supporting safe, progressive and individualised programming.",
+      },
+      {
+        title: "Exercise referral and specialist study",
+        body: "Training across exercise referral, strength and conditioning, low back pain, nutrition, obesity and diabetes.",
+      },
+    ],
+  },
+  {
+    value: "yoga-wellbeing",
+    title: "Yoga & wellbeing",
+    intro:
+      "Movement education that brings awareness, adaptability and the wider person into practice.",
+    items: [
+      {
+        title: "650+ hours of yoga training",
+        body: "Extensive teacher training with emphasis on anatomy, therapeutic application and adaptive practice.",
+      },
+      {
+        title: "Trauma-informed practice",
+        body: "Training that supports choice, agency and a more considered relationship with movement and the body.",
+      },
+    ],
+  },
+] as const;
 
 export function AboutPage() {
   return (
     <Layout>
-      <SEO
-        title="About Shruti Turner - PhD Biomechanics, Strength & Yoga Coach"
-        description="Shruti Turner is a strength and yoga coach with a PhD in Biomechanics, PGDip Rehabilitation, 650hr yoga training and Level 4 PT qualification. Living with psoriatic arthritis, she specialises in evidence-based coaching for chronic illness, autoimmune conditions and injury recovery."
-        keywords="Shruti Turner, strength coach chronic illness, yoga teacher autoimmune, PhD biomechanics coach, psoriatic arthritis coach, rehabilitation informed yoga"
-        canonicalUrl="https://shrutiturner.co.uk/about"
-      />
-
       <EditorialHero
         eyebrow="About Shruti"
         size="compact"
         title={
           <>
-            A coach shaped by both
-            <span className="text-brand-accent-light"> biomechanics</span> and
-            <span className="text-brand-accent-light"> lived experience.</span>
+            Research-led coaching, shaped by a
+            <span className="text-brand-accent-light"> complicated body of my own.</span>
           </>
         }
-        description="I work with people whose bodies need more nuance than the fitness industry usually offers. That perspective comes from research, clinical study, coaching practice and living with psoriatic arthritis myself."
-        primaryCta={{ href: "/contact", label: "Get In Touch" }}
-        secondaryCta={{ href: "/coaching", label: "Explore Coaching" }}
+        description="I bring together research, rehabilitation, fitness and wellbeing to help people move and train in ways that fit their bodies and their real lives. The work is evidence-informed, practical and personal."
         stats={[
-          { value: "PhD", label: "Biomechanics" },
-          { value: "PGDip", label: "Rehabilitation" },
-          { value: "650+", label: "Yoga teacher training hours" },
-        ]}
-        metrics={[
-          {
-            label: "Perspective",
-            detail:
-              "Academic depth, coaching practice and day-to-day lived experience with fluctuation.",
-          },
-          {
-            label: "Clients",
-            detail:
-              "People with chronic illness, hypermobility, pain, arthritis and longer recovery histories.",
-          },
-          {
-            label: "Promise",
-            detail: "Respect, precision and real progression instead of fragile-feeling fitness.",
-          },
+          { value: "PhD", label: "Biomechanics research" },
+          { value: "Rehab", label: "Postgraduate expertise" },
+          { value: "650+", label: "Yoga training hours" },
         ]}
         aside={
           <div className="relative mx-auto max-w-xl">
             <div className="border-brand-white/10 bg-brand-white/8 overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
               <div className="aspect-[4/5] overflow-hidden rounded-[1.45rem]">
                 <ImageWithFallback
-                  src="https://images.unsplash.com/photo-1676578732408-134d55bc408d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB3b21hbiUyMHlvZ2ElMjBpbnN0cnVjdG9yJTIwcG9ydHJhaXQlMjBzdHVkaW98ZW58MXx8fHwxNzcxNzcwNDIwfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-                  alt="Shruti Turner portrait"
+                  src="/images/shruti.jpeg"
+                  alt="Shruti Turner hiking in the mountains"
                   className="h-full w-full object-cover"
                 />
               </div>
-              <div className="bg-brand-accent-light/12 mt-3 rounded-[1.2rem] p-4 backdrop-blur-sm">
-                <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
-                  The lens I teach through
-                </p>
-                <p className="text-brand-white/84 mt-3 text-sm leading-relaxed">
-                  Inclusive movement coaching should offer technical clarity without losing warmth,
-                  ambition, or honesty about what fluctuating symptoms feel like.
-                </p>
-              </div>
             </div>
           </div>
         }
-      />
-
-      <ProofBand
-        title="What underpins the work"
-        description="The point of credentials here is not status. It is trust: the advice should be grounded enough to withstand scrutiny and practical enough to hold up in real life."
-        items={[...publicProofItems]}
-      />
-
-      <StorySplit
-        eyebrow="My Story"
-        title="This work became personal while I was finishing my PhD."
-        description="A diagnosis of psoriatic arthritis changed how I understood movement, effort, recovery and the limits of generic advice."
-        body={
-          <div className="text-muted-foreground space-y-5 leading-relaxed">
-            <p>
-              I was diagnosed while completing my PhD in Biomechanics. Very quickly, the body I had
-              relied on became less predictable. Some days I could train well. Some days opening a
-              jar felt like a meaningful task.
-            </p>
-            <p>
-              I tried the routes most people try. Generic fitness plans. Yoga classes. Professional
-              help that had good intentions but could not fully account for fluctuating symptoms,
-              pain, fatigue and the psychology of not trusting your body.
-            </p>
-            <p>
-              The fitness industry often tells people like us to either push through or become
-              perpetually cautious. Neither option is good enough. My work grew out of building a
-              third route: precise, adaptive, evidence-based training that still treats strength and
-              progress as real goals.
-            </p>
-          </div>
-        }
-        aside={
-          <div className="space-y-6">
-            <PullQuote
-              quote="Lived experience does not replace evidence. It changes the questions you know to ask."
-              attribution="Shruti Turner"
-            />
-            <div className="border-brand-dark/10 bg-brand-warm rounded-[1.75rem] border p-7">
-              <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">
-                What clients usually notice
-              </p>
-              <div className="mt-5 space-y-4">
-                {[
-                  "The language is direct and not patronising.",
-                  "Modifications are framed as strategy, not consolation.",
-                  "The programming is ambitious without being reckless.",
-                ].map((item) => (
-                  <div
-                    key={item}
-                    className="border-brand-dark/10 bg-background rounded-[1.2rem] border px-5 py-4 text-sm leading-relaxed"
-                  >
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        }
-        className="section-divider"
       />
 
       <MarketingSection className="section-wash">
+        <div className="grid items-center gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-12">
+          <SectionHeading
+            eyebrow="Meet Shruti"
+            title="A short introduction, in my own words."
+            description="This space is ready for a short video about who I am, how my experience shapes my work and what you can expect from working together."
+          />
+          <div
+            className="border-brand-dark/10 bg-brand-dark text-brand-white flex aspect-video items-center justify-center rounded-[1.75rem] border p-8 text-center shadow-[0_24px_60px_rgba(46,31,51,0.12)]"
+            role="img"
+            aria-label="Placeholder for Shruti Turner's introduction video"
+          >
+            <div>
+              <div className="bg-brand-accent-light/15 text-brand-accent-light mx-auto flex h-16 w-16 items-center justify-center rounded-full">
+                <Youtube className="h-8 w-8" aria-hidden="true" />
+              </div>
+              <p className="mt-5 text-2xl">Introduction video coming soon</p>
+              <p className="text-brand-white/65 mt-2 text-sm">
+                A short introduction to Shruti and her approach will appear here.
+              </p>
+            </div>
+          </div>
+        </div>
+      </MarketingSection>
+
+      <MarketingSection className="section-divider">
         <SectionHeading
-          eyebrow="Credentials"
-          title="Academic training and professional qualifications."
-          description="The details matter because they shape how I think about loading, tissue behaviour, recovery, pain and adaptation."
+          eyebrow="Research × Coaching × Lived Experience"
+          title="Three perspectives, brought into one practice."
+          description="Each matters on its own. The useful part is how they work together."
           align="center"
         />
-        <div className="mt-12 grid gap-6 md:grid-cols-2">
-          {[
-            {
-              title: "PhD Biomechanics",
-              body: "Doctoral research informing how I think about human movement, loading and musculoskeletal behaviour.",
-              icon: GraduationCap,
-            },
-            {
-              title: "PGDip Rehabilitation",
-              body: "Postgraduate rehabilitation training shaping how I approach recovery, capacity building and clinical nuance.",
-              icon: Award,
-            },
-            {
-              title: "650-Hour Yoga Training",
-              body: "Extensive teacher training with emphasis on anatomy, therapeutic application and adaptive practice.",
-              icon: Heart,
-            },
-            {
-              title: "Level 4 Personal Trainer",
-              body: "Advanced PT qualification supporting exercise referral, long-term condition awareness and coaching practice.",
-              icon: Shield,
-            },
-          ].map((item) => {
+        <div className="mt-10 grid gap-5 md:grid-cols-3">
+          {foundations.map((item) => {
             const Icon = item.icon;
             return (
               <article
                 key={item.title}
-                className="border-brand-dark/10 bg-background rounded-[1.7rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]"
+                className="border-brand-dark/10 bg-background rounded-[1.55rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]"
               >
                 <div className="bg-brand-accent/10 text-brand-accent flex h-11 w-11 items-center justify-center rounded-2xl">
-                  <Icon className="h-5 w-5" />
+                  <Icon className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <h3 className="mt-5 text-2xl">{item.title}</h3>
-                <p className="text-muted-foreground mt-4 leading-relaxed">{item.body}</p>
+                <p className="text-muted-foreground mt-3 leading-relaxed">{item.body}</p>
               </article>
             );
           })}
         </div>
       </MarketingSection>
 
-      <MarketingSection className="section-divider">
-        <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr]">
+      <MarketingSection className="bg-brand-warm">
+        <div className="grid gap-10 lg:grid-cols-[1.12fr_0.88fr] lg:items-start lg:gap-14">
           <div>
             <SectionHeading
-              eyebrow="How I Work"
-              title="Evidence over dogma. Respect over pity."
-              description="The values are simple, but the application is precise."
+              eyebrow="My Story"
+              title="This work became personal while I was finishing my PhD."
+              description="A diagnosis of psoriatic arthritis changed how I understood movement, effort, recovery and the limits of generic advice."
             />
+            <div className="text-muted-foreground mt-7 space-y-5 leading-relaxed">
+              <p>
+                Very quickly, the body I had relied on became less predictable. Some days I could
+                train well. Some days opening a jar felt like a meaningful task.
+              </p>
+              <p>
+                I tried the routes most people try: generic fitness plans, yoga classes and
+                professional help that could not fully account for fluctuating symptoms, pain,
+                fatigue and the psychology of not trusting your body.
+              </p>
+              <p>
+                My work grew from building a third route between pushing through and becoming
+                perpetually cautious: thoughtful, adaptive training that still treats strength and
+                progress as real goals.
+              </p>
+            </div>
           </div>
-          <div className="grid gap-5">
-            {[
-              {
-                title: "Evidence over dogma",
-                body: "Recommendations are grounded in biomechanics, pain science, strength principles and rehabilitation thinking. If the evidence changes, the practice should change too.",
-                icon: BookOpen,
-              },
-              {
-                title: "Lived experience matters",
-                body: "Living with psoriatic arthritis changes how I understand uncertainty, grief, adaptation and the emotional cost of not trusting your body.",
-                icon: Heart,
-              },
-              {
-                title: "Respect, not pity",
-                body: "Clients are treated like intelligent adults who deserve real strength work, real yoga and thoughtful progression.",
-                icon: Users,
-              },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <article
-                  key={item.title}
-                  className="border-brand-dark/10 bg-background rounded-[1.6rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="bg-brand-accent/10 text-brand-accent flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl">{item.title}</h3>
-                      <p className="text-muted-foreground mt-3 leading-relaxed">{item.body}</p>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+          <PullQuote
+            quote="Lived experience does not replace evidence. It changes the questions you know to ask."
+            attribution="Shruti Turner"
+          />
         </div>
       </MarketingSection>
 
+      <MarketingSection className="section-divider">
+        <SectionHeading
+          eyebrow="Qualifications"
+          title="The detail, when you want it."
+          description="Open a category to see the training behind my approach."
+          align="center"
+        />
+        <Accordion type="single" collapsible className="mx-auto mt-10 max-w-3xl">
+          {qualificationGroups.map((group) => (
+            <AccordionItem
+              key={group.value}
+              value={group.value}
+              className="border-brand-dark/10 bg-background mb-3 rounded-[1.2rem] border px-5 shadow-[0_12px_30px_rgba(46,31,51,0.04)]"
+            >
+              <AccordionTrigger className="text-xl hover:no-underline">
+                {group.title}
+              </AccordionTrigger>
+              <AccordionContent>
+                <p className="text-muted-foreground mb-5 leading-relaxed">{group.intro}</p>
+                <div className="space-y-4">
+                  {group.items.map((item) => (
+                    <div key={item.title} className="border-brand-dark/8 border-l-2 pl-4">
+                      <h3 className="text-base">{item.title}</h3>
+                      <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                        {item.body}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </MarketingSection>
+
       <PreFooterCtaSection
-        eyebrow="Work together"
-        title="If you want coaching that feels thoughtful, directand technically grounded, start here."
-        description="Coaching starts from a simple belief: people living with chronic illness, autoimmune conditions, or injury recovery deserve more intelligent movement support than they usually receive."
+        compact
+        layout="centered"
+        eyebrow="Work Together"
+        title="Ready to find support that fits?"
+        description="Explore the coaching options or tell me what you are working towards."
         actions={[
-          {
-            href: "/contact",
-            label: "Get in touch",
-            icon: MessageCircle,
-            iconPosition: "start",
-          },
           {
             href: "/coaching",
             label: "Explore coaching",
             icon: ArrowRight,
+          },
+          {
+            href: "/coaching/apply",
+            label: "Enquire",
+            icon: MessageCircle,
+            iconPosition: "start",
+            variant: "secondary",
           },
         ]}
       />
@@ -279,14 +269,13 @@ export function AboutPage() {
               "https://instagram.com/shrutiturner",
               "https://facebook.com/profile.php?id=61556124191934",
             ],
-            jobTitle: "Strength & Yoga Coach",
+            jobTitle: "Personal Trainer and Yoga Teacher",
             description:
-              "Strength and yoga coach specialising in rehabilitation-informed training for people with chronic illness, autoimmune conditions and injury recovery. PhD Biomechanics.",
+              "Personal movement and fitness coach bringing together biomechanics research, rehabilitation, fitness, wellbeing and lived experience.",
             knowsAbout: [
               "Biomechanics",
               "Rehabilitation",
-              "Chronic Illness Management",
-              "Psoriatic Arthritis",
+              "Personal Training",
               "Adaptive Yoga",
               "Strength Training",
               "Pain Science",
@@ -301,12 +290,12 @@ export function AboutPage() {
               {
                 "@type": "EducationalOccupationalCredential",
                 credentialCategory: "diploma",
-                name: "PGDip Rehabilitation",
+                name: "Postgraduate Rehabilitation",
               },
               {
                 "@type": "EducationalOccupationalCredential",
                 credentialCategory: "certificate",
-                name: "650-Hour Yoga Teacher Training",
+                name: "650+ Hours Yoga Teacher Training",
               },
               {
                 "@type": "EducationalOccupationalCredential",

@@ -12,7 +12,7 @@ vi.mock("@/lib/content/contentful-client", () => ({
   getEntryBySlug: mocks.getEntryBySlug,
 }));
 
-const { getBlogPostBySlug, getBlogPostPreviewBySlug, getBlogPosts } =
+const { getBlogPostBySlug, getBlogPostPreviewBySlug, getBlogPosts, getFeaturedTestimonials } =
   await import("@/lib/content/public-content");
 
 const richTextDocument = {
@@ -239,6 +239,36 @@ describe("Contentful public content mapping", () => {
     mocks.getEntries.mockResolvedValueOnce({ items: [] });
 
     await expect(getBlogPostBySlug("missing-post")).resolves.toBeNull();
+  });
+
+  it("loads homepage testimonials using only Contentful's featured flag", async () => {
+    mocks.getEntries.mockResolvedValueOnce({
+      items: [
+        {
+          sys: { id: "testimonial_meg" },
+          fields: {
+            quote: "Training now feels like it belongs to me.",
+            authorName: "Meg K",
+            featured: true,
+          },
+        },
+      ],
+    });
+
+    await expect(getFeaturedTestimonials()).resolves.toEqual([
+      {
+        id: "testimonial_meg",
+        quote: "Training now feels like it belongs to me.",
+        authorName: "Meg K",
+        authorCondition: undefined,
+        service: undefined,
+        featured: true,
+      },
+    ]);
+    expect(mocks.getEntries).toHaveBeenCalledWith("testimonial", {
+      "fields.featured": true,
+      limit: 3,
+    });
   });
 
   it("throws instead of falling back when Contentful has no published blog posts", async () => {

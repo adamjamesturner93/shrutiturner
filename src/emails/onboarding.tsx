@@ -21,7 +21,7 @@ interface OnboardingEmailProps {
 
 export default function OnboardingEmail({
   firstName = "there",
-  offersUrl = "https://shrutiturner.co.uk/#work-with-me",
+  offersUrl = "https://shrutiturner.co.uk/coaching",
   applyUrl = "https://shrutiturner.co.uk/coaching/apply",
   dashboardUrl = "https://shrutiturner.co.uk/dashboard/coaching",
   healthUrl = "https://shrutiturner.co.uk/dashboard/health",
@@ -107,7 +107,7 @@ export default function OnboardingEmail({
           >
             {hasOneToOneApplication
               ? "Your dashboard shows your application status and the next action when there is one."
-              : "Review the current 1:1 offers and the kind of support each one offers before you apply."}
+              : "Review the current 1:1 offers and the kind of support each one offers before you enquire."}
           </Text>
           <Link
             href={hasOneToOneApplication ? dashboardUrl : offersUrl}
@@ -153,7 +153,7 @@ export default function OnboardingEmail({
               marginBottom: "8px",
             }}
           >
-            {hasOneToOneApplication ? "Keep your details current" : "Apply before payment"}
+            {hasOneToOneApplication ? "Keep your details current" : "Enquire before payment"}
           </Text>
           <Text
             style={{
@@ -179,7 +179,7 @@ export default function OnboardingEmail({
           >
             {hasOneToOneApplication
               ? "Review health details \u2192"
-              : "Apply for 1:1 support \u2192"}
+              : "Enquire about 1:1 support \u2192"}
           </Link>
         </Section>
 
@@ -246,7 +246,7 @@ export default function OnboardingEmail({
 
       <Section style={{ textAlign: "center" as const, marginTop: "20px", marginBottom: "28px" }}>
         <Link href={hasOneToOneApplication ? dashboardUrl : applyUrl} style={buttonStyle}>
-          {hasOneToOneApplication ? "Open your 1:1 dashboard" : "Apply for 1:1 support"}
+          {hasOneToOneApplication ? "Open your 1:1 dashboard" : "Enquire about 1:1 support"}
         </Link>
       </Section>
 

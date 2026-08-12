@@ -62,8 +62,8 @@ export function Footer() {
               <IconHorizontal tone="white" className="h-12 w-auto" />
             </div>
             <p className="text-brand-white/70 max-w-md leading-relaxed">
-              Science-backed individual movement support for adults with chronic illness, autoimmune
-              conditions and injury recovery. PhD rehabilitation. Living with psoriatic arthritis.
+              Personal movement and fitness coaching bringing together rehabilitation, fitness and
+              wellbeing. Built around your body, your goals and your real life.
             </p>
 
             {/* Newsletter in footer */}
@@ -128,7 +128,7 @@ export function Footer() {
                   required
                   aria-describedby="footer-newsletter-consent-copy"
                 />
-                <span>I want newsletter and update emails. I can unsubscribe anytime.</span>
+                <span>I want newsletter and update emails.</span>
               </label>
               <p id="footer-newsletter-consent-copy" className="text-brand-white/70 mt-1 text-xs">
                 {signupCopy.consentText}
@@ -174,7 +174,7 @@ export function Footer() {
             <ul className="text-brand-white/70 space-y-2">
               <li>
                 <Link href="/coaching" className="hover:text-brand-accent-light transition-colors">
-                  1:1 Offers
+                  Work with Shruti
                 </Link>
               </li>
             </ul>
@@ -184,6 +184,11 @@ export function Footer() {
           <nav aria-label="Footer company">
             <h4 className="text-brand-accent-light mb-4">Company</h4>
             <ul className="text-brand-white/70 space-y-2">
+              <li>
+                <Link href="/about" className="hover:text-brand-accent-light transition-colors">
+                  Meet Shruti
+                </Link>
+              </li>
               <li>
                 <Link href="/blog" className="hover:text-brand-accent-light transition-colors">
                   Blog & Resources

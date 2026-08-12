@@ -138,7 +138,7 @@ export async function sendWelcomeEmail(email: string, firstName: string, userId?
     );
     const react = OnboardingEmail({
       firstName,
-      offersUrl: `${APP_URL}/#work-with-me`,
+      offersUrl: `${APP_URL}/coaching`,
       applyUrl: `${APP_URL}/coaching/apply`,
       dashboardUrl: `${APP_URL}/dashboard/coaching`,
       healthUrl: `${APP_URL}/dashboard/health`,
@@ -159,8 +159,8 @@ export async function sendWelcomeEmail(email: string, firstName: string, userId?
           "",
           "Your studio account is ready.",
           "You can use it to manage your health details, account information and any future 1:1 application or payment invitation.",
-          `Explore 1:1 offers: ${APP_URL}/#work-with-me`,
-          `Apply for 1:1 support: ${APP_URL}/coaching/apply`,
+          `Explore 1:1 offers: ${APP_URL}/coaching`,
+          `Enquire about 1:1 support: ${APP_URL}/coaching/apply`,
         ];
 
     await sendPostmarkReactEmail({

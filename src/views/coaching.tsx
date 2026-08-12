@@ -56,7 +56,7 @@ export function CoachingPage() {
         }
         description="Every 1:1 offer starts with an application so support and programming work for you."
         primaryCta={{ href: "#tiers", label: "Explore 1:1 Offers" }}
-        secondaryCta={{ href: "/coaching/apply", label: "Apply Now" }}
+        secondaryCta={{ href: "/coaching/apply", label: "Enquire Now" }}
         metrics={[
           {
             label: "Best For",
@@ -90,7 +90,7 @@ export function CoachingPage() {
 
       <ProofBand
         title="What personalised support means here."
-        description="The difference between offers is the frequency of touch points, programme review and updates. Every offer starts with a short form."
+        description="The difference between offers is the structure, programme review and updates. Every offer starts with a short form."
         items={[...coachingProofItems]}
       />
 
@@ -158,7 +158,7 @@ export function CoachingPage() {
         <SectionHeading
           eyebrow="Choose Your Offer"
           title="The support stays personalised. The touch level changes."
-          description="Most people start with the Guided Training Plan: personalised training through the app, weekly check-ins, and ongoing support to help you build strength, confidence and routine that fits with your body, goals and real life. Not sure which option is right? Apply for 1:1 support and I’ll recommend the best fit."
+          description="Most people start with the Guided Training Plan: personalised training through the app, weekly check-ins, and ongoing support to help you build strength, confidence and routine that fits with your body, goals and real life. Not sure which option is right? Enquire about 1:1 support and I’ll recommend the best fit."
           align="center"
         />
         <div id="tiers" className="mt-12 grid gap-6 md:grid-cols-3 lg:gap-8">
@@ -321,12 +321,12 @@ export function CoachingPage() {
 
       <PreFooterCtaSection
         eyebrow="Next step"
-        title="If you want 1:1 support that respects you, apply now."
+        title="If you want 1:1 support that respects you, enquire now."
         description="There is no right answer, just the one that best suits what you need right now."
         actions={[
           {
             href: "/coaching/apply",
-            label: "Apply for 1:1 Support",
+            label: "Enquire About 1:1 Support",
             icon: Sparkles,
             iconPosition: "start",
           },

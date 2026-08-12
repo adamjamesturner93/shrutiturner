@@ -1,21 +1,3 @@
-export const homepageTestimonials = [
-  {
-    quote:
-      "I stopped feeling like I had to choose between being careful and getting stronger. The structure finally makes sense for a body that changes day to day.",
-    attribution: "Member with psoriatic arthritis",
-  },
-  {
-    quote:
-      "This is the first online class space where adaptations feel intelligent instead of patronising.",
-    attribution: "1:1 client with hEDS",
-  },
-  {
-    quote:
-      "Small group support gave me accountability without the usual pressure to push through a flare.",
-    attribution: "Programme client with chronic fatigue",
-  },
-] as const;
-
 export const publicProofItems = [
   {
     label: "Lived Reality",
@@ -54,7 +36,7 @@ export const servicePathCards = [
     description:
       "Compare guided accountability, training plans and 1:1 coaching before choosing the closest fit.",
     detail: "Four application-led options",
-    href: "/#work-with-me",
+    href: "/coaching",
     ctaLabel: "Compare options",
     badge: "Transparent",
     icon: "user",
@@ -63,7 +45,7 @@ export const servicePathCards = [
     title: "Resources",
     description:
       "Research-literate writing for people who want the reasoning behind movement, recovery and training decisions.",
-    detail: "Read before you apply",
+    detail: "Read before you enquire",
     href: "/blog",
     ctaLabel: "Read the blog",
     badge: "Learn",

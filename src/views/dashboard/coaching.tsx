@@ -180,7 +180,7 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
         primaryHref: "/coaching",
         primaryLabel: "Explore Coaching",
         secondaryHref: "/coaching/apply",
-        secondaryLabel: "Apply",
+        secondaryLabel: "Enquire",
       };
     }
     if (
@@ -227,9 +227,9 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
       if (data.application.status === "withdrawn") {
         return {
           title: "You left the waiting list",
-          body: "You are no longer holding a waiting-list place. If you apply again later, the new application joins the end of the list.",
+          body: "You are no longer holding a waiting-list place. If you enquire again later, the new application joins the end of the list.",
           primaryHref: "/coaching/apply",
-          primaryLabel: "Apply Again",
+          primaryLabel: "Enquire Again",
           secondaryHref: "/contact",
           secondaryLabel: "Ask a Question",
         };
@@ -898,7 +898,7 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
           <DialogHeader>
             <DialogTitle>Leave the coaching waiting list?</DialogTitle>
             <DialogDescription>
-              If you leave and apply again later, the new application will join the end of the
+              If you leave and enquire again later, the new application will join the end of the
               waiting list.
             </DialogDescription>
           </DialogHeader>
