@@ -258,7 +258,7 @@ export type RetreatBookingSummaryDto = {
   dietaryRequirements: string | null;
   medicalConditions: string | null;
   mobilityNeeds: string | null;
-  dailyRoomUrl: string | null;
+  liveRoomPrepared: boolean;
   canPayBalance: boolean;
   canRequestCancellation: boolean;
   latestCancellation: {
@@ -427,7 +427,18 @@ export type AdminRetreatDetailDto = {
   endDate: string;
   status: string;
   retreatType: string;
-  dailyRoomUrl: string | null;
+  liveRoomPrepared: boolean;
+  liveRoomState: "unprepared" | "prepared" | "started" | "ended";
+  liveDisplayMode: "gallery" | "presenter";
+  liveDisplayVersion: number;
+  focusedPresenterUserId: string | null;
+  replayPublished: boolean;
+  replayAssets: Array<{
+    id: string;
+    status: string;
+    completedAt: string | null;
+    deleteAfterAt: string | null;
+  }>;
   roomSetupStatus: string;
   roomSetupError: string | null;
   capacity: number;
@@ -437,7 +448,29 @@ export type AdminRetreatDetailDto = {
   singleRoomSupplementPence: number;
   balanceDueAt: string | null;
   paymentPolicy: "deposit" | "full_payment";
+  depositRule: null | {
+    depositType: "percentage" | "fixed_amount" | "full_payment";
+    depositPercentageBasisPoints: number | null;
+    fixedDepositAmountPence: number | null;
+    balanceDueDaysBeforeStart: number | null;
+  };
   pricingLocked: boolean;
+  inventoryPools: Array<{
+    id: string;
+    name: string;
+    inventoryType: string;
+    totalQuantity: number;
+    active: boolean;
+  }>;
+  roomOptions: Array<{
+    id: string;
+    label: string;
+    inventoryPoolId: string | null;
+    inventoryUnitsPerBooking: number;
+    capacity: number;
+    bookingUnit: string;
+    active: boolean;
+  }>;
   ratePlans: Array<{
     id: string;
     roomOptionId: string;
@@ -462,6 +495,7 @@ export type AdminRetreatDetailDto = {
   roomUnits: Array<{
     id: string;
     roomOptionId: string;
+    inventoryPoolId: string | null;
     roomOptionLabel: string;
     label: string;
     capacityUnits: number;
@@ -491,6 +525,7 @@ export type AdminRetreatDetailDto = {
     attendeeCount: number;
     roomType: string | null;
     roomOptionId: string | null;
+    inventoryPoolId: string | null;
     roomUnitId: string | null;
     roomUnitLabel: string | null;
     addons: Array<{

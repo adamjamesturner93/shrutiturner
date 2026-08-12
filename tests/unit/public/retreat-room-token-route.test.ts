@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const requireSessionUserMock = vi.fn();
-const getRetreatLiveRoomAccessMock = vi.fn();
+const getRetreatParticipantTokenContextMock = vi.fn();
 const createMeetingTokenMock = vi.fn();
 const isDailyConfiguredMock = vi.fn();
 
@@ -9,8 +9,8 @@ vi.mock("@/lib/api/auth-user", () => ({
   requireSessionUser: requireSessionUserMock,
 }));
 
-vi.mock("@/lib/retreats/service", () => ({
-  getRetreatLiveRoomAccess: getRetreatLiveRoomAccessMock,
+vi.mock("@/lib/retreats/live-service", () => ({
+  getRetreatParticipantTokenContext: getRetreatParticipantTokenContextMock,
 }));
 
 vi.mock("@/lib/daily/service", () => ({
@@ -31,7 +31,7 @@ describe("POST /api/retreats/bookings/[id]/room-token", () => {
     vi.clearAllMocks();
     isDailyConfiguredMock.mockReturnValue(true);
     requireSessionUserMock.mockResolvedValue({ id: "user_123" });
-    getRetreatLiveRoomAccessMock.mockResolvedValue({
+    getRetreatParticipantTokenContextMock.mockResolvedValue({
       roomName: "retreat-room",
       roomUrl: "https://daily.example/retreat-room",
       userName: "Retreat Guest",
@@ -40,6 +40,14 @@ describe("POST /api/retreats/bookings/[id]/room-token", () => {
       defaultMicMuted: true,
       defaultCameraOff: false,
       isRecorded: true,
+      participantRole: "attendee",
+      roomState: "started",
+      displayMode: "gallery",
+      displayVersion: 2,
+      focusedPresenterUserId: null,
+      canRecord: false,
+      canModerate: false,
+      canPublishReplay: false,
     });
     createMeetingTokenMock.mockResolvedValue("meeting_token_123");
   });
@@ -65,7 +73,7 @@ describe("POST /api/retreats/bookings/[id]/room-token", () => {
   it.each(["FORBIDDEN", "PAYMENT_REQUIRED"])(
     "rejects access without a paid booking entitlement (%s)",
     async (code) => {
-      getRetreatLiveRoomAccessMock.mockRejectedValue(new Error(code));
+      getRetreatParticipantTokenContextMock.mockRejectedValue(new Error(code));
 
       const response = await requestRoom();
 
@@ -77,7 +85,7 @@ describe("POST /api/retreats/bookings/[id]/room-token", () => {
   );
 
   it("rejects access before the live window", async () => {
-    getRetreatLiveRoomAccessMock.mockRejectedValue(new Error("EARLY_JOIN_WINDOW"));
+    getRetreatParticipantTokenContextMock.mockRejectedValue(new Error("EARLY_JOIN_WINDOW"));
 
     const response = await requestRoom();
 
@@ -88,7 +96,7 @@ describe("POST /api/retreats/bookings/[id]/room-token", () => {
   });
 
   it("rejects access after the live window", async () => {
-    getRetreatLiveRoomAccessMock.mockRejectedValue(new Error("ROOM_CLOSED"));
+    getRetreatParticipantTokenContextMock.mockRejectedValue(new Error("ROOM_CLOSED"));
 
     const response = await requestRoom();
 
@@ -102,22 +110,39 @@ describe("POST /api/retreats/bookings/[id]/room-token", () => {
     const response = await requestRoom();
 
     expect(response.status).toBe(200);
-    expect(getRetreatLiveRoomAccessMock).toHaveBeenCalledWith("booking_123", "user_123");
+    expect(getRetreatParticipantTokenContextMock).toHaveBeenCalledWith("booking_123", "user_123");
     expect(createMeetingTokenMock).toHaveBeenCalledWith({
       roomName: "retreat-room",
       userId: "user_123",
       userName: "Retreat Guest",
       isOwner: false,
       expiresAt: new Date("2026-11-15T16:00:00.000Z"),
+      permissions: {
+        hasPresence: true,
+        canSend: ["video", "audio"],
+        canReceive: { base: true },
+        canAdmin: false,
+      },
     });
     await expect(response.json()).resolves.toEqual({
       token: "meeting_token_123",
       roomUrl: "https://daily.example/retreat-room",
+      participantRole: "attendee",
+      roomState: "started",
+      displayMode: "gallery",
+      displayVersion: 2,
+      focusedPresenterUserId: null,
       communityModeEnabled: true,
       defaultMicMuted: true,
       defaultCameraOff: false,
       isRecorded: true,
       chatEnabled: true,
+      capabilities: {
+        chat: true,
+        recording: false,
+        moderation: false,
+        publishReplay: false,
+      },
     });
   });
 });

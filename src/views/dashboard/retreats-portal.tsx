@@ -22,7 +22,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { VideoRoom } from "@/components/video/video-room";
 import type { RetreatBookingDetailDto } from "@/lib/api/types";
 
 function formatDateRange(start: string, end: string) {
@@ -68,7 +67,6 @@ export function DashboardRetreatDetail({
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState("");
   const [payingBalance, setPayingBalance] = useState(false);
-  const [showOnlineRoom, setShowOnlineRoom] = useState(false);
   const [openingReplay, setOpeningReplay] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
   const [requestingCancellation, setRequestingCancellation] = useState(false);
@@ -267,29 +265,6 @@ export function DashboardRetreatDetail({
           </Button>
         </div>
       </DashboardLayout>
-    );
-  }
-
-  if (showOnlineRoom) {
-    return (
-      <VideoRoom
-        sessionId={booking.id}
-        roomTokenEndpoint={`/api/retreats/bookings/${booking.id}/room-token`}
-        attendanceEndpoint={null}
-        mode="retreat"
-        isInstructor={false}
-        className={booking.retreatTitle}
-        classTime={new Intl.DateTimeFormat("en-GB", {
-          dateStyle: "medium",
-          timeStyle: "short",
-        }).format(new Date(booking.startsAt))}
-        classDuration="Online workshop"
-        registeredCount={1}
-        initialMuted
-        initialCameraOn={false}
-        initialCommunityMode
-        onLeave={() => setShowOnlineRoom(false)}
-      />
     );
   }
 
@@ -558,13 +533,11 @@ export function DashboardRetreatDetail({
                         Your booking includes protected access to the live workshop. The room opens
                         shortly before the scheduled start time.
                       </p>
-                      <Button
-                        type="button"
-                        onClick={() => setShowOnlineRoom(true)}
-                        disabled={!booking.onlineAccess.liveAccessEnabled}
-                      >
-                        Join online room
-                        <Video className="ml-2 h-4 w-4" />
+                      <Button asChild disabled={!booking.onlineAccess.liveAccessEnabled}>
+                        <Link href={`/dashboard/retreats/${booking.id}/live`}>
+                          Open live retreat
+                          <Video className="ml-2 h-4 w-4" />
+                        </Link>
                       </Button>
                       {booking.onlineAccess.replayAssetId ? (
                         <Button

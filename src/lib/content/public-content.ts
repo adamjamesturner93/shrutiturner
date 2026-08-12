@@ -181,6 +181,10 @@ function parseRetreatRoomOptions(value: unknown): RetreatRoomOptionContent[] {
         option.bookingUnit === "online_live_place"
           ? option.bookingUnit
           : "bed_space",
+      inventoryUnitsPerBooking:
+        typeof option.inventoryUnitsPerBooking === "number"
+          ? Math.max(Math.trunc(option.inventoryUnitsPerBooking), 1)
+          : 1,
       guestsIncluded:
         typeof option.guestsIncluded === "number" ? Math.max(option.guestsIncluded, 1) : 1,
       guestCountPerUnit:
@@ -259,6 +263,73 @@ function parseRetreatSchedule(value: unknown): RetreatScheduleDayContent[] {
       items,
     };
   });
+}
+
+function parseStructuredRetreatSchedule(
+  value: unknown,
+  includes: Array<{ sys: { id: string }; fields: Record<string, unknown> }> | undefined
+): RetreatScheduleDayContent[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((dayReference, dayIndex) => {
+      const dayEntry = getIncludedEntryById(includes, getLinkedEntryId(dayReference));
+      if (!dayEntry) return null;
+      const itemReferences = Array.isArray(dayEntry.fields.items) ? dayEntry.fields.items : [];
+      const items = itemReferences
+        .map((itemReference, itemIndex) => {
+          const itemEntry = getIncludedEntryById(includes, getLinkedEntryId(itemReference));
+          if (!itemEntry) return null;
+          return {
+            startTime: optionalStringField(itemEntry.fields, "startTime") || "",
+            endTime: optionalStringField(itemEntry.fields, "endTime"),
+            title: optionalStringField(itemEntry.fields, "title") || "Session",
+            description: optionalStringField(itemEntry.fields, "description"),
+            category: optionalStringField(itemEntry.fields, "category"),
+            isOptional: itemEntry.fields.isOptional === true,
+            displayOrder:
+              typeof itemEntry.fields.displayOrder === "number"
+                ? itemEntry.fields.displayOrder
+                : itemIndex,
+          };
+        })
+        .filter((item): item is NonNullable<typeof item> => Boolean(item))
+        .sort((a, b) => a.displayOrder - b.displayOrder)
+        .map((item) => ({
+          startTime: item.startTime,
+          endTime: item.endTime,
+          title: item.title,
+          description: item.description,
+          category: item.category,
+          isOptional: item.isOptional,
+        }));
+      const dayLabel =
+        optionalStringField(dayEntry.fields, "dayLabel") ||
+        optionalStringField(dayEntry.fields, "title") ||
+        `Day ${dayIndex + 1}`;
+      const title = optionalStringField(dayEntry.fields, "title");
+      return {
+        day: title || dayLabel,
+        title,
+        activities: items.map((item) => {
+          const time = item.endTime ? `${item.startTime}-${item.endTime}` : item.startTime;
+          return `${time} ${item.title}`.trim();
+        }),
+        items,
+        displayOrder:
+          typeof dayEntry.fields.displayOrder === "number"
+            ? dayEntry.fields.displayOrder
+            : dayIndex,
+      };
+    })
+    .filter((day): day is NonNullable<typeof day> => Boolean(day))
+    .sort((a, b) => a.displayOrder - b.displayOrder)
+    .map((day) => ({
+      day: day.day,
+      title: day.title,
+      activities: day.activities,
+      items: day.items,
+    }));
 }
 
 function parseObjectArray<T>(
@@ -1012,7 +1083,7 @@ export async function getScheduleByDayContent(): Promise<ScheduleDay[]> {
 export async function getRetreatTemplates(): Promise<RetreatTemplateContent[]> {
   const res = await getEntries<Record<string, unknown>>("retreatTemplate", {
     limit: 200,
-    include: 1,
+    include: 2,
   });
   if (!res?.items?.length) return [];
   return res.items.map((item) => ({
@@ -1051,7 +1122,13 @@ export async function getRetreatTemplates(): Promise<RetreatTemplateContent[]> {
     notIncluded: parseStringArray(item.fields.notIncluded),
     whatToBring: parseStringArray(item.fields.whatToBring),
     foodAndDrinkDescription: optionalStringField(item.fields, "foodAndDrinkDescription"),
-    schedule: parseRetreatSchedule(item.fields.schedule),
+    schedule: (() => {
+      const structured = parseStructuredRetreatSchedule(
+        item.fields.scheduleDays,
+        res.includes?.Entry
+      );
+      return structured.length > 0 ? structured : parseRetreatSchedule(item.fields.schedule);
+    })(),
     accommodationDescription: optionalStringField(item.fields, "accommodationDescription"),
     seoTitle: optionalStringField(item.fields, "seoTitle"),
     seoDescription: optionalStringField(item.fields, "seoDescription"),

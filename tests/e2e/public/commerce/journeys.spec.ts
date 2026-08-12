@@ -92,7 +92,9 @@ test("gift redemption page shows the seeded gift details and sign-in path", asyn
 
   await page.goto(`/gift/redeem/${gift.code}`);
 
-  await expect(page.locator("h1", { hasText: "Shoulder Resilience & Mobility Gift" })).toBeVisible();
+  await expect(
+    page.locator("h1", { hasText: "Shoulder Resilience & Mobility Gift" })
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Sign in to redeem" })).toBeVisible();
   await expect(page.getByText("Enjoy this programme.")).toBeVisible();
   await expect(page.getByText("Tuesdays at 18:00")).toBeVisible();
@@ -100,6 +102,22 @@ test("gift redemption page shows the seeded gift details and sign-in path", asyn
     "href",
     `/login?redirect=/gift/redeem/${gift.code}`
   );
+});
+
+test("gift redemption shows the authenticated recipient email after profile hydration", async ({
+  page,
+}) => {
+  const email = makeE2eAuthEmail("gift-recipient");
+  const programme = await createE2ESmallGroupRun();
+  const gift = await createE2EProgrammeGift(programme.id, email);
+  await loginWithEmail(page, email);
+
+  await page.goto(`/gift/redeem/${gift.code}`);
+
+  const emailField = page.getByLabel("Email").first();
+  await expect(emailField).toHaveValue(email);
+  await expect(emailField).toHaveAttribute("readonly", "");
+  await expect(page.getByText("This is the email on your signed-in account.")).toBeVisible();
 });
 
 test("programme checkout submits the selected run and redirects to checkout", async ({

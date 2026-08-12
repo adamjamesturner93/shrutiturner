@@ -96,7 +96,7 @@ export async function createE2ESmallGroupRun() {
   });
 }
 
-export async function createE2EProgrammeGift(programmeId: string) {
+export async function createE2EProgrammeGift(programmeId: string, recipientEmail?: string) {
   const programme = await db.smallGroupProgramme.findUniqueOrThrow({
     where: { id: programmeId },
   });
@@ -111,7 +111,8 @@ export async function createE2EProgrammeGift(programmeId: string) {
       purchaserEmail: `${PURCHASER_EMAIL_PREFIX}${uniqueToken("purchaser")}@example.com`,
       recipientFirstName: "Chris",
       recipientLastName: "Friend",
-      recipientEmail: `${PURCHASER_EMAIL_PREFIX}${uniqueToken("recipient")}@example.com`,
+      recipientEmail:
+        recipientEmail || `${PURCHASER_EMAIL_PREFIX}${uniqueToken("recipient")}@example.com`,
       recipientMessage: "Enjoy this programme.",
       deliveryTarget: "recipient",
       productSlug: programme.templateSlug,

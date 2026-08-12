@@ -15,6 +15,7 @@ import {
   RetreatDateStatus,
   RetreatCancellationStatus,
   RetreatRefundStatus,
+  RetreatLiveRoomState,
 } from "@prisma/client";
 import type Stripe from "stripe";
 import { cacheLife, cacheTag } from "next/cache";
@@ -59,6 +60,7 @@ import {
   calculateRetreatRefund,
   calculateRetreatNonRefundableAmount,
   getEffectiveRetreatRatePricePence,
+  getRetreatOptionAvailability,
   quoteRetreatAccommodation,
   type RetreatDepositRuleInput,
   type RetreatPaymentPlan,
@@ -241,31 +243,86 @@ export async function assignRoomUnitAfterPayment(bookingId: string) {
         roomUnitId: true,
         retreatDateId: true,
         roomOptionId: true,
+        roomOption: {
+          select: { inventoryPoolId: true, inventoryUnitsPerBooking: true },
+        },
+        items: {
+          where: {
+            itemType: {
+              in: [RetreatBookingItemType.accommodation, RetreatBookingItemType.online_live_place],
+            },
+          },
+          select: { inventoryPoolId: true, quantity: true },
+        },
         retreatDate: { select: { retreatType: true } },
       },
     });
     if (!booking || booking.roomUnitId || !booking.roomOptionId) return null;
     if (booking.retreatDate.retreatType === "online") return null;
 
-    await lockRetreatResource(tx, `retreat-room-option:${booking.roomOptionId}`);
+    const inventoryPoolId = booking.roomOption?.inventoryPoolId || null;
+    const requestedUnits = Math.max(
+      booking.items
+        .filter((item) => !inventoryPoolId || item.inventoryPoolId === inventoryPoolId)
+        .reduce((sum, item) => sum + item.quantity, 0) ||
+        booking.roomOption?.inventoryUnitsPerBooking ||
+        1,
+      1
+    );
+    await lockRetreatResource(
+      tx,
+      inventoryPoolId
+        ? `retreat-inventory-pool:${inventoryPoolId}`
+        : `retreat-room-option:${booking.roomOptionId}`
+    );
     const roomUnits = await tx.retreatRoomUnit.findMany({
       where: {
         retreatDateId: booking.retreatDateId,
-        roomOptionId: booking.roomOptionId,
+        ...(inventoryPoolId ? { inventoryPoolId } : { roomOptionId: booking.roomOptionId }),
         status: { not: "unavailable" },
       },
       include: {
         bookings: {
           where: { bookingStatus: { in: ACTIVE_RETREAT_BOOKING_STATUSES } },
-          select: { id: true },
+          select: {
+            id: true,
+            roomOption: { select: { inventoryUnitsPerBooking: true } },
+            items: {
+              where: {
+                itemType: {
+                  in: [
+                    RetreatBookingItemType.accommodation,
+                    RetreatBookingItemType.online_live_place,
+                  ],
+                },
+              },
+              select: { inventoryPoolId: true, quantity: true },
+            },
+          },
         },
       },
       orderBy: { label: "asc" },
     });
-    const roomUnit = roomUnits.find((unit) => unit.bookings.length < unit.capacityUnits);
+    const getOccupiedUnits = (unit: (typeof roomUnits)[number]) =>
+      unit.bookings.reduce(
+        (sum, assignedBooking) =>
+          sum +
+          Math.max(
+            assignedBooking.items
+              .filter((item) => !inventoryPoolId || item.inventoryPoolId === inventoryPoolId)
+              .reduce((itemSum, item) => itemSum + item.quantity, 0) ||
+              assignedBooking.roomOption?.inventoryUnitsPerBooking ||
+              1,
+            1
+          ),
+        0
+      );
+    const roomUnit = roomUnits.find(
+      (unit) => getOccupiedUnits(unit) + requestedUnits <= unit.capacityUnits
+    );
     if (!roomUnit) throw new Error("ROOM_UNIT_UNAVAILABLE");
 
-    const willBeFull = roomUnit.bookings.length + 1 >= roomUnit.capacityUnits;
+    const willBeFull = getOccupiedUnits(roomUnit) + requestedUnits >= roomUnit.capacityUnits;
     await tx.retreatBooking.update({
       where: { id: booking.id },
       data: { roomUnitId: roomUnit.id },
@@ -290,12 +347,34 @@ async function releaseRoomUnitForBooking(bookingId: string) {
       where: { id: booking.id },
       data: { roomUnitId: null },
     });
-    const activeOccupancy = await tx.retreatBooking.count({
+    const activeBookings = await tx.retreatBooking.findMany({
       where: {
         roomUnitId: booking.roomUnitId,
         bookingStatus: { in: ACTIVE_RETREAT_BOOKING_STATUSES },
       },
+      select: {
+        roomOption: { select: { inventoryUnitsPerBooking: true } },
+        items: {
+          where: {
+            itemType: {
+              in: [RetreatBookingItemType.accommodation, RetreatBookingItemType.online_live_place],
+            },
+          },
+          select: { quantity: true },
+        },
+      },
     });
+    const activeOccupancy = activeBookings.reduce(
+      (sum, activeBooking) =>
+        sum +
+        Math.max(
+          activeBooking.items.reduce((itemSum, item) => itemSum + item.quantity, 0) ||
+            activeBooking.roomOption?.inventoryUnitsPerBooking ||
+            1,
+          1
+        ),
+      0
+    );
     await tx.retreatRoomUnit.update({
       where: { id: booking.roomUnitId },
       data: { status: activeOccupancy > 0 ? "assigned" : "available" },
@@ -373,9 +452,8 @@ async function getRetreatAndInstance(slug: string, externalDateId: string) {
   return { retreat, instance };
 }
 
-async function getRoomAvailability(roomOptionId: string) {
-  const now = new Date();
-  const activeBookingWhere: Prisma.RetreatBookingWhereInput = {
+function getActiveRoomInventoryBookingWhere(now: Date): Prisma.RetreatBookingWhereInput {
+  return {
     OR: [
       { bookingStatus: { in: ACTIVE_RETREAT_BOOKING_STATUSES } },
       {
@@ -384,67 +462,52 @@ async function getRoomAvailability(roomOptionId: string) {
       },
     ],
   };
-  const [bookingItems, legacyBookingCount, giftCount] = await Promise.all([
-    db.retreatBookingItem.aggregate({
-      where: {
-        roomOptionId,
-        itemType: {
-          in: [RetreatBookingItemType.accommodation, RetreatBookingItemType.online_live_place],
-        },
-        booking: activeBookingWhere,
-      },
-      _sum: { quantity: true },
-    }),
+}
+
+const activeGiftInventoryWhere = (now: Date): Prisma.GiftPurchaseWhereInput => ({
+  OR: [
+    { status: GiftPurchaseStatus.purchased },
+    {
+      status: GiftPurchaseStatus.pending_payment,
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+    },
+  ],
+});
+
+async function getRoomAvailability(roomOptionId: string) {
+  const now = new Date();
+  const activeBookingWhere = getActiveRoomInventoryBookingWhere(now);
+  const giftWhere = activeGiftInventoryWhere(now);
+  const option = await db.retreatRoomOption.findUnique({
+    where: { id: roomOptionId },
+    include: { inventoryPool: true },
+  });
+  if (!option) throw new Error("ROOM_OPTION_NOT_FOUND");
+
+  const [optionBookingCount, optionGiftCount] = await Promise.all([
     db.retreatBooking.count({
       where: {
         roomOptionId,
         ...activeBookingWhere,
-        items: {
-          none: {
-            itemType: {
-              in: [RetreatBookingItemType.accommodation, RetreatBookingItemType.online_live_place],
-            },
-          },
-        },
       },
     }),
     db.giftPurchase.count({
       where: {
         retreatRoomOptionId: roomOptionId,
-        OR: [
-          { status: GiftPurchaseStatus.purchased },
-          {
-            status: GiftPurchaseStatus.pending_payment,
-            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-          },
-        ],
+        ...giftWhere,
       },
     }),
   ]);
-  return (bookingItems._sum.quantity || 0) + legacyBookingCount + giftCount;
-}
+  const optionAvailability = getRetreatOptionAvailability({
+    optionCapacity: option.capacity,
+    reservedOptionBookings: optionBookingCount + optionGiftCount,
+  });
+  if (!option.inventoryPoolId || !option.inventoryPool) return optionAvailability;
 
-async function assertRoomInventoryAvailableForUpdate(
-  tx: Prisma.TransactionClient,
-  roomOptionId: string,
-  capacity: number,
-  requestedQuantity: number
-) {
-  await lockRetreatResource(tx, `retreat-room-option:${roomOptionId}`);
-  const now = new Date();
-  const activeBookingWhere: Prisma.RetreatBookingWhereInput = {
-    OR: [
-      { bookingStatus: { in: ACTIVE_RETREAT_BOOKING_STATUSES } },
-      {
-        bookingStatus: RetreatBookingStatus.pending,
-        createdAt: { gt: new Date(now.getTime() - RETREAT_PAYMENT_WINDOW_MS) },
-      },
-    ],
-  };
-  const [bookingItems, legacyBookingCount, giftCount] = await Promise.all([
-    tx.retreatBookingItem.aggregate({
+  const [bookingItems, legacyBookings, gifts] = await Promise.all([
+    db.retreatBookingItem.aggregate({
       where: {
-        roomOptionId,
+        inventoryPoolId: option.inventoryPoolId,
         itemType: {
           in: [RetreatBookingItemType.accommodation, RetreatBookingItemType.online_live_place],
         },
@@ -452,9 +515,9 @@ async function assertRoomInventoryAvailableForUpdate(
       },
       _sum: { quantity: true },
     }),
-    tx.retreatBooking.count({
+    db.retreatBooking.findMany({
       where: {
-        roomOptionId,
+        roomOption: { inventoryPoolId: option.inventoryPoolId },
         ...activeBookingWhere,
         items: {
           none: {
@@ -464,22 +527,114 @@ async function assertRoomInventoryAvailableForUpdate(
           },
         },
       },
+      select: { roomOption: { select: { inventoryUnitsPerBooking: true } } },
+    }),
+    db.giftPurchase.findMany({
+      where: {
+        retreatRoomOption: { inventoryPoolId: option.inventoryPoolId },
+        ...giftWhere,
+      },
+      select: { retreatRoomOption: { select: { inventoryUnitsPerBooking: true } } },
+    }),
+  ]);
+  const reservedPoolUnits =
+    (bookingItems._sum.quantity || 0) +
+    legacyBookings.reduce(
+      (sum, booking) => sum + (booking.roomOption?.inventoryUnitsPerBooking || 1),
+      0
+    ) +
+    gifts.reduce((sum, gift) => sum + (gift.retreatRoomOption?.inventoryUnitsPerBooking || 1), 0);
+  return getRetreatOptionAvailability({
+    optionCapacity: option.capacity,
+    reservedOptionBookings: optionBookingCount + optionGiftCount,
+    poolTotalUnits: option.inventoryPool.totalQuantity,
+    reservedPoolUnits,
+    inventoryUnitsPerBooking: option.inventoryUnitsPerBooking,
+  });
+}
+
+async function assertRoomInventoryAvailableForUpdate(
+  tx: Prisma.TransactionClient,
+  roomOptionId: string,
+  requestedBookings: number
+) {
+  const now = new Date();
+  const activeBookingWhere = getActiveRoomInventoryBookingWhere(now);
+  const giftWhere = activeGiftInventoryWhere(now);
+  const option = await tx.retreatRoomOption.findUnique({
+    where: { id: roomOptionId },
+    include: { inventoryPool: true },
+  });
+  if (!option) throw new Error("ROOM_OPTION_NOT_FOUND");
+  await lockRetreatResource(
+    tx,
+    option.inventoryPoolId
+      ? `retreat-inventory-pool:${option.inventoryPoolId}`
+      : `retreat-room-option:${roomOptionId}`
+  );
+
+  const [optionBookingCount, optionGiftCount] = await Promise.all([
+    tx.retreatBooking.count({
+      where: {
+        roomOptionId,
+        ...activeBookingWhere,
+      },
     }),
     tx.giftPurchase.count({
       where: {
         retreatRoomOptionId: roomOptionId,
-        OR: [
-          { status: GiftPurchaseStatus.purchased },
-          {
-            status: GiftPurchaseStatus.pending_payment,
-            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-          },
-        ],
+        ...giftWhere,
       },
     }),
   ]);
-  const reserved = (bookingItems._sum.quantity || 0) + legacyBookingCount + giftCount;
-  if (reserved + requestedQuantity > capacity) {
+  if (optionBookingCount + optionGiftCount + requestedBookings > option.capacity) {
+    throw new Error("ROOM_OPTION_UNAVAILABLE");
+  }
+  if (!option.inventoryPoolId || !option.inventoryPool) return;
+
+  const [bookingItems, legacyBookings, gifts] = await Promise.all([
+    tx.retreatBookingItem.aggregate({
+      where: {
+        inventoryPoolId: option.inventoryPoolId,
+        itemType: {
+          in: [RetreatBookingItemType.accommodation, RetreatBookingItemType.online_live_place],
+        },
+        booking: activeBookingWhere,
+      },
+      _sum: { quantity: true },
+    }),
+    tx.retreatBooking.findMany({
+      where: {
+        roomOption: { inventoryPoolId: option.inventoryPoolId },
+        ...activeBookingWhere,
+        items: {
+          none: {
+            itemType: {
+              in: [RetreatBookingItemType.accommodation, RetreatBookingItemType.online_live_place],
+            },
+          },
+        },
+      },
+      select: { roomOption: { select: { inventoryUnitsPerBooking: true } } },
+    }),
+    tx.giftPurchase.findMany({
+      where: {
+        retreatRoomOption: { inventoryPoolId: option.inventoryPoolId },
+        ...giftWhere,
+      },
+      select: { retreatRoomOption: { select: { inventoryUnitsPerBooking: true } } },
+    }),
+  ]);
+  const reservedPoolUnits =
+    (bookingItems._sum.quantity || 0) +
+    legacyBookings.reduce(
+      (sum, booking) => sum + (booking.roomOption?.inventoryUnitsPerBooking || 1),
+      0
+    ) +
+    gifts.reduce((sum, gift) => sum + (gift.retreatRoomOption?.inventoryUnitsPerBooking || 1), 0);
+  const requestedPoolUnits =
+    Math.max(Math.trunc(requestedBookings), 1) * Math.max(option.inventoryUnitsPerBooking, 1);
+  if (reservedPoolUnits + requestedPoolUnits > option.inventoryPool.totalQuantity) {
     throw new Error("ROOM_OPTION_UNAVAILABLE");
   }
 }
@@ -557,7 +712,7 @@ async function assertRetreatCapacityAvailableForUpdate(
 
 type OperationalRetreatDate = Prisma.RetreatDateGetPayload<{
   include: {
-    roomOptions: { include: { ratePlans: true } };
+    roomOptions: { include: { ratePlans: true; inventoryPool: true } };
     bookings: { include: { items: true } };
     depositRules: true;
     addons: { include: { inventoryPool: true } };
@@ -593,7 +748,8 @@ function toPublicRoomType(value: string): RetreatRoomOptionContent["type"] {
 
 function mapOperationalRoomOption(
   roomOption: OperationalRetreatDate["roomOptions"][number],
-  reserved: number
+  reservedBookings: number,
+  reservedPoolUnits: number
 ): RetreatRoomOptionContent {
   const ratePlans = roomOption.ratePlans
     .filter((ratePlan) => ratePlan.active)
@@ -617,11 +773,18 @@ function mapOperationalRoomOption(
     description: roomOption.description || "",
     type: toPublicRoomType(roomOption.roomType),
     bookingUnit: roomOption.bookingUnit,
+    inventoryUnitsPerBooking: roomOption.inventoryUnitsPerBooking,
     guestsIncluded: roomOption.guestsIncluded,
     guestCountPerUnit: roomOption.guestCountPerUnit ?? undefined,
     allowedGuestCounts,
     capacity: roomOption.capacity,
-    availableSpots: Math.max(roomOption.capacity - reserved, 0),
+    availableSpots: getRetreatOptionAvailability({
+      optionCapacity: roomOption.capacity,
+      reservedOptionBookings: reservedBookings,
+      poolTotalUnits: roomOption.inventoryPool?.totalQuantity,
+      reservedPoolUnits,
+      inventoryUnitsPerBooking: roomOption.inventoryUnitsPerBooking,
+    }),
     normalPricePence: ratePlans[0]?.totalPricePence ?? roomOption.pricePence,
     ratePlans,
     pricePerPersonPence: roomOption.pricePerPersonPence ?? undefined,
@@ -655,10 +818,17 @@ function getSoonestEarlyBirdEndsAt(dates: OperationalRetreatDate[]) {
 async function mapOperationalDate(
   date: OperationalRetreatDate
 ): Promise<RetreatCombinedContent["dates"][number]> {
-  const reservedRoomUnits = new Map<string, number>();
+  const reservedRoomBookings = new Map<string, number>();
+  const reservedPoolUnits = new Map<string, number>();
   const reservedAddonUnits = new Map<string, number>();
 
   for (const booking of date.bookings) {
+    if (booking.roomOptionId) {
+      reservedRoomBookings.set(
+        booking.roomOptionId,
+        (reservedRoomBookings.get(booking.roomOptionId) || 0) + 1
+      );
+    }
     const inventoryItems = booking.items.filter(
       (item) =>
         item.itemType === RetreatBookingItemType.accommodation ||
@@ -667,16 +837,21 @@ async function mapOperationalDate(
     if (inventoryItems.length > 0) {
       for (const item of inventoryItems) {
         if (!item.roomOptionId) continue;
-        reservedRoomUnits.set(
-          item.roomOptionId,
-          (reservedRoomUnits.get(item.roomOptionId) || 0) + item.quantity
-        );
+        if (item.inventoryPoolId) {
+          reservedPoolUnits.set(
+            item.inventoryPoolId,
+            (reservedPoolUnits.get(item.inventoryPoolId) || 0) + item.quantity
+          );
+        }
       }
     } else if (booking.roomOptionId) {
-      reservedRoomUnits.set(
-        booking.roomOptionId,
-        (reservedRoomUnits.get(booking.roomOptionId) || 0) + 1
-      );
+      const option = date.roomOptions.find((candidate) => candidate.id === booking.roomOptionId);
+      if (option?.inventoryPoolId) {
+        reservedPoolUnits.set(
+          option.inventoryPoolId,
+          (reservedPoolUnits.get(option.inventoryPoolId) || 0) + option.inventoryUnitsPerBooking
+        );
+      }
     }
 
     for (const item of booking.items) {
@@ -690,30 +865,34 @@ async function mapOperationalDate(
 
   for (const gift of date.giftPurchases) {
     if (!gift.retreatRoomOptionId) continue;
-    reservedRoomUnits.set(
+    const option = date.roomOptions.find((candidate) => candidate.id === gift.retreatRoomOptionId);
+    reservedRoomBookings.set(
       gift.retreatRoomOptionId,
-      (reservedRoomUnits.get(gift.retreatRoomOptionId) || 0) + 1
+      (reservedRoomBookings.get(gift.retreatRoomOptionId) || 0) + 1
     );
+    if (option?.inventoryPoolId) {
+      reservedPoolUnits.set(
+        option.inventoryPoolId,
+        (reservedPoolUnits.get(option.inventoryPoolId) || 0) + option.inventoryUnitsPerBooking
+      );
+    }
   }
 
   const roomOptions = date.roomOptions.map((roomOption) =>
-    mapOperationalRoomOption(roomOption, reservedRoomUnits.get(roomOption.id) || 0)
+    mapOperationalRoomOption(
+      roomOption,
+      reservedRoomBookings.get(roomOption.id) || 0,
+      roomOption.inventoryPoolId ? reservedPoolUnits.get(roomOption.inventoryPoolId) || 0 : 0
+    )
   );
   const addons = date.addons
     .filter((addon) => addon.active)
     .map((addon) => mapOperationalAddon(addon, reservedAddonUnits.get(addon.id) || 0));
-  const roomOptionCapacity = roomOptions.reduce((sum, roomOption) => sum + roomOption.capacity, 0);
-  const roomOptionAvailability = roomOptions.reduce(
-    (sum, roomOption) => sum + roomOption.availableSpots,
-    0
-  );
-  const confirmedBookings = date.bookings.filter((booking) =>
-    ["deposit_paid", "balance_due", "paid_in_full"].includes(booking.bookingStatus)
-  );
-  const bookedSpaces = confirmedBookings.reduce(
-    (sum, booking) => sum + Math.max(booking.attendeeCount || booking.guestsIncluded || 1, 1),
-    0
-  );
+  const bookedSpaces =
+    date.bookings.reduce(
+      (sum, booking) => sum + Math.max(booking.attendeeCount || booking.guestsIncluded || 1, 1),
+      0
+    ) + date.giftPurchases.reduce((sum, gift) => sum + Math.max(gift.retreatGuestCount || 1, 1), 0);
   const activeDepositRule = date.depositRules.find((rule) => rule.active);
   const paymentPolicy =
     activeDepositRule?.depositType === RetreatDepositType.full_payment ? "full_payment" : "deposit";
@@ -724,10 +903,8 @@ async function mapOperationalDate(
     timezone: date.timezone,
     startDate: date.startsAt.toISOString(),
     endDate: date.endsAt.toISOString(),
-    availableSpaces:
-      roomOptions.length > 0 ? roomOptionAvailability : Math.max(date.capacity - bookedSpaces, 0),
-    totalSpaces:
-      roomOptions.length > 0 ? Math.max(roomOptionCapacity, date.capacity) : date.capacity,
+    availableSpaces: Math.max(date.capacity - bookedSpaces, 0),
+    totalSpaces: date.capacity,
     roomOptions,
     addons,
     paymentPlan: undefined,
@@ -852,7 +1029,10 @@ async function getBookableOperationalDates(slug?: string): Promise<OperationalRe
     include: {
       roomOptions: {
         where: { active: true },
-        include: { ratePlans: { where: { active: true }, orderBy: { guestCount: "asc" } } },
+        include: {
+          ratePlans: { where: { active: true }, orderBy: { guestCount: "asc" } },
+          inventoryPool: true,
+        },
         orderBy: { displayOrder: "asc" },
       },
       bookings: {
@@ -965,6 +1145,7 @@ export async function syncRetreatDateFromContent(slug: string, externalDateId: s
             : roomOption.bookingUnit === "online_live_place"
               ? RetreatBookingUnit.online_live_place
               : RetreatBookingUnit.bed_space,
+        inventoryUnitsPerBooking: roomOption.inventoryUnitsPerBooking ?? 1,
         guestsIncluded: roomOption.guestsIncluded,
         guestCountPerUnit: roomOption.guestCountPerUnit ?? null,
         physicalRoomCount: undefined,
@@ -988,6 +1169,7 @@ export async function syncRetreatDateFromContent(slug: string, externalDateId: s
             : roomOption.bookingUnit === "online_live_place"
               ? RetreatBookingUnit.online_live_place
               : RetreatBookingUnit.bed_space,
+        inventoryUnitsPerBooking: roomOption.inventoryUnitsPerBooking ?? 1,
         guestsIncluded: roomOption.guestsIncluded,
         guestCountPerUnit: roomOption.guestCountPerUnit ?? null,
         allowedGuestCountsJson: toPrismaJson(roomOption.allowedGuestCounts),
@@ -1072,8 +1254,10 @@ export async function syncRetreatDateFromContent(slug: string, externalDateId: s
               syncedRoomOption.bookingUnit === RetreatBookingUnit.bed_space
                 ? Math.max(syncedRoomOption.bedsPerPhysicalRoom || 1, 1)
                 : 1,
+            inventoryPoolId: syncedRoomOption.inventoryPoolId,
           },
           update: {
+            inventoryPoolId: syncedRoomOption.inventoryPoolId,
             capacityUnits:
               syncedRoomOption.bookingUnit === RetreatBookingUnit.bed_space
                 ? Math.max(syncedRoomOption.bedsPerPhysicalRoom || 1, 1)
@@ -1132,8 +1316,7 @@ async function getSyncedRetreatDateAndRoomOption(input: {
     throw new Error("ROOM_OPTION_NOT_FOUND");
   }
 
-  const reserved = await getRoomAvailability(roomOption.id);
-  const availableSpots = Math.max(roomOption.capacity - reserved, 0);
+  const availableSpots = await getRoomAvailability(roomOption.id);
   if (roomOption.isWaitlistOnly || availableSpots <= 0) {
     throw new Error("ROOM_OPTION_UNAVAILABLE");
   }
@@ -1331,6 +1514,7 @@ export async function createRetreatCheckout(input: {
   const quote = quoteRetreatAccommodation({
     bookingUnit: roomOption.bookingUnit,
     quantity: 1,
+    inventoryUnitsPerBooking: roomOption.inventoryUnitsPerBooking,
     guestCount: selectedGuestCount,
     allowedGuestCounts,
     guestCountPerUnit: roomOption.guestCountPerUnit,
@@ -1412,7 +1596,7 @@ export async function createRetreatCheckout(input: {
         quote.totalGuestCount,
         retreatDate.capacity
       );
-      await assertRoomInventoryAvailableForUpdate(tx, roomOption.id, roomOption.capacity, 1);
+      await assertRoomInventoryAvailableForUpdate(tx, roomOption.id, 1);
       return tx.giftPurchase.create({
         data: {
           code: `GIFT-RT-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
@@ -1561,12 +1745,7 @@ export async function createRetreatCheckout(input: {
       quote.totalGuestCount,
       retreatDate.capacity
     );
-    await assertRoomInventoryAvailableForUpdate(
-      tx,
-      roomOption.id,
-      roomOption.capacity,
-      quote.inventoryUnitsConsumed
-    );
+    await assertRoomInventoryAvailableForUpdate(tx, roomOption.id, quote.quantity);
     for (const selection of selectedAddons) {
       await assertAddonInventoryAvailableForUpdate(
         tx,
@@ -2355,7 +2534,7 @@ export async function getMyRetreatBookings(userId: string) {
     dietaryRequirements: booking.dietaryRequirements,
     medicalConditions: booking.medicalConditions,
     mobilityNeeds: booking.mobilityNeeds,
-    dailyRoomUrl: booking.retreatDate.dailyRoomUrl,
+    liveRoomPrepared: booking.retreatDate.onlineRoomSetupStatus === "ready",
     canPayBalance: booking.paymentStatus !== "paid_in_full" && booking.balanceAmountPence > 0,
     canRequestCancellation:
       booking.purchaserUserId === userId &&
@@ -2415,7 +2594,7 @@ export async function getMyRetreatBookingDetail(userId: string, bookingId: strin
     dietaryRequirements: booking.dietaryRequirements,
     medicalConditions: booking.medicalConditions,
     mobilityNeeds: booking.mobilityNeeds,
-    dailyRoomUrl: null,
+    liveRoomPrepared: booking.retreatDate.onlineRoomSetupStatus === "ready",
     onlineAccess:
       booking.retreatDate.retreatType === "online"
         ? await getRetreatOnlineAccessState(booking.id, userId)
@@ -3147,10 +3326,7 @@ export async function getRetreatLiveRoomAccess(bookingId: string, userId: string
     throw new Error("ROOM_CLOSED");
   }
 
-  let retreatDate = booking.retreatDate;
-  if (!retreatDate.dailyRoomName || !retreatDate.dailyRoomUrl) {
-    retreatDate = await setUpRetreatOnlineRoom(retreatDate.id);
-  }
+  const retreatDate = booking.retreatDate;
   if (!retreatDate.dailyRoomName || !retreatDate.dailyRoomUrl) {
     throw new Error("ROOM_NOT_READY");
   }
@@ -3336,6 +3512,7 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
       roomOptions: {
         orderBy: { displayOrder: "asc" },
         include: {
+          inventoryPool: true,
           ratePlans: { orderBy: { guestCount: "asc" } },
           roomUnits: { orderBy: { label: "asc" } },
         },
@@ -3453,6 +3630,7 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
             description: option.description,
             roomType: option.roomType,
             bookingUnit: option.bookingUnit,
+            inventoryUnitsPerBooking: option.inventoryUnitsPerBooking,
             guestsIncluded: option.guestsIncluded,
             guestCountPerUnit: option.guestCountPerUnit,
             physicalRoomCount: option.physicalRoomCount,
@@ -3501,6 +3679,9 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
             data: {
               retreatDateId: retreatDate.id,
               roomOptionId: createdOption.id,
+              inventoryPoolId: option.inventoryPoolId
+                ? inventoryPoolIds.get(option.inventoryPoolId) || null
+                : null,
               label: unit.label,
               capacityUnits: unit.capacityUnits,
               status: "available",
@@ -3579,6 +3760,7 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
           : "General retreat place. Configure accommodation before opening public bookings.",
         roomType: isOnline ? "virtual" : "shared_twin",
         bookingUnit,
+        inventoryUnitsPerBooking: 1,
         guestsIncluded: 1,
         guestCountPerUnit: 1,
         capacity: input.capacity,
@@ -3621,6 +3803,7 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
         data: {
           retreatDateId: retreatDate.id,
           roomOptionId: roomOption.id,
+          inventoryPoolId: inventoryPool.id,
           label: "General capacity",
           capacityUnits: input.capacity,
         },
@@ -3705,10 +3888,18 @@ async function validateRetreatDateForPublishing(
     }
 
     if (retreatDate.retreatType === "in_person") {
-      const physicalCapacity = option.roomUnits.reduce((sum, unit) => sum + unit.capacityUnits, 0);
-      if (physicalCapacity < option.capacity) {
+      const physicalCapacity = retreatDate.roomOptions
+        .flatMap((candidate) => candidate.roomUnits)
+        .filter((unit) =>
+          option.inventoryPoolId
+            ? unit.inventoryPoolId === option.inventoryPoolId
+            : unit.roomOptionId === option.id
+        )
+        .reduce((sum, unit) => sum + unit.capacityUnits, 0);
+      const requiredCapacity = option.capacity * Math.max(option.inventoryUnitsPerBooking, 1);
+      if (physicalCapacity < requiredCapacity) {
         errors.push(
-          `${option.label} has ${option.capacity} sellable units but only ${physicalCapacity} physical room spaces.`
+          `${option.label} can consume ${requiredCapacity} base units but only ${physicalCapacity} physical room spaces are configured.`
         );
       }
     }
@@ -3909,7 +4100,8 @@ export async function setUpRetreatOnlineRoom(retreatDateId: string) {
     const room = await createSessionRoom(
       `retreat-${retreatDate.id}`,
       retreatDate.startsAt,
-      retreatDate.endsAt
+      retreatDate.endsAt,
+      { maxParticipants: retreatDate.capacity + 4 }
     );
     const updated = await db.retreatDate.update({
       where: { id: retreatDate.id },
@@ -3918,6 +4110,10 @@ export async function setUpRetreatOnlineRoom(retreatDateId: string) {
         dailyRoomUrl: room.roomUrl,
         onlineRoomSetupStatus: ClassRoomSetupStatus.ready,
         onlineRoomSetupError: null,
+        liveRoomState:
+          retreatDate.liveRoomState === RetreatLiveRoomState.unprepared
+            ? RetreatLiveRoomState.prepared
+            : retreatDate.liveRoomState,
       },
     });
     if (updated.isRecorded) {
@@ -3982,9 +4178,11 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
   const bookingRows = await db.retreatDate.findUnique({
     where: { id: retreatDateId },
     include: {
+      inventoryPools: { orderBy: { createdAt: "asc" } },
       bookings: {
         orderBy: { createdAt: "asc" },
         include: {
+          roomOption: true,
           roomUnit: true,
           instalments: {
             orderBy: { sequence: "asc" },
@@ -4007,7 +4205,21 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
             include: {
               bookings: {
                 where: { bookingStatus: { in: ACTIVE_RETREAT_BOOKING_STATUSES } },
-                select: { id: true },
+                select: {
+                  id: true,
+                  roomOption: { select: { inventoryUnitsPerBooking: true } },
+                  items: {
+                    where: {
+                      itemType: {
+                        in: [
+                          RetreatBookingItemType.accommodation,
+                          RetreatBookingItemType.online_live_place,
+                        ],
+                      },
+                    },
+                    select: { quantity: true },
+                  },
+                },
               },
             },
           },
@@ -4025,6 +4237,10 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
         where: { type: "retreat" },
         include: { retreatRoomOption: true },
         orderBy: { createdAt: "asc" },
+      },
+      replayAssets: {
+        where: { resourceType: "retreat_date" },
+        orderBy: { createdAt: "desc" },
       },
     },
   });
@@ -4067,7 +4283,18 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
     endDate: bookingRows.endsAt.toISOString(),
     status: bookingRows.status,
     retreatType: bookingRows.retreatType,
-    dailyRoomUrl: bookingRows.dailyRoomUrl,
+    liveRoomPrepared: bookingRows.onlineRoomSetupStatus === ClassRoomSetupStatus.ready,
+    liveRoomState: bookingRows.liveRoomState,
+    liveDisplayMode: bookingRows.liveDisplayMode,
+    liveDisplayVersion: bookingRows.liveDisplayVersion,
+    focusedPresenterUserId: bookingRows.focusedPresenterUserId,
+    replayPublished: bookingRows.replayAvailable,
+    replayAssets: bookingRows.replayAssets.map((asset) => ({
+      id: asset.id,
+      status: asset.status,
+      completedAt: asset.completedAt?.toISOString() || null,
+      deleteAfterAt: asset.deleteAfterAt?.toISOString() || null,
+    })),
     roomSetupStatus: bookingRows.onlineRoomSetupStatus,
     roomSetupError: bookingRows.onlineRoomSetupError,
     capacity: bookingRows.capacity,
@@ -4080,7 +4307,31 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
       activeDepositRule?.depositType === RetreatDepositType.full_payment
         ? ("full_payment" as const)
         : ("deposit" as const),
+    depositRule: activeDepositRule
+      ? {
+          depositType: activeDepositRule.depositType,
+          depositPercentageBasisPoints: activeDepositRule.depositPercentageBasisPoints,
+          fixedDepositAmountPence: activeDepositRule.fixedDepositAmountPence,
+          balanceDueDaysBeforeStart: activeDepositRule.balanceDueDaysBeforeStart,
+        }
+      : null,
     pricingLocked: bookingRows.status !== RetreatDateStatus.draft,
+    inventoryPools: bookingRows.inventoryPools.map((pool) => ({
+      id: pool.id,
+      name: pool.name,
+      inventoryType: pool.inventoryType,
+      totalQuantity: pool.totalQuantity,
+      active: pool.active,
+    })),
+    roomOptions: bookingRows.roomOptions.map((roomOption) => ({
+      id: roomOption.id,
+      label: roomOption.label,
+      inventoryPoolId: roomOption.inventoryPoolId,
+      inventoryUnitsPerBooking: roomOption.inventoryUnitsPerBooking,
+      capacity: roomOption.capacity,
+      bookingUnit: roomOption.bookingUnit,
+      active: roomOption.active,
+    })),
     ratePlans: bookingRows.roomOptions.flatMap((roomOption) =>
       roomOption.ratePlans.map((ratePlan) => ({
         id: ratePlan.id,
@@ -4098,10 +4349,21 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
       roomOption.roomUnits.map((unit) => ({
         id: unit.id,
         roomOptionId: roomOption.id,
+        inventoryPoolId: unit.inventoryPoolId,
         roomOptionLabel: roomOption.label,
         label: unit.label,
         capacityUnits: unit.capacityUnits,
-        occupiedUnits: unit.bookings.length,
+        occupiedUnits: unit.bookings.reduce(
+          (sum, booking) =>
+            sum +
+            Math.max(
+              booking.items.reduce((itemSum, item) => itemSum + item.quantity, 0) ||
+                booking.roomOption?.inventoryUnitsPerBooking ||
+                1,
+              1
+            ),
+          0
+        ),
         status: unit.status,
       }))
     ),
@@ -4128,6 +4390,7 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
       attendeeCount: booking.attendeeCount,
       roomType: booking.roomOptionLabelSnapshot || booking.roomType,
       roomOptionId: booking.roomOptionId,
+      inventoryPoolId: booking.roomOption?.inventoryPoolId || null,
       roomUnitId: booking.roomUnitId,
       roomUnitLabel: booking.roomUnit?.label || null,
       addons: booking.items.flatMap((item) =>
@@ -4183,6 +4446,176 @@ export type AdminRetreatEarlyBirdRateUpdate = {
   earlyBirdEndsAt: Date | null;
 };
 
+export type AdminRetreatConfigurationUpdate = {
+  inventoryPools: Array<{ id: string; totalQuantity: number }>;
+  roomOptions: Array<{
+    id: string;
+    inventoryPoolId: string;
+    inventoryUnitsPerBooking: number;
+    capacity: number;
+  }>;
+  payment: {
+    depositType: "percentage" | "fixed_amount" | "full_payment";
+    depositPercentageBasisPoints: number | null;
+    fixedDepositAmountPence: number | null;
+    balanceDueDaysBeforeStart: number | null;
+  };
+};
+
+export async function updateAdminRetreatConfiguration(
+  retreatDateId: string,
+  input: AdminRetreatConfigurationUpdate
+) {
+  await db.$transaction(async (tx) => {
+    await lockRetreatResource(tx, `retreat-configuration:${retreatDateId}`);
+    const retreatDate = await tx.retreatDate.findUnique({
+      where: { id: retreatDateId },
+      include: {
+        inventoryPools: true,
+        roomOptions: true,
+        depositRules: { where: { active: true } },
+      },
+    });
+    if (!retreatDate) throw new Error("NOT_FOUND");
+    if (retreatDate.status !== RetreatDateStatus.draft) {
+      throw new Error("RETREAT_CONFIGURATION_LOCKED");
+    }
+    if (input.inventoryPools.length !== retreatDate.inventoryPools.length) {
+      throw new Error("INVALID_RETREAT_INVENTORY");
+    }
+    if (input.roomOptions.length !== retreatDate.roomOptions.length) {
+      throw new Error("INVALID_RETREAT_INVENTORY");
+    }
+
+    const poolIds = new Set(retreatDate.inventoryPools.map((pool) => pool.id));
+    const optionIds = new Set(retreatDate.roomOptions.map((option) => option.id));
+    if (
+      new Set(input.inventoryPools.map((pool) => pool.id)).size !== input.inventoryPools.length ||
+      new Set(input.roomOptions.map((option) => option.id)).size !== input.roomOptions.length ||
+      input.inventoryPools.some(
+        (pool) =>
+          !poolIds.has(pool.id) || !Number.isInteger(pool.totalQuantity) || pool.totalQuantity < 1
+      ) ||
+      input.roomOptions.some(
+        (option) =>
+          !optionIds.has(option.id) ||
+          !poolIds.has(option.inventoryPoolId) ||
+          !Number.isInteger(option.inventoryUnitsPerBooking) ||
+          option.inventoryUnitsPerBooking < 1 ||
+          !Number.isInteger(option.capacity) ||
+          option.capacity < 1
+      )
+    ) {
+      throw new Error("INVALID_RETREAT_INVENTORY");
+    }
+
+    const poolQuantityById = new Map(
+      input.inventoryPools.map((pool) => [pool.id, pool.totalQuantity])
+    );
+    if (
+      input.roomOptions.some(
+        (option) =>
+          option.inventoryUnitsPerBooking > (poolQuantityById.get(option.inventoryPoolId) || 0)
+      )
+    ) {
+      throw new Error("INVALID_RETREAT_INVENTORY");
+    }
+
+    for (const pool of input.inventoryPools) {
+      await tx.retreatInventoryPool.update({
+        where: { id: pool.id },
+        data: { totalQuantity: pool.totalQuantity },
+      });
+    }
+    for (const option of input.roomOptions) {
+      await tx.retreatRoomOption.update({
+        where: { id: option.id },
+        data: {
+          inventoryPoolId: option.inventoryPoolId,
+          inventoryUnitsPerBooking: option.inventoryUnitsPerBooking,
+          capacity: option.capacity,
+          availableSpots: option.capacity,
+          roomUnits: {
+            updateMany: { where: {}, data: { inventoryPoolId: option.inventoryPoolId } },
+          },
+        },
+      });
+      await tx.retreatRoomUnit.updateMany({
+        where: {
+          roomOptionId: option.id,
+          capacityUnits: { lt: option.inventoryUnitsPerBooking },
+        },
+        data: { capacityUnits: option.inventoryUnitsPerBooking },
+      });
+    }
+
+    const payment = input.payment;
+    const isFullPayment = payment.depositType === "full_payment";
+    if (
+      (retreatDate.retreatType === "online" && !isFullPayment) ||
+      (payment.depositType === "percentage" &&
+        (!Number.isInteger(payment.depositPercentageBasisPoints) ||
+          (payment.depositPercentageBasisPoints || 0) < 1 ||
+          (payment.depositPercentageBasisPoints || 0) > 10000)) ||
+      (payment.depositType === "fixed_amount" &&
+        (!Number.isInteger(payment.fixedDepositAmountPence) ||
+          (payment.fixedDepositAmountPence || 0) < 0)) ||
+      (!isFullPayment &&
+        (!Number.isInteger(payment.balanceDueDaysBeforeStart) ||
+          (payment.balanceDueDaysBeforeStart || 0) < 0))
+    ) {
+      throw new Error("INVALID_RETREAT_PAYMENT_RULE");
+    }
+
+    const balanceDueDaysBeforeStart = isFullPayment ? null : payment.balanceDueDaysBeforeStart;
+    const balanceDueAt =
+      balanceDueDaysBeforeStart === null
+        ? null
+        : new Date(retreatDate.startsAt.getTime() - balanceDueDaysBeforeStart * 86400000);
+    const depositAmountPence =
+      payment.depositType === "percentage"
+        ? Math.round((retreatDate.pricePence * (payment.depositPercentageBasisPoints || 0)) / 10000)
+        : payment.depositType === "fixed_amount"
+          ? Math.min(payment.fixedDepositAmountPence || 0, retreatDate.pricePence)
+          : retreatDate.pricePence;
+
+    await tx.retreatDepositRule.updateMany({
+      where: { retreatDateId, active: true },
+      data: { active: false },
+    });
+    await tx.retreatDepositRule.create({
+      data: {
+        retreatDateId,
+        depositType: payment.depositType,
+        depositPercentageBasisPoints:
+          payment.depositType === "percentage" ? payment.depositPercentageBasisPoints : null,
+        fixedDepositAmountPence:
+          payment.depositType === "fixed_amount" ? payment.fixedDepositAmountPence : null,
+        balanceDueDaysBeforeStart,
+        balanceDueAt,
+        active: true,
+      },
+    });
+    await tx.retreatDate.update({
+      where: { id: retreatDateId },
+      data: {
+        depositAmountPence,
+        balanceDueAt,
+        paymentPlanSnapshotJson: {
+          depositType: payment.depositType,
+          depositPercentageBasisPoints:
+            payment.depositType === "percentage" ? payment.depositPercentageBasisPoints : null,
+          fixedDepositAmountPence:
+            payment.depositType === "fixed_amount" ? payment.fixedDepositAmountPence : null,
+          balanceDueDaysBeforeStart,
+        },
+      },
+    });
+  });
+
+  return getAdminRetreatDetail(retreatDateId);
+}
+
 export async function assignAdminRetreatRoomUnit(input: {
   retreatDateId: string;
   bookingId: string;
@@ -4193,7 +4626,21 @@ export async function assignAdminRetreatRoomUnit(input: {
     await lockRetreatResource(tx, `retreat-booking-room:${input.bookingId}`);
     const booking = await tx.retreatBooking.findFirst({
       where: { id: input.bookingId, retreatDateId: input.retreatDateId },
-      select: { id: true, roomOptionId: true, roomUnitId: true, bookingStatus: true },
+      select: {
+        id: true,
+        roomOptionId: true,
+        roomUnitId: true,
+        bookingStatus: true,
+        roomOption: { select: { inventoryPoolId: true, inventoryUnitsPerBooking: true } },
+        items: {
+          where: {
+            itemType: {
+              in: [RetreatBookingItemType.accommodation, RetreatBookingItemType.online_live_place],
+            },
+          },
+          select: { inventoryPoolId: true, quantity: true },
+        },
+      },
     });
     if (!booking) throw new Error("NOT_FOUND");
     if (!ACTIVE_RETREAT_BOOKING_STATUSES.includes(booking.bookingStatus)) {
@@ -4207,7 +4654,12 @@ export async function assignAdminRetreatRoomUnit(input: {
         where: {
           id: input.roomUnitId,
           retreatDateId: input.retreatDateId,
-          roomOptionId: booking.roomOptionId,
+          OR: [
+            { roomOptionId: booking.roomOptionId },
+            ...(booking.roomOption?.inventoryPoolId
+              ? [{ inventoryPoolId: booking.roomOption.inventoryPoolId }]
+              : []),
+          ],
           status: { not: "unavailable" },
         },
         include: {
@@ -4216,12 +4668,43 @@ export async function assignAdminRetreatRoomUnit(input: {
               id: { not: booking.id },
               bookingStatus: { in: ACTIVE_RETREAT_BOOKING_STATUSES },
             },
-            select: { id: true },
+            select: {
+              id: true,
+              roomOption: { select: { inventoryUnitsPerBooking: true } },
+              items: {
+                where: {
+                  itemType: {
+                    in: [
+                      RetreatBookingItemType.accommodation,
+                      RetreatBookingItemType.online_live_place,
+                    ],
+                  },
+                },
+                select: { quantity: true },
+              },
+            },
           },
         },
       });
       if (!roomUnit) throw new Error("ROOM_ASSIGNMENT_INVALID");
-      if (roomUnit.bookings.length >= roomUnit.capacityUnits) {
+      const requestedUnits = Math.max(
+        booking.items.reduce((sum, item) => sum + item.quantity, 0) ||
+          booking.roomOption?.inventoryUnitsPerBooking ||
+          1,
+        1
+      );
+      const occupiedUnits = roomUnit.bookings.reduce(
+        (sum, assignedBooking) =>
+          sum +
+          Math.max(
+            assignedBooking.items.reduce((itemSum, item) => itemSum + item.quantity, 0) ||
+              assignedBooking.roomOption?.inventoryUnitsPerBooking ||
+              1,
+            1
+          ),
+        0
+      );
+      if (occupiedUnits + requestedUnits > roomUnit.capacityUnits) {
         throw new Error("ROOM_UNIT_UNAVAILABLE");
       }
     }
@@ -4236,19 +4719,44 @@ export async function assignAdminRetreatRoomUnit(input: {
       Boolean(value)
     );
     for (const roomUnitId of new Set(affectedRoomUnitIds)) {
-      const [unit, occupiedUnits] = await Promise.all([
+      const [unit, activeBookings] = await Promise.all([
         tx.retreatRoomUnit.findUnique({
           where: { id: roomUnitId },
           select: { capacityUnits: true, status: true },
         }),
-        tx.retreatBooking.count({
+        tx.retreatBooking.findMany({
           where: {
             roomUnitId,
             bookingStatus: { in: ACTIVE_RETREAT_BOOKING_STATUSES },
           },
+          select: {
+            roomOption: { select: { inventoryUnitsPerBooking: true } },
+            items: {
+              where: {
+                itemType: {
+                  in: [
+                    RetreatBookingItemType.accommodation,
+                    RetreatBookingItemType.online_live_place,
+                  ],
+                },
+              },
+              select: { quantity: true },
+            },
+          },
         }),
       ]);
       if (unit && unit.status !== "unavailable") {
+        const occupiedUnits = activeBookings.reduce(
+          (sum, activeBooking) =>
+            sum +
+            Math.max(
+              activeBooking.items.reduce((itemSum, item) => itemSum + item.quantity, 0) ||
+                activeBooking.roomOption?.inventoryUnitsPerBooking ||
+                1,
+              1
+            ),
+          0
+        );
         await tx.retreatRoomUnit.update({
           where: { id: roomUnitId },
           data: { status: occupiedUnits >= unit.capacityUnits ? "assigned" : "available" },

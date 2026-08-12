@@ -204,6 +204,8 @@ async function run() {
   await configureSlugEditor("instructorProfile", "name");
   await configureSlugEditor("leadMagnet", "title");
   await configureSlugEditor("newsletterTemplate", "title");
+  await configureSlugEditor("retreatScheduleDay", "title");
+  await configureSlugEditor("retreatScheduleItem", "title");
 }
 
 run().catch((err) => {

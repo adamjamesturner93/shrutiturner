@@ -36,6 +36,7 @@ export type RetreatRatePlanInput = {
 export type RetreatAccommodationSelectionInput = {
   bookingUnit: RetreatBookingUnitCode;
   quantity: number;
+  inventoryUnitsPerBooking?: number;
   guestCount: number;
   allowedGuestCounts?: number[];
   guestCountPerUnit?: number | null;
@@ -121,14 +122,33 @@ export function calculateDepositFromRule(totalPence: number, rule: RetreatDeposi
 export function getInventoryUnitsConsumed(input: {
   bookingUnit: RetreatBookingUnitCode;
   quantity: number;
+  inventoryUnitsPerBooking?: number;
 }) {
   const quantity = Math.max(Math.trunc(input.quantity), 0);
-  if (input.bookingUnit === "whole_room") return quantity;
-  if (input.bookingUnit === "bed_space") return quantity;
-  if (input.bookingUnit === "ticket") return quantity;
-  if (input.bookingUnit === "online_live_place") return quantity;
-  if (input.bookingUnit === "addon") return quantity;
-  return quantity;
+  const unitsPerBooking = Math.max(Math.trunc(input.inventoryUnitsPerBooking ?? 1), 1);
+  return quantity * unitsPerBooking;
+}
+
+export function getRetreatOptionAvailability(input: {
+  optionCapacity: number;
+  reservedOptionBookings: number;
+  poolTotalUnits?: number | null;
+  reservedPoolUnits?: number;
+  inventoryUnitsPerBooking?: number;
+}) {
+  const optionAvailability = Math.max(
+    Math.trunc(input.optionCapacity) - Math.max(Math.trunc(input.reservedOptionBookings), 0),
+    0
+  );
+  if (input.poolTotalUnits === undefined || input.poolTotalUnits === null) {
+    return optionAvailability;
+  }
+  const availablePoolUnits = Math.max(
+    Math.trunc(input.poolTotalUnits) - Math.max(Math.trunc(input.reservedPoolUnits || 0), 0),
+    0
+  );
+  const unitsPerBooking = Math.max(Math.trunc(input.inventoryUnitsPerBooking || 1), 1);
+  return Math.min(optionAvailability, Math.floor(availablePoolUnits / unitsPerBooking));
 }
 
 export function getTotalGuestsForSelection(input: {
@@ -224,6 +244,7 @@ export function quoteRetreatAccommodation(
     inventoryUnitsConsumed: getInventoryUnitsConsumed({
       bookingUnit: input.bookingUnit,
       quantity,
+      inventoryUnitsPerBooking: input.inventoryUnitsPerBooking,
     }),
     totalGuestCount: getTotalGuestsForSelection({
       bookingUnit: input.bookingUnit,

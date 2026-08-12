@@ -13,6 +13,9 @@ import {
   Video,
   VideoOff,
   VolumeX,
+  MonitorUp,
+  Hand,
+  Smile,
 } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { ChatPanel, type ChatMessage } from "./chat-panel";
@@ -36,6 +39,9 @@ type VideoRoomProps = {
   sessionId?: string;
   roomTokenEndpoint?: string;
   attendanceEndpoint?: string | null;
+  chatEndpoint?: string | null;
+  displayModeEndpoint?: string | null;
+  moderationEndpoint?: string | null;
   mode: RoomMode;
   isInstructor: boolean;
   className: string;
@@ -49,6 +55,8 @@ type VideoRoomProps = {
   chatEnabled?: boolean;
   onLeave: (reason: "left" | "ended" | "removed") => void;
   onEndSession?: () => Promise<void> | void;
+  onStartRecording?: () => Promise<void> | void;
+  onStopRecording?: () => Promise<void> | void;
 };
 
 type ParticipantTileModel = {
@@ -105,6 +113,9 @@ export function VideoRoom({
   sessionId,
   roomTokenEndpoint,
   attendanceEndpoint,
+  chatEndpoint,
+  displayModeEndpoint,
+  moderationEndpoint,
   mode,
   isInstructor,
   className: classTitle,
@@ -118,6 +129,8 @@ export function VideoRoom({
   chatEnabled = true,
   onLeave,
   onEndSession,
+  onStartRecording,
+  onStopRecording,
 }: VideoRoomProps) {
   const { user } = useAuth();
   const [callObject, setCallObject] = useState<DailyCallObject | null>(null);
@@ -133,6 +146,10 @@ export function VideoRoom({
   const [communityMode, setCommunityMode] = useState(initialCommunityMode);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isEnding, setIsEnding] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [raisedHands, setRaisedHands] = useState<Array<{ userId: string; name: string }>>([]);
+  const [reaction, setReaction] = useState("");
   const [statusText, setStatusText] = useState("Connecting to the live room...");
   const [joinAttempt, setJoinAttempt] = useState(0);
   const [isAutoRetrying, setIsAutoRetrying] = useState(false);
@@ -169,6 +186,45 @@ export function VideoRoom({
     );
   }, []);
 
+  useEffect(() => {
+    if (!chatEndpoint || !chatEnabled) return;
+    let active = true;
+    void fetch(chatEndpoint, { cache: "no-store" })
+      .then(async (response) => (response.ok ? response.json() : []))
+      .then(
+        (
+          messages: Array<{
+            id: string;
+            userId: string;
+            sender: string;
+            text: string;
+            type?: "message" | "announcement";
+            createdAt: string;
+          }>
+        ) => {
+          if (!active) return;
+          setChatMessages(
+            messages.map((message) => ({
+              id: message.id,
+              userId: message.userId,
+              sender: message.sender,
+              text: message.text,
+              time: new Date(message.createdAt).toLocaleTimeString("en-GB", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              isLocal: message.userId === currentUserIdRef.current,
+              type: message.type,
+            }))
+          );
+        }
+      )
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [chatEnabled, chatEndpoint]);
+
   const mapParticipants = useCallback((nextCallObject: DailyCallObject) => {
     const nextParticipants = Object.values(nextCallObject.participants() || {}).map((participant) =>
       toParticipantModel(participant)
@@ -195,11 +251,11 @@ export function VideoRoom({
   );
 
   const sendChatMessage = useCallback(
-    async (text: string) => {
+    async (text: string, type: "message" | "announcement" = "message") => {
       if (!callObject?.sendAppMessage || mode === "live-class" || !chatEnabled) return;
 
       const timestamp = new Date();
-      const message: ChatMessage = {
+      let message: ChatMessage = {
         id: `chat-${timestamp.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
         userId: user?.id,
         sender: currentUserName,
@@ -209,7 +265,39 @@ export function VideoRoom({
           minute: "2-digit",
         }),
         isLocal: true,
+        type,
       };
+
+      if (chatEndpoint) {
+        const response = await fetch(chatEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, type }),
+        });
+        const saved = (await response.json().catch(() => null)) as {
+          id?: string;
+          userId?: string;
+          sender?: string;
+          text?: string;
+          type?: "message" | "announcement";
+          createdAt?: string;
+          message?: string;
+        } | null;
+        if (!response.ok || !saved?.id)
+          throw new Error(saved?.message || "Unable to send message.");
+        message = {
+          id: saved.id,
+          userId: saved.userId,
+          sender: saved.sender || currentUserName,
+          text: saved.text || text,
+          time: new Date(saved.createdAt || timestamp).toLocaleTimeString("en-GB", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          isLocal: true,
+          type: saved.type || type,
+        };
+      }
 
       appendChatMessage(message);
       await callObject.sendAppMessage(
@@ -220,7 +308,7 @@ export function VideoRoom({
         "*"
       );
     },
-    [appendChatMessage, callObject, currentUserName, chatEnabled, mode, user?.id]
+    [appendChatMessage, callObject, currentUserName, chatEnabled, chatEndpoint, mode, user?.id]
   );
 
   const localParticipant = participants.find((participant) => participant.isLocal);
@@ -246,14 +334,19 @@ export function VideoRoom({
         const localParticipant = Object.values(targetCallObject.participants() || {}).find(
           (participant) => Boolean(participant.local)
         );
-        await fetch(`/api/classes/sessions/${sessionId}/attendance`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "left",
-            dailyParticipantId: localParticipant?.session_id || null,
-          }),
-        }).catch(() => undefined);
+        const resolvedAttendanceEndpoint =
+          attendanceEndpoint === undefined
+            ? `/api/classes/sessions/${sessionId}/attendance`
+            : attendanceEndpoint;
+        if (resolvedAttendanceEndpoint)
+          await fetch(resolvedAttendanceEndpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "left",
+              dailyParticipantId: localParticipant?.session_id || null,
+            }),
+          }).catch(() => undefined);
         hasRecordedJoinRef.current = false;
       }
 
@@ -265,7 +358,7 @@ export function VideoRoom({
         onLeaveRef.current(reason);
       }
     },
-    [sessionId]
+    [attendanceEndpoint, sessionId]
   );
 
   useEffect(() => {
@@ -389,6 +482,29 @@ export function VideoRoom({
 
           if (payloadData.type === "community-mode") {
             setCommunityMode(Boolean(payloadData.enabled));
+          }
+
+          if (payloadData.type === "display-mode") {
+            setCommunityMode(payloadData.mode === "gallery");
+          }
+
+          if (payloadData.type === "raise-hand") {
+            const handUserId = String(payloadData.userId || "");
+            const handName = String(payloadData.name || "Guest");
+            if (payloadData.raised) {
+              setRaisedHands((current) =>
+                current.some((item) => item.userId === handUserId)
+                  ? current
+                  : [...current, { userId: handUserId, name: handName }]
+              );
+            } else {
+              setRaisedHands((current) => current.filter((item) => item.userId !== handUserId));
+            }
+          }
+
+          if (payloadData.type === "reaction") {
+            setReaction(String(payloadData.reaction || ""));
+            window.setTimeout(() => setReaction(""), 1800);
           }
 
           if (payloadData.type === "moderation") {
@@ -556,19 +672,45 @@ export function VideoRoom({
     }
   }, []);
 
-  const broadcastModeration = async (action: "mute" | "remove", targetUserId: string) => {
+  const broadcastModeration = async (
+    action: "mute" | "remove",
+    participantId: string,
+    targetUserId: string
+  ) => {
     if (!callObject?.sendAppMessage) return;
+    if (moderationEndpoint) {
+      const response = await fetch(moderationEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, participantId }),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+        setStatusText(payload?.message || "Unable to moderate this participant.");
+        return;
+      }
+    }
     await callObject.sendAppMessage({ type: "moderation", action, targetUserId }, "*");
   };
 
   const toggleCommunityMode = async () => {
-    if (!isInstructor) return;
     const nextValue = !communityMode;
-    const response = await fetch(`/api/classes/sessions/${sessionId}/community-mode`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ enabled: nextValue }),
-    });
+    if (!isInstructor) {
+      setCommunityMode(nextValue);
+      return;
+    }
+    const response = await fetch(
+      displayModeEndpoint || `/api/classes/sessions/${sessionId}/community-mode`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          displayModeEndpoint
+            ? { mode: nextValue ? "gallery" : "presenter" }
+            : { enabled: nextValue }
+        ),
+      }
+    );
     const payload = (await response.json().catch(() => null)) as {
       dailySyncStatus?: string;
       message?: string;
@@ -582,7 +724,39 @@ export function VideoRoom({
     if (payload?.dailySyncStatus === "failed") {
       setStatusText("Mode updated, but some participant permissions may need a retry.");
     }
-    await callObject?.sendAppMessage?.({ type: "community-mode", enabled: nextValue }, "*");
+    await callObject?.sendAppMessage?.(
+      displayModeEndpoint
+        ? { type: "display-mode", mode: nextValue ? "gallery" : "presenter" }
+        : { type: "community-mode", enabled: nextValue },
+      "*"
+    );
+  };
+
+  const toggleScreenShare = async () => {
+    if (!isInstructor || !callObject) return;
+    if (isScreenSharing) await callObject.stopScreenShare?.();
+    else await callObject.startScreenShare?.();
+    setIsScreenSharing((value) => !value);
+  };
+
+  const toggleRaisedHand = async () => {
+    if (!callObject?.sendAppMessage || !user?.id) return;
+    const raised = !raisedHands.some((item) => item.userId === user.id);
+    setRaisedHands((current) =>
+      raised
+        ? [...current, { userId: user.id, name: currentUserName }]
+        : current.filter((item) => item.userId !== user.id)
+    );
+    await callObject.sendAppMessage(
+      { type: "raise-hand", userId: user.id, name: currentUserName, raised },
+      "*"
+    );
+  };
+
+  const sendReaction = async () => {
+    setReaction("👏");
+    await callObject?.sendAppMessage?.({ type: "reaction", reaction: "👏", userId: user?.id }, "*");
+    window.setTimeout(() => setReaction(""), 1800);
   };
 
   const endSession = async () => {
@@ -784,12 +958,12 @@ export function VideoRoom({
           {mode !== "live-class" || isInstructor ? (
             <button
               onClick={() => void toggleCommunityMode()}
-              disabled={!isInstructor}
+              disabled={false}
               className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs transition-colors ${
                 communityMode
                   ? "bg-brand-accent text-white"
                   : "bg-white/5 text-white/60 hover:bg-white/10"
-              } ${!isInstructor ? "cursor-default" : ""}`}
+              }`}
               title={communityMode ? "Community mode enabled" : "Focus mode enabled"}
             >
               {communityMode ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
@@ -825,6 +999,14 @@ export function VideoRoom({
               </Badge>
             </div>
           ) : null}
+          {reaction ? (
+            <div
+              aria-live="polite"
+              className="pointer-events-none absolute inset-x-0 top-20 z-20 text-center text-5xl"
+            >
+              {reaction}
+            </div>
+          ) : null}
 
           {!isReady ? (
             <div className="bg-video-panel flex flex-1 items-center justify-center rounded-lg border border-white/5 text-sm text-white/60">
@@ -838,8 +1020,12 @@ export function VideoRoom({
               participants={otherParticipants}
               communityMode={communityMode}
               considerations={instructorConsiderations}
-              onMute={(userId) => void broadcastModeration("mute", userId)}
-              onRemove={(userId) => void broadcastModeration("remove", userId)}
+              onMute={(participant) =>
+                void broadcastModeration("mute", participant.id, participant.userId)
+              }
+              onRemove={(participant) =>
+                void broadcastModeration("remove", participant.id, participant.userId)
+              }
             />
           ) : communityMode ? (
             <CommunityView
@@ -870,6 +1056,11 @@ export function VideoRoom({
             messages={chatMessages}
             onClose={() => setShowChat(false)}
             onSendMessage={(text) => void sendChatMessage(text)}
+            onSendAnnouncement={
+              isInstructor && chatEndpoint
+                ? (text) => void sendChatMessage(text, "announcement")
+                : undefined
+            }
           />
         ) : null}
       </div>
@@ -882,6 +1073,26 @@ export function VideoRoom({
           label={isMuted ? "Unmute" : "Mute"}
           danger={isMuted}
         />
+        <ControlButton
+          active={raisedHands.some((item) => item.userId === user?.id)}
+          onClick={() => void toggleRaisedHand()}
+          icon={Hand}
+          label="Raise hand"
+        />
+        <ControlButton
+          active={Boolean(reaction)}
+          onClick={() => void sendReaction()}
+          icon={Smile}
+          label="React"
+        />
+        {isInstructor && callObject?.startScreenShare ? (
+          <ControlButton
+            active={isScreenSharing}
+            onClick={() => void toggleScreenShare()}
+            icon={MonitorUp}
+            label={isScreenSharing ? "Stop sharing" : "Share screen"}
+          />
+        ) : null}
         <ControlButton
           active={isCameraOn}
           onClick={() => void toggleLocalVideo()}
@@ -923,6 +1134,27 @@ export function VideoRoom({
           >
             {isEnding ? "Ending..." : "End class"}
           </button>
+        ) : null}
+        {isInstructor && onStartRecording && onStopRecording ? (
+          <button
+            type="button"
+            onClick={async () => {
+              if (isRecording) await onStopRecording();
+              else await onStartRecording();
+              setIsRecording((value) => !value);
+            }}
+            className="rounded-lg bg-white/10 px-3 py-2 text-xs text-white hover:bg-white/15"
+          >
+            {isRecording ? "Stop recording" : "Record"}
+          </button>
+        ) : null}
+        {isInstructor && raisedHands.length > 0 ? (
+          <div
+            className="rounded-lg bg-amber-300/15 px-3 py-2 text-xs text-amber-100"
+            aria-live="polite"
+          >
+            Hands: {raisedHands.map((item) => item.name).join(", ")}
+          </div>
         ) : null}
       </footer>
 
@@ -979,8 +1211,8 @@ function InstructorView({
   participants: ParticipantTileModel[];
   communityMode: boolean;
   considerations: InstructorConsideration[];
-  onMute: (userId: string) => void;
-  onRemove: (userId: string) => void;
+  onMute: (participant: ParticipantTileModel) => void;
+  onRemove: (participant: ParticipantTileModel) => void;
 }) {
   return (
     <div className="grid flex-1 grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr]">
@@ -994,14 +1226,14 @@ function InstructorView({
             actionSlot={
               <div className="flex gap-2">
                 <button
-                  onClick={() => onMute(participant.userId)}
+                  onClick={() => onMute(participant)}
                   className="rounded-full bg-black/40 p-1.5 text-white transition-colors hover:bg-red-500/50"
                   title={`Mute ${participant.name}`}
                 >
                   <VolumeX className="h-3 w-3" />
                 </button>
                 <button
-                  onClick={() => onRemove(participant.userId)}
+                  onClick={() => onRemove(participant)}
                   className="rounded-full bg-black/40 p-1.5 text-white transition-colors hover:bg-red-500/50"
                   title={`Remove ${participant.name}`}
                 >
@@ -1065,17 +1297,52 @@ function CommunityView({
   selfParticipant: ParticipantTileModel | null;
   participants: ParticipantTileModel[];
 }) {
+  const [page, setPage] = useState(0);
+  const galleryParticipants = [selfParticipant, ...participants].filter(
+    (participant): participant is ParticipantTileModel => Boolean(participant)
+  );
+  const pageSize = 12;
+  const pageCount = Math.max(1, Math.ceil(galleryParticipants.length / pageSize));
+  const visibleParticipants = galleryParticipants.slice(page * pageSize, (page + 1) * pageSize);
   return (
     <div className="flex flex-1 flex-col gap-3 overflow-hidden">
       <ParticipantTile participant={instructor} size="lg" />
       <div className="grid flex-1 grid-cols-2 gap-3 md:grid-cols-3">
-        {selfParticipant ? (
-          <ParticipantTile participant={selfParticipant} size="sm" isLocal />
-        ) : null}
-        {participants.map((participant) => (
-          <ParticipantTile key={participant.id} participant={participant} size="sm" />
+        {visibleParticipants.map((participant) => (
+          <ParticipantTile
+            key={participant.id}
+            participant={participant}
+            size="sm"
+            isLocal={participant.isLocal}
+          />
         ))}
       </div>
+      {pageCount > 1 ? (
+        <nav
+          aria-label="Participant gallery pages"
+          className="flex items-center justify-center gap-3 text-xs text-white/70"
+        >
+          <button
+            type="button"
+            disabled={page === 0}
+            onClick={() => setPage((value) => Math.max(0, value - 1))}
+            className="rounded border border-white/15 px-3 py-1 disabled:opacity-40"
+          >
+            Previous
+          </button>
+          <span>
+            Page {page + 1} of {pageCount}
+          </span>
+          <button
+            type="button"
+            disabled={page >= pageCount - 1}
+            onClick={() => setPage((value) => Math.min(pageCount - 1, value + 1))}
+            className="rounded border border-white/15 px-3 py-1 disabled:opacity-40"
+          >
+            Next
+          </button>
+        </nav>
+      ) : null}
     </div>
   );
 }

@@ -12,7 +12,7 @@ vi.mock("@/lib/content/contentful-client", () => ({
   getEntryBySlug: mocks.getEntryBySlug,
 }));
 
-const { getBlogPostBySlug, getBlogPostPreviewBySlug, getBlogPosts } =
+const { getBlogPostBySlug, getBlogPostPreviewBySlug, getBlogPosts, getRetreatTemplates } =
   await import("@/lib/content/public-content");
 
 const richTextDocument = {
@@ -124,6 +124,73 @@ describe("Contentful public content mapping", () => {
     });
     expect(posts[0]?.content).toContain("- First point");
     expect(posts[0]?.content).toContain("Intro **paragraph**.");
+  });
+
+  it("maps linked retreat schedule days and activities in display order", async () => {
+    mocks.getEntries.mockResolvedValueOnce({
+      items: [
+        {
+          sys: { id: "retreat_1" },
+          fields: {
+            slug: "structured-retreat",
+            title: "Structured Retreat",
+            subtitle: "A calmer way to plan",
+            shortDescription: "Short description",
+            fullDescription: "Full description",
+            suitableFor: [],
+            included: [],
+            notIncluded: [],
+            scheduleDays: [{ sys: { id: "day_1" } }],
+          },
+        },
+      ],
+      includes: {
+        Entry: [
+          {
+            sys: { id: "day_1" },
+            fields: {
+              title: "Arrival",
+              dayLabel: "Day 1",
+              displayOrder: 1,
+              items: [{ sys: { id: "item_1" } }],
+            },
+          },
+          {
+            sys: { id: "item_1" },
+            fields: {
+              title: "Welcome circle",
+              startTime: "16:00",
+              displayOrder: 1,
+              isOptional: false,
+            },
+          },
+        ],
+      },
+    });
+
+    const templates = await getRetreatTemplates();
+
+    expect(templates[0]?.schedule).toEqual([
+      {
+        day: "Arrival",
+        title: "Arrival",
+        activities: ["16:00 Welcome circle"],
+        items: [
+          {
+            startTime: "16:00",
+            endTime: undefined,
+            title: "Welcome circle",
+            description: undefined,
+            category: undefined,
+            isOptional: false,
+          },
+        ],
+      },
+    ]);
+    expect(mocks.getEntries).toHaveBeenCalledWith("retreatTemplate", {
+      limit: 200,
+      include: 2,
+    });
   });
 
   it("converts legacy HTML photo-credit links into safe Markdown", async () => {

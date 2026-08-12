@@ -91,6 +91,17 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
         { status: 409 }
       );
     }
+    if (error instanceof Error && error.message === "RECIPIENT_EMAIL_MISMATCH") {
+      return NextResponse.json(
+        {
+          code: "RECIPIENT_EMAIL_MISMATCH",
+          message:
+            "This gift was addressed to a different email. Sign in with the recipient email or contact support to have it corrected.",
+          supportUrl: "/contact",
+        },
+        { status: 403 }
+      );
+    }
     console.error("POST /api/gift/redeem/[code] failed", error);
     return NextResponse.json({ message: "Failed to redeem gift." }, { status: 500 });
   }

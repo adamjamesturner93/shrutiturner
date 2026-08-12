@@ -218,18 +218,21 @@ export async function syncReplayAssetFromDailyWebhook(input: {
   if (updated.resourceType === "class_session" && updated.classSessionId) {
     await createClassReplayEntitlements(updated.id, updated.classSessionId);
   }
-  if (updated.resourceType === "retreat_date" && updated.retreatDateId) {
-    await createRetreatReplayEntitlements(updated.id, updated.retreatDateId, updated.completedAt);
-  }
-
   return updated;
 }
 
-async function createRetreatReplayEntitlements(
+export async function publishRetreatReplay(
   replayAssetId: string,
   retreatDateId: string,
-  completedAt: Date | null
+  actorUserId: string
 ) {
+  const asset = await db.replayAsset.findFirst({
+    where: { id: replayAssetId, retreatDateId, resourceType: "retreat_date" },
+  });
+  if (!asset) throw new Error("REPLAY_NOT_FOUND");
+  if (asset.status !== ReplayAssetStatus.ready || !asset.playbackUrl) {
+    throw new Error("REPLAY_NOT_READY");
+  }
   const retreatDate = await db.retreatDate.findUnique({
     where: { id: retreatDateId },
     select: {
@@ -244,7 +247,7 @@ async function createRetreatReplayEntitlements(
   });
   if (!retreatDate) return;
 
-  const replayAvailableAt = completedAt || now();
+  const replayAvailableAt = now();
   const replayExpiresAt = new Date(
     replayAvailableAt.getTime() +
       Math.max(retreatDate.replayAccessDurationDays || 0, 1) * 24 * 60 * 60 * 1000
@@ -298,6 +301,49 @@ async function createRetreatReplayEntitlements(
       })
     ),
   ]);
+  await createAdminActionLog({
+    actorUserId,
+    actionType: "retreat_replay_published",
+    targetType: "replay_asset",
+    targetId: replayAssetId,
+    metadataJson: { retreatDateId, replayExpiresAt: replayExpiresAt.toISOString() },
+  });
+  return { replayAssetId, replayAvailableAt, replayExpiresAt };
+}
+
+export async function revokeRetreatReplay(
+  replayAssetId: string,
+  retreatDateId: string,
+  actorUserId: string
+) {
+  const asset = await db.replayAsset.findFirst({
+    where: { id: replayAssetId, retreatDateId, resourceType: "retreat_date" },
+    select: { id: true },
+  });
+  if (!asset) throw new Error("REPLAY_NOT_FOUND");
+  const revokedAt = now();
+  await db.$transaction([
+    db.retreatDate.update({
+      where: { id: retreatDateId },
+      data: { replayAvailable: false },
+    }),
+    db.retreatOnlineAccessEntitlement.updateMany({
+      where: { retreatDateId },
+      data: { replayAccessEnabled: false, replayAvailableAt: null, replayExpiresAt: null },
+    }),
+    db.replayEntitlement.updateMany({
+      where: { replayAssetId, revokedAt: null },
+      data: { revokedAt, revokedByUserId: actorUserId },
+    }),
+  ]);
+  await createAdminActionLog({
+    actorUserId,
+    actionType: "retreat_replay_revoked",
+    targetType: "replay_asset",
+    targetId: replayAssetId,
+    metadataJson: { retreatDateId },
+  });
+  return { replayAssetId, revokedAt };
 }
 
 async function createClassReplayEntitlements(replayAssetId: string, classSessionId: string) {

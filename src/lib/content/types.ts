@@ -45,6 +45,8 @@ export interface RetreatRoomOptionContent {
   description: string;
   type: "shared_twin" | "single" | "shared_private" | "virtual";
   bookingUnit?: "bed_space" | "whole_room" | "ticket" | "addon" | "online_live_place";
+  /** Base units removed from a shared inventory pool for one booking. */
+  inventoryUnitsPerBooking?: number;
   guestsIncluded: number;
   guestCountPerUnit?: number;
   allowedGuestCounts?: number[];

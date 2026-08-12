@@ -8,7 +8,6 @@ import {
   ArrowLeft,
   Calendar,
   Download,
-  ExternalLink,
   MapPin,
   PoundSterling,
   Plus,
@@ -97,6 +96,9 @@ export function AdminRetreatDetail({
     | "addon"
     | "room"
     | "gift-refund"
+    | "gift-recipient"
+    | "replay"
+    | "configuration"
   >("");
   const [earlyBirdDrafts, setEarlyBirdDrafts] = useState<
     Record<string, { pricePounds: string; endsAt: string }>
@@ -106,6 +108,17 @@ export function AdminRetreatDetail({
     description: "",
     pricePounds: "",
     totalQuantity: "",
+  });
+  const [inventoryDrafts, setInventoryDrafts] = useState<Record<string, { totalQuantity: string }>>(
+    {}
+  );
+  const [roomOptionDrafts, setRoomOptionDrafts] = useState<
+    Record<string, { inventoryPoolId: string; inventoryUnitsPerBooking: string; capacity: string }>
+  >({});
+  const [paymentDraft, setPaymentDraft] = useState({
+    depositType: "percentage" as "percentage" | "fixed_amount" | "full_payment",
+    depositValue: "20",
+    balanceDueDaysBeforeStart: "56",
   });
 
   useEffect(() => {
@@ -124,6 +137,37 @@ export function AdminRetreatDetail({
         ])
       )
     );
+    setInventoryDrafts(
+      Object.fromEntries(
+        retreat.inventoryPools.map((pool) => [
+          pool.id,
+          { totalQuantity: String(pool.totalQuantity) },
+        ])
+      )
+    );
+    setRoomOptionDrafts(
+      Object.fromEntries(
+        retreat.roomOptions.map((option) => [
+          option.id,
+          {
+            inventoryPoolId: option.inventoryPoolId || "",
+            inventoryUnitsPerBooking: String(option.inventoryUnitsPerBooking),
+            capacity: String(option.capacity),
+          },
+        ])
+      )
+    );
+    const rule = retreat.depositRule;
+    setPaymentDraft({
+      depositType: rule?.depositType || "full_payment",
+      depositValue:
+        rule?.depositType === "percentage"
+          ? String((rule.depositPercentageBasisPoints || 0) / 100)
+          : rule?.depositType === "fixed_amount"
+            ? String((rule.fixedDepositAmountPence || 0) / 100)
+            : "",
+      balanceDueDaysBeforeStart: String(rule?.balanceDueDaysBeforeStart ?? 56),
+    });
   }, [retreat]);
 
   useEffect(() => {
@@ -194,7 +238,17 @@ export function AdminRetreatDetail({
   }, [retreat]);
 
   const runRetreatAction = async (
-    action: "online-room" | "balance-due" | "chaser" | "status" | "addon" | "room" | "gift-refund",
+    action:
+      | "online-room"
+      | "balance-due"
+      | "chaser"
+      | "status"
+      | "addon"
+      | "room"
+      | "gift-refund"
+      | "gift-recipient"
+      | "replay"
+      | "configuration",
     request: () => Promise<Response>
   ) => {
     setActionLoading(action);
@@ -222,7 +276,10 @@ export function AdminRetreatDetail({
           action === "status" ||
           action === "addon" ||
           action === "room" ||
-          action === "gift-refund") &&
+          action === "gift-refund" ||
+          action === "gift-recipient" ||
+          action === "replay" ||
+          action === "configuration") &&
         payload &&
         "id" in payload
       ) {
@@ -236,7 +293,13 @@ export function AdminRetreatDetail({
                 ? "Room assignment updated."
                 : action === "gift-refund"
                   ? "Gift purchase cancelled and refund submitted."
-                  : "Status updated."
+                  : action === "gift-recipient"
+                    ? "Gift invitation updated and resent."
+                    : action === "replay"
+                      ? "Replay access updated."
+                      : action === "configuration"
+                        ? "Inventory and payment rules updated."
+                        : "Status updated."
         );
       } else if (payload && "sent" in payload) {
         setActionMessage(`Emails sent: ${payload.sent}. Skipped: ${payload.skipped ?? 0}.`);
@@ -292,6 +355,72 @@ export function AdminRetreatDetail({
     await runRetreatAction("addon", () =>
       fetch(`/api/admin/retreats/${retreat.id}/addons?addonId=${encodeURIComponent(addonId)}`, {
         method: "DELETE",
+      })
+    );
+  };
+
+  const saveConfiguration = async () => {
+    if (!retreat) return;
+    const inventoryPools = retreat.inventoryPools.map((pool) => ({
+      id: pool.id,
+      totalQuantity: Number(inventoryDrafts[pool.id]?.totalQuantity),
+    }));
+    const roomOptions = retreat.roomOptions.map((option) => {
+      const draft = roomOptionDrafts[option.id];
+      return {
+        id: option.id,
+        inventoryPoolId: draft?.inventoryPoolId || "",
+        inventoryUnitsPerBooking: Number(draft?.inventoryUnitsPerBooking),
+        capacity: Number(draft?.capacity),
+      };
+    });
+    const depositNumber = Number(paymentDraft.depositValue);
+    const balanceDays = Number(paymentDraft.balanceDueDaysBeforeStart);
+    if (
+      inventoryPools.some(
+        (pool) => !Number.isInteger(pool.totalQuantity) || pool.totalQuantity < 1
+      ) ||
+      roomOptions.some(
+        (option) =>
+          !option.inventoryPoolId ||
+          !Number.isInteger(option.inventoryUnitsPerBooking) ||
+          option.inventoryUnitsPerBooking < 1 ||
+          !Number.isInteger(option.capacity) ||
+          option.capacity < 1
+      )
+    ) {
+      setError("Inventory quantities must be whole numbers greater than zero.");
+      return;
+    }
+    if (
+      (paymentDraft.depositType === "percentage" &&
+        (!Number.isFinite(depositNumber) || depositNumber <= 0 || depositNumber > 100)) ||
+      (paymentDraft.depositType === "fixed_amount" &&
+        (!Number.isFinite(depositNumber) || depositNumber < 0)) ||
+      (paymentDraft.depositType !== "full_payment" &&
+        (!Number.isInteger(balanceDays) || balanceDays < 0))
+    ) {
+      setError("Enter a valid deposit and balance deadline.");
+      return;
+    }
+
+    await runRetreatAction("configuration", () =>
+      fetch(`/api/admin/retreats/${retreat.id}/configuration`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          inventoryPools,
+          roomOptions,
+          payment: {
+            depositType: paymentDraft.depositType,
+            depositPercentageBasisPoints:
+              paymentDraft.depositType === "percentage" ? Math.round(depositNumber * 100) : null,
+            fixedDepositAmountPence:
+              paymentDraft.depositType === "fixed_amount" ? Math.round(depositNumber * 100) : null,
+            balanceDueDaysBeforeStart:
+              paymentDraft.depositType === "full_payment" ? null : balanceDays,
+          },
+        }),
       })
     );
   };
@@ -657,47 +786,250 @@ export function AdminRetreatDetail({
 
           <Card>
             <CardHeader>
+              <CardTitle className="text-lg">
+                {retreat.retreatType === "online" ? "Ticket inventory" : "Accommodation inventory"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <p className="text-muted-foreground text-sm">
+                Pools represent the real underlying stock. Options sharing a pool automatically
+                reduce one another. For a convertible twin/king room, use a pool of 2 base units,
+                set a shared bed to consume 1 and the whole king room to consume 2.
+              </p>
+
+              <div className="space-y-3">
+                <h3 className="font-medium">Inventory pools</h3>
+                {retreat.inventoryPools.map((pool) => (
+                  <div
+                    key={pool.id}
+                    className="grid gap-3 rounded-lg border p-4 sm:grid-cols-[1fr_10rem] sm:items-end"
+                  >
+                    <div>
+                      <p className="font-medium">{pool.name}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {pool.inventoryType.replaceAll("_", " ")}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`pool-quantity-${pool.id}`}>Base units</Label>
+                      <Input
+                        id={`pool-quantity-${pool.id}`}
+                        type="number"
+                        min="1"
+                        step="1"
+                        disabled={retreat.pricingLocked}
+                        value={inventoryDrafts[pool.id]?.totalQuantity || ""}
+                        onChange={(event) =>
+                          setInventoryDrafts((current) => ({
+                            ...current,
+                            [pool.id]: { totalQuantity: event.target.value },
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="font-medium">Sellable options</h3>
+                {retreat.roomOptions.map((option) => {
+                  const draft = roomOptionDrafts[option.id] || {
+                    inventoryPoolId: "",
+                    inventoryUnitsPerBooking: "1",
+                    capacity: "1",
+                  };
+                  return (
+                    <div key={option.id} className="rounded-lg border p-4">
+                      <p className="font-medium">{option.label}</p>
+                      <div className="mt-3 grid gap-3 md:grid-cols-3">
+                        <div className="space-y-2">
+                          <Label htmlFor={`option-pool-${option.id}`}>Shared pool</Label>
+                          <select
+                            id={`option-pool-${option.id}`}
+                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                            disabled={retreat.pricingLocked}
+                            value={draft.inventoryPoolId}
+                            onChange={(event) =>
+                              setRoomOptionDrafts((current) => ({
+                                ...current,
+                                [option.id]: { ...draft, inventoryPoolId: event.target.value },
+                              }))
+                            }
+                          >
+                            <option value="">Choose a pool</option>
+                            {retreat.inventoryPools.map((pool) => (
+                              <option key={pool.id} value={pool.id}>
+                                {pool.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`option-units-${option.id}`}>Units consumed</Label>
+                          <Input
+                            id={`option-units-${option.id}`}
+                            type="number"
+                            min="1"
+                            step="1"
+                            disabled={retreat.pricingLocked}
+                            value={draft.inventoryUnitsPerBooking}
+                            onChange={(event) =>
+                              setRoomOptionDrafts((current) => ({
+                                ...current,
+                                [option.id]: {
+                                  ...draft,
+                                  inventoryUnitsPerBooking: event.target.value,
+                                },
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`option-capacity-${option.id}`}>Maximum bookings</Label>
+                          <Input
+                            id={`option-capacity-${option.id}`}
+                            type="number"
+                            min="1"
+                            step="1"
+                            disabled={retreat.pricingLocked}
+                            value={draft.capacity}
+                            onChange={(event) =>
+                              setRoomOptionDrafts((current) => ({
+                                ...current,
+                                [option.id]: { ...draft, capacity: event.target.value },
+                              }))
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle className="text-lg">Payment structure</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-3">
-              <div>
-                <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                  Retreat price
-                </p>
-                <p className="mt-1">{formatCurrency(retreat.pricePence)}</p>
+            <CardContent className="space-y-5">
+              {retreat.status === "draft" ? (
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="deposit-type">Payment rule</Label>
+                    <select
+                      id="deposit-type"
+                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                      value={paymentDraft.depositType}
+                      onChange={(event) =>
+                        setPaymentDraft((current) => ({
+                          ...current,
+                          depositType: event.target.value as typeof current.depositType,
+                        }))
+                      }
+                    >
+                      <option value="percentage">Percentage deposit</option>
+                      <option value="fixed_amount">Fixed deposit</option>
+                      <option value="full_payment">Full payment</option>
+                    </select>
+                  </div>
+                  {paymentDraft.depositType !== "full_payment" ? (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="deposit-value">
+                          {paymentDraft.depositType === "percentage"
+                            ? "Deposit (%)"
+                            : "Deposit (£)"}
+                        </Label>
+                        <Input
+                          id="deposit-value"
+                          type="number"
+                          min={paymentDraft.depositType === "percentage" ? "0.01" : "0"}
+                          max={paymentDraft.depositType === "percentage" ? "100" : undefined}
+                          step="0.01"
+                          value={paymentDraft.depositValue}
+                          onChange={(event) =>
+                            setPaymentDraft((current) => ({
+                              ...current,
+                              depositValue: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="balance-days">Balance due (days before start)</Label>
+                        <Input
+                          id="balance-days"
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={paymentDraft.balanceDueDaysBeforeStart}
+                          onChange={(event) =>
+                            setPaymentDraft((current) => ({
+                              ...current,
+                              balanceDueDaysBeforeStart: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <p className="text-muted-foreground text-xs tracking-wide uppercase">
+                    Retreat price
+                  </p>
+                  <p className="mt-1">{formatCurrency(retreat.pricePence)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs tracking-wide uppercase">
+                    Payment policy
+                  </p>
+                  <p className="mt-1">
+                    {retreat.paymentPolicy === "full_payment"
+                      ? "Full payment required"
+                      : `Deposit ${formatCurrency(retreat.depositAmountPence)}`}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs tracking-wide uppercase">
+                    Single room supplement
+                  </p>
+                  <p className="mt-1">{formatCurrency(retreat.singleRoomSupplementPence)}</p>
+                </div>
+                <div className="sm:col-span-3">
+                  <p className="text-muted-foreground text-xs tracking-wide uppercase">
+                    Balance due date
+                  </p>
+                  <p className="mt-1">
+                    {retreat.paymentPolicy === "full_payment"
+                      ? "No balance; full payment is taken at checkout"
+                      : retreat.balanceDueAt
+                        ? new Intl.DateTimeFormat("en-GB", {
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                          }).format(new Date(retreat.balanceDueAt))
+                        : "Before arrival"}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                  Payment policy
-                </p>
-                <p className="mt-1">
-                  {retreat.paymentPolicy === "full_payment"
-                    ? "Full payment required"
-                    : `Deposit ${formatCurrency(retreat.depositAmountPence)}`}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                  Single room supplement
-                </p>
-                <p className="mt-1">{formatCurrency(retreat.singleRoomSupplementPence)}</p>
-              </div>
-              <div className="sm:col-span-3">
-                <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                  Balance due date
-                </p>
-                <p className="mt-1">
-                  {retreat.paymentPolicy === "full_payment"
-                    ? "No balance; full payment is taken at checkout"
-                    : retreat.balanceDueAt
-                      ? new Intl.DateTimeFormat("en-GB", {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        }).format(new Date(retreat.balanceDueAt))
-                      : "Before arrival"}
-                </p>
-              </div>
+              {retreat.status === "draft" ? (
+                <Button
+                  type="button"
+                  disabled={actionLoading !== ""}
+                  onClick={() => void saveConfiguration()}
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  {actionLoading === "configuration"
+                    ? "Saving..."
+                    : "Save inventory and payment rules"}
+                </Button>
+              ) : null}
             </CardContent>
           </Card>
 
@@ -821,6 +1153,41 @@ export function AdminRetreatDetail({
                     <Plus className="mr-2 h-4 w-4" />
                     {actionLoading === "addon" ? "Saving..." : "Add optional extra"}
                   </Button>
+                  {retreat.replayAssets[0] ? (
+                    <div className="mt-4 rounded-lg border p-4">
+                      <p className="font-medium">Replay</p>
+                      <p className="text-muted-foreground mt-1">
+                        Recording status: {retreat.replayAssets[0].status.replaceAll("_", " ")}
+                      </p>
+                      <p className="text-muted-foreground mt-1">
+                        {retreat.replayPublished
+                          ? "Published to eligible attendees."
+                          : "Not published. Recording readiness never grants access automatically."}
+                      </p>
+                      <Button
+                        type="button"
+                        variant={retreat.replayPublished ? "outline" : "default"}
+                        className="mt-3 w-full"
+                        disabled={
+                          actionLoading !== "" || retreat.replayAssets[0].status !== "ready"
+                        }
+                        onClick={() =>
+                          void runRetreatAction("replay", () =>
+                            fetch(`/api/admin/retreats/${retreat.id}/replay`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                action: retreat.replayPublished ? "revoke" : "publish",
+                                replayAssetId: retreat.replayAssets[0].id,
+                              }),
+                            })
+                          )
+                        }
+                      >
+                        {retreat.replayPublished ? "Revoke replay access" : "Publish replay"}
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </CardContent>
@@ -840,16 +1207,13 @@ export function AdminRetreatDetail({
                       <p className="text-muted-foreground mt-1">
                         Status: {retreat.roomSetupStatus.replaceAll("_", " ")}
                       </p>
-                      {retreat.dailyRoomUrl ? (
-                        <a
-                          href={retreat.dailyRoomUrl}
-                          target="_blank"
-                          rel="noreferrer"
+                      {retreat.liveRoomPrepared ? (
+                        <Link
+                          href={`/dashboard/retreats/host/${retreat.id}`}
                           className="text-brand-accent mt-2 inline-flex items-center gap-1 underline"
                         >
-                          Open room
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
+                          Open protected host room
+                        </Link>
                       ) : null}
                       {retreat.roomSetupError ? (
                         <p className="mt-2 text-red-700">{retreat.roomSetupError}</p>
@@ -869,7 +1233,7 @@ export function AdminRetreatDetail({
                     }
                   >
                     <Video className="mr-2 h-4 w-4" />
-                    {actionLoading === "online-room" ? "Creating..." : "Create or refresh room"}
+                    {actionLoading === "online-room" ? "Preparing..." : "Prepare live room"}
                   </Button>
                 </div>
               ) : null}
@@ -1073,28 +1437,79 @@ export function AdminRetreatDetail({
                       </td>
                       <td className="py-3 text-right">
                         {gift.status === "purchased" ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            disabled={actionLoading !== ""}
-                            onClick={() => {
-                              if (
-                                !window.confirm(
-                                  "Cancel this unredeemed gift and submit the policy-based refund? This cannot be undone."
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={actionLoading !== ""}
+                              onClick={() => {
+                                const recipientEmail = window.prompt(
+                                  "Correct recipient email",
+                                  gift.recipientEmail
+                                );
+                                if (!recipientEmail || recipientEmail === gift.recipientEmail)
+                                  return;
+                                void runRetreatAction("gift-recipient", () =>
+                                  fetch(
+                                    `/api/admin/retreats/${retreat.id}/gifts/${gift.id}/recipient`,
+                                    {
+                                      method: "PATCH",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ recipientEmail }),
+                                    }
+                                  )
+                                );
+                              }}
+                            >
+                              Correct email
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={actionLoading !== ""}
+                              onClick={() =>
+                                void runRetreatAction("gift-recipient", () =>
+                                  fetch(
+                                    `/api/admin/retreats/${retreat.id}/gifts/${gift.id}/recipient`,
+                                    {
+                                      method: "PATCH",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ action: "resend" }),
+                                    }
+                                  )
                                 )
-                              ) {
-                                return;
                               }
-                              void runRetreatAction("gift-refund", () =>
-                                fetch(`/api/admin/retreats/${retreat.id}/gifts/${gift.id}/refund`, {
-                                  method: "POST",
-                                })
-                              );
-                            }}
-                          >
-                            Refund gift
-                          </Button>
+                            >
+                              Resend invite
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={actionLoading !== ""}
+                              onClick={() => {
+                                if (
+                                  !window.confirm(
+                                    "Cancel this unredeemed gift and submit the policy-based refund? This cannot be undone."
+                                  )
+                                ) {
+                                  return;
+                                }
+                                void runRetreatAction("gift-refund", () =>
+                                  fetch(
+                                    `/api/admin/retreats/${retreat.id}/gifts/${gift.id}/refund`,
+                                    {
+                                      method: "POST",
+                                    }
+                                  )
+                                );
+                              }}
+                            >
+                              Refund gift
+                            </Button>
+                          </div>
                         ) : (
                           <span className="text-muted-foreground text-xs">No action needed</span>
                         )}
@@ -1226,7 +1641,12 @@ export function AdminRetreatDetail({
                           >
                             <option value="">Not assigned</option>
                             {retreat.roomUnits
-                              .filter((unit) => unit.roomOptionId === booking.roomOptionId)
+                              .filter(
+                                (unit) =>
+                                  unit.roomOptionId === booking.roomOptionId ||
+                                  (booking.inventoryPoolId &&
+                                    unit.inventoryPoolId === booking.inventoryPoolId)
+                              )
                               .map((unit) => (
                                 <option
                                   key={unit.id}

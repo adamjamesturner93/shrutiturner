@@ -31,7 +31,12 @@ function contentTypeToTags(contentType: string) {
   if (contentType === "classDefinition") return ["content:classes", "content:schedule"];
   if (contentType === "smallGroupProgramme") return ["content:classes"];
   if (contentType === "instructorProfile") return ["content:classes", "content:schedule"];
-  if (contentType === "retreatTemplate" || contentType === "retreatVenue") {
+  if (
+    contentType === "retreatTemplate" ||
+    contentType === "retreatVenue" ||
+    contentType === "retreatScheduleDay" ||
+    contentType === "retreatScheduleItem"
+  ) {
     return ["content:retreats"];
   }
   if (contentType === "blogPost") return ["content:blog"];
@@ -51,6 +56,8 @@ function topicToTags(topic: string) {
     "instructorProfile",
     "retreatTemplate",
     "retreatVenue",
+    "retreatScheduleDay",
+    "retreatScheduleItem",
     "blogPost",
     "authorProfile",
     "newsletterSignupContent",

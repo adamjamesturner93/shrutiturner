@@ -833,6 +833,7 @@ async function seedRetreatInventory(retreatUserId: string, instructorUserId?: st
           },
           update: {
             inventoryPoolId: inventoryPool.id,
+            inventoryUnitsPerBooking: roomOption.inventoryUnitsPerBooking ?? 1,
             label: roomOption.label,
             description: roomOption.description,
             roomType: roomOption.type,
@@ -859,6 +860,7 @@ async function seedRetreatInventory(retreatUserId: string, instructorUserId?: st
             id: `seed_retreat_room_${retreat.slug}_${roomOption.id}`,
             retreatDateId: retreatDate.id,
             inventoryPoolId: inventoryPool.id,
+            inventoryUnitsPerBooking: roomOption.inventoryUnitsPerBooking ?? 1,
             externalRoomOptionId: roomOption.id,
             label: roomOption.label,
             description: roomOption.description,
@@ -926,6 +928,7 @@ async function seedRetreatInventory(retreatUserId: string, instructorUserId?: st
               },
             },
             update: {
+              inventoryPoolId: inventoryPool.id,
               status: "available",
               capacityUnits:
                 roomOption.bookingUnit === "bed_space"
@@ -936,6 +939,7 @@ async function seedRetreatInventory(retreatUserId: string, instructorUserId?: st
               id: `seed_retreat_room_unit_${retreat.slug}_${date.id}_${roomOption.id}_${index}`,
               retreatDateId: retreatDate.id,
               roomOptionId: dbRoomOption.id,
+              inventoryPoolId: inventoryPool.id,
               label: `${roomOption.label} ${index}`,
               capacityUnits:
                 roomOption.bookingUnit === "bed_space"

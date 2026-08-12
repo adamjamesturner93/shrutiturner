@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { recordAttendanceEvent } from "@/lib/classes/attendance-service";
 import { verifyDailyWebhookAuthorization } from "@/lib/daily/service";
 import { syncReplayAssetFromDailyWebhook } from "@/lib/replay/service";
+import { recordRetreatAttendanceEvent } from "@/lib/retreats/live-service";
 
 type DailyWebhookPayload = {
   event?: string;
@@ -31,6 +32,8 @@ type DailyWebhookPayload = {
     user_id?: string;
     session_id?: string;
   };
+  timestamp?: string;
+  occurred_at?: string;
 };
 
 function getRoomName(payload: DailyWebhookPayload) {
@@ -105,16 +108,32 @@ export async function POST(request: Request) {
       select: { id: true },
     });
 
-    if (!session) {
-      return NextResponse.json({ ignored: true });
+    if (session) {
+      await recordAttendanceEvent({
+        sessionId: session.id,
+        userId,
+        type,
+        dailyParticipantId: getParticipantId(payload),
+        payload: payload as Record<string, unknown>,
+      });
+      return NextResponse.json({ ok: true });
     }
 
-    await recordAttendanceEvent({
-      sessionId: session.id,
+    const retreatDate = await db.retreatDate.findFirst({
+      where: { dailyRoomName: roomName },
+      select: { id: true },
+    });
+    const dailySessionId = getParticipantId(payload);
+    if (!retreatDate || !dailySessionId) return NextResponse.json({ ignored: true });
+    const timestamp = payload.occurred_at || payload.timestamp;
+    const parsedTimestamp = timestamp ? new Date(timestamp) : null;
+    await recordRetreatAttendanceEvent({
+      retreatDateId: retreatDate.id,
       userId,
       type,
-      dailyParticipantId: getParticipantId(payload),
-      payload: payload as Record<string, unknown>,
+      dailySessionId,
+      occurredAt:
+        parsedTimestamp && !Number.isNaN(parsedTimestamp.getTime()) ? parsedTimestamp : undefined,
     });
 
     return NextResponse.json({ ok: true });

@@ -8,6 +8,7 @@ export function normalizeEmail(value: string) {
 }
 
 export function generateAuthCode() {
+  if (env.NEXT_PUBLIC_E2E_TEST_MODE === "1") return "123456";
   return String(randomInt(100000, 999999));
 }
 

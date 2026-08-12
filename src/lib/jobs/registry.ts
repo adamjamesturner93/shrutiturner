@@ -3,6 +3,7 @@ import { env } from "@/lib/env";
 import { cleanupScheduledJobRuntimeData } from "@/lib/jobs/runtime-maintenance";
 import { processTransactionalEmailRetries } from "@/lib/jobs/transactional-email";
 import { processDueContentfulCampaigns } from "@/lib/newsletter/campaign-automation";
+import { maintainRetreatLiveSessions } from "@/lib/retreats/live-jobs";
 
 type JobHandlerResult = Record<string, unknown>;
 
@@ -14,6 +15,12 @@ export type RegisteredJob = {
 };
 
 const registry: RegisteredJob[] = [
+  {
+    jobName: "retreat_live_maintenance",
+    triggerTypes: [ScheduledJobTriggerType.cron, ScheduledJobTriggerType.manual],
+    previewSafe: false,
+    run: () => maintainRetreatLiveSessions(),
+  },
   {
     jobName: "scheduled_job_runtime_cleanup",
     triggerTypes: [ScheduledJobTriggerType.cron, ScheduledJobTriggerType.manual],

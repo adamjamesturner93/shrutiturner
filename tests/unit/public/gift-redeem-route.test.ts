@@ -76,4 +76,32 @@ describe("POST /api/gift/redeem/[code]", () => {
       });
     }
   );
+
+  it("returns a clear support path when the signed-in email is not the recipient", async () => {
+    redeemGiftPurchaseMock.mockRejectedValue(new Error("RECIPIENT_EMAIL_MISMATCH"));
+    const response = await route.POST(request(), {
+      params: Promise.resolve({ code: "gift-code" }),
+    });
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "RECIPIENT_EMAIL_MISMATCH",
+      supportUrl: "/contact",
+    });
+  });
+
+  it("returns the booking and stable live destination after redemption", async () => {
+    redeemGiftPurchaseMock.mockResolvedValue({
+      type: "retreat",
+      bookingId: "booking_1",
+      nextUrl: "/dashboard/retreats/booking_1/live",
+    });
+    const response = await route.POST(request({ attendeeFirstName: "Asha" }), {
+      params: Promise.resolve({ code: "gift-code" }),
+    });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      bookingId: "booking_1",
+      nextUrl: "/dashboard/retreats/booking_1/live",
+    });
+  });
 });

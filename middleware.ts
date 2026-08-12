@@ -36,14 +36,14 @@ export default auth((req) => {
 
   if (!isAuthed && (pathname.startsWith("/dashboard") || pathname.startsWith("/account"))) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
-    loginUrl.searchParams.set("redirect", pathname);
+    loginUrl.searchParams.set("redirect", `${pathname}${req.nextUrl.search}`);
     return NextResponse.redirect(loginUrl);
   }
 
   if (pathname.startsWith("/admin")) {
     if (!isAuthed) {
       const loginUrl = new URL("/login", req.nextUrl.origin);
-      loginUrl.searchParams.set("redirect", pathname);
+      loginUrl.searchParams.set("redirect", `${pathname}${req.nextUrl.search}`);
       return NextResponse.redirect(loginUrl);
     }
     if (!isStaffAdminRole(role)) {

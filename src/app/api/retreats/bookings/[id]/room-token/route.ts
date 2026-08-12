@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api/auth-user";
 import { createMeetingToken, isDailyConfigured } from "@/lib/daily/service";
-import { getRetreatLiveRoomAccess } from "@/lib/retreats/service";
+import { getRetreatParticipantTokenContext } from "@/lib/retreats/live-service";
+import { isAcceptanceRequiredError } from "@/lib/legal/acceptance-service";
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -10,24 +11,44 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     }
     const user = await requireSessionUser();
     const { id } = await context.params;
-    const access = await getRetreatLiveRoomAccess(id, user.id);
+    const access = await getRetreatParticipantTokenContext(id, user.id);
     const token = await createMeetingToken({
       roomName: access.roomName,
       userId: user.id,
       userName: access.userName,
       isOwner: false,
       expiresAt: access.expiresAt,
+      permissions: {
+        hasPresence: true,
+        canSend: ["video", "audio"],
+        canReceive: { base: true },
+        canAdmin: false,
+      },
     });
     return NextResponse.json({
       token,
       roomUrl: access.roomUrl,
-      communityModeEnabled: true,
+      participantRole: access.participantRole,
+      roomState: access.roomState,
+      displayMode: access.displayMode,
+      displayVersion: access.displayVersion,
+      focusedPresenterUserId: access.focusedPresenterUserId,
+      communityModeEnabled: access.displayMode === "gallery",
       defaultMicMuted: access.defaultMicMuted,
       defaultCameraOff: access.defaultCameraOff,
       isRecorded: access.isRecorded,
       chatEnabled: access.chatEnabled,
+      capabilities: {
+        chat: access.chatEnabled,
+        recording: access.canRecord,
+        moderation: access.canModerate,
+        publishReplay: access.canPublishReplay,
+      },
     });
   } catch (error) {
+    if (isAcceptanceRequiredError(error)) {
+      return NextResponse.json(error.details, { status: 409 });
+    }
     const code = error instanceof Error ? error.message : "";
     if (code === "UNAUTHORIZED") {
       return NextResponse.json({ message: "Sign in to join this workshop." }, { status: 401 });

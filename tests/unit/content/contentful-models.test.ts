@@ -11,6 +11,8 @@ const retainedContentTypes = [
   "leadMagnet",
   "newsletterSignupContent",
   "newsletterTemplate",
+  "retreatScheduleDay",
+  "retreatScheduleItem",
   "retreatTemplate",
   "retreatVenue",
   "smallGroupProgramme",
@@ -39,7 +41,20 @@ describe("Contentful public content models", () => {
   it("seeds only retained Contentful models", () => {
     const seededTypes = SEED_GROUPS.map((group) => group.contentType).sort();
 
-    expect(seededTypes).toEqual([...retainedContentTypes].sort());
+    expect(seededTypes).toEqual(
+      retainedContentTypes
+        .filter((type) => type !== "retreatScheduleDay" && type !== "retreatScheduleItem")
+        .sort()
+    );
+  });
+
+  it("uses linked schedule days and activities instead of editable JSON", () => {
+    const template = PUBLIC_CONTENT_MODELS.find((model) => model.id === "retreatTemplate");
+    const scheduleField = template?.fields.find((field) => field.id === "schedule");
+    const scheduleDaysField = template?.fields.find((field) => field.id === "scheduleDays");
+
+    expect(scheduleDaysField).toMatchObject({ type: "Array" });
+    expect(scheduleField).toMatchObject({ disabled: true, omitted: false });
   });
 
   it("keeps newsletter publishing controlled by Contentful publish state", () => {

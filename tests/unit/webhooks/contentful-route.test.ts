@@ -130,6 +130,25 @@ describe("POST /api/webhooks/contentful", () => {
     expect(revalidateTagMock).not.toHaveBeenCalledWith("content:all", "max");
   });
 
+  it("revalidates retreat content when a linked schedule activity is published", async () => {
+    const route = await loadRoute();
+    const response = await route.POST(
+      new Request("http://localhost/api/webhooks/contentful", {
+        method: "POST",
+        headers: {
+          "x-contentful-webhook-secret": "contentful-secret",
+          "x-contentful-topic": "ContentManagement.Entry.publish.retreatScheduleItem",
+          "x-contentful-content-type": "retreatScheduleItem",
+          "x-contentful-id": "schedule_item_1",
+        },
+        body: "{}",
+      }) as never
+    );
+
+    expect(response.status).toBe(200);
+    expect(revalidateTagMock).toHaveBeenCalledWith("content:retreats", "max");
+  });
+
   it("does not trigger campaign automation for non-publish events", async () => {
     const route = await loadRoute();
 

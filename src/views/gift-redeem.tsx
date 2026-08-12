@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowRight, Gift, ShieldCheck } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { SEO } from "@/components/seo";
@@ -20,6 +21,7 @@ export function GiftRedeemPage({
   initialState: PublicGiftRedemptionState;
 }) {
   const { user } = useAuth();
+  const router = useRouter();
   const [submitted, setSubmitted] = useState(false);
   const [resultType, setResultType] = useState<"retreat" | "small_group" | null>(null);
   const [error, setError] = useState("");
@@ -39,6 +41,16 @@ export function GiftRedeemPage({
     guestTwoEmail: "",
     guestTwoDietaryRequirements: "",
   });
+
+  useEffect(() => {
+    if (!user) return;
+    setFormData((current) => ({
+      ...current,
+      attendeeFirstName: current.attendeeFirstName || user.firstName,
+      attendeeLastName: current.attendeeLastName || user.lastName,
+      attendeeEmail: user.email,
+    }));
+  }, [user]);
 
   if (initialState.state === "invalid") {
     return (
@@ -109,12 +121,18 @@ export function GiftRedeemPage({
       const payload = (await response.json().catch(() => null)) as {
         type?: "retreat" | "small_group";
         message?: string;
+        nextUrl?: string;
+        supportUrl?: string;
       } | null;
       if (!response.ok || !payload?.type) {
         throw new Error(payload?.message || "Failed to redeem gift.");
       }
       setSubmitted(true);
       setResultType(payload.type);
+      if (payload.nextUrl) {
+        router.replace(payload.nextUrl);
+        return;
+      }
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Failed to redeem gift.");
     } finally {
@@ -129,23 +147,23 @@ export function GiftRedeemPage({
     <Layout>
       <SEO title={`Redeem ${gift.productTitle}`} noIndex />
 
-      <section className="marketing-grid overflow-hidden px-4 py-10 text-brand-white md:py-14">
+      <section className="marketing-grid text-brand-white overflow-hidden px-4 py-10 md:py-14">
         <div className="container mx-auto max-w-6xl">
           <div className="grid gap-8 lg:grid-cols-[1fr_0.92fr] lg:items-center lg:gap-10">
             <div>
-              <div className="text-brand-accent-light inline-flex items-center gap-2 rounded-full border border-brand-white/10 bg-brand-white/8 px-4 py-2 text-sm">
+              <div className="text-brand-accent-light border-brand-white/10 bg-brand-white/8 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm">
                 <Gift className="h-4 w-4" />
                 Gift redemption
               </div>
               <h1 className="mt-6 text-4xl leading-tight md:text-5xl">{gift.productTitle}</h1>
-              <p className="mt-4 max-w-2xl text-lg leading-relaxed text-brand-white/80">
+              <p className="text-brand-white/80 mt-4 max-w-2xl text-lg leading-relaxed">
                 {gift.purchaserName} has sent this to you. Redeem it here so the place or retreat
                 details are linked to your account instead of staying with the purchaser.
               </p>
             </div>
 
-            <div className="overflow-hidden rounded-[2rem] border border-brand-white/10 bg-brand-white/8 p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
-              <div className="rounded-[1.45rem] bg-brand-white/8 p-6">
+            <div className="border-brand-white/10 bg-brand-white/8 overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+              <div className="bg-brand-white/8 rounded-[1.45rem] p-6">
                 <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
                   What happens here
                 </p>
@@ -159,7 +177,7 @@ export function GiftRedeemPage({
                   ].map((item) => (
                     <div
                       key={item}
-                      className="rounded-[1.2rem] border border-brand-white/10 bg-brand-white/8 px-4 py-4 text-sm leading-relaxed text-brand-white/84"
+                      className="border-brand-white/10 bg-brand-white/8 text-brand-white/84 rounded-[1.2rem] border px-4 py-4 text-sm leading-relaxed"
                     >
                       {item}
                     </div>
@@ -270,13 +288,17 @@ export function GiftRedeemPage({
                       required
                       type="email"
                       value={formData.attendeeEmail}
-                      onChange={(event) =>
-                        setFormData((current) => ({
-                          ...current,
-                          attendeeEmail: event.target.value,
-                        }))
-                      }
+                      readOnly
+                      aria-describedby="attendee-email-help"
                     />
+                    <p id="attendee-email-help" className="text-muted-foreground text-sm">
+                      This is the email on your signed-in account. Gifts must be claimed using the
+                      recipient email. If this is wrong, contact
+                      <Link className="ml-1 underline" href="/contact">
+                        support
+                      </Link>
+                      .
+                    </p>
                   </div>
                 </div>
 

@@ -7,15 +7,22 @@ export interface ChatMessage {
   text: string;
   time: string;
   isLocal: boolean;
+  type?: "message" | "announcement";
 }
 
 interface ChatPanelProps {
   messages: ChatMessage[];
   onClose: () => void;
   onSendMessage: (text: string) => void;
+  onSendAnnouncement?: (text: string) => void;
 }
 
-export function ChatPanel({ messages, onClose, onSendMessage }: ChatPanelProps) {
+export function ChatPanel({
+  messages,
+  onClose,
+  onSendMessage,
+  onSendAnnouncement,
+}: ChatPanelProps) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -49,7 +56,14 @@ export function ChatPanel({ messages, onClose, onSendMessage }: ChatPanelProps) 
       {/* Messages */}
       <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
         {messages.map((msg) => (
-          <div key={msg.id}>
+          <div
+            key={msg.id}
+            className={
+              msg.type === "announcement"
+                ? "rounded-lg border border-amber-300/25 bg-amber-300/10 p-2"
+                : undefined
+            }
+          >
             <div className="flex items-baseline gap-2">
               <span
                 className={`text-xs ${msg.isLocal ? "text-brand-accent-light" : "text-white/70"}`}
@@ -83,6 +97,20 @@ export function ChatPanel({ messages, onClose, onSendMessage }: ChatPanelProps) 
             <Send className="h-4 w-4" />
           </button>
         </div>
+        {onSendAnnouncement ? (
+          <button
+            type="button"
+            onClick={() => {
+              if (!input.trim()) return;
+              onSendAnnouncement(input.trim());
+              setInput("");
+            }}
+            disabled={!input.trim()}
+            className="mt-2 w-full rounded-lg border border-amber-300/30 px-3 py-2 text-xs text-amber-100 transition-colors hover:bg-amber-300/10 disabled:opacity-30"
+          >
+            Send as announcement
+          </button>
+        ) : null}
       </div>
     </div>
   );

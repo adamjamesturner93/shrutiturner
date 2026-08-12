@@ -285,10 +285,15 @@ async function run() {
   const retreatTemplateGroup = seedGroups.find((g) => g.contentType === "retreatTemplate");
   if (retreatTemplateGroup) {
     report.retreatTemplate = { created: 0, updated: 0 };
+    report.retreatScheduleDay = { created: 0, updated: 0 };
+    report.retreatScheduleItem = { created: 0, updated: 0 };
 
     for (const rawEntry of retreatTemplateGroup.entries) {
-      const entry = rawEntry as Record<string, unknown> & { venueSlug?: string };
-      const { venueSlug, ...rest } = entry;
+      const entry = rawEntry as Record<string, unknown> & {
+        venueSlug?: string;
+        schedule?: unknown;
+      };
+      const { venueSlug, schedule, ...rest } = entry;
 
       let venue: ReturnType<typeof toEntryLink> | undefined;
       if (typeof venueSlug === "string" && venueSlug.length > 0) {
@@ -301,9 +306,64 @@ async function run() {
         venue = toEntryLink(venueId);
       }
 
+      const templateSlug = String(entry.slug || slugify(String(entry.title || "retreat")));
+      const scheduleDays: Array<ReturnType<typeof toEntryLink>> = [];
+      if (Array.isArray(schedule)) {
+        for (const [dayIndex, rawDay] of schedule.entries()) {
+          if (!rawDay || typeof rawDay !== "object" || Array.isArray(rawDay)) continue;
+          const day = rawDay as Record<string, unknown>;
+          const daySlug = `${templateSlug}-schedule-day-${dayIndex + 1}`;
+          const rawItems = Array.isArray(day.items)
+            ? day.items
+            : Array.isArray(day.activities)
+              ? day.activities.map((activity) => ({ title: activity }))
+              : [];
+          const itemLinks: Array<ReturnType<typeof toEntryLink>> = [];
+
+          for (const [itemIndex, rawItem] of rawItems.entries()) {
+            const item =
+              rawItem && typeof rawItem === "object" && !Array.isArray(rawItem)
+                ? (rawItem as Record<string, unknown>)
+                : { title: String(rawItem || "Session") };
+            const itemResult = await upsertDraftEntry(environment, "retreatScheduleItem", {
+              title: String(item.title || "Session"),
+              slug: `${daySlug}-item-${itemIndex + 1}`,
+              ...(typeof item.startTime === "string" && item.startTime
+                ? { startTime: item.startTime }
+                : {}),
+              ...(typeof item.endTime === "string" && item.endTime
+                ? { endTime: item.endTime }
+                : {}),
+              ...(typeof item.description === "string" && item.description
+                ? { description: item.description }
+                : {}),
+              ...(typeof item.category === "string" && item.category
+                ? { category: item.category }
+                : {}),
+              isOptional: item.isOptional === true,
+              displayOrder: itemIndex + 1,
+            });
+            report.retreatScheduleItem[itemResult.action as "created" | "updated"] += 1;
+            itemLinks.push(toEntryLink(itemResult.id));
+          }
+
+          const dayLabel = String(day.day || `Day ${dayIndex + 1}`);
+          const dayResult = await upsertDraftEntry(environment, "retreatScheduleDay", {
+            title: String(day.title || dayLabel),
+            slug: daySlug,
+            dayLabel,
+            displayOrder: dayIndex + 1,
+            items: itemLinks,
+          });
+          report.retreatScheduleDay[dayResult.action as "created" | "updated"] += 1;
+          scheduleDays.push(toEntryLink(dayResult.id));
+        }
+      }
+
       const result = await upsertDraftEntry(environment, "retreatTemplate", {
         ...rest,
         ...(venue ? { venue } : {}),
+        scheduleDays,
       });
       report.retreatTemplate[result.action as "created" | "updated"] += 1;
     }

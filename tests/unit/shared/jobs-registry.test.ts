@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const cleanupScheduledJobRuntimeDataMock = vi.fn();
 const processTransactionalEmailRetriesMock = vi.fn();
 const processDueContentfulCampaignsMock = vi.fn();
+const maintainRetreatLiveSessionsMock = vi.fn();
 
 vi.mock("@/lib/env", () => ({
   env: {
@@ -24,6 +25,10 @@ vi.mock("@/lib/newsletter/campaign-automation", () => ({
   processDueContentfulCampaigns: processDueContentfulCampaignsMock,
 }));
 
+vi.mock("@/lib/retreats/live-jobs", () => ({
+  maintainRetreatLiveSessions: maintainRetreatLiveSessionsMock,
+}));
+
 const { getRegisteredJob, listRegisteredJobs } = await import("@/lib/jobs/registry");
 
 describe("jobs registry", () => {
@@ -37,6 +42,7 @@ describe("jobs registry", () => {
       processed: 0,
       failed: 0,
     });
+    maintainRetreatLiveSessionsMock.mockResolvedValue({ rooms: {}, reminders: {}, chat: {} });
   });
 
   it("lists the email automation jobs", () => {
@@ -49,6 +55,11 @@ describe("jobs registry", () => {
         }),
         expect.objectContaining({
           jobName: "contentful_campaign_send",
+          triggerTypes: [ScheduledJobTriggerType.cron, ScheduledJobTriggerType.manual],
+          previewSafe: false,
+        }),
+        expect.objectContaining({
+          jobName: "retreat_live_maintenance",
           triggerTypes: [ScheduledJobTriggerType.cron, ScheduledJobTriggerType.manual],
           previewSafe: false,
         }),

@@ -50,7 +50,12 @@ export function isDailyConfigured() {
   return Boolean(getDailyConfig().apiKey);
 }
 
-export async function createSessionRoom(sessionId: string, startsAtUtc: Date, endsAtUtc: Date) {
+export async function createSessionRoom(
+  sessionId: string,
+  startsAtUtc: Date,
+  endsAtUtc: Date,
+  options?: { maxParticipants?: number }
+) {
   const { baseUrl } = getDailyConfig();
 
   const roomName = `class-${sessionId}`;
@@ -68,12 +73,27 @@ export async function createSessionRoom(sessionId: string, startsAtUtc: Date, en
         nbf,
         enable_network_ui: true,
         enable_knocking: true,
+        ...(options?.maxParticipants
+          ? { max_participants: Math.max(2, options.maxParticipants) }
+          : {}),
       },
     }),
   });
 
   if (!response.ok) {
     const text = await response.text();
+    if (
+      (response.status === 400 || response.status === 409) &&
+      /already|exists|taken/i.test(text)
+    ) {
+      const existing = await fetch(`${baseUrl}/rooms/${roomName}`, {
+        headers: getDailyHeaders(),
+      });
+      if (existing.ok) {
+        const payload = (await existing.json()) as { name: string; url: string };
+        return { roomName: payload.name, roomUrl: payload.url };
+      }
+    }
     throw new Error(`DAILY_CREATE_ROOM_FAILED:${response.status}:${text}`);
   }
 
@@ -82,6 +102,19 @@ export async function createSessionRoom(sessionId: string, startsAtUtc: Date, en
     roomName: payload.name,
     roomUrl: payload.url,
   };
+}
+
+export async function ejectRoomParticipant(roomName: string, participantId: string) {
+  const { baseUrl } = getDailyConfig();
+  const response = await fetch(`${baseUrl}/rooms/${roomName}/eject`, {
+    method: "POST",
+    headers: getDailyHeaders(),
+    body: JSON.stringify({ ids: [participantId] }),
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`DAILY_EJECT_PARTICIPANT_FAILED:${response.status}:${body}`);
+  }
 }
 
 export async function deleteSessionRoom(roomName: string) {

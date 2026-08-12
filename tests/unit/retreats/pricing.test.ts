@@ -11,11 +11,42 @@ import {
   getEffectiveRetreatRatePricePence,
   getInventoryUnitsConsumed,
   getRemainingInventory,
+  getRetreatOptionAvailability,
   isRetreatEarlyBirdActive,
   quoteRetreatAccommodation,
 } from "@/lib/retreats/pricing";
 
 describe("retreat pricing", () => {
+  it("shares convertible inventory between king and single-bed configurations", () => {
+    expect(
+      getRetreatOptionAvailability({
+        optionCapacity: 1,
+        reservedOptionBookings: 0,
+        poolTotalUnits: 2,
+        reservedPoolUnits: 1,
+        inventoryUnitsPerBooking: 2,
+      })
+    ).toBe(0);
+    expect(
+      getRetreatOptionAvailability({
+        optionCapacity: 2,
+        reservedOptionBookings: 1,
+        poolTotalUnits: 2,
+        reservedPoolUnits: 1,
+        inventoryUnitsPerBooking: 1,
+      })
+    ).toBe(1);
+    expect(
+      getRetreatOptionAvailability({
+        optionCapacity: 2,
+        reservedOptionBookings: 0,
+        poolTotalUnits: 2,
+        reservedPoolUnits: 2,
+        inventoryUnitsPerBooking: 1,
+      })
+    ).toBe(0);
+  });
+
   it("calculates seeded Stirling retreat deposits from percentages", () => {
     expect(calculatePercentageDeposit(42500, 2000)).toBe(8500);
     expect(calculatePercentageDeposit(52500, 2000)).toBe(10500);
@@ -136,6 +167,20 @@ describe("retreat pricing", () => {
       totalGuestCount: 2,
       depositPence: 18200,
     });
+  });
+
+  it("can consume two shared base units for a convertible king booking", () => {
+    const quote = quoteRetreatAccommodation({
+      bookingUnit: "whole_room",
+      quantity: 1,
+      inventoryUnitsPerBooking: 2,
+      guestCount: 2,
+      allowedGuestCounts: [1, 2],
+      ratePlans: [{ id: "king", guestCount: 2, totalPricePence: 91000 }],
+      depositRule: { depositType: "percentage", depositPercentageBasisPoints: 2000 },
+    });
+
+    expect(quote.inventoryUnitsConsumed).toBe(2);
   });
 
   it("rejects guest counts not allowed by the rate plan", () => {

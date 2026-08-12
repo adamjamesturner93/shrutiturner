@@ -163,6 +163,70 @@ async function sendGiftDeliveryEmail(giftId: string) {
   });
 }
 
+export async function correctRetreatGiftRecipient(input: {
+  retreatDateId: string;
+  giftPurchaseId: string;
+  recipientEmail: string;
+  actorUserId: string;
+}) {
+  const recipientEmail = normalizeEmail(input.recipientEmail);
+  if (!recipientEmail || !recipientEmail.includes("@")) throw new Error("INVALID_EMAIL");
+  const gift = await db.giftPurchase.findFirst({
+    where: {
+      id: input.giftPurchaseId,
+      retreatDateId: input.retreatDateId,
+      type: "retreat",
+      status: { in: [GiftPurchaseStatus.purchased, GiftPurchaseStatus.redeemed] },
+    },
+    include: { retreatBooking: true },
+  });
+  if (!gift) throw new Error("NOT_FOUND");
+  if (gift.status === GiftPurchaseStatus.redeemed && gift.retreatBooking) {
+    throw new Error("GIFT_ALREADY_REDEEMED");
+  }
+  const previousEmail = gift.recipientEmail;
+  await db.giftPurchase.update({
+    where: { id: gift.id },
+    data: { recipientEmail, deliveryTarget: "recipient", deliveryEmailSentAt: null },
+  });
+  await sendGiftDeliveryEmail(gift.id);
+  await createAdminActionLog({
+    actorUserId: input.actorUserId,
+    actionType: "retreat_gift_recipient_corrected",
+    targetType: "gift_purchase",
+    targetId: gift.id,
+    oldValueJson: { recipientEmail: previousEmail },
+    newValueJson: { recipientEmail },
+  });
+  return { id: gift.id, recipientEmail, resent: true };
+}
+
+export async function resendRetreatGiftInvitation(input: {
+  retreatDateId: string;
+  giftPurchaseId: string;
+  actorUserId: string;
+}) {
+  const gift = await db.giftPurchase.findFirst({
+    where: {
+      id: input.giftPurchaseId,
+      retreatDateId: input.retreatDateId,
+      type: "retreat",
+      status: GiftPurchaseStatus.purchased,
+    },
+    select: { id: true },
+  });
+  if (!gift) throw new Error("NOT_FOUND");
+  await db.giftPurchase.update({ where: { id: gift.id }, data: { deliveryEmailSentAt: null } });
+  await sendGiftDeliveryEmail(gift.id);
+  await createAdminActionLog({
+    actorUserId: input.actorUserId,
+    actionType: "retreat_gift_invitation_resent",
+    targetType: "gift_purchase",
+    targetId: gift.id,
+  });
+  return { id: gift.id, resent: true };
+}
+
 export async function processGiftPurchaseCheckoutCompleted(session: Stripe.Checkout.Session) {
   const kind = session.metadata?.kind;
   if (kind !== "retreat_gift" && kind !== "small_group_gift") {
@@ -458,6 +522,10 @@ export async function redeemGiftPurchase(input: {
   if (gift.expiresAt && gift.expiresAt < new Date()) throw new Error("GIFT_EXPIRED");
   await assertNoResourceDisputeHold("gift_purchase", gift.id);
 
+  if (normalizeEmail(user.email || "") !== normalizeEmail(gift.recipientEmail)) {
+    throw new Error("RECIPIENT_EMAIL_MISMATCH");
+  }
+
   const attendeeFirstName = normalizeText(
     input.attendeeFirstName || user.firstName || gift.recipientFirstName,
     80
@@ -466,7 +534,7 @@ export async function redeemGiftPurchase(input: {
     input.attendeeLastName || user.lastName || gift.recipientLastName,
     80
   );
-  const attendeeEmail = normalizeEmail(input.attendeeEmail || user.email || gift.recipientEmail);
+  const attendeeEmail = normalizeEmail(user.email || gift.recipientEmail);
 
   if (!attendeeFirstName || !attendeeLastName || !attendeeEmail) {
     throw new Error("ATTENDEE_REQUIRED");
@@ -577,7 +645,7 @@ export async function redeemGiftPurchase(input: {
               inventoryPoolId: gift.retreatRoomOption.inventoryPoolId,
               roomOptionId: gift.retreatRoomOption.id,
               ratePlanId: gift.retreatRatePlanId,
-              quantity: 1,
+              quantity: Math.max(gift.retreatRoomOption.inventoryUnitsPerBooking, 1),
               guestCount: retreatGuestCount,
               unitPricePence: gift.totalPaidPence,
               totalPricePence: gift.totalPaidPence,
@@ -601,7 +669,27 @@ export async function redeemGiftPurchase(input: {
 
     await assignRoomUnitAfterPayment(booking.id);
     await ensureRetreatOnlineAccessEntitlement(booking.id);
-    return { type: "retreat" as const, bookingId: booking.id };
+    const nextUrl = `/dashboard/retreats/${booking.id}${
+      gift.retreatDate.retreatType === "online" ? "/live" : ""
+    }`;
+    await sendPostmarkReactEmail({
+      to: attendeeEmail,
+      subject: `${gift.retreatDate.retreatTitleSnapshot}: your retreat access is ready`,
+      react: GiftRedemptionEmail({
+        recipientName: `${attendeeFirstName} ${attendeeLastName}`.trim(),
+        purchaserName: `${gift.purchaserFirstName} ${gift.purchaserLastName}`.trim(),
+        productTitle: gift.retreatDate.retreatTitleSnapshot,
+        giftMessage: null,
+        redemptionUrl: buildAbsoluteUrl(nextUrl),
+        sendToBuyer: false,
+      }),
+      textBody: `Your retreat place is linked to your account. Open it here: ${buildAbsoluteUrl(nextUrl)}`,
+      tag: "retreat-gift-claimed",
+      templateKey: "retreat-gift-claimed",
+      metadata: { giftPurchaseId: gift.id, bookingId: booking.id },
+      dispatchMode: "immediate_best_effort",
+    });
+    return { type: "retreat" as const, bookingId: booking.id, nextUrl };
   }
 
   if (!gift.smallGroupProgrammeId || !gift.smallGroupProgramme) {
@@ -646,5 +734,9 @@ export async function redeemGiftPurchase(input: {
     return created;
   });
 
-  return { type: "small_group" as const, enrolmentId: enrolment.id };
+  return {
+    type: "small_group" as const,
+    enrolmentId: enrolment.id,
+    nextUrl: "/dashboard/small-groups",
+  };
 }
