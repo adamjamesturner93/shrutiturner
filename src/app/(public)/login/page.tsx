@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { LoginPage } from "@/views/login";
 
 export const metadata: Metadata = {
-  title: "Login",
-  robots: { index: false, follow: false },
+  title: { absolute: "Private Studio Login | Shruti Turner" },
+  description: "Sign in to your private Shruti Turner coaching studio.",
+  alternates: { canonical: "https://shrutiturner.co.uk/login" },
+  robots: { index: false, follow: true },
 };
 
 export default async function Page({

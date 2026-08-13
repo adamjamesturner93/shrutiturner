@@ -53,6 +53,12 @@ describe("content metadata helpers", () => {
       openGraph: expect.objectContaining({
         title: "Contact",
         url: "https://shrutiturner.co.uk/contact",
+        images: [
+          {
+            url: "https://shrutiturner.co.uk/social/active",
+            alt: "Contact",
+          },
+        ],
       }),
       twitter: expect.objectContaining({
         card: "summary_large_image",
@@ -70,6 +76,17 @@ describe("content metadata helpers", () => {
 
     expect(metadata.robots).toEqual({ index: false, follow: false });
     expect(metadata.alternates).toEqual({ canonical: "https://shrutiturner.co.uk/preview" });
+  });
+
+  it("can keep links followable on a noindex conversion page", async () => {
+    const metadata = await buildSeoMetadata({
+      title: "Enquire",
+      path: "/coaching/enquire",
+      noIndex: true,
+      follow: true,
+    });
+
+    expect(metadata.robots).toEqual({ index: false, follow: true });
   });
 
   it("supports exact browser titles and distinct social-sharing copy", async () => {
@@ -117,9 +134,10 @@ describe("content metadata helpers", () => {
     });
 
     expect(metadata).toMatchObject({
-      title: "Privacy Policy",
+      title: { absolute: "Privacy Policy | Shruti Turner" },
       description: "How data is handled.",
       alternates: { canonical: "https://shrutiturner.co.uk/privacy" },
+      robots: { index: false, follow: true },
       keywords: expect.arrayContaining(["privacy"]),
     });
   });

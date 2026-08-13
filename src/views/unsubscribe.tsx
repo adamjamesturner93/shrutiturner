@@ -6,7 +6,6 @@ import { useSearchParams } from "next/navigation";
 import { AlertTriangle, ArrowLeft, Check, Mail, ShieldCheck } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { SectionHeading } from "@/components/marketing/sections";
-import { SEO } from "@/components/seo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -87,13 +86,7 @@ export function UnsubscribePage() {
   };
 
   return (
-    <Layout>
-      <SEO
-        title="Unsubscribe - Shruti Turner"
-        description="Manage your email preferences for Shruti Turner marketing emails."
-        canonicalUrl="https://shrutiturner.co.uk/unsubscribe"
-      />
-
+    <Layout footerVariant="utility">
       <div className="section-wash min-h-[calc(100dvh-4rem)] px-4 py-8 md:py-10">
         <div className="container mx-auto max-w-5xl">
           {status === "done" ? (
@@ -160,7 +153,7 @@ export function UnsubscribePage() {
                   <p className="text-muted-foreground text-sm">You&apos;ll no longer receive:</p>
                   <ul className="text-muted-foreground space-y-2 text-sm">
                     <li>Launch announcements and newsletter emails</li>
-                    <li>Updates about classes, programmes, retreats and offers</li>
+                    <li>Updates about coaching, workshops, retreats and offers</li>
                     <li>Occasional practical training notes from Shruti</li>
                   </ul>
                 </div>
@@ -244,10 +237,10 @@ export function UnsubscribePage() {
                   Use the secure link from your email, or enter the address you want removed and
                   we&apos;ll send a confirmation link. If you&apos;re having trouble, contact{" "}
                   <a
-                    href="mailto:tech@thechronicyogini.com"
+                    href="mailto:shruti@shrutiturner.co.uk"
                     className="text-primary font-medium underline decoration-2 underline-offset-3"
                   >
-                    tech@thechronicyogini.com
+                    shruti@shrutiturner.co.uk
                   </a>
                   .
                 </p>

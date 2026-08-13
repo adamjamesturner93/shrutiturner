@@ -13,7 +13,7 @@ vi.mock("@/lib/app-url", () => ({
 }));
 
 vi.mock("@/lib/site-stage", () => ({
-  HOLDING_SITEMAP_PATHS: ["/", "/privacy"],
+  HOLDING_SITEMAP_PATHS: ["/"],
   isHoldingStage: mocks.isHoldingStage,
 }));
 
@@ -58,6 +58,7 @@ describe("sitemap and robots", () => {
   it("lists public static and dynamic routes without non-public routes", async () => {
     const urls = (await sitemap()).map((entry) => entry.url);
 
+    expect(urls).toContain("https://shrutiturner.co.uk/about");
     expect(urls).toContain("https://shrutiturner.co.uk/blog/blog-post");
     expect(urls).not.toContain("https://shrutiturner.co.uk/classes/adaptive-strength");
     expect(urls).not.toContain("https://shrutiturner.co.uk/classes/small-groups/six-week-reset");
@@ -68,15 +69,14 @@ describe("sitemap and robots", () => {
     expect(urls).not.toContain("https://shrutiturner.co.uk/admin");
     expect(urls).not.toContain("https://shrutiturner.co.uk/api");
     expect(urls).not.toContain("https://shrutiturner.co.uk/login");
+    expect(urls).not.toContain("https://shrutiturner.co.uk/coaching/apply");
+    expect(urls).not.toContain("https://shrutiturner.co.uk/coaching/enquire");
   });
 
   it("uses the restricted holding sitemap during holding stage", async () => {
     mocks.isHoldingStage.mockReturnValue(true);
 
-    await expect(sitemap()).resolves.toEqual([
-      { url: "https://shrutiturner.co.uk/" },
-      { url: "https://shrutiturner.co.uk/privacy" },
-    ]);
+    await expect(sitemap()).resolves.toEqual([{ url: "https://shrutiturner.co.uk/" }]);
   });
 
   it("disallows admin, app, API, instructor and email surfaces in robots.txt", () => {
@@ -86,5 +86,7 @@ describe("sitemap and robots", () => {
       expect.arrayContaining(["/admin", "/dashboard", "/api", "/instructor", "/email"])
     );
     expect(disallow).not.toContain("/unsubscribe");
+    expect(disallow).not.toContain("/login");
+    expect(disallow).not.toContain("/privacy");
   });
 });

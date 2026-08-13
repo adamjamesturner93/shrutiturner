@@ -303,7 +303,7 @@ const MOCK_ADMIN_USER: UserProfile = {
   id: "admin_001",
   firstName: "Shruti",
   lastName: "Turner",
-  email: "shruti@shrutiturner.com",
+  email: "shruti@shrutiturner.co.uk",
   avatarInitials: "ST",
   joinedDate: "2024-01-01",
   isOnboarded: true,

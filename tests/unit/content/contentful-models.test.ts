@@ -67,13 +67,26 @@ describe("Contentful public content models", () => {
     );
   });
 
-  it("seeds multiple blog authors and at least one joint-authored post", () => {
+  it("seeds only the approved real blog author and excludes placeholder articles", () => {
     const authorGroup = SEED_GROUPS.find((group) => group.contentType === "authorProfile");
     const blogGroup = SEED_GROUPS.find((group) => group.contentType === "blogPost");
-    const seededBlogPosts = (blogGroup?.entries ?? []) as Array<{ authorSlugs?: string[] }>;
+    const seededAuthors = (authorGroup?.entries ?? []) as Array<{ slug?: string }>;
+    const seededBlogPosts = (blogGroup?.entries ?? []) as Array<{
+      slug?: string;
+      authorSlugs?: string[];
+    }>;
 
-    expect(authorGroup?.entries.length).toBeGreaterThanOrEqual(2);
-    expect(seededBlogPosts.length).toBeGreaterThanOrEqual(10);
-    expect(seededBlogPosts.some((post) => (post.authorSlugs?.length ?? 0) > 1)).toBe(true);
+    expect(seededAuthors.map((author) => author.slug)).toEqual(["shruti-turner"]);
+    expect(seededBlogPosts.length).toBeGreaterThanOrEqual(6);
+    expect(seededBlogPosts.every((post) => post.authorSlugs?.includes("shruti-turner"))).toBe(true);
+    expect(seededBlogPosts.map((post) => post.slug)).not.toEqual(
+      expect.arrayContaining([
+        "arthritis-exercise-guide",
+        "pain-during-exercise-modify-or-stop",
+        "breathwork-for-chronic-pain",
+        "returning-after-a-flare-coach-physio",
+        "good-small-group-programme",
+      ])
+    );
   });
 });

@@ -5,11 +5,11 @@ import { isHoldingStage } from "@/lib/site-stage";
 
 export const metadata: Metadata = {
   title: {
-    default: "Shruti Turner",
+    default: "Personal Training & Movement Coaching | Shruti Turner",
     template: "%s | Shruti Turner",
   },
   description:
-    "Science-backed movement coaching for adults with chronic illness, autoimmune conditions and recovering from injury.",
+    "Personal movement and fitness coaching bringing together rehabilitation, fitness and wellbeing around your body, goals and real life.",
 };
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {

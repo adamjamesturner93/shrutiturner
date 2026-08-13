@@ -407,10 +407,11 @@ export function PricingPage({ faqs }: PricingPageProps) {
           ].map((item) => (
             <article
               key={item.title}
-              className={`relative rounded-[1.75rem] border p-7 text-center shadow-[0_20px_50px_rgba(46,31,51,0.06)] ${item.highlight
-                ? "border-brand-copper/30 bg-brand-warm"
-                : "border-brand-dark/10 bg-background"
-                }`}
+              className={`relative rounded-[1.75rem] border p-7 text-center shadow-[0_20px_50px_rgba(46,31,51,0.06)] ${
+                item.highlight
+                  ? "border-brand-copper/30 bg-brand-warm"
+                  : "border-brand-dark/10 bg-background"
+              }`}
             >
               {item.highlight ? (
                 <span className="bg-brand-dark text-brand-white absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs tracking-[0.16em] uppercase">
@@ -439,8 +440,9 @@ export function PricingPage({ faqs }: PricingPageProps) {
                 asChild
                 size="lg"
                 variant={item.highlight ? "default" : "outline"}
-                className={`mt-8 w-full ${item.highlight ? "bg-brand-dark text-brand-white hover:bg-brand-plum" : ""
-                  }`}
+                className={`mt-8 w-full ${
+                  item.highlight ? "bg-brand-dark text-brand-white hover:bg-brand-plum" : ""
+                }`}
               >
                 <Link href={getPurchaseHref({ kind: "credits", bundle: item.bundle })}>
                   {item.cta}
@@ -472,8 +474,8 @@ export function PricingPage({ faqs }: PricingPageProps) {
       <MarketingSection className="section-wash" contentClassName="max-w-7xl">
         <SectionHeading
           eyebrow="Coaching"
-          title="Application-led coaching offers"
-          description="Choose the closest offer, then apply. Subscription checkout is only created after admin acceptance."
+          title="Coaching offers matched to the support you need"
+          description="Enquire first and Shruti will recommend the appropriate route before subscription checkout opens."
           align="center"
         />
 
@@ -516,8 +518,8 @@ export function PricingPage({ faqs }: PricingPageProps) {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] border-collapse text-left text-sm">
               <caption className="sr-only">
-                Coaching tier comparison showing price, support level, membership inclusion and
-                next step.
+                Coaching tier comparison showing price, support level, membership inclusion and next
+                step.
               </caption>
               <thead className="bg-brand-warm text-brand-dark">
                 <tr>

@@ -1,18 +1,71 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { loginWithEmail } from "../../helpers/auth";
 import { seedBlogUser } from "../../helpers/blog";
 
+test("blog uses the revised introductory and newsletter copy", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.sessionStorage.setItem("newsletter_shown", "true");
+  });
+  await page.goto("/blog");
+
+  await expect(
+    page.getByRole("heading", { name: "Evidence based health and movement posts." })
+  ).toBeVisible();
+  for (const heading of [
+    "Understand your body.",
+    "Train with more confidence.",
+    "Make informed decisions.",
+  ]) {
+    await expect(page.getByText(heading, { exact: true })).toBeVisible();
+  }
+  await expect(page.getByRole("heading", { name: "Join the newsletter." })).toBeVisible();
+  await expect(
+    page.getByText(
+      "Get new articles, coaching notes and practical ideas for movement, strength and wellbeing, plus the free guide “Why Some Bodies Need Strength Before More Stretching”.",
+      { exact: true }
+    )
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Join the newsletter" })).toBeVisible();
+  await expect(page.locator("#main-content input[type='email']")).toHaveCount(1);
+  await expect(page.locator("footer input[type='email']")).toHaveCount(0);
+
+  const accessibilityResults = await new AxeBuilder({ page })
+    .include("#main-content")
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+    .analyze();
+  expect(accessibilityResults.violations).toEqual([]);
+});
+
 test("blog tag filtering updates the URL and survives refresh", async ({ page }) => {
   await page.goto("/blog");
-  await page.getByRole("button", { name: "Yoga" }).click();
+  await page.getByRole("button", { name: "Show more article filters" }).click();
+  await page.getByRole("button", { name: "yoga", exact: true }).click();
 
   await expect(page).toHaveURL(/tag=Yoga/);
-  await expect(page.locator("article")).toHaveCount(1);
+  const filteredArticleCount = await page.locator("article").count();
+  expect(filteredArticleCount).toBeGreaterThan(0);
 
   await page.reload();
 
   await expect(page).toHaveURL(/tag=Yoga/);
-  await expect(page.locator("article")).toHaveCount(1);
+  await expect(page.locator("article")).toHaveCount(filteredArticleCount);
+});
+
+test("blog pillar filtering uses the simplified brand categories", async ({ page }) => {
+  await page.goto("/blog");
+  await page.getByRole("button", { name: "rehabilitation", exact: true }).click();
+
+  await expect(page).toHaveURL(/pillar=rehabilitation/);
+  await expect(
+    page.getByRole("heading", {
+      name: "Strength Training for Hypermobility: What You Need to Know",
+    })
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Show more article filters" })).toHaveAttribute(
+    "aria-expanded",
+    "false"
+  );
 });
 
 test("blog sorting can switch to alphabetical order", async ({ page }) => {
@@ -23,6 +76,8 @@ test("blog sorting can switch to alphabetical order", async ({ page }) => {
   await expect(page.locator("article").first().getByRole("heading")).toContainText(
     "Building Training Capacity When You Start From Zero"
   );
+  await expect(page.locator("#main-content input[type='email']")).toHaveCount(1);
+  await expect(page.locator("footer input[type='email']")).toHaveCount(0);
 });
 
 test("blog post supports copy-link sharing", async ({ page, context }) => {
@@ -32,6 +87,18 @@ test("blog post supports copy-link sharing", async ({ page, context }) => {
   await page.getByRole("button", { name: "Copy link" }).first().click();
 
   await expect(page.getByText("Link copied to clipboard")).toBeVisible();
+});
+
+test("blog post renders one page title and semantic article structure", async ({ page }) => {
+  await page.goto("/blog/strength-training-chronic-illness");
+
+  await expect(page.locator("h1")).toHaveCount(1);
+  await expect(page.locator("article h2").first()).toHaveText("The Evidence Base");
+  await expect(page.locator("article ul").first()).toBeVisible();
+  await expect(page.getByText("Movement & Fitness Coach")).toBeVisible();
+  const visibleTags = await page.locator('a[href^="/blog?tag="] span').allTextContents();
+  expect(visibleTags.length).toBeGreaterThan(0);
+  expect(visibleTags.every((tag) => tag === tag.toLocaleLowerCase("en-GB"))).toBe(true);
 });
 
 test("blog post reaction toggle updates the public count", async ({ page }) => {
@@ -99,6 +166,9 @@ test("blog post shows the logged-out comment prompt", async ({ page }) => {
     .first();
   await expect(discussion.getByRole("link", { name: "Log in" })).toBeVisible();
   await expect(discussion.getByText("to add a comment or reply.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "React with heart" }).first()).toContainText(
+    "Helpful"
+  );
 });
 
 test("related articles navigate to the linked post", async ({ page }) => {

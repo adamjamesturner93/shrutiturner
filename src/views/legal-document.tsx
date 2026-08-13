@@ -4,6 +4,7 @@ import { Layout } from "@/components/layout";
 import { MarketingSection } from "@/components/marketing/sections";
 import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
 import type { LegalDocumentContent } from "@/lib/content/types";
+import { parseLegalDocumentBody } from "@/lib/content/structured-text";
 
 interface LegalDocumentPageProps {
   document: LegalDocumentContent;
@@ -13,9 +14,10 @@ export function LegalDocumentPage({ document }: LegalDocumentPageProps) {
   const effectiveDate = document.effectiveDate
     ? new Date(document.effectiveDate).toLocaleDateString("en-GB")
     : null;
+  const blocks = parseLegalDocumentBody(document.body);
 
   return (
-    <Layout>
+    <Layout footerVariant="utility">
       <section className="marketing-grid text-brand-white overflow-hidden px-4 py-10 md:py-12">
         <div className="container mx-auto max-w-5xl">
           <PublicBreadcrumbs
@@ -23,7 +25,6 @@ export function LegalDocumentPage({ document }: LegalDocumentPageProps) {
             className="mb-7"
             items={[
               { name: "Home", href: "/" },
-              { name: "Legal", href: "/terms" },
               { name: document.title, href: `/${document.slug}` },
             ]}
           />
@@ -48,8 +49,40 @@ export function LegalDocumentPage({ document }: LegalDocumentPageProps) {
 
       <MarketingSection className="section-wash" contentClassName="max-w-4xl" compact>
         <article className="marketing-panel rounded-[2rem] p-6 md:p-8">
-          <div className="prose prose-lg text-muted-foreground max-w-none">
-            <div className="leading-relaxed whitespace-pre-line">{document.body}</div>
+          <div className="prose prose-lg text-muted-foreground max-w-none leading-relaxed">
+            {blocks.map((block, index) => {
+              if (block.type === "heading") {
+                const id = `section-${index + 1}`;
+                return block.level === 3 ? (
+                  <h3 id={id} key={id}>
+                    {block.text}
+                  </h3>
+                ) : (
+                  <h2 id={id} key={id}>
+                    {block.text}
+                  </h2>
+                );
+              }
+              if (block.type === "unordered-list") {
+                return (
+                  <ul key={`list-${index}`}>
+                    {block.items.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                );
+              }
+              if (block.type === "ordered-list") {
+                return (
+                  <ol key={`list-${index}`}>
+                    {block.items.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ol>
+                );
+              }
+              return <p key={`paragraph-${index}`}>{block.text}</p>;
+            })}
           </div>
         </article>
       </MarketingSection>

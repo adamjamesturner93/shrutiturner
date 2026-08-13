@@ -27,7 +27,7 @@ describe("pricing page model", () => {
       "£130 / month",
       "£180 / month",
     ]);
-    expect(rows.every((row) => row.ctaHref.startsWith("/coaching/apply?offer="))).toBe(true);
+    expect(rows.every((row) => row.ctaHref === "/coaching/enquire")).toBe(true);
     expect(rows[0].whatItIs).toContain("Regular check-ins and guidance");
     expect(rows[1].bestFor).toContain("Independent training");
     expect(rows.flatMap((row) => row.features).join(" ")).not.toContain("Move Well");

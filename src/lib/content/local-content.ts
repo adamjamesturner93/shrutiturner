@@ -15,18 +15,18 @@ import type {
 
 export const LOCAL_GLOBAL_CONTENT: GlobalContent = {
   siteName: "Shruti Turner",
-  siteTagline: "Strength & Yoga for Complex Bodies",
+  siteTagline: "Personal training and movement coaching",
   defaultSeoDescription:
-    "Science-backed strength and yoga coaching for adults with chronic illness, autoimmune conditions, and complex bodies.",
+    "Personal training and movement coaching bringing together rehabilitation, fitness and wellbeing, built around your body, goals and real life.",
 };
 
 export const LOCAL_PAGE_CONTENT: Record<string, PageContent> = {
   home: {
     slug: "home",
     seo: {
-      title: "Strength & Yoga for Complex Bodies",
+      title: "Personal Training & Movement Coaching | Shruti Turner",
       description:
-        "Science-backed strength and yoga coaching for adults with chronic illness, autoimmune conditions, and complex bodies.",
+        "Personal training and movement coaching bringing together rehabilitation, fitness and wellbeing, built around your body, goals and real life.",
     },
   },
   classes: {
@@ -52,7 +52,7 @@ export const LOCAL_PAGE_CONTENT: Record<string, PageContent> = {
         "Three tiers of personalised coaching and training support for complex bodies, from independent programming to high-touch 1:1 coaching.",
     },
   },
-  "coaching-apply": { slug: "coaching-apply", seo: { title: "Enquire About Coaching" } },
+  "coaching-enquire": { slug: "coaching-enquire", seo: { title: "Enquire About Coaching" } },
   "coaching-personal-programme": {
     slug: "coaching-personal-programme",
     seo: { title: "Independent Training Plan" },

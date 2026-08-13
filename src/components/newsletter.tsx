@@ -138,7 +138,11 @@ export function NewsletterPopup({ isOpen, onClose }: NewsletterPopupProps) {
   );
 }
 
-export function NewsletterInline() {
+interface NewsletterInlineProps {
+  buttonLabel?: string;
+}
+
+export function NewsletterInline({ buttonLabel }: NewsletterInlineProps = {}) {
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [consent, setConsent] = useState(false);
@@ -212,7 +216,7 @@ export function NewsletterInline() {
         className="w-full"
         disabled={isSubmitting || !turnstileToken || !consent}
       >
-        {isSubmitting ? "Subscribing..." : signupCopy.buttonLabel}
+        {isSubmitting ? "Subscribing..." : (buttonLabel ?? signupCopy.buttonLabel)}
       </Button>
       <TurnstileWidget onTokenChange={setTurnstileToken} />
 

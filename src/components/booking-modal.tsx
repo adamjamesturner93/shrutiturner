@@ -53,7 +53,7 @@ function generateICS(
     "LOCATION:Private Studio (online)",
     `URL:${joinUrl}`,
     "STATUS:CONFIRMED",
-    `UID:${Date.now()}@shrutiturner.com`,
+    `UID:${Date.now()}@shrutiturner.co.uk`,
     "END:VEVENT",
     "END:VCALENDAR",
   ].join("\r\n");

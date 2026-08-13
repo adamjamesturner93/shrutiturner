@@ -4,12 +4,12 @@ import { buildAbsoluteUrl } from "@/lib/app-url";
 import { getRuntimePlatformSettings } from "@/lib/platform/runtime-settings";
 
 const DEFAULT_SEO_KEYWORDS = [
-  "strength training chronic illness",
-  "adaptive yoga",
-  "inclusive movement coaching",
-  "chronic pain exercise",
-  "hypermobility strength",
-  "rehabilitation informed training",
+  "personal training",
+  "movement coaching",
+  "strength training",
+  "rehabilitation",
+  "fitness",
+  "wellbeing",
 ];
 
 const PAGE_PATHS: Record<string, string> = {
@@ -20,7 +20,7 @@ const PAGE_PATHS: Record<string, string> = {
   "classes-small-groups": "/classes/small-groups",
   pt: "/coaching",
   coaching: "/coaching",
-  "coaching-apply": "/coaching/apply",
+  "coaching-enquire": "/coaching/enquire",
   "coaching-personal-programme": "/coaching/personal-programme",
   pricing: "/pricing",
   terms: "/terms",
@@ -52,6 +52,7 @@ type BuildSeoMetadataInput = {
   twitterDescription?: string | null;
   type?: "website" | "article";
   noIndex?: boolean;
+  follow?: boolean;
 };
 
 function resolveKeywords(keywords?: string | string[] | null) {
@@ -81,7 +82,7 @@ export async function buildSeoMetadata(input: BuildSeoMetadataInput): Promise<Me
     input.description || platformSettings.defaultSeoDescription || global.defaultSeoDescription;
   const canonical = resolveCanonical(input);
   const siteName = platformSettings.businessName || global.siteName;
-  const image = input.image || "/og-image.jpg";
+  const image = input.image || "https://shrutiturner.co.uk/social/active";
   const openGraphTitle = input.openGraphTitle || input.title;
   const openGraphDescription = input.openGraphDescription || description;
   const twitterTitle = input.twitterTitle || openGraphTitle;
@@ -94,7 +95,9 @@ export async function buildSeoMetadata(input: BuildSeoMetadataInput): Promise<Me
     alternates: {
       canonical,
     },
-    robots: input.noIndex ? { index: false, follow: false } : { index: true, follow: true },
+    robots: input.noIndex
+      ? { index: false, follow: input.follow ?? false }
+      : { index: true, follow: true },
     openGraph: {
       type: input.type || "website",
       siteName,
@@ -134,11 +137,15 @@ export async function buildLegalDocumentMetadata(input: {
   path?: string;
   noIndex?: boolean;
 }): Promise<Metadata> {
+  const pageTitle = input.title.replace(/\s*(?:-|\|)\s*Shruti Turner$/i, "").trim();
   return buildSeoMetadata({
-    title: input.title,
+    title: `${pageTitle} | Shruti Turner`,
+    absoluteTitle: true,
     description: input.description,
     path: input.path || `/${input.slug}`,
-    noIndex: input.noIndex,
+    canonicalUrl: `https://shrutiturner.co.uk${input.path || `/${input.slug}`}`,
+    noIndex: true,
+    follow: true,
     keywords: ["website terms", "privacy", "coaching policy", "online fitness policy"],
   });
 }

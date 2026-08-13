@@ -11,8 +11,7 @@ import { getExistingPlatformUrl, isHoldingStage } from "@/lib/site-stage";
 import { HoldingPage } from "@/views/holding-page";
 import { getFeaturedTestimonials } from "@/lib/content";
 
-// Temporary social-sharing image until a dedicated 1200 × 630 asset is supplied.
-const HOME_SOCIAL_IMAGE_PLACEHOLDER = "https://shrutiturner.co.uk/images/shruti-deadlift.jpeg";
+const HOME_SOCIAL_IMAGE = "https://shrutiturner.co.uk/social/active";
 
 export async function generateMetadata(): Promise<Metadata> {
   if (isHoldingStage()) {
@@ -33,7 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraphTitle: "Movement that works with your body, not against it | Shruti Turner",
     openGraphDescription:
       "Personal training and movement coaching bringing together rehabilitation, fitness and wellbeing, built around your body, your goals and your real life.",
-    image: HOME_SOCIAL_IMAGE_PLACEHOLDER,
+    image: HOME_SOCIAL_IMAGE,
     imageAlt: "Shruti Turner strength training",
     keywords: [
       "personal training",

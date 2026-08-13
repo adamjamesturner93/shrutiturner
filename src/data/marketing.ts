@@ -56,10 +56,10 @@ export const coachingTiers: CoachingTierMarketing[] = [
     whatItIs:
       "Regular check-ins and guidance to help you reflect, adapt and structure your training week.",
     priceLabel: "£70 / month",
-    priceNote: "Application required before payment",
+    priceNote: "Enquire before payment",
     supportLevel: "accountability",
     purchaseModel: "application_required",
-    ctaHref: "/coaching/apply?offer=guided_accountability",
+    ctaHref: "/coaching/enquire",
     ctaLabel: "Enquire First",
     features: [
       "Weekly check-in via app",
@@ -70,7 +70,7 @@ export const coachingTiers: CoachingTierMarketing[] = [
       "Does not include a tailored training programme",
       "Does not include nutrition guidance",
     ],
-    expectedNextStep: "Submit a short application so Shruti can check fit and boundaries.",
+    expectedNextStep: "Start with an enquiry so Shruti can understand fit and boundaries.",
   },
   {
     id: "independent_training_plan",
@@ -81,10 +81,10 @@ export const coachingTiers: CoachingTierMarketing[] = [
     bestFor: "Independent training with personalised structure and progression.",
     whatItIs: "A personalised gym or home training programme with monthly support.",
     priceLabel: "£95 / month",
-    priceNote: "Application required before payment",
+    priceNote: "Enquire before payment",
     supportLevel: "programme",
     purchaseModel: "application_required",
-    ctaHref: "/coaching/apply?offer=independent_training_plan",
+    ctaHref: "/coaching/enquire",
     ctaLabel: "Enquire First",
     features: [
       "Tailored programme via app",
@@ -105,10 +105,10 @@ export const coachingTiers: CoachingTierMarketing[] = [
     whatItIs:
       "A personalised home or gym training programme with weekly review and ongoing progression support.",
     priceLabel: "£130 / month",
-    priceNote: "Application required before payment",
+    priceNote: "Enquire before payment",
     supportLevel: "guided",
     purchaseModel: "application_required",
-    ctaHref: "/coaching/apply?offer=guided_training_plan",
+    ctaHref: "/coaching/enquire",
     ctaLabel: "Enquire First",
     features: [
       "Tailored programme via app",
@@ -133,10 +133,10 @@ export const coachingTiers: CoachingTierMarketing[] = [
     whatItIs:
       "Ongoing collaborative coaching support designed around your body, goals, lifestyle and capacity.",
     priceLabel: "£180 / month",
-    priceNote: "Application required before payment",
+    priceNote: "Enquire before payment",
     supportLevel: "high",
     purchaseModel: "application_required",
-    ctaHref: "/coaching/apply?offer=one_to_one_coaching",
+    ctaHref: "/coaching/enquire",
     ctaLabel: "Enquire First",
     features: [
       "Tailored programme via app",
@@ -161,12 +161,13 @@ export const personalProgrammeJourney: JourneyStep[] = [
   {
     step: 2,
     title: "Receive the right invite",
-    description: "If accepted, you receive the correct payment invitation for the agreed offer.",
+    description:
+      "After your conversation, you receive the payment invitation for the agreed offer.",
   },
   {
     step: 3,
     title: "Pay securely",
-    description: "Subscription checkout starts only from an accepted application.",
+    description: "Subscription checkout starts once the right support has been agreed.",
   },
   {
     step: 4,
@@ -189,7 +190,7 @@ export const applicationJourney: JourneyStep[] = [
   {
     step: 3,
     title: "Payment invite",
-    description: "If accepted, your payment link is tied to the approved offer and your account.",
+    description: "Once agreed, your payment link is tied to the right offer and your account.",
   },
   {
     step: 4,
@@ -221,6 +222,6 @@ export const coachingFaqs: CoachingFaq[] = [
     slug: "application-led",
     question: "Can I buy a 1:1 offer instantly?",
     answer:
-      "No. 1:1 places are application-led. Public offer cards take you to an application and subscription checkout is only created after admin acceptance.",
+      "No. Start with an enquiry and consultation so Shruti can recommend the appropriate level of support. Payment opens once you have agreed the right next step together.",
   },
 ];

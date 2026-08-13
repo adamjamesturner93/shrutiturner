@@ -45,7 +45,7 @@ export function buildMembershipDisclosure(
     ],
     fullItems: [
       "Supplier: Shruti Turner.",
-      "Contact: tech@thechronicyogini.com.",
+      "Contact: shruti@shrutiturner.co.uk.",
       "Payment processing: Stripe.",
       "Cancellation acknowledgement and end-of-contract details are sent by email on a durable medium.",
       "Terms & Conditions and Refund & Cancellation Policy apply alongside your statutory consumer rights.",

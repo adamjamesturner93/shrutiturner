@@ -157,8 +157,8 @@ export function CoachingPersonalProgrammePage() {
               <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">Price and note</p>
               <h2 className="mt-4 text-3xl">{independentTier.priceLabel}</h2>
               <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                {independentTier.priceNote}. If accepted, payment is invited from the approved
-                application rather than started from this page.
+                {independentTier.priceNote}. Payment is invited once you and Shruti have agreed the
+                appropriate support, rather than started from this page.
               </p>
             </div>
           </div>
@@ -169,7 +169,7 @@ export function CoachingPersonalProgrammePage() {
         <SectionHeading
           eyebrow="How It Works"
           title="Enquire first, then move into Everfit after payment."
-          description="The process keeps subscription checkout behind admin acceptance so the offer, boundaries and setup are agreed first."
+          description="A conversation comes first so the offer, boundaries and setup are clear before subscription checkout opens."
           align="center"
         />
         <div className="mt-12">

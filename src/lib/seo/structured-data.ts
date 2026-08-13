@@ -57,7 +57,7 @@ export function createPersonSchema(): JsonLdData {
     "@type": "Person",
     name: "Shruti Turner",
     url: buildAbsoluteUrl("/about"),
-    jobTitle: "Strength and Yoga Coach",
+    jobTitle: "Personal Trainer and Movement Coach",
     worksFor: {
       "@type": "Organization",
       name: ORGANIZATION_NAME,

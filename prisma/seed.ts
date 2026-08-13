@@ -642,13 +642,13 @@ async function seedScenarioUsers(
 }
 
 async function seedAdminUsers() {
-  const adminEmails = (process.env.ADMIN_EMAILS || "tech@thechronicyogini.com")
+  const adminEmails = (process.env.ADMIN_EMAILS || "shruti@shrutiturner.co.uk")
     .split(",")
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean);
 
   for (const email of adminEmails) {
-    const isPrimaryInstructor = email === "tech@thechronicyogini.com";
+    const isPrimaryInstructor = email === "shruti@shrutiturner.co.uk";
     await upsertUser({
       email,
       firstName: isPrimaryInstructor ? "Shruti" : "Admin",
@@ -682,7 +682,7 @@ async function seedCurrentAcceptancesForLocalUsers(
       OR: [
         { email: { endsWith: "@example.com" } },
         { email: { endsWith: "@shrutiturner.local" } },
-        { email: { equals: "tech@thechronicyogini.com" } },
+        { email: { equals: "shruti@shrutiturner.co.uk" } },
       ],
     },
     select: {

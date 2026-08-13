@@ -176,10 +176,10 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
     if (data.state === "not_a_client") {
       return {
         title: "Choose your next step",
-        body: "Explore coaching options or send an application when you are ready.",
+        body: "Explore coaching options or start a conversation when you are ready.",
         primaryHref: "/coaching",
         primaryLabel: "Explore Coaching",
-        secondaryHref: "/coaching/apply",
+        secondaryHref: "/coaching/enquire",
         secondaryLabel: "Enquire",
       };
     }
@@ -228,7 +228,7 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
         return {
           title: "You left the waiting list",
           body: "You are no longer holding a waiting-list place. If you enquire again later, the new application joins the end of the list.",
-          primaryHref: "/coaching/apply",
+          primaryHref: "/coaching/enquire",
           primaryLabel: "Enquire Again",
           secondaryHref: "/contact",
           secondaryLabel: "Ask a Question",
@@ -237,7 +237,7 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
       return {
         title: "Application in review",
         body: "Your application is in the queue. You’ll hear back personally within 48 hours.",
-        primaryHref: "/coaching/apply",
+        primaryHref: "/coaching/enquire",
         primaryLabel: "Review What You Sent",
         secondaryHref: "/contact",
         secondaryLabel: "Ask a Question",

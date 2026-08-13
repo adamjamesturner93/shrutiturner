@@ -18,13 +18,12 @@ export type LegalDocumentSeed = {
   seoDescription: string;
 };
 
-const EFFECTIVE_DATE = "2026-03-12";
-const VERSION = "2026-03-12";
-const ONE_TO_ONE_SCOPE_EFFECTIVE_DATE = "2026-06-23";
-const ONE_TO_ONE_SCOPE_VERSION = "2026-06-23";
+const EFFECTIVE_DATE = "2026-08-13";
+const VERSION = "2026-08-13";
+const HEALTH_DATA_CONSENT_VERSION = "2026-03-12";
 
 export const HEALTH_DATA_CONSENT = {
-  version: VERSION,
+  version: HEALTH_DATA_CONSENT_VERSION,
   title: "Health Data Consent",
   description:
     "I explicitly consent to Shruti Turner processing the health information I provide so my services can be delivered safely and appropriately.",
@@ -35,186 +34,117 @@ export const LEGAL_DOCUMENTS: LegalDocumentSeed[] = [
     id: "legal-terms",
     slug: "terms",
     title: "Terms & Conditions",
-    version: ONE_TO_ONE_SCOPE_VERSION,
-    effectiveDate: ONE_TO_ONE_SCOPE_EFFECTIVE_DATE,
-    seoTitle: "Terms & Conditions - Shruti Turner",
+    version: VERSION,
+    effectiveDate: EFFECTIVE_DATE,
+    seoTitle: "Terms & Conditions | Shruti Turner",
     seoDescription:
-      "Terms and conditions covering memberships, classes, coaching, retreats, payments, bookings and service use.",
+      "Terms and conditions for Shruti Turner coaching, training, yoga, workshops, retreats, events and digital resources.",
     body: `1. About these terms
 
-These Terms & Conditions govern your use of the Shruti Turner website, your account and any services you buy, book or access through the platform. This includes Move Well Classes, memberships, credit packs, small group programmes, retreats, digital content and 1:1 services.
+These Terms & Conditions govern your use of the Shruti Turner website, your account and any services you buy, book or access. This includes personal training and coaching, movement and yoga services, workshops, retreats and other events, and educational or digital resources.
 
-By creating an account, booking a service or using the website, you agree to these terms.
+By creating an account, booking or buying a service, or using the website, you agree to these terms.
 
 2. Who we are
 
-Shruti Turner provides rehabilitation-informed strength and yoga services for adults including people living with chronic illness, pain, fatigue, autoimmune conditions and hypermobility.
+Shruti Turner provides movement, personal training and coaching, yoga, workshops, retreats and related educational services for adults.
 
-For general enquiries, email tech@thechronicyogini.com.
+For general enquiries, email shruti@shrutiturner.co.uk.
 
-3. Eligibility
+3. Eligibility and account information
 
 You must be 18 or over to create an account or buy services through this website.
 
-You must provide accurate information when you create an account, complete health forms, book services or make payments.
+You must provide accurate information when you create an account, complete health forms, enquire about or book services, or make payments. You are responsible for keeping your login details secure and for activity through your account.
 
-You are responsible for keeping your login details secure and for activity that happens through your account.
-
-Shruti Turner's services are for adults seeking wellbeing, recreational fitness, health-sensitive movement support, injury recovery or prevention, or amateur sport support. They are not professional athlete performance coaching, paid athletic performance support or preparation for paid professional sport.
+Services are intended for adults seeking recreational fitness, wellbeing, health-sensitive movement support, injury recovery or prevention, or amateur sport support. They are not professional athlete performance coaching or preparation for paid professional sport.
 
 4. Service overview
 
-Services available through the platform may include:
-- Move Well Membership
-- class credit packs
-- live online classes
-- small group programmes
-- one-to-one coaching and training support
-- retreats, workshops and other events
+Services may include:
+- personal training and coaching
+- movement and yoga sessions
+- workshops, retreats and other events
 - educational and digital resources
 
-Specific service details, inclusions and prices are shown on the relevant page at the time of purchase or booking.
+Specific inclusions, prices, time commitments and delivery arrangements are shown on the relevant service page, proposal or booking information at the time you agree to proceed.
 
-5. Health and safety
+5. Health, safety and scope
 
-Our services are educational movement, training and support services. They are not medical diagnosis, treatment, emergency care or a substitute for advice from your GP, consultant, physiotherapist or other healthcare professional.
+Services are educational movement, training and coaching services. They are not medical diagnosis, clinical rehabilitation, medical treatment, emergency care or a substitute for advice from your GP, consultant, physiotherapist or another regulated healthcare professional.
 
 You are responsible for:
 - deciding whether participation is appropriate for you
 - seeking medical advice where needed
-- providing accurate health information
+- providing accurate and current health information
 - stopping any activity that feels unsafe
 - telling us if your symptoms, diagnosis, medication or capacity changes
 
-We may refuse, limit, pause or end participation where we reasonably believe a service is unsafe or unsuitable without further medical input.
-
-We may also refuse, limit, pause or end participation where the service requested appears to fall outside Shruti Turner's training, qualification or insurance scope, including paid or professional athletic performance support.
+We may refuse, limit, pause or end participation where we reasonably believe a service is unsafe, unsuitable, outside Shruti Turner's training or insurance scope, or requires further medical input.
 
 6. Health & Liability Waiver
 
-Participation in services is subject to the Health & Liability Waiver published at /health-declaration.
+Participation is subject to the Health & Liability Waiver published at /health-declaration. Where a service requires additional health or screening information, you agree to complete it honestly and promptly.
 
-Where a service requires additional health or screening information, you agree to complete that information honestly and promptly.
+7. Accounts and platform use
 
-7. Accounts, access and platform use
+You may not impersonate another person, share access to paid services inappropriately, copy protected resources or interfere with the security or operation of the platform.
 
-You may not impersonate another person, share access to paid services inappropriately or attempt to interfere with the security or operation of the platform.
+We may suspend or restrict access where we reasonably suspect misuse, fraud, abuse or behaviour that creates risk for clients, collaborators or the business.
 
-We may suspend or restrict access where we reasonably suspect misuse, fraud, abuse or behaviour that creates risk for other clients, instructors or the business.
+8. Personal training and coaching
 
-8. Memberships
+Your service description or proposal sets out the level of contact, review frequency, programme access and any sessions included. Coaching supports decision-making and progression, but results cannot be guaranteed.
 
-Move Well Membership terms, pricing, billing interval and included benefits are shown on the pricing and membership pages.
+You remain responsible for how you use guidance between reviews and for raising changes in health, symptoms, capacity or circumstances that may affect your plan.
 
-Memberships renew automatically unless cancelled in accordance with the published cancellation rules.
+Cancellation, rescheduling and expiry terms for any booked sessions are provided before you commit and are also covered by the Refund & Cancellation Policy.
 
-Before a membership checkout is completed, we provide subscription-specific pre-contract information covering price, renewal timing, reminder notices, cancellation method and cooling-off rights.
+9. Workshops, retreats and events
 
-If you enter a membership online, you can also cancel it online from your membership dashboard.
+Event-specific information may include deposits, staged payments, accommodation, travel, minimum numbers and cancellation deadlines. Those details form part of your agreement when you book.
 
-We send separate reminder and end-of-contract notices for memberships, including reminders before the free trial ends, before annual renewals and periodic reminders for rolling monthly memberships.
+You are responsible for travel, insurance, visas, medication and personal expenses unless the event information expressly says otherwise.
 
-Memberships include statutory cooling-off rights where required by consumer law, including an initial cooling-off period after signup and further renewal cooling-off rights after trial conversion and annual renewals.
+We may make reasonable changes to a venue, timetable, facilitator or activity where needed for safety or delivery. If we cancel an event, the event-specific terms and Refund & Cancellation Policy apply.
 
-Membership benefits are personal to the named account holder and cannot be transferred unless we expressly agree otherwise.
+10. Prices and payment
 
-9. Credit packs
+Prices are shown in pounds sterling unless stated otherwise. Payment may be taken through Stripe or another provider identified at checkout or on an invoice.
 
-Credit packs give access to the number of classes shown at purchase.
+You authorise the payment provider to process the agreed payment. If a payment fails or becomes overdue, access or delivery may be paused until the account is brought up to date.
 
-Credits:
-- are personal to the named account holder
-- expire in line with the expiry window shown at purchase
-- do not auto-renew
-- cannot be exchanged for cash
+11. Cancellations and refunds
 
-Where a class is cancelled by us, the relevant credit will be restored or an appropriate alternative will be provided.
+The Refund & Cancellation Policy published at /refund-policy forms part of these terms. Your statutory consumer rights are not affected.
 
-10. Class booking, attendance and late entry
+12. Intellectual property
 
-Class bookings are subject to availability and any booking window shown in the product.
+Website copy, programmes, videos, recordings, worksheets, guides and other materials remain the intellectual property of Shruti Turner or the identified rights holder.
 
-Late cancellation, no-show, waitlist and attendance handling are governed by the booking rules published in the product at the time of booking.
+Unless expressly agreed otherwise, you receive a personal, non-transferable right to use materials for your own participation. You may not reproduce, resell, publish, distribute or teach from them without written permission.
 
-Live classes may include a late-join cutoff. If a participant has not joined within the permitted window, entry may be refused for safety and class-quality reasons.
+13. Acceptable use and conduct
 
-We may record attendance, room joins, room leaves, moderator actions and related operational events to manage classes, no-shows and service delivery.
+You must treat Shruti, other participants, collaborators and staff respectfully. Harassment, discrimination, threats, unsafe behaviour, unauthorised recording or deliberate disruption may lead to removal without refund where proportionate.
 
-11. Live room conduct
+The Acceptable Use Policy published at /acceptable-use applies to website accounts and digital services.
 
-During live classes, events and coaching calls, you must behave respectfully toward instructors and other participants.
+14. Liability
 
-You must not:
-- harass, intimidate or disrupt others
-- record or redistribute sessions without permission
-- misuse chat, video, audio or moderation features
-- attempt to gain access to rooms or controls you are not entitled to use
+Nothing in these terms excludes liability that cannot lawfully be excluded, including liability for death or personal injury caused by negligence, fraud or fraudulent misrepresentation.
 
-We may mute, remove, suspend or restrict participants where conduct is unsafe or disruptive.
+Subject to that, Shruti Turner is not responsible for indirect or unforeseeable loss, loss caused by inaccurate or withheld information, failure to follow safety guidance, third-party services outside reasonable control, or activity undertaken outside the agreed service scope.
 
-12. Coaching services
+15. Changes to services or terms
 
-Coaching services may include programming, check-ins, calls, reviews, messaging, Everfit access and related support, depending on the tier purchased or agreed.
+We may update services, platform features or these terms where reasonably necessary. Material changes will be communicated where required and the current version will remain available on this website.
 
-Response times, review cadence and inclusions vary by tier. The specific package or agreement you purchase governs what is included.
+16. Governing law
 
-1:1 services are not unlimited medical support, crisis support or emergency communication channels.
+These terms are governed by the laws of England and Wales. The courts of England and Wales will have jurisdiction, subject to any mandatory consumer rights that apply where you live.
 
-13. Retreats, workshops and events
-
-Retreats and in-person or hybrid events may require additional forms, screening, waiver acceptance or travel information.
-
-You are responsible for arranging your own travel, insurance and any personal requirements unless the event page expressly states otherwise.
-
-Travel insurance with appropriate medical and cancellation cover is strongly recommended and may be mandatory for some retreats.
-
-14. Payments
-
-Payments are processed securely by Stripe or another named payment provider. We do not store full payment card details.
-
-You must pay all charges due at the point required by the relevant service.
-
-If payment fails, we may suspend access, cancel a booking or prevent further bookings until payment is resolved.
-
-15. Refunds and cancellations
-
-Refund and cancellation terms vary by service. The Refund & Cancellation Policy published at /refund-policy forms part of these terms.
-
-Where a more specific service page sets out additional cancellation terms, those service-specific terms also apply.
-
-16. Intellectual property
-
-All website content, class materials, programme materials, videos, recordings, copy, branding and educational resources remain the intellectual property of Shruti Turner unless stated otherwise.
-
-You receive a personal, non-transferable licence to use purchased materials for your own personal use only.
-
-You must not copy, resell, distribute, upload or commercially exploit these materials without written permission.
-
-17. Acceptable use
-
-Your use of the website and services is also subject to the Acceptable Use Policy at /acceptable-use.
-
-18. Liability
-
-Nothing in these terms excludes or limits liability that cannot lawfully be excluded or limited under applicable law.
-
-Subject to that, we are not liable for indirect or consequential loss, loss of profit, loss of opportunity or losses arising from circumstances outside our reasonable control.
-
-Our total liability in relation to any claim connected with paid services will, to the fullest extent permitted by law, be limited to the amount paid by you for the relevant service giving rise to the claim.
-
-19. Changes to services or terms
-
-We may update services, schedules, pricing, policies and these terms from time to time.
-
-Where changes materially affect ongoing services or legal rights, we will take reasonable steps to notify account holders. Continued use of the platform after the updated terms take effect constitutes acceptance of the updated version.
-
-20. Governing law and contact
-
-These terms are governed by the laws of England and Wales.
-
-Any dispute arising in connection with these terms or the services will be subject to the courts of England and Wales, unless mandatory consumer law requires otherwise.
-
-For questions about these terms, contact tech@thechronicyogini.com.`,
+Questions about these terms can be sent to shruti@shrutiturner.co.uk.`,
   },
   {
     id: "legal-privacy",
@@ -222,140 +152,75 @@ For questions about these terms, contact tech@thechronicyogini.com.`,
     title: "Privacy Policy",
     version: VERSION,
     effectiveDate: EFFECTIVE_DATE,
-    seoTitle: "Privacy Policy - Shruti Turner",
-    seoDescription:
-      "How Shruti Turner collects, uses, stores and protects personal data, including health information.",
+    seoTitle: "Privacy Policy | Shruti Turner",
+    seoDescription: "How Shruti Turner collects, uses, stores and protects personal information.",
     body: `1. Who we are
 
-Shruti Turner is the controller of the personal data described in this Privacy Policy.
+Shruti Turner is the data controller for personal information processed through this website and the services described here.
 
-If you have questions about privacy or want to exercise your data rights, email privacy@shrutiturner.com.
+For privacy questions, email shruti@shrutiturner.co.uk.
 
-2. Scope of this policy
+2. Information we collect
 
-This policy explains how we collect, use, store, share and protect personal data when you:
-- visit the website
-- create an account
-- subscribe to emails
-- book classes, memberships, credits, programmes, retreats or 1:1 services
-- complete health, 1:1, retreat or support forms
-- contact us directly
+Depending on how you use the website and services, we may collect:
+- name, email address, phone number and contact preferences
+- account and authentication information
+- enquiry, consultation and coaching information
+- health, accessibility and movement information you choose to provide
+- workshop, retreat or event booking details
+- payment status and transaction references supplied by payment providers
+- newsletter consent and email engagement information
+- messages, feedback and support correspondence
+- technical information such as IP address, browser, device and security logs
 
-3. Personal data we collect
+3. Special-category health information
 
-Depending on how you use the website or services, we may collect:
-- name, email address, phone numberand account details
-- date of birth, timezone and account preferences
-- booking, attendance, membership, credit-pack and billing history
-- referral and promotion activity
-- contact and support messages
-- newsletter and marketing preferences
-- 1:1, retreat or application form responses
-- device, browser, IP and security information
-- cookie, localStorage and sessionStorage related information described in the Cookie Policy
+Health information is special-category personal data. Where it is needed to deliver a service safely, we process it with your explicit consent and only for the purposes explained when it is collected.
 
-4. Special category and health data
+You may withdraw consent, but doing so may mean we cannot safely continue the relevant service. Legal obligations and records already required to establish or defend legal claims may still apply.
 
-Some services require health-related information so we can deliver them safely and appropriately. This may include information about diagnoses, symptoms, pain, fatigue, hypermobility, injuries, flare patterns, medications, limitations, emergency details and related contextual notes.
+4. How we use information
 
-We treat this as special category personal data.
+We use personal information to:
+- respond to enquiries and recommend suitable support
+- provide coaching, training, yoga, workshops, retreats and events
+- manage accounts, payments and service communications
+- tailor services to health, access and capacity information
+- send marketing where you have consented
+- keep the website secure, prevent misuse and meet legal obligations
+- understand and improve our services
 
-We process health data because:
-- you explicitly provide it to access health-sensitive services
-- it is necessary to tailor services safely
-- it is necessary to protect your vital interests in emergency situations where relevant
+5. Lawful bases
 
-5. How we collect data
+We rely on contract where processing is needed to provide a service, consent for marketing and special-category health information, legitimate interests for proportionate administration and security, and legal obligation where records must be retained or disclosed.
 
-We collect data:
-- directly from you through account creation, forms, bookings, check-ins, waivers and contact submissions
-- automatically through site usage, authentication, security and service-delivery events
-- from payment, authentication, email and video vendors where needed to operate the service
+6. Service providers
 
-6. Why we use personal data
+We use carefully selected providers for website hosting, authentication, email, payments, coaching delivery, analytics, content and security. Providers process only the information needed for their function and are subject to contractual or equivalent safeguards.
 
-We use personal data to:
-- create and manage accounts
-- deliver memberships, bookings, credits, classes, coaching, retreats and related support
-- personalise programming and class adaptations
-- manage attendance, room access, waitlists and no-shows
-- process payments, invoices, refunds and account actions
-- send transactional emails and service updates
-- respond to enquiries and support requests
-- operate referrals and promotions
-- improve the service, prevent misuse and keep the platform secure
-- comply with legal, accounting, tax and consumer-protection obligations
+Some providers may process data outside the United Kingdom. Where this occurs, we use recognised safeguards such as adequacy regulations or approved contractual clauses.
 
-7. Lawful bases
+7. Sharing information
 
-We rely on one or more of the following lawful bases:
-- contract, where processing is necessary to provide the service you requested
-- legitimate interests, where processing is necessary to run, improve and protect the business and platform
-- consent, for optional marketing communications and certain health-sensitive data uses
-- legal obligation, where records must be kept or disclosed by law
+We do not sell personal data. Information may be shared with service providers, professional advisers, event partners where necessary and disclosed to authorities where required by law or to protect safety and legal rights.
 
-For special category health data, we rely on explicit consent and, where relevant, the conditions that allow processing for health, safety and service delivery in line with applicable law.
+8. Retention
 
-8. Payments, video, email and other providers
+We keep information only as long as reasonably needed for the purpose collected, contractual and insurance records, tax and accounting requirements, safety, disputes and legal claims. Retention periods vary by record type.
 
-We use third-party processors and service providers to operate the business. These may include:
-- Stripe for payments and checkout
-- Postmark for transactional email delivery
-- Google where sign-in or related account services are used
-- Daily for live class and live-room service delivery
-- Contentful for website and content management
-- Cloudflare Turnstile for spam prevention and security checks
-- hosting, infrastructure, analytics and support vendors needed to run the site
+9. Your rights
 
-These providers process data only to the extent needed for their service and under their own contractual and security obligations.
+Depending on the circumstances, you may have rights to access, correct, erase, restrict or object to processing, receive portable data, and withdraw consent. You may also complain to the UK Information Commissioner's Office.
 
-9. Attendance, live rooms and operational records
+10. Security
 
-When you book or join live services, we may record operational information such as booking status, room joins, room leaves, attendance events, moderation actions and connected service metadata.
+We use reasonable technical and organisational measures to protect personal information. No online system is completely secure, so please use a unique sign-in method and tell us promptly if you suspect unauthorised account access.
 
-This helps us deliver live services, manage attendance, resolve support issues and operate the platform safely.
+11. Changes and contact
 
-10. International transfers
+We may update this policy as services or legal requirements change. The current version and effective date are shown on this page.
 
-Some service providers may process personal data outside the UK.
-
-Where this happens, we take reasonable steps to ensure appropriate safeguards are in place, such as approved contractual protections or equivalent transfer mechanisms.
-
-11. Retention
-
-We keep personal data only for as long as necessary for the purposes described in this policy, including to comply with legal, tax, accounting, safety and dispute-resolution obligations.
-
-Retention periods vary by data type. For example:
-- account and transactional records may be kept for several years to meet tax and accounting obligations
-- if you request account deletion, the account is first soft-deleted so access stops immediately while certain health declarations and legal acceptance records are retained for up to 6 months for safety, dispute handling and legal protection
-- legal hold may extend that retention where there is an active dispute, complaint or claim
-- marketing preferences are kept until you unsubscribe or ask us to stop
-- security and operational logs are retained for a limited period appropriate to fraud prevention and service reliability
-
-12. Your rights
-
-Subject to applicable law, you may have the right to:
-- access a copy of your personal data
-- correct inaccurate or incomplete data
-- request deletion of data in some circumstances
-- restrict or object to some processing
-- withdraw consent where processing depends on consent
-- receive a portable copy of certain data
-- complain to the Information Commissioner's Office
-
-To exercise these rights, contact privacy@shrutiturner.com.
-
-13. Security
-
-We use reasonable technical and organisational measures to protect personal data, including access controls, authentication, secure vendor tooling and environment-based security measures.
-
-No system is completely secure, so we cannot guarantee absolute security.
-
-14. Changes to this policy
-
-We may update this Privacy Policy from time to time.
-
-The latest version is always published on this page with its effective date and version number. Where changes materially affect how your data is handled, we may also notify users through the platform or by email.`,
+To exercise a privacy right or ask a question, email shruti@shrutiturner.co.uk.`,
   },
   {
     id: "legal-cookies",
@@ -363,127 +228,84 @@ The latest version is always published on this page with its effective date and 
     title: "Cookie Policy",
     version: VERSION,
     effectiveDate: EFFECTIVE_DATE,
-    seoTitle: "Cookie Policy - Shruti Turner",
-    seoDescription:
-      "How cookies, local storage, session storage and related technologies are used across the site.",
+    seoTitle: "Cookie Policy | Shruti Turner",
+    seoDescription: "How the Shruti Turner website uses cookies and similar technologies.",
     body: `1. What this policy covers
 
-This Cookie Policy explains how we use cookies and similar technologies on the website.
+This policy explains how the Shruti Turner website uses cookies and similar technologies in browsers and devices.
 
-For this site, "cookies and similar technologies" includes:
-- browser cookies
-- localStorage
-- sessionStorage
-- related security and anti-abuse technologies that support core site functionality
+2. What cookies are
 
-2. Why we use these technologies
+Cookies are small text files stored by your browser. Similar local-storage and security technologies may remember choices, maintain a session or protect a form.
 
-We use strictly necessary and functional technologies to:
-- keep the site secure
-- maintain sign-in and session state
-- support checkout, booking and account flows
-- remember interface preferences
-- remember newsletter popup or consent states
-- remember device preferences for live classes where relevant
+3. Necessary and functional technologies
 
-3. Strictly necessary technologies
+The website may use necessary or functional technologies to:
+- keep accounts signed in securely
+- remember privacy and interface choices
+- protect forms from spam and abuse
+- maintain checkout and payment state
+- support accessibility and core website functions
 
-Strictly necessary technologies are used to operate the website and services you request. These technologies do not require optional marketing-style consent because the site would not work properly without them.
+These technologies are used only where needed to provide a feature, protect the service or remember a choice you made.
 
-Examples used by this platform may include:
-- authentication and session cookies used by the sign-in system
-- CSRF, security or verification related cookies
-- payment and checkout continuity cookies where required by the payment provider
-- anti-spam or challenge state set by Cloudflare Turnstile
+4. Third-party services
 
-4. Functional storage and remembered preferences
+Providers such as Auth.js, Google, Stripe, Postmark, Contentful, Vercel and Cloudflare Turnstile may set or read cookies or similar identifiers when their features are used. Their own privacy and cookie information applies to their processing.
 
-We also use functional browser storage for product experience features such as:
-- sidebar state and UI preferences
-- newsletter popup suppression
-- saved media-device preferences for live classes
+5. Analytics and marketing
 
-These technologies help the site remember settings you have already chosen.
+Non-essential analytics or marketing technologies will be used only where a lawful basis and any required consent are in place. The available cookie controls will reflect the technologies active on the website.
 
-5. Third-party technologies used on the site
+6. Managing cookies
 
-The site may involve third-party technologies from providers such as:
-- Stripe, for checkout and payment processing
-- Google, where account sign-in or related services are used
-- Daily, for live class and live-room functionality
-- Cloudflare Turnstile, for bot and spam prevention
+You can remove or block cookies through your browser. Blocking necessary cookies may prevent sign-in, forms, checkout or other parts of the website from working correctly.
 
-These services may set their own cookies or related browser state when their tools are used.
+7. Changes to this policy
 
-6. Technology schedule
+We may update this policy when website technology or legal requirements change. The current version and effective date are shown on this page.
 
-The technologies currently expected on this site fall into the following groups:
+8. Contact
 
-Strictly necessary
-- authentication/session cookies used by the account system
-- security and anti-forgery cookies
-- checkout continuity cookies used by payment providers
-- challenge/security state related to Turnstile
-
-Functional
-- sidebar state cookie
-- newsletter popup state in sessionStorage
-- media-device preferences in localStorage
-
-If additional analytics or advertising technologies are added in future, this policy will be updated before or when they go live.
-
-7. Your choices
-
-You can manage cookies through your browser settings and clear local or session storage from your browser at any time.
-
-Be aware that disabling necessary cookies or clearing key storage may affect sign-in, checkout, booking, live-room or other site functionality.
-
-If we introduce optional analytics or marketing technologies in future, we will provide the relevant controls and update this policy accordingly.`,
+Questions about cookies can be sent to shruti@shrutiturner.co.uk.`,
   },
   {
-    id: "legal-health-waiver",
+    id: "legal-health-declaration",
     slug: "health-declaration",
     title: "Health & Liability Waiver",
-    version: ONE_TO_ONE_SCOPE_VERSION,
-    effectiveDate: ONE_TO_ONE_SCOPE_EFFECTIVE_DATE,
-    seoTitle: "Health & Liability Waiver - Shruti Turner",
-    seoDescription:
-      "Health and liability waiver for classes, coaching, retreats and other physical services.",
+    version: VERSION,
+    effectiveDate: EFFECTIVE_DATE,
+    seoTitle: "Health & Liability Waiver | Shruti Turner",
+    seoDescription: "Health, safety and participation responsibilities for Shruti Turner services.",
     body: `1. Understanding the service
 
-I understand that Shruti Turner's services may include strength training, yoga, movement coaching, classes, programmes, retreats and related physical activity.
+Shruti Turner's services include movement, personal training and coaching, yoga, workshops, retreats and related education. They may be rehabilitation-informed, but they are not medical diagnosis, clinical rehabilitation, medical treatment or emergency care.
 
-I understand that these services are educational movement, training and support services. They are not medical diagnosis, treatment, rehabilitation or emergency care.
+2. Your health information
 
-I understand that these services do not include professional athlete performance coaching, paid athletic performance support or preparation for paid professional sport.
+You agree to provide accurate and relevant information about health conditions, pain, injuries, symptoms, medication, pregnancy, access needs and other factors that could affect participation.
 
-2. My responsibilities
+You agree to tell Shruti if this information or your capacity changes.
 
-I confirm that I am responsible for:
-- deciding whether participation is appropriate for me
-- seeking medical advice where needed
-- disclosing relevant health information honestly
-- stopping or modifying activity if I feel unsafe
-- informing my coach or instructor about changes in symptoms, diagnosis, medication or capacity
-- telling Shruti if my goals or participation relate to paid or professional sport
+3. Your responsibility during participation
 
-I understand that my body may fluctuate and that choosing rest, adaptation or a lower-intensity option is valid.
+You remain responsible for deciding whether an activity feels appropriate. You agree to work within your current capacity, follow safety guidance, use equipment appropriately and stop if you feel unsafe, unwell or experience concerning symptoms.
 
-3. Assumption of risk
+4. Medical advice
 
-I understand that physical activity carries inherent risks, including pain, fatigue, symptom flare, dizziness, aggravation of existing conditions, falls, strains, sprains and other injury or health complications.
+You should seek advice from a qualified healthcare professional where you have concerns about starting or continuing exercise. Shruti may ask for medical clearance or decline, adapt or pause a service where further clinical input appears necessary.
 
-I voluntarily choose to participate and accept responsibility for the risks that are reasonably inherent in taking part.
+5. Inherent risk
 
-4. Limitation of liability
+Movement and exercise carry inherent risks, including fatigue, soreness, symptom flare, strain, falls and injury. Risk cannot be removed entirely even where reasonable care and adaptations are used.
 
-To the fullest extent permitted by law, I agree that Shruti Turner and anyone acting on her behalf will not be liable for loss, injury, illness or damage arising from my participation except where liability cannot lawfully be excluded, including liability for death or personal injury caused by negligence.
+6. Liability boundary
 
-5. Consent and acknowledgement
+Nothing in this waiver excludes liability that cannot lawfully be excluded. Subject to that, Shruti Turner is not responsible for harm arising from inaccurate or withheld information, disregarding safety guidance, participating outside the agreed scope, or continuing after you have been advised to stop.
 
-By accepting this waiver, I confirm that I have read and understood it, that I have had the opportunity to seek medical advice if needed and that I choose to participate on this basis.
+7. Consent
 
-I also understand that additional health questions or screening may be required for specific services such as retreats, 1:1 support or other health-sensitive offers.`,
+By accepting this waiver during onboarding or booking, you confirm that you understand the service boundary, have had the opportunity to ask questions and agree to the responsibilities above.`,
   },
   {
     id: "legal-refund-policy",
@@ -491,63 +313,47 @@ I also understand that additional health questions or screening may be required 
     title: "Refund & Cancellation Policy",
     version: VERSION,
     effectiveDate: EFFECTIVE_DATE,
-    seoTitle: "Refund & Cancellation Policy - Shruti Turner",
-    seoDescription:
-      "Refund and cancellation terms for memberships, credits, classes, programmes, coaching and retreats.",
+    seoTitle: "Refund & Cancellation Policy | Shruti Turner",
+    seoDescription: "Cancellation, rescheduling and refund terms for Shruti Turner services.",
     body: `1. General approach
 
-We aim to be clear and fair about cancellations, refunds, pauses and credits.
+This policy explains the usual cancellation and refund position for Shruti Turner services. Service-specific terms shown in a proposal, booking page or event information also form part of your agreement.
 
-Different services operate differently, so the specific product page and booking flow should always be checked at the time of purchase. This policy explains the general rules that apply across the platform.
+Nothing in this policy limits your statutory consumer rights.
 
-2. Memberships
+2. Personal training and coaching
 
-Memberships renew automatically until cancelled.
+Any initial commitment, notice period, session rescheduling window and expiry date will be confirmed before you agree to proceed.
 
-You can cancel a membership online from your membership dashboard.
+Once personalised planning, review or coaching work has begun, charges already earned for work delivered are normally non-refundable. If a booked session is cancelled late or missed, it may be treated as used where the agreed service terms say so.
 
-If you cancel outside a statutory cooling-off period, your access usually continues until the end of the paid billing period unless stated otherwise in the product flow.
+3. Workshops and events
 
-If you cancel during an applicable statutory cooling-off period, we will process any refund required by consumer law. Where the law allows for a pro-rata deduction for services already supplied during a renewal cooling-off period, that deduction may be applied.
+Cancellation and transfer deadlines are shown with the event information. Where a place can be transferred, you remain responsible for giving accurate attendee information and meeting any health or eligibility requirements.
 
-We also send written cancellation acknowledgements and end-of-contract notices for memberships on a durable medium.
+If Shruti Turner cancels an event, you will be offered the remedy described in the event terms, normally a transfer, credit or refund of the amount paid for the cancelled service. Consequential costs such as travel or accommodation are not covered unless the law requires otherwise.
 
-3. Credit packs and class bookings
+4. Retreats
 
-Credit packs do not auto-renew and cannot usually be refunded once purchased unless required by law.
+Retreat bookings may require a non-refundable deposit and staged balance payments. The booking page will state the relevant deadlines and what is refundable at each stage.
 
-Where a class booking is cancelled within the permitted cancellation window, the credit used for that booking will normally be returned to your account.
+You are strongly encouraged to arrange suitable travel insurance. Unless expressly included, travel, insurance, visas and personal expenses remain your responsibility.
 
-If you miss a class, join too late to attend or cancel outside the permitted cancellation window, the credit or entitlement may be treated as used.
+5. Digital resources
 
-4. Small group programmes and coaching services
+Where you request immediate access to digital content during a statutory cancellation period, you may be asked to acknowledge that the cancellation right can be lost once supply begins, as permitted by consumer law.
 
-Because programmes and coaching reserve capacity, planning time, review time and support availability, refunds are not usually available once a programme or coaching period has started.
+6. Illness, health changes and fluctuating capacity
 
-Where appropriate, we may at our discretion offer:
-- a pause
-- a reschedule
-- a future-credit style arrangement
+Please contact Shruti as early as possible if illness, injury, a change in health or fluctuating capacity affects participation. Where practical, Shruti may offer an adaptation, reschedule, credit or pause, but this depends on the service, notice given, work already completed and unrecoverable costs.
 
-This is not guaranteed and will depend on the service, timing and circumstances.
+7. How refunds are paid
 
-5. Retreats and events
+Approved refunds are normally returned to the original payment method. Processing times depend on the payment provider and bank. Transaction or currency-conversion differences outside our control may not be recoverable.
 
-Retreat or event cancellation terms are shown on the relevant retreat or event page and may vary by venue or supplier commitments.
+8. Contact
 
-Unless a more specific page states otherwise, retreat bookings are normally non-refundable within the short-notice period before the event because accommodation and venue costs have already been committed.
-
-6. Medical issues and chronic illness fluctuations
-
-We recognise that chronic illness and pain can be unpredictable.
-
-If you need to cancel or pause because of illness, flare or another genuine health issue, please contact us as early as possible. Where we reasonably can, we will try to find a fair solution. However, this does not create an automatic right to a refund outside the published terms.
-
-7. Consumer rights and contact
-
-Nothing in this policy limits any legal rights you may have under applicable consumer law.
-
-If you have a cancellation or refund question, contact tech@thechronicyogini.com as soon as possible and include the relevant service, booking or order details.`,
+To discuss a cancellation, email shruti@shrutiturner.co.uk with the service, booking details and relevant dates.`,
   },
   {
     id: "legal-acceptable-use",
@@ -555,118 +361,114 @@ If you have a cancellation or refund question, contact tech@thechronicyogini.com
     title: "Acceptable Use Policy",
     version: VERSION,
     effectiveDate: EFFECTIVE_DATE,
-    seoTitle: "Acceptable Use Policy - Shruti Turner",
-    seoDescription:
-      "Rules for using the website, classes, live rooms and community spaces safely and respectfully.",
+    seoTitle: "Acceptable Use Policy | Shruti Turner",
+    seoDescription: "Rules for using Shruti Turner accounts, resources and digital services.",
     body: `1. Purpose
 
-This Acceptable Use Policy explains the standards expected when using the website, your account, live rooms, bookings, classes and related services.
+This policy protects clients, collaborators, Shruti Turner and the security of website accounts and digital services.
 
-2. Respectful behaviour
+2. Account security
 
-You must treat instructors, staff, contractors and other users respectfully.
+Keep your sign-in details and verification codes private. Do not access another person's account, attempt to bypass security controls or misrepresent your identity.
 
-You must not engage in harassment, bullying, discrimination, abuse, intimidation or threatening behaviour.
+3. Respectful conduct
 
-3. Honest and safe participation
+Do not harass, threaten, discriminate against or deliberately disrupt Shruti, another participant, a collaborator or staff member. Communications must remain relevant and respectful.
 
-You must provide accurate information when creating an account, completing forms, booking services or disclosing health information.
+4. Content and intellectual property
 
-You must not knowingly misrepresent your identity, eligibility, payment information or health-related information relevant to safe participation.
+Do not copy, record, scrape, republish, sell, distribute or teach from protected programmes, videos, resources or communications without written permission.
 
-4. Platform and account misuse
+5. Technical misuse
 
-You must not:
-- try to access data, rooms or systems you are not authorised to access
-- interfere with the website, payment flows, booking flows or live-room systems
-- share access in a way that circumvents pricing or account rules
-- upload or transmit malware, spam or abusive content
-- scrape, copy or automate access to the site in a way that harms the service
+Do not introduce malware, automate abusive requests, probe for vulnerabilities, interfere with availability, evade rate limits or use the service for unlawful activity.
 
-5. Live classes and coaching spaces
+6. Privacy
 
-When using live rooms, chat, audio or video features, you must not:
-- disrupt the class or coaching session
-- record or redistribute sessions without permission
-- use offensive, abusive, sexually explicit or unlawful content
-- misuse moderator or community features
+Do not share another person's private information, images, messages or health details without their permission. Do not make unauthorised recordings of calls, sessions or events.
 
-6. Consequences
+7. Enforcement
 
-If we reasonably believe this policy has been breached, we may remove content, cancel bookings, suspend access, restrict live-room access, close accounts or take any other proportionate steps needed to protect people and the platform.
+We may remove content, limit features, suspend access or close an account where reasonably necessary to protect people, rights or systems. Serious or unlawful behaviour may be reported to the relevant authorities.
 
-7. Reporting concerns
+8. Contact
 
-If you experience or witness misuse of the service, contact tech@thechronicyogini.com so it can be reviewed.`,
+Report a security or acceptable-use concern to shruti@shrutiturner.co.uk.`,
   },
   {
     id: "legal-coaching-agreement",
     slug: "coaching-agreement",
-    title: "1:1 Agreement",
-    version: ONE_TO_ONE_SCOPE_VERSION,
-    effectiveDate: ONE_TO_ONE_SCOPE_EFFECTIVE_DATE,
-    seoTitle: "1:1 Agreement - Shruti Turner",
+    title: "Coaching Agreement",
+    version: VERSION,
+    effectiveDate: EFFECTIVE_DATE,
+    seoTitle: "Coaching Agreement | Shruti Turner",
     seoDescription:
-      "The coaching-specific agreement covering scope, communication, check-ins, Everfit and client responsibilities.",
+      "Working agreement for personalised movement, training and coaching with Shruti Turner.",
     body: `1. Purpose of this agreement
 
-This 1:1 Agreement explains the basis on which 1:1 services are discussed, offered and delivered by Shruti Turner.
+This agreement sets clear expectations for personalised movement, personal training and coaching services delivered by Shruti Turner.
 
-It applies to coaching applications and, where you become a client, forms part of the expectations around the working relationship.
+2. Your coaching service
 
-2. Nature of coaching support
+Your proposal or onboarding information identifies your level of support, contact rhythm, review frequency, included sessions, programme access, price and any initial commitment.
 
-Coaching may include programming, written review, check-ins, calls, messaging, Everfit delivery, education and accountability support depending on the tier agreed.
+The amount of contact may vary by service level. The professional care, individual consideration and responsibility to work within scope do not.
 
-1:1 support is collaborative. It is not crisis support, psychotherapy, emergency medical support or a guarantee of specific results.
+3. Starting well
 
-1:1 support does not include professional athlete performance coaching, paid athletic performance support or preparation for paid professional sport. If your goals relate to paid or professional sport, Shruti may be unable to offer the service or may recommend a different professional.
+You agree to provide accurate information about your goals, movement history, health, symptoms, medication, access needs, available equipment and circumstances. The initial approach is based on this information and may change as Shruti learns more about you.
 
-3. Client responsibilities
+4. Communication and reviews
 
-As a coaching client or applicant, you agree to:
-- provide honest information about your goals, history, symptoms and capacity
-- complete check-ins and requested forms as accurately as possible
-- communicate when something is not working or your circumstances change
-- tell Shruti if your goals or participation relate to paid or professional sport
-- use the support channel and cadence appropriate to your tier
-- make your own decisions about participation and seek medical advice where needed
+Use the agreed channel for check-ins, questions and feedback. Response windows and review days are described in your service information and are not an emergency service.
 
-4. Check-ins and reviews
+Tell Shruti promptly when pain, symptoms, health, confidence, schedule, equipment or other circumstances affect the plan. Adaptation depends on receiving enough context to make an informed decision.
 
-Coaching relies on regular check-ins. Depending on your tier, these may be weekly or monthly.
+5. Your programme and resources
 
-If you do not complete check-ins or provide the information needed for review, programming updates and coaching guidance may be limited, delayed or less precise.
+Your programme, check-ins and resources may be delivered through Everfit or another identified tool so that they are easy to access. Shruti is the coaching service; the platform is an administrative and delivery tool.
 
-5. Everfit and connected tools
+Programmes and resources are personal to you and may not be shared, copied, sold or distributed without written permission.
 
-Where Everfit is used, it acts as the training-delivery layer for workouts, habits and check-ins. The website remains the main service and account hub.
+6. Health and clinical boundaries
 
-You are responsible for engaging with the relevant tools and notifications needed to receive the service properly.
+Coaching may be rehabilitation-informed, but it is not medical diagnosis, clinical rehabilitation, medical treatment, psychotherapy or emergency care. Shruti may recommend medical or clinical input, request clearance, or pause or decline work outside her training or insurance scope.
 
-6. Communication boundaries
+The Health & Liability Waiver at /health-declaration also applies.
 
-Response times vary by tier and are not 24/7.
+7. Sessions, changes and missed contact
 
-Coaching communication is for service delivery only and must not be used for emergencies. If you need urgent medical help, contact an appropriate healthcare or emergency service.
+Where your service includes appointments, the rescheduling window and treatment of missed sessions are stated before onboarding. Late changes may count as used where agreed.
 
-7. 1:1 service changes
+If you do not check in or train for a period, Shruti will make reasonable efforts within the agreed service but cannot guarantee progress or recreate unused time outside the service terms.
 
-1:1 services are billed separately from any current or future class membership, credit, workshop or retreat offer.
+8. Fees, cancellation and refunds
 
-If your 1:1 service changes, your billing and service entitlement may also change. Shruti will confirm the timing and any payment impact before the change is applied.
+Fees and payment timing are confirmed before onboarding. The Refund & Cancellation Policy at /refund-policy applies alongside any service-specific commitment or notice period.
 
-8. No guarantee of outcomes
+9. Results and responsibility
 
-Bodies are variable, especially in the context of chronic illness, pain and fatigue.
+Shruti will provide professional, evidence-informed coaching with reasonable care and skill. Outcomes depend on many factors and cannot be guaranteed.
 
-1:1 support aims to support safer, more confident and more consistent training, but no specific physical, medical or performance outcome is guaranteed.
+You remain responsible for your choices, participation, use of guidance and decision to seek medical advice where appropriate.
 
-9. Agreement acknowledgement
+10. Confidentiality and data
 
-By ticking the 1:1 Agreement box during the application flow, you confirm that you have read this agreement and understand how 1:1 support is structured before you proceed with an application or enquiry.`,
+Personal and health information is handled according to the Privacy Policy. Confidentiality may be limited where disclosure is required by law or reasonably necessary to protect someone from serious harm.
+
+11. Ending the coaching relationship
+
+Either party may end coaching in line with the agreed notice and cancellation terms. Shruti may end or pause the relationship sooner where there is non-payment, unsafe participation, abusive conduct, repeated boundary breaches, loss of trust or work outside professional scope.
+
+12. Acceptance
+
+By accepting this agreement during onboarding, you confirm that you have read it, the relevant service information, the Terms & Conditions, Privacy Policy, Refund & Cancellation Policy and Health & Liability Waiver, and have had the opportunity to ask questions.`,
   },
 ];
+
+export function getLegalDocumentSeed(slug: LegalDocumentSlug) {
+  return LEGAL_DOCUMENTS.find((document) => document.slug === slug) || null;
+}
 
 export const LEGAL_DOCUMENTS_BY_SLUG = Object.fromEntries(
   LEGAL_DOCUMENTS.map((document) => [document.slug, document])

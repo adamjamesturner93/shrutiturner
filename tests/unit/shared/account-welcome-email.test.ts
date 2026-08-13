@@ -9,7 +9,7 @@ describe("OnboardingEmail account welcome", () => {
       createElement(OnboardingEmail, {
         firstName: "Rhea",
         offersUrl: "https://shrutiturner.test/coaching",
-        applyUrl: "https://shrutiturner.test/coaching/apply",
+        enquireUrl: "https://shrutiturner.test/coaching/enquire",
       })
     );
 

@@ -5,7 +5,12 @@ import { useSearchParams } from "next/navigation";
 import { AlertCircle, ArrowRight, CheckCircle2, Youtube } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
-import { EditorialHero, MarketingSection, SectionHeading } from "@/components/marketing/sections";
+import {
+  EditorialHero,
+  MarketingSection,
+  PreFooterCtaSection,
+  SectionHeading,
+} from "@/components/marketing/sections";
 import { WellbeingVenn } from "@/components/marketing/wellbeing-venn";
 import { Button } from "@/components/ui/button";
 import type { TestimonialContent } from "@/lib/content";
@@ -53,8 +58,8 @@ export function HomePage({ testimonials }: HomePageProps) {
               standard fitness approaches quite work for them.
             </p>
             <p>
-              I bring together expertise in and lived experience of rehabilitation, fitness and
-              wellbeing to personalise training to work with your body and lifestyle.
+              I bring together rehabilitation, fitness and wellbeing to personalise training to work
+              with your body and lifestyle.
             </p>
           </div>
         }
@@ -65,8 +70,8 @@ export function HomePage({ testimonials }: HomePageProps) {
               <div className="aspect-[4/4.75] overflow-hidden rounded-[1.45rem]">
                 <ImageWithFallback
                   src="/images/shruti-deadlift.jpeg"
-                  alt="Shruti Turner strength training with a barbell"
-                  className="h-full w-full object-cover object-[center_40%]"
+                  alt="Shruti Turner deadlifting a barbell in a gym"
+                  className="h-full w-full object-cover object-[center_48%]"
                 />
               </div>
             </div>
@@ -84,17 +89,17 @@ export function HomePage({ testimonials }: HomePageProps) {
         <div className="mt-12 grid gap-5 md:grid-cols-3">
           {[
             {
-              title: "Your body needs a different approach",
+              title: "Your body needs a different approach.",
               body: "Pain, injury, health conditions or changing capacity make generic plans feel like a poor fit.",
               className: "border-brand-accent/20 bg-brand-accent/5",
             },
             {
-              title: "Fitness doesn’t feel built for you",
+              title: "Fitness doesn’t feel built for you.",
               body: "Gyms, classes or standard programmes can feel intimidating, rigid or inaccessible.",
               className: "border-bronze/20 bg-bronze/5",
             },
             {
-              title: "Your life doesn’t fit a perfect routine",
+              title: "Your life doesn’t fit a perfect routine.",
               body: "Work, stress, energy and responsibilities mean you need something flexible enough to work in real life.",
               className: "border-brand-gold/25 bg-brand-gold/5",
             },
@@ -129,7 +134,7 @@ export function HomePage({ testimonials }: HomePageProps) {
         <SectionHeading
           eyebrow="How It Comes Together"
           title="Rehabilitation, fitness and wellbeing overlap."
-          description="Explore each area to see how it shapes my approach to personalising movement and training"
+          description="Explore each area to see how it shapes my approach to personalising movement and training."
           align="center"
         />
         <div className="mt-10">
@@ -143,8 +148,8 @@ export function HomePage({ testimonials }: HomePageProps) {
             <div className="aspect-[4/5] overflow-hidden rounded-[1.25rem]">
               <ImageWithFallback
                 src="/images/shruti.jpeg"
-                alt="Shruti Turner hiking in the mountains"
-                className="h-full w-full object-cover"
+                alt="Shruti Turner hiking in Patagonia"
+                className="h-full w-full object-cover object-[center_62%]"
               />
             </div>
           </div>
@@ -164,7 +169,7 @@ export function HomePage({ testimonials }: HomePageProps) {
               {[
                 {
                   title: "Rehabilitation",
-                  body: "PhD-level research and rehabilitation expertise.",
+                  body: "PhD and further research in rehabilitation.",
                 },
                 {
                   title: "Fitness",
@@ -228,30 +233,19 @@ export function HomePage({ testimonials }: HomePageProps) {
         </MarketingSection>
       ) : null}
 
-      <MarketingSection compact className="bg-brand-accent text-brand-white -mb-24">
-        <div className="grid items-center gap-6 md:grid-cols-[1fr_auto] md:gap-10">
-          <div>
-            <h2 className="text-2xl leading-tight md:text-3xl">
-              Not sure what kind of support you need?
-            </h2>
-            <p className="text-brand-white/82 mt-3 max-w-3xl leading-relaxed">
-              You don&apos;t need to choose a programme before we talk. Tell me what you&apos;re
-              working towards and what&apos;s getting in the way, and we&apos;ll work out the right
-              level of support together.
-            </p>
-          </div>
-          <Button
-            asChild
-            size="lg"
-            className="bg-brand-white text-brand-accent hover:bg-brand-white/90"
-          >
-            <Link href="/coaching">
-              Explore coaching
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
-      </MarketingSection>
+      <PreFooterCtaSection
+        compact
+        className="-mb-24"
+        title="Not sure what kind of support you need?"
+        description="You don't need to choose a programme before we talk. Tell me what you're working towards and what's getting in the way, and we'll work out the right level of support together."
+        actions={[
+          {
+            href: "/coaching",
+            label: "Explore coaching",
+            icon: ArrowRight,
+          },
+        ]}
+      />
     </Layout>
   );
 }

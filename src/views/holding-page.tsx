@@ -25,7 +25,7 @@ const SOCIAL_LINKS = [
     label: "Facebook",
   },
   {
-    href: "mailto:tech@thechronicyogini.com",
+    href: "mailto:shruti@shrutiturner.co.uk",
     icon: Mail,
     label: "Email",
   },
@@ -73,8 +73,8 @@ export function HoldingPage({ existingPlatformUrl: _existingPlatformUrl }: Holdi
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row md:flex-col md:items-start lg:flex-row">
                 <p className="max-w-sm text-sm leading-relaxed text-white/58">
-                  Coaching applications, resources and newsletter updates will live here when the
-                  new site opens.
+                  Coaching enquiries, resources and newsletter updates will live here when the new
+                  site opens.
                 </p>
               </div>
             </div>

@@ -1,7 +1,7 @@
 export type SiteStage = "full" | "holding";
 
 export const HOLDING_PUBLIC_ALLOWLIST = ["/", "/privacy", "/terms", "/cookies", "/unsubscribe"];
-export const HOLDING_SITEMAP_PATHS = ["/", "/privacy", "/terms", "/cookies"];
+export const HOLDING_SITEMAP_PATHS = ["/"];
 
 const HOLDING_BYPASS_PREFIXES = ["/dashboard", "/account", "/admin", "/login", "/signup", "/auth"];
 

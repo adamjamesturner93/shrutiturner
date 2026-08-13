@@ -209,6 +209,19 @@ function readContentfulAssetAlt(fields: Record<string, unknown> | undefined) {
   return null;
 }
 
+function joinRichTextFragments(fragments: string[]) {
+  return fragments.reduce((joined, fragment) => {
+    if (!joined || !fragment || /\s$/.test(joined) || /^\s/.test(fragment)) {
+      return joined + fragment;
+    }
+    const previousCharacter = joined.replace(/(?:\*\*|_|`)$/, "").slice(-1);
+    const nextCharacter = fragment.replace(/^(?:\*\*|_|`)/, "").charAt(0);
+    return /[\p{L}\p{N}]/u.test(previousCharacter) && /[\p{L}\p{N}]/u.test(nextCharacter)
+      ? `${joined} ${fragment}`
+      : joined + fragment;
+  }, "");
+}
+
 function renderRichTextNode(node: unknown): string {
   if (!node || typeof node !== "object" || Array.isArray(node)) {
     return "";
@@ -237,7 +250,7 @@ function renderRichTextNode(node: unknown): string {
   }
 
   const children = Array.isArray(richNode.content)
-    ? richNode.content.map(renderRichTextNode).join("")
+    ? joinRichTextFragments(richNode.content.map(renderRichTextNode))
     : "";
 
   if (nodeType === "hyperlink") {
@@ -454,25 +467,25 @@ function combineRetreats(
 export async function getGlobalContent(): Promise<GlobalContent> {
   return {
     siteName: "Shruti Turner",
-    siteTagline: "Inclusive movement coaching",
+    siteTagline: "Personal training and movement coaching",
     defaultSeoDescription:
-      "Inclusive movement coaching for chronic illness, autoimmune conditions, wellbeing and injury recovery or prevention.",
+      "Personal training and movement coaching bringing together rehabilitation, fitness and wellbeing, built around your body, goals and real life.",
   };
 }
 
 export async function getPageContent(slug: string): Promise<PageContent | null> {
   const pageSeo: Record<string, SeoContent> = {
     home: {
-      title: "Inclusive Movement Coaching",
+      title: "Personal Training & Movement Coaching | Shruti Turner",
       description:
-        "Inclusive movement coaching for adults living with chronic illness, autoimmune conditions and injury recovery or prevention.",
+        "Personal training and movement coaching bringing together rehabilitation, fitness and wellbeing, built around your body, goals and real life.",
     },
     coaching: {
       title: "Coaching",
       description:
-        "Personalised movement coaching for chronic illness, autoimmune conditions, wellbeing and injury recovery or prevention.",
+        "Personalised online training and movement coaching bringing together rehabilitation, fitness and wellbeing, with support built around your body, goals and real life.",
     },
-    "coaching-apply": { title: "Enquire About Coaching" },
+    "coaching-enquire": { title: "Enquire About Coaching" },
     "coaching-personal-programme": { title: "Independent Training Plan" },
     blog: { title: "Blog" },
     about: { title: "About" },

@@ -464,7 +464,7 @@ export function PreFooterCtaSection({
       {centered ? (
         <div className="mx-auto max-w-4xl space-y-8 text-center">
           {eyebrow ? (
-            <p className="text-brand-accent-light text-xs tracking-[0.2em] uppercase">{eyebrow}</p>
+            <p className="text-brand-white/90 text-xs tracking-[0.2em] uppercase">{eyebrow}</p>
           ) : null}
           <div>
             <h2 className="text-3xl leading-tight md:text-5xl">{title}</h2>
@@ -486,9 +486,7 @@ export function PreFooterCtaSection({
         >
           <div>
             {eyebrow ? (
-              <p className="text-brand-accent-light text-xs tracking-[0.2em] uppercase">
-                {eyebrow}
-              </p>
+              <p className="text-brand-white/90 text-xs tracking-[0.2em] uppercase">{eyebrow}</p>
             ) : null}
             <h2 className="mt-4 text-3xl leading-tight md:text-5xl">{title}</h2>
             {description ? (
