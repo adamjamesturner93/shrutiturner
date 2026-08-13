@@ -19,6 +19,17 @@ test("blog uses the revised introductory and newsletter copy", async ({ page }) 
   ]) {
     await expect(page.getByText(heading, { exact: true })).toBeVisible();
   }
+  const filterRowBounds = await Promise.all(
+    [
+      page.getByRole("button", { name: "All Articles", exact: true }),
+      page.getByRole("button", { name: "wellbeing", exact: true }),
+      page.getByRole("button", { name: "Show more article filters" }),
+      page.getByRole("combobox", { name: "Sort blog posts by" }),
+    ].map((control) => control.boundingBox())
+  );
+  expect(filterRowBounds.every(Boolean)).toBe(true);
+  const filterRowCentres = filterRowBounds.map((bounds) => bounds!.y + bounds!.height / 2);
+  expect(Math.max(...filterRowCentres) - Math.min(...filterRowCentres)).toBeLessThan(2);
   await expect(page.getByRole("heading", { name: "Join the newsletter." })).toBeVisible();
   await expect(
     page.getByText(
@@ -73,9 +84,8 @@ test("blog sorting can switch to alphabetical order", async ({ page }) => {
   await page.getByRole("combobox").click();
   await page.getByRole("option", { name: "A-Z" }).click();
 
-  await expect(page.locator("article").first().getByRole("heading")).toContainText(
-    "Building Training Capacity When You Start From Zero"
-  );
+  const sortedTitles = await page.locator("article").getByRole("heading").allTextContents();
+  expect(sortedTitles).toEqual([...sortedTitles].sort((left, right) => left.localeCompare(right)));
   await expect(page.locator("#main-content input[type='email']")).toHaveCount(1);
   await expect(page.locator("footer input[type='email']")).toHaveCount(0);
 });

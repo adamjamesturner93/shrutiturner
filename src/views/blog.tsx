@@ -248,40 +248,40 @@ export function BlogPage({ posts }: BlogPageProps) {
       <section className="section-wash py-12 md:py-16">
         <div className="container mx-auto max-w-6xl px-4">
           <div className="marketing-panel mb-10 rounded-[1.75rem] p-5 md:p-6">
-            <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
-              <div className="space-y-4">
-                <div className="relative max-w-xl">
-                  <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-                  <Input
-                    value={searchInput}
-                    onChange={(event) => setSearchInput(event.target.value)}
-                    placeholder="Search articles"
-                    aria-label="Search articles"
-                    className="pl-9"
-                  />
-                </div>
-                <div className="flex flex-wrap gap-2" aria-label="Filter articles by category">
-                  <Button
-                    variant={
-                      selectedTag === "all" && selectedPillar === "all" ? "default" : "outline"
-                    }
-                    size="sm"
-                    onClick={() => replaceFilters({})}
-                  >
-                    All Articles
-                  </Button>
-                  {(["rehabilitation", "fitness", "wellbeing"] as BlogPillar[]).map((pillar) => (
+            <div className="space-y-4">
+              <div className="relative max-w-xl">
+                <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+                <Input
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  placeholder="Search articles"
+                  aria-label="Search articles"
+                  className="pl-9"
+                />
+              </div>
+              <Collapsible open={moreFiltersOpen} onOpenChange={setMoreFiltersOpen}>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-3">
+                  <div className="flex flex-wrap gap-2" aria-label="Filter articles by category">
                     <Button
-                      key={pillar}
-                      variant={selectedPillar === pillar ? "default" : "outline"}
+                      variant={
+                        selectedTag === "all" && selectedPillar === "all" ? "default" : "outline"
+                      }
                       size="sm"
-                      onClick={() => replaceFilters({ pillar })}
+                      onClick={() => replaceFilters({})}
                     >
-                      {pillar}
+                      All Articles
                     </Button>
-                  ))}
-                </div>
-                <Collapsible open={moreFiltersOpen} onOpenChange={setMoreFiltersOpen}>
+                    {(["rehabilitation", "fitness", "wellbeing"] as BlogPillar[]).map((pillar) => (
+                      <Button
+                        key={pillar}
+                        variant={selectedPillar === pillar ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => replaceFilters({ pillar })}
+                      >
+                        {pillar}
+                      </Button>
+                    ))}
+                  </div>
                   <CollapsibleTrigger asChild>
                     <Button variant="ghost" size="sm" aria-label="Show more article filters">
                       More filters
@@ -293,46 +293,45 @@ export function BlogPage({ posts }: BlogPageProps) {
                       />
                     </Button>
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-3">
-                    <div className="flex flex-wrap gap-2" aria-label="Filter articles by topic">
-                      {allTags.map((tag) => (
-                        <Button
-                          key={tag}
-                          variant={selectedTag === tag ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => handleSetTag(tag)}
-                        >
-                          {tag.toLocaleLowerCase("en-GB")}
-                        </Button>
-                      ))}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground text-sm">Sort by:</span>
-                <Select
-                  value={sortBy}
-                  onValueChange={(value) => {
-                    setSortBy(value);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <SelectTrigger
-                    id="blog-sort"
-                    aria-label="Sort blog posts by"
-                    className="w-[150px]"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="newest">Newest</SelectItem>
-                    <SelectItem value="oldest">Oldest</SelectItem>
-                    <SelectItem value="a-z">A-Z</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                  <div className="ml-auto flex items-center gap-2">
+                    <span className="text-muted-foreground text-sm">Sort by:</span>
+                    <Select
+                      value={sortBy}
+                      onValueChange={(value) => {
+                        setSortBy(value);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger
+                        id="blog-sort"
+                        aria-label="Sort blog posts by"
+                        className="h-8 w-[150px]"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="newest">Newest</SelectItem>
+                        <SelectItem value="oldest">Oldest</SelectItem>
+                        <SelectItem value="a-z">A-Z</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <CollapsibleContent className="mt-3">
+                  <div className="flex flex-wrap gap-2" aria-label="Filter articles by topic">
+                    {allTags.map((tag) => (
+                      <Button
+                        key={tag}
+                        variant={selectedTag === tag ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleSetTag(tag)}
+                      >
+                        {tag.toLocaleLowerCase("en-GB")}
+                      </Button>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
           </div>
 
