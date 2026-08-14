@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  allowedDevOrigins: ["127.0.0.1", "localhost", "*.ngrok-free.app"],
+  allowedDevOrigins: ["127.0.0.1", "localhost", "*.ngrok-free.app", "*.trycloudflare.com"],
   cacheComponents: true,
   images: {
     remotePatterns: [

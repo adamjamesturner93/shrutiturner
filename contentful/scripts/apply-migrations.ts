@@ -3,6 +3,16 @@ import { createClient } from "contentful-management";
 import { getContentfulScriptEnv } from "./env.ts";
 
 const { spaceId, environmentId, managementToken } = getContentfulScriptEnv();
+const requestedContentTypes = new Set(
+  (process.env.CONTENTFUL_MIGRATION_TYPES || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+);
+const migrationModels =
+  requestedContentTypes.size > 0
+    ? PUBLIC_CONTENT_MODELS.filter((model) => requestedContentTypes.has(model.id))
+    : PUBLIC_CONTENT_MODELS;
 
 const client = createClient({ accessToken: managementToken }, { type: "legacy" });
 const CMA_BASE_URL = `https://api.contentful.com/spaces/${spaceId}/environments/${environmentId}`;
@@ -194,19 +204,26 @@ async function run() {
     environmentId
   )) as unknown as ContentfulEnvironmentLike;
 
-  for (const model of PUBLIC_CONTENT_MODELS) {
+  for (const model of migrationModels) {
     await upsertAndPublishContentType(environment, model);
   }
 
   // Auto-generate slugs in the Contentful UI while still allowing manual edits.
-  await configureSlugEditor("authorProfile", "name");
-  await configureSlugEditor("blogPost", "title");
-  await configureSlugEditor("instructorProfile", "name");
-  await configureSlugEditor("leadMagnet", "title");
-  await configureSlugEditor("newsletterTemplate", "title");
-  await configureSlugEditor("retreatScheduleDay", "title");
-  await configureSlugEditor("retreatScheduleItem", "title");
-  await configureSlugEditor("testimonial", "authorName");
+  const slugEditors = [
+    ["authorProfile", "name"],
+    ["blogPost", "title"],
+    ["instructorProfile", "name"],
+    ["leadMagnet", "title"],
+    ["newsletterTemplate", "title"],
+    ["retreatScheduleDay", "title"],
+    ["retreatScheduleItem", "title"],
+    ["testimonial", "authorName"],
+  ] as const;
+  for (const [contentTypeId, trackingFieldId] of slugEditors) {
+    if (requestedContentTypes.size === 0 || requestedContentTypes.has(contentTypeId)) {
+      await configureSlugEditor(contentTypeId, trackingFieldId);
+    }
+  }
 }
 
 run().catch((err) => {

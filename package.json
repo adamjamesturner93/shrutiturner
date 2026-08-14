@@ -33,6 +33,7 @@
     "contentful:migrate": "node --experimental-strip-types --experimental-specifier-resolution=node contentful/scripts/apply-migrations.ts",
     "contentful:migrate:retreat-schedules": "node --experimental-strip-types --experimental-specifier-resolution=node contentful/scripts/migrate-retreat-schedules.ts",
     "contentful:seed:drafts": "node --experimental-strip-types --experimental-specifier-resolution=node contentful/scripts/seed-drafts.ts",
+    "contentful:clear:retreats": "node --experimental-strip-types --experimental-specifier-resolution=node contentful/scripts/clear-retreats.ts",
     "contentful:dedupe:testimonials": "node --experimental-strip-types --experimental-specifier-resolution=node contentful/scripts/dedupe-testimonials.ts",
     "contentful:prune:retired": "node --experimental-strip-types --experimental-specifier-resolution=node contentful/scripts/prune-retired-types.ts",
     "db:up": "docker compose up -d postgres",

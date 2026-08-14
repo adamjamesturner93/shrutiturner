@@ -992,14 +992,15 @@ async function seedRetreatInventory(retreatUserId: string, instructorUserId?: st
   }
 
   const seedRetreatDate = await prisma.retreatDate.findUniqueOrThrow({
-    where: { externalDateId: "pause-move-breathe-stirling-2026-09-18" },
+    where: { externalDateId: "the-middle-ground-2026-10-04" },
     include: { roomOptions: true },
   });
   const roomOption =
-    seedRetreatDate.roomOptions.find((item) => item.externalRoomOptionId === "shared-twin-bed") ||
-    seedRetreatDate.roomOptions[0];
+    seedRetreatDate.roomOptions.find(
+      (item) => item.externalRoomOptionId === "live-workshop-ticket"
+    ) || seedRetreatDate.roomOptions[0];
   if (!roomOption) {
-    throw new Error("Seed retreat room option missing for Pause, Move, Breathe.");
+    throw new Error("Seed retreat room option missing for The Middle Ground.");
   }
 
   const depositAmountPence = Math.min(
