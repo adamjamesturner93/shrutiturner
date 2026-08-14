@@ -1,23 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Calendar, MapPin, Users } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 import {
   EditorialHero,
   MarketingSection,
   PreFooterCtaSection,
-  ProofBand,
   SectionHeading,
-  StorySplit,
 } from "@/components/marketing/sections";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/use-i18n";
 import { getRetreatCardImageSrc } from "@/lib/retreats/images";
 import {
   getEffectiveRetreatRatePricePence,
-  isRetreatEarlyBirdActive,
   type RetreatRatePlanInput,
 } from "@/lib/retreats/pricing";
 import type {
@@ -34,45 +37,70 @@ interface RetreatsPageProps {
 const DEFAULT_RETREAT_FAQS: FaqItemContent[] = [
   {
     slug: "faq-retreats-experience",
-    question: "Do I need yoga or strength training experience?",
+    question: "Do I need yoga or fitness experience?",
     answer:
-      "No. These retreats are designed for all levels. Everything is adapted to your current capacity and condition. You will receive individualised guidance throughout.",
+      "No. Each experience is designed to offer choices, so you can take part without needing to be particularly fit, flexible or experienced.",
     sortOrder: 10,
   },
   {
-    slug: "faq-retreats-flare",
-    question: "What if I am having a flare during the retreat?",
+    slug: "faq-retreats-adapt",
+    question: "What if I need to adapt or sit something out?",
     answer:
-      "All sessions are optional and adaptable. If you need to rest, that is completely fine. The retreat environment is designed to be flexible and supportive of fluctuating symptoms.",
+      "That is completely fine. Movement can be adapted, and you are always welcome to pause, rest or choose not to take part in an activity.",
     sortOrder: 20,
   },
   {
-    slug: "faq-retreats-dietary",
-    question: "Can you accommodate dietary requirements?",
+    slug: "faq-retreats-accessibility",
+    question: "Are your retreats accessible?",
     answer:
-      "Yes. We cater to dietary requirements and allergies. You will indicate your needs during booking.",
+      "Accessibility varies between venues and online formats, so each experience page includes the relevant details. If you would like to discuss a specific need before booking, please get in touch.",
     sortOrder: 30,
   },
   {
-    slug: "faq-retreats-cancellation",
-    question: "What is the cancellation policy?",
+    slug: "faq-retreats-formats",
+    question: "What is the difference between an online workshop and a residential retreat?",
     answer:
-      "For in-person retreats, deposits are non-refundable. If you have paid in full, the refundable amount is the total paid minus the deposit when cancellation is more than 8 weeks before the retreat starts. Within 8 weeks, retreat payments are non-refundable unless stated otherwise.",
+      "Online workshops are focused live sessions you can join from home. Residential retreats take place over one or more days and may include accommodation, food and a broader programme. The individual experience page explains exactly what to expect.",
     sortOrder: 40,
   },
   {
-    slug: "faq-retreats-accessibility",
-    question: "What if I have specific mobility needs?",
+    slug: "faq-retreats-included",
+    question: "What is included in the price?",
     answer:
-      "Please contact us before booking to discuss your needs. We will work to ensure the venue and activities are appropriate where possible.",
+      "It depends on the experience. Each event page clearly lists what is included, such as live teaching, resources, accommodation or meals, before you book.",
     sortOrder: 50,
   },
+  {
+    slug: "faq-retreats-cancellation",
+    question: "What happens if I need to cancel?",
+    answer:
+      "Cancellation terms vary by experience and are shown before checkout. You can also review the refund policy before booking or contact us if your circumstances change.",
+    sortOrder: 60,
+  },
 ];
+
+const RETREAT_PRINCIPLES = [
+  {
+    title: "Movement that adapts",
+    description:
+      "Different options, different intensities and space to make choices based on what works for you.",
+  },
+  {
+    title: "Space to slow down",
+    description:
+      "Movement sits alongside rest, reflection and time to simply be — rather than trying to pack every minute.",
+  },
+  {
+    title: "No pressure to perform",
+    description:
+      "You do not need to be fit, flexible or experienced to belong. These are spaces for real bodies and real life.",
+  },
+] as const;
 
 export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
   const retreatData = retreats ?? [];
   const retreatFaqs = faqs && faqs.length > 0 ? faqs : DEFAULT_RETREAT_FAQS;
-  const { fmtDateRange, fmtDateShort } = useI18n();
+  const { fmtDateRange } = useI18n();
   const heroImageSrc = retreatData[0]
     ? getRetreatCardImageSrc(retreatData[0])
     : "/images/shruti-coaching.jpeg";
@@ -99,58 +127,6 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
     return prices.length > 0 ? Math.min(...prices) : retreat.normalPrice * 100;
   };
 
-  const getStartingDeposit = (retreat: RetreatCombinedContent) => {
-    const deposits = retreat.dates.flatMap((date) =>
-      date.roomOptions.flatMap((roomOption) =>
-        getRoomRatePlans(roomOption).map((ratePlan) => {
-          const effectivePricePence = getEffectiveRetreatRatePricePence(ratePlan);
-          if (roomOption.depositPence && roomOption.depositPence > 0) {
-            return roomOption.normalPricePence > 0
-              ? Math.min(
-                  effectivePricePence,
-                  Math.round(
-                    (effectivePricePence * roomOption.depositPence) / roomOption.normalPricePence
-                  )
-                )
-              : Math.min(effectivePricePence, roomOption.depositPence);
-          }
-
-          return Math.min(effectivePricePence, 30000);
-        })
-      )
-    );
-
-    return deposits.length > 0 ? Math.min(...deposits) : 0;
-  };
-
-  const isFullPaymentOnly = (retreat: RetreatCombinedContent) =>
-    retreat.dates.length > 0 &&
-    retreat.dates.every((date) => date.paymentPolicy === "full_payment");
-
-  const getEarliestActiveEarlyBirdDeadline = (retreat: RetreatCombinedContent) => {
-    const deadlines = retreat.dates.flatMap((date) =>
-      date.roomOptions.flatMap((roomOption) =>
-        getRoomRatePlans(roomOption)
-          .filter((ratePlan) =>
-            isRetreatEarlyBirdActive({
-              earlyBirdPricePence: ratePlan.earlyBirdPricePence,
-              earlyBirdEndsAt: ratePlan.earlyBirdEndsAt,
-              totalPricePence: ratePlan.totalPricePence,
-            })
-          )
-          .map((ratePlan) => ratePlan.earlyBirdEndsAt)
-          .filter((deadline): deadline is string | Date => Boolean(deadline))
-      )
-    );
-
-    if (deadlines.length === 0) return null;
-    return deadlines
-      .map((deadline) => new Date(deadline))
-      .filter((deadline) => !Number.isNaN(deadline.getTime()))
-      .sort((a, b) => a.getTime() - b.getTime())[0]
-      ?.toISOString();
-  };
-
   const formatMoney = (pence: number) =>
     new Intl.NumberFormat("en-GB", {
       style: "currency",
@@ -158,155 +134,49 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
       maximumFractionDigits: 0,
     }).format(pence / 100);
 
+  const getFormatLabel = (retreat: RetreatCombinedContent) => {
+    if (retreat.deliveryMode === "online_live" || retreat.dates[0]?.retreatType === "online") {
+      return "Live online";
+    }
+    if (retreat.deliveryMode === "online_on_demand") return "Online";
+    if (retreat.deliveryMode === "hybrid") return "Hybrid";
+    return retreat.location;
+  };
+
+  const getDurationLabel = (retreat: RetreatCombinedContent) => {
+    const label = retreat.durationLabel || "";
+    const onlineHours = label.match(/^([\d.]+)-hour online workshop$/i);
+    if (onlineHours) return `${onlineHours[1]} hours`;
+    return label;
+  };
+
   return (
     <Layout>
       <EditorialHero
         eyebrow="Retreats"
         size="compact"
-        title={
-          <>
-            Retreats for people who need
-            <span className="text-brand-accent-light"> rest with intelligence.</span>
-          </>
-        }
-        description="These are not mainstream wellness retreats. They are small, thoughtful experiences for people who want movement, community and breathing room without being pushed past what their body can realistically hold."
-        primaryCta={{ href: "#retreats", label: "View Upcoming Retreats" }}
-        secondaryCta={{ href: "/contact", label: "Ask About Accessibility" }}
-        stats={[
-          { value: "Small", label: "Group sizes and individual attention" },
-          { value: "Adaptive", label: "Sessions paced for fluctuating bodies" },
-        ]}
-        metrics={[
-          {
-            label: "For",
-            detail:
-              "People with chronic illness, pain, hypermobility, autoimmune conditions, or injury recovery needs.",
-          },
-          {
-            label: "Includes",
-            detail:
-              "Movement sessions, community, thoughtful pacing and room to rest without guilt.",
-          },
-          {
-            label: "Difference",
-            detail:
-              "No pressure to perform wellness. The retreat adapts around real bodies and real energy limits.",
-          },
-        ]}
+        title="Movement retreats & online workshops"
+        description="Space to move, rest, reflect and reconnect — with experiences designed to work with different bodies, needs and energy levels."
+        primaryCta={{ href: "#retreats", label: "View upcoming experiences" }}
         aside={
           <div className="border-brand-white/10 bg-brand-white/8 mx-auto max-w-xl overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
-            <div className="aspect-[4/5] overflow-hidden rounded-[1.45rem]">
+            <div className="aspect-[4/3] overflow-hidden rounded-[1.45rem]">
               <ImageWithFallback
                 src={heroImageSrc}
-                alt="Retreat location for adaptive movement and rest"
+                alt="A Shruti Turner retreat or online workshop experience"
                 className="h-full w-full object-cover"
                 preload
                 sizes="(max-width: 1024px) 100vw, 42vw"
               />
             </div>
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <div className="bg-brand-white/10 rounded-[1.15rem] p-4 backdrop-blur-sm">
-                <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
-                  What this feels like
-                </p>
-                <p className="text-brand-white/84 mt-3 text-sm leading-relaxed">
-                  More spacious than a normal class. Less performative than a normal retreat.
-                </p>
-              </div>
-              <div className="bg-brand-accent-light/12 rounded-[1.15rem] p-4 backdrop-blur-sm">
-                <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
-                  What matters
-                </p>
-                <p className="text-brand-white/84 mt-3 text-sm leading-relaxed">
-                  Feeling supported enough to participate and rested enough to recover well.
-                </p>
-              </div>
-            </div>
           </div>
         }
       />
 
-      <ProofBand
-        title="What makes these retreats different"
-        description="The structure is designed around fluctuating bodies rather than assuming everyone can extract the same amount from every session."
-        items={[
-          {
-            label: "Pacing",
-            detail: "Sessions are optional, adaptable and balanced with genuine downtime.",
-          },
-          {
-            label: "Teaching",
-            detail: "Movement is rehabilitation-informed, not generic wellness choreography.",
-          },
-          {
-            label: "Group",
-            detail: "Smaller numbers mean more individual attention and less sensory overwhelm.",
-          },
-          {
-            label: "Atmosphere",
-            detail:
-              "You do not need to hide pain, fatigue, or changing energy levels to belong here.",
-          },
-        ]}
-      />
+      <MarketingSection id="retreats" className="section-wash" contentClassName="max-w-7xl">
+        <SectionHeading eyebrow="Upcoming experiences" title="What’s coming up" />
 
-      <StorySplit
-        eyebrow="Retreat Philosophy"
-        title="These are not mainstream retreats."
-        description="The aim is not to pack the schedule. It is to create a thoughtful container where movement, rest and community can all feel safe enough to matter."
-        body={
-          <div className="space-y-6">
-            <p className="text-muted-foreground text-lg leading-relaxed">
-              Many retreat spaces quietly reward people who can do the most, stay the longest and
-              bounce back the fastest. That is not the standard here.
-            </p>
-            <div className="grid gap-4 md:grid-cols-2">
-              {[
-                "Sessions are adaptable and optional.",
-                "Rest is treated as part of the experience, not a sign you are missing it.",
-                "Small groups make it easier to adjust without disappearing into the room.",
-                "The teaching respects chronic illness, autoimmune conditions and injury recovery rather than asking you to minimise them.",
-              ].map((item) => (
-                <div key={item} className="marketing-panel rounded-[1.3rem] px-5 py-5">
-                  <p className="text-sm leading-relaxed">{item}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        }
-        aside={
-          <div className="border-brand-dark/10 bg-brand-warm rounded-[1.8rem] border p-7">
-            <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">
-              Who tends to come
-            </p>
-            <div className="mt-5 space-y-4">
-              {[
-                "People managing autoimmune conditions, arthritis, pain, hypermobility, or fatigue.",
-                "People who want a retreat that feels supportive rather than extractive.",
-                "People who are tired of being the only one in the room adapting quietly.",
-              ].map((item) => (
-                <div
-                  key={item}
-                  className="border-brand-dark/10 bg-background rounded-[1.2rem] border px-5 py-4 text-sm leading-relaxed"
-                >
-                  {item}
-                </div>
-              ))}
-            </div>
-          </div>
-        }
-        className="section-divider"
-      />
-
-      <MarketingSection className="section-wash" contentClassName="max-w-7xl">
-        <SectionHeading
-          eyebrow="Upcoming Retreats"
-          title="Current dates and locations"
-          description="Each retreat has its own atmosphere, but they all share the same commitment to adaptation, pacing and intelligent teaching."
-          align="center"
-        />
-
-        <div id="retreats" className="mt-12 grid gap-8 md:grid-cols-2">
+        <div className="mt-10 grid gap-7 md:grid-cols-2">
           {retreatData.map((retreat) => (
             <article
               key={retreat.id}
@@ -319,61 +189,29 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
                   className="h-full w-full object-cover"
                 />
               </div>
-              <div className="p-7">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="text-3xl leading-tight">{retreat.title}</h3>
-                    <p className="text-muted-foreground mt-3">{retreat.subtitle}</p>
-                  </div>
-                </div>
-
-                <div className="text-muted-foreground mt-5 flex flex-wrap gap-4 text-sm">
-                  <span className="inline-flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    {retreat.location}
-                  </span>
-                  <span className="inline-flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Small group format
-                  </span>
-                </div>
-
-                <p className="text-muted-foreground mt-5 leading-relaxed">
-                  {retreat.shortDescription}
+              <div className="flex flex-1 flex-col p-7">
+                <h3 className="text-3xl leading-tight">{retreat.title}</h3>
+                <p className="text-muted-foreground mt-3 leading-relaxed">{retreat.subtitle}</p>
+                <p className="text-muted-foreground mt-5 text-sm leading-relaxed">
+                  {retreat.dates[0]
+                    ? fmtDateRange(retreat.dates[0].startDate, retreat.dates[0].endDate)
+                    : "Dates to be announced"}
+                  {` · ${getFormatLabel(retreat)}`}
+                  {getDurationLabel(retreat) ? ` · ${getDurationLabel(retreat)}` : ""}
                 </p>
 
-                <div className="border-brand-dark/10 bg-brand-warm mt-6 space-y-3 rounded-[1.5rem] border px-5 py-5">
-                  {retreat.dates.map((date) => (
-                    <div
-                      key={date.id}
-                      className="border-brand-dark/8 flex flex-col gap-2 border-b pb-3 last:border-b-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div className="inline-flex items-center gap-2 text-sm">
-                        <Calendar className="text-brand-accent h-4 w-4" />
-                        <span>{fmtDateRange(date.startDate, date.endDate)}</span>
-                      </div>
-                      <div className="text-muted-foreground text-sm">
-                        {date.availableSpaces} / {date.totalSpaces} spaces
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div className="mt-auto flex flex-col gap-5 pt-7 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <p className="text-3xl">{formatMoney(getStartingPrice(retreat))}</p>
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      {isFullPaymentOnly(retreat)
-                        ? "Full payment at checkout"
-                        : `Deposit from ${formatMoney(getStartingDeposit(retreat))}`}
-                      {getEarliestActiveEarlyBirdDeadline(retreat)
-                        ? ` · early bird until ${fmtDateShort(getEarliestActiveEarlyBirdDeadline(retreat) || "")}`
-                        : ""}
-                    </p>
                   </div>
-                  <Button asChild className="bg-brand-dark text-brand-white hover:bg-brand-dark/90">
+                  <Button
+                    asChild
+                    variant="link"
+                    className="h-auto justify-start p-0 sm:justify-end"
+                  >
                     <Link href={`/retreats/${retreat.slug}`}>
-                      View retreat details
+                      Explore the{" "}
+                      {retreat.experienceType === "online_workshop" ? "workshop" : "retreat"}
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>
@@ -381,37 +219,76 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
               </div>
             </article>
           ))}
+          {retreatData.length === 0 ? (
+            <div className="border-brand-dark/10 bg-background rounded-[1.75rem] border p-8 md:col-span-2">
+              <h3 className="text-2xl">New experiences are being planned.</h3>
+              <p className="text-muted-foreground mt-3 leading-relaxed">
+                Join the mailing list to hear when new retreat and workshop dates are announced.
+              </p>
+              <Button asChild variant="link" className="mt-5 h-auto p-0">
+                <Link href="/subscribe">
+                  Join the mailing list
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          ) : null}
         </div>
       </MarketingSection>
 
-      <MarketingSection className="bg-brand-warm">
+      <MarketingSection className="section-divider">
         <SectionHeading
-          eyebrow="Questions"
-          title="Things people often ask before booking"
+          eyebrow="The approach"
+          title="Experiences that work with you"
           align="center"
         />
-        <div className="mt-10 grid gap-5 md:grid-cols-2">
-          {retreatFaqs.map((faq) => (
+        <div className="mt-10 grid gap-5 md:grid-cols-3">
+          {RETREAT_PRINCIPLES.map((principle) => (
             <article
-              key={faq.slug}
+              key={principle.title}
               className="border-brand-dark/10 bg-background rounded-[1.55rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]"
             >
-              <h3 className="text-2xl leading-tight">{faq.question}</h3>
-              <p className="text-muted-foreground mt-4 text-sm leading-relaxed">{faq.answer}</p>
+              <h3 className="text-2xl leading-tight">{principle.title}</h3>
+              <p className="text-muted-foreground mt-4 leading-relaxed">{principle.description}</p>
             </article>
           ))}
         </div>
+        <p className="text-muted-foreground mx-auto mt-8 max-w-4xl text-center leading-relaxed">
+          My retreats and workshops welcome adults of all genders, backgrounds and movement
+          experience, with options designed to accommodate different needs.
+        </p>
+      </MarketingSection>
+
+      <MarketingSection className="bg-brand-warm" contentClassName="max-w-4xl">
+        <SectionHeading eyebrow="Questions" title="Useful details before you book" align="center" />
+        <Accordion type="single" collapsible className="mt-10 rounded-[1.75rem] border px-6">
+          {retreatFaqs.map((faq, index) => (
+            <AccordionItem key={faq.slug} value={`faq-${index}`}>
+              <AccordionTrigger className="py-6 text-left text-lg">{faq.question}</AccordionTrigger>
+              <AccordionContent className="text-muted-foreground max-w-3xl leading-relaxed">
+                {faq.answer}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       </MarketingSection>
 
       <PreFooterCtaSection
-        eyebrow="Questions"
-        title="If you are unsure whether a retreat is suitable for your body, ask."
-        description="It is better to have a thoughtful conversation first than force a decision in a space that is meant to feel supportive."
+        title="Come and experience it for yourself."
+        description="Explore what is coming up, or join the mailing list to hear about future retreats and workshops."
+        layout="centered"
+        compact
         actions={[
           {
-            href: "/contact",
-            label: "Send an enquiry",
+            href: "#retreats",
+            label: "View upcoming experiences",
             icon: ArrowRight,
+          },
+          {
+            href: "/subscribe",
+            label: "Join the mailing list",
+            icon: ArrowRight,
+            variant: "secondary",
           },
         ]}
       />

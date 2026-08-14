@@ -5,15 +5,16 @@ import { JsonLd } from "@/components/json-ld";
 import { createRetreatItemListSchema, createWebPageSchema } from "@/lib/seo/structured-data";
 
 export const metadata: Metadata = {
-  title: "Retreats and online workshops | Shruti Turner",
+  title: "Movement Retreats & Online Workshops",
   description:
-    "Small, practical yoga retreats and online workshops with space for movement, rest and individual choice.",
+    "Movement retreats and online workshops with space to move, rest and reflect, designed to work with different bodies, needs and energy levels.",
   alternates: { canonical: "/retreats" },
   openGraph: {
     type: "website",
-    title: "Retreats and online workshops | Shruti Turner",
+    title: "Movement Retreats & Online Workshops | Shruti Turner",
     description:
-      "Small, practical yoga retreats and online workshops with space for movement, rest and individual choice.",
+      "Movement retreats and online workshops with space to move, rest and reflect, designed to work with different bodies, needs and energy levels.",
+    url: "https://shrutiturner.co.uk/retreats",
   },
 };
 
@@ -24,7 +25,7 @@ export default async function Page() {
       <JsonLd
         data={[
           createWebPageSchema({
-            name: "Retreats and online workshops",
+            name: "Movement Retreats & Online Workshops",
             path: "/retreats",
             description: metadata.description || undefined,
             type: "CollectionPage",

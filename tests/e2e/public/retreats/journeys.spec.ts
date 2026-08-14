@@ -22,6 +22,13 @@ async function expectNoSeriousAccessibilityViolations(page: Page) {
 test.describe("retreat catalogue", () => {
   test("lists The Middle Ground online workshop", async ({ page }) => {
     await page.goto("/retreats");
+    await expect(page).toHaveTitle("Movement Retreats & Online Workshops | Shruti Turner");
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Movement retreats & online workshops" })
+    ).toBeVisible();
+    const upcoming = page.locator("#retreats");
+    await expect(upcoming.getByRole("heading", { name: "What’s coming up" })).toBeVisible();
 
     const workshopHeading = page.getByRole("heading", {
       name: "The Middle Ground",
@@ -29,8 +36,16 @@ test.describe("retreat catalogue", () => {
     await expect(workshopHeading).toBeVisible();
     const workshopCard = page.locator("article").filter({ has: workshopHeading });
     await expect(workshopCard).toContainText("4 October 2026");
+    await expect(workshopCard).toContainText("Live online");
+    await expect(workshopCard).toContainText("2.5 hours");
     await expect(workshopCard).toContainText("£35");
     await expect(page.locator("#retreats article")).toHaveCount(1);
+    await expect(
+      page.getByRole("heading", { name: "Experiences that work with you" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Useful details before you book" })
+    ).toBeVisible();
     await expectNoSeriousAccessibilityViolations(page);
   });
 
