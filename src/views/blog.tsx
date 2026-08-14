@@ -6,7 +6,7 @@ import { useI18n } from "../lib/use-i18n";
 import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Input } from "../components/ui/input";
@@ -20,8 +20,17 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/components/ui/utils";
 import { getAuthorLabel, getPostAuthors } from "@/lib/blog/view-model";
-import { filterAndSortPosts, paginatePosts, resolveSelectedTag } from "@/lib/blog/listing";
+import {
+  filterAndSortPosts,
+  paginatePosts,
+  resolveBlogPillar,
+  resolveSelectedPillar,
+  resolveSelectedTag,
+  type BlogPillar,
+} from "@/lib/blog/listing";
 
 interface BlogPageProps {
   posts?: BlogPostContent[];
@@ -35,6 +44,7 @@ export function BlogPage({ posts }: BlogPageProps) {
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -48,20 +58,33 @@ export function BlogPage({ posts }: BlogPageProps) {
     return Array.from(tags).sort();
   }, [blogData]);
 
-  const selectedTag = useMemo(() => {
-    return resolveSelectedTag(searchParams.get("tag"), allTags);
-  }, [searchParams, allTags]);
+  const selectedPillar = useMemo(
+    () => resolveSelectedPillar(searchParams.get("pillar")),
+    [searchParams]
+  );
 
-  const handleSetTag = (tag: string) => {
+  const selectedTag = useMemo(() => {
+    if (selectedPillar !== "all") return "all";
+    return resolveSelectedTag(searchParams.get("tag"), allTags);
+  }, [searchParams, allTags, selectedPillar]);
+
+  useEffect(() => {
+    if (selectedTag !== "all") setMoreFiltersOpen(true);
+  }, [selectedTag]);
+
+  const replaceFilters = (next: { pillar?: BlogPillar; tag?: string }) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (tag === "all") {
-      params.delete("tag");
-    } else {
-      params.set("tag", tag);
-    }
+    params.delete("pillar");
+    params.delete("tag");
+    if (next.pillar) params.set("pillar", next.pillar);
+    if (next.tag) params.set("tag", next.tag);
     const query = params.toString();
     setCurrentPage(1);
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
+
+  const handleSetTag = (tag: string) => {
+    replaceFilters(tag === "all" ? {} : { tag });
   };
 
   useEffect(() => {
@@ -78,9 +101,10 @@ export function BlogPage({ posts }: BlogPageProps) {
       blogData,
       selectedTag,
       sortBy as "newest" | "oldest" | "a-z",
-      debouncedSearch
+      debouncedSearch,
+      selectedPillar
     );
-  }, [selectedTag, sortBy, blogData, debouncedSearch]);
+  }, [selectedTag, selectedPillar, sortBy, blogData, debouncedSearch]);
 
   const featuredPost = filteredAndSortedPosts[0] || null;
   const recentPosts = useMemo(() => filteredAndSortedPosts.slice(1), [filteredAndSortedPosts]);
@@ -109,13 +133,9 @@ export function BlogPage({ posts }: BlogPageProps) {
       </Link>
 
       <div className="space-y-4 p-6">
-        <div className="flex flex-wrap gap-2">
-          {post.tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-[11px]">
-              {tag}
-            </Badge>
-          ))}
-        </div>
+        <Badge variant="secondary" className="w-fit text-[11px]">
+          {resolveBlogPillar(post)}
+        </Badge>
 
         <h3 className="text-2xl leading-tight">
           <Link href={`/blog/${post.id}`} className="hover:text-primary transition-colors">
@@ -175,39 +195,48 @@ export function BlogPage({ posts }: BlogPageProps) {
   );
 
   return (
-    <Layout>
-      <section className="marketing-grid text-brand-white overflow-hidden px-4 py-12 md:py-16">
+    <Layout showFooterNewsletter={false}>
+      <section className="marketing-grid text-brand-white overflow-hidden px-4 py-8 md:py-10">
         <div className="container mx-auto max-w-6xl">
-          <div className="grid items-center gap-8 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="grid items-center gap-6 lg:grid-cols-[0.95fr_1.05fr]">
             <div>
               <p className="text-brand-accent-light text-xs tracking-[0.3em] uppercase">
                 Blog & Resources
               </p>
-              <h1 className="mt-4 text-4xl leading-[1.08] tracking-[-0.03em] md:text-5xl">
-                Evidence based health and movement posts
+              <h1 className="mt-3 text-[2.25rem] leading-[1.08] tracking-[-0.03em] sm:text-4xl md:text-[2.75rem]">
+                Evidence based health and movement posts.
               </h1>
-              <p className="text-brand-white/80 mt-5 max-w-2xl text-lg leading-relaxed md:text-[1.35rem]">
+              <p className="text-brand-white/80 mt-4 max-w-2xl text-base leading-relaxed md:text-lg">
                 Making science accessible without the jargon or fluff, just clear explanations to
                 empower you to understand your body.
               </p>
             </div>
 
-            <div className="marketing-panel rounded-[2rem] p-6 md:p-7">
+            <div className="marketing-panel rounded-[1.75rem] p-4 md:p-5">
               <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">
                 What you&apos;ll find here
               </p>
-              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <div className="mt-4 grid gap-3">
                 {[
-                  "Answers to the movement myths that make training feel more confusing than it needs to be.",
-                  "Rehabilitation research translated into practical choices you can use in real life.",
-                  "Tips for catering training to your energy, symptoms and changing capacity.",
-                  "Inclusive, evidence-informed thinking for chronic illness, autoimmune conditions, injury recovery and prevention.",
+                  {
+                    title: "Understand your body.",
+                    description: "Accessible explanations of pain, recovery and movement.",
+                  },
+                  {
+                    title: "Train with more confidence.",
+                    description: "Practical guidance for strength and fitness.",
+                  },
+                  {
+                    title: "Make informed decisions.",
+                    description: "Research translated into real-world choices.",
+                  },
                 ].map((item) => (
                   <div
-                    key={item}
-                    className="border-brand-dark/10 bg-background text-muted-foreground rounded-[1.35rem] border px-4 py-4 text-sm leading-relaxed"
+                    key={item.title}
+                    className="border-brand-dark/10 bg-background text-muted-foreground rounded-[1.2rem] border px-4 py-2.5 text-sm leading-relaxed"
                   >
-                    {item}
+                    <p className="text-foreground text-base">{item.title}</p>
+                    <p className="mt-0.5">{item.description}</p>
                   </div>
                 ))}
               </div>
@@ -219,81 +248,111 @@ export function BlogPage({ posts }: BlogPageProps) {
       <section className="section-wash py-12 md:py-16">
         <div className="container mx-auto max-w-6xl px-4">
           <div className="marketing-panel mb-10 rounded-[1.75rem] p-5 md:p-6">
-            <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
-              <div className="space-y-4">
-                <div className="relative max-w-xl">
-                  <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-                  <Input
-                    value={searchInput}
-                    onChange={(event) => setSearchInput(event.target.value)}
-                    placeholder="Search articles"
-                    aria-label="Search articles"
-                    className="pl-9"
-                  />
-                </div>
-                <div className="flex flex-wrap gap-2" aria-label="Filter articles by category">
-                  <Button
-                    variant={selectedTag === "all" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handleSetTag("all")}
-                  >
-                    All Articles
-                  </Button>
-                  {allTags.map((tag) => (
+            <div className="space-y-4">
+              <div className="relative max-w-xl">
+                <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+                <Input
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  placeholder="Search articles"
+                  aria-label="Search articles"
+                  className="pl-9"
+                />
+              </div>
+              <Collapsible open={moreFiltersOpen} onOpenChange={setMoreFiltersOpen}>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-3">
+                  <div className="flex flex-wrap gap-2" aria-label="Filter articles by category">
                     <Button
-                      key={tag}
-                      variant={selectedTag === tag ? "default" : "outline"}
+                      variant={
+                        selectedTag === "all" && selectedPillar === "all" ? "default" : "outline"
+                      }
                       size="sm"
-                      onClick={() => handleSetTag(tag)}
+                      onClick={() => replaceFilters({})}
                     >
-                      {tag}
+                      All Articles
                     </Button>
-                  ))}
+                    {(["rehabilitation", "fitness", "wellbeing"] as BlogPillar[]).map((pillar) => (
+                      <Button
+                        key={pillar}
+                        variant={selectedPillar === pillar ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => replaceFilters({ pillar })}
+                      >
+                        {pillar}
+                      </Button>
+                    ))}
+                  </div>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" aria-label="Show more article filters">
+                      More filters
+                      <ChevronDown
+                        className={cn(
+                          "h-4 w-4 transition-transform",
+                          moreFiltersOpen && "rotate-180"
+                        )}
+                      />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <div className="ml-auto flex items-center gap-2">
+                    <span className="text-muted-foreground text-sm">Sort by:</span>
+                    <Select
+                      value={sortBy}
+                      onValueChange={(value) => {
+                        setSortBy(value);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger
+                        id="blog-sort"
+                        aria-label="Sort blog posts by"
+                        className="h-8 w-[150px]"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="newest">Newest</SelectItem>
+                        <SelectItem value="oldest">Oldest</SelectItem>
+                        <SelectItem value="a-z">A-Z</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground text-sm">Sort by:</span>
-                <Select
-                  value={sortBy}
-                  onValueChange={(value) => {
-                    setSortBy(value);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <SelectTrigger
-                    id="blog-sort"
-                    aria-label="Sort blog posts by"
-                    className="w-[150px]"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="newest">Newest</SelectItem>
-                    <SelectItem value="oldest">Oldest</SelectItem>
-                    <SelectItem value="a-z">A-Z</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                <CollapsibleContent className="mt-3">
+                  <div className="flex flex-wrap gap-2" aria-label="Filter articles by topic">
+                    {allTags.map((tag) => (
+                      <Button
+                        key={tag}
+                        variant={selectedTag === tag ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleSetTag(tag)}
+                      >
+                        {tag.toLocaleLowerCase("en-GB")}
+                      </Button>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
           </div>
 
           {featuredPost ? (
             <article className="bg-card border-brand-dark/10 mb-10 overflow-hidden rounded-[1.75rem] border shadow-[0_20px_50px_rgba(46,31,51,0.06)]">
               <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
-                <Link href={`/blog/${featuredPost.id}`} className="block overflow-hidden">
+                <Link
+                  href={`/blog/${featuredPost.id}`}
+                  className="relative block min-h-[18rem] overflow-hidden lg:min-h-0"
+                >
                   <ImageWithFallback
                     src={featuredPost.coverImage}
                     alt={featuredPost.coverAlt}
-                    className="h-full min-h-[18rem] w-full object-cover"
-                    preload
-                    sizes="(max-width: 1024px) 100vw, 52vw"
+                    className="absolute inset-0 h-full w-full object-cover"
                   />
                 </Link>
                 <div className="flex flex-col justify-center space-y-5 p-6 md:p-8">
-                  <Badge variant="secondary" className="w-fit">
-                    Featured
-                  </Badge>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary">Featured</Badge>
+                    <Badge variant="outline">{resolveBlogPillar(featuredPost)}</Badge>
+                  </div>
                   <div className="space-y-3">
                     <h2 className="text-3xl leading-tight md:text-4xl">
                       <Link
@@ -376,12 +435,12 @@ export function BlogPage({ posts }: BlogPageProps) {
         <div className="marketing-panel rounded-[2rem] p-8 text-center md:p-10">
           <SectionHeading
             eyebrow="Newsletter"
-            title="Get new articles in your inbox."
-            description="Get new articles, coaching notes and practical training insights for chronic illness support."
+            title="Join the newsletter."
+            description="Get new articles, coaching notes and practical ideas for movement, strength and wellbeing, plus the free guide “Why Some Bodies Need Strength Before More Stretching”."
             align="center"
           />
           <div className="mt-8">
-            <NewsletterInline />
+            <NewsletterInline buttonLabel="Join the newsletter" />
           </div>
         </div>
       </MarketingSection>

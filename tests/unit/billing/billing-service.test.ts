@@ -27,6 +27,7 @@ const coachingClientProfileUpsertMock = vi.fn();
 const coachingClientProfileUpdateManyMock = vi.fn();
 const coachingPackageChangeRequestFindFirstMock = vi.fn();
 const coachingPackageChangeRequestUpdateMock = vi.fn();
+const emailDeliveryFindFirstMock = vi.fn();
 const dbTransactionMock = vi.fn();
 
 const stripeCustomerCreateMock = vi.fn();
@@ -103,6 +104,9 @@ vi.mock("@/lib/db", () => ({
     coachingPackageChangeRequest: {
       findFirst: coachingPackageChangeRequestFindFirstMock,
       update: coachingPackageChangeRequestUpdateMock,
+    },
+    emailDelivery: {
+      findFirst: emailDeliveryFindFirstMock,
     },
     $transaction: dbTransactionMock,
   },
@@ -193,6 +197,7 @@ const {
   confirmCoachingPackageChangeRequest,
   processStripeWebhookEvent,
   scheduleCoachingCancellationAfterNextPayment,
+  stopCoachingRenewalAtCurrentPeriodEnd,
 } = await import("@/lib/billing/billing-service");
 
 function event(input: { id: string; type: string; object: Record<string, unknown> }) {
@@ -224,6 +229,7 @@ describe("billing-service Stripe integration", () => {
     });
     resolvePromotionCodeDiscountMock.mockResolvedValue(null);
     computeReferralDiscountPenceMock.mockResolvedValue(0);
+    emailDeliveryFindFirstMock.mockResolvedValue(null);
     stripeCustomerCreateMock.mockResolvedValue({ id: "cus_new" });
     stripeCheckoutSessionCreateMock.mockResolvedValue({
       id: "cs_membership",
@@ -400,7 +406,8 @@ describe("billing-service Stripe integration", () => {
       expect.objectContaining({
         mode: "subscription",
         customer: "cus_new",
-        success_url: "http://localhost:3000/dashboard/coaching?checkout=success",
+        success_url:
+          "http://localhost:3000/dashboard/coaching?checkout=success&session_id={CHECKOUT_SESSION_ID}",
         cancel_url: "http://localhost:3000/dashboard/coaching?checkout=cancelled",
         line_items: [{ price: "price_coaching_1_1", quantity: 1 }],
         metadata: expect.objectContaining({
@@ -538,6 +545,66 @@ describe("billing-service Stripe integration", () => {
       subscriptionId: "sub_coaching",
       nextPaymentAt: "2026-03-01T00:00:00.000Z",
       endsAt: "2026-04-01T00:00:00.000Z",
+    });
+  });
+
+  it("stops future coaching payments while preserving the paid access period", async () => {
+    userFindUniqueMock.mockResolvedValueOnce({ stripeCustomerId: "cus_existing" });
+    getActiveCatalogItemMock.mockImplementation(async (key: string) => ({
+      stripePriceId:
+        key === "coaching_one_to_one_coaching_monthly" ? "price_coaching_1_1" : `price_${key}`,
+      unitAmountPence: 18000,
+      currency: "GBP",
+    }));
+    stripeSubscriptionListMock.mockResolvedValue({
+      data: [
+        {
+          id: "sub_coaching",
+          status: "active",
+          current_period_end: 1772323200,
+          metadata: { existing: "kept" },
+          items: { data: [{ price: { id: "price_coaching_1_1" } }] },
+        } as unknown as Stripe.Subscription,
+      ],
+    });
+    stripeSubscriptionUpdateMock.mockResolvedValue({
+      id: "sub_coaching",
+      status: "active",
+      cancel_at_period_end: true,
+      current_period_end: 1772323200,
+      items: { data: [{ price: { id: "price_coaching_1_1" } }] },
+    });
+
+    const result = await stopCoachingRenewalAtCurrentPeriodEnd("user_123");
+
+    expect(stripeSubscriptionUpdateMock).toHaveBeenCalledWith(
+      "sub_coaching",
+      expect.objectContaining({
+        cancel_at_period_end: true,
+        metadata: expect.objectContaining({
+          existing: "kept",
+          cancellationPolicy: "end_current_period",
+          coachingFinalPaymentAt: "",
+        }),
+      })
+    );
+    expect(coachingClientProfileUpdateManyMock).toHaveBeenCalledWith({
+      where: { userId: "user_123" },
+      data: expect.objectContaining({
+        stripeSubscriptionId: "sub_coaching",
+        billingFinalPaymentAt: null,
+        billingEndsAt: new Date("2026-03-01T00:00:00.000Z"),
+      }),
+    });
+    expect(sendPostmarkReactEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "taylor@example.com",
+        tag: "coaching-cancellation-client",
+      })
+    );
+    expect(result).toEqual({
+      subscriptionId: "sub_coaching",
+      endsAt: "2026-03-01T00:00:00.000Z",
     });
   });
 
@@ -805,16 +872,20 @@ describe("billing-service Stripe integration", () => {
     membershipSubscriptionFindFirstMock.mockResolvedValue(null);
     billingCatalogItemFindFirstMock.mockResolvedValue(null);
     coachingClientProfileUpdateManyMock.mockResolvedValueOnce({ count: 1 });
-    coachingClientProfileFindUniqueMock.mockResolvedValueOnce({
+    coachingClientProfileFindUniqueMock.mockResolvedValue({
       id: "profile_123",
       tier: "coached_plan",
       user: {
+        id: "user_123",
         email: "taylor@example.com",
         firstName: "Taylor",
         lastName: "Member",
         name: "Taylor Member",
       },
-      application: { id: "application_123" },
+      application: {
+        id: "application_123",
+        recommendedOfferKey: "guided_training_plan",
+      },
       packageChangeRequests: [{ toOfferKey: "guided_training_plan" }],
     });
 
@@ -826,6 +897,8 @@ describe("billing-service Stripe integration", () => {
           id: "in_paid_start_first_payment",
           customer: "cus_123",
           amount_paid: 12000,
+          currency: "gbp",
+          hosted_invoice_url: "https://invoice.stripe.com/in_paid_start_first_payment",
           metadata: {},
           lines: { data: [{ price: { id: "price_guided_training" } }] },
           subscription: "sub_paid_start",
@@ -841,6 +914,13 @@ describe("billing-service Stripe integration", () => {
       },
       data: { billingArrangement: "paid", billingStartsAt: null },
     });
+    expect(sendPostmarkReactEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "taylor@example.com",
+        subject: "Your Weekly Support payment is confirmed",
+        tag: "coaching-payment-confirmation",
+      })
+    );
     expect(sendPostmarkReactEmailMock).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "shruti@example.com",

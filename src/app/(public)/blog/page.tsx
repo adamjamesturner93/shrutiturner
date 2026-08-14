@@ -1,12 +1,32 @@
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/json-ld";
 import { BlogPage } from "@/views/blog";
-import { buildPageMetadata } from "@/lib/content/metadata";
+import { buildSeoMetadata } from "@/lib/content/metadata";
 import { getBlogPosts } from "@/lib/content";
 import { createBlogSchema, createWebPageSchema } from "@/lib/seo/structured-data";
 
+const BLOG_SOCIAL_IMAGE = "https://shrutiturner.co.uk/social/blog";
+
 export async function generateMetadata(): Promise<Metadata> {
-  return buildPageMetadata("blog", "Blog");
+  return buildSeoMetadata({
+    title: "Movement, Strength & Rehabilitation Blog | Shruti Turner",
+    absoluteTitle: true,
+    description:
+      "Evidence-informed articles about movement, strength, pain, recovery and wellbeing, translating research into practical choices for real bodies and real life.",
+    canonicalUrl: "https://shrutiturner.co.uk/blog",
+    openGraphTitle: "Movement & Strength Resources | Shruti Turner",
+    openGraphDescription:
+      "Clear, evidence-informed writing about movement, rehabilitation, strength and wellbeing without unnecessary jargon.",
+    image: BLOG_SOCIAL_IMAGE,
+    imageAlt: "Shruti Turner strength training",
+    keywords: [
+      "movement blog",
+      "strength training",
+      "rehabilitation",
+      "pain and recovery",
+      "wellbeing",
+    ],
+  });
 }
 
 export default async function Page() {
@@ -19,7 +39,8 @@ export default async function Page() {
             name: "Blog",
             path: "/blog",
             type: "CollectionPage",
-            description: "Science-backed articles about movement, healthy living, chronic conditions and preventing/recovering from injury.",
+            description:
+              "Evidence-informed articles about movement, strength, rehabilitation, recovery and wellbeing.",
           }),
           createBlogSchema({ posts }),
         ]}

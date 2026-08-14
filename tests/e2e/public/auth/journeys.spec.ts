@@ -12,6 +12,12 @@ test("login shows booking intent messaging", async ({ page }) => {
   await page.goto("/login?intent=book");
 
   await expect(page.getByText("Sign in to complete your booking.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Private Studio" })).toBeVisible();
+  await expect(page.locator("footer input[type='email']")).toHaveCount(0);
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+    "content",
+    /noindex,\s*follow/i
+  );
 });
 
 test("login shows referral messaging", async ({ page }) => {

@@ -7,8 +7,27 @@ export type BlogPostContextualCta = {
   label: string;
 };
 
+export const SHRUTI_AUTHOR_ROLE = "Movement & Fitness Coach";
+export const SHRUTI_AUTHOR_BIO =
+  "Shruti brings together biomechanics research, rehabilitation expertise, personal training, strength and conditioning, yoga and lived experience to help people build movement and training around their body, goals and real life.";
+
+function canonicalizeAuthor(author: AuthorProfileContent): AuthorProfileContent {
+  if (author.slug !== "shruti-turner" && author.name !== "Shruti Turner") return author;
+  return {
+    ...author,
+    slug: "shruti-turner",
+    name: "Shruti Turner",
+    role: SHRUTI_AUTHOR_ROLE,
+    bio: SHRUTI_AUTHOR_BIO,
+    avatarImageUrl: "/images/shruti.jpeg",
+    avatarAlt: "Shruti Turner",
+    websiteUrl: "/about",
+    isGuestContributor: false,
+  };
+}
+
 export function getPostAuthors(post: BlogPostContent): AuthorProfileContent[] {
-  if (post.authors.length > 0) return post.authors;
+  if (post.authors.length > 0) return post.authors.map(canonicalizeAuthor);
   if (post.author) {
     return [
       {
@@ -17,7 +36,7 @@ export function getPostAuthors(post: BlogPostContent): AuthorProfileContent[] {
         name: post.author,
         bio: "",
       },
-    ];
+    ].map(canonicalizeAuthor);
   }
   return [];
 }
@@ -56,16 +75,16 @@ export function getBlogPostContextualCta(post: BlogPostContent): BlogPostContext
   ) {
     return {
       title: "Want help applying this?",
-      body: "Get 1:1 support that adapts strength work around pain, fatigue, flares and real-life capacity.",
+      body: "Get personal coaching that adapts strength and movement around your body, goals and real-life capacity.",
       href: "/coaching",
-      label: "Explore 1:1 offers",
+      label: "Explore coaching",
     };
   }
 
   return {
-    title: "Build a steadier movement practice",
-    body: "Explore 1:1 support and resources designed for chronic illness, autoimmune conditions, wellbeing and injury recovery.",
-    href: "/contact",
-    label: "Ask a question",
+    title: "Build movement around real life",
+    body: "Explore personal coaching that brings together rehabilitation, fitness and wellbeing with support shaped around what you need.",
+    href: "/coaching",
+    label: "Explore coaching",
   };
 }

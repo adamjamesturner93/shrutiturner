@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BlogPostPage } from "@/views/blog-post";
-import { buildAbsoluteUrl } from "@/lib/app-url";
 import { formatAuthorList } from "@/lib/blog/view-model";
 import { getBlogPostBySlug, getBlogPostStaticParams, getBlogPosts } from "@/lib/content";
 
@@ -23,7 +22,7 @@ export async function generateMetadata({
 
   const title = post.seoTitle || post.title;
   const description = post.seoDescription || post.excerpt;
-  const canonical = buildAbsoluteUrl(`/blog/${post.id}`);
+  const canonical = `https://shrutiturner.co.uk/blog/${post.id}`;
 
   return {
     title,

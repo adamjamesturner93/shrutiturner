@@ -26,9 +26,9 @@ interface PricingPageProps {
 const DEFAULT_PRICING_FAQS: FaqItemContent[] = [
   {
     slug: "application-first",
-    question: "Why do I need to apply before paying?",
+    question: "Why do I need to enquire before paying?",
     answer:
-      "Coaching is application-led so Shruti can confirm the support level is a good fit before any subscription checkout is created.",
+      "A conversation helps Shruti recommend the right support level before any subscription checkout is created.",
     sortOrder: 10,
   },
   {
@@ -42,14 +42,14 @@ const DEFAULT_PRICING_FAQS: FaqItemContent[] = [
     slug: "everfit",
     question: "Where does coaching happen?",
     answer:
-      "Programming, check-ins, coach notes and messages live in Everfit. The website handles application status, paymentand account access.",
+      "Programming, check-ins, coach notes and messages live in Everfit. The website handles payment and account access.",
     sortOrder: 30,
   },
   {
     slug: "affordability",
     question: "What if I cannot afford these prices?",
     answer:
-      "Limited sliding scale or pro-bono arrangements may be available. Use the application form to explain what kind of support would be realistic.",
+      "Limited sliding scale or pro-bono arrangements may be available. Use the enquiry form to explain what kind of support would be realistic.",
     sortOrder: 40,
   },
 ];
@@ -68,7 +68,7 @@ export function PricingPage({ faqs }: PricingPageProps) {
     <Layout>
       <SEO
         title="Coaching Pricing - Shruti Turner"
-        description="Application-led coaching pricing for personalised training plans, guided programming, accountability and 1:1 coaching."
+        description="Coaching pricing for personalised training plans, guided programming, accountability and 1:1 coaching."
         keywords="strength coaching pricing, chronic illness coaching cost, adaptive strength coaching, online coaching pricing"
         canonicalUrl="https://shrutiturner.co.uk/pricing"
       />
@@ -82,17 +82,17 @@ export function PricingPage({ faqs }: PricingPageProps) {
             <span className="text-brand-accent-light"> matched to capacity.</span>
           </>
         }
-        description="Choose the closest coaching offer, then apply. Payment only opens after Shruti has reviewed your application and confirmed the right next step."
+        description="You do not need to choose the right offer alone. Enquire first and Shruti will recommend the level of support that fits."
         primaryCta={{ href: "#coaching", label: "Compare Coaching" }}
-        secondaryCta={{ href: "/coaching/apply", label: "Apply First" }}
+        secondaryCta={{ href: "/coaching/enquire", label: "Enquire First" }}
         stats={[
           { value: "4", label: "Coaching options" },
-          { value: "48 hrs", label: "Usual application reply" },
+          { value: "48 hrs", label: "Usual enquiry reply" },
         ]}
         metrics={[
           {
-            label: "Application-led",
-            detail: "No instant checkout. Shruti checks fit before payment.",
+            label: "Conversation first",
+            detail: "No instant checkout. Shruti helps you choose before payment.",
           },
           {
             label: "Delivered in Everfit",
@@ -110,7 +110,7 @@ export function PricingPage({ faqs }: PricingPageProps) {
             </p>
             <div className="mt-6 space-y-4">
               {[
-                "Apply with context about your body, schedule and support needs.",
+                "Enquire with context about your body, schedule and support needs.",
                 "Shruti reviews fit and confirms the right coaching offer.",
                 "Checkout opens in your coaching dashboard after acceptance.",
               ].map((item, index) => (
@@ -152,8 +152,8 @@ export function PricingPage({ faqs }: PricingPageProps) {
       <MarketingSection id="coaching" className="section-wash" contentClassName="max-w-7xl">
         <SectionHeading
           eyebrow="Coaching"
-          title="Application-led coaching offers"
-          description="Choose the closest offer, then apply. Subscription checkout is only created after admin acceptance."
+          title="Coaching offers matched to the support you need"
+          description="Enquire first and Shruti will recommend the appropriate route before subscription checkout opens."
           align="center"
         />
 
@@ -264,11 +264,11 @@ export function PricingPage({ faqs }: PricingPageProps) {
       <PreFooterCtaSection
         eyebrow="Ready"
         title="Start with fit before payment."
-        description="Apply with context about your body, goals, schedule and support needs. Shruti will reply with the next best step."
+        description="Enquire with context about your body, goals, schedule and support needs. Shruti will reply with the next best step."
         actions={[
           {
-            href: "/coaching/apply",
-            label: "Apply for Coaching",
+            href: "/coaching/enquire",
+            label: "Enquire About Coaching",
             icon: ArrowRight,
           },
           {

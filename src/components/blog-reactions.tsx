@@ -62,7 +62,9 @@ export function BlogReactions({ postId }: BlogReactionsProps) {
               hasReacted ? "fill-destructive text-destructive" : ""
             }`}
           />
-          <span className="tabular-nums">{count}</span>
+          <span className={count > 0 ? "tabular-nums" : undefined}>
+            {count > 0 ? count : "Helpful"}
+          </span>
         </button>
       </motion.div>
     </div>

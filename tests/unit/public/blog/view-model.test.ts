@@ -9,6 +9,13 @@ import {
 } from "@/lib/blog/view-model";
 
 describe("blog view model helpers", () => {
+  const guestAuthor = {
+    id: "guest-author",
+    slug: "guest-author",
+    name: "Guest Author",
+    bio: "Guest biography",
+  };
+
   it("returns existing author objects when present", () => {
     const authors = getPostAuthors(blogPosts[0]!);
     expect(authors).toEqual(blogPosts[0]!.authors);
@@ -34,7 +41,7 @@ describe("blog view model helpers", () => {
   it("builds compact list labels for multi-author cards", () => {
     const multiAuthorPost = {
       ...blogPosts[0]!,
-      authors: [blogAuthors[0]!, blogAuthors[1]!],
+      authors: [blogAuthors[0]!, guestAuthor],
     };
 
     expect(getAuthorLabel(multiAuthorPost)).toBe("Shruti Turner + 1");
@@ -45,9 +52,9 @@ describe("blog view model helpers", () => {
 
     const post = {
       ...blogPosts[0]!,
-      authors: [blogAuthors[0]!, blogAuthors[1]!],
+      authors: [blogAuthors[0]!, guestAuthor],
     };
-    expect(formatAuthorList(post)).toBe("Shruti Turner and Dr Hannah Lewis");
+    expect(formatAuthorList(post)).toBe("Shruti Turner and Guest Author");
   });
 
   it("formats three author bylines without an Oxford comma", () => {
@@ -55,17 +62,12 @@ describe("blog view model helpers", () => {
       ...blogPosts[0]!,
       authors: [
         blogAuthors[0]!,
-        blogAuthors[1]!,
-        {
-          id: "guest-author",
-          slug: "guest-author",
-          name: "Guest Author",
-          bio: "",
-        },
+        guestAuthor,
+        { ...guestAuthor, id: "second-guest", slug: "second-guest", name: "Second Guest" },
       ],
     };
 
-    expect(formatAuthorList(post)).toBe("Shruti Turner, Dr Hannah Lewis and Guest Author");
+    expect(formatAuthorList(post)).toBe("Shruti Turner, Guest Author and Second Guest");
   });
 
   it("finds related posts by shared tags and excludes the current post", () => {
@@ -79,7 +81,7 @@ describe("blog view model helpers", () => {
 
   it("selects contextual article CTAs from post topics", () => {
     expect(getBlogPostContextualCta(blogPosts[0]!).href).toBe("/coaching");
-    expect(getBlogPostContextualCta(blogPosts[0]!).label).toBe("Explore 1:1 offers");
+    expect(getBlogPostContextualCta(blogPosts[0]!).label).toBe("Explore coaching");
     expect(getBlogPostContextualCta(blogPosts[1]!).href).toBe("/coaching");
   });
 });

@@ -4,7 +4,7 @@ import {
   applyCoachingPackageChangeManually,
   createCoachingPackageChangeRequest,
 } from "@/lib/coaching/service";
-import { coachingTiers, type CoachingOfferKey } from "@/data/marketing";
+import { activeCoachingTiers, type CoachingOfferKey } from "@/data/marketing";
 
 type Body = {
   profileId?: unknown;
@@ -15,7 +15,7 @@ type Body = {
 };
 
 function parseOfferKey(value: unknown): CoachingOfferKey | null {
-  return typeof value === "string" && coachingTiers.some((offer) => offer.id === value)
+  return typeof value === "string" && activeCoachingTiers.some((offer) => offer.id === value)
     ? (value as CoachingOfferKey)
     : null;
 }

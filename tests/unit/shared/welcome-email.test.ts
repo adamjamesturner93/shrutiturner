@@ -7,7 +7,7 @@ describe("WelcomeEmail", () => {
     const html = await render(
       WelcomeEmail({
         firstName: "Rhea",
-        offersUrl: "https://shrutiturner.test/#work-with-me",
+        offersUrl: "https://shrutiturner.test/coaching",
         blogUrl: "https://shrutiturner.test/blog",
         privacyUrl: "https://shrutiturner.test/privacy",
       })
@@ -16,7 +16,7 @@ describe("WelcomeEmail", () => {
     expect(html).toContain("Read the blog");
     expect(html).toContain("Explore 1:1 offers");
     expect(html).toContain("https://shrutiturner.test/blog");
-    expect(html).toContain("https://shrutiturner.test/#work-with-me");
+    expect(html).toContain("https://shrutiturner.test/coaching");
     expect(html).not.toContain("/classes");
     expect(html).not.toContain("/about");
   });

@@ -495,11 +495,15 @@ export async function executePrivacyDeletion(actorUserId: string, userId: string
     await tx.coachingApplication.updateMany({
       where: { userId },
       data: {
+        applicantName: "Deleted User",
         applicantFirstName: "Deleted",
         applicantLastName: "User",
         applicantEmail: replacementEmail,
         answersJson: {},
         adminNotes: null,
+        decisionReason: null,
+        enquiryConsentText: null,
+        consultationNotes: null,
       },
     });
 

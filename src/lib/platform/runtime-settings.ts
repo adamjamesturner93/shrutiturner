@@ -14,20 +14,50 @@ export type RuntimePlatformSettings = {
   gaMeasurementId: string | null;
 };
 
+const DEFAULT_SEO_TITLE = "Personal Training & Movement Coaching | Shruti Turner";
+const DEFAULT_SEO_DESCRIPTION =
+  "Personal training and movement coaching bringing together rehabilitation, fitness and wellbeing, built around your body, goals and real life.";
+const DEFAULT_SOCIAL_IMAGE = "https://shrutiturner.co.uk/social/active";
+const CANONICAL_SITE_URL = "https://shrutiturner.co.uk";
+
+const LEGACY_DEFAULT_SEO_TITLES = new Set([
+  "Yoga, Strength & Coaching for Chronic Illness",
+  "Shruti Turner - Inclusive Movement Coaching",
+  "Strength & Yoga for Complex Bodies",
+  "Inclusive Movement Coaching",
+]);
+
+const LEGACY_DEFAULT_SEO_DESCRIPTIONS = new Set([
+  "Science-backed movement coaching for adults with chronic illness, autoimmune conditions, wellbeing and injury recovery or prevention.",
+  "Science-backed strength and yoga coaching for adults with chronic illness, autoimmune conditions, and complex bodies.",
+  "Inclusive movement coaching for chronic illness, autoimmune conditions, wellbeing and injury recovery or prevention.",
+]);
+
 export const DEFAULT_RUNTIME_PLATFORM_SETTINGS: RuntimePlatformSettings = {
   businessName: "Shruti Turner",
   supportEmail: null,
   contactEmail: null,
   instagramUrl: "https://instagram.com/shrutiturner",
-  defaultSeoTitle: "Shruti Turner - Inclusive Movement Coaching",
-  defaultSeoDescription:
-    "Science-backed movement coaching for adults with chronic illness, autoimmune conditions, wellbeing and injury recovery or prevention.",
+  defaultSeoTitle: DEFAULT_SEO_TITLE,
+  defaultSeoDescription: DEFAULT_SEO_DESCRIPTION,
   gaMeasurementId: null,
 };
 
 function trimOrNull(value: string | null | undefined) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
+}
+
+function resolveDefaultSeoTitle(value: string | null | undefined) {
+  const resolved = trimOrNull(value);
+  return !resolved || LEGACY_DEFAULT_SEO_TITLES.has(resolved) ? DEFAULT_SEO_TITLE : resolved;
+}
+
+function resolveDefaultSeoDescription(value: string | null | undefined) {
+  const resolved = trimOrNull(value);
+  return !resolved || LEGACY_DEFAULT_SEO_DESCRIPTIONS.has(resolved)
+    ? DEFAULT_SEO_DESCRIPTION
+    : resolved;
 }
 
 export async function getRuntimePlatformSettings(): Promise<RuntimePlatformSettings> {
@@ -55,11 +85,8 @@ export async function getRuntimePlatformSettings(): Promise<RuntimePlatformSetti
     supportEmail: trimOrNull(row.supportEmail),
     contactEmail: trimOrNull(row.contactEmail),
     instagramUrl: trimOrNull(row.instagramUrl) || DEFAULT_RUNTIME_PLATFORM_SETTINGS.instagramUrl,
-    defaultSeoTitle:
-      trimOrNull(row.defaultSeoTitle) || DEFAULT_RUNTIME_PLATFORM_SETTINGS.defaultSeoTitle,
-    defaultSeoDescription:
-      trimOrNull(row.defaultSeoDescription) ||
-      DEFAULT_RUNTIME_PLATFORM_SETTINGS.defaultSeoDescription,
+    defaultSeoTitle: resolveDefaultSeoTitle(row.defaultSeoTitle),
+    defaultSeoDescription: resolveDefaultSeoDescription(row.defaultSeoDescription),
     gaMeasurementId: trimOrNull(row.gaMeasurementId),
   };
 }
@@ -80,7 +107,7 @@ export async function buildRootMetadata(): Promise<Metadata> {
       settings.defaultSeoDescription || DEFAULT_RUNTIME_PLATFORM_SETTINGS.defaultSeoDescription,
     applicationName: settings.businessName,
     alternates: {
-      canonical: "/",
+      canonical: `${CANONICAL_SITE_URL}/`,
     },
     openGraph: {
       type: "website",
@@ -88,18 +115,20 @@ export async function buildRootMetadata(): Promise<Metadata> {
       title: titleDefault,
       description:
         settings.defaultSeoDescription || DEFAULT_RUNTIME_PLATFORM_SETTINGS.defaultSeoDescription,
-      url: metadataBase,
+      url: `${CANONICAL_SITE_URL}/`,
+      images: [{ url: DEFAULT_SOCIAL_IMAGE, alt: "Shruti Turner movement coaching" }],
     },
     twitter: {
       card: "summary_large_image",
       title: titleDefault,
       description:
         settings.defaultSeoDescription || DEFAULT_RUNTIME_PLATFORM_SETTINGS.defaultSeoDescription,
+      images: [DEFAULT_SOCIAL_IMAGE],
     },
     other: gaMeasurementId
       ? {
-        "google-analytics-measurement-id": gaMeasurementId,
-      }
+          "google-analytics-measurement-id": gaMeasurementId,
+        }
       : undefined,
     icons: {
       icon: [

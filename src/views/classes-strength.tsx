@@ -305,10 +305,7 @@ export function ClassesStrengthPage({
                   className="bg-secondary/20 border-primary space-y-4 rounded-lg border border-l-4 p-6"
                 >
                   <p className="text-muted-foreground leading-relaxed italic">"{item.quote}"</p>
-                  <p className="text-sm">
-                    — {item.authorName}
-                    {item.authorCondition ? `, ${item.authorCondition}` : ""}
-                  </p>
+                  <p className="text-sm">— {item.authorName}</p>
                 </div>
               ))}
             </div>

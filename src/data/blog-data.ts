@@ -19,26 +19,13 @@ export const blogAuthors: AuthorProfileContent[] = [
     id: "shruti-turner",
     slug: "shruti-turner",
     name: "Shruti Turner",
-    role: "Strength & Yoga Coach",
-    bio: "Shruti combines strength coaching, adaptive yoga and rehabilitation-informed movement to help people with chronic illness, pain, hypermobility and fluctuating energy build long-term capacity without boom-and-bust.",
-    avatarImageUrl: "https://api.dicebear.com/9.x/initials/svg?seed=Shruti%20Turner",
-    avatarAlt: "Portrait illustration of Shruti Turner",
-    websiteUrl: "https://shrutiturner.co.uk/about",
+    role: "Movement & Fitness Coach",
+    bio: "Shruti brings together biomechanics research, rehabilitation expertise, personal training, strength and conditioning, yoga and lived experience to help people build movement and training around their body, goals and real life.",
+    avatarImageUrl: "/images/shruti.jpeg",
+    avatarAlt: "Shruti Turner",
+    websiteUrl: "/about",
     instagramHandle: "@shrutiturner",
     isGuestContributor: false,
-    active: true,
-  },
-  {
-    id: "dr-hannah-lewis",
-    slug: "dr-hannah-lewis",
-    name: "Dr Hannah Lewis",
-    role: "Guest Physiotherapist",
-    bio: "Hannah is a musculoskeletal physiotherapist with a specialist interest in inflammatory arthritis, pacing and helping people return to confident movement when symptoms are unpredictable.",
-    avatarImageUrl: "https://api.dicebear.com/9.x/initials/svg?seed=Hannah%20Lewis",
-    avatarAlt: "Portrait illustration of Dr Hannah Lewis",
-    websiteUrl: "https://example.com/hannah-lewis",
-    instagramHandle: "@drhannahlewis",
-    isGuestContributor: true,
     active: true,
   },
 ];
@@ -89,6 +76,7 @@ Strength training for chronic illness requires nuance, patience and expertise. B
     authors: [blogAuthors[0]],
     date: "2026-02-15",
     tags: ["Strength Training", "Chronic Illness", "Evidence-Based"],
+    category: "fitness",
     readTime: "6 min read",
   },
   {
@@ -141,6 +129,7 @@ You don't need to be consistent every day. You need to be persistent over time.
     authors: [blogAuthors[0]],
     date: "2026-02-05",
     tags: ["Strength Training", "Chronic Illness", "Programming"],
+    category: "fitness",
     readTime: "7 min read",
   },
   {
@@ -202,82 +191,8 @@ With proper programming, hypermobile bodies can be incredibly strong and capable
     authors: [blogAuthors[0]],
     date: "2026-01-28",
     tags: ["Hypermobility", "Strength Training", "Joint Health"],
+    category: "rehabilitation",
     readTime: "6 min read",
-  },
-  {
-    id: "arthritis-exercise-guide",
-    title: "Exercise with Arthritis: Beyond the Generic Advice",
-    excerpt:
-      "Evidence-based approaches to movement and strength training when you have inflammatory or degenerative arthritis.",
-    coverImage:
-      "https://images.unsplash.com/photo-1747302653826-42c6cd7295f2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhcnRocml0aXMlMjBqb2ludCUyMGhlYWx0aCUyMHBoeXNpY2FsJTIwdGhlcmFweSUyMGV4ZXJjaXNlfGVufDF8fHx8MTc3MjY0MTc0NHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-    coverAlt: "Guided exercise therapy session",
-    content: `
-# Exercise with Arthritis: Beyond the Generic Advice
-
-"Just keep moving" is well-meaning but insufficient advice when you have arthritis. The question isn't whether to move—it's how, how muchand what to do when movement itself causes pain.
-
-## Understanding Exercise and Arthritis
-
-Research shows that appropriate exercise can:
-- Reduce pain and stiffness
-- Improve joint function
-- Decrease inflammation markers
-- Enhance quality of life
-- Slow disease progression
-
-But "appropriate" is doing a lot of work in that sentence.
-
-## The Nuance Matters
-
-### For Inflammatory Arthritis (RA, PsA)
-- Exercise during stable periods, not active flares
-- Focus on maintaining joint range and muscle strength
-- Modify based on which joints are affected
-- Understand the difference between activity-related discomfort and inflammatory pain
-
-### For Degenerative Arthritis (OA)
-- Progressive loading to strengthen supporting structures
-- Movement patterns that reduce joint stress
-- Building capacity gradually to avoid symptom flares
-- Balance between activity and joint protection
-
-## What Works
-
-### Strength Training
-Progressive resistance training is evidence-based for both inflammatory and degenerative arthritis. The key is appropriate programming:
-- Start conservatively
-- Progress gradually
-- Modify around affected joints
-- Use pain as a guide, not a barrier
-
-### Movement Quality
-How you move matters as much as what you do. Poor movement patterns accelerate joint stress. Quality coaching makes a significant difference.
-
-### Consistency Over Intensity
-Regular, moderate activity beats sporadic intense exercise every time.
-
-## When to Modify
-
-You need to adjust your training when:
-- You're in an active flare (inflammatory arthritis)
-- Pain persists beyond the session
-- Joint swelling increases
-- You experience new pain patterns
-
-This isn't failure. This is intelligent programming.
-
-## The Real Goal
-
-The goal isn't to train despite your arthritis. It's to train in a way that manages your condition, reduces symptoms and improves your function.
-
-That requires expertise, not just enthusiasm.
-    `,
-    author: "Shruti Turner",
-    authors: [blogAuthors[0], blogAuthors[1]],
-    date: "2026-01-20",
-    tags: ["Arthritis", "Exercise", "Chronic Pain"],
-    readTime: "7 min read",
   },
   {
     id: "building-training-capacity",
@@ -354,6 +269,7 @@ You're not broken. You're building.
     authors: [blogAuthors[0]],
     date: "2026-01-12",
     tags: ["Beginners", "Strength Training", "Chronic Illness"],
+    category: "fitness",
     readTime: "6 min read",
   },
 ];

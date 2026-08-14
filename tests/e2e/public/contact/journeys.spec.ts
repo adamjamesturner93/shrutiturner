@@ -19,31 +19,30 @@ test("contact page submits the enquiry form and shows the success state", async 
   await page.goto("/contact");
   const mainContent = page.locator("#main-content");
 
-  await expect(
-    mainContent.getByRole("heading", { name: /Start with a question, not a sales call\./i })
-  ).toBeVisible();
+  await expect(mainContent.getByRole("heading", { name: "Get in touch." })).toBeVisible();
   await expect(mainContent.getByTestId("turnstile-bypass")).toBeVisible();
 
-  await mainContent.getByLabel("First name *").fill("Taylor");
-  await mainContent.getByLabel("Last name *").fill("Jordan");
-  await mainContent.getByLabel("Email address *").fill("taylor@example.com");
-  await mainContent.locator("#interest").click();
-  await page.getByRole("option", { name: "Retreats" }).click();
+  await mainContent.getByLabel("Name *").fill("Taylor Jordan");
+  await mainContent.getByLabel("Email *").fill("taylor@example.com");
+  await mainContent.locator("#contact-topic").click();
+  await page.getByRole("option", { name: "Workshops, retreats or classes" }).click();
   await mainContent
-    .getByLabel("Your message *")
+    .getByLabel("Message *")
     .fill("I want to ask whether the retreat pace would suit a fluctuating condition.");
   await mainContent
     .getByLabel(/I consent to Shruti Turner using the information in this form/i)
     .check();
 
-  await mainContent.getByRole("button", { name: "Send Enquiry" }).click();
+  await mainContent.getByRole("button", { name: "Send message" }).click();
 
-  await expect(page.getByRole("heading", { name: "Thank you, Taylor." })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Thanks — your message has been sent." })
+  ).toBeVisible();
   expect(requestBody).toMatchObject({
     firstName: "Taylor",
     lastName: "Jordan",
     email: "taylor@example.com",
-    interest: "retreat",
+    interest: "workshops-retreats-classes",
     message: "I want to ask whether the retreat pace would suit a fluctuating condition.",
     contactConsent: true,
     turnstileToken: "e2e-turnstile-token",

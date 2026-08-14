@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import {
   CURRENT_HEALTH_DATA_CONSENT_VERSION,
   CURRENT_HEALTH_WAIVER_VERSION,
+  CURRENT_COACHING_AGREEMENT_VERSION,
   CURRENT_TERMS_VERSION,
 } from "@/data/legal-documents";
 
@@ -32,6 +33,12 @@ const DEFAULT_POLICY_SEEDS: PolicySeed[] = [
     slug: "health-data-consent",
     version: CURRENT_HEALTH_DATA_CONSENT_VERSION,
     label: "Health Data Consent",
+  },
+  {
+    type: AcceptanceType.coaching_agreement,
+    slug: "coaching-agreement",
+    version: CURRENT_COACHING_AGREEMENT_VERSION,
+    label: "Coaching Agreement",
   },
   {
     type: AcceptanceType.recording_notice,

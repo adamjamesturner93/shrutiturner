@@ -95,7 +95,7 @@ export async function sendLeadMagnetDeliveryEmail(input: {
         welcomeCopy={
           "Thanks for confirming your email.\n\nYour free guide is ready below and future updates will only arrive when there is something genuinely useful to share."
         }
-        offersUrl={buildAbsoluteUrl("/#work-with-me")}
+        offersUrl={buildAbsoluteUrl("/coaching")}
         blogUrl={buildAbsoluteUrl("/blog")}
         privacyUrl={privacyUrl}
         unsubscribeUrl={unsubscribeUrl}

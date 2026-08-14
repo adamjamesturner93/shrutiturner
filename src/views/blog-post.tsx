@@ -6,7 +6,6 @@ import { useI18n } from "../lib/use-i18n";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { MarketingSection } from "@/components/marketing/sections";
-import { SEO } from "../components/seo";
 import { ArrowLeft, ArrowRight, Globe, Instagram } from "lucide-react";
 import Link from "next/link";
 import { BlogReactions } from "@/components/blog-reactions";
@@ -23,6 +22,7 @@ import {
   type BlogPostContextualCta,
 } from "@/lib/blog/view-model";
 import { renderInlineMarkdown } from "@/lib/blog/inline-markdown";
+import { parseBlogPostBody, type StructuredTextBlock } from "@/lib/content/structured-text";
 
 interface BlogPostPageProps {
   post: BlogPostContent;
@@ -36,6 +36,11 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
   const authors = getPostAuthors(post);
   const authorHeading = authors.length > 1 ? "About the Authors" : "About the Author";
   const contextualCta = getBlogPostContextualCta(post);
+  const articleBlocks = parseBlogPostBody(post.content, post.title);
+  const firstSectionIndex = articleBlocks.findIndex((block) => block.type === "heading");
+  const engagementAfterIndex = articleBlocks.length
+    ? Math.min(articleBlocks.length - 1, firstSectionIndex >= 0 ? firstSectionIndex + 2 : 1)
+    : -1;
   const articleSchemaAuthors = authors.map((author) => ({
     "@type": "Person",
     name: author.name,
@@ -45,14 +50,6 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
 
   return (
     <Layout>
-      <SEO
-        title={`${post.title} - Shruti Turner`}
-        description={post.excerpt}
-        keywords={post.tags.join(", ")}
-        ogType="article"
-        canonicalUrl={`https://shrutiturner.co.uk/blog/${post.id}`}
-      />
-
       <section className="marketing-grid text-brand-white overflow-hidden px-4 py-12 md:py-16">
         <div className="container mx-auto max-w-6xl">
           <div className="grid items-start gap-8 lg:grid-cols-[0.95fr_1.05fr]">
@@ -82,7 +79,7 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
                       variant="secondary"
                       className="border-brand-white/10 bg-brand-white/8 text-brand-white hover:bg-brand-white/12 cursor-pointer border"
                     >
-                      {tag}
+                      {tag.toLocaleLowerCase("en-GB")}
                     </Badge>
                   </Link>
                 ))}
@@ -164,83 +161,20 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
       >
         <article className="marketing-panel rounded-[2rem] p-6 md:p-8">
           <div className="prose prose-lg max-w-none">
-            <div className="space-y-6 leading-relaxed" style={{ whiteSpace: "pre-line" }}>
-              {post.content.split("\n## ").map((section, index) => {
-                if (index === 0) {
-                  const lines = section.split("\n").filter((line) => line.trim());
-                  return (
-                    <Fragment key={index}>
-                      <div className="space-y-4">
-                        {lines.map((line, lineIndex) => {
-                          if (line.startsWith("### ")) {
-                            return (
-                              <h3 key={lineIndex} className="mt-8 mb-4 text-2xl">
-                                {renderInlineMarkdown(line.replace("### ", ""))}
-                              </h3>
-                            );
-                          }
-                          if (line.match(/^\d+\.\s/)) {
-                            return (
-                              <p key={lineIndex} className="ml-4">
-                                {renderInlineMarkdown(line)}
-                              </p>
-                            );
-                          }
-                          if (line.startsWith("- ")) {
-                            return (
-                              <p key={lineIndex} className="ml-4">
-                                {renderInlineMarkdown(line)}
-                              </p>
-                            );
-                          }
-                          return <p key={lineIndex}>{renderInlineMarkdown(line)}</p>;
-                        })}
+            <div className="space-y-6 leading-relaxed">
+              {articleBlocks.map((block, index) => (
+                <Fragment key={`${block.type}-${index}`}>
+                  <ArticleBlock block={block} />
+                  {index === engagementAfterIndex ? (
+                    <>
+                      <div className="not-prose my-8">
+                        <BlogReactions postId={post.id} />
                       </div>
-                    </Fragment>
-                  );
-                }
-
-                const [heading, ...content] = section.split("\n").filter((line) => line.trim());
-                return (
-                  <Fragment key={index}>
-                    <div className="space-y-4">
-                      <h2 className="mt-12 mb-6 text-3xl">{renderInlineMarkdown(heading)}</h2>
-                      {content.map((line, lineIndex) => {
-                        if (line.startsWith("### ")) {
-                          return (
-                            <h3 key={lineIndex} className="mt-8 mb-4 text-2xl">
-                              {renderInlineMarkdown(line.replace("### ", ""))}
-                            </h3>
-                          );
-                        }
-                        if (line.match(/^\d+\.\s/)) {
-                          return (
-                            <p key={lineIndex} className="ml-4">
-                              {renderInlineMarkdown(line)}
-                            </p>
-                          );
-                        }
-                        if (line.startsWith("- ")) {
-                          return (
-                            <p key={lineIndex} className="ml-4">
-                              {renderInlineMarkdown(line)}
-                            </p>
-                          );
-                        }
-                        return <p key={lineIndex}>{renderInlineMarkdown(line)}</p>;
-                      })}
-                    </div>
-                    {index === 1 ? (
-                      <>
-                        <div className="not-prose my-8">
-                          <BlogReactions postId={post.id} />
-                        </div>
-                        <ContextualPostCta cta={contextualCta} />
-                      </>
-                    ) : null}
-                  </Fragment>
-                );
-              })}
+                      <ContextualPostCta cta={contextualCta} />
+                    </>
+                  ) : null}
+                </Fragment>
+              ))}
             </div>
           </div>
         </article>
@@ -266,19 +200,17 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
 
       <MarketingSection className="section-wash" compact contentClassName="max-w-4xl">
         <div className="bg-brand-accent text-brand-white space-y-6 rounded-[2rem] p-8 text-center md:p-10">
-          <h3 className="text-2xl md:text-3xl">
-            Ready to Build Strength That Works for Your Body?
-          </h3>
+          <h2 className="text-2xl md:text-3xl">Want coaching shaped around you?</h2>
           <p className="text-lg leading-relaxed opacity-90">
-            Whether you&apos;re interested in group classes, 1:1 coaching, or just have a question
-            I&apos;d love to hear from you.
+            Explore personal coaching that brings together rehabilitation, fitness and wellbeing,
+            with support built around your body, goals and real life.
           </p>
-          <Link href="/contact">
+          <Link href="/coaching">
             <Button
               size="lg"
               className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
             >
-              Get in Touch
+              Explore coaching
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </Link>
@@ -305,7 +237,7 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
                   <div className="flex flex-wrap gap-2">
                     {relatedPost.tags.slice(0, 2).map((tag) => (
                       <Badge key={tag} variant="secondary" className="text-xs">
-                        {tag}
+                        {tag.toLocaleLowerCase("en-GB")}
                       </Badge>
                     ))}
                   </div>
@@ -384,6 +316,35 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
       />
     </Layout>
   );
+}
+
+function ArticleBlock({ block }: { block: StructuredTextBlock }) {
+  if (block.type === "heading") {
+    return block.level === 3 ? (
+      <h3 className="mt-8 mb-4 text-2xl">{renderInlineMarkdown(block.text)}</h3>
+    ) : (
+      <h2 className="mt-12 mb-6 text-3xl">{renderInlineMarkdown(block.text)}</h2>
+    );
+  }
+  if (block.type === "unordered-list") {
+    return (
+      <ul className="space-y-2 pl-6">
+        {block.items.map((item, index) => (
+          <li key={`${item}-${index}`}>{renderInlineMarkdown(item)}</li>
+        ))}
+      </ul>
+    );
+  }
+  if (block.type === "ordered-list") {
+    return (
+      <ol className="space-y-2 pl-6">
+        {block.items.map((item, index) => (
+          <li key={`${item}-${index}`}>{renderInlineMarkdown(item)}</li>
+        ))}
+      </ol>
+    );
+  }
+  return <p>{renderInlineMarkdown(block.text)}</p>;
 }
 
 function ContextualPostCta({ cta }: { cta: BlogPostContextualCta }) {

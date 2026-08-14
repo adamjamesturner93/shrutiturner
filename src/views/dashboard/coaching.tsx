@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
+  AlertCircle,
   ArrowRight,
+  CheckCircle2,
   ClipboardList,
   Compass,
   CreditCard,
@@ -30,21 +33,27 @@ import type { ApiSuccess } from "@/lib/api/route";
 import type { AcceptanceRequirementState } from "@/lib/legal/acceptance-service";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 import { useAuth } from "@/context/auth-context";
-import { coachingTiers } from "@/data/marketing";
+import { allCoachingTiers } from "@/data/marketing";
 
 const tierLabels: Record<string, string> = {
-  personal_programme: "Independent Training Plan",
-  coached_plan: "Guided Training Plan",
-  coaching: "1:1 Offers",
-  unsure: "Coaching Support",
+  personal_programme: "Monthly Support",
+  coached_plan: "Weekly Support",
+  coaching: "1:1 Coaching",
+  unsure: "To be recommended",
 };
 
-const offerLabels = Object.fromEntries(coachingTiers.map((offer) => [offer.id, offer.name]));
+const offerLabels = Object.fromEntries(allCoachingTiers.map((offer) => [offer.id, offer.name]));
+const offerPrices = Object.fromEntries(
+  allCoachingTiers.map((offer) => [offer.id, offer.priceLabel])
+);
 
 const statusLabels: Record<string, string> = {
   submitted: "Submitted",
   under_review: "Under review",
   follow_up_needed: "Follow-up needed",
+  consultation_scheduled: "Consultation scheduled",
+  consultation_completed: "Consultation completed",
+  offer_sent: "Recommendation ready",
   waitlisted: "Waiting list",
   approved: "Approved",
   declined: "Declined",
@@ -54,7 +63,7 @@ const statusLabels: Record<string, string> = {
   active: "Active",
   paused: "Paused",
   completed: "Completed",
-  application_pending: "Application pending",
+  application_pending: "Enquiry in progress",
   not_a_client: "Not a client",
 };
 
@@ -63,6 +72,14 @@ const everfitLabels: Record<string, string> = {
   invite_sent: "Invite sent",
   connected: "Active",
   sync_issue: "Needs attention",
+};
+
+const billingPhaseLabels: Record<string, string> = {
+  active: "Billing active",
+  cancellation_scheduled: "Cancellation scheduled",
+  final_month: "Final month",
+  completed: "Coaching completed",
+  payment_problem: "Payment needs attention",
 };
 
 function formatDateTime(value: string | null) {
@@ -89,14 +106,23 @@ function formatDateOnly(value: string | null) {
   }).format(date);
 }
 
+function formatCurrency(pence: number, currency = "GBP") {
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+  }).format(pence / 100);
+}
+
 function statusVariant(value: string): "default" | "secondary" | "outline" | "destructive" {
   if (value === "declined" || value === "sync_issue") return "destructive";
-  if (value === "active" || value === "connected" || value === "approved") return "default";
+  if (value === "active" || value === "connected" || value === "approved" || value === "offer_sent")
+    return "default";
   if (value === "paused" || value === "completed") return "outline";
   return "secondary";
 }
 
 export function DashboardCoaching({ initialData }: { initialData?: CoachingDashboardDto | null }) {
+  const searchParams = useSearchParams();
   const { acceptTermsAndHealth, refreshAccountProfile } = useAuth();
   const [data, setData] = useState<CoachingDashboardDto | null>(initialData || null);
   const [loading, setLoading] = useState(!initialData);
@@ -118,6 +144,13 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
     nextPaymentAt: string;
     endsAt: string;
   } | null>(null);
+  const [checkoutReturn, setCheckoutReturn] = useState<{
+    status: "paid" | "processing" | "open";
+    amountPence: number | null;
+    currency: string | null;
+    invoiceUrl: string | null;
+  } | null>(null);
+  const [checkoutReturnLoading, setCheckoutReturnLoading] = useState(false);
 
   const reloadCoaching = useCallback(async (options?: { showLoading?: boolean }) => {
     if (options?.showLoading) setLoading(true);
@@ -171,16 +204,68 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
     };
   }, [reloadCoaching]);
 
+  useEffect(() => {
+    const checkout = searchParams.get("checkout");
+    const sessionId = searchParams.get("session_id");
+    if (checkout !== "success" || !sessionId) return;
+
+    let active = true;
+    let attempts = 0;
+    const verifyCheckout = async () => {
+      attempts += 1;
+      if (active) setCheckoutReturnLoading(true);
+      try {
+        const response = await fetch(
+          `/api/me/coaching/checkout-status?sessionId=${encodeURIComponent(sessionId)}`,
+          { cache: "no-store" }
+        );
+        if (!response.ok) throw new Error("We could not verify the payment yet.");
+        const payload = (await response.json()) as ApiSuccess<{
+          status: "paid" | "processing" | "open";
+          amountPence: number | null;
+          currency: string | null;
+          invoiceUrl: string | null;
+        }>;
+        if (!active) return;
+        setCheckoutReturn(payload.data);
+        if (payload.data.status === "paid") {
+          await reloadCoaching();
+          return;
+        }
+      } catch {
+        // Stripe webhooks can land a few seconds after the browser returns.
+      } finally {
+        if (active) setCheckoutReturnLoading(false);
+      }
+      if (active && attempts < 4) window.setTimeout(() => void verifyCheckout(), 2000);
+    };
+
+    void verifyCheckout();
+    return () => {
+      active = false;
+    };
+  }, [reloadCoaching, searchParams]);
+
+  const recommendedOffer = useMemo(
+    () => allCoachingTiers.find((offer) => offer.id === data?.application?.offerKey) || null,
+    [data?.application?.offerKey]
+  );
+  const isRecommendationReady = Boolean(
+    data?.application &&
+    ["approved", "offer_sent"].includes(data.application.status) &&
+    recommendedOffer
+  );
+
   const nextAction = useMemo(() => {
     if (!data) return null;
     if (data.state === "not_a_client") {
       return {
         title: "Choose your next step",
-        body: "Explore coaching options or send an application when you are ready.",
+        body: "Explore coaching options or start a conversation when you are ready.",
         primaryHref: "/coaching",
         primaryLabel: "Explore Coaching",
-        secondaryHref: "/coaching/apply",
-        secondaryLabel: "Apply",
+        secondaryHref: "/coaching/enquire",
+        secondaryLabel: "Enquire",
       };
     }
     if (
@@ -189,12 +274,26 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
         data.state === "withdrawn") &&
       data.application
     ) {
-      if (data.application.status === "approved") {
+      if (data.application.status === "approved" || data.application.status === "offer_sent") {
         return {
-          title: "Application approved",
-          body: "Complete payment to open your coaching client profile and start onboarding.",
+          title: "Your coaching recommendation is ready",
+          body: data.application.offerKey
+            ? `Shruti recommends ${offerLabels[data.application.offerKey]} at ${offerPrices[data.application.offerKey]}. Review the agreements and complete payment when you are ready.`
+            : "Review the recommendation and complete the agreements and payment when you are ready.",
           primaryHref: "",
           primaryLabel: "Start Coaching Payment",
+          secondaryHref: "/contact",
+          secondaryLabel: "Ask a Question",
+        };
+      }
+      if (data.application.status === "consultation_scheduled") {
+        return {
+          title: "Your consultation is scheduled",
+          body: data.application.consultationScheduledAt
+            ? `Your consultation is booked for ${formatDateTime(data.application.consultationScheduledAt)}.`
+            : "Your consultation has been arranged with Shruti.",
+          primaryHref: "/dashboard/coaching",
+          primaryLabel: "View Enquiry",
           secondaryHref: "/contact",
           secondaryLabel: "Ask a Question",
         };
@@ -214,10 +313,10 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
       }
       if (data.application.status === "declined") {
         return {
-          title: "Application reviewed",
+          title: "Enquiry reviewed",
           body:
             data.application.decisionReason ||
-            "Shruti has reviewed your application and this coaching offer is not the right fit at the moment.",
+            "Shruti has reviewed your enquiry and coaching is not the right fit at the moment.",
           primaryHref: "/coaching",
           primaryLabel: "Explore Coaching",
           secondaryHref: "/contact",
@@ -227,17 +326,17 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
       if (data.application.status === "withdrawn") {
         return {
           title: "You left the waiting list",
-          body: "You are no longer holding a waiting-list place. If you apply again later, the new application joins the end of the list.",
-          primaryHref: "/coaching/apply",
-          primaryLabel: "Apply Again",
+          body: "You are no longer holding a waiting-list place. If you enquire again later, the new enquiry joins the end of the list.",
+          primaryHref: "/coaching/enquire",
+          primaryLabel: "Enquire Again",
           secondaryHref: "/contact",
           secondaryLabel: "Ask a Question",
         };
       }
       return {
-        title: "Application in review",
-        body: "Your application is in the queue. You’ll hear back personally within 48 hours.",
-        primaryHref: "/coaching/apply",
+        title: "Enquiry in progress",
+        body: "Shruti has your enquiry and will keep you updated as you arrange and complete your consultation.",
+        primaryHref: "/coaching/enquire",
         primaryLabel: "Review What You Sent",
         secondaryHref: "/contact",
         secondaryLabel: "Ask a Question",
@@ -269,7 +368,12 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
       const requiredAcceptances = payload?.details?.requiredAcceptances || [];
       if (
         response.status === 409 &&
-        requiredAcceptances.some((item) => item.type === "terms" || item.type === "health_waiver")
+        requiredAcceptances.some(
+          (item) =>
+            item.type === "terms" ||
+            item.type === "health_waiver" ||
+            item.type === "coaching_agreement"
+        )
       ) {
         setPendingLegalAcceptances(requiredAcceptances);
         setPendingLegalAction("coaching_checkout");
@@ -285,8 +389,12 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
   const resolvePendingLegalAcceptances = async () => {
     const needsTerms = pendingLegalAcceptances.some((item) => item.type === "terms");
     const needsHealthWaiver = pendingLegalAcceptances.some((item) => item.type === "health_waiver");
+    const needsCoachingAgreement = pendingLegalAcceptances.some(
+      (item) => item.type === "coaching_agreement"
+    );
     const unsupportedAcceptances = pendingLegalAcceptances.filter(
-      (item) => item.type !== "terms" && item.type !== "health_waiver"
+      (item) =>
+        item.type !== "terms" && item.type !== "health_waiver" && item.type !== "coaching_agreement"
     );
 
     if (unsupportedAcceptances.length > 0) {
@@ -295,6 +403,17 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
 
     if (needsTerms || needsHealthWaiver) {
       await acceptTermsAndHealth(needsTerms, needsHealthWaiver);
+    }
+    if (needsCoachingAgreement) {
+      const response = await fetch("/api/me/acceptances", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "coaching_agreement",
+          surface: pendingLegalAction || "coaching_checkout",
+        }),
+      });
+      if (!response.ok) throw new Error("Failed to accept the Coaching Agreement.");
     }
 
     await refreshAccountProfile();
@@ -369,6 +488,7 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
         endsAt: payload.data.endsAt,
       });
       setShowCancelDialog(false);
+      await reloadCoaching();
     } catch (cancelError) {
       setError(
         cancelError instanceof Error ? cancelError.message : "Failed to schedule cancellation."
@@ -409,7 +529,12 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
           [];
         if (
           response.status === 409 &&
-          requiredAcceptances.some((item) => item.type === "terms" || item.type === "health_waiver")
+          requiredAcceptances.some(
+            (item) =>
+              item.type === "terms" ||
+              item.type === "health_waiver" ||
+              item.type === "coaching_agreement"
+          )
         ) {
           setPendingLegalAcceptances(requiredAcceptances);
           setPendingLegalAction("package_change");
@@ -499,92 +624,190 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
         <AppPageHeader
           eyebrow="Coaching dashboard"
           title="Coaching"
-          description="A single place for application status, onboarding, check-ins and the next coaching action that matters."
+          description="Your recommendation, onboarding, billing and next coaching action in one place."
           actions={
             <Badge
-              variant={statusVariant(
-                data.profile?.status || data.application?.status || data.state
-              )}
+              variant={
+                data.profile?.billingPhase === "payment_problem"
+                  ? "destructive"
+                  : statusVariant(data.profile?.status || data.application?.status || data.state)
+              }
             >
-              {statusLabels[data.profile?.status || data.application?.status || data.state] ||
+              {(data.profile?.billingPhase &&
+                ["cancellation_scheduled", "final_month", "completed", "payment_problem"].includes(
+                  data.profile.billingPhase
+                ) &&
+                billingPhaseLabels[data.profile.billingPhase]) ||
+                statusLabels[data.profile?.status || data.application?.status || data.state] ||
                 "Coaching"}
             </Badge>
           }
         />
 
-        <AppMetricGrid className="lg:grid-cols-3">
-          <AppMetricCard
-            label="Current state"
-            value={statusLabels[data.state] || "Coaching"}
-            detail={
-              data.application?.offerKey
-                ? offerLabels[data.application.offerKey]
-                : data.profile
-                  ? tierLabels[data.profile.tier]
-                  : "Awaiting coaching profile"
-            }
-          />
-          <AppMetricCard
-            label="Application"
-            value={data.application ? statusLabels[data.application.status] : "Not submitted"}
-            detail={
-              data.application
-                ? data.application.offerKey
-                  ? offerLabels[data.application.offerKey]
-                  : tierLabels[data.application.tier]
-                : "No coaching application on file"
-            }
-          />
-          <AppMetricCard
-            label="Manual Everfit setup"
-            value={
-              data.profile ? everfitLabels[data.profile.everfitConnectionStatus] : "Not started"
-            }
-            detail={
-              data.profile?.nextCheckInDueAt
-                ? `Next check-in ${formatDateOnly(data.profile.nextCheckInDueAt)}`
-                : "No check-in scheduled yet"
-            }
-          />
-        </AppMetricGrid>
+        {searchParams.get("checkout") === "cancelled" ? (
+          <div
+            role="status"
+            className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"
+          >
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+              <div>
+                <p className="font-medium">Payment was cancelled</p>
+                <p className="mt-1 text-amber-800">
+                  Nothing was charged. Your recommendation is still here when you are ready.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
-        <Card className="border-brand-accent/20 bg-brand-accent/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Compass className="text-brand-accent h-5 w-5" />
-              {nextAction?.title}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
-              {nextAction?.body}
-            </p>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              {nextAction?.secondaryHref ? (
-                <Button asChild variant="outline">
-                  <Link href={nextAction.secondaryHref}>{nextAction.secondaryLabel}</Link>
-                </Button>
-              ) : null}
-              {nextAction?.primaryHref ? (
-                <Button asChild>
-                  <Link href={nextAction.primaryHref}>
-                    {nextAction.primaryLabel}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              ) : data.application?.status === "waitlisted" ? (
-                <Button variant="outline" onClick={() => setShowLeaveWaitlistDialog(true)}>
-                  {nextAction?.primaryLabel}
-                </Button>
-              ) : data.application?.status === "approved" ? (
+        {searchParams.get("checkout") === "success" ? (
+          <div
+            role="status"
+            className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-950"
+          >
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+              <div>
+                <p className="font-medium">
+                  {checkoutReturn?.status === "paid"
+                    ? "Coaching payment confirmed"
+                    : "Your payment is being confirmed"}
+                </p>
+                <p className="mt-1 text-green-800">
+                  {checkoutReturn?.status === "paid"
+                    ? `${checkoutReturn.amountPence ? `${formatCurrency(checkoutReturn.amountPence, checkoutReturn.currency || "GBP")} was paid. ` : ""}A confirmation email has been sent to you.`
+                    : checkoutReturnLoading
+                      ? "Checking the payment with Stripe now."
+                      : "Stripe may take a few seconds to update this page. You do not need to pay again."}
+                </p>
+                {checkoutReturn?.invoiceUrl ? (
+                  <a
+                    className="mt-2 inline-flex items-center gap-1 font-medium underline"
+                    href={checkoutReturn.invoiceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    View Stripe invoice <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {isRecommendationReady && recommendedOffer ? (
+          <Card className="border-brand-accent/30 bg-brand-accent/5 overflow-hidden">
+            <CardHeader className="space-y-3">
+              <Badge className="w-fit">Shruti's recommendation</Badge>
+              <div>
+                <CardTitle className="font-serif text-3xl sm:text-4xl">
+                  {recommendedOffer.name}
+                </CardTitle>
+                <p className="text-muted-foreground mt-2 text-base">
+                  {recommendedOffer.tagline} · {recommendedOffer.priceLabel}
+                </p>
+              </div>
+              <p className="max-w-3xl leading-relaxed">
+                {data.application?.decisionReason || recommendedOffer.description}
+              </p>
+            </CardHeader>
+            <CardContent className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+              <ul className="grid gap-2 text-sm sm:grid-cols-2">
+                {recommendedOffer.features.slice(0, 4).map((feature) => (
+                  <li key={feature} className="flex gap-2">
+                    <CheckCircle2 className="text-brand-accent mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
                 <Button disabled={checkoutLoading} onClick={() => void startCoachingCheckout()}>
                   <CreditCard className="mr-2 h-4 w-4" />
-                  {checkoutLoading ? "Opening payment..." : nextAction?.primaryLabel}
+                  {checkoutLoading
+                    ? "Opening payment..."
+                    : `Review agreements and start ${recommendedOffer.name}`}
                 </Button>
-              ) : null}
-            </div>
-          </CardContent>
-        </Card>
+                <Button asChild variant="outline">
+                  <Link href="/contact">Ask Shruti a question</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <AppMetricGrid className="lg:grid-cols-3">
+              <AppMetricCard
+                label="Current state"
+                value={statusLabels[data.state] || "Coaching"}
+                detail={
+                  data.application?.offerKey
+                    ? offerLabels[data.application.offerKey]
+                    : data.profile
+                      ? tierLabels[data.profile.tier]
+                      : "Awaiting coaching profile"
+                }
+              />
+              <AppMetricCard
+                label="Enquiry"
+                value={data.application ? statusLabels[data.application.status] : "Not submitted"}
+                detail={
+                  data.application
+                    ? data.application.offerKey
+                      ? offerLabels[data.application.offerKey]
+                      : tierLabels[data.application.tier]
+                    : "No coaching enquiry on file"
+                }
+              />
+              <AppMetricCard
+                label="Coaching delivery"
+                value={
+                  data.profile ? everfitLabels[data.profile.everfitConnectionStatus] : "Not started"
+                }
+                detail="Programmes, check-ins and messages are managed in Everfit"
+              />
+            </AppMetricGrid>
+
+            <Card className="border-brand-accent/20 bg-brand-accent/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Compass className="text-brand-accent h-5 w-5" />
+                  {nextAction?.title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
+                  {nextAction?.body}
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  {nextAction?.secondaryHref ? (
+                    <Button asChild variant="outline">
+                      <Link href={nextAction.secondaryHref}>{nextAction.secondaryLabel}</Link>
+                    </Button>
+                  ) : null}
+                  {nextAction?.primaryHref ? (
+                    <Button asChild>
+                      <Link href={nextAction.primaryHref}>
+                        {nextAction.primaryLabel}
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  ) : data.application?.status === "waitlisted" ? (
+                    <Button variant="outline" onClick={() => setShowLeaveWaitlistDialog(true)}>
+                      {nextAction?.primaryLabel}
+                    </Button>
+                  ) : data.application?.status === "approved" ||
+                    data.application?.status === "offer_sent" ? (
+                    <Button disabled={checkoutLoading} onClick={() => void startCoachingCheckout()}>
+                      <CreditCard className="mr-2 h-4 w-4" />
+                      {checkoutLoading ? "Opening payment..." : nextAction?.primaryLabel}
+                    </Button>
+                  ) : null}
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
 
         {pendingLegalAcceptances.length > 0 ? (
           <Card className="border-amber-200 bg-amber-50">
@@ -595,9 +818,20 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
             </CardHeader>
             <CardContent className="space-y-3 text-sm leading-relaxed text-amber-900">
               <p>
-                This coaching action requires current Terms & Conditions and Health & Liability
-                Waiver acceptance. Continue again to record the current agreements and finish the
-                action.
+                This coaching action requires current Terms & Conditions, Health & Liability Waiver
+                and Coaching Agreement acceptance. Read the linked documents, then continue to
+                record your acceptance and finish the action.
+              </p>
+              <p className="flex flex-wrap gap-3">
+                <Link className="underline" href="/terms">
+                  Terms & Conditions
+                </Link>
+                <Link className="underline" href="/health-declaration">
+                  Health Declaration
+                </Link>
+                <Link className="underline" href="/coaching-agreement">
+                  Coaching Agreement
+                </Link>
               </p>
               <Button
                 disabled={checkoutLoading || packageChangeLoading}
@@ -677,7 +911,7 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <ClipboardList className="text-brand-accent h-5 w-5" />
-                Application
+                Enquiry and recommendation
               </CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-3">
@@ -690,6 +924,11 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
                     ? offerLabels[data.application.offerKey]
                     : tierLabels[data.application.tier]}
                 </p>
+                {data.application.offerKey ? (
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    {offerPrices[data.application.offerKey]}
+                  </p>
+                ) : null}
               </div>
               <div>
                 <p className="text-muted-foreground text-xs tracking-wide uppercase">Status</p>
@@ -744,7 +983,10 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
                     <p className="text-muted-foreground text-xs tracking-wide uppercase">Status</p>
                     <div className="mt-1">
                       <Badge variant={statusVariant(data.profile.status)}>
-                        {statusLabels[data.profile.status]}
+                        {(data.profile.billingPhase !== "active" &&
+                          data.profile.billingPhase !== "not_configured" &&
+                          billingPhaseLabels[data.profile.billingPhase]) ||
+                          statusLabels[data.profile.status]}
                       </Badge>
                     </div>
                   </div>
@@ -760,57 +1002,38 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
                   </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                      Next check-in
-                    </p>
-                    <p className="mt-1">
-                      {formatDateOnly(data.profile.nextCheckInDueAt) || "Not scheduled yet"}
-                    </p>
-                    {data.profile.nextCheckInStatus ? (
-                      <p className="text-muted-foreground mt-1 text-sm">
-                        Status: {data.profile.nextCheckInStatus.replaceAll("_", " ")}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                      Next session
-                    </p>
-                    <p className="mt-1">
-                      {formatDateTime(data.profile.nextSessionStartsAt) || "No session scheduled"}
-                    </p>
-                  </div>
-                </div>
-
                 <div className="rounded-lg border p-4">
                   <p className="text-muted-foreground mb-2 text-xs tracking-wide uppercase">
                     Coaching delivery
                   </p>
                   <p className="text-muted-foreground text-sm leading-relaxed">
-                    Workouts, detailed check-ins, coach notes and messages live in Everfit. Shruti
-                    manages Everfit manually; this dashboard shows high-level status and next
-                    actions.
+                    Your programme, check-ins, coaching-call arrangements and messages live in
+                    Everfit. This dashboard keeps your account, billing and next administrative
+                    actions together.
                   </p>
                 </div>
 
                 {(data.profile.billingArrangement === "paid" || data.profile.billingStartsAt) &&
                 data.profile.billingCancellationRequestedAt ? (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                    <p className="text-sm text-amber-950">Cancellation scheduled</p>
+                    <p className="text-sm font-medium text-amber-950">
+                      {data.profile.billingPhase === "final_month"
+                        ? "Final month"
+                        : "Cancellation scheduled"}
+                    </p>
                     <p className="mt-1 text-sm leading-relaxed text-amber-800">
-                      Your next coaching payment on{" "}
-                      {formatDateTime(data.profile.billingFinalPaymentAt) ||
-                        "the next billing date"}{" "}
-                      is scheduled as your final payment. Billing is due to end on{" "}
-                      {formatDateTime(data.profile.billingEndsAt) || "the final period end"}.
+                      {data.profile.billingFinalPaymentAt
+                        ? `Your payment on ${formatDateTime(data.profile.billingFinalPaymentAt)} is scheduled as your final payment. `
+                        : "No further coaching payments will be collected. "}
+                      Coaching access continues until{" "}
+                      {formatDateTime(data.profile.billingEndsAt) || "the end of your paid period"}.
                     </p>
                   </div>
                 ) : null}
 
                 {(data.profile.billingArrangement === "paid" || data.profile.billingStartsAt) &&
-                cancellationResult ? (
+                cancellationResult &&
+                !data.profile.billingCancellationRequestedAt ? (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                     <p className="text-sm text-amber-950">Cancellation scheduled</p>
                     <p className="mt-1 text-sm leading-relaxed text-amber-800">
@@ -845,7 +1068,8 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
                       <ExternalLink className="h-4 w-4" />
                     </a>
                   </Button>
-                  {data.profile.billingArrangement === "paid" || data.profile.billingStartsAt ? (
+                  {(data.profile.billingArrangement === "paid" || data.profile.billingStartsAt) &&
+                  !data.profile.billingCancellationRequestedAt ? (
                     <>
                       <Button
                         variant="outline"
@@ -878,8 +1102,8 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm leading-relaxed">
                   <p className="text-muted-foreground">
-                    Use this dashboard to track your application, onboarding, check-ins, billing,
-                    and the admin side of your coaching support.
+                    Use this dashboard to track your enquiry, recommendation, onboarding and
+                    billing.
                   </p>
                   <p className="text-muted-foreground">
                     Everfit remains the place where workouts and programming live. Shruti manages
@@ -898,12 +1122,12 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
           <DialogHeader>
             <DialogTitle>Leave the coaching waiting list?</DialogTitle>
             <DialogDescription>
-              If you leave and apply again later, the new application will join the end of the
-              waiting list.
+              If you leave and enquire again later, the new enquiry will join the end of the waiting
+              list.
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">
-            You will not lose your previous application record, but you will no longer be holding a
+            You will not lose your previous enquiry record, but you will no longer be holding a
             waiting-list place.
           </div>
           <DialogFooter>

@@ -1,18 +1,18 @@
 "use client";
 
 import { signIn, useSession } from "next-auth/react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Layout } from "../components/layout";
-import { SEO } from "../components/seo";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Mail, Gift, Check, ArrowLeft } from "lucide-react";
+import { Mail, Gift, ArrowLeft } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 import { isOwnerAdminRole } from "@/lib/authz/roles";
 import { sanitizeRedirectPath } from "@/lib/navigation/safe-redirect";
-import { IconHorizontal, IconVertical } from "@/components/icon";
+import { IconHorizontal } from "@/components/icon";
 
 export function LoginPage({
   redirectTo,
@@ -120,73 +120,29 @@ export function LoginPage({
   };
 
   return (
-    <Layout>
-      <SEO
-        title="Login - Shruti Turner"
-        description="Sign in to your Private Studio to access classes, coaching, health details and account tools."
-        canonicalUrl="https://shrutiturner.co.uk/login"
-        noIndex
-      />
-
+    <Layout footerVariant="utility">
       <section className="flex-1">
-        <div className="section-wash min-h-[calc(100dvh-4rem)] px-4 py-6 md:py-8">
-          <div className="container mx-auto max-w-6xl">
-            <div className="grid gap-6 lg:min-h-[calc(100dvh-10rem)] lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-              <div className="marketing-grid text-brand-white relative overflow-hidden rounded-[2rem] px-6 py-7 shadow-[0_30px_80px_rgba(46,31,51,0.16)] md:px-8 md:py-8 lg:min-h-[560px]">
-                <div className="relative z-10 flex h-full flex-col">
-                  <p className="text-brand-accent-light text-xs tracking-[0.3em] uppercase">
-                    Private Studio
+        <div className="section-wash px-4 py-10 md:py-14">
+          <div className="container mx-auto max-w-4xl">
+            <div className="grid gap-6 lg:grid-cols-[0.82fr_1.18fr] lg:items-stretch">
+              <div className="relative min-h-64 overflow-hidden rounded-[2rem] lg:min-h-[560px]">
+                <Image
+                  src="/images/shruti-climbing.jpeg"
+                  alt="Shruti climbing at an indoor climbing wall"
+                  fill
+                  priority
+                  sizes="(min-width: 1024px) 36vw, 100vw"
+                  className="object-cover object-center"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
+                <div className="text-brand-white absolute inset-x-0 bottom-0 p-6 md:p-8">
+                  <p className="text-brand-accent-light text-xs tracking-[0.28em] uppercase">
+                    Client access
                   </p>
-                  <div className="mt-5 max-w-md space-y-5">
-                    <div className="hidden lg:block">
-                      <IconVertical tone="white" className="h-auto w-52" />
-                    </div>
-                    <div className="lg:hidden">
-                      <IconHorizontal tone="white" className="h-9 w-auto" />
-                    </div>
-                    <h1 className="text-4xl leading-tight md:text-5xl">
-                      Sign in to the part of the studio built around your actual life.
-                    </h1>
-                    <p className="text-brand-white/78 text-lg leading-relaxed">
-                      Book classes, check your plan, update health details and keep everything in
-                      one calmer place.
-                    </p>
-                  </div>
-
-                  <div className="mt-7 grid gap-3 sm:grid-cols-3 lg:mt-auto">
-                    {[
-                      "Personalised class recommendations",
-                      "Health profile and progress tracking",
-                      "Direct messaging and account tools",
-                    ].map((item) => (
-                      <div
-                        key={item}
-                        className="border-brand-white/10 bg-brand-white/7 rounded-[1.3rem] border px-4 py-4 backdrop-blur-sm"
-                      >
-                        <div className="bg-brand-accent-light/18 text-brand-accent-light flex h-8 w-8 items-center justify-center rounded-full">
-                          <Check className="h-4 w-4" />
-                        </div>
-                        <p className="text-brand-white/84 mt-3 text-sm leading-relaxed">{item}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="border-brand-white/12 mt-6 grid gap-3 border-t pt-5 sm:grid-cols-3">
-                    {[
-                      { value: "Live", label: "Classes and bookings in one place" },
-                      { value: "Clear", label: "No hard-sell onboarding flow" },
-                      { value: "Safe", label: "Built for inclusive coaching and real context" },
-                    ].map((item) => (
-                      <div key={item.label}>
-                        <p className="text-brand-accent-light text-sm tracking-[0.18em] uppercase">
-                          {item.value}
-                        </p>
-                        <p className="text-brand-white/72 mt-2 text-sm leading-relaxed">
-                          {item.label}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
+                  <h1 className="mt-3 text-3xl leading-tight md:text-4xl">Private Studio</h1>
+                  <p className="text-brand-white/80 mt-3 max-w-sm leading-relaxed">
+                    Sign in to access your coaching, health details and account tools.
+                  </p>
                 </div>
               </div>
 
@@ -209,20 +165,17 @@ export function LoginPage({
                     </div>
                   )}
 
-                  <div className="mb-6 lg:hidden">
+                  <div className="mb-6">
                     <IconHorizontal className="h-10 w-auto" />
                   </div>
 
                   <div className="mb-8">
                     <p className="text-brand-accent text-xs tracking-[0.26em] uppercase">
-                      Welcome back
+                      Private Studio
                     </p>
-                    <h2 className="mt-3 text-3xl tracking-tight md:text-4xl">
-                      Sign in to your studio
-                    </h2>
+                    <h2 className="mt-3 text-3xl tracking-tight md:text-4xl">Sign in</h2>
                     <p className="text-muted-foreground mt-3 leading-relaxed">
-                      Use your email or Google account to continue. If you&apos;re new, we&apos;ll
-                      set up the rest after you verify.
+                      Use your email or Google account to continue.
                     </p>
                   </div>
                   <div className="bg-bronze/60 mb-8 h-px w-16 rounded-full" />

@@ -307,7 +307,7 @@ Site-wide content fragments used across multiple pages.
 | Field                       | Type       | Notes                                                                                                                  |
 | --------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `siteName`                  | Short Text | "Shruti Turner"                                                                                                        |
-| `siteTagline`               | Short Text | "Strength & Yoga for ies"                                                                                   |
+| `siteTagline`               | Short Text | "Strength & Yoga for ies"                                                                                              |
 | `defaultSeoDescription`     | Long Text  | Fallback meta description.                                                                                             |
 | `headerNavItems`            | JSON       | `[{ label, href, children?: [{ label, href }] }]`                                                                      |
 | `footerContent`             | Rich Text  | Footer blurb text.                                                                                                     |
@@ -1589,14 +1589,14 @@ PRODID:-//Shruti Turner Coaching//EN
 CALSCALE:GREGORIAN
 METHOD:REQUEST
 BEGIN:VEVENT
-UID:{bookingId}@shrutiturner.com
+UID:{bookingId}@shrutiturner.co.uk
 DTSTAMP:{now}
 DTSTART:{session.date}
 DTEND:{session.endTime}
 SUMMARY:{className} with Shruti Turner
 DESCRIPTION:Join link: https://shrutiturner.daily.co/{roomId}\n\nClass: {className}\nLevel: {level}\n\nManage your booking: https://shrutiturner.co.uk/dashboard
 LOCATION:Online (Daily.co)
-ORGANIZER;CN=Shruti Turner:mailto:shruti@shrutiturner.com
+ORGANIZER;CN=Shruti Turner:mailto:shruti@shrutiturner.co.uk
 STATUS:CONFIRMED
 END:VEVENT
 END:VCALENDAR

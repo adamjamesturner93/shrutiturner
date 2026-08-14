@@ -1368,9 +1368,8 @@ export async function listOperationalRetreats(): Promise<RetreatCombinedContent[
     [...slugs].map(async (slug) => {
       const dates = operationalDatesBySlug.get(slug) ?? [];
       const template = templateBySlug.get(slug);
-      if (!template) {
-        throw new Error(`CONTENTFUL_CONTENT_MISSING: retreatTemplate "${slug}" is not published`);
-      }
+      if (!template || template.schedule.length === 0) return null;
+      if (template.deliveryMode === "in_person" && !getTemplateVenue(template, venues)) return null;
       return buildOperationalRetreatFromTemplate({ template, dates, venues });
     })
   );

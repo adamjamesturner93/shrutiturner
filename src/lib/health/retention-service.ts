@@ -25,6 +25,7 @@ export async function processHealthDataRetention(now = new Date()) {
   let deletedProfiles = 0;
   let clearedRetreatBookings = 0;
   let clearedCoachingCheckIns = 0;
+  let clearedUnsuccessfulCoachingEnquiries = 0;
   let purgedDeletedUsers = 0;
   let purgedAcceptanceEvents = 0;
 
@@ -117,6 +118,25 @@ export async function processHealthDataRetention(now = new Date()) {
     clearedCoachingCheckIns += updated.count;
   }
 
+  const unsuccessfulEnquiries = await db.coachingApplication.updateMany({
+    where: {
+      status: { in: ["declined", "withdrawn"] },
+      updatedAt: { lte: cutoff },
+      OR: [
+        { user: null },
+        { user: { legalHoldUntil: null } },
+        { user: { legalHoldUntil: { lte: now } } },
+      ],
+    },
+    data: {
+      answersJson: {},
+      adminNotes: null,
+      decisionReason: null,
+      consultationNotes: null,
+    },
+  });
+  clearedUnsuccessfulCoachingEnquiries = unsuccessfulEnquiries.count;
+
   const deletedUsers = await db.user.findMany({
     where: {
       deletedAt: {
@@ -181,6 +201,7 @@ export async function processHealthDataRetention(now = new Date()) {
     deletedProfiles,
     clearedRetreatBookings,
     clearedCoachingCheckIns,
+    clearedUnsuccessfulCoachingEnquiries,
     purgedDeletedUsers,
     purgedAcceptanceEvents,
   };

@@ -1,4 +1,4 @@
-import { coachingTiers } from "@/data/marketing";
+import { activeCoachingTiers } from "@/data/marketing";
 import type { FaqItemContent } from "@/lib/content/types";
 
 export interface PricingCoachingRow {
@@ -32,7 +32,7 @@ export function formatPenceAsPounds(pence: number): string {
 }
 
 export function getPricingCoachingRows(): PricingCoachingRow[] {
-  return coachingTiers.map((tier) => ({
+  return activeCoachingTiers.map((tier) => ({
     id: tier.id,
     name: tier.name,
     tagline: tier.tagline,

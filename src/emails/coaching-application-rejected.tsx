@@ -16,12 +16,12 @@ export default function CoachingApplicationRejectedEmail({
   dashboardUrl,
 }: CoachingApplicationRejectedEmailProps) {
   return (
-    <EmailLayout preview="Your coaching application has been reviewed">
-      <Text style={headingStyle}>Your application has been reviewed</Text>
+    <EmailLayout preview="Your coaching enquiry has been reviewed">
+      <Text style={headingStyle}>Your enquiry has been reviewed</Text>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
-        Thank you for applying for {tierLabel}. Shruti has reviewed your application and this
-        coaching offer is not the right fit right now.
+        Thank you for your coaching enquiry. Shruti has reviewed what you discussed, and {tierLabel}
+        is not the right fit right now.
       </Text>
       <Section
         style={{

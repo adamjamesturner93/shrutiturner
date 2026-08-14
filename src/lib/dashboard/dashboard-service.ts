@@ -3,6 +3,9 @@ import { db } from "@/lib/db";
 import { getMembershipState } from "@/lib/membership/membership-service";
 import type { DashboardSummaryDto } from "@/lib/api/types";
 import { needsHealthDeclarationReview } from "@/lib/health/health-service";
+import { getMyCoachingState } from "@/lib/coaching/service";
+import { getMyRetreatBookings } from "@/lib/retreats/service";
+import { allCoachingTiers } from "@/data/marketing";
 
 function getUtcWeekStart(date: Date) {
   const weekStart = new Date(date);
@@ -30,6 +33,8 @@ export async function getDashboardSummary(userId: string): Promise<DashboardSumm
     thisWeekBookedCount,
     historicalBookings,
     healthProfile,
+    coaching,
+    retreats,
   ] = await Promise.all([
     getMembershipState(userId),
     db.classBooking.findMany({
@@ -81,6 +86,8 @@ export async function getDashboardSummary(userId: string): Promise<DashboardSumm
         lastConfirmedAt: true,
       },
     }),
+    getMyCoachingState(userId),
+    getMyRetreatBookings(userId),
   ]);
 
   const classFrequency = new Map<string, number>();
@@ -135,6 +142,206 @@ export async function getDashboardSummary(userId: string): Promise<DashboardSumm
       })
     : [];
 
+  const offer = coaching.application?.offerKey
+    ? allCoachingTiers.find((tier) => tier.id === coaching.application?.offerKey)
+    : null;
+  const actions: DashboardSummaryDto["actions"] = [];
+  if (!healthProfile) {
+    actions.push({
+      id: "health-profile",
+      priority: "action",
+      title: "Complete your health profile",
+      detail: "Share the context Shruti needs before coaching or other movement services begin.",
+      href: "/dashboard/health",
+      ctaLabel: "Complete health profile",
+      dueAt: null,
+    });
+  } else if (needsHealthDeclarationReview(healthProfile.lastConfirmedAt)) {
+    actions.push({
+      id: "health-review",
+      priority: "action",
+      title: "Review your health profile",
+      detail: "Confirm that your health and movement context is still current.",
+      href: "/dashboard/health",
+      ctaLabel: "Review health profile",
+      dueAt: null,
+    });
+  }
+  if (coaching.application && ["approved", "offer_sent"].includes(coaching.application.status)) {
+    actions.push({
+      id: "coaching-recommendation",
+      priority: "action",
+      title: offer ? `Review ${offer.name}` : "Review your coaching recommendation",
+      detail: offer
+        ? `Shruti recommends ${offer.name} at ${offer.priceLabel}.`
+        : "Your coaching recommendation is ready to review.",
+      href: "/dashboard/coaching",
+      ctaLabel: "Review and continue",
+      dueAt: null,
+    });
+  }
+  if (coaching.profile?.pendingPackageChange) {
+    actions.push({
+      id: "coaching-package-change",
+      priority: "action",
+      title:
+        coaching.profile.pendingPackageChange.requestType === "paid_start"
+          ? "Set up your coaching payment"
+          : "Review your coaching package change",
+      detail: "Shruti is waiting for you to confirm the next billing step.",
+      href: "/dashboard/coaching",
+      ctaLabel: "Review coaching update",
+      dueAt: coaching.profile.pendingPackageChange.billingStartsAt,
+    });
+  }
+  if (coaching.profile?.billingPhase === "payment_problem") {
+    actions.push({
+      id: "coaching-payment-problem",
+      priority: "overdue",
+      title: "Resolve your coaching payment",
+      detail: "Your coaching subscription needs attention in Stripe.",
+      href: "/dashboard/coaching",
+      ctaLabel: "Review coaching billing",
+      dueAt: null,
+    });
+  }
+  if (membershipState.membership?.paymentIssue) {
+    actions.push({
+      id: "membership-payment",
+      priority: "overdue",
+      title: "Resolve your membership payment",
+      detail: "Your membership payment needs attention to keep access active.",
+      href: "/dashboard/membership",
+      ctaLabel: "Review payment",
+      dueAt: membershipState.membership.paymentIssue.graceEndsAt,
+    });
+  }
+  for (const retreat of retreats.filter((booking) => booking.canPayBalance)) {
+    const overdue = retreat.balanceDueAt
+      ? new Date(retreat.balanceDueAt).getTime() < now.getTime()
+      : false;
+    actions.push({
+      id: `retreat-balance-${retreat.id}`,
+      priority: overdue ? "overdue" : "action",
+      title: `Pay the balance for ${retreat.retreatTitle}`,
+      detail: `Your remaining retreat balance is £${(retreat.balanceAmountPence / 100).toFixed(2)}.`,
+      href: `/dashboard/retreats/${retreat.id}`,
+      ctaLabel: "Review retreat payment",
+      dueAt: retreat.balanceDueAt,
+    });
+  }
+
+  const upcoming: DashboardSummaryDto["upcoming"] = [];
+  if (coaching.profile?.nextBillingAt && coaching.profile.nextBillingAmountPence) {
+    upcoming.push({
+      id: "coaching-payment",
+      kind: "coaching_payment",
+      title:
+        coaching.profile.billingPhase === "cancellation_scheduled"
+          ? "Final coaching payment"
+          : "Next coaching payment",
+      detail: offer?.name || "Coaching",
+      at: coaching.profile.nextBillingAt,
+      amountPence: coaching.profile.nextBillingAmountPence,
+      currency: coaching.profile.billingCurrency,
+      href: "/dashboard/coaching",
+    });
+  }
+  if (coaching.profile?.billingPhase === "final_month" && coaching.profile.billingEndsAt) {
+    upcoming.push({
+      id: "coaching-end",
+      kind: "coaching_end",
+      title: "Coaching access ends",
+      detail: "Your current paid period is your final month.",
+      at: coaching.profile.billingEndsAt,
+      amountPence: null,
+      currency: null,
+      href: "/dashboard/coaching",
+    });
+  }
+  for (const retreat of retreats) {
+    if (retreat.canPayBalance && retreat.balanceDueAt) {
+      upcoming.push({
+        id: `retreat-payment-${retreat.id}`,
+        kind: "retreat_balance",
+        title: `${retreat.retreatTitle} balance due`,
+        detail: retreat.location,
+        at: retreat.balanceDueAt,
+        amountPence: retreat.balanceAmountPence,
+        currency: "GBP",
+        href: `/dashboard/retreats/${retreat.id}`,
+      });
+    }
+    if (new Date(retreat.startsAt).getTime() >= now.getTime()) {
+      upcoming.push({
+        id: `retreat-${retreat.id}`,
+        kind: "retreat",
+        title: retreat.retreatTitle,
+        detail: retreat.location,
+        at: retreat.startsAt,
+        amountPence: null,
+        currency: null,
+        href: `/dashboard/retreats/${retreat.id}`,
+      });
+    }
+  }
+  for (const booking of upcomingBookings.slice(0, 3)) {
+    upcoming.push({
+      id: `class-${booking.sessionId}`,
+      kind: "class",
+      title: booking.session.titleSnapshot,
+      detail: `${booking.session.durationMinutes} minute session`,
+      at: booking.session.startsAtUtc.toISOString(),
+      amountPence: null,
+      currency: null,
+      href: `/dashboard/schedule`,
+    });
+  }
+  upcoming.sort((left, right) => left.at.localeCompare(right.at));
+
+  const services: DashboardSummaryDto["services"] = [];
+  if (coaching.application || coaching.profile) {
+    const coachingStatus = coaching.profile
+      ? coaching.profile.billingPhase === "final_month"
+        ? "Final month"
+        : coaching.profile.billingPhase === "cancellation_scheduled"
+          ? "Cancellation scheduled"
+          : coaching.profile.billingPhase === "payment_problem"
+            ? "Payment needs attention"
+            : offer?.name || coaching.state.replaceAll("_", " ")
+      : offer?.name || coaching.state.replaceAll("_", " ");
+    services.push({
+      id: "coaching",
+      title: "Coaching",
+      status: coachingStatus,
+      href: "/dashboard/coaching",
+    });
+  }
+  if (retreats.length) {
+    services.push({
+      id: "retreats",
+      title: "Retreats",
+      status: `${retreats.length} booking${retreats.length === 1 ? "" : "s"}`,
+      href: "/dashboard/retreats",
+    });
+  }
+  if (upcomingBookings.length || attendedCount > 0) {
+    services.push({
+      id: "classes",
+      title: "Classes",
+      status: `${upcomingBookings.length} upcoming`,
+      href: "/dashboard/schedule",
+    });
+  }
+  if (membershipState.membership) {
+    services.push({
+      id: "membership",
+      title: "Membership",
+      status: membershipState.membership.label,
+      href: "/dashboard/membership",
+    });
+  }
+
   return {
     hasHealthProfile: Boolean(healthProfile),
     healthDeclarationStatus: healthProfile?.declarationStatus ?? "incomplete",
@@ -176,5 +383,11 @@ export async function getDashboardSummary(userId: string): Promise<DashboardSumm
     membership: membershipState.membership,
     credits: membershipState.credits,
     referral: membershipState.referral,
+    actions: actions.sort((left, right) => {
+      if (left.priority !== right.priority) return left.priority === "overdue" ? -1 : 1;
+      return (left.dueAt || "9999").localeCompare(right.dueAt || "9999");
+    }),
+    upcoming,
+    services,
   };
 }

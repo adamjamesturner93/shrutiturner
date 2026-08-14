@@ -14,19 +14,21 @@ interface SEOProps {
 export function SEO({
   title,
   description,
-  keywords = "strength training chronic illness, yoga autoimmune disease, adaptive yoga, chronic pain exercise, rheumatoid arthritis coaching, psoriatic arthritis training, hypermobility strength, inclusive fitness, rehabilitation informed training",
-  ogImage = "/og-image.jpg",
+  keywords = "personal training, movement coaching, strength training, rehabilitation, fitness, wellbeing",
+  ogImage = "https://shrutiturner.co.uk/social/active",
   ogType = "website",
   canonicalUrl,
   noIndex = false,
 }: SEOProps) {
   const platformSettings = usePlatformSettings();
   const resolvedTitle =
-    title || platformSettings.defaultSeoTitle || "Shruti Turner - Inclusive Movement Coaching";
+    title ||
+    platformSettings.defaultSeoTitle ||
+    "Personal Training & Movement Coaching | Shruti Turner";
   const resolvedDescription =
     description ||
     platformSettings.defaultSeoDescription ||
-    "Science-backed movement coaching for adults with chronic illness, autoimmune conditions, wellbeing and injury recovery or prevention. Rehabilitation-informed training that builds capacity with care.";
+    "Personal training and movement coaching bringing together rehabilitation, fitness and wellbeing, built around your body, goals and real life.";
 
   useEffect(() => {
     // Set title

@@ -91,6 +91,8 @@ test("manual unsubscribe requires confirmation and then shows the secure-link st
   });
 
   await page.goto("/unsubscribe?email=reader@example.com");
+  await expect(page.locator("footer input[type='email']")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Email preferences" })).toBeVisible();
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByRole("heading", { name: "Are you sure?" })).toBeVisible();
   await page.getByRole("button", { name: "Email Me the Link" }).click();

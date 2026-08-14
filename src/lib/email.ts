@@ -118,7 +118,7 @@ PRODID:-//Shruti Turner Coaching//EN
 CALSCALE:GREGORIAN
 METHOD:${method}
 BEGIN:VEVENT
-UID:${Date.now()}@shrutiturner.com
+UID:${Date.now()}@shrutiturner.co.uk
 DTSTAMP:${formatDate(new Date())}
 DTSTART:${formatDate(startTime)}
 DTEND:${formatDate(endTime)}
@@ -138,8 +138,8 @@ export async function sendWelcomeEmail(email: string, firstName: string, userId?
     );
     const react = OnboardingEmail({
       firstName,
-      offersUrl: `${APP_URL}/#work-with-me`,
-      applyUrl: `${APP_URL}/coaching/apply`,
+      offersUrl: `${APP_URL}/coaching`,
+      enquireUrl: `${APP_URL}/coaching/enquire`,
       dashboardUrl: `${APP_URL}/dashboard/coaching`,
       healthUrl: `${APP_URL}/dashboard/health`,
       hasOneToOneApplication,
@@ -150,7 +150,7 @@ export async function sendWelcomeEmail(email: string, firstName: string, userId?
           `Hi ${firstName || "there"},`,
           "",
           "Your studio account is ready.",
-          "You can now use your dashboard to track your 1:1 application, payment invitations, health details and account information.",
+          "You can now use your dashboard to track your coaching enquiry, recommendation, payment invitation, health details and account information.",
           `1:1 dashboard: ${APP_URL}/dashboard/coaching`,
           `Health details: ${APP_URL}/dashboard/health`,
         ]
@@ -158,9 +158,9 @@ export async function sendWelcomeEmail(email: string, firstName: string, userId?
           `Hi ${firstName || "there"},`,
           "",
           "Your studio account is ready.",
-          "You can use it to manage your health details, account information and any future 1:1 application or payment invitation.",
-          `Explore 1:1 offers: ${APP_URL}/#work-with-me`,
-          `Apply for 1:1 support: ${APP_URL}/coaching/apply`,
+          "You can use it to manage your health details, account information and any future coaching enquiry or payment invitation.",
+          `Explore 1:1 offers: ${APP_URL}/coaching`,
+          `Enquire about 1:1 support: ${APP_URL}/coaching/enquire`,
         ];
 
     await sendPostmarkReactEmail({

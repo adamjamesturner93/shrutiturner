@@ -23,7 +23,7 @@ export default function WelcomeEmail({
   downloadUrl = "https://shrutiturner.co.uk/guides/why-some-bodies-need-strength-before-more-stretching.pdf",
   ctaLabel = "Download your guide",
   welcomeCopy,
-  offersUrl = "https://shrutiturner.co.uk/#work-with-me",
+  offersUrl = "https://shrutiturner.co.uk/coaching",
   blogUrl = "https://shrutiturner.co.uk/blog",
   privacyUrl = "https://shrutiturner.co.uk/privacy",
   unsubscribeUrl = "https://shrutiturner.co.uk/unsubscribe",

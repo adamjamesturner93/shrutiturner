@@ -5,13 +5,12 @@ import {
   Prisma,
 } from "@prisma/client";
 import { createAdminActionLog } from "@/lib/admin/action-log-service";
-import type { CoachingDashboardDto } from "@/lib/api/types";
+import type { AdminCoachingApplicationDto, CoachingDashboardDto } from "@/lib/api/types";
 import { db } from "@/lib/db";
 import { buildAbsoluteUrl } from "@/lib/app-url";
 import { linkPendingRecordsForUser } from "@/lib/link-pending-records";
 import { getNotificationInbox, sendPostmarkReactEmail } from "@/lib/postmark/client";
-import { CURRENT_COACHING_AGREEMENT_VERSION } from "@/data/legal-documents";
-import { coachingTiers, type CoachingOfferKey } from "@/data/marketing";
+import { activeCoachingTiers, coachingTiers, type CoachingOfferKey } from "@/data/marketing";
 import CoachingApplicationApprovedEmail from "@/emails/coaching-application-approved";
 import CoachingApplicationConfirmationEmail from "@/emails/coaching-application-confirmation";
 import CoachingApplicationNotificationEmail from "@/emails/coaching-application-notification";
@@ -22,6 +21,7 @@ import CoachingClientConfirmedEmail from "@/emails/coaching-client-confirmed";
 import CoachingPackageChangeRequestedEmail from "@/emails/coaching-package-change-requested";
 import CoachingPaidStartRequestedEmail from "@/emails/coaching-paid-start-requested";
 import CoachingWaitlistLeftNotificationEmail from "@/emails/coaching-waitlist-left-notification";
+import { getCoachingAdminTodos, getCoachingBillingPhase } from "@/lib/coaching/operations";
 
 export type CoachingApplicationAnswerMap = Record<string, string>;
 
@@ -29,6 +29,9 @@ const applicationStatuses: CoachingApplicationStatus[] = [
   "submitted",
   "under_review",
   "follow_up_needed",
+  "consultation_scheduled",
+  "consultation_completed",
+  "offer_sent",
   "waitlisted",
   "approved",
   "declined",
@@ -47,13 +50,13 @@ function normalizeName(value: string) {
 function tierToLabel(tier: CoachingSupportTier) {
   switch (tier) {
     case "personal_programme":
-      return "Independent Training Plan";
+      return "Monthly Support";
     case "coached_plan":
-      return "Guided Training Plan";
+      return "Weekly Support";
     case "coaching":
-      return "1:1 Offers";
+      return "1:1 Coaching";
     case "unsure":
-      return "Unsure";
+      return "To be recommended";
     default:
       return "Coaching";
   }
@@ -64,6 +67,16 @@ function getOfferKeyFromAnswers(answers: CoachingApplicationAnswerMap): Coaching
   return coachingTiers.some((offer) => offer.id === offerKey)
     ? (offerKey as CoachingOfferKey)
     : null;
+}
+
+function getRecommendedOfferKey(application: {
+  recommendedOfferKey?: string | null;
+  answersJson: Prisma.JsonValue;
+}): CoachingOfferKey | null {
+  if (activeCoachingTiers.some((offer) => offer.id === application.recommendedOfferKey)) {
+    return application.recommendedOfferKey as CoachingOfferKey;
+  }
+  return getOfferKeyFromAnswers(application.answersJson as CoachingApplicationAnswerMap);
 }
 
 function offerKeyToLabel(offerKey: CoachingOfferKey | null, tier: CoachingSupportTier) {
@@ -113,100 +126,100 @@ function serializePendingPackageChange(
   };
 }
 
+const enquiryEmailLabels: Record<string, string> = {
+  support: "Support requested",
+  movement: "Current movement or training",
+  context: "Body context",
+  outcome: "What they want from coaching",
+  extra: "Anything else",
+  referral: "How they heard about Shruti",
+};
+
 function summarizeAnswers(answers: CoachingApplicationAnswerMap) {
   return Object.entries(answers)
     .filter(([key, value]) => key !== "offerKey" && value.trim())
     .slice(0, 4)
-    .map(([key, value]) => `${key}: ${value.trim().slice(0, 160)}`);
+    .map(([key, value]) => `${enquiryEmailLabels[key] || key}: ${value.trim().slice(0, 160)}`);
 }
 
-export async function submitCoachingApplication(input: {
+export const COACHING_ENQUIRY_CONSENT_VERSION = "coaching-enquiry.v1";
+
+export async function submitCoachingEnquiry(input: {
   userId?: string | null;
-  applicantFirstName: string;
-  applicantLastName: string;
+  applicantName: string;
   applicantEmail: string;
-  tier: CoachingSupportTier;
   answers: CoachingApplicationAnswerMap;
-  isExistingCoachingClientSnapshot: boolean;
+  consentText: string;
 }) {
-  const applicantFirstName = normalizeName(input.applicantFirstName);
-  const applicantLastName = normalizeName(input.applicantLastName);
+  const applicantName = normalizeName(input.applicantName);
   const applicantEmail = normalizeEmail(input.applicantEmail);
-
-  if (!applicantFirstName || !applicantLastName) throw new Error("NAME_REQUIRED");
+  if (!applicantName) throw new Error("NAME_REQUIRED");
   if (!applicantEmail || !applicantEmail.includes("@")) throw new Error("EMAIL_REQUIRED");
+  if (!input.consentText.trim()) throw new Error("CONSENT_REQUIRED");
 
+  const [applicantFirstName = applicantName, ...nameRest] = applicantName.split(" ");
+  const applicantLastName = nameRest.join(" ");
   const answers = Object.fromEntries(
     Object.entries(input.answers).map(([key, value]) => [key, value.trim().slice(0, 4000)])
   ) as CoachingApplicationAnswerMap;
+  if (!answers.support || !answers.outcome || !answers.referral) {
+    throw new Error("ANSWERS_REQUIRED");
+  }
+
   const existingUser = input.userId
     ? null
-    : await db.user.findUnique({
-        where: { email: applicantEmail },
-        select: { id: true },
-      });
-
+    : await db.user.findUnique({ where: { email: applicantEmail }, select: { id: true } });
   const application = await db.coachingApplication.create({
     data: {
       userId: input.userId || existingUser?.id || undefined,
       applicantFirstName,
       applicantLastName,
+      applicantName,
       applicantEmail,
-      tier: input.tier,
+      tier: "unsure",
       answersJson: answers as Prisma.InputJsonValue,
-      isExistingCoachingClientSnapshot: input.isExistingCoachingClientSnapshot,
-      coachingAgreementVersion: CURRENT_COACHING_AGREEMENT_VERSION,
-      coachingAgreementAcceptedAt: new Date(),
-      source: "public_coaching_apply",
+      isExistingCoachingClientSnapshot: false,
+      source: "public_coaching_enquire",
+      enquiryConsentVersion: COACHING_ENQUIRY_CONSENT_VERSION,
+      enquiryConsentText: input.consentText.trim().slice(0, 1000),
+      enquiryConsentedAt: new Date(),
     },
   });
 
-  const offerKey = getOfferKeyFromAnswers(answers);
-  const tierLabel = offerKeyToLabel(offerKey, input.tier);
-  const dashboardUrl = buildAbsoluteUrl("/dashboard/coaching");
+  const dashboardUrl = application.userId ? buildAbsoluteUrl("/dashboard/coaching") : undefined;
   const adminUrl = buildAbsoluteUrl("/admin/coaching");
   const summary = summarizeAnswers(answers);
-
   await Promise.allSettled([
     sendPostmarkReactEmail({
       to: applicantEmail,
-      subject: "Your coaching application has been received",
+      subject: "Your coaching enquiry has been received",
       react: CoachingApplicationConfirmationEmail({
         firstName: applicantFirstName,
-        tierLabel,
         dashboardUrl,
       }),
-      textBody: `Hi ${applicantFirstName},\n\nThanks for requesting to work with Shruti to support your health and wellbeing. Look out for an email from Shruti within the next 48 hours. Don’t forget to check your spam.\n\nDashboard: ${dashboardUrl}`,
-      tag: "coaching-application-confirmation",
-      templateKey: "coaching-application-confirmation",
-      metadata: {
-        applicationId: application.id,
-        tier: input.tier,
-      },
+      textBody: `Hi ${applicantFirstName},\n\nThanks for getting in touch about coaching. Shruti will read your enquiry personally and reply within two working days.`,
+      tag: "coaching-enquiry-confirmation",
+      templateKey: "coaching-enquiry-confirmation",
+      metadata: { applicationId: application.id },
       dispatchMode: "immediate_best_effort",
     }),
     sendPostmarkReactEmail({
       to: getNotificationInbox("COACHING_APPLICATION_NOTIFICATION_EMAIL"),
-      subject: `New coaching application: ${applicantFirstName} ${applicantLastName}`,
+      subject: `New coaching enquiry: ${applicantName}`,
       react: CoachingApplicationNotificationEmail({
-        name: `${applicantFirstName} ${applicantLastName}`.trim(),
+        name: applicantName,
         email: applicantEmail,
-        tierLabel,
         summary,
         adminUrl,
       }),
-      textBody: `New coaching application from ${applicantFirstName} ${applicantLastName}\nEmail: ${applicantEmail}\nTier: ${tierLabel}\n\n${summary.join("\n")}\n\nReview: ${adminUrl}`,
-      tag: "coaching-application-notification",
-      templateKey: "coaching-application-notification",
+      textBody: `New coaching enquiry from ${applicantName}\nEmail: ${applicantEmail}\n\n${summary.join("\n")}\n\nReview: ${adminUrl}`,
+      tag: "coaching-enquiry-notification",
+      templateKey: "coaching-enquiry-notification",
       replyTo: applicantEmail,
-      metadata: {
-        applicationId: application.id,
-        tier: input.tier,
-      },
+      metadata: { applicationId: application.id },
       dispatchMode: "immediate_best_effort",
     }),
   ]);
-
   return application;
 }
 
@@ -223,16 +236,8 @@ export async function getMyCoachingState(userId: string): Promise<CoachingDashbo
     db.coachingClientProfile.findUnique({
       where: { userId },
       include: {
-        checkIns: {
-          orderBy: { dueAt: "asc" },
-          take: 1,
-        },
-        sessions: {
-          where: { status: "scheduled" },
-          orderBy: { startsAt: "asc" },
-          take: 1,
-        },
         application: true,
+        subscriptionProjection: true,
         packageChangeRequests: {
           where: { status: "pending_client_confirmation" },
           orderBy: { createdAt: "desc" },
@@ -247,8 +252,13 @@ export async function getMyCoachingState(userId: string): Promise<CoachingDashbo
   ]);
 
   if (profile) {
-    const nextCheckIn = profile.checkIns[0];
-    const nextSession = profile.sessions[0];
+    const billingPhase = getCoachingBillingPhase({
+      profileStatus: profile.status,
+      cancellationRequestedAt: profile.billingCancellationRequestedAt,
+      finalPaymentAt: profile.billingFinalPaymentAt,
+      endsAt: profile.billingEndsAt,
+      subscriptionStatus: profile.subscriptionProjection?.status,
+    });
     return {
       state: profile.status as CoachingDashboardDto["state"],
       hasProfile: true,
@@ -262,26 +272,33 @@ export async function getMyCoachingState(userId: string): Promise<CoachingDashbo
         everfitConnectionStatus: profile.everfitConnectionStatus as NonNullable<
           CoachingDashboardDto["profile"]
         >["everfitConnectionStatus"],
-        nextCheckInDueAt:
-          nextCheckIn?.dueAt.toISOString() || profile.nextCheckInDueAt?.toISOString() || null,
-        nextCheckInStatus:
-          (nextCheckIn?.status as NonNullable<
-            CoachingDashboardDto["profile"]
-          >["nextCheckInStatus"]) || null,
-        nextSessionStartsAt: nextSession?.startsAt.toISOString() || null,
+        nextCheckInDueAt: null,
+        nextCheckInStatus: null,
+        nextSessionStartsAt: null,
         latestCoachResponseSummary: profile.latestCoachResponseSummary || null,
         billingCancellationRequestedAt:
           profile.billingCancellationRequestedAt?.toISOString() || null,
         billingFinalPaymentAt: profile.billingFinalPaymentAt?.toISOString() || null,
         billingEndsAt: profile.billingEndsAt?.toISOString() || null,
+        billingPhase,
+        nextBillingAt:
+          billingPhase === "active"
+            ? profile.subscriptionProjection?.currentPeriodEnd?.toISOString() || null
+            : billingPhase === "cancellation_scheduled"
+              ? profile.billingFinalPaymentAt?.toISOString() || null
+              : null,
+        nextBillingAmountPence:
+          billingPhase === "active" || billingPhase === "cancellation_scheduled"
+            ? (profile.subscriptionProjection?.unitAmountPence || 0) *
+              (profile.subscriptionProjection?.quantity || 1)
+            : null,
+        billingCurrency: profile.subscriptionProjection?.currency || null,
         pendingPackageChange: serializePendingPackageChange(profile.packageChangeRequests[0]),
       },
       application: latestApplication
         ? {
             id: latestApplication.id,
-            offerKey: getOfferKeyFromAnswers(
-              latestApplication.answersJson as CoachingApplicationAnswerMap
-            ),
+            offerKey: getRecommendedOfferKey(latestApplication),
             status: latestApplication.status as NonNullable<
               CoachingDashboardDto["application"]
             >["status"],
@@ -292,6 +309,12 @@ export async function getMyCoachingState(userId: string): Promise<CoachingDashbo
             createdAt: latestApplication.createdAt.toISOString(),
             waitlistedAt: latestApplication.waitlistedAt?.toISOString() || null,
             waitlistLeftAt: latestApplication.waitlistLeftAt?.toISOString() || null,
+            consultationStatus: latestApplication.consultationStatus,
+            consultationScheduledAt:
+              latestApplication.consultationScheduledAt?.toISOString() || null,
+            consultationCompletedAt:
+              latestApplication.consultationCompletedAt?.toISOString() || null,
+            offerSentAt: latestApplication.offerSentAt?.toISOString() || null,
           }
         : null,
     };
@@ -309,9 +332,7 @@ export async function getMyCoachingState(userId: string): Promise<CoachingDashbo
       profile: null,
       application: {
         id: latestApplication.id,
-        offerKey: getOfferKeyFromAnswers(
-          latestApplication.answersJson as CoachingApplicationAnswerMap
-        ),
+        offerKey: getRecommendedOfferKey(latestApplication),
         status: latestApplication.status as NonNullable<
           CoachingDashboardDto["application"]
         >["status"],
@@ -320,6 +341,10 @@ export async function getMyCoachingState(userId: string): Promise<CoachingDashbo
         createdAt: latestApplication.createdAt.toISOString(),
         waitlistedAt: latestApplication.waitlistedAt?.toISOString() || null,
         waitlistLeftAt: latestApplication.waitlistLeftAt?.toISOString() || null,
+        consultationStatus: latestApplication.consultationStatus,
+        consultationScheduledAt: latestApplication.consultationScheduledAt?.toISOString() || null,
+        consultationCompletedAt: latestApplication.consultationCompletedAt?.toISOString() || null,
+        offerSentAt: latestApplication.offerSentAt?.toISOString() || null,
       },
     };
   }
@@ -363,6 +388,7 @@ export async function listAdminCoachingApplications(params?: { status?: string; 
       },
       clientProfile: {
         include: {
+          subscriptionProjection: true,
           packageChangeRequests: {
             where: { status: "pending_client_confirmation" },
             orderBy: { createdAt: "desc" },
@@ -373,13 +399,48 @@ export async function listAdminCoachingApplications(params?: { status?: string; 
     },
   });
 
-  return rows.map((row) => {
+  return rows.map((row): AdminCoachingApplicationDto => {
     const answers = row.answersJson as CoachingApplicationAnswerMap;
-
-    return {
-      offerKey: getOfferKeyFromAnswers(answers),
+    const billingPhase = row.clientProfile
+      ? getCoachingBillingPhase({
+          profileStatus: row.clientProfile.status,
+          cancellationRequestedAt: row.clientProfile.billingCancellationRequestedAt,
+          finalPaymentAt: row.clientProfile.billingFinalPaymentAt,
+          endsAt: row.clientProfile.billingEndsAt,
+          subscriptionStatus: row.clientProfile.subscriptionProjection?.status,
+        })
+      : "not_configured";
+    const coachingProfile: AdminCoachingApplicationDto["coachingProfile"] = row.clientProfile
+      ? {
+          id: row.clientProfile.id,
+          billingArrangement: row.clientProfile.billingArrangement,
+          billingStartsAt: row.clientProfile.billingStartsAt?.toISOString() || null,
+          tier: row.clientProfile.tier,
+          status: row.clientProfile.status,
+          everfitConnectionStatus: row.clientProfile.everfitConnectionStatus,
+          billingCancellationRequestedAt:
+            row.clientProfile.billingCancellationRequestedAt?.toISOString() || null,
+          billingFinalPaymentAt: row.clientProfile.billingFinalPaymentAt?.toISOString() || null,
+          billingEndsAt: row.clientProfile.billingEndsAt?.toISOString() || null,
+          billingPhase,
+          nextBillingAt:
+            row.clientProfile.subscriptionProjection?.currentPeriodEnd?.toISOString() || null,
+          nextBillingAmountPence: row.clientProfile.subscriptionProjection
+            ? row.clientProfile.subscriptionProjection.unitAmountPence *
+              row.clientProfile.subscriptionProjection.quantity
+            : null,
+          billingCurrency: row.clientProfile.subscriptionProjection?.currency || null,
+          subscriptionStatus: row.clientProfile.subscriptionProjection?.status || null,
+          pendingPackageChange: serializePendingPackageChange(
+            row.clientProfile.packageChangeRequests[0]
+          ),
+        }
+      : null;
+    const application = {
+      offerKey: getRecommendedOfferKey(row),
       id: row.id,
-      applicantName: `${row.applicantFirstName} ${row.applicantLastName}`.trim(),
+      applicantName:
+        row.applicantName || `${row.applicantFirstName} ${row.applicantLastName}`.trim(),
       applicantEmail: row.applicantEmail,
       status: row.status,
       tier: row.tier,
@@ -389,29 +450,21 @@ export async function listAdminCoachingApplications(params?: { status?: string; 
       paymentReminderSentAt: row.paymentReminderSentAt?.toISOString() || null,
       waitlistedAt: row.waitlistedAt?.toISOString() || null,
       waitlistLeftAt: row.waitlistLeftAt?.toISOString() || null,
+      consultationStatus: row.consultationStatus,
+      consultationScheduledAt: row.consultationScheduledAt?.toISOString() || null,
+      consultationCompletedAt: row.consultationCompletedAt?.toISOString() || null,
+      consultationNotes: row.consultationNotes || "",
+      offerSentAt: row.offerSentAt?.toISOString() || null,
       userId: row.userId,
       isLinkedUserCoachingClient: row.user?.isCoachingClient || false,
       answers,
       decisionReason: row.decisionReason || "",
       adminNotes: row.adminNotes || "",
-      coachingProfile: row.clientProfile
-        ? {
-            id: row.clientProfile.id,
-            billingArrangement: row.clientProfile.billingArrangement,
-            billingStartsAt: row.clientProfile.billingStartsAt?.toISOString() || null,
-            tier: row.clientProfile.tier,
-            status: row.clientProfile.status,
-            everfitConnectionStatus: row.clientProfile.everfitConnectionStatus,
-            billingCancellationRequestedAt:
-              row.clientProfile.billingCancellationRequestedAt?.toISOString() || null,
-            billingFinalPaymentAt: row.clientProfile.billingFinalPaymentAt?.toISOString() || null,
-            billingEndsAt: row.clientProfile.billingEndsAt?.toISOString() || null,
-            pendingPackageChange: serializePendingPackageChange(
-              row.clientProfile.packageChangeRequests[0]
-            ),
-          }
-        : null,
+      coachingProfile,
+      todos: [],
     };
+    application.todos = getCoachingAdminTodos(application);
+    return application;
   });
 }
 
@@ -421,6 +474,10 @@ export async function updateAdminCoachingApplication(input: {
   adminNotes?: string;
   decisionReason?: string;
   convertToClient?: boolean;
+  consultationStatus?: "not_scheduled" | "scheduled" | "completed" | "cancelled";
+  consultationScheduledAt?: string | null;
+  consultationNotes?: string;
+  recommendedOfferKey?: CoachingOfferKey | null;
   actorUserId?: string | null;
   requestId?: string | null;
   requestPath?: string | null;
@@ -437,12 +494,47 @@ export async function updateAdminCoachingApplication(input: {
   if (!existing) throw new Error("NOT_FOUND");
 
   const nextStatus = input.convertToClient ? "converted" : input.status || existing.status;
+  const nextConsultationStatus = input.consultationStatus || existing.consultationStatus;
+  const nextConsultationDate =
+    input.consultationScheduledAt === undefined
+      ? existing.consultationScheduledAt
+      : input.consultationScheduledAt
+        ? new Date(input.consultationScheduledAt)
+        : null;
+  if (nextConsultationDate && Number.isNaN(nextConsultationDate.getTime())) {
+    throw new Error("INVALID_CONSULTATION_DATE");
+  }
+  if (nextConsultationStatus === "scheduled" && !nextConsultationDate) {
+    throw new Error("CONSULTATION_DATE_REQUIRED");
+  }
+  if (
+    (nextStatus === "offer_sent" || nextStatus === "waitlisted" || input.convertToClient) &&
+    nextConsultationStatus !== "completed"
+  ) {
+    throw new Error("CONSULTATION_REQUIRED");
+  }
   const nextDecisionReason =
     input.decisionReason !== undefined ? input.decisionReason.trim() : existing.decisionReason;
   if (nextStatus === "declined" && !nextDecisionReason?.trim()) {
     throw new Error("DECISION_REASON_REQUIRED");
   }
-  const wasApproved = existing.status === "approved" || existing.status === "converted";
+  const nextOfferKey =
+    input.recommendedOfferKey !== undefined
+      ? input.recommendedOfferKey
+      : getRecommendedOfferKey(existing);
+  if (
+    (nextStatus === "offer_sent" ||
+      nextStatus === "approved" ||
+      nextStatus === "waitlisted" ||
+      input.convertToClient) &&
+    (!nextOfferKey || !activeCoachingTiers.some((offer) => offer.id === nextOfferKey))
+  ) {
+    throw new Error("RECOMMENDED_OFFER_REQUIRED");
+  }
+  const wasApproved =
+    existing.status === "approved" ||
+    existing.status === "offer_sent" ||
+    existing.status === "converted";
   const wasDeclined = existing.status === "declined";
   const wasWaitlisted = existing.status === "waitlisted";
   const wasConverted = existing.status === "converted";
@@ -453,28 +545,46 @@ export async function updateAdminCoachingApplication(input: {
       status: nextStatus,
       adminNotes: input.adminNotes !== undefined ? input.adminNotes.trim() : undefined,
       decisionReason: input.decisionReason !== undefined ? input.decisionReason.trim() : undefined,
+      recommendedOfferKey:
+        input.recommendedOfferKey !== undefined ? input.recommendedOfferKey : undefined,
+      tier: nextOfferKey ? offerKeyToTier(nextOfferKey) : undefined,
+      consultationStatus: input.consultationStatus,
+      consultationScheduledAt:
+        input.consultationScheduledAt !== undefined ? nextConsultationDate : undefined,
+      consultationCompletedAt:
+        input.consultationStatus === "completed"
+          ? existing.consultationCompletedAt || now
+          : input.consultationStatus
+            ? null
+            : undefined,
+      consultationNotes:
+        input.consultationNotes !== undefined ? input.consultationNotes.trim() : undefined,
       reviewedAt: input.status || input.convertToClient ? now : undefined,
       waitlistedAt: nextStatus === "waitlisted" && !wasWaitlisted ? now : undefined,
       waitlistLeftAt: wasWaitlisted && nextStatus !== "waitlisted" ? now : undefined,
-      approvedAt: nextStatus === "approved" ? now : undefined,
+      approvedAt:
+        nextStatus === "approved" || nextStatus === "offer_sent"
+          ? existing.approvedAt || now
+          : undefined,
+      offerSentAt: nextStatus === "offer_sent" ? existing.offerSentAt || now : undefined,
       convertedAt: input.convertToClient ? now : undefined,
     },
   });
 
-  if (nextStatus === "approved" && !wasApproved) {
-    const offerKey = getOfferKeyFromAnswers(existing.answersJson as CoachingApplicationAnswerMap);
+  if ((nextStatus === "approved" || nextStatus === "offer_sent") && !wasApproved) {
+    const offerKey = nextOfferKey;
     const tierLabel = offerKeyToLabel(offerKey, existing.tier);
-    const dashboardUrl = buildAbsoluteUrl("/dashboard/coaching");
+    const dashboardUrl = buildAbsoluteUrl("/login?redirect=/dashboard/coaching");
     await sendPostmarkReactEmail({
       to: existing.applicantEmail,
-      subject: "Your coaching application has been approved",
+      subject: "Your coaching recommendation is ready",
       react: CoachingApplicationApprovedEmail({
         firstName: existing.applicantFirstName,
         tierLabel,
         dashboardUrl,
         decisionReason: updated.decisionReason,
       }),
-      textBody: `Hi ${existing.applicantFirstName},\n\nYour application for ${tierLabel} has been approved. Sign in to your Private Studio to complete payment and start onboarding.${updated.decisionReason ? `\n\nA note from Shruti:\n${updated.decisionReason}` : ""}\n\nContinue: ${dashboardUrl}`,
+      textBody: `Hi ${existing.applicantFirstName},\n\nFollowing your conversation, Shruti recommends ${tierLabel}. Create or sign in to your Private Studio to review the recommendation, accept the current agreements and complete payment.${updated.decisionReason ? `\n\nA note from Shruti:\n${updated.decisionReason}` : ""}\n\nContinue: ${dashboardUrl}`,
       tag: "coaching-application-approved",
       templateKey: "coaching-application-approved",
       metadata: {
@@ -488,19 +598,19 @@ export async function updateAdminCoachingApplication(input: {
   }
 
   if (nextStatus === "declined" && !wasDeclined) {
-    const offerKey = getOfferKeyFromAnswers(existing.answersJson as CoachingApplicationAnswerMap);
+    const offerKey = getRecommendedOfferKey(existing);
     const tierLabel = offerKeyToLabel(offerKey, existing.tier);
     const dashboardUrl = buildAbsoluteUrl("/dashboard/coaching");
     await sendPostmarkReactEmail({
       to: existing.applicantEmail,
-      subject: "Your coaching application has been reviewed",
+      subject: "Your coaching enquiry has been reviewed",
       react: CoachingApplicationRejectedEmail({
         firstName: existing.applicantFirstName,
         tierLabel,
         decisionReason: updated.decisionReason || nextDecisionReason || "",
         dashboardUrl,
       }),
-      textBody: `Hi ${existing.applicantFirstName},\n\nThank you for applying for ${tierLabel}. Shruti has reviewed your application and this coaching offer is not the right fit at the moment.\n\nA note from Shruti:\n${updated.decisionReason || nextDecisionReason}\n\nDashboard: ${dashboardUrl}`,
+      textBody: `Hi ${existing.applicantFirstName},\n\nThank you for your coaching enquiry. Shruti has reviewed what you discussed, and ${tierLabel} is not the right fit at the moment.\n\nA note from Shruti:\n${updated.decisionReason || nextDecisionReason}\n\nDashboard: ${dashboardUrl}`,
       tag: "coaching-application-rejected",
       templateKey: "coaching-application-rejected",
       metadata: {
@@ -514,7 +624,7 @@ export async function updateAdminCoachingApplication(input: {
   }
 
   if (nextStatus === "waitlisted" && !wasWaitlisted) {
-    const offerKey = getOfferKeyFromAnswers(existing.answersJson as CoachingApplicationAnswerMap);
+    const offerKey = nextOfferKey;
     const tierLabel = offerKeyToLabel(offerKey, existing.tier);
     const dashboardUrl = buildAbsoluteUrl("/dashboard/coaching");
     await sendPostmarkReactEmail({
@@ -526,7 +636,7 @@ export async function updateAdminCoachingApplication(input: {
         dashboardUrl,
         decisionReason: updated.decisionReason || nextDecisionReason || "",
       }),
-      textBody: `Hi ${existing.applicantFirstName},\n\nShruti has reviewed your application for ${tierLabel}. There is not capacity to start coaching immediately, so you have been added to the coaching waiting list.${updated.decisionReason || nextDecisionReason ? `\n\nA note from Shruti:\n${updated.decisionReason || nextDecisionReason}` : ""}\n\nYou do not need to pay now. If a place opens, Shruti will email you with the next step. You can leave the waiting list from your coaching dashboard.\n\nDashboard: ${dashboardUrl}`,
+      textBody: `Hi ${existing.applicantFirstName},\n\nFollowing your coaching enquiry, Shruti recommends ${tierLabel}. There is not capacity to start immediately, so you have been added to the coaching waiting list.${updated.decisionReason || nextDecisionReason ? `\n\nA note from Shruti:\n${updated.decisionReason || nextDecisionReason}` : ""}\n\nYou do not need to pay now. If a place opens, Shruti will email you with the next step. You can leave the waiting list from your coaching dashboard.\n\nDashboard: ${dashboardUrl}`,
       tag: "coaching-application-waitlisted",
       templateKey: "coaching-application-waitlisted",
       metadata: {
@@ -540,19 +650,20 @@ export async function updateAdminCoachingApplication(input: {
   }
 
   if (input.convertToClient && existing.userId) {
+    const convertedTier = nextOfferKey ? offerKeyToTier(nextOfferKey) : existing.tier;
     await db.coachingClientProfile.upsert({
       where: { userId: existing.userId },
       create: {
         userId: existing.userId,
         applicationId: existing.id,
-        tier: existing.tier === "unsure" ? "coaching" : existing.tier,
+        tier: convertedTier === "unsure" ? "coaching" : convertedTier,
         status: "onboarding",
         billingArrangement: "pro_bono",
         nextCheckInDueAt: new Date(Date.now() + 7 * 86400000),
       },
       update: {
         applicationId: existing.id,
-        tier: existing.tier === "unsure" ? "coaching" : existing.tier,
+        tier: convertedTier === "unsure" ? "coaching" : convertedTier,
         status: "onboarding",
         billingArrangement: "pro_bono",
       },
@@ -564,7 +675,7 @@ export async function updateAdminCoachingApplication(input: {
     });
 
     if (!wasConverted) {
-      const offerKey = getOfferKeyFromAnswers(existing.answersJson as CoachingApplicationAnswerMap);
+      const offerKey = nextOfferKey;
       const tierLabel = offerKeyToLabel(offerKey, existing.tier);
       const dashboardUrl = buildAbsoluteUrl("/dashboard/coaching");
       await sendPostmarkReactEmail({
@@ -576,7 +687,7 @@ export async function updateAdminCoachingApplication(input: {
           dashboardUrl,
           decisionReason: updated.decisionReason,
         }),
-        textBody: `Hi ${existing.applicantFirstName},\n\nYour application for ${tierLabel} has been accepted and your client profile is ready. There is no payment step for this arrangement.${updated.decisionReason ? `\n\nA note from Shruti:\n${updated.decisionReason}` : ""}\n\nSign in to your account to follow your onboarding status: ${dashboardUrl}`,
+        textBody: `Hi ${existing.applicantFirstName},\n\nYour ${tierLabel} support is confirmed and your client profile is ready. There is no payment step for this arrangement.${updated.decisionReason ? `\n\nA note from Shruti:\n${updated.decisionReason}` : ""}\n\nSign in to your account to follow your onboarding status: ${dashboardUrl}`,
         tag: "coaching-client-confirmed",
         templateKey: "coaching-client-confirmed",
         category: "transactional",
@@ -612,6 +723,11 @@ export async function updateAdminCoachingApplication(input: {
         waitlistedAt: existing.waitlistedAt,
         waitlistLeftAt: existing.waitlistLeftAt,
         convertedAt: existing.convertedAt,
+        consultationStatus: existing.consultationStatus,
+        consultationScheduledAt: existing.consultationScheduledAt,
+        consultationCompletedAt: existing.consultationCompletedAt,
+        recommendedOfferKey: existing.recommendedOfferKey,
+        offerSentAt: existing.offerSentAt,
         userId: existing.userId,
       },
       newValueJson: {
@@ -623,10 +739,18 @@ export async function updateAdminCoachingApplication(input: {
         waitlistedAt: updated.waitlistedAt,
         waitlistLeftAt: updated.waitlistLeftAt,
         convertedAt: updated.convertedAt,
+        consultationStatus: updated.consultationStatus,
+        consultationScheduledAt: updated.consultationScheduledAt,
+        consultationCompletedAt: updated.consultationCompletedAt,
+        recommendedOfferKey: updated.recommendedOfferKey,
+        offerSentAt: updated.offerSentAt,
         userId: updated.userId,
       },
       metadataJson: {
         convertToClient: input.convertToClient === true,
+        consultationNotesChanged:
+          input.consultationNotes !== undefined &&
+          existing.consultationNotes !== updated.consultationNotes,
       },
     });
   }
@@ -740,7 +864,7 @@ export async function leaveCoachingWaitlist(userId: string) {
     },
   });
 
-  const offerKey = getOfferKeyFromAnswers(application.answersJson as CoachingApplicationAnswerMap);
+  const offerKey = getRecommendedOfferKey(application);
   const tierLabel = offerKeyToLabel(offerKey, application.tier);
   const clientName = `${application.applicantFirstName} ${application.applicantLastName}`.trim();
   const adminUrl = buildAbsoluteUrl("/admin/coaching");
@@ -867,7 +991,7 @@ export async function createCoachingPackageChangeRequest(input: {
   requestPath?: string | null;
   requestIp?: string | null;
 }) {
-  const targetOffer = coachingTiers.find((offer) => offer.id === input.toOfferKey);
+  const targetOffer = activeCoachingTiers.find((offer) => offer.id === input.toOfferKey);
   if (!targetOffer) throw new Error("INVALID_COACHING_OFFER");
 
   const profile = await db.coachingClientProfile.findUnique({
@@ -890,7 +1014,7 @@ export async function createCoachingPackageChangeRequest(input: {
   });
 
   const fromOfferKey = profile.application
-    ? getOfferKeyFromAnswers(profile.application.answersJson as CoachingApplicationAnswerMap)
+    ? getRecommendedOfferKey(profile.application)
     : tierToDefaultOfferKey(profile.tier);
   const toTier = offerKeyToTier(input.toOfferKey);
   const request = await db.coachingPackageChangeRequest.create({
@@ -968,7 +1092,7 @@ export async function createCoachingPaidStartRequest(input: {
   requestPath?: string | null;
   requestIp?: string | null;
 }) {
-  const targetOffer = coachingTiers.find((offer) => offer.id === input.toOfferKey);
+  const targetOffer = activeCoachingTiers.find((offer) => offer.id === input.toOfferKey);
   if (!targetOffer) throw new Error("INVALID_COACHING_OFFER");
 
   const profile = await db.coachingClientProfile.findUnique({
@@ -997,7 +1121,7 @@ export async function createCoachingPaidStartRequest(input: {
   });
 
   const fromOfferKey = profile.application
-    ? getOfferKeyFromAnswers(profile.application.answersJson as CoachingApplicationAnswerMap)
+    ? getRecommendedOfferKey(profile.application)
     : tierToDefaultOfferKey(profile.tier);
   const toTier = offerKeyToTier(input.toOfferKey);
   const request = await db.coachingPackageChangeRequest.create({
@@ -1084,7 +1208,7 @@ export async function applyCoachingPackageChangeManually(input: {
   requestPath?: string | null;
   requestIp?: string | null;
 }) {
-  const targetOffer = coachingTiers.find((offer) => offer.id === input.toOfferKey);
+  const targetOffer = activeCoachingTiers.find((offer) => offer.id === input.toOfferKey);
   if (!targetOffer) throw new Error("INVALID_COACHING_OFFER");
 
   const profile = await db.coachingClientProfile.findUnique({
@@ -1094,7 +1218,7 @@ export async function applyCoachingPackageChangeManually(input: {
   if (!profile) throw new Error("NOT_FOUND");
 
   const fromOfferKey = profile.application
-    ? getOfferKeyFromAnswers(profile.application.answersJson as CoachingApplicationAnswerMap)
+    ? getRecommendedOfferKey(profile.application)
     : tierToDefaultOfferKey(profile.tier);
   const toTier = offerKeyToTier(input.toOfferKey);
 

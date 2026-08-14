@@ -3,85 +3,172 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  CalendarDays,
   Check,
-  ClipboardList,
-  GraduationCap,
   MessageCircle,
-  X,
-  Smartphone,
-  Sparkles,
-  Users,
+  RefreshCcw,
+  UserRound,
 } from "lucide-react";
-import { Layout } from "@/components/layout";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
+import { Layout } from "@/components/layout";
 import {
   EditorialHero,
   MarketingSection,
   PreFooterCtaSection,
-  ProofBand,
   SectionHeading,
-  StorySplit,
 } from "@/components/marketing/sections";
-import { SEO } from "@/components/seo";
-import { Badge } from "@/components/ui/badge";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { coachingProofItems } from "@/data/public-refresh";
-import { coachingFaqs, coachingTiers } from "@/data/marketing";
 
-const tierIcon = {
-  guided_accountability: ClipboardList,
-  independent_training_plan: Smartphone,
-  guided_training_plan: Users,
-  one_to_one_coaching: GraduationCap,
-} as const;
+const coachingFit = [
+  {
+    title: "Training that can adapt.",
+    description:
+      "Your programme can change as your strength, confidence, energy, goals or circumstances change, rather than expecting you to follow the same plan regardless.",
+    icon: RefreshCcw,
+  },
+  {
+    title: "Structure without rigidity.",
+    description:
+      "You have a clear direction and something to work towards, without feeling like one missed session or difficult week means you’ve fallen off track.",
+    icon: CalendarDays,
+  },
+  {
+    title: "A coach, not just a programme.",
+    description:
+      "You have someone to help you make decisions, understand what your body is telling you and work out what to change when something isn’t quite working.",
+    icon: UserRound,
+  },
+] as const;
+
+const workingTogether = [
+  {
+    step: "01",
+    title: "We start with you",
+    description:
+      "We begin with an enquiry, followed by a 30-minute consultation about what you want to achieve, what movement currently looks like for you and anything your training needs to work around.",
+  },
+  {
+    step: "02",
+    title: "We build your approach",
+    description:
+      "I use that information to create a personalised plan around your goals, preferences, experience and real life, with options and adaptations where they’re useful.",
+  },
+  {
+    step: "03",
+    title: "We adapt as you go",
+    description:
+      "Your plan isn’t fixed. We use your feedback, progress and what’s happening in your life to decide what to progress, change or simplify over time.",
+  },
+] as const;
+
+// Marketing-only prototype. These presentation tiers deliberately do not use the billing catalogue.
+const marketingTiers = [
+  {
+    name: "Monthly Support",
+    subtitle: "Monthly review & coaching",
+    bestFor: "For people who are happy working independently between planned reviews.",
+    price: "£95 / month",
+    features: [
+      "Personalised training programme across your week.",
+      "Monthly programme review and updates.",
+      "30-minute coaching call with Shruti each month.",
+      "Check-in and feedback through Everfit.",
+      "Exercise comments for questions or feedback between reviews.",
+    ],
+  },
+  {
+    name: "Weekly Support",
+    subtitle: "Weekly review & coaching",
+    bestFor: "For people who want more regular review, feedback and support as they train.",
+    price: "£130 / month",
+    features: [
+      "Personalised training programme across your week.",
+      "Weekly programme review and updates.",
+      "30-minute coaching call with Shruti each month.",
+      "Check-in and feedback through Everfit.",
+      "Exercise comments for questions or feedback between reviews.",
+      "Nutrition guidance.",
+    ],
+  },
+  {
+    name: "1:1 Coaching",
+    subtitle: "Responsive, collaborative coaching",
+    bestFor: "Our most responsive and collaborative level of support.",
+    price: "£180 / month",
+    features: [
+      "Personalised training programme across your week.",
+      "Reactive programme adjustments as your needs change.",
+      "30-minute coaching call with Shruti each month.",
+      "Check-in and feedback through Everfit.",
+      "Ongoing direct messaging through Everfit, typically answered within 24 hours.",
+      "Nutrition guidance.",
+      "More collaborative planning and adaptation.",
+    ],
+  },
+] as const;
+
+const sharedFoundations = [
+  "A personalised training programme built around your goals, experience and real life.",
+  "Training that can adapt as your body, confidence or circumstances change.",
+  "A 30-minute coaching call with Shruti each month.",
+  "Regular feedback and check-ins through Everfit.",
+  "Clear exercise guidance, options and progressions.",
+  "Coaching that considers the context behind your training, not just the exercises.",
+] as const;
+
+const faqs = [
+  {
+    question: "How do I know which level of support is right for me?",
+    answer:
+      "You do not need to decide before enquiring. The 30-minute consultation gives us space to understand what you need and recommend the most suitable level of support.",
+  },
+  {
+    question: "Why is Everfit part of coaching?",
+    answer:
+      "Everfit keeps your programme, check-ins and resources easy to find. It is the delivery tool; the coaching relationship, review and decision-making come from Shruti.",
+  },
+  {
+    question: "Is there a minimum commitment?",
+    answer:
+      "Coaching is billed monthly after the consultation, agreement and payment. Cancellation requires one month's notice; depending on your billing date, the next payment after notice may be your final payment.",
+  },
+  {
+    question: "Can I purchase coaching immediately?",
+    answer:
+      "No. Start with an enquiry and consultation so the level of support can be recommended before any agreement or payment step.",
+  },
+] as const;
 
 export function CoachingPage() {
   return (
     <Layout>
-      <SEO
-        title="1:1 Offers - Shruti Turner"
-        description="Four 1:1 offers for chronic illness, autoimmune conditions, wellbeing and injury recovery, from guided accountability to high-touch 1:1 coaching."
-        keywords="coaching chronic illness, inclusive movement coaching, everfit coaching, training plan chronic pain, injury recovery coaching"
-        canonicalUrl="https://shrutiturner.co.uk/coaching"
-      />
-
       <EditorialHero
-        eyebrow="1:1 Offers"
+        eyebrow="Personal coaching"
         size="compact"
         title={
           <>
-            Support built for
-            <span className="text-brand-accent-light"> your real body</span>, not generic advice.
+            Coaching built around
+            <span className="text-brand-accent-light"> your body and your real life.</span>
           </>
         }
-        description="Every 1:1 offer starts with an application so support and programming work for you."
-        primaryCta={{ href: "#tiers", label: "Explore 1:1 Offers" }}
-        secondaryCta={{ href: "/coaching/apply", label: "Apply Now" }}
-        metrics={[
-          {
-            label: "Best For",
-            detail:
-              "Clients who want strategy, structure and clarity around their movement, training and wellbeing.",
-          },
-          {
-            label: "Delivery",
-            detail: "Programming, check-ins and support communication live in Everfit.",
-          },
-          {
-            label: "Difference",
-            detail:
-              "Support varies by your chosen option, not by how seriously your body is taken.",
-          },
-        ]}
+        description="Personal training and movement coaching with the structure, conversation and flexibility to adapt as you do."
+        primaryCta={{ href: "#is-coaching-right", label: "Explore coaching" }}
+        secondaryCta={{ href: "/coaching/enquire", label: "Enquire" }}
         aside={
           <div className="relative mx-auto max-w-xl">
             <div className="border-brand-white/10 bg-brand-white/8 overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
-              <div className="aspect-[4/5] overflow-hidden rounded-[1.45rem]">
+              <div className="aspect-[4/3] overflow-hidden rounded-[1.45rem]">
                 <ImageWithFallback
-                  src="/images/shruti-coaching.jpeg"
-                  alt="Shruti Turner running by the sea"
-                  className="h-full w-full object-cover"
-                  preload
+                  src="/images/shruti-paddleboarding.jpeg"
+                  alt="Shruti Turner paddleboarding on a lake"
+                  className="h-full w-full object-cover object-[center_54%]"
+                  loading="eager"
                   sizes="(max-width: 1024px) 100vw, 42vw"
                 />
               </div>
@@ -90,253 +177,170 @@ export function CoachingPage() {
         }
       />
 
-      <ProofBand
-        title="What personalised support means here."
-        description="The difference between offers is the frequency of touch points, programme review and updates. Every offer starts with a short form."
-        items={[...coachingProofItems]}
-      />
-
-      <StorySplit
-        eyebrow="Why 1:1 Works"
-        title="It is about you."
-        description="Every plan is built for your body, your life and your goals."
-        body={
-          <div className="space-y-6">
-            <div className="text-muted-foreground space-y-4 text-lg leading-relaxed">
-              <p>My 1:1 offers are designed to support you as much as you need.</p>
-              <p>
-                You might want accountability to guide your routine and support decision-making. You
-                might want a workout plan with check-ins to support your progression. Or you might
-                want more collaborative day-to-day coaching for how movement fits into your
-                lifestyle.
-              </p>
-              <p>There are different options to help you find what works for you.</p>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              {[
-                "The programme evolves with you, adjusting to your body, confidence and goals.",
-                "It’s about working with your body to build physical strength and learning to trust it.",
-              ].map((item) => (
-                <div key={item} className="marketing-panel rounded-[1.3rem] px-5 py-5">
-                  <p className="text-sm leading-relaxed">{item}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        }
-        aside={
-          <div className="border-brand-dark/10 bg-brand-warm rounded-[1.8rem] border p-7">
-            <h3 className="mt-4 text-3xl">How it happens</h3>
-            <div className="mt-7 space-y-4">
-              {[
-                {
-                  title: "Understanding",
-                  body: "Learn to listen to what your body is telling you and what it means.",
-                },
-                {
-                  title: "Movement",
-                  body: "Develop movement patterns that match what your body is telling you it needs.",
-                },
-                {
-                  title: "Strength",
-                  body: "Build the life you want by sustainably strengthening your body and relationship with movement.",
-                },
-              ].map((item) => (
-                <div
-                  key={item.title}
-                  className="border-brand-dark/10 bg-background rounded-[1.25rem] border px-5 py-5"
-                >
-                  <h4 className="text-xl">{item.title}</h4>
-                  <p className="text-muted-foreground mt-2 text-sm leading-relaxed">{item.body}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        }
-        className="section-divider"
-      />
-
-      <MarketingSection className="section-wash" contentClassName="max-w-7xl">
+      <MarketingSection id="is-coaching-right" className="section-wash">
         <SectionHeading
-          eyebrow="Choose Your Offer"
-          title="The support stays personalised. The touch level changes."
-          description="Most people start with the Guided Training Plan: personalised training through the app, weekly check-ins, and ongoing support to help you build strength, confidence and routine that fits with your body, goals and real life. Not sure which option is right? Apply for 1:1 support and I’ll recommend the best fit."
+          eyebrow="Is coaching right for me?"
+          title="Coaching can help when you want a plan that gives you direction."
+          description="You might benefit from coaching if you want support that feels personal, flexible and built around what you actually need."
           align="center"
         />
-        <div id="tiers" className="mt-12 grid gap-6 md:grid-cols-3 lg:gap-8">
-          {coachingTiers.map((tier) => {
-            const Icon = tierIcon[tier.id];
-            const highlighted = tier.id === "guided_training_plan";
-            const highest = null;
-
+        <div className="mt-12 grid gap-6 md:grid-cols-3">
+          {coachingFit.map((item) => {
+            const Icon = item.icon;
             return (
               <article
-                key={tier.id}
-                className={`relative flex flex-col rounded-[1.9rem] border-2 p-7 shadow-[0_20px_50px_rgba(46,31,51,0.06)] ${
-                  highlighted
-                    ? "border-brand-accent/30 bg-brand-accent/6"
-                    : highest
-                      ? "border-brand-dark/20 bg-brand-dark text-brand-white"
-                      : "border-brand-dark/10 bg-background"
-                }`}
+                key={item.title}
+                className="border-brand-dark/10 bg-background rounded-[1.75rem] border p-7 shadow-[0_20px_50px_rgba(46,31,51,0.05)]"
               >
-                {highlighted ? (
-                  <span className="bg-brand-accent text-brand-white absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs tracking-[0.16em] uppercase">
-                    Best value
-                  </span>
-                ) : null}
-                {highest ? (
-                  <span className="bg-brand-accent-light text-brand-dark absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs tracking-[0.16em] uppercase">
-                    Highest support
-                  </span>
-                ) : null}
-
-                <div
-                  className={`mb-6 flex h-12 w-12 items-center justify-center rounded-2xl ${
-                    highest
-                      ? "bg-brand-white/10 text-brand-accent-light"
-                      : highlighted
-                        ? "bg-brand-accent text-brand-white"
-                        : "bg-brand-accent/10 text-brand-accent"
-                  }`}
-                >
+                <div className="bg-brand-accent/10 text-brand-accent flex h-12 w-12 items-center justify-center rounded-2xl">
                   <Icon className="h-5 w-5" />
                 </div>
-
-                <div>
-                  <h3 className="text-2xl">{tier.name}</h3>
-                  <p
-                    className={`mt-2 text-sm italic ${
-                      highest ? "text-brand-white/65" : "text-muted-foreground"
-                    }`}
-                  >
-                    {tier.tagline}
-                  </p>
-                </div>
-
-                <div className="mt-6">
-                  <p className="text-3xl">{tier.priceLabel}</p>
-                  <p
-                    className={`mt-2 text-xs ${
-                      highest ? "text-brand-white/60" : "text-muted-foreground"
-                    }`}
-                  >
-                    {tier.priceNote}
-                  </p>
-                </div>
-
-                <p
-                  className={`mt-5 text-sm leading-relaxed ${
-                    highest ? "text-brand-white/78" : "text-muted-foreground"
-                  }`}
-                >
-                  {tier.description}
+                <h3 className="mt-6 text-2xl leading-tight">{item.title}</h3>
+                <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
+                  {item.description}
                 </p>
-
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <Badge
-                    className={
-                      highest
-                        ? "border-brand-white/10 bg-brand-white/8 text-brand-white"
-                        : "border-brand-dark/10 bg-secondary text-foreground"
-                    }
-                  >
-                    {tier.supportLevel === "programme"
-                      ? "Monthly programme + review"
-                      : tier.supportLevel === "guided"
-                        ? "Weekly programme + review"
-                        : tier.supportLevel === "accountability"
-                          ? "Accountability"
-                          : "Highest touch"}
-                  </Badge>
-                </div>
-
-                <ul className="mt-6 flex-1 space-y-3">
-                  {tier.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-3 text-sm">
-                      <Check
-                        className={`mt-0.5 h-4 w-4 flex-shrink-0 ${
-                          highest ? "text-brand-accent-light" : "text-brand-accent"
-                        }`}
-                      />
-                      <span className={highest ? "text-brand-white/80" : "text-muted-foreground"}>
-                        {feature}
-                      </span>
-                    </li>
-                  ))}
-                  {tier.boundaries.map((boundary) => (
-                    <li key={boundary} className="flex items-start gap-3 text-sm">
-                      <X
-                        className={`mt-0.5 h-4 w-4 flex-shrink-0 ${
-                          highest ? "text-brand-white/45" : "text-muted-foreground/60"
-                        }`}
-                      />
-                      <span className={highest ? "text-brand-white/65" : "text-muted-foreground"}>
-                        {boundary}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                <Button
-                  asChild
-                  size="lg"
-                  variant={highest ? "secondary" : highlighted ? "default" : "outline"}
-                  className={`mt-8 ${
-                    highest
-                      ? "bg-brand-white text-brand-dark hover:bg-brand-white/92"
-                      : highlighted
-                        ? "bg-brand-accent hover:bg-brand-accent/90 text-brand-white"
-                        : ""
-                  }`}
-                >
-                  <Link href={tier.ctaHref}>
-                    <MessageCircle className="h-4 w-4" />
-                    {tier.ctaLabel}
-                  </Link>
-                </Button>
               </article>
             );
           })}
         </div>
       </MarketingSection>
 
-      <MarketingSection className="bg-brand-warm">
+      <MarketingSection className="section-divider">
+        <div className="grid items-start gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
+          <div>
+            <SectionHeading
+              title="Working together"
+              description="A clear plan, ongoing conversation and room to adapt when you need it."
+            />
+            <ol className="mt-9 space-y-5">
+              {workingTogether.map((item) => (
+                <li
+                  key={item.step}
+                  className="border-brand-dark/10 bg-background grid gap-4 rounded-[1.55rem] border p-5 sm:grid-cols-[auto_1fr]"
+                >
+                  <span className="bg-brand-accent text-brand-white flex h-11 w-11 items-center justify-center rounded-full text-sm">
+                    {item.step}
+                  </span>
+                  <div>
+                    <h3 className="text-xl">{item.title}</h3>
+                    <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                      {item.description}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <div className="marketing-panel overflow-hidden rounded-[2rem] p-3">
+            <div className="aspect-video overflow-hidden rounded-[1.45rem]">
+              <ImageWithFallback
+                src="/images/shruti-coaching.jpeg"
+                alt="Shruti Turner moving outdoors by the sea"
+                className="h-full w-full object-cover object-[center_32%]"
+              />
+            </div>
+            <div className="p-5 md:p-6">
+              <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">
+                The tool, not the service
+              </p>
+              <h3 className="mt-3 text-2xl">Everything in one place.</h3>
+              <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                Your programme, check-ins and resources live in the Everfit app so they stay easy to
+                access. Shruti is your coach; Everfit is simply where the work is organised.
+              </p>
+            </div>
+          </div>
+        </div>
+      </MarketingSection>
+
+      <MarketingSection id="support-levels" className="section-wash" contentClassName="max-w-7xl">
         <SectionHeading
-          eyebrow="Common Questions"
-          title="A few things people usually want to know."
-          description="If you are unsure which offer fits, applying is the simplest way to get a recommendation."
+          eyebrow="Levels of support"
+          title="The coaching stays personal."
+          description="Choose the level of contact that best suits how much guidance, feedback and conversation you want. If you’re unsure, you don’t need to decide before enquiring."
           align="center"
         />
-        <div className="mt-10 grid gap-5 md:grid-cols-2">
-          {coachingFaqs.map((faq) => (
+        <div className="mt-12 grid gap-6 lg:grid-cols-3">
+          {marketingTiers.map((tier) => (
             <article
-              key={faq.slug}
-              className="border-brand-dark/10 bg-background rounded-[1.55rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]"
+              key={tier.name}
+              className="border-brand-dark/10 bg-background relative flex flex-col rounded-[1.9rem] border-2 p-7 shadow-[0_20px_50px_rgba(46,31,51,0.06)]"
             >
-              <h3 className="text-2xl leading-tight">{faq.question}</h3>
-              <p className="text-muted-foreground mt-4 text-sm leading-relaxed">{faq.answer}</p>
+              <h3 className="text-3xl">{tier.name}</h3>
+              <p className="text-brand-accent mt-2 font-medium">{tier.subtitle}</p>
+              <p className="text-muted-foreground mt-4 min-h-16 text-sm leading-relaxed">
+                {tier.bestFor}
+              </p>
+              <p className="mt-6 text-3xl">{tier.price}</p>
+              <p className="text-muted-foreground mt-2 text-xs">Consultation before payment</p>
+              <ul className="mt-7 flex-1 space-y-3">
+                {tier.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-3 text-sm">
+                    <Check className="text-brand-accent mt-0.5 h-4 w-4 shrink-0" />
+                    <span className="text-muted-foreground">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button asChild size="lg" className="mt-7">
+                <Link href="/coaching/enquire">
+                  <MessageCircle className="h-4 w-4" />
+                  Enquire
+                </Link>
+              </Button>
             </article>
           ))}
         </div>
       </MarketingSection>
 
+      <MarketingSection className="bg-brand-warm">
+        <SectionHeading
+          eyebrow="What Stays the Same"
+          title="Every level includes the same quality, personalisation and attention to your individual needs."
+          align="center"
+        />
+        <ul className="mx-auto mt-10 grid max-w-4xl gap-4 md:grid-cols-2">
+          {sharedFoundations.map((item) => (
+            <li
+              key={item}
+              className="border-brand-dark/10 bg-background flex items-start gap-3 rounded-[1.25rem] border p-5"
+            >
+              <Check className="text-brand-accent mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+              <span className="text-muted-foreground leading-relaxed">{item}</span>
+            </li>
+          ))}
+        </ul>
+      </MarketingSection>
+
+      <MarketingSection className="section-divider" contentClassName="max-w-4xl">
+        <SectionHeading
+          eyebrow="Common questions"
+          title="The useful details, when you need them."
+          description="If your question is not covered here, bring it to the consultation."
+          align="center"
+        />
+        <Accordion type="single" collapsible className="mt-10 rounded-[1.75rem] border px-6">
+          {faqs.map((faq, index) => (
+            <AccordionItem key={faq.question} value={`faq-${index}`}>
+              <AccordionTrigger className="py-6 text-left text-lg">{faq.question}</AccordionTrigger>
+              <AccordionContent className="text-muted-foreground max-w-3xl leading-relaxed">
+                {faq.answer}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </MarketingSection>
+
       <PreFooterCtaSection
-        eyebrow="Next step"
-        title="If you want 1:1 support that respects you, apply now."
-        description="There is no right answer, just the one that best suits what you need right now."
+        eyebrow="Start a conversation"
+        title="Let’s find the right level of support for you."
+        description="You do not need to know which option you need. Tell me what you want help with and we’ll work it out together."
+        layout="centered"
         actions={[
           {
-            href: "/coaching/apply",
-            label: "Apply for 1:1 Support",
-            icon: Sparkles,
-            iconPosition: "start",
-          },
-          {
-            href: "/contact",
-            label: "Ask a question",
+            href: "/coaching/enquire",
+            label: "Enquire about coaching",
             icon: ArrowRight,
-            variant: "secondary",
           },
         ]}
       />

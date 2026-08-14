@@ -206,6 +206,7 @@ async function run() {
   await configureSlugEditor("newsletterTemplate", "title");
   await configureSlugEditor("retreatScheduleDay", "title");
   await configureSlugEditor("retreatScheduleItem", "title");
+  await configureSlugEditor("testimonial", "authorName");
 }
 
 run().catch((err) => {

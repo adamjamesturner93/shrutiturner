@@ -12,8 +12,13 @@ vi.mock("@/lib/content/contentful-client", () => ({
   getEntryBySlug: mocks.getEntryBySlug,
 }));
 
-const { getBlogPostBySlug, getBlogPostPreviewBySlug, getBlogPosts, getRetreatTemplates } =
-  await import("@/lib/content/public-content");
+const {
+  getBlogPostBySlug,
+  getBlogPostPreviewBySlug,
+  getBlogPosts,
+  getFeaturedTestimonials,
+  getRetreatTemplates,
+} = await import("@/lib/content/public-content");
 
 const richTextDocument = {
   nodeType: "document",
@@ -57,6 +62,7 @@ const blogPostResponse = {
         excerpt: "Post excerpt",
         content: richTextDocument,
         authors: [{ sys: { id: "author_1" } }],
+        category: "fitness",
         tags: ["Strength Training"],
         readTime: "4 min read",
         coverImageAsset: { sys: { id: "asset_1" } },
@@ -112,6 +118,7 @@ describe("Contentful public content mapping", () => {
       content: expect.stringContaining("## Main idea"),
       date: "2026-04-01T09:30:00.000Z",
       author: "Guest Author",
+      category: "fitness",
       coverImage: "https://images.ctfassets.net/space/image.jpg?w=1200&fm=webp&q=80",
       coverAlt: "Coach demonstrating a movement",
       authors: [
@@ -306,6 +313,34 @@ describe("Contentful public content mapping", () => {
     mocks.getEntries.mockResolvedValueOnce({ items: [] });
 
     await expect(getBlogPostBySlug("missing-post")).resolves.toBeNull();
+  });
+
+  it("loads homepage testimonials using only Contentful's featured flag", async () => {
+    mocks.getEntries.mockResolvedValueOnce({
+      items: [
+        {
+          sys: { id: "testimonial_meg" },
+          fields: {
+            quote: "Training now feels like it belongs to me.",
+            authorName: "Meg K",
+            featured: true,
+          },
+        },
+      ],
+    });
+
+    await expect(getFeaturedTestimonials()).resolves.toEqual([
+      {
+        id: "testimonial_meg",
+        quote: "Training now feels like it belongs to me.",
+        authorName: "Meg K",
+        featured: true,
+      },
+    ]);
+    expect(mocks.getEntries).toHaveBeenCalledWith("testimonial", {
+      "fields.featured": true,
+      limit: 3,
+    });
   });
 
   it("throws instead of falling back when Contentful has no published blog posts", async () => {

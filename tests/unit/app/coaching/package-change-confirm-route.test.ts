@@ -50,6 +50,7 @@ describe("POST /api/me/coaching/package-change/confirm", () => {
     expect(assertCurrentAcceptancesMock).toHaveBeenCalledWith("user_123", [
       { type: "terms", surface: "coaching_package_change" },
       { type: "health_waiver", surface: "coaching_package_change" },
+      { type: "coaching_agreement", surface: "coaching_package_change" },
     ]);
     expect(confirmCoachingPackageChangeRequestMock).toHaveBeenCalledWith("user_123", "change_123");
   });

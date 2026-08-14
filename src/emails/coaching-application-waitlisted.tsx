@@ -20,8 +20,8 @@ export default function CoachingApplicationWaitlistedEmail({
       <Text style={headingStyle}>You are on the waiting list</Text>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
-        Thank you for applying for {tierLabel}. Shruti has reviewed your application and would like
-        to keep you on the coaching waiting list until capacity opens.
+        Thank you for your coaching enquiry. Shruti recommends {tierLabel} and would like to keep
+        you on the coaching waiting list until capacity opens.
       </Text>
       {decisionReason ? (
         <Section
@@ -47,7 +47,7 @@ export default function CoachingApplicationWaitlistedEmail({
         <Text style={bodyTextStyle}>What happens next:</Text>
         <Text style={mutedTextStyle}>1. No payment is due while you are on the waiting list.</Text>
         <Text style={mutedTextStyle}>
-          2. If a suitable place opens, Shruti will approve your application and invite payment.
+          2. If a suitable place opens, Shruti will send your recommendation and invite payment.
         </Text>
         <Text style={mutedTextStyle}>
           3. You can leave the waiting list from your coaching dashboard.

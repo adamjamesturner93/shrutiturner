@@ -20,8 +20,8 @@ export default function CoachingClientConfirmedEmail({
       <Text style={headingStyle}>Your 1:1 support is confirmed</Text>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
-        Your application for {tierLabel} has been accepted and your client profile is ready. There
-        is no payment step for this arrangement.
+        Your {tierLabel} support is confirmed and your client profile is ready. There is no payment
+        step for this arrangement.
       </Text>
       {decisionReason ? (
         <Section

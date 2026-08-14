@@ -16,12 +16,13 @@ export default function CoachingApplicationApprovedEmail({
   decisionReason,
 }: CoachingApplicationApprovedEmailProps) {
   return (
-    <EmailLayout preview="Your coaching application has been approved">
-      <Text style={headingStyle}>Your application is approved</Text>
+    <EmailLayout preview="Your coaching recommendation is ready">
+      <Text style={headingStyle}>Your coaching recommendation is ready</Text>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
-        Your application for {tierLabel} has been reviewed and approved. The next step is to sign in
-        to your Private Studio and complete the coaching payment.
+        Following your conversation, Shruti recommends {tierLabel}. The next step is to create or
+        sign in to your Private Studio, review the recommendation and complete the agreements and
+        payment when you are ready.
       </Text>
       {decisionReason ? (
         <Section

@@ -38,12 +38,12 @@ const LINKS = [
   {
     href: "/coaching",
     title: "Coaching",
-    subtitle: "Application-led support from £70/month",
+    subtitle: "Personal support shaped around what you need",
     icon: Dumbbell,
     colorClass: "text-primary bg-primary/10",
   },
   {
-    href: "/#work-with-me",
+    href: "/coaching",
     title: "Coaching Options",
     subtitle: "Compare the four current support options",
     icon: Heart,
@@ -92,7 +92,7 @@ export function SubscribePage() {
   };
 
   return (
-    <Layout>
+    <Layout footerVariant="utility">
       <SEO
         title="Links & Newsletter - Shruti Turner"
         description={FREE_GUIDE_META_DESCRIPTION}

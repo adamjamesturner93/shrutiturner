@@ -571,17 +571,14 @@ export function AdminBusiness() {
                       <option value="credits_1">Credits 1</option>
                       <option value="credits_3">Credits 3</option>
                       <option value="credits_10">Credits 10</option>
-                      <option value="coaching_guided_accountability_monthly">
-                        Coaching Guided Accountability
-                      </option>
                       <option value="coaching_independent_training_plan_monthly">
-                        Coaching Independent Training Plan
+                        Coaching Monthly Support
                       </option>
                       <option value="coaching_guided_training_plan_monthly">
-                        Coaching Guided Training Plan
+                        Coaching Weekly Support
                       </option>
                       <option value="coaching_one_to_one_coaching_monthly">
-                        Coaching 1:1 Offers
+                        Coaching 1:1 Coaching
                       </option>
                     </select>
                     <Input

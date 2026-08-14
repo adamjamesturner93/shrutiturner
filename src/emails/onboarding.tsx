@@ -13,7 +13,7 @@ import {
 interface OnboardingEmailProps {
   firstName?: string;
   offersUrl?: string;
-  applyUrl?: string;
+  enquireUrl?: string;
   dashboardUrl?: string;
   healthUrl?: string;
   hasOneToOneApplication?: boolean;
@@ -21,14 +21,14 @@ interface OnboardingEmailProps {
 
 export default function OnboardingEmail({
   firstName = "there",
-  offersUrl = "https://shrutiturner.co.uk/#work-with-me",
-  applyUrl = "https://shrutiturner.co.uk/coaching/apply",
+  offersUrl = "https://shrutiturner.co.uk/coaching",
+  enquireUrl = "https://shrutiturner.co.uk/coaching/enquire",
   dashboardUrl = "https://shrutiturner.co.uk/dashboard/coaching",
   healthUrl = "https://shrutiturner.co.uk/dashboard/health",
   hasOneToOneApplication = false,
 }: OnboardingEmailProps) {
   const preview = hasOneToOneApplication
-    ? `Your account is ready, ${firstName} — you can now track your 1:1 application`
+    ? `Your account is ready, ${firstName} — you can now track your coaching enquiry`
     : `Your account is ready, ${firstName}`;
 
   return (
@@ -48,13 +48,13 @@ export default function OnboardingEmail({
 
       {hasOneToOneApplication ? (
         <Text style={bodyTextStyle}>
-          Your account is now set up, so you can use your dashboard to track your 1:1 application,
+          Your account is now set up, so you can use your dashboard to track your coaching enquiry,
           payment invitations, health details and account information in one place.
         </Text>
       ) : (
         <Text style={bodyTextStyle}>
           Your account is now set up. You can use it to manage your health details, account
-          information and any future 1:1 application or payment invitation.
+          information and any future coaching enquiry or payment invitation.
         </Text>
       )}
 
@@ -106,8 +106,8 @@ export default function OnboardingEmail({
             }}
           >
             {hasOneToOneApplication
-              ? "Your dashboard shows your application status and the next action when there is one."
-              : "Review the current 1:1 offers and the kind of support each one offers before you apply."}
+              ? "Your dashboard shows your enquiry status, recommendation and the next action when there is one."
+              : "Review the current 1:1 offers and the kind of support each one offers before you enquire."}
           </Text>
           <Link
             href={hasOneToOneApplication ? dashboardUrl : offersUrl}
@@ -153,7 +153,7 @@ export default function OnboardingEmail({
               marginBottom: "8px",
             }}
           >
-            {hasOneToOneApplication ? "Keep your details current" : "Apply before payment"}
+            {hasOneToOneApplication ? "Keep your details current" : "Enquire before payment"}
           </Text>
           <Text
             style={{
@@ -164,11 +164,11 @@ export default function OnboardingEmail({
             }}
           >
             {hasOneToOneApplication
-              ? "Health and account details help Shruti review suitability and support you safely."
-              : "1:1 support starts with an application so Shruti can confirm the best fit before any payment opens."}
+              ? "Review your recommendation and keep your account details current before accepting the coaching agreements."
+              : "1:1 support starts with a conversation so Shruti can recommend the best fit before any payment opens."}
           </Text>
           <Link
-            href={hasOneToOneApplication ? healthUrl : applyUrl}
+            href={hasOneToOneApplication ? healthUrl : enquireUrl}
             style={{
               fontFamily: fonts.body,
               color: colors.brandAccent,
@@ -179,7 +179,7 @@ export default function OnboardingEmail({
           >
             {hasOneToOneApplication
               ? "Review health details \u2192"
-              : "Apply for 1:1 support \u2192"}
+              : "Enquire about 1:1 support \u2192"}
           </Link>
         </Section>
 
@@ -224,11 +224,11 @@ export default function OnboardingEmail({
             }}
           >
             {hasOneToOneApplication
-              ? "If your application is accepted, payment opens through the website after the relevant terms are accepted."
-              : "If your application is accepted, payment happens through the website after you sign in and accept the relevant terms."}
+              ? "When your recommendation is ready, payment opens through the website after the current terms, health declaration and Coaching Agreement are accepted."
+              : "If you decide to work together, payment happens through the website after you sign in and accept the relevant terms."}
           </Text>
           <Link
-            href={hasOneToOneApplication ? dashboardUrl : applyUrl}
+            href={hasOneToOneApplication ? dashboardUrl : enquireUrl}
             style={{
               fontFamily: fonts.body,
               color: colors.brandAccent,
@@ -237,24 +237,22 @@ export default function OnboardingEmail({
               textDecoration: "underline",
             }}
           >
-            {hasOneToOneApplication
-              ? "View application status \u2192"
-              : "Open the application \u2192"}
+            {hasOneToOneApplication ? "View enquiry status \u2192" : "Start a conversation \u2192"}
           </Link>
         </Section>
       </Section>
 
       <Section style={{ textAlign: "center" as const, marginTop: "20px", marginBottom: "28px" }}>
-        <Link href={hasOneToOneApplication ? dashboardUrl : applyUrl} style={buttonStyle}>
-          {hasOneToOneApplication ? "Open your 1:1 dashboard" : "Apply for 1:1 support"}
+        <Link href={hasOneToOneApplication ? dashboardUrl : enquireUrl} style={buttonStyle}>
+          {hasOneToOneApplication ? "Open your 1:1 dashboard" : "Enquire about 1:1 support"}
         </Link>
       </Section>
 
       <Hr style={dividerStyle} />
 
       <Text style={{ ...mutedTextStyle, fontSize: "14px" }}>
-        If you have any questions about 1:1 offers, your application or where to start, simply reply
-        to this email.
+        If you have any questions about 1:1 offers, your enquiry or where to start, simply reply to
+        this email.
       </Text>
 
       <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>

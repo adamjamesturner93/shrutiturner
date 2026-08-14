@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { UnsubscribePage } from "@/views/unsubscribe";
 
 export const metadata: Metadata = {
-  title: "Unsubscribe",
+  title: { absolute: "Email Preferences | Shruti Turner" },
   description: "Manage your Shruti Turner newsletter subscription.",
-  alternates: { canonical: "/unsubscribe" },
-  robots: { index: false, follow: false },
+  alternates: { canonical: "https://shrutiturner.co.uk/unsubscribe" },
+  robots: { index: false, follow: true },
 };
 
 export default function Page() {

@@ -102,65 +102,51 @@ export const TESTIMONIAL_SEED = {
   contentType: "testimonial",
   entries: [
     {
-      slug: "testimonial-sarah-yoga",
+      slug: "sarah",
       quote:
         "Finally, a yoga teacher who understands chronic illness, injury history and real recovery needs.",
       authorName: "Sarah",
-      authorCondition: "Hypermobility EDS",
-      service: "yoga",
       featured: true,
     },
     {
-      slug: "testimonial-james-strength",
+      slug: "james",
       quote: "I've built more strength in 12 weeks than in years of trying generic programmes.",
       authorName: "James",
-      authorCondition: "Rheumatoid Arthritis",
-      service: "strength",
       featured: true,
     },
     {
-      slug: "testimonial-elena-small-group",
+      slug: "elena",
       quote:
         "The small group programme gave me accountability and a community that actually gets it.",
       authorName: "Elena",
-      authorCondition: "Chronic Fatigue",
-      service: "small-group",
       featured: true,
     },
     {
-      slug: "testimonial-nadia-pt",
+      slug: "nadia",
       quote:
         "The plan finally matched my energy instead of pretending every week would be the same.",
       authorName: "Nadia",
-      authorCondition: "Long COVID",
-      service: "pt",
       featured: true,
     },
     {
-      slug: "testimonial-morgan-retreat",
+      slug: "morgan",
       quote:
         "I expected rest, but I also left with practical strength work I could keep using at home.",
       authorName: "Morgan",
-      authorCondition: "Fibromyalgia",
-      service: "retreat",
       featured: false,
     },
     {
-      slug: "testimonial-ali-yoga",
+      slug: "ali",
       quote:
         "Every option felt intentional. I never felt like I was being given the watered-down version.",
       authorName: "Ali",
-      authorCondition: "Post-surgical recovery",
-      service: "yoga",
       featured: false,
     },
     {
-      slug: "testimonial-rachel-strength",
+      slug: "rachel",
       quote:
         "I can carry shopping, climb stairs and trust my knees more. Those are the wins that matter.",
       authorName: "Rachel",
-      authorCondition: "Osteoarthritis",
-      service: "strength",
       featured: true,
     },
   ],
@@ -239,97 +225,33 @@ export const BLOG_SEED = {
       content: p.content,
       authorSlugs: p.authors.map((author) => author.slug),
       tags: p.tags,
+      category: p.category,
       readTime: p.readTime,
       seoTitle: p.title,
       seoDescription: p.excerpt,
     })),
     {
-      title: "How to Choose Between Yoga, Strengthand 1:1 Coaching",
+      title: "How to Choose Between Yoga, Strength and 1:1 Coaching",
       slug: "choose-yoga-strength-or-coaching",
       coverImageUrl:
         "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1080&q=80&fit=crop",
       coverAlt: "Yoga mat and dumbbells arranged in a bright studio",
       excerpt:
         "A practical guide to choosing the right support when your symptoms, goals and confidence all need to be considered.",
-      content: `# How to Choose Between Yoga, Strengthand 1:1 Coaching
+      content: `# How to Choose Between Yoga, Strength and 1:1 Coaching
 
 Most people do not need the hardest option. They need the right starting point.
 
-Choose yoga when you want a lower-intensity practice focused on mobility, regulation, breathand body awareness. Choose strength classes when you want progressive loading with a clear structure and options. Choose 1:1 coaching when you need closer support because symptoms, pain, confidence, or medical history make generic advice hard to apply.
+Choose yoga when you want a lower-intensity practice focused on mobility, regulation, breath and body awareness. Choose strength classes when you want progressive loading with a clear structure and options. Choose 1:1 coaching when you need closer support because symptoms, pain, confidence, or medical history make generic advice hard to apply.
 
 The useful question is not "what should I be able to do?" It is "what support would make this repeatable for the next eight weeks?"`,
       authorSlugs: ["shruti-turner"],
       tags: ["Getting Started", "Yoga", "Strength Training"],
+      category: "fitness",
       readTime: "4 min read",
-      seoTitle: "How to Choose Between Yoga, Strengthand 1:1 Coaching",
+      seoTitle: "How to Choose Between Yoga, Strength and 1:1 Coaching",
       seoDescription:
         "A practical guide to choosing the right movement support for chronic illness, autoimmune conditions and injury recovery.",
-    },
-    {
-      title: "Pain During Exercise: When to Modify and When to Stop",
-      slug: "pain-during-exercise-modify-or-stop",
-      coverImageUrl:
-        "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1080&q=80&fit=crop",
-      coverAlt: "Coach supporting a client during a controlled exercise",
-      excerpt:
-        "Pain is information, but it is not always a simple stop sign. Here is a clearer framework for training decisions.",
-      content: `# Pain During Exercise: When to Modify and When to Stop
-
-Pain deserves attention. It does not deserve panic.
-
-During training, we look at intensity, location, quality and what happens after the session. A familiar low-level ache that settles quickly may call for a smaller range, lighter load, or slower tempo. Sharp pain, escalating pain, new neurological symptoms, or symptoms that persist after training mean the plan needs to change.
-
-Good programming removes guesswork. You should know the modification before you need it.`,
-      authorSlugs: ["dr-hannah-lewis"],
-      tags: ["Pain", "Exercise", "Clinical Reasoning"],
-      readTime: "5 min read",
-      seoTitle: "Pain During Exercise: When to Modify and When to Stop",
-      seoDescription:
-        "A practical framework for exercise pain decisions in chronic illness and injury recovery.",
-    },
-    {
-      title: "What a Good Small Group Programme Should Feel Like",
-      slug: "good-small-group-programme",
-      coverImageUrl:
-        "https://images.unsplash.com/photo-1549576490-b0b4831ef60a?w=1080&q=80&fit=crop",
-      coverAlt: "Small group strength class with supportive coaching",
-      excerpt:
-        "Small group training should feel personal enough to be useful and structured enough to build momentum.",
-      content: `# What a Good Small Group Programme Should Feel Like
-
-Small group work is not just a cheaper version of 1:1 coaching. Done well, it gives you structure, accountability, shared contextand enough individual attention to keep the work relevant.
-
-You should know what the block is trying to build. You should have options for lower-energy days. You should feel seen without needing to explain your whole health history every session.
-
-The best small groups create consistency without flattening everyone into the same body.`,
-      authorSlugs: ["shruti-turner"],
-      tags: ["Small Groups", "Strength Training", "Coaching"],
-      readTime: "4 min read",
-      seoTitle: "What a Good Small Group Programme Should Feel Like",
-      seoDescription:
-        "What to expect from supportive small group strength training for chronic illness, autoimmune conditions and injury recovery.",
-    },
-    {
-      title: "Breathwork for Chronic Pain Without Over-Promising",
-      slug: "breathwork-for-chronic-pain",
-      coverImageUrl:
-        "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=1080&q=80&fit=crop",
-      coverAlt: "Person resting on a yoga mat during a quiet breathwork practice",
-      excerpt:
-        "Breathwork can support regulation and pain management, but it works best when taught with realistic expectations.",
-      content: `# Breathwork for Chronic Pain Without Over-Promising
-
-Breathwork is not a cure for chronic pain. It can still be useful.
-
-Slow, supported breathing can help some people down-shift arousal, reduce guarding and build a sense of control during difficult symptoms. The key is choice. Practices should be short, adaptable and easy to stop if they increase dizziness, anxiety, or discomfort.
-
-The goal is not perfect calm. The goal is another tool you can reach for when your system is working hard.`,
-      authorSlugs: ["maya-thompson"],
-      tags: ["Breathwork", "Chronic Pain", "Yoga"],
-      readTime: "4 min read",
-      seoTitle: "Breathwork for Chronic Pain Without Over-Promising",
-      seoDescription:
-        "A realistic look at breathwork as one support tool for chronic pain and nervous system regulation.",
     },
     {
       title: "Why Rest Weeks Belong in Strength Programmes",
@@ -348,32 +270,11 @@ A rest or deload week can mean fewer sets, lighter loads, shorter sessions, or m
 If a programme only works when life is perfect, it is not a robust programme.`,
       authorSlugs: ["shruti-turner"],
       tags: ["Recovery", "Strength Training", "Programming"],
+      category: "fitness",
       readTime: "3 min read",
       seoTitle: "Why Rest Weeks Belong in Strength Programmes",
       seoDescription:
         "Why deload and rest weeks matter in sustainable strength training for chronic illness.",
-    },
-    {
-      title: "A Coach and Physio Discuss Returning After a Flare",
-      slug: "returning-after-a-flare-coach-physio",
-      coverImageUrl:
-        "https://images.unsplash.com/photo-1576678927484-cc907957088c?w=1080&q=80&fit=crop",
-      coverAlt: "Two professionals reviewing a training plan together",
-      excerpt:
-        "A joint perspective on rebuilding movement after a symptom flare without rushing the process.",
-      content: `# A Coach and Physio Discuss Returning After a Flare
-
-After a flare, the temptation is often to either do nothing or jump straight back to the old plan. Usually, the useful answer is in the middle.
-
-From a coaching perspective, the first session back should rebuild rhythm and confidence. From a physio perspective, it should also check whether pain, swelling, fatigue, or neurological symptoms have changed the risk profile.
-
-Start with the smallest useful dose. Keep the session boring. Then use the next 24 to 48 hours as feedback before progressing.`,
-      authorSlugs: ["shruti-turner", "dr-hannah-lewis"],
-      tags: ["Flares", "Physiotherapy", "Strength Training"],
-      readTime: "5 min read",
-      seoTitle: "Returning After a Flare: Coach and Physio Advice",
-      seoDescription:
-        "A joint coach and physiotherapist perspective on returning to training after a symptom flare.",
     },
   ],
 };
@@ -393,18 +294,6 @@ export const AUTHOR_PROFILE_SEED = {
       isGuestContributor: author.isGuestContributor,
       active: author.active ?? true,
     })),
-    {
-      slug: "maya-thompson",
-      name: "Maya Thompson",
-      role: "Guest Yoga and Breathwork Teacher",
-      bio: "Maya writes about accessible yoga, breath-led practice, fatigue-aware teaching and practical nervous system support for people with chronic illness, autoimmune conditions and injury recovery needs.",
-      avatarImageUrl: "https://api.dicebear.com/9.x/initials/svg?seed=Maya%20Thompson",
-      avatarAlt: "Portrait illustration of Maya Thompson",
-      websiteUrl: "https://example.com/maya-thompson",
-      instagramHandle: "@mayathompsonyoga",
-      isGuestContributor: true,
-      active: true,
-    },
   ],
 };
 
@@ -649,7 +538,7 @@ export const NEWSLETTER_TEMPLATE_SEED = {
       title: "Monthly Update",
       subject: "This month: classes, resources and upcoming retreats",
       previewText: "Your monthly update from Shruti Turner.",
-      body: "Hi {{firstName}},\n\nThis month we are focusing on sustainable consistency: adapting classes around symptoms, using rest weeks well and choosing the right starting point.\n\nNew on the blog:\n- How to Choose Between Yoga, Strengthand 1:1 Coaching\n- Why Rest Weeks Belong in Strength Programmes\n\nSee you soon,\nShruti",
+      body: "Hi {{firstName}},\n\nThis month we are focusing on sustainable consistency: adapting training around real life, using rest weeks well and choosing the right starting point.\n\nNew on the blog:\n- How to Choose Between Yoga, Strength and 1:1 Coaching\n- Why Rest Weeks Belong in Strength Programmes\n\nSee you soon,\nShruti",
       segmentation: "all_subscribers",
     },
     {

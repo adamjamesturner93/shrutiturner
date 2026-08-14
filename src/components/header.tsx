@@ -20,16 +20,17 @@ export function Header() {
   };
 
   const navLinks = [
-    { path: "/coaching", label: "1:1 Offers" },
+    { path: "/about", label: "About" },
+    { path: "/coaching", label: "Coaching" },
     { path: "/retreats", label: "Retreats" },
     { path: "/blog", label: "Blog" },
   ];
 
   return (
     <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
-      <div className="container mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
+      <div className="container mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
         <Link href="/" className="flex items-center" aria-label="Shruti Turner - Home">
-          <div className="h-12">
+          <div className="h-14 sm:h-16">
             <IconHorizontal className="h-full w-auto" />
           </div>
         </Link>
@@ -59,11 +60,14 @@ export function Header() {
             </Link>
           ) : (
             <>
-              <Link href="/coaching/apply">
-                <Button variant="ghost">Apply for 1:1 Support</Button>
+              <Link href="/coaching/enquire">
+                <Button>Enquire</Button>
               </Link>
-              <Link href="/login">
-                <Button>Sign In</Button>
+              <Link
+                href="/login"
+                className="text-muted-foreground hover:text-foreground px-2 py-2 text-sm transition-colors"
+              >
+                Client Login
               </Link>
             </>
           )}
@@ -105,15 +109,15 @@ export function Header() {
                 </Link>
               ) : (
                 <>
-                  <Link href="/login" onClick={() => setMobileMenuPath(null)}>
-                    <Button variant="ghost" className="w-full">
-                      Sign In
-                    </Button>
+                  <Link href="/coaching/enquire" onClick={() => setMobileMenuPath(null)}>
+                    <Button className="w-full">Enquire</Button>
                   </Link>
-                  <Link href="/coaching/apply" onClick={() => setMobileMenuPath(null)}>
-                    <Button variant="outline" className="w-full">
-                      Apply for 1:1 Support
-                    </Button>
+                  <Link
+                    href="/login"
+                    onClick={() => setMobileMenuPath(null)}
+                    className="text-muted-foreground hover:bg-secondary hover:text-foreground rounded-md px-3 py-2 text-center text-sm transition-colors"
+                  >
+                    Client Login
                   </Link>
                 </>
               )}

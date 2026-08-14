@@ -8,16 +8,24 @@ import { useAuth } from "@/context/auth-context";
 
 interface LayoutProps {
   children: ReactNode;
+  showFooterNewsletter?: boolean;
+  footerVariant?: "marketing" | "utility";
 }
 
 const NO_POPUP_PATHS = ["/blog", "/login", "/dashboard", "/unsubscribe", "/subscribe"];
 
-export function Layout({ children }: LayoutProps) {
+export function Layout({
+  children,
+  showFooterNewsletter = true,
+  footerVariant = "marketing",
+}: LayoutProps) {
   const [showPopup, setShowPopup] = useState(false);
   const pathname = usePathname();
   const { isAuthenticated } = useAuth();
   const canShowPopup =
-    !isAuthenticated && !NO_POPUP_PATHS.some((pathPrefix) => pathname.startsWith(pathPrefix));
+    footerVariant === "marketing" &&
+    !isAuthenticated &&
+    !NO_POPUP_PATHS.some((pathPrefix) => pathname.startsWith(pathPrefix));
 
   useEffect(() => {
     if (!canShowPopup) {
@@ -83,7 +91,7 @@ export function Layout({ children }: LayoutProps) {
       <main id="main-content" className="flex-1">
         {children}
       </main>
-      <Footer />
+      <Footer showNewsletter={showFooterNewsletter} variant={footerVariant} />
       <NewsletterPopup isOpen={canShowPopup && showPopup} onClose={() => setShowPopup(false)} />
     </div>
   );

@@ -71,6 +71,30 @@ describe("PATCH /api/admin/coaching/applications", () => {
     );
   });
 
+  it("passes consultation tracking and the recommended support level", async () => {
+    const response = await route.PATCH(
+      patchRequest({
+        id: "application_123",
+        status: "offer_sent",
+        consultationStatus: "completed",
+        consultationScheduledAt: "2026-08-20T10:00:00.000Z",
+        consultationNotes: "Discussed capacity and training context.",
+        recommendedOfferKey: "guided_training_plan",
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(updateAdminCoachingApplicationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "offer_sent",
+        consultationStatus: "completed",
+        consultationScheduledAt: "2026-08-20T10:00:00.000Z",
+        consultationNotes: "Discussed capacity and training context.",
+        recommendedOfferKey: "guided_training_plan",
+      })
+    );
+  });
+
   it("returns a clear error when rejection is missing a client-facing reason", async () => {
     updateAdminCoachingApplicationMock.mockRejectedValue(new Error("DECISION_REASON_REQUIRED"));
 
@@ -83,7 +107,7 @@ describe("PATCH /api/admin/coaching/applications", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      message: "Add a client-facing reason before rejecting this application.",
+      message: "Add a client-facing reason before declining this enquiry.",
     });
   });
 });

@@ -80,15 +80,49 @@ describe("Contentful public content models", () => {
     expect(fieldIds).not.toEqual(
       expect.arrayContaining(["authorName", "publishDate", "isNewsletter"])
     );
+    expect(fieldIds).toContain("category");
+    expect(blogModel?.fields.find((field) => field.id === "category")?.validations).toEqual([
+      { in: ["rehabilitation", "fitness", "wellbeing"] },
+    ]);
   });
 
-  it("seeds multiple blog authors and at least one joint-authored post", () => {
+  it("keeps testimonials focused on author, quote and homepage visibility", () => {
+    const testimonialModel = PUBLIC_CONTENT_MODELS.find((model) => model.id === "testimonial");
+    const testimonialGroup = SEED_GROUPS.find((group) => group.contentType === "testimonial");
+    const fieldIds = testimonialModel?.fields.map((field) => field.id) ?? [];
+    const testimonials = (testimonialGroup?.entries ?? []) as Array<{
+      slug?: string;
+      authorName?: string;
+      authorCondition?: string;
+      service?: string;
+    }>;
+
+    expect(fieldIds).toEqual(expect.arrayContaining(["slug", "quote", "authorName", "featured"]));
+    expect(fieldIds).not.toEqual(expect.arrayContaining(["authorCondition", "service"]));
+    expect(testimonials.every((item) => item.slug === item.authorName?.toLowerCase())).toBe(true);
+    expect(testimonials.every((item) => !item.authorCondition && !item.service)).toBe(true);
+  });
+
+  it("seeds only the approved real blog author and excludes placeholder articles", () => {
     const authorGroup = SEED_GROUPS.find((group) => group.contentType === "authorProfile");
     const blogGroup = SEED_GROUPS.find((group) => group.contentType === "blogPost");
-    const seededBlogPosts = (blogGroup?.entries ?? []) as Array<{ authorSlugs?: string[] }>;
+    const seededAuthors = (authorGroup?.entries ?? []) as Array<{ slug?: string }>;
+    const seededBlogPosts = (blogGroup?.entries ?? []) as Array<{
+      slug?: string;
+      authorSlugs?: string[];
+    }>;
 
-    expect(authorGroup?.entries.length).toBeGreaterThanOrEqual(2);
-    expect(seededBlogPosts.length).toBeGreaterThanOrEqual(10);
-    expect(seededBlogPosts.some((post) => (post.authorSlugs?.length ?? 0) > 1)).toBe(true);
+    expect(seededAuthors.map((author) => author.slug)).toEqual(["shruti-turner"]);
+    expect(seededBlogPosts.length).toBeGreaterThanOrEqual(6);
+    expect(seededBlogPosts.every((post) => post.authorSlugs?.includes("shruti-turner"))).toBe(true);
+    expect(seededBlogPosts.map((post) => post.slug)).not.toEqual(
+      expect.arrayContaining([
+        "arthritis-exercise-guide",
+        "pain-during-exercise-modify-or-stop",
+        "breathwork-for-chronic-pain",
+        "returning-after-a-flare-coach-physio",
+        "good-small-group-programme",
+      ])
+    );
   });
 });

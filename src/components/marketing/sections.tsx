@@ -90,9 +90,9 @@ interface HeroMetric {
 interface EditorialHeroProps {
   eyebrow: string;
   title: ReactNode;
-  description: string;
+  description: ReactNode;
   size?: "default" | "compact";
-  primaryCta: {
+  primaryCta?: {
     href: string;
     label: string;
   };
@@ -144,38 +144,42 @@ export function EditorialHero({
             >
               {title}
             </h1>
-            <p
+            <div
               className={cn(
                 "text-brand-white/82 mt-5 max-w-2xl leading-relaxed",
                 compact ? "text-base md:text-xl" : "text-lg md:text-[1.35rem]"
               )}
             >
               {description}
-            </p>
-
-            <div className={cn("flex flex-col gap-4 sm:flex-row", compact ? "mt-6" : "mt-7")}>
-              <Button
-                asChild
-                size="lg"
-                className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
-              >
-                <Link href={primaryCta.href}>
-                  {primaryCta.label}
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-
-              {secondaryCta ? (
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="border-brand-white/25 bg-brand-white/6 text-brand-white hover:bg-brand-white/12"
-                >
-                  <Link href={secondaryCta.href}>{secondaryCta.label}</Link>
-                </Button>
-              ) : null}
             </div>
+
+            {primaryCta || secondaryCta ? (
+              <div className={cn("flex flex-col gap-4 sm:flex-row", compact ? "mt-6" : "mt-7")}>
+                {primaryCta ? (
+                  <Button
+                    asChild
+                    size="lg"
+                    className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
+                  >
+                    <Link href={primaryCta.href}>
+                      {primaryCta.label}
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                ) : null}
+
+                {secondaryCta ? (
+                  <Button
+                    asChild
+                    size="lg"
+                    variant="outline"
+                    className="border-brand-white/25 bg-brand-white/6 text-brand-white hover:bg-brand-white/12"
+                  >
+                    <Link href={secondaryCta.href}>{secondaryCta.label}</Link>
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
 
             {stats.length > 0 ? (
               <div className={cn("grid gap-3 sm:grid-cols-3", compact ? "mt-7" : "mt-8")}>

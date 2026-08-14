@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  AlertTriangle,
   ArrowRight,
   CalendarDays,
   Compass,
+  ListTodo,
   MailWarning,
   MessageCircle,
   Shield,
@@ -18,12 +20,7 @@ import { Button } from "../../components/ui/button";
 import type { AdminDashboardSummaryDto, AdminEmailDeliveryHealthDto } from "@/lib/api/types";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 
-export function AdminDashboard({
-  initialData: _initialData,
-}: {
-  initialData?: AdminDashboardSummaryDto | null;
-}) {
-  void _initialData;
+export function AdminDashboard({ initialData }: { initialData?: AdminDashboardSummaryDto | null }) {
   const [emailHealth, setEmailHealth] = useState<AdminEmailDeliveryHealthDto | null>(null);
   const [emailActionId, setEmailActionId] = useState<string | null>(null);
   const [emailActionMessage, setEmailActionMessage] = useState<string | null>(null);
@@ -84,7 +81,11 @@ export function AdminDashboard({
         />
 
         <AppMetricGrid>
-          <AppMetricCard label="Coaching" value="Active" detail="applications and clients" />
+          <AppMetricCard
+            label="Coaching TODOs"
+            value={initialData?.coachingTodos.length || "Clear"}
+            detail={initialData?.coachingTodos.length ? "actions need attention" : "nothing due"}
+          />
           <AppMetricCard label="Retreats" value="Enabled" detail="dates, rooms and balances" />
           <AppMetricCard label="Newsletter" value="Live" detail="subscribers and campaigns" />
           <AppMetricCard
@@ -93,6 +94,43 @@ export function AdminDashboard({
             detail={failedEmailCount > 0 ? "needs attention" : "no failures reported"}
           />
         </AppMetricGrid>
+
+        {initialData?.coachingTodos.length ? (
+          <Card className="border-amber-200 bg-amber-50/60">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ListTodo className="h-4 w-4 text-amber-800" />
+                Coaching TODOs
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {initialData.coachingTodos.map((todo) => (
+                <div
+                  key={todo.id}
+                  className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-white/80 p-4 md:flex-row md:items-center md:justify-between"
+                >
+                  <div className="flex items-start gap-3">
+                    {todo.priority === "overdue" ? (
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-700" />
+                    ) : (
+                      <ListTodo className="mt-0.5 h-4 w-4 shrink-0 text-amber-800" />
+                    )}
+                    <div>
+                      <p className="font-medium">{todo.title}</p>
+                      <p className="text-muted-foreground mt-1 text-sm">{todo.detail}</p>
+                    </div>
+                  </div>
+                  <Button asChild size="sm" variant="outline">
+                    <Link href={todo.href}>
+                      Open client
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        ) : null}
 
         {emailHealth && failedEmailCount > 0 ? (
           <Card className="border-red-200 bg-red-50/60">
