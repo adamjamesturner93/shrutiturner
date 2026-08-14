@@ -1,6 +1,8 @@
 import { ClassBookingStatus } from "@prisma/client";
 import { db } from "@/lib/db";
 import type { AdminDashboardSummaryDto } from "@/lib/api/types";
+import { listAdminCoachingApplications } from "@/lib/coaching/service";
+import { sortCoachingAdminTodos } from "@/lib/coaching/operations";
 
 export async function getAdminDashboardSummary(): Promise<AdminDashboardSummaryDto> {
   const now = new Date();
@@ -9,42 +11,44 @@ export async function getAdminDashboardSummary(): Promise<AdminDashboardSummaryD
   const endToday = new Date(startToday);
   endToday.setUTCDate(endToday.getUTCDate() + 1);
 
-  const [todaySessions, upcomingSessions, trendsWindowSessions] = await Promise.all([
-    db.classSession.findMany({
-      where: { startsAtUtc: { gte: startToday, lt: endToday } },
-      include: {
-        bookings: {
-          where: { status: ClassBookingStatus.booked },
-          select: { id: true },
+  const [todaySessions, upcomingSessions, trendsWindowSessions, coachingApplications] =
+    await Promise.all([
+      db.classSession.findMany({
+        where: { startsAtUtc: { gte: startToday, lt: endToday } },
+        include: {
+          bookings: {
+            where: { status: ClassBookingStatus.booked },
+            select: { id: true },
+          },
         },
-      },
-      orderBy: { startsAtUtc: "asc" },
-    }),
-    db.classSession.findMany({
-      where: {
-        startsAtUtc: { gte: now },
-      },
-      include: {
-        bookings: {
-          where: { status: ClassBookingStatus.booked },
-          select: { id: true },
+        orderBy: { startsAtUtc: "asc" },
+      }),
+      db.classSession.findMany({
+        where: {
+          startsAtUtc: { gte: now },
         },
-      },
-      orderBy: { startsAtUtc: "asc" },
-      take: 10,
-    }),
-    db.classSession.findMany({
-      where: {
-        startsAtUtc: { gte: new Date(Date.now() - 7 * 86400000) },
-      },
-      include: {
-        bookings: {
-          select: { status: true },
+        include: {
+          bookings: {
+            where: { status: ClassBookingStatus.booked },
+            select: { id: true },
+          },
         },
-      },
-      orderBy: { startsAtUtc: "asc" },
-    }),
-  ]);
+        orderBy: { startsAtUtc: "asc" },
+        take: 10,
+      }),
+      db.classSession.findMany({
+        where: {
+          startsAtUtc: { gte: new Date(Date.now() - 7 * 86400000) },
+        },
+        include: {
+          bookings: {
+            select: { status: true },
+          },
+        },
+        orderBy: { startsAtUtc: "asc" },
+      }),
+      listAdminCoachingApplications(),
+    ]);
 
   const todayBooked = todaySessions.reduce((sum, session) => sum + session.bookings.length, 0);
   const todayCapacity = todaySessions.reduce((sum, session) => sum + session.capacity, 0);
@@ -77,6 +81,7 @@ export async function getAdminDashboardSummary(): Promise<AdminDashboardSummaryD
   }
 
   return {
+    coachingTodos: sortCoachingAdminTodos(coachingApplications.flatMap((row) => row.todos)),
     today: {
       date: startToday.toISOString().slice(0, 10),
       sessions: todaySessions.length,

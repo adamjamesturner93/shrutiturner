@@ -53,10 +53,6 @@ export const LOCAL_PAGE_CONTENT: Record<string, PageContent> = {
     },
   },
   "coaching-enquire": { slug: "coaching-enquire", seo: { title: "Enquire About Coaching" } },
-  "coaching-personal-programme": {
-    slug: "coaching-personal-programme",
-    seo: { title: "Independent Training Plan" },
-  },
   pricing: { slug: "pricing", seo: { title: "Pricing" } },
   terms: { slug: "terms", seo: { title: "Terms & Conditions" } },
   privacy: { slug: "privacy", seo: { title: "Privacy Policy" } },

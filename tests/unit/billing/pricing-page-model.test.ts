@@ -14,22 +14,20 @@ describe("pricing page model", () => {
   it("exposes 1:1 offers with Canva comparison copy, prices and CTAs", () => {
     const rows = getPricingCoachingRows();
 
-    expect(rows).toHaveLength(4);
+    expect(rows).toHaveLength(3);
     expect(rows.map((row) => row.name)).toEqual([
-      "Guided Accountability",
-      "Independent Training Plan",
-      "Guided Training Plan",
+      "Monthly Support",
+      "Weekly Support",
       "1:1 Coaching",
     ]);
     expect(rows.map((row) => row.priceLabel)).toEqual([
-      "£70 / month",
       "£95 / month",
       "£130 / month",
       "£180 / month",
     ]);
     expect(rows.every((row) => row.ctaHref === "/coaching/enquire")).toBe(true);
-    expect(rows[0].whatItIs).toContain("Regular check-ins and guidance");
-    expect(rows[1].bestFor).toContain("Independent training");
+    expect(rows[0].whatItIs).toContain("monthly review and coaching call");
+    expect(rows[1].bestFor).toContain("regular review");
     expect(rows.flatMap((row) => row.features).join(" ")).not.toContain("Move Well");
   });
 

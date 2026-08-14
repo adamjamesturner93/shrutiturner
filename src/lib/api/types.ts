@@ -160,6 +160,35 @@ export type CoachingApplicationResponseDto = {
   id: string;
 };
 
+export type CoachingBillingPhase =
+  | "not_configured"
+  | "active"
+  | "cancellation_scheduled"
+  | "final_month"
+  | "completed"
+  | "payment_problem";
+
+export type CoachingAdminTodoDto = {
+  id: string;
+  applicationId: string;
+  clientName: string;
+  kind:
+    | "review_enquiry"
+    | "follow_up"
+    | "record_consultation"
+    | "send_recommendation"
+    | "everfit_setup"
+    | "everfit_attention"
+    | "billing_attention"
+    | "final_month_handover"
+    | "close_everfit";
+  priority: "action" | "overdue";
+  title: string;
+  detail: string;
+  dueAt: string | null;
+  href: string;
+};
+
 export type CoachingDashboardDto = {
   state:
     | "not_a_client"
@@ -186,6 +215,10 @@ export type CoachingDashboardDto = {
     billingCancellationRequestedAt: string | null;
     billingFinalPaymentAt: string | null;
     billingEndsAt: string | null;
+    billingPhase: CoachingBillingPhase;
+    nextBillingAt: string | null;
+    nextBillingAmountPence: number | null;
+    billingCurrency: string | null;
     pendingPackageChange: null | {
       id: string;
       requestType: "package_change" | "paid_start";
@@ -220,6 +253,9 @@ export type CoachingDashboardDto = {
       | "submitted"
       | "under_review"
       | "follow_up_needed"
+      | "consultation_scheduled"
+      | "consultation_completed"
+      | "offer_sent"
       | "waitlisted"
       | "approved"
       | "declined"
@@ -230,6 +266,10 @@ export type CoachingDashboardDto = {
     createdAt: string;
     waitlistedAt: string | null;
     waitlistLeftAt: string | null;
+    consultationStatus: "not_scheduled" | "scheduled" | "completed" | "cancelled";
+    consultationScheduledAt: string | null;
+    consultationCompletedAt: string | null;
+    offerSentAt: string | null;
   };
 };
 
@@ -297,11 +337,17 @@ export type AdminCoachingApplicationDto = {
   approvedAt: string | null;
   waitlistedAt: string | null;
   waitlistLeftAt: string | null;
+  consultationStatus: "not_scheduled" | "scheduled" | "completed" | "cancelled";
+  consultationScheduledAt: string | null;
+  consultationCompletedAt: string | null;
+  consultationNotes: string;
+  offerSentAt: string | null;
   userId: string | null;
   isLinkedUserCoachingClient: boolean;
   decisionReason: string;
   answers: Record<string, string>;
   adminNotes: string;
+  todos: CoachingAdminTodoDto[];
   coachingProfile: null | {
     id: string;
     billingArrangement: "paid" | "pro_bono";
@@ -311,6 +357,11 @@ export type AdminCoachingApplicationDto = {
     billingCancellationRequestedAt: string | null;
     billingFinalPaymentAt: string | null;
     billingEndsAt: string | null;
+    billingPhase: CoachingBillingPhase;
+    nextBillingAt: string | null;
+    nextBillingAmountPence: number | null;
+    billingCurrency: string | null;
+    subscriptionStatus: string | null;
     tier: "personal_programme" | "coached_plan" | "coaching" | "unsure";
     pendingPackageChange: null | {
       id: string;
@@ -581,9 +632,35 @@ export type DashboardSummaryDto = {
   membership: MembershipStateDto["membership"];
   credits: MembershipStateDto["credits"];
   referral: MembershipStateDto["referral"];
+  actions: Array<{
+    id: string;
+    priority: "action" | "overdue";
+    title: string;
+    detail: string;
+    href: string;
+    ctaLabel: string;
+    dueAt: string | null;
+  }>;
+  upcoming: Array<{
+    id: string;
+    kind: "coaching_payment" | "coaching_end" | "retreat_balance" | "retreat" | "class";
+    title: string;
+    detail: string;
+    at: string;
+    amountPence: number | null;
+    currency: string | null;
+    href: string;
+  }>;
+  services: Array<{
+    id: "coaching" | "retreats" | "classes" | "membership";
+    title: string;
+    status: string;
+    href: string;
+  }>;
 };
 
 export type AdminDashboardSummaryDto = {
+  coachingTodos: CoachingAdminTodoDto[];
   today: {
     date: string;
     sessions: number;

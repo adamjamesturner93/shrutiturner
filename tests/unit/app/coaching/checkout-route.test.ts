@@ -40,12 +40,13 @@ describe("POST /api/me/coaching/checkout", () => {
     });
   });
 
-  it("requires current terms and health waiver acceptance before checkout", async () => {
+  it("requires all current coaching agreements before checkout", async () => {
     await route.POST(request({ applicationId: "application_123" }));
 
     expect(assertCurrentAcceptancesMock).toHaveBeenCalledWith("user_123", [
       { type: "terms", surface: "coaching_checkout" },
       { type: "health_waiver", surface: "coaching_checkout" },
+      { type: "coaching_agreement", surface: "coaching_checkout" },
     ]);
     expect(createCoachingCheckoutSessionMock).toHaveBeenCalledWith(
       "user_123",

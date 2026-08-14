@@ -21,7 +21,6 @@ const PAGE_PATHS: Record<string, string> = {
   pt: "/coaching",
   coaching: "/coaching",
   "coaching-enquire": "/coaching/enquire",
-  "coaching-personal-programme": "/coaching/personal-programme",
   pricing: "/pricing",
   terms: "/terms",
   privacy: "/privacy",

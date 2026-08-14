@@ -204,6 +204,7 @@ async function run() {
   await configureSlugEditor("instructorProfile", "name");
   await configureSlugEditor("leadMagnet", "title");
   await configureSlugEditor("newsletterTemplate", "title");
+  await configureSlugEditor("testimonial", "authorName");
 }
 
 run().catch((err) => {

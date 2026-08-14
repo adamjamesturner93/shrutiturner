@@ -11,7 +11,6 @@ const validKeys = new Set([
   "credits_1",
   "credits_3",
   "credits_10",
-  "coaching_guided_accountability_monthly",
   "coaching_independent_training_plan_monthly",
   "coaching_guided_training_plan_monthly",
   "coaching_one_to_one_coaching_monthly",

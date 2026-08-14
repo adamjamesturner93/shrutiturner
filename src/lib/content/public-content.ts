@@ -326,6 +326,12 @@ function mapBlogPostContent(
     authors,
     date: getContentfulPublishedDate("blogPost", item),
     tags: parseStringArray(item.fields.tags),
+    category:
+      item.fields.category === "rehabilitation" ||
+      item.fields.category === "fitness" ||
+      item.fields.category === "wellbeing"
+        ? item.fields.category
+        : undefined,
     readTime: String(item.fields.readTime || ""),
     coverImage: assetUrl
       ? toContentfulImageUrl(assetUrl)
@@ -486,7 +492,6 @@ export async function getPageContent(slug: string): Promise<PageContent | null> 
         "Personalised online training and movement coaching bringing together rehabilitation, fitness and wellbeing, with support built around your body, goals and real life.",
     },
     "coaching-enquire": { title: "Enquire About Coaching" },
-    "coaching-personal-programme": { title: "Independent Training Plan" },
     blog: { title: "Blog" },
     about: { title: "About" },
     contact: { title: "Contact" },
@@ -903,16 +908,6 @@ export async function getFeaturedTestimonials(): Promise<TestimonialContent[]> {
     id: String(item.sys.id),
     quote: String(item.fields.quote || ""),
     authorName: String(item.fields.authorName || "Anonymous"),
-    authorCondition: item.fields.authorCondition ? String(item.fields.authorCondition) : undefined,
-    service: item.fields.service
-      ? (String(item.fields.service) as
-          | "yoga"
-          | "strength"
-          | "pt"
-          | "retreat"
-          | "small-group"
-          | "general")
-      : undefined,
     featured: Boolean(item.fields.featured),
   }));
 }

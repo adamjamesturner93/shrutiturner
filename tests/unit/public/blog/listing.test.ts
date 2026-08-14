@@ -19,7 +19,7 @@ describe("blog listing helpers", () => {
     expect(resolveSelectedTag("missing-tag", allTags)).toBe("all");
   });
 
-  it("resolves the three marketing pillars without changing the content model", () => {
+  it("prefers the explicit editorial category and retains a fallback for older posts", () => {
     expect(resolveSelectedPillar("rehabilitation")).toBe("rehabilitation");
     expect(resolveSelectedPillar("missing")).toBe("all");
     expect(

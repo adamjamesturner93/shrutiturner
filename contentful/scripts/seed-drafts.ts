@@ -38,10 +38,7 @@ function buildAutoSlug(contentType: string, entry: Record<string, unknown>) {
   const byType: Record<string, string | undefined> = {
     authorProfile: typeof entry.name === "string" ? entry.name : undefined,
     instructorProfile: typeof entry.name === "string" ? entry.name : undefined,
-    testimonial:
-      typeof entry.authorName === "string"
-        ? `testimonial-${entry.authorName}-${String(entry.service || "general")}`
-        : undefined,
+    testimonial: typeof entry.authorName === "string" ? entry.authorName : undefined,
     classDefinition: typeof entry.name === "string" ? entry.name : undefined,
     retreatVenue: typeof entry.name === "string" ? entry.name : undefined,
     retreatTemplate: typeof entry.title === "string" ? entry.title : undefined,

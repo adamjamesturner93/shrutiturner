@@ -102,65 +102,51 @@ export const TESTIMONIAL_SEED = {
   contentType: "testimonial",
   entries: [
     {
-      slug: "testimonial-sarah-yoga",
+      slug: "sarah",
       quote:
         "Finally, a yoga teacher who understands chronic illness, injury history and real recovery needs.",
       authorName: "Sarah",
-      authorCondition: "Hypermobility EDS",
-      service: "yoga",
       featured: true,
     },
     {
-      slug: "testimonial-james-strength",
+      slug: "james",
       quote: "I've built more strength in 12 weeks than in years of trying generic programmes.",
       authorName: "James",
-      authorCondition: "Rheumatoid Arthritis",
-      service: "strength",
       featured: true,
     },
     {
-      slug: "testimonial-elena-small-group",
+      slug: "elena",
       quote:
         "The small group programme gave me accountability and a community that actually gets it.",
       authorName: "Elena",
-      authorCondition: "Chronic Fatigue",
-      service: "small-group",
       featured: true,
     },
     {
-      slug: "testimonial-nadia-pt",
+      slug: "nadia",
       quote:
         "The plan finally matched my energy instead of pretending every week would be the same.",
       authorName: "Nadia",
-      authorCondition: "Long COVID",
-      service: "pt",
       featured: true,
     },
     {
-      slug: "testimonial-morgan-retreat",
+      slug: "morgan",
       quote:
         "I expected rest, but I also left with practical strength work I could keep using at home.",
       authorName: "Morgan",
-      authorCondition: "Fibromyalgia",
-      service: "retreat",
       featured: false,
     },
     {
-      slug: "testimonial-ali-yoga",
+      slug: "ali",
       quote:
         "Every option felt intentional. I never felt like I was being given the watered-down version.",
       authorName: "Ali",
-      authorCondition: "Post-surgical recovery",
-      service: "yoga",
       featured: false,
     },
     {
-      slug: "testimonial-rachel-strength",
+      slug: "rachel",
       quote:
         "I can carry shopping, climb stairs and trust my knees more. Those are the wins that matter.",
       authorName: "Rachel",
-      authorCondition: "Osteoarthritis",
-      service: "strength",
       featured: true,
     },
   ],
@@ -259,6 +245,7 @@ export const BLOG_SEED = {
       content: p.content,
       authorSlugs: p.authors.map((author) => author.slug),
       tags: p.tags,
+      category: p.category,
       readTime: p.readTime,
       seoTitle: p.title,
       seoDescription: p.excerpt,
@@ -280,6 +267,7 @@ Choose yoga when you want a lower-intensity practice focused on mobility, regula
 The useful question is not "what should I be able to do?" It is "what support would make this repeatable for the next eight weeks?"`,
       authorSlugs: ["shruti-turner"],
       tags: ["Getting Started", "Yoga", "Strength Training"],
+      category: "fitness",
       readTime: "4 min read",
       seoTitle: "How to Choose Between Yoga, Strength and 1:1 Coaching",
       seoDescription:
@@ -302,6 +290,7 @@ A rest or deload week can mean fewer sets, lighter loads, shorter sessions, or m
 If a programme only works when life is perfect, it is not a robust programme.`,
       authorSlugs: ["shruti-turner"],
       tags: ["Recovery", "Strength Training", "Programming"],
+      category: "fitness",
       readTime: "3 min read",
       seoTitle: "Why Rest Weeks Belong in Strength Programmes",
       seoDescription:

@@ -16,12 +16,13 @@ export async function POST(request: Request) {
     const user = await requireSessionUser();
     const body = (await request.json().catch(() => null)) as Body | null;
     if (!body || typeof body.applicationId !== "string") {
-      return NextResponse.json({ message: "Application id is required." }, { status: 400 });
+      return NextResponse.json({ message: "Enquiry id is required." }, { status: 400 });
     }
 
     await assertCurrentAcceptances(user.id, [
       { type: AcceptanceType.terms, surface: "coaching_checkout" },
       { type: AcceptanceType.health_waiver, surface: "coaching_checkout" },
+      { type: AcceptanceType.coaching_agreement, surface: "coaching_checkout" },
     ]);
 
     const checkout = await createCoachingCheckoutSession(user.id, body.applicationId, {
@@ -36,7 +37,13 @@ export async function POST(request: Request) {
     }
     if (error instanceof Error && error.message === "COACHING_APPLICATION_NOT_APPROVED") {
       return NextResponse.json(
-        { message: "This coaching application is not ready for payment yet." },
+        { message: "This coaching recommendation is not ready for payment yet." },
+        { status: 409 }
+      );
+    }
+    if (error instanceof Error && error.message === "COACHING_OFFER_RETIRED") {
+      return NextResponse.json(
+        { message: "This coaching offer is no longer available. Please contact Shruti." },
         { status: 409 }
       );
     }

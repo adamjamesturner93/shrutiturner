@@ -8,6 +8,14 @@ function makeEmail(label: string) {
 }
 
 async function cleanupRows() {
+  await db.coachingApplication.deleteMany({
+    where: {
+      applicantEmail: {
+        startsWith: "integration-retention-",
+      },
+    },
+  });
+
   await db.acceptanceEvent.deleteMany({
     where: {
       user: {
@@ -111,5 +119,36 @@ describe("health retention service", () => {
 
     expect(profile).toBeNull();
     expect(acceptances).toHaveLength(0);
+  });
+
+  it("minimises unsuccessful coaching enquiry context after six months", async () => {
+    const email = makeEmail("declined-enquiry");
+    const enquiry = await db.coachingApplication.create({
+      data: {
+        applicantName: "Taylor Example",
+        applicantFirstName: "Taylor",
+        applicantLastName: "Example",
+        applicantEmail: email,
+        tier: "unsure",
+        status: "declined",
+        answersJson: { context: "Sensitive health context", outcome: "Build strength" },
+        adminNotes: "Private note",
+        decisionReason: "Not the right fit",
+        consultationNotes: "Sensitive consultation notes",
+        createdAt: new Date("2025-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2025-01-02T00:00:00.000Z"),
+      },
+    });
+
+    const result = await processHealthDataRetention(new Date("2026-05-01T00:00:00.000Z"));
+
+    expect(result.clearedUnsuccessfulCoachingEnquiries).toBeGreaterThanOrEqual(1);
+    const retained = await db.coachingApplication.findUnique({ where: { id: enquiry.id } });
+    expect(retained).toMatchObject({
+      answersJson: {},
+      adminNotes: null,
+      decisionReason: null,
+      consultationNotes: null,
+    });
   });
 });

@@ -26,6 +26,8 @@ const REHABILITATION_TAGS = new Set([
 const WELLBEING_TAGS = new Set(["breathwork", "wellbeing", "yoga"]);
 
 export function resolveBlogPillar(post: BlogPostContent): BlogPillar {
+  if (post.category) return post.category;
+
   const explicitPillar = BLOG_PILLAR_BY_SLUG[post.id];
   if (explicitPillar) return explicitPillar;
 

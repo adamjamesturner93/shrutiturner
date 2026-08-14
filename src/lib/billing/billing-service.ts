@@ -37,9 +37,11 @@ import { processGiftPurchaseCheckoutCompleted } from "@/lib/gifts/service";
 import { processRetreatCheckoutCompleted } from "@/lib/retreats/service";
 import { processSmallGroupCheckoutCompleted } from "@/lib/small-groups/service";
 import { getNotificationInbox, sendPostmarkReactEmail } from "@/lib/postmark/client";
-import { coachingTiers, type CoachingOfferKey } from "@/data/marketing";
+import { activeCoachingTiers, coachingTiers, type CoachingOfferKey } from "@/data/marketing";
 import CoachingPaymentNotificationEmail from "@/emails/coaching-payment-notification";
 import CoachingCancellationNotificationEmail from "@/emails/coaching-cancellation-notification";
+import CoachingPaymentConfirmationEmail from "@/emails/coaching-payment-confirmation";
+import CoachingCancellationClientEmail from "@/emails/coaching-cancellation-client";
 import { upsertCoachingSubscriptionProjection } from "@/lib/billing/coaching-subscription-projection";
 
 const APP_URL = getBaseSiteUrlFromEnv();
@@ -323,6 +325,8 @@ export async function scheduleCoachingCancellationAfterNextPayment(userId: strin
       ...subscription.metadata,
       cancellationPolicy: "next_payment_final",
       cancellationRequestedAt: new Date().toISOString(),
+      coachingFinalPaymentAt: nextPaymentAt.toISOString(),
+      coachingEndsAt: endsAt.toISOString(),
     },
   });
   const updatedCancelAt = updated.cancel_at ? new Date(updated.cancel_at * 1000) : endsAt;
@@ -347,6 +351,60 @@ export async function scheduleCoachingCancellationAfterNextPayment(userId: strin
     nextPaymentAt: nextPaymentAt.toISOString(),
     endsAt: updatedCancelAt.toISOString(),
   };
+}
+
+export async function stopCoachingRenewalAtCurrentPeriodEnd(userId: string) {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { stripeCustomerId: true },
+  });
+  if (!user?.stripeCustomerId) throw new Error("COACHING_SUBSCRIPTION_NOT_FOUND");
+
+  const coachingPriceIds = await getConfiguredCoachingPriceIds();
+  if (coachingPriceIds.size === 0) throw new Error("MISSING_STRIPE_PRICE:coaching");
+  const stripe = getStripeClient();
+  const subscriptions = await stripe.subscriptions.list({
+    customer: user.stripeCustomerId,
+    status: "all",
+    limit: 100,
+  });
+  const subscription = subscriptions.data
+    .filter((item) => isOpenSubscriptionStatus(item.status))
+    .find((item) => subscriptionUsesPrice(item, coachingPriceIds));
+  if (!subscription) throw new Error("COACHING_SUBSCRIPTION_NOT_FOUND");
+
+  const currentPeriodEndSeconds = getStripeSubscriptionPeriodEnd(subscription);
+  if (!currentPeriodEndSeconds) throw new Error("COACHING_SUBSCRIPTION_NOT_FOUND");
+  const endsAt = new Date(currentPeriodEndSeconds * 1000);
+  const requestedAt = new Date();
+  const updated = await stripe.subscriptions.update(subscription.id, {
+    cancel_at_period_end: true,
+    metadata: {
+      ...subscription.metadata,
+      cancellationPolicy: "end_current_period",
+      cancellationRequestedAt: requestedAt.toISOString(),
+      coachingFinalPaymentAt: "",
+      coachingEndsAt: endsAt.toISOString(),
+    },
+  });
+
+  await db.coachingClientProfile.updateMany({
+    where: { userId },
+    data: {
+      stripeSubscriptionId: subscription.id,
+      billingCancellationRequestedAt: requestedAt,
+      billingFinalPaymentAt: null,
+      billingEndsAt: endsAt,
+    },
+  });
+  await upsertCoachingSubscriptionProjection(updated);
+  await sendCoachingCancellationNotification({
+    userId,
+    nextPaymentAt: null,
+    endsAt: endsAt.toISOString(),
+  });
+
+  return { subscriptionId: updated.id, endsAt: endsAt.toISOString() };
 }
 
 async function createOneTimeCouponIfNeeded(discountPence: number) {
@@ -390,7 +448,7 @@ function coachingOfferToCatalogKey(offerKey: CoachingOfferKey) {
 function getCoachingOfferFromAnswers(answers: Prisma.JsonValue) {
   if (!answers || typeof answers !== "object" || Array.isArray(answers)) return null;
   const offerKey = (answers as Record<string, unknown>).offerKey;
-  return typeof offerKey === "string" && coachingTiers.some((tier) => tier.id === offerKey)
+  return typeof offerKey === "string" && activeCoachingTiers.some((tier) => tier.id === offerKey)
     ? (offerKey as CoachingOfferKey)
     : null;
 }
@@ -438,9 +496,71 @@ async function sendCoachingPaymentReceivedNotification(input: {
   });
 }
 
+function coachingTierLabel(tier: string) {
+  if (tier === "personal_programme") return "Monthly Support";
+  if (tier === "coached_plan") return "Weekly Support";
+  if (tier === "coaching") return "1:1 Coaching";
+  return "coaching";
+}
+
+async function sendCoachingInvoiceConfirmationIfNeeded(
+  invoice: Stripe.Invoice,
+  subscriptionId: string
+) {
+  if ((invoice.amount_paid || 0) <= 0) return false;
+  const profile = await db.coachingClientProfile.findUnique({
+    where: { stripeSubscriptionId: subscriptionId },
+    include: {
+      user: { select: { id: true, email: true, firstName: true, name: true } },
+      application: { select: { recommendedOfferKey: true } },
+    },
+  });
+  if (!profile?.user.email) return false;
+
+  const existing = await db.emailDelivery.findFirst({
+    where: {
+      templateKey: "coaching-payment-confirmation",
+      metadataJson: { path: ["stripeInvoiceId"], equals: invoice.id },
+    },
+    select: { id: true },
+  });
+  if (existing) return false;
+
+  const tierLabel =
+    coachingTiers.find((tier) => tier.id === profile.application?.recommendedOfferKey)?.name ||
+    coachingTierLabel(profile.tier);
+  const amountLabel = new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: invoice.currency.toUpperCase(),
+  }).format((invoice.amount_paid || 0) / 100);
+  const invoiceUrl = invoice.hosted_invoice_url || invoice.invoice_pdf || null;
+  const dashboardUrl = `${APP_URL}/dashboard/coaching`;
+
+  await sendPostmarkReactEmail({
+    to: profile.user.email,
+    subject: `Your ${tierLabel} payment is confirmed`,
+    react: CoachingPaymentConfirmationEmail({
+      firstName: profile.user.firstName || profile.user.name || "there",
+      tierLabel,
+      amountLabel,
+      invoiceUrl,
+      dashboardUrl,
+    }),
+    textBody: `Your ${amountLabel} payment for ${tierLabel} has been received.${invoiceUrl ? `\n\nInvoice: ${invoiceUrl}` : ""}\n\nDashboard: ${dashboardUrl}`,
+    tag: "coaching-payment-confirmation",
+    templateKey: "coaching-payment-confirmation",
+    category: "transactional",
+    userId: profile.user.id,
+    retryable: true,
+    metadata: { stripeInvoiceId: invoice.id, subscriptionId },
+    dispatchMode: "immediate_best_effort",
+  });
+  return true;
+}
+
 async function sendCoachingCancellationNotification(input: {
   userId: string;
-  nextPaymentAt: string;
+  nextPaymentAt: string | null;
   endsAt: string;
 }) {
   const user = await db.user.findUnique({
@@ -452,27 +572,45 @@ async function sendCoachingCancellationNotification(input: {
   const clientName =
     user.name || `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
   const adminUrl = `${APP_URL}/admin/coaching`;
-  const nextPaymentLabel = formatEmailDateTime(input.nextPaymentAt);
+  const nextPaymentLabel = input.nextPaymentAt ? formatEmailDateTime(input.nextPaymentAt) : null;
   const endsAtLabel = formatEmailDateTime(input.endsAt);
 
-  await sendPostmarkReactEmail({
-    to: getNotificationInbox("COACHING_CANCELLATION_NOTIFICATION_EMAIL"),
-    subject: `Coaching cancellation scheduled: ${clientName}`,
-    react: CoachingCancellationNotificationEmail({
-      clientName,
-      clientEmail: user.email,
-      nextPaymentAt: nextPaymentLabel,
-      endsAt: endsAtLabel,
-      adminUrl,
+  await Promise.allSettled([
+    sendPostmarkReactEmail({
+      to: getNotificationInbox("COACHING_CANCELLATION_NOTIFICATION_EMAIL"),
+      subject: `Coaching cancellation scheduled: ${clientName}`,
+      react: CoachingCancellationNotificationEmail({
+        clientName,
+        clientEmail: user.email,
+        nextPaymentAt: nextPaymentLabel || "No further payment",
+        endsAt: endsAtLabel,
+        adminUrl,
+      }),
+      textBody: `Coaching cancellation scheduled for ${clientName}\nEmail: ${user.email}\nFinal payment: ${nextPaymentLabel || "No further payment"}\nBilling/access end: ${endsAtLabel}\n\nPlan the Everfit handover and access changes manually.\n\nAdmin: ${adminUrl}`,
+      tag: "coaching-cancellation-scheduled",
+      templateKey: "coaching-cancellation-scheduled",
+      metadata: { userId: input.userId },
+      dispatchMode: "immediate_best_effort",
     }),
-    textBody: `Coaching cancellation scheduled for ${clientName}\nEmail: ${user.email}\nFinal payment: ${nextPaymentLabel}\nBilling/access end: ${endsAtLabel}\n\nPlan the Everfit handover and access changes manually.\n\nAdmin: ${adminUrl}`,
-    tag: "coaching-cancellation-scheduled",
-    templateKey: "coaching-cancellation-scheduled",
-    metadata: { userId: input.userId },
-    dispatchMode: "immediate_best_effort",
-  }).catch((error) => {
-    console.error("[billing] failed to send coaching cancellation notification", error);
-  });
+    sendPostmarkReactEmail({
+      to: user.email,
+      subject: "Your coaching cancellation is scheduled",
+      react: CoachingCancellationClientEmail({
+        firstName: user.firstName || user.name || "there",
+        finalPaymentAt: nextPaymentLabel,
+        endsAt: endsAtLabel,
+        dashboardUrl: `${APP_URL}/dashboard/coaching`,
+      }),
+      textBody: `Hi ${user.firstName || user.name || "there"},\n\n${nextPaymentLabel ? `Your payment on ${nextPaymentLabel} will be your final coaching payment.` : "No further coaching payments will be collected."}\nYour coaching access continues until ${endsAtLabel}.\n\nDashboard: ${APP_URL}/dashboard/coaching`,
+      tag: "coaching-cancellation-client",
+      templateKey: "coaching-cancellation-client",
+      category: "transactional",
+      userId: input.userId,
+      retryable: true,
+      metadata: { coachingEndsAt: input.endsAt },
+      dispatchMode: "immediate_best_effort",
+    }),
+  ]);
 }
 
 export async function createCoachingCheckoutSession(
@@ -490,15 +628,22 @@ export async function createCoachingCheckoutSession(
     where: {
       id: applicationId,
       userId,
-      status: { in: ["approved", "converted"] },
+      status: { in: ["approved", "offer_sent", "converted"] },
     },
   });
   if (!application) throw new Error("COACHING_APPLICATION_NOT_APPROVED");
 
   const offerKey =
     options?.offerKeyOverride ||
+    (application.recommendedOfferKey &&
+    coachingTiers.some((tier) => tier.active && tier.id === application.recommendedOfferKey)
+      ? (application.recommendedOfferKey as CoachingOfferKey)
+      : null) ||
     getCoachingOfferFromAnswers(application.answersJson) ||
     fallbackOfferForTier(application.tier);
+  if (!activeCoachingTiers.some((tier) => tier.id === offerKey)) {
+    throw new Error("COACHING_OFFER_RETIRED");
+  }
   const catalog = await getActiveCatalogItem(coachingOfferToCatalogKey(offerKey));
   assertPriceConfigured(catalog.stripePriceId, `CATALOG_PRICE_COACHING_${offerKey}`);
 
@@ -518,7 +663,10 @@ export async function createCoachingCheckoutSession(
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: "subscription",
     customer: customerId,
-    success_url: `${APP_URL}${options?.successPath || "/dashboard/coaching?checkout=success"}`,
+    success_url: `${APP_URL}${
+      options?.successPath ||
+      "/dashboard/coaching?checkout=success&session_id={CHECKOUT_SESSION_ID}"
+    }`,
     cancel_url: `${APP_URL}${options?.cancelPath || "/dashboard/coaching?checkout=cancelled"}`,
     line_items: [{ price: catalog.stripePriceId, quantity: 1 }],
     discounts: coupon ? [{ coupon: coupon.id }] : undefined,
@@ -560,6 +708,34 @@ export async function createCoachingCheckoutSession(
   };
 }
 
+export async function getCoachingCheckoutReturnState(userId: string, sessionId: string) {
+  const stripe = getStripeClient();
+  const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    expand: ["subscription.latest_invoice"],
+  });
+  if (session.metadata?.kind !== "coaching" || session.metadata?.userId !== userId) {
+    throw new Error("COACHING_CHECKOUT_NOT_FOUND");
+  }
+
+  const subscription =
+    session.subscription && typeof session.subscription !== "string" ? session.subscription : null;
+  const latestInvoice =
+    subscription?.latest_invoice && typeof subscription.latest_invoice !== "string"
+      ? subscription.latest_invoice
+      : null;
+  return {
+    status:
+      session.payment_status === "paid"
+        ? ("paid" as const)
+        : session.status === "complete"
+          ? ("processing" as const)
+          : ("open" as const),
+    amountPence: session.amount_total || latestInvoice?.amount_paid || null,
+    currency: (session.currency || latestInvoice?.currency || "gbp").toUpperCase(),
+    invoiceUrl: latestInvoice?.hosted_invoice_url || latestInvoice?.invoice_pdf || null,
+  };
+}
+
 function coachingOfferToTier(offerKey: CoachingOfferKey) {
   return coachingTiers.find((tier) => tier.id === offerKey)?.applicationTier || "coaching";
 }
@@ -581,8 +757,8 @@ export async function confirmCoachingPackageChangeRequest(
   if (!request) throw new Error("COACHING_PACKAGE_CHANGE_NOT_FOUND");
 
   const offerKey = request.toOfferKey as CoachingOfferKey;
-  const offer = coachingTiers.find((tier) => tier.id === offerKey);
-  if (!offer) throw new Error("INVALID_COACHING_OFFER");
+  const offer = activeCoachingTiers.find((tier) => tier.id === offerKey);
+  if (!offer) throw new Error("COACHING_OFFER_RETIRED");
 
   if (request.requestType === "paid_start") {
     if (
@@ -1034,8 +1210,21 @@ async function processCheckoutCompleted(event: Stripe.Event, session: Stripe.Che
     });
 
     if (subscriptionId) {
-      const subscription = await getStripeClient().subscriptions.retrieve(subscriptionId);
+      const subscription = await getStripeClient().subscriptions.retrieve(subscriptionId, {
+        expand: ["latest_invoice"],
+      });
       await upsertCoachingSubscriptionProjection(subscription);
+      const latestInvoice =
+        subscription.latest_invoice && typeof subscription.latest_invoice !== "string"
+          ? subscription.latest_invoice
+          : null;
+      if (latestInvoice) {
+        await sendCoachingInvoiceConfirmationIfNeeded(latestInvoice, subscriptionId).catch(
+          (error) => {
+            console.error("[billing] failed to send client coaching payment confirmation", error);
+          }
+        );
+      }
     }
 
     const paymentStartsInFuture = Boolean(
@@ -1179,6 +1368,10 @@ async function processInvoicePaid(event: Stripe.Event, invoice: Stripe.Invoice) 
 
   const subscriptionId = getInvoiceSubscriptionId(invoice);
   if (!subscriptionId) return;
+
+  await sendCoachingInvoiceConfirmationIfNeeded(invoice, subscriptionId).catch((error) => {
+    console.error("[billing] failed to send client coaching invoice confirmation", error);
+  });
 
   if ((invoice.amount_paid || 0) > 0) {
     const activation = await db.coachingClientProfile.updateMany({
@@ -1352,11 +1545,36 @@ async function processCoachingSubscriptionUpdated(subscription: Stripe.Subscript
   const cancelAt = subscription.cancel_at ? unixToDate(subscription.cancel_at) : null;
   const currentPeriodEnd = unixToDate(getStripeSubscriptionPeriodEnd(subscription));
   const isCancelled = subscription.status === "canceled";
+  const cancellationPolicy = subscription.metadata?.cancellationPolicy;
+  const metadataFinalPaymentAt = subscription.metadata?.coachingFinalPaymentAt
+    ? new Date(subscription.metadata.coachingFinalPaymentAt)
+    : null;
+  const metadataEndsAt = subscription.metadata?.coachingEndsAt
+    ? new Date(subscription.metadata.coachingEndsAt)
+    : null;
+  const cancellationRequestedAt = subscription.metadata?.cancellationRequestedAt
+    ? new Date(subscription.metadata.cancellationRequestedAt)
+    : null;
+  const finalPaymentAt =
+    cancellationPolicy === "end_current_period"
+      ? null
+      : metadataFinalPaymentAt && !Number.isNaN(metadataFinalPaymentAt.getTime())
+        ? metadataFinalPaymentAt
+        : cancelAt
+          ? currentPeriodEnd
+          : null;
+  const billingEndsAt =
+    metadataEndsAt && !Number.isNaN(metadataEndsAt.getTime()) ? metadataEndsAt : cancelAt;
   await db.coachingClientProfile.update({
     where: { id: existingProfile.id },
     data: {
-      billingFinalPaymentAt: cancelAt ? currentPeriodEnd : undefined,
-      billingEndsAt: cancelAt,
+      billingCancellationRequestedAt:
+        cancellationRequestedAt && !Number.isNaN(cancellationRequestedAt.getTime())
+          ? cancellationRequestedAt
+          : undefined,
+      billingFinalPaymentAt:
+        cancellationPolicy === "end_current_period" ? null : finalPaymentAt || undefined,
+      billingEndsAt: billingEndsAt || undefined,
       status: isCancelled ? "completed" : undefined,
       completedAt: isCancelled ? new Date() : undefined,
     },

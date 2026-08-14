@@ -6,6 +6,7 @@ const SELF_SERVICE_ACCEPTANCE_TYPES = new Set<AcceptanceType>([
   AcceptanceType.terms,
   AcceptanceType.health_waiver,
   AcceptanceType.health_data,
+  AcceptanceType.coaching_agreement,
   AcceptanceType.recording_notice,
   AcceptanceType.marketing,
 ]);

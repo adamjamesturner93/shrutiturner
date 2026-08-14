@@ -65,6 +65,27 @@ describe("Contentful public content models", () => {
     expect(fieldIds).not.toEqual(
       expect.arrayContaining(["authorName", "publishDate", "isNewsletter"])
     );
+    expect(fieldIds).toContain("category");
+    expect(blogModel?.fields.find((field) => field.id === "category")?.validations).toEqual([
+      { in: ["rehabilitation", "fitness", "wellbeing"] },
+    ]);
+  });
+
+  it("keeps testimonials focused on author, quote and homepage visibility", () => {
+    const testimonialModel = PUBLIC_CONTENT_MODELS.find((model) => model.id === "testimonial");
+    const testimonialGroup = SEED_GROUPS.find((group) => group.contentType === "testimonial");
+    const fieldIds = testimonialModel?.fields.map((field) => field.id) ?? [];
+    const testimonials = (testimonialGroup?.entries ?? []) as Array<{
+      slug?: string;
+      authorName?: string;
+      authorCondition?: string;
+      service?: string;
+    }>;
+
+    expect(fieldIds).toEqual(expect.arrayContaining(["slug", "quote", "authorName", "featured"]));
+    expect(fieldIds).not.toEqual(expect.arrayContaining(["authorCondition", "service"]));
+    expect(testimonials.every((item) => item.slug === item.authorName?.toLowerCase())).toBe(true);
+    expect(testimonials.every((item) => !item.authorCondition && !item.service)).toBe(true);
   });
 
   it("seeds only the approved real blog author and excludes placeholder articles", () => {

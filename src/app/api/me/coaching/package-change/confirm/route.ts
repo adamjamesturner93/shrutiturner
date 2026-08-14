@@ -28,6 +28,7 @@ export const POST = handleApiRoute(
       await assertCurrentAcceptances(sessionUser!.id, [
         { type: AcceptanceType.terms, surface: "coaching_package_change" },
         { type: AcceptanceType.health_waiver, surface: "coaching_package_change" },
+        { type: AcceptanceType.coaching_agreement, surface: "coaching_package_change" },
       ]);
 
       const result = await confirmCoachingPackageChangeRequest(
@@ -49,6 +50,9 @@ export const POST = handleApiRoute(
       }
       if (error instanceof Error && error.message === "COACHING_PAID_START_NOT_AVAILABLE") {
         throw conflict("Paid coaching billing has already been configured for this client.");
+      }
+      if (error instanceof Error && error.message === "COACHING_OFFER_RETIRED") {
+        throw conflict("This coaching offer is no longer available. Please contact Shruti.");
       }
       if (error instanceof Error && error.message.startsWith("MISSING_STRIPE_PRICE:")) {
         throw serviceUnavailable("The coaching Stripe price is not configured yet.");

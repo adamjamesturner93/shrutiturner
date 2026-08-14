@@ -29,6 +29,7 @@ export interface CoachingTierMarketing {
   features: string[];
   boundaries: string[];
   expectedNextStep: string;
+  active: boolean;
 }
 
 export interface JourneyStep {
@@ -71,15 +72,16 @@ export const coachingTiers: CoachingTierMarketing[] = [
       "Does not include nutrition guidance",
     ],
     expectedNextStep: "Start with an enquiry so Shruti can understand fit and boundaries.",
+    active: false,
   },
   {
     id: "independent_training_plan",
     applicationTier: "personal_programme",
-    name: "Independent Training Plan",
-    tagline: "Personalised structure and progression",
-    description: "Independent training with personalised structure and progression.",
-    bestFor: "Independent training with personalised structure and progression.",
-    whatItIs: "A personalised gym or home training programme with monthly support.",
+    name: "Monthly Support",
+    tagline: "Monthly review & coaching",
+    description: "For people who are happy working independently between planned reviews.",
+    bestFor: "People who are happy working independently between planned reviews.",
+    whatItIs: "A personalised training programme with a monthly review and coaching call.",
     priceLabel: "£95 / month",
     priceNote: "Enquire before payment",
     supportLevel: "programme",
@@ -87,21 +89,24 @@ export const coachingTiers: CoachingTierMarketing[] = [
     ctaHref: "/coaching/enquire",
     ctaLabel: "Enquire First",
     features: [
-      "Tailored programme via app",
-      "Monthly check-in via app",
-      "Monthly programme adjustments",
+      "Personalised training programme across your week",
+      "Monthly programme review and updates",
+      "30-minute coaching call with Shruti each month",
+      "Check-in and feedback through Everfit",
+      "Exercise comments for questions or feedback between reviews",
     ],
     boundaries: ["Does not include weekly review", "Does not include nutrition guidance"],
     expectedNextStep:
       "Enquire with your training context, equipment, preferences and health considerations.",
+    active: true,
   },
   {
     id: "guided_training_plan",
     applicationTier: "coached_plan",
-    name: "Guided Training Plan",
-    tagline: "Weekly review and progression support",
-    description: "For people wanting more regular guidance and progression support.",
-    bestFor: "People wanting more regular guidance and progression support.",
+    name: "Weekly Support",
+    tagline: "Weekly review & coaching",
+    description: "For people who want more regular review, feedback and support as they train.",
+    bestFor: "People who want more regular review, feedback and support as they train.",
     whatItIs:
       "A personalised home or gym training programme with weekly review and ongoing progression support.",
     priceLabel: "£130 / month",
@@ -111,25 +116,27 @@ export const coachingTiers: CoachingTierMarketing[] = [
     ctaHref: "/coaching/enquire",
     ctaLabel: "Enquire First",
     features: [
-      "Tailored programme via app",
-      "Weekly check-in via app",
-      "Weekly programme adjustments",
-      "Greater accountability and progression support",
+      "Personalised training programme across your week",
+      "Weekly programme review and updates",
+      "30-minute coaching call with Shruti each month",
+      "Check-in and feedback through Everfit",
+      "Exercise comments for questions or feedback between reviews",
       "Nutrition guidance",
     ],
     boundaries: ["Does not include ongoing 1:1 messaging access"],
     expectedNextStep:
       "Enquire with your goals, health context, support needs, availability and expectations.",
+    active: true,
   },
   {
     id: "one_to_one_coaching",
     applicationTier: "coaching",
     name: "1:1 Coaching",
-    tagline: "High-support coaching for training, healthand real life",
+    tagline: "Responsive, collaborative coaching",
     description:
-      "For people wanting high-support coaching for navigating training, nutrition, healthand real life together.",
+      "For people wanting high-support coaching for navigating training, nutrition, health and real life together.",
     bestFor:
-      "People wanting high-support coaching for navigating training, nutrition, healthand real life together.",
+      "People wanting high-support coaching for navigating training, nutrition, health and real life together.",
     whatItIs:
       "Ongoing collaborative coaching support designed around your body, goals, lifestyle and capacity.",
     priceLabel: "£180 / month",
@@ -139,42 +146,23 @@ export const coachingTiers: CoachingTierMarketing[] = [
     ctaHref: "/coaching/enquire",
     ctaLabel: "Enquire First",
     features: [
-      "Tailored programme via app",
-      "Weekly check-in via app",
-      "Ongoing messaging support, typically within 24 hours",
-      "Reactive adjustments as needed",
-      "Monthly coaching call",
+      "Personalised training programme across your week",
+      "Reactive programme adjustments as your needs change",
+      "30-minute coaching call with Shruti each month",
+      "Check-in and feedback through Everfit",
+      "Ongoing direct messaging through Everfit, typically answered within 24 hours",
       "Nutrition guidance",
+      "More collaborative planning and adaptation",
     ],
     boundaries: ["Coaching is not emergency, crisis, medical or rehabilitation care"],
     expectedNextStep:
       "Enquire with your health context, call availability and messaging expectations.",
+    active: true,
   },
 ];
 
-export const personalProgrammeJourney: JourneyStep[] = [
-  {
-    step: 1,
-    title: "Enquire first",
-    description: "Share enough context for Shruti to confirm the offer is a good fit.",
-  },
-  {
-    step: 2,
-    title: "Receive the right invite",
-    description:
-      "After your conversation, you receive the payment invitation for the agreed offer.",
-  },
-  {
-    step: 3,
-    title: "Pay securely",
-    description: "Subscription checkout starts once the right support has been agreed.",
-  },
-  {
-    step: 4,
-    title: "Use Everfit",
-    description: "Programming, check-ins and support communication happen in Everfit.",
-  },
-];
+export const allCoachingTiers = coachingTiers;
+export const activeCoachingTiers = coachingTiers.filter((tier) => tier.active);
 
 export const applicationJourney: JourneyStep[] = [
   {
@@ -204,7 +192,7 @@ export const coachingFaqs: CoachingFaq[] = [
     slug: "which-tier",
     question: "How do I know which 1:1 offer is right for me?",
     answer:
-      "Enquire about the closest fit. Guided Accountability is lighter-touch accountability, Independent Training Plan is tailored programming with monthly review, Guided Training Plan adds weekly review and 1:1 Coaching is the highest-touch option for people who need a fuller coaching relationship.",
+      "You do not need to choose before enquiring. After your consultation, Shruti will recommend Monthly Support, Weekly Support or 1:1 Coaching based on the guidance, feedback and conversation you need.",
   },
   {
     slug: "everfit",

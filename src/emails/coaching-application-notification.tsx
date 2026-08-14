@@ -5,7 +5,6 @@ import { bodyTextStyle, headingStyle, mutedTextStyle, buttonStyle, colors } from
 interface CoachingApplicationNotificationEmailProps {
   name: string;
   email: string;
-  tierLabel: string;
   summary: string[];
   adminUrl: string;
 }
@@ -13,16 +12,13 @@ interface CoachingApplicationNotificationEmailProps {
 export default function CoachingApplicationNotificationEmail({
   name,
   email,
-  tierLabel,
   summary,
   adminUrl,
 }: CoachingApplicationNotificationEmailProps) {
   return (
-    <EmailLayout preview={`New coaching application from ${name}`}>
-      <Text style={headingStyle}>New coaching application</Text>
-      <Text style={bodyTextStyle}>
-        {name} has submitted a new application for {tierLabel}.
-      </Text>
+    <EmailLayout preview={`New coaching enquiry from ${name}`}>
+      <Text style={headingStyle}>New coaching enquiry</Text>
+      <Text style={bodyTextStyle}>{name} has submitted a new coaching enquiry.</Text>
       <Section
         style={{
           backgroundColor: colors.secondaryBg,
@@ -42,7 +38,7 @@ export default function CoachingApplicationNotificationEmail({
       </Section>
       <Section style={{ textAlign: "center" }}>
         <Link href={adminUrl} style={buttonStyle}>
-          Review application
+          Review enquiry
         </Link>
       </Section>
     </EmailLayout>

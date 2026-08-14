@@ -28,7 +28,7 @@ export default function OnboardingEmail({
   hasOneToOneApplication = false,
 }: OnboardingEmailProps) {
   const preview = hasOneToOneApplication
-    ? `Your account is ready, ${firstName} — you can now track your 1:1 application`
+    ? `Your account is ready, ${firstName} — you can now track your coaching enquiry`
     : `Your account is ready, ${firstName}`;
 
   return (
@@ -48,7 +48,7 @@ export default function OnboardingEmail({
 
       {hasOneToOneApplication ? (
         <Text style={bodyTextStyle}>
-          Your account is now set up, so you can use your dashboard to track your 1:1 application,
+          Your account is now set up, so you can use your dashboard to track your coaching enquiry,
           payment invitations, health details and account information in one place.
         </Text>
       ) : (
@@ -106,7 +106,7 @@ export default function OnboardingEmail({
             }}
           >
             {hasOneToOneApplication
-              ? "Your dashboard shows your application status and the next action when there is one."
+              ? "Your dashboard shows your enquiry status, recommendation and the next action when there is one."
               : "Review the current 1:1 offers and the kind of support each one offers before you enquire."}
           </Text>
           <Link
@@ -164,7 +164,7 @@ export default function OnboardingEmail({
             }}
           >
             {hasOneToOneApplication
-              ? "Health and account details help Shruti review suitability and support you safely."
+              ? "Review your recommendation and keep your account details current before accepting the coaching agreements."
               : "1:1 support starts with a conversation so Shruti can recommend the best fit before any payment opens."}
           </Text>
           <Link
@@ -224,7 +224,7 @@ export default function OnboardingEmail({
             }}
           >
             {hasOneToOneApplication
-              ? "If your application is accepted, payment opens through the website after the relevant terms are accepted."
+              ? "When your recommendation is ready, payment opens through the website after the current terms, health declaration and Coaching Agreement are accepted."
               : "If you decide to work together, payment happens through the website after you sign in and accept the relevant terms."}
           </Text>
           <Link
@@ -237,9 +237,7 @@ export default function OnboardingEmail({
               textDecoration: "underline",
             }}
           >
-            {hasOneToOneApplication
-              ? "View application status \u2192"
-              : "Start a conversation \u2192"}
+            {hasOneToOneApplication ? "View enquiry status \u2192" : "Start a conversation \u2192"}
           </Link>
         </Section>
       </Section>

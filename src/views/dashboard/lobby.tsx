@@ -9,9 +9,20 @@ import { HealthProfileEditor } from "../../components/health-profile-editor";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { AppPageHeader } from "@/components/app-surface";
-import { ArrowRight, CheckCircle, Shield, HeartPulse, AlertTriangle } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CalendarDays,
+  CheckCircle,
+  CheckCircle2,
+  Compass,
+  CreditCard,
+  HeartPulse,
+  Shield,
+} from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import type { DashboardSummaryDto, OnboardingStateDto } from "@/lib/api/types";
+import type { ApiSuccess } from "@/lib/api/route";
 import {
   EMPTY_HEALTH_PROFILE,
   normalizeHealthProfileApiResponse,
@@ -19,10 +30,6 @@ import {
 } from "@/data/health-profile-data";
 import { getApiErrorMessage } from "@/lib/api/client";
 import { getGreeting } from "@/components/greeting";
-import {
-  shouldPromptForHealthProfile,
-  shouldPromptForHealthReview,
-} from "@/views/dashboard/dashboard-view-model";
 
 type LegalAcceptanceResponse = {
   message?: string;
@@ -67,7 +74,6 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
   const [profileDob, setProfileDob] = useState("");
   const [profileError, setProfileError] = useState("");
   const [profileSubmitting, setProfileSubmitting] = useState(false);
-  const [healthActionPending, setHealthActionPending] = useState(false);
   const onboardingFieldsInitialized = useRef(false);
 
   useEffect(() => {
@@ -79,8 +85,8 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
       try {
         const res = await fetch("/api/me/dashboard", { cache: "no-store" });
         if (!res.ok) throw new Error("Failed to load dashboard.");
-        const payload = (await res.json()) as DashboardSummaryDto;
-        if (active) setSummary(payload);
+        const payload = (await res.json()) as ApiSuccess<DashboardSummaryDto>;
+        if (active) setSummary(payload.data);
       } catch (e) {
         if (active) setError(e instanceof Error ? e.message : "Failed to load dashboard.");
       } finally {
@@ -222,35 +228,6 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
     );
   };
 
-  const handleHealthConfirm = async () => {
-    setHealthActionPending(true);
-    try {
-      const response = await fetch("/api/me/health-profile", { method: "POST" });
-      if (!response.ok) {
-        throw new Error("Could not confirm health declaration.");
-      }
-      const payload = normalizeHealthProfileApiResponse(await response.json());
-      setSummary((prev) =>
-        prev
-          ? {
-              ...prev,
-              healthDeclarationLastConfirmedAt: payload.lastConfirmedAt,
-              healthDeclarationNeedsReview: false,
-            }
-          : prev
-      );
-      await refreshAccountProfile();
-    } catch (confirmError) {
-      setError(
-        confirmError instanceof Error
-          ? confirmError.message
-          : "Could not confirm health declaration."
-      );
-    } finally {
-      setHealthActionPending(false);
-    }
-  };
-
   if (loading) {
     return (
       <DashboardLayout title="Studio Lobby - Shruti Turner">
@@ -268,15 +245,6 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
       </DashboardLayout>
     );
   }
-
-  const shouldShowHealthPrompt = shouldPromptForHealthProfile(
-    summary.healthDeclarationStatus,
-    user?.hasConsentedToHealthData,
-    user?.needsHealthDataConsentRefresh
-  );
-  const shouldShowHealthReviewPrompt = shouldPromptForHealthReview(
-    summary.healthDeclarationNeedsReview
-  );
 
   return (
     <DashboardLayout title="Studio Lobby - Shruti Turner">
@@ -534,93 +502,128 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
           description="A simple place to keep your 1:1 support, health context and account details up to date."
         />
 
-        {shouldShowHealthPrompt ? (
-          <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm text-amber-900">
-                Complete your health declaration before coaching starts.
-              </p>
-              <p className="mt-1 text-xs text-amber-800">
-                You can tell Shruti about relevant context, or confirm that there is nothing
-                relevant to share right now.
-              </p>
-            </div>
-            <Link href="/dashboard/health">
-              <Button variant="outline">Complete health declaration</Button>
-            </Link>
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-xl">Your next actions</h2>
+            <p className="text-muted-foreground mt-1 text-sm">
+              The things that need your attention, in priority order.
+            </p>
           </div>
-        ) : null}
+          {summary.actions.length ? (
+            <div className="grid gap-3">
+              {summary.actions.map((action) => (
+                <div
+                  key={action.id}
+                  className={`flex flex-col gap-4 rounded-xl border p-5 md:flex-row md:items-center md:justify-between ${
+                    action.priority === "overdue"
+                      ? "border-red-200 bg-red-50"
+                      : "border-amber-200 bg-amber-50"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {action.priority === "overdue" ? (
+                      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-700" />
+                    ) : (
+                      <Compass className="mt-0.5 h-5 w-5 shrink-0 text-amber-800" />
+                    )}
+                    <div>
+                      <h3 className="font-medium">{action.title}</h3>
+                      <p className="text-muted-foreground mt-1 text-sm">{action.detail}</p>
+                    </div>
+                  </div>
+                  <Button asChild>
+                    <Link href={action.href}>
+                      {action.ctaLabel}
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900">
+              <CheckCircle2 className="h-5 w-5" />
+              <p>You’re up to date. There is nothing you need to do right now.</p>
+            </div>
+          )}
+        </section>
 
-        {!shouldShowHealthPrompt && shouldShowHealthReviewPrompt ? (
-          <div className="flex flex-col gap-3 rounded-lg border border-sky-200 bg-sky-50 p-4 md:flex-row md:items-center md:justify-between">
+        {summary.upcoming.length ? (
+          <section className="space-y-4">
             <div>
-              <p className="text-sm text-sky-900">Please review your health declaration.</p>
-              <p className="mt-1 text-xs text-sky-800">
-                Confirm nothing has changed, or update it with any new injuries, flare patterns, or
-                recovery changes.
+              <h2 className="text-xl">Coming up</h2>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Payments, bookings and important dates across your services.
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                disabled={healthActionPending}
-                onClick={() => void handleHealthConfirm()}
-              >
-                {healthActionPending ? "Confirming..." : "Nothing has changed"}
-              </Button>
-              <Link href="/dashboard/health">
-                <Button>Update declaration</Button>
-              </Link>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {summary.upcoming.slice(0, 6).map((item) => (
+                <Link
+                  key={item.id}
+                  href={item.href}
+                  className="bg-background rounded-xl border p-5 transition-shadow hover:shadow-md"
+                >
+                  <div className="flex items-center gap-3">
+                    {item.amountPence ? (
+                      <CreditCard className="text-primary h-5 w-5" />
+                    ) : (
+                      <CalendarDays className="text-primary h-5 w-5" />
+                    )}
+                    <h3 className="font-medium">{item.title}</h3>
+                  </div>
+                  <p className="text-muted-foreground mt-3 text-sm">{item.detail}</p>
+                  <p className="mt-2 text-sm">
+                    {new Date(item.at).toLocaleString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                      hour: item.kind === "class" ? "2-digit" : undefined,
+                      minute: item.kind === "class" ? "2-digit" : undefined,
+                    })}
+                    {item.amountPence
+                      ? ` · ${new Intl.NumberFormat("en-GB", {
+                          style: "currency",
+                          currency: item.currency || "GBP",
+                        }).format(item.amountPence / 100)}`
+                      : ""}
+                  </p>
+                </Link>
+              ))}
             </div>
-          </div>
+          </section>
         ) : null}
 
         <section className="space-y-4">
           <div>
-            <h2 className="text-xl">Where do you want to start?</h2>
+            <h2 className="text-xl">Your services</h2>
             <p className="text-muted-foreground mt-1 text-sm">
-              These are the three areas Shruti needs you to keep current while you work together.
+              Open a service to see its current status and details.
             </p>
           </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Link
-              href="/dashboard/coaching"
-              className="bg-background rounded-lg border p-5 transition-shadow hover:shadow-md"
-            >
-              <div className="mb-2 flex items-center gap-3">
-                <HeartPulse className="text-primary h-5 w-5" />
-                <h3 className="text-lg">1:1 dashboard</h3>
-              </div>
-              <p className="text-muted-foreground text-sm">
-                Follow your application, onboarding, billing and cancellation steps in one place.
-              </p>
-            </Link>
-
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {summary.services.map((service) => (
+              <Link
+                key={service.id}
+                href={service.href}
+                className="bg-background rounded-xl border p-5 transition-shadow hover:shadow-md"
+              >
+                <h3 className="font-medium">{service.title}</h3>
+                <p className="text-muted-foreground mt-2 text-sm capitalize">{service.status}</p>
+              </Link>
+            ))}
             <Link
               href="/dashboard/health"
-              className="bg-background rounded-lg border p-5 transition-shadow hover:shadow-md"
+              className="bg-background rounded-xl border p-5 transition-shadow hover:shadow-md"
             >
-              <div className="mb-2 flex items-center gap-3">
-                <Shield className="text-primary h-5 w-5" />
-                <h3 className="text-lg">Health Profile</h3>
-              </div>
-              <p className="text-muted-foreground text-sm">
-                Keep injuries, conditions, consent and movement context current for safer support.
-              </p>
+              <h3 className="font-medium">Health Profile</h3>
+              <p className="text-muted-foreground mt-2 text-sm">Review your body context</p>
             </Link>
-
             <Link
               href="/dashboard/account"
-              className="bg-background rounded-lg border p-5 transition-shadow hover:shadow-md"
+              className="bg-background rounded-xl border p-5 transition-shadow hover:shadow-md"
             >
-              <div className="mb-2 flex items-center gap-3">
-                <Shield className="text-primary h-5 w-5" />
-                <h3 className="text-lg">Account details</h3>
-              </div>
-              <p className="text-muted-foreground text-sm">
-                Update contact details, sign-in email, preferences and legal agreements.
-              </p>
+              <h3 className="font-medium">Account details</h3>
+              <p className="text-muted-foreground mt-2 text-sm">Contact, sign-in and agreements</p>
             </Link>
           </div>
         </section>

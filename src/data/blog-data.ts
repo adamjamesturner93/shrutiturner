@@ -76,6 +76,7 @@ Strength training for chronic illness requires nuance, patience and expertise. B
     authors: [blogAuthors[0]],
     date: "2026-02-15",
     tags: ["Strength Training", "Chronic Illness", "Evidence-Based"],
+    category: "fitness",
     readTime: "6 min read",
   },
   {
@@ -128,6 +129,7 @@ You don't need to be consistent every day. You need to be persistent over time.
     authors: [blogAuthors[0]],
     date: "2026-02-05",
     tags: ["Strength Training", "Chronic Illness", "Programming"],
+    category: "fitness",
     readTime: "7 min read",
   },
   {
@@ -189,6 +191,7 @@ With proper programming, hypermobile bodies can be incredibly strong and capable
     authors: [blogAuthors[0]],
     date: "2026-01-28",
     tags: ["Hypermobility", "Strength Training", "Joint Health"],
+    category: "rehabilitation",
     readTime: "6 min read",
   },
   {
@@ -266,6 +269,7 @@ You're not broken. You're building.
     authors: [blogAuthors[0]],
     date: "2026-01-12",
     tags: ["Beginners", "Strength Training", "Chronic Illness"],
+    category: "fitness",
     readTime: "6 min read",
   },
 ];

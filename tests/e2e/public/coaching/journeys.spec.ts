@@ -1,23 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-test("personal programme page shows the refreshed hero and delivery detail", async ({ page }) => {
-  await page.addInitScript(() => {
-    window.sessionStorage.setItem("newsletter_shown", "true");
-  });
-
-  await page.goto("/coaching/personal-programme");
-
-  await expect(
-    page.getByRole("heading", {
-      name: /Expert programming for people who want structure without weekly calls\./i,
-    })
-  ).toBeVisible();
-  await expect(page.getByText("Delivered in Everfit")).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "A lower-touch route with real structure behind it." })
-  ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Enquire First" })).toBeVisible();
+test("retired personal programme page redirects to the support levels", async ({ page }) => {
+  const response = await page.request.get("/coaching/personal-programme", { maxRedirects: 0 });
+  expect(response.status()).toBe(301);
+  expect(response.headers().location).toContain("/coaching#support-levels");
 });
 
 test("coaching page presents three provisional support levels after the human process", async ({
@@ -137,17 +124,15 @@ test("coaching page presents three provisional support levels after the human pr
   expect(accessibilityResults.violations).toEqual([]);
 });
 
-test("legacy coaching application redirects to the non-submitting enquiry preview", async ({
-  page,
-}) => {
-  let applicationRequests = 0;
+test("legacy coaching application redirects to the live enquiry form", async ({ page }) => {
+  let enquiryRequests = 0;
 
   await page.addInitScript(() => {
     window.sessionStorage.setItem("newsletter_shown", "true");
   });
-  await page.route("**/api/coaching/applications", async (route) => {
-    applicationRequests += 1;
-    await route.abort();
+  await page.route("**/api/coaching/enquiries", async (route) => {
+    enquiryRequests += 1;
+    await route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' });
   });
 
   const redirectResponse = await page.request.get("/coaching/apply?offer=one_to_one_coaching", {
@@ -182,23 +167,31 @@ test("legacy coaching application redirects to the non-submitting enquiry previe
   await expect(
     page.getByText("No need to choose a level of support before we’ve spoken.", { exact: true })
   ).toBeVisible();
-  await expect(page.getByText(/Preview only — please do not enter personal/i)).toBeVisible();
-  await expect(page.getByLabel("Name *")).toBeDisabled();
-  await expect(page.getByLabel("Email *")).toBeDisabled();
-  await expect(page.getByLabel("What would you like support with? *")).toBeDisabled();
+  await expect(page.getByLabel("Name *")).toBeEnabled();
+  await expect(page.getByLabel("Email *")).toBeEnabled();
+  await expect(page.getByLabel("What would you like support with? *")).toBeEnabled();
   await expect(
     page.getByLabel("What does movement/training currently look like for you?")
-  ).toBeDisabled();
+  ).toBeEnabled();
   await expect(
     page.getByLabel(
       "Is there anything about your health, body or circumstances you’d like me to know?"
     )
-  ).toBeDisabled();
-  await expect(page.getByLabel("What would you most like to get from coaching? *")).toBeDisabled();
-  await expect(page.getByLabel("Anything else you’d like to tell me?")).toBeDisabled();
-  await expect(page.getByLabel("How did you hear about me? *")).toBeDisabled();
+  ).toBeEnabled();
+  await expect(page.getByLabel("What would you most like to get from coaching? *")).toBeEnabled();
+  await expect(page.getByLabel("Anything else you’d like to tell me?")).toBeEnabled();
+  await expect(page.getByLabel("How did you hear about me? *")).toBeEnabled();
   await expect(page.getByLabel("How did you hear about me? *")).toHaveAttribute("required", "");
-  await expect(page.getByRole("button", { name: "Send enquiry" })).toBeDisabled();
+  await page.getByLabel("Name *").fill("Taylor Example");
+  await page.getByLabel("Email *").fill("taylor@example.com");
+  await page.getByLabel("What would you like support with? *").fill("Building strength");
+  await page.getByLabel("What would you most like to get from coaching? *").fill("Confidence");
+  await page.getByLabel("How did you hear about me? *").fill("Google");
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Send enquiry" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Thanks — your enquiry has been sent." })
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "What happens after I enquire?" })).toBeVisible();
   await expect(
     page.getByText(
@@ -207,7 +200,7 @@ test("legacy coaching application redirects to the non-submitting enquiry previe
     )
   ).toBeVisible();
   await expect(page.getByText(/1:1 Agreement/i)).toHaveCount(0);
-  expect(applicationRequests).toBe(0);
+  expect(enquiryRequests).toBe(1);
 
   const accessibilityResults = await new AxeBuilder({ page })
     .include("#main-content")

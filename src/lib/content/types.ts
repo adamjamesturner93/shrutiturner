@@ -147,6 +147,7 @@ export interface BlogPostContent {
   authors: AuthorProfileContent[];
   date: string;
   tags: string[];
+  category?: "rehabilitation" | "fitness" | "wellbeing";
   readTime: string;
   coverImage: string;
   coverAlt: string;
@@ -212,8 +213,6 @@ export interface TestimonialContent {
   id: string;
   quote: string;
   authorName: string;
-  authorCondition?: string;
-  service?: "yoga" | "strength" | "pt" | "retreat" | "small-group" | "general";
   featured?: boolean;
 }
 

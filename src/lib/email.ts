@@ -150,7 +150,7 @@ export async function sendWelcomeEmail(email: string, firstName: string, userId?
           `Hi ${firstName || "there"},`,
           "",
           "Your studio account is ready.",
-          "You can now use your dashboard to track your 1:1 application, payment invitations, health details and account information.",
+          "You can now use your dashboard to track your coaching enquiry, recommendation, payment invitation, health details and account information.",
           `1:1 dashboard: ${APP_URL}/dashboard/coaching`,
           `Health details: ${APP_URL}/dashboard/health`,
         ]

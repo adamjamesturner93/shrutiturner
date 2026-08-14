@@ -19,7 +19,7 @@ describe("OnboardingEmail account welcome", () => {
     expect(html).not.toContain("You&#x27;ve been here for a few days now");
   });
 
-  it("points existing 1:1 applicants to their dashboard instead of applying again", async () => {
+  it("points people with a coaching enquiry to their dashboard instead of enquiring again", async () => {
     const html = await render(
       createElement(OnboardingEmail, {
         firstName: "Rhea",
@@ -29,7 +29,7 @@ describe("OnboardingEmail account welcome", () => {
       })
     );
 
-    expect(html).toContain("track your 1:1 application");
+    expect(html).toContain("track your coaching enquiry");
     expect(html).toContain("Open your 1:1 dashboard");
     expect(html).toContain("https://shrutiturner.test/dashboard/coaching");
     expect(html).toContain("https://shrutiturner.test/dashboard/health");

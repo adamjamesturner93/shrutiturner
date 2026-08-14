@@ -57,6 +57,7 @@ const blogPostResponse = {
         excerpt: "Post excerpt",
         content: richTextDocument,
         authors: [{ sys: { id: "author_1" } }],
+        category: "fitness",
         tags: ["Strength Training"],
         readTime: "4 min read",
         coverImageAsset: { sys: { id: "asset_1" } },
@@ -112,6 +113,7 @@ describe("Contentful public content mapping", () => {
       content: expect.stringContaining("## Main idea"),
       date: "2026-04-01T09:30:00.000Z",
       author: "Guest Author",
+      category: "fitness",
       coverImage: "https://images.ctfassets.net/space/image.jpg?w=1200&fm=webp&q=80",
       coverAlt: "Coach demonstrating a movement",
       authors: [
@@ -260,8 +262,6 @@ describe("Contentful public content mapping", () => {
         id: "testimonial_meg",
         quote: "Training now feels like it belongs to me.",
         authorName: "Meg K",
-        authorCondition: undefined,
-        service: undefined,
         featured: true,
       },
     ]);

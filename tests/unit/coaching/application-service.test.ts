@@ -34,10 +34,10 @@ vi.mock("@/lib/app-url", () => ({
   buildAbsoluteUrl: vi.fn((path: string) => `https://example.com${path}`),
 }));
 
-const { submitCoachingApplication, updateAdminCoachingApplication } =
+const { submitCoachingEnquiry, updateAdminCoachingApplication } =
   await import("@/lib/coaching/service");
 
-describe("submitCoachingApplication", () => {
+describe("submitCoachingEnquiry", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     userFindUniqueMock.mockResolvedValue(null);
@@ -47,20 +47,20 @@ describe("submitCoachingApplication", () => {
     sendPostmarkReactEmailMock.mockResolvedValue({ id: "email_123" });
   });
 
-  it("links an anonymous application to an existing user with the same email", async () => {
+  it("links an anonymous enquiry to an existing user with the same email", async () => {
     userFindUniqueMock.mockResolvedValue({ id: "user_123" });
 
-    await submitCoachingApplication({
+    await submitCoachingEnquiry({
       userId: null,
-      applicantFirstName: " Ada ",
-      applicantLastName: " Lovelace ",
+      applicantName: " Ada Lovelace ",
       applicantEmail: " ADA@example.com ",
-      tier: "coached_plan",
       answers: {
-        offerKey: "guided_training_plan",
-        equipment: "Gym access",
+        support: "A flexible strength plan",
+        context: "My capacity changes week to week",
+        outcome: "Build confidence",
+        referral: "Google",
       },
-      isExistingCoachingClientSnapshot: false,
+      consentText: "I consent to my enquiry being processed.",
     });
 
     expect(userFindUniqueMock).toHaveBeenCalledWith({
@@ -71,25 +71,35 @@ describe("submitCoachingApplication", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           userId: "user_123",
+          applicantName: "Ada Lovelace",
           applicantFirstName: "Ada",
           applicantLastName: "Lovelace",
           applicantEmail: "ada@example.com",
+          tier: "unsure",
+          source: "public_coaching_enquire",
+          enquiryConsentVersion: "coaching-enquiry.v1",
         }),
+      })
+    );
+    expect(sendPostmarkReactEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "shruti@example.com",
+        textBody: expect.stringContaining("Body context: My capacity changes week to week"),
       })
     );
   });
 
   it("does not perform an email lookup when the signed-in user id is supplied", async () => {
-    await submitCoachingApplication({
+    await submitCoachingEnquiry({
       userId: "signed_in_user_123",
-      applicantFirstName: "Ada",
-      applicantLastName: "Lovelace",
+      applicantName: "Ada Lovelace",
       applicantEmail: "ada@example.com",
-      tier: "coached_plan",
       answers: {
-        offerKey: "guided_training_plan",
+        support: "A flexible strength plan",
+        outcome: "Build confidence",
+        referral: "Google",
       },
-      isExistingCoachingClientSnapshot: false,
+      consentText: "I consent to my enquiry being processed.",
     });
 
     expect(userFindUniqueMock).not.toHaveBeenCalled();
@@ -109,6 +119,7 @@ describe("updateAdminCoachingApplication", () => {
     userId: "user_123",
     status: "approved",
     tier: "coached_plan",
+    recommendedOfferKey: "guided_training_plan",
     answersJson: { offerKey: "guided_training_plan" },
     applicantFirstName: "Taylor",
     applicantLastName: "Member",
@@ -120,6 +131,11 @@ describe("updateAdminCoachingApplication", () => {
     waitlistedAt: null,
     waitlistLeftAt: null,
     convertedAt: null,
+    consultationStatus: "completed",
+    consultationScheduledAt: new Date("2026-08-01T09:00:00.000Z"),
+    consultationCompletedAt: new Date("2026-08-01T09:30:00.000Z"),
+    consultationNotes: "Discussed goals and capacity.",
+    offerSentAt: new Date("2026-08-01T10:00:00.000Z"),
     user: { id: "user_123" },
   });
 
@@ -138,6 +154,12 @@ describe("updateAdminCoachingApplication", () => {
       waitlistedAt: null,
       waitlistLeftAt: null,
       convertedAt: new Date("2026-08-08T09:00:00.000Z"),
+      consultationStatus: "completed",
+      consultationScheduledAt: new Date("2026-08-01T09:00:00.000Z"),
+      consultationCompletedAt: new Date("2026-08-01T09:30:00.000Z"),
+      consultationNotes: "Discussed goals and capacity.",
+      recommendedOfferKey: "guided_training_plan",
+      offerSentAt: new Date("2026-08-01T10:00:00.000Z"),
     });
     coachingClientProfileUpsertMock.mockResolvedValue({ id: "profile_123" });
     userUpdateMock.mockResolvedValue({ id: "user_123" });
@@ -196,5 +218,51 @@ describe("updateAdminCoachingApplication", () => {
     });
 
     expect(sendPostmarkReactEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("stores an active recommendation and derives its existing billing tier", async () => {
+    coachingApplicationFindUniqueMock.mockResolvedValueOnce({
+      ...createExistingApplication(),
+      status: "consultation_completed",
+      tier: "unsure",
+      recommendedOfferKey: null,
+      answersJson: {},
+      approvedAt: null,
+      offerSentAt: null,
+    });
+    coachingApplicationUpdateMock.mockResolvedValueOnce({
+      ...createExistingApplication(),
+      status: "offer_sent",
+      tier: "personal_programme",
+      recommendedOfferKey: "independent_training_plan",
+    });
+
+    await updateAdminCoachingApplication({
+      id: "application_123",
+      status: "offer_sent",
+      recommendedOfferKey: "independent_training_plan",
+    });
+
+    expect(coachingApplicationUpdateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "offer_sent",
+          recommendedOfferKey: "independent_training_plan",
+          tier: "personal_programme",
+        }),
+      })
+    );
+  });
+
+  it("does not allow the retired accountability offer to be recommended", async () => {
+    await expect(
+      updateAdminCoachingApplication({
+        id: "application_123",
+        status: "offer_sent",
+        recommendedOfferKey: "guided_accountability",
+      })
+    ).rejects.toThrow("RECOMMENDED_OFFER_REQUIRED");
+
+    expect(coachingApplicationUpdateMock).not.toHaveBeenCalled();
   });
 });

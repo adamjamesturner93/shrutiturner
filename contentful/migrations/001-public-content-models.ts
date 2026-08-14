@@ -192,6 +192,12 @@ export const PUBLIC_CONTENT_MODELS: ContentTypeDefinition[] = [
       { id: "excerpt", name: "Excerpt", type: "Text", required: true },
       { id: "content", name: "Content", type: "Text", required: true },
       {
+        id: "category",
+        name: "Brand Category",
+        type: "Symbol",
+        validations: [{ in: ["rehabilitation", "fitness", "wellbeing"] }],
+      },
+      {
         id: "authors",
         name: "Authors",
         type: "Array",
@@ -215,13 +221,6 @@ export const PUBLIC_CONTENT_MODELS: ContentTypeDefinition[] = [
       { id: "slug", name: "Slug", type: "Symbol", validations: [{ unique: true }] },
       { id: "quote", name: "Quote", type: "Text", required: true },
       { id: "authorName", name: "Author Name", type: "Symbol", required: true },
-      { id: "authorCondition", name: "Author Condition", type: "Symbol" },
-      {
-        id: "service",
-        name: "Service",
-        type: "Symbol",
-        validations: [{ in: ["yoga", "strength", "pt", "retreat", "small-group", "general"] }],
-      },
       { id: "featured", name: "Featured", type: "Boolean" },
     ],
   },

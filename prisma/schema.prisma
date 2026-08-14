@@ -23,6 +23,7 @@ enum AcceptanceType {
   terms
   health_waiver
   health_data
+  coaching_agreement
   recording_notice
   immediate_start
   marketing
@@ -271,11 +272,21 @@ enum CoachingApplicationStatus {
   submitted
   under_review
   follow_up_needed
+  consultation_scheduled
+  consultation_completed
+  offer_sent
   waitlisted
   approved
   declined
   converted
   withdrawn
+}
+
+enum CoachingConsultationStatus {
+  not_scheduled
+  scheduled
+  completed
+  cancelled
 }
 
 enum CoachingClientStatus {
@@ -1777,18 +1788,28 @@ model GuestAcceptanceEvent {
 }
 
 model CoachingApplication {
-  id                               String                    @id @default(cuid())
+  id                               String                     @id @default(cuid())
   userId                           String?
   applicantFirstName               String
   applicantLastName                String
+  applicantName                    String?
   applicantEmail                   String
   tier                             CoachingSupportTier
   answersJson                      Json
-  isExistingCoachingClientSnapshot Boolean                   @default(false)
+  isExistingCoachingClientSnapshot Boolean                    @default(false)
   source                           String?
+  enquiryConsentVersion            String?
+  enquiryConsentText               String?
+  enquiryConsentedAt               DateTime?
+  consultationStatus               CoachingConsultationStatus @default(not_scheduled)
+  consultationScheduledAt          DateTime?
+  consultationCompletedAt          DateTime?
+  consultationNotes                String?
+  recommendedOfferKey              String?
+  offerSentAt                      DateTime?
   coachingAgreementVersion         String?
-  coachingAgreementAcceptedAt      DateTime
-  status                           CoachingApplicationStatus @default(submitted)
+  coachingAgreementAcceptedAt      DateTime?
+  status                           CoachingApplicationStatus  @default(submitted)
   adminNotes                       String?
   decisionReason                   String?
   reviewedAt                       DateTime?
@@ -1796,8 +1817,8 @@ model CoachingApplication {
   waitlistLeftAt                   DateTime?
   approvedAt                       DateTime?
   convertedAt                      DateTime?
-  createdAt                        DateTime                  @default(now())
-  updatedAt                        DateTime                  @updatedAt
+  createdAt                        DateTime                   @default(now())
+  updatedAt                        DateTime                   @updatedAt
 
   user          User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
   clientProfile CoachingClientProfile?
@@ -1807,6 +1828,8 @@ model CoachingApplication {
   @@index([tier, createdAt])
   @@index([userId, createdAt])
   @@index([applicantEmail, createdAt])
+  @@index([consultationStatus, consultationScheduledAt])
+  @@index([recommendedOfferKey, status])
 }
 
 model CoachingClientProfile {
