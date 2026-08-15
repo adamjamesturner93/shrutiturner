@@ -22,6 +22,7 @@ type VennArea = {
   imageAlt: string;
   paragraphs: readonly string[];
   buttonClassName: string;
+  theAim?: string;
 };
 
 const vennAreas: readonly VennArea[] = [
@@ -35,8 +36,8 @@ const vennAreas: readonly VennArea[] = [
       "Rehabilitation is about understanding where you are now, what might need adapting and how we can build from there.",
       "That might mean returning after injury, rebuilding capacity after a period of illness or pain, working with hypermobility or simply finding confidence in movement again.",
       "I use rehabilitation principles to help you move forward, not to keep you feeling fragile.",
-      "The aim: understand your starting point, adapt where needed and build from it.",
     ],
+    theAim: "understand your starting point, adapt where needed and build from it.",
     buttonClassName:
       "top-[19%] left-1/2 -translate-x-1/2 hover:bg-brand-accent-muted/20 focus-visible:bg-brand-accent-muted/20",
   },
@@ -50,8 +51,8 @@ const vennAreas: readonly VennArea[] = [
       "Fitness is about helping your body become more capable of doing the things that matter to you.",
       "That could mean getting stronger, improving mobility, returning to running, feeling more confident in the gym or simply making everyday movement feel easier.",
       "Training can be progressive and challenging while still adapting to your individual needs.",
-      "The aim: build what your body can do, rather than chasing someone else’s idea of fitness.",
     ],
+    theAim: "build what your body can do, rather than chasing someone else’s idea of fitness.",
     buttonClassName:
       "top-[65%] left-[27%] -translate-x-1/2 hover:bg-bronze/20 focus-visible:bg-bronze/20",
   },
@@ -65,8 +66,9 @@ const vennAreas: readonly VennArea[] = [
       "Your body doesn’t exist separately from the rest of your life.",
       "Sleep, stress, fatigue, pain, work, caring responsibilities and everything else competing for your energy can all affect how movement feels on any given day.",
       "Wellbeing means recognising that context and creating an approach flexible enough to work alongside it.",
-      "The aim: make movement something that supports your life, rather than another thing you have to fit yourself around.",
     ],
+    theAim:
+      "make movement something that supports your life, rather than another thing you have to fit yourself around.",
     buttonClassName:
       "top-[65%] left-[73%] -translate-x-1/2 hover:bg-brand-plum/15 focus-visible:bg-brand-plum/15",
   },
@@ -214,6 +216,11 @@ export function WellbeingVenn() {
                       {area.paragraphs.map((paragraph) => (
                         <p key={paragraph}>{paragraph}</p>
                       ))}
+                      {area.theAim ? (
+                        <>
+                          <strong>The aim: </strong> {area.theAim}{" "}
+                        </>
+                      ) : null}
                     </div>
                   </DialogDescription>
                 </DialogHeader>

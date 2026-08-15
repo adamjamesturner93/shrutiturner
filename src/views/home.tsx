@@ -135,15 +135,15 @@ export function HomePage({ testimonials }: HomePageProps) {
             <CalendarDays className="text-brand-accent-light h-6 w-6" />
           </div>
           <div>
-            <h3 className="text-xl">Retreats for movement, rest and recovery.</h3>
+            <h3 className="text-xl">Retreats and Workshops for movement, rest and recovery.</h3>
             <p className="text-brand-white/72 mt-2 text-sm leading-relaxed">
-              Small retreat experiences for people who want adaptive movement, thoughtful pacing and
-              space to recover without pressure to perform wellness.
+              Small retreat experiences for people who want flexible movement options, thoughtful
+              pacing and space to recover without pressure to perform wellness.
             </p>
           </div>
           <Button asChild variant="secondary" className="justify-between">
             <Link href="/retreats">
-              Explore retreats
+              Explore retreats and workshops
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
@@ -235,15 +235,13 @@ export function HomePage({ testimonials }: HomePageProps) {
             {testimonials.map((testimonial, index) => (
               <blockquote
                 key={testimonial.id}
-                className={`flex h-full flex-col rounded-[1.65rem] border p-7 shadow-[0_18px_45px_rgba(46,31,51,0.06)] ${
-                  index === 1 ? "bg-brand-dark text-brand-white" : "bg-background"
-                }`}
+                className={`flex h-full flex-col rounded-[1.65rem] border p-7 shadow-[0_18px_45px_rgba(46,31,51,0.06)] ${index === 1 ? "bg-brand-dark text-brand-white" : "bg-background"
+                  }`}
               >
                 <p className="flex-1 text-xl leading-relaxed">{testimonial.quote}</p>
                 <footer
-                  className={`mt-5 text-sm font-medium ${
-                    index === 1 ? "text-brand-white/72" : "text-muted-foreground"
-                  }`}
+                  className={`mt-5 text-sm font-medium ${index === 1 ? "text-brand-white/72" : "text-muted-foreground"
+                    }`}
                 >
                   — {testimonial.authorName}
                 </footer>

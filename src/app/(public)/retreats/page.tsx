@@ -7,13 +7,13 @@ import { createRetreatItemListSchema, createWebPageSchema } from "@/lib/seo/stru
 export const metadata: Metadata = {
   title: "Movement Retreats & Online Workshops",
   description:
-    "Movement retreats and online workshops with space to move, rest and reflect, designed to work with different bodies, needs and energy levels.",
+    "Movement Small-group retreats and online workshops bringing together movement, strength and wellbeing, with adaptable sessions and practical ideas you can take into everyday life.",
   alternates: { canonical: "/retreats" },
   openGraph: {
     type: "website",
     title: "Movement Retreats & Online Workshops | Shruti Turner",
     description:
-      "Movement retreats and online workshops with space to move, rest and reflect, designed to work with different bodies, needs and energy levels.",
+      "Small-group retreats and online workshops bringing together movement, strength and wellbeing, with adaptable sessions and practical ideas you can take into everyday life.",
     url: "https://shrutiturner.co.uk/retreats",
   },
 };

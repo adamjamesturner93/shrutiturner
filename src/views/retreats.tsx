@@ -39,28 +39,28 @@ const DEFAULT_RETREAT_FAQS: FaqItemContent[] = [
     slug: "faq-retreats-experience",
     question: "Do I need yoga or fitness experience?",
     answer:
-      "No. Each experience is designed to offer choices, so you can take part without needing to be particularly fit, flexible or experienced.",
+      "No. You don’t need to be fit, flexible or experienced at yoga to take part. Sessions include different options so you can find an approach that works for you.",
     sortOrder: 10,
   },
   {
     slug: "faq-retreats-adapt",
     question: "What if I need to adapt or sit something out?",
     answer:
-      "That is completely fine. Movement can be adapted, and you are always welcome to pause, rest or choose not to take part in an activity.",
+      "That's completely fine. Choice is built into the way I teach. You can take a different option, pause, rest or choose not to take part in an activity.",
     sortOrder: 20,
   },
   {
     slug: "faq-retreats-accessibility",
     question: "Are your retreats accessible?",
     answer:
-      "Accessibility varies between venues and online formats, so each experience page includes the relevant details. If you would like to discuss a specific need before booking, please get in touch.",
+      "Accessibility varies between venues and formats, so each event page includes relevant information. If you have a particular access need or would like to talk something through before booking, please get in touch.",
     sortOrder: 30,
   },
   {
     slug: "faq-retreats-formats",
-    question: "What is the difference between an online workshop and a residential retreat?",
+    question: "What’s the difference between a retreat and an online workshop?",
     answer:
-      "Online workshops are focused live sessions you can join from home. Residential retreats take place over one or more days and may include accommodation, food and a broader programme. The individual experience page explains exactly what to expect.",
+      "Retreats are small-group, in-person experiences with more time to step away from everyday life. They combine movement and wellbeing with food, rest and time to slow down, with a mixture of guided sessions and space to do as much or as little as you need. Online workshops are focused live sessions you can join from home. We spend a few hours exploring a particular theme through movement, discussion and practical ideas you can take into everyday life.",
     sortOrder: 40,
   },
   {
@@ -81,19 +81,19 @@ const DEFAULT_RETREAT_FAQS: FaqItemContent[] = [
 
 const RETREAT_PRINCIPLES = [
   {
-    title: "Movement that adapts",
+    title: "Move your way",
     description:
-      "Different options, different intensities and space to make choices based on what works for you.",
+      "Sessions include options and adaptations so you can work with your body, experience and energy on the day.",
   },
   {
-    title: "Space to slow down",
+    title: "Learn something useful",
     description:
-      "Movement sits alongside rest, reflection and time to simply be — rather than trying to pack every minute.",
+      "Explore movement, strength and wellbeing in a way that helps you understand your body and make more confident choices afterwards.",
   },
   {
-    title: "No pressure to perform",
+    title: "Make space for yourself",
     description:
-      "You do not need to be fit, flexible or experienced to belong. These are spaces for real bodies and real life.",
+      "Step away from the usual routine with time to move, rest, reflect, connect or simply enjoy doing something different.",
   },
 ] as const;
 
@@ -153,11 +153,11 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
   return (
     <Layout>
       <EditorialHero
-        eyebrow="Retreats"
+        eyebrow="RETREATS & WORKSHOPS"
         size="compact"
-        title="Movement retreats & online workshops"
-        description="Space to move, rest, reflect and reconnect — with experiences designed to work with different bodies, needs and energy levels."
-        primaryCta={{ href: "#retreats", label: "View upcoming experiences" }}
+        title="Space to move, learn and reset."
+        description="Small-group retreats and online workshops bringing together movement, strength and wellbeing, with space to explore what works for your body and take something useful back into everyday life."
+        primaryCta={{ href: "#retreats", label: "Explore upcoming events" }}
         aside={
           <div className="border-brand-white/10 bg-brand-white/8 mx-auto max-w-xl overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
             <div className="aspect-[4/3] overflow-hidden rounded-[1.45rem]">
@@ -174,7 +174,11 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
       />
 
       <MarketingSection id="retreats" className="section-wash" contentClassName="max-w-7xl">
-        <SectionHeading eyebrow="Upcoming experiences" title="What’s coming up" />
+        <SectionHeading
+          eyebrow="Upcoming experiences"
+          title="What’s coming up"
+          description="From focused online workshops to full weekends away, each event has its own theme and purpose. Choose an experience below to see what we’ll explore, what to expect and all the practical details."
+        />
 
         <div className="mt-10 grid gap-7 md:grid-cols-2">
           {retreatData.map((retreat) => (
@@ -239,7 +243,8 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
       <MarketingSection className="section-divider">
         <SectionHeading
           eyebrow="The approach"
-          title="Experiences that work with you"
+          title="More than just a workout. More than just time out"
+          description="Retreats and workshops give us more time to explore movement than we usually get in a class or training session. There might be strength, yoga, mobility, walking, reflection or rest, alongside opportunities to understand why we’re doing what we’re doing and how you might use it afterwards."
           align="center"
         />
         <div className="mt-10 grid gap-5 md:grid-cols-3">
@@ -253,10 +258,16 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
             </article>
           ))}
         </div>
-        <p className="text-muted-foreground mx-auto mt-8 max-w-4xl text-center leading-relaxed">
-          My retreats and workshops welcome adults of all genders, backgrounds and movement
-          experience, with options designed to accommodate different needs.
-        </p>
+        <div className="mt-10 grid gap-5">
+          <h3 className="text-center text-2xl leading-tight">Come as you are</h3>
+          <p className="text-muted-foreground mx-auto max-w-4xl text-center leading-relaxed">
+            You don’t need to be fit, flexible, experienced at yoga or managing a particular health
+            condition to take part. My sessions are designed with choice built in. You’re always
+            welcome to take an option, take a break or approach something differently. The aim isn’t
+            for everyone to do the same thing, but to create an environment where you can explore
+            what works for you.
+          </p>
+        </div>
       </MarketingSection>
 
       <MarketingSection className="bg-brand-warm" contentClassName="max-w-4xl">
@@ -274,19 +285,19 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
       </MarketingSection>
 
       <PreFooterCtaSection
-        title="Come and experience it for yourself."
-        description="Explore what is coming up, or join the mailing list to hear about future retreats and workshops."
+        title="Want to hear about new dates?"
+        description="Join the events list and I’ll let you know when new retreats and workshops are announced, with enough information to decide whether they’re right for you."
         layout="centered"
         compact
         actions={[
           {
-            href: "#retreats",
-            label: "View upcoming experiences",
+            href: "/subscribe",
+            label: "Get event updates",
             icon: ArrowRight,
           },
           {
-            href: "/subscribe",
-            label: "Join the mailing list",
+            href: "#retreats",
+            label: "Explore upcoming events",
             icon: ArrowRight,
             variant: "secondary",
           },
