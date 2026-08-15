@@ -15,7 +15,10 @@ test("admin can hide, restore and delete a blog comment thread", async ({ page }
     await page.goto("/admin/blog-comments");
     await page.getByPlaceholder("Search content, author, or email").fill(topLevelContent);
     await page.getByRole("button", { name: "Search" }).click();
-    const threadCard = page.locator('[data-slot="card"]').filter({ hasText: topLevelContent }).first();
+    const threadCard = page
+      .locator('[data-slot="card"]')
+      .filter({ hasText: topLevelContent })
+      .first();
     await expect(threadCard.getByText(topLevelContent)).toBeVisible();
     return threadCard;
   };

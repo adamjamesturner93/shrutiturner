@@ -97,10 +97,11 @@ export function PreJoinLobby({
               <button
                 type="button"
                 onClick={() => setIsMuted(!isMuted)}
-                className={`rounded-full p-3 transition-colors ${isMuted
-                  ? "bg-red-500/20 text-red-400"
-                  : "bg-white/10 text-white hover:bg-white/15"
-                  }`}
+                className={`rounded-full p-3 transition-colors ${
+                  isMuted
+                    ? "bg-red-500/20 text-red-400"
+                    : "bg-white/10 text-white hover:bg-white/15"
+                }`}
                 aria-label={isMuted ? "Turn microphone on" : "Turn microphone off"}
               >
                 {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
@@ -108,10 +109,11 @@ export function PreJoinLobby({
               <button
                 type="button"
                 onClick={() => setIsCameraOn(!isCameraOn)}
-                className={`rounded-full p-3 transition-colors ${!isCameraOn
-                  ? "bg-red-500/20 text-red-400"
-                  : "bg-white/10 text-white hover:bg-white/15"
-                  }`}
+                className={`rounded-full p-3 transition-colors ${
+                  !isCameraOn
+                    ? "bg-red-500/20 text-red-400"
+                    : "bg-white/10 text-white hover:bg-white/15"
+                }`}
                 aria-label={isCameraOn ? "Turn camera off" : "Turn camera on"}
               >
                 {isCameraOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}

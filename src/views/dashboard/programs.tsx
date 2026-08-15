@@ -7,7 +7,12 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import type { MemberSmallGroupSummary } from "@/lib/small-groups/service";
 import { buildDashboardSmallGroupRunHref } from "@/lib/small-groups/routes";
-import { AppEmptyState, AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
+import {
+  AppEmptyState,
+  AppMetricCard,
+  AppMetricGrid,
+  AppPageHeader,
+} from "@/components/app-surface";
 
 function formatDate(value: string | null) {
   if (!value) return "Dates announced soon";
@@ -47,8 +52,16 @@ export function DashboardSmallGroupsPage({
         />
 
         <AppMetricGrid className="lg:grid-cols-3">
-          <AppMetricCard label="Enrolled runs" value={enrolled.length} detail="currently in your dashboard" />
-          <AppMetricCard label="Open runs" value={available.length} detail="available to register" />
+          <AppMetricCard
+            label="Enrolled runs"
+            value={enrolled.length}
+            detail="currently in your dashboard"
+          />
+          <AppMetricCard
+            label="Open runs"
+            value={available.length}
+            detail="available to register"
+          />
           <AppMetricCard
             label="Completed"
             value={initialData.filter((programme) => programme.status === "completed").length}

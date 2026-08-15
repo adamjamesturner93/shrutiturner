@@ -13,9 +13,10 @@ test("home page shows the updated hero and working philosophy section", async ({
       name: /Movement that works with your body, not against it\./i,
     })
   ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Explore 1:1 Offers" }).first()
-  ).toHaveAttribute("href", "/coaching");
+  await expect(page.getByRole("link", { name: "Explore 1:1 Offers" }).first()).toHaveAttribute(
+    "href",
+    "/coaching"
+  );
   await expect(page.getByText("The working philosophy")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Understand first" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Build strength" })).toBeVisible();

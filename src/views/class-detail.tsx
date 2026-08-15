@@ -226,10 +226,10 @@ export function ClassDetailPage({
               <span>
                 {selectedSessionStartsAt
                   ? selectedSessionStartsAt.toLocaleDateString("en-GB", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "short",
-                  })
+                      weekday: "long",
+                      day: "numeric",
+                      month: "short",
+                    })
                   : `${classDetail.day}s`}
               </span>
             </div>
@@ -238,9 +238,9 @@ export function ClassDetailPage({
               <span>
                 {selectedSessionStartsAt
                   ? selectedSessionStartsAt.toLocaleTimeString("en-GB", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
                   : fmtTimeStr(classDetail.time)}{" "}
                 ·{" "}
                 {selectedSession ? `${selectedSession.durationMinutes} min` : classDetail.duration}

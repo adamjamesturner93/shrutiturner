@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, BookOpen, Dumbbell, Heart, MessageCircle, Youtube } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
@@ -85,6 +85,9 @@ const storyParagraphs = [
 
 export function AboutPage() {
   const [isIntroVideoPlaying, setIsIntroVideoPlaying] = useState(false);
+  useEffect(() => {
+    return () => setIsIntroVideoPlaying(false);
+  }, []);
 
   return (
     <Layout>

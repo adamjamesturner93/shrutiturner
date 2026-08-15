@@ -119,9 +119,8 @@ describe("public themed weeks integration", () => {
 
     const themedWeeks = await listPublicThemedWeeks();
 
-    expect(themedWeeks.filter((week) => week.slug.startsWith(`${SCOPE}-`)).map((week) => week.slug)).toEqual([
-      `${SCOPE}-one`,
-      `${SCOPE}-two`,
-    ]);
+    expect(
+      themedWeeks.filter((week) => week.slug.startsWith(`${SCOPE}-`)).map((week) => week.slug)
+    ).toEqual([`${SCOPE}-one`, `${SCOPE}-two`]);
   });
 });

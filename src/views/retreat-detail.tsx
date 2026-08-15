@@ -331,7 +331,7 @@ export function RetreatDetailPage({
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <span className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 rounded-full border px-4 py-2 text-sm">
-                  From {formatMoney(priceFromPence, retreat.currency)}
+                  {formatMoney(priceFromPence, retreat.currency)}
                 </span>
                 {depositFromPence > 0 && !isFullPaymentOnly ? (
                   <span className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 rounded-full border px-4 py-2 text-sm">
@@ -380,8 +380,8 @@ export function RetreatDetailPage({
                       Atmosphere
                     </p>
                     <p className="text-brand-white/84 mt-2 text-sm leading-relaxed">
-                      Spacious movement, enough rest and no expectation that everyone extracts the
-                      same thing from the day.
+                      Spacious movement with options, reflection & rest, with no expectation that
+                      everyone takes the same thing from the day.
                     </p>
                   </div>
                   <div className="bg-brand-accent-light/12 rounded-[1.25rem] p-4 backdrop-blur-sm">
@@ -389,8 +389,8 @@ export function RetreatDetailPage({
                       Best for
                     </p>
                     <p className="text-brand-white/84 mt-2 text-sm leading-relaxed">
-                      People who want movement and community without being pushed past what their
-                      body can realistically hold.
+                      People who want time to explore and understand their body and what movement
+                      can look like as the seasons change.
                     </p>
                   </div>
                   {hasEarlyBirdPricing ? (
@@ -614,7 +614,7 @@ export function RetreatDetailPage({
                 </p>
                 <div className="mt-4 flex items-baseline gap-3">
                   <span className="text-4xl">{formatMoney(priceFromPence, retreat.currency)}</span>
-                  <span className="text-muted-foreground text-sm">from</span>
+                  {/* <span className="text-muted-foreground text-sm">from</span> */}
                 </div>
                 {depositFromPence > 0 && !isFullPaymentOnly ? (
                   <p className="text-muted-foreground mt-2 text-sm">
@@ -662,7 +662,7 @@ export function RetreatDetailPage({
                             <div>
                               <p>{fmtDateRange(date.startDate, date.endDate)}</p>
                               <p className="text-muted-foreground mt-1 text-sm">
-                                {date.availableSpaces} places currently available
+                                Limited to {date.totalSpaces} places
                               </p>
                             </div>
                             <Calendar className="text-brand-accent h-4 w-4" />
@@ -793,7 +793,7 @@ export function RetreatDetailPage({
                     )}
                     <p className="text-muted-foreground">
                       {isOnlineExperience
-                        ? "Access questions are welcome before you book. Use the contact form if you need to check the online set-up first."
+                        ? "Accessibility and online access questions are welcome before you book. Use the contact form if you need to check the online set-up first."
                         : "Accessibility and room questions are welcome before you book. Use the contact form if you need to check suitability first."}
                     </p>
                   </div>

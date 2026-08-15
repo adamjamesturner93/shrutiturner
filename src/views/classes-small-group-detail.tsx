@@ -276,10 +276,10 @@ export function ClassesSmallGroupDetailPage({
               {(programme.outcomes.length > 0
                 ? programme.outcomes
                 : [
-                  "A clearer progression than weekly drop-in classes",
-                  "More confidence training toward one specific outcome",
-                  "Greater consistency through a fixed schedule and stable cohort",
-                ]
+                    "A clearer progression than weekly drop-in classes",
+                    "More confidence training toward one specific outcome",
+                    "Greater consistency through a fixed schedule and stable cohort",
+                  ]
               ).map((point) => (
                 <div
                   key={point}
@@ -301,10 +301,10 @@ export function ClassesSmallGroupDetailPage({
                 {(programme.whoItsFor.length > 0
                   ? programme.whoItsFor
                   : [
-                    "People who want a tighter coaching container than weekly classes",
-                    "Bodies that benefit from repetition and a clearer progression",
-                    "Anyone wanting accountability without moving into 1:1 support",
-                  ]
+                      "People who want a tighter coaching container than weekly classes",
+                      "Bodies that benefit from repetition and a clearer progression",
+                      "Anyone wanting accountability without moving into 1:1 support",
+                    ]
                 ).map((item) => (
                   <div
                     key={item}
@@ -342,10 +342,10 @@ export function ClassesSmallGroupDetailPage({
                 {(programme.inclusions.length > 0
                   ? programme.inclusions
                   : [
-                    "Live coached sessions",
-                    "A fixed small cohort",
-                    "Progressive structure across the full block",
-                  ]
+                      "Live coached sessions",
+                      "A fixed small cohort",
+                      "Progressive structure across the full block",
+                    ]
                 ).map((item) => (
                   <div
                     key={item}
@@ -407,12 +407,12 @@ export function ClassesSmallGroupDetailPage({
         actions={[
           ...(nextJoinableRun
             ? [
-              {
-                href: nextJoinableRun.checkoutHref,
-                label: "Join next intake",
-                icon: ArrowRight,
-              },
-            ]
+                {
+                  href: nextJoinableRun.checkoutHref,
+                  label: "Join next intake",
+                  icon: ArrowRight,
+                },
+              ]
             : []),
           {
             href: "/classes/small-groups",

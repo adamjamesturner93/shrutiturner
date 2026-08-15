@@ -184,8 +184,9 @@ export function DashboardReferrals() {
               summary.history.map((item, index) => (
                 <div
                   key={item.id}
-                  className={`flex items-center justify-between py-2 ${index < summary.history.length - 1 ? "border-b" : ""
-                    }`}
+                  className={`flex items-center justify-between py-2 ${
+                    index < summary.history.length - 1 ? "border-b" : ""
+                  }`}
                 >
                   <div>
                     <p>{item.friend}</p>

@@ -127,11 +127,11 @@ function getDefaultRoomOptionId(date: RetreatCombinedContent["dates"][number] | 
   );
 }
 
-function getRoomAvailabilityLabel(roomOption: RetreatRoomOptionContent) {
-  if (roomOption.isWaitlistOnly) return "Waitlist only";
-  if (roomOption.availableSpots <= 0) return "Sold out";
-  return `${roomOption.availableSpots} ${roomOption.availableSpots === 1 ? "place" : "places"} left`;
-}
+// function getRoomAvailabilityLabel(roomOption: RetreatRoomOptionContent) {
+//   if (roomOption.isWaitlistOnly) return "Waitlist only";
+//   if (roomOption.availableSpots <= 0) return "Sold out";
+//   return `${roomOption.availableSpots} ${roomOption.availableSpots === 1 ? "place" : "places"} left`;
+// }
 
 function getRoomGuestLabel(roomOption: RetreatRoomOptionContent) {
   const ratePlans = getRoomRatePlans(roomOption);
@@ -537,7 +537,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
         ) {
           throw new Error(
             payload.message ||
-              "The retreat legal agreements have changed. Refresh this page and review the latest versions before continuing."
+            "The retreat legal agreements have changed. Refresh this page and review the latest versions before continuing."
           );
         }
         if (response.status === 401 && payload?.code === "SESSION_INVALID") {
@@ -670,19 +670,17 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                       <button
                         key={date.id}
                         type="button"
-                        className={`rounded-[1.25rem] border p-4 text-left transition-colors ${
-                          isSelected
-                            ? "border-brand-accent bg-brand-accent/5"
-                            : "hover:bg-secondary/20"
-                        }`}
+                        className={`rounded-[1.25rem] border p-4 text-left transition-colors ${isSelected
+                          ? "border-brand-accent bg-brand-accent/5"
+                          : "hover:bg-secondary/20"
+                          }`}
                         onClick={() => setSelectedDateId(date.id)}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
                             <p className="text-lg">{fmtDateRange(date.startDate, date.endDate)}</p>
                             <p className="text-muted-foreground mt-1 text-sm">
-                              {date.availableSpaces} of {date.totalSpaces} places currently
-                              available
+                              Limited to {date.totalSpaces} places
                             </p>
                           </div>
                           <Calendar className="text-brand-accent h-5 w-5" />
@@ -706,11 +704,10 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                           key={roomOption.id}
                           type="button"
                           disabled={isUnavailable}
-                          className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
-                            isSelected
-                              ? "border-brand-accent bg-brand-accent/5"
-                              : "hover:bg-secondary/20"
-                          } ${isUnavailable ? "opacity-60" : ""}`}
+                          className={`rounded-[1.25rem] border p-5 text-left transition-colors ${isSelected
+                            ? "border-brand-accent bg-brand-accent/5"
+                            : "hover:bg-secondary/20"
+                            } ${isUnavailable ? "opacity-60" : ""}`}
                           onClick={() => {
                             setSelectedRoomId(roomOption.id);
                             setSelectedGuestCount(getDefaultGuestCount(roomOption));
@@ -720,9 +717,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                             <div className="min-w-0 space-y-2">
                               <div className="flex flex-wrap items-center gap-3">
                                 <p className="text-xl">{roomOption.label}</p>
-                                <span className="bg-secondary/60 rounded-full px-3 py-1 text-xs tracking-[0.16em] uppercase">
+                                {/* <span className="bg-secondary/60 rounded-full px-3 py-1 text-xs tracking-[0.16em] uppercase">
                                   {getRoomAvailabilityLabel(roomOption)}
-                                </span>
+                                </span> */}
                               </div>
                               <p className="text-muted-foreground text-sm leading-relaxed">
                                 {roomOption.description}
@@ -757,21 +754,21 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                                 {formatMoney(
                                   getRoomRatePlans(roomOption)[0]
                                     ? getEffectiveRetreatRatePricePence(
-                                        getRoomRatePlans(roomOption)[0]
-                                      )
+                                      getRoomRatePlans(roomOption)[0]
+                                    )
                                     : roomOption.normalPricePence,
                                   retreat.currency
                                 )}
                               </p>
                               {getRoomRatePlans(roomOption)[0] &&
-                              isRetreatEarlyBirdActive({
-                                earlyBirdPricePence:
-                                  getRoomRatePlans(roomOption)[0]?.earlyBirdPricePence,
-                                earlyBirdEndsAt: getRoomRatePlans(roomOption)[0]?.earlyBirdEndsAt,
-                                totalPricePence:
-                                  getRoomRatePlans(roomOption)[0]?.totalPricePence ||
-                                  roomOption.normalPricePence,
-                              }) ? (
+                                isRetreatEarlyBirdActive({
+                                  earlyBirdPricePence:
+                                    getRoomRatePlans(roomOption)[0]?.earlyBirdPricePence,
+                                  earlyBirdEndsAt: getRoomRatePlans(roomOption)[0]?.earlyBirdEndsAt,
+                                  totalPricePence:
+                                    getRoomRatePlans(roomOption)[0]?.totalPricePence ||
+                                    roomOption.normalPricePence,
+                                }) ? (
                                 <p className="text-muted-foreground mt-1 text-xs">
                                   Early bird saves{" "}
                                   {formatMoney(
@@ -781,7 +778,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                                   . Standard{" "}
                                   {formatMoney(
                                     getRoomRatePlans(roomOption)[0]?.totalPricePence ||
-                                      roomOption.normalPricePence,
+                                    roomOption.normalPricePence,
                                     retreat.currency
                                   )}
                                 </p>
@@ -795,8 +792,8 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                                     roomOption,
                                     getRoomRatePlans(roomOption)[0]
                                       ? getEffectiveRetreatRatePricePence(
-                                          getRoomRatePlans(roomOption)[0]
-                                        )
+                                        getRoomRatePlans(roomOption)[0]
+                                      )
                                       : roomOption.normalPricePence
                                   ),
                                   retreat.currency
@@ -820,11 +817,10 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                           key={ratePlan.guestCount}
                           type="button"
                           onClick={() => setSelectedGuestCount(ratePlan.guestCount)}
-                          className={`rounded-[1rem] border p-4 text-left transition-colors ${
-                            selectedGuestCount === ratePlan.guestCount
-                              ? "border-brand-accent bg-brand-accent/5"
-                              : "hover:bg-secondary/20"
-                          }`}
+                          className={`rounded-[1rem] border p-4 text-left transition-colors ${selectedGuestCount === ratePlan.guestCount
+                            ? "border-brand-accent bg-brand-accent/5"
+                            : "hover:bg-secondary/20"
+                            }`}
                         >
                           <p className="text-base">{getGuestCountLabel(ratePlan.guestCount)}</p>
                           <p className="text-muted-foreground mt-1 text-sm">
@@ -949,11 +945,10 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                     <div className="mt-6 grid gap-4 md:grid-cols-2">
                       <button
                         type="button"
-                        className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
-                          paymentOption === "deposit"
-                            ? "border-brand-accent bg-brand-accent/5"
-                            : "hover:bg-secondary/20"
-                        }`}
+                        className={`rounded-[1.25rem] border p-5 text-left transition-colors ${paymentOption === "deposit"
+                          ? "border-brand-accent bg-brand-accent/5"
+                          : "hover:bg-secondary/20"
+                          }`}
                         onClick={() => setPaymentOption("deposit")}
                       >
                         <p className="text-xl">Pay deposit</p>
@@ -967,11 +962,10 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
 
                       <button
                         type="button"
-                        className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
-                          paymentOption === "pay_in_full"
-                            ? "border-brand-accent bg-brand-accent/5"
-                            : "hover:bg-secondary/20"
-                        }`}
+                        className={`rounded-[1.25rem] border p-5 text-left transition-colors ${paymentOption === "pay_in_full"
+                          ? "border-brand-accent bg-brand-accent/5"
+                          : "hover:bg-secondary/20"
+                          }`}
                         onClick={() => setPaymentOption("pay_in_full")}
                       >
                         <p className="text-xl">Pay in full</p>
@@ -980,9 +974,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                           today
                           {payInFullDiscountPence > 0
                             ? ` including a ${formatMoney(
-                                payInFullDiscountPence,
-                                retreat.currency
-                              )} discount.`
+                              payInFullDiscountPence,
+                              retreat.currency
+                            )} discount.`
                             : "."}
                         </p>
                       </button>
@@ -1371,7 +1365,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                   </h2>
                   <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
                     Gift purchases reserve this retreat place now. The recipient completes their own
-                    attendee, healthand access details later through the redemption link.
+                    attendee, health and access details later through the redemption link.
                   </p>
                   <div className="mt-6 grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
@@ -1565,9 +1559,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                             This pays the {experienceLabel} balance in full
                             {payInFullDiscountPence > 0
                               ? ` and includes a ${formatMoney(
-                                  payInFullDiscountPence,
-                                  retreat.currency
-                                )} discount.`
+                                payInFullDiscountPence,
+                                retreat.currency
+                              )} discount.`
                               : "."}
                           </p>
                         ) : (

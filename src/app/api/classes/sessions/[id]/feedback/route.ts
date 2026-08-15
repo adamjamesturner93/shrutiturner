@@ -62,10 +62,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       if (error.message === "UNAUTHORIZED") {
         return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
       }
-      if (
-        error.message === "INVALID_PRE_FEEDBACK" ||
-        error.message === "INVALID_POST_FEEDBACK"
-      ) {
+      if (error.message === "INVALID_PRE_FEEDBACK" || error.message === "INVALID_POST_FEEDBACK") {
         return NextResponse.json({ message: "Invalid feedback payload" }, { status: 400 });
       }
       if (error.message === "BOOKING_NOT_FOUND") {

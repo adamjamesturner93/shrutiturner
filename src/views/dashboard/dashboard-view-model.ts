@@ -74,7 +74,8 @@ export function getScheduleEmptyState({
     return {
       kind: "clear_filters",
       title: "No classes match these filters",
-      description: "Try a different class type or level, or clear the filters to see everything available this week.",
+      description:
+        "Try a different class type or level, or clear the filters to see everything available this week.",
     };
   }
 
@@ -89,6 +90,7 @@ export function getScheduleEmptyState({
   return {
     kind: "future_week_empty",
     title: "Nothing scheduled for this week yet",
-    description: "There are no sessions published in this week right now. Head back to the current week or check another week.",
+    description:
+      "There are no sessions published in this week right now. Head back to the current week or check another week.",
   };
 }

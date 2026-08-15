@@ -144,13 +144,25 @@ export function AdminProgrammes({
         />
 
         <AppMetricGrid className="lg:grid-cols-3">
-          <AppMetricCard label="Total runs" value={programmes.length} detail="current and historical cohorts" />
+          <AppMetricCard
+            label="Total runs"
+            value={programmes.length}
+            detail="current and historical cohorts"
+          />
           <AppMetricCard
             label="Open / in progress"
-            value={programmes.filter((programme) => programme.status === "open" || programme.status === "in_progress").length}
+            value={
+              programmes.filter(
+                (programme) => programme.status === "open" || programme.status === "in_progress"
+              ).length
+            }
             detail="active cohorts needing attention"
           />
-          <AppMetricCard label="Templates" value={templates.length} detail="available programme templates" />
+          <AppMetricCard
+            label="Templates"
+            value={templates.length}
+            detail="available programme templates"
+          />
         </AppMetricGrid>
 
         <Card>

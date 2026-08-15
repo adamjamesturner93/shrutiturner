@@ -8,6 +8,7 @@ import {
   MessageCircle,
   RefreshCcw,
   UserRound,
+  Youtube,
 } from "lucide-react";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 import { Layout } from "@/components/layout";
@@ -24,6 +25,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
 
 const coachingFit = [
   {
@@ -146,6 +148,12 @@ const faqs = [
 ] as const;
 
 export function CoachingPage() {
+  const [isIntroVideoPlaying, setIsIntroVideoPlaying] = useState(false);
+
+  useEffect(() => {
+    return () => setIsIntroVideoPlaying(false);
+  }, []);
+
   return (
     <Layout>
       <EditorialHero
@@ -154,7 +162,8 @@ export function CoachingPage() {
         title={
           <>
             Coaching built around
-            <span className="text-brand-accent-light"> your body and your real life.</span>
+            <span className="text-brand-accent-light"> your body</span> and{" "}
+            <span className="text-brand-accent-light"> your real life</span>.
           </>
         }
         description="Personal training and movement coaching with the structure, conversation and flexibility to adapt as you do."
@@ -234,11 +243,37 @@ export function CoachingPage() {
 
           <div className="marketing-panel overflow-hidden rounded-[2rem] p-3">
             <div className="aspect-video overflow-hidden rounded-[1.45rem]">
-              <ImageWithFallback
-                src="/images/shruti-coaching.jpeg"
-                alt="Shruti Turner moving outdoors by the sea"
-                className="h-full w-full object-cover object-[center_32%]"
-              />
+              {isIntroVideoPlaying ? (
+                <iframe
+                  src="https://www.youtube-nocookie.com/embed/aJdsV7oZMdQ?autoplay=1"
+                  title="About Shruti Turner"
+                  className="h-full w-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allowFullScreen
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="group relative h-full w-full cursor-pointer"
+                  aria-label="Play About Shruti Turner video"
+                  data-youtube-id="aJdsV7oZMdQ"
+                  onClick={() => setIsIntroVideoPlaying(true)}
+                >
+                  <ImageWithFallback
+                    src="https://i.ytimg.com/vi/aJdsV7oZMdQ/maxresdefault.jpg"
+                    alt=""
+                    className="h-full w-full object-contain"
+                  />
+                  <span
+                    className="absolute inset-0 bg-black/25 transition-colors group-hover:bg-black/35"
+                    aria-hidden="true"
+                  />
+                  <span className="bg-brand-dark/90 text-brand-white absolute top-1/2 left-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full shadow-xl transition-transform group-hover:scale-105">
+                    <Youtube className="h-8 w-8" aria-hidden="true" />
+                  </span>
+                </button>
+              )}
             </div>
             <div className="p-5 md:p-6">
               <p className="text-brand-accent text-xs tracking-[0.2em] uppercase">

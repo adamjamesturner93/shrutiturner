@@ -48,10 +48,10 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
   const { fmtTimeStr, tzAbbr, londonOffset } = useI18n();
   const themedWeekDateLabel = themedWeek?.startDate
     ? new Intl.DateTimeFormat("en-GB", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }).format(new Date(themedWeek.startDate))
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }).format(new Date(themedWeek.startDate))
     : null;
   const todayScheduleLabel = new Intl.DateTimeFormat("en-GB", {
     weekday: "long",
@@ -266,8 +266,9 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
                     {scheduleRows.map((classItem) => (
                       <tr
                         key={classItem.rowKey}
-                        className={`border-brand-dark/10 border-b align-top last:border-b-0 ${classItem.isToday ? "bg-brand-accent/5" : ""
-                          }`}
+                        className={`border-brand-dark/10 border-b align-top last:border-b-0 ${
+                          classItem.isToday ? "bg-brand-accent/5" : ""
+                        }`}
                       >
                         <th scope="row" className="px-5 py-5 text-sm font-normal">
                           <span>{classItem.dayLabel}</span>
@@ -335,8 +336,9 @@ export function SchedulePage({ scheduleData, themedWeek }: SchedulePageProps) {
                 <section
                   key={daySchedule.day}
                   aria-labelledby={`schedule-${daySchedule.day.replace(/[^a-z0-9]+/gi, "-")}`}
-                  className={`md:hidden ${isToday ? "border-brand-accent/20 bg-brand-accent/5 rounded-2xl border p-4" : ""
-                    }`}
+                  className={`md:hidden ${
+                    isToday ? "border-brand-accent/20 bg-brand-accent/5 rounded-2xl border p-4" : ""
+                  }`}
                 >
                   <h2 className="border-brand-dark/10 mb-6 border-b pb-3 text-2xl md:text-3xl">
                     <span id={`schedule-${daySchedule.day.replace(/[^a-z0-9]+/gi, "-")}`}>

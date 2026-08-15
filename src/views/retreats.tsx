@@ -39,7 +39,7 @@ const DEFAULT_RETREAT_FAQS: FaqItemContent[] = [
     slug: "faq-retreats-experience",
     question: "Do I need yoga or fitness experience?",
     answer:
-      "No. You don’t need to be fit, flexible or experienced at yoga to take part. Sessions include different options so you can find an approach that works for you.",
+      "No. You don’t need to be fit, flexible or experienced at yoga or training to take part. Sessions include different options so you can find an approach that works for you.",
     sortOrder: 10,
   },
   {
@@ -83,12 +83,12 @@ const RETREAT_PRINCIPLES = [
   {
     title: "Move your way",
     description:
-      "Sessions include options and adaptations so you can work with your body, experience and energy on the day.",
+      "Sessions include options so you can work with your body, experience and energy on the day.",
   },
   {
     title: "Learn something useful",
     description:
-      "Explore movement, strength and wellbeing in a way that helps you understand your body and make more confident choices afterwards.",
+      "Explore movement, strength and wellbeing in a way that helps you understand your body and make more confident choices.",
   },
   {
     title: "Make space for yourself",
@@ -155,7 +155,13 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
       <EditorialHero
         eyebrow="RETREATS & WORKSHOPS"
         size="compact"
-        title="Space to move, learn and reset."
+        title={
+          <>
+            Space to
+            <span className="text-brand-accent-light"> move, learn</span> and{" "}
+            <span className="text-brand-accent-light">reset</span>.
+          </>
+        }
         description="Small-group retreats and online workshops bringing together movement, strength and wellbeing, with space to explore what works for your body and take something useful back into everyday life."
         primaryCta={{ href: "#retreats", label: "Explore upcoming events" }}
         aside={
@@ -180,7 +186,7 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
           description="From focused online workshops to full weekends away, each event has its own theme and purpose. Choose an experience below to see what we’ll explore, what to expect and all the practical details."
         />
 
-        <div className="mt-10 grid gap-7 md:grid-cols-2">
+        <div className="mt-10 grid gap-7 md:grid-cols-3">
           {retreatData.map((retreat) => (
             <article
               key={retreat.id}
@@ -243,7 +249,7 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
       <MarketingSection className="section-divider">
         <SectionHeading
           eyebrow="The approach"
-          title="More than just a workout. More than just time out"
+          title="More than just a workout. More than just time to relax."
           description="Retreats and workshops give us more time to explore movement than we usually get in a class or training session. There might be strength, yoga, mobility, walking, reflection or rest, alongside opportunities to understand why we’re doing what we’re doing and how you might use it afterwards."
           align="center"
         />
@@ -261,11 +267,11 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
         <div className="mt-10 grid gap-5">
           <h3 className="text-center text-2xl leading-tight">Come as you are</h3>
           <p className="text-muted-foreground mx-auto max-w-4xl text-center leading-relaxed">
-            You don’t need to be fit, flexible, experienced at yoga or managing a particular health
-            condition to take part. My sessions are designed with choice built in. You’re always
-            welcome to take an option, take a break or approach something differently. The aim isn’t
-            for everyone to do the same thing, but to create an environment where you can explore
-            what works for you.
+            You don’t need to be fit, flexible, experienced at yoga or managing a health condition
+            to take part. My sessions are designed with choice built in. You’re always welcome to
+            take options that are right for you, breaks as needed or approach something differently.
+            The aim isn’t for everyone to do the same thing, but to create a supportive environment
+            where you can explore what works for you.
           </p>
         </div>
       </MarketingSection>
@@ -286,13 +292,13 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
 
       <PreFooterCtaSection
         title="Want to hear about new dates?"
-        description="Join the events list and I’ll let you know when new retreats and workshops are announced, with enough information to decide whether they’re right for you."
+        description="Join the newsletter and I’ll let you know when new retreats and workshops are announced, with enough information to decide whether they’re right for you."
         layout="centered"
         compact
         actions={[
           {
             href: "/subscribe",
-            label: "Get event updates",
+            label: "Join the newsletter",
             icon: ArrowRight,
           },
           {

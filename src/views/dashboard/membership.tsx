@@ -177,9 +177,9 @@ export function MembershipPage({
   const membershipUsagePercent =
     membership && membership.classesPerWeek > 0
       ? Math.min(
-        100,
-        Math.round((membership.classesUsedThisWeek / membership.classesPerWeek) * 100)
-      )
+          100,
+          Math.round((membership.classesUsedThisWeek / membership.classesPerWeek) * 100)
+        )
       : 0;
 
   const creditExpiryInfo = useMemo(() => {
@@ -713,7 +713,7 @@ export function MembershipPage({
             ) : null}
 
             {membership.compliance.inRenewalCoolingOff &&
-              membership.compliance.renewalCoolingOffEndsAt ? (
+            membership.compliance.renewalCoolingOffEndsAt ? (
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
                 Your renewal cooling-off window is open until{" "}
                 {membership.compliance.renewalCoolingOffEndsAt}. If you cancel before then, we will
@@ -869,8 +869,9 @@ export function MembershipPage({
 
           <div className="grid gap-5 md:grid-cols-2">
             <div
-              className={`space-y-4 rounded-lg border p-5 ${preferredInterval === "monthly" ? "border-brand-accent/30 bg-brand-accent/5" : ""
-                }`}
+              className={`space-y-4 rounded-lg border p-5 ${
+                preferredInterval === "monthly" ? "border-brand-accent/30 bg-brand-accent/5" : ""
+              }`}
             >
               <div>
                 <p className="text-muted-foreground mb-1 text-xs">Monthly</p>
@@ -923,10 +924,11 @@ export function MembershipPage({
             </div>
 
             <div
-              className={`relative space-y-4 rounded-lg border-2 p-5 ${preferredInterval === "annual"
-                ? "border-brand-accent bg-brand-accent/5"
-                : "border-brand-accent/30"
-                }`}
+              className={`relative space-y-4 rounded-lg border-2 p-5 ${
+                preferredInterval === "annual"
+                  ? "border-brand-accent bg-brand-accent/5"
+                  : "border-brand-accent/30"
+              }`}
             >
               <div className="absolute -top-3 right-4">
                 <span className="bg-brand-accent text-micro inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-white">
@@ -1103,8 +1105,8 @@ export function MembershipPage({
             </p>
 
             {creditExpiryInfo.date &&
-              creditExpiryInfo.daysLeft !== null &&
-              creditExpiryInfo.daysLeft <= 14 ? (
+            creditExpiryInfo.daysLeft !== null &&
+            creditExpiryInfo.daysLeft <= 14 ? (
               <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
                 <p className="text-sm text-amber-800">
@@ -1157,8 +1159,8 @@ export function MembershipPage({
           </div>
 
           {creditExpiryInfo.date &&
-            creditExpiryInfo.daysLeft !== null &&
-            creditExpiryInfo.daysLeft <= 14 ? (
+          creditExpiryInfo.daysLeft !== null &&
+          creditExpiryInfo.daysLeft <= 14 ? (
             <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
               <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
               <p className="text-sm text-amber-800">
@@ -1310,9 +1312,7 @@ export function MembershipPage({
       </div>
 
       <details className="bg-background mt-8 rounded-lg border p-6">
-        <summary className="text-brand-dark cursor-pointer text-xl">
-          Subscription Records
-        </summary>
+        <summary className="text-brand-dark cursor-pointer text-xl">Subscription Records</summary>
         {membership ? (
           <div className="mt-5 space-y-2 text-sm">
             <p className="text-muted-foreground">

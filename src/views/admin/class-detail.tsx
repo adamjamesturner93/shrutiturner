@@ -375,8 +375,8 @@ export function AdminClassDetail() {
             <DialogHeader>
               <DialogTitle>Cancel this class?</DialogTitle>
               <DialogDescription>
-                This will cancel the session, email all booked participants and close any Daily
-                room already created for it.
+                This will cancel the session, email all booked participants and close any Daily room
+                already created for it.
               </DialogDescription>
             </DialogHeader>
             <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -455,9 +455,9 @@ export function AdminClassDetail() {
         ) : null}
 
         {!session.dailyRoomUrl &&
-          session.roomSetupStatus === "pending" &&
-          session.status !== "draft" &&
-          session.status !== "cancelled" ? (
+        session.roomSetupStatus === "pending" &&
+        session.status !== "draft" &&
+        session.status !== "cancelled" ? (
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm">Daily room pending</p>

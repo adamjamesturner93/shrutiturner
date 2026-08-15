@@ -56,7 +56,9 @@ export async function saveSessionFeedback(params: {
       data: {
         preClassEnergyLevel: params.input.energyLevel,
         preClassFlareToday:
-          healthAccess.checkInMode === "energy_and_flare" ? Boolean(params.input.flareToday) : false,
+          healthAccess.checkInMode === "energy_and_flare"
+            ? Boolean(params.input.flareToday)
+            : false,
         preClassSubmittedAt: new Date(),
       },
     });

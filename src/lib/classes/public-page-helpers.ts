@@ -18,9 +18,16 @@ export function selectScheduleThemedWeek(
     .filter((week) => {
       const startsAt = toTimestamp(week.startDate);
       const endsAt = toTimestamp(week.endDate);
-      return Number.isFinite(startsAt) && Number.isFinite(endsAt) && startsAt <= nowTime && endsAt >= nowTime;
+      return (
+        Number.isFinite(startsAt) &&
+        Number.isFinite(endsAt) &&
+        startsAt <= nowTime &&
+        endsAt >= nowTime
+      );
     })
-    .sort((a, b) => a.sortOrder - b.sortOrder || toTimestamp(a.startDate) - toTimestamp(b.startDate))[0];
+    .sort(
+      (a, b) => a.sortOrder - b.sortOrder || toTimestamp(a.startDate) - toTimestamp(b.startDate)
+    )[0];
 
   if (current) {
     return current;
@@ -31,7 +38,9 @@ export function selectScheduleThemedWeek(
       const startsAt = toTimestamp(week.startDate);
       return Number.isFinite(startsAt) && startsAt > nowTime;
     })
-    .sort((a, b) => toTimestamp(a.startDate) - toTimestamp(b.startDate) || a.sortOrder - b.sortOrder)[0];
+    .sort(
+      (a, b) => toTimestamp(a.startDate) - toTimestamp(b.startDate) || a.sortOrder - b.sortOrder
+    )[0];
 
   return next ?? null;
 }

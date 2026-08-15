@@ -2,7 +2,8 @@ import type { Page } from "@playwright/test";
 
 const NEWSLETTER_SIGNUP_COPY = {
   slug: "default",
-  hookText: 'Get the free guide to your inbox - "Why Some Bodies Need Strength Before More Stretching"',
+  hookText:
+    'Get the free guide to your inbox - "Why Some Bodies Need Strength Before More Stretching"',
   formPlaceholder: "your.email@example.com",
   buttonLabel: "Subscribe",
   successMessage: "Please check your inbox to confirm your email address.",

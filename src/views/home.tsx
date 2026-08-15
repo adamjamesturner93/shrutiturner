@@ -14,6 +14,7 @@ import {
 import { WellbeingVenn } from "@/components/marketing/wellbeing-venn";
 import { Button } from "@/components/ui/button";
 import type { TestimonialContent } from "@/lib/content";
+import { useEffect, useState } from "react";
 
 interface HomePageProps {
   testimonials: TestimonialContent[];
@@ -22,6 +23,11 @@ interface HomePageProps {
 export function HomePage({ testimonials }: HomePageProps) {
   const searchParams = useSearchParams();
   const verifiedState = searchParams.get("verified");
+  const [isIntroVideoPlaying, setIsIntroVideoPlaying] = useState(false);
+
+  useEffect(() => {
+    return () => setIsIntroVideoPlaying(false);
+  }, []);
 
   return (
     <Layout>
@@ -115,30 +121,48 @@ export function HomePage({ testimonials }: HomePageProps) {
             </article>
           ))}
         </div>
-        <div
-          className="border-brand-dark/10 bg-brand-dark text-brand-white mx-auto mt-10 flex aspect-video w-full max-w-5xl items-center justify-center rounded-[1.75rem] border p-8 text-center shadow-[0_24px_60px_rgba(46,31,51,0.12)]"
-          role="img"
-          aria-label="Placeholder for a video about who Shruti works with"
-        >
-          <div>
-            <div className="bg-brand-accent-light/15 text-brand-accent-light mx-auto flex h-16 w-16 items-center justify-center rounded-full">
-              <Youtube className="h-8 w-8" aria-hidden="true" />
-            </div>
-            <p className="mt-5 text-2xl">Video coming soon</p>
-            <p className="text-brand-white/65 mt-2 text-sm">
-              A short introduction to who I work with and how I can support you will appear here.
-            </p>
-          </div>
+        <div className="mt-12 h-96 overflow-hidden rounded-2xl">
+          {isIntroVideoPlaying ? (
+            <iframe
+              src="https://www.youtube-nocookie.com/embed/dmNpmeR8XwU?autoplay=1"
+              title="About Shruti Turner"
+              className="h-full w-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+            />
+          ) : (
+            <button
+              type="button"
+              className="group relative h-full w-full cursor-pointer"
+              aria-label="Play About Shruti Turner video"
+              data-youtube-id="dmNpmeR8XwU"
+              onClick={() => setIsIntroVideoPlaying(true)}
+            >
+              <ImageWithFallback
+                src="https://i.ytimg.com/vi/dmNpmeR8XwU/maxresdefault.jpg"
+                alt=""
+                className="h-full w-full object-contain"
+              />
+              <span
+                className="absolute inset-0 bg-black/25 transition-colors group-hover:bg-black/35"
+                aria-hidden="true"
+              />
+              <span className="bg-brand-dark/90 text-brand-white absolute top-1/2 left-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full shadow-xl transition-transform group-hover:scale-105">
+                <Youtube className="h-8 w-8" aria-hidden="true" />
+              </span>
+            </button>
+          )}
         </div>
         <div className="border-brand-dark/10 bg-brand-dark text-brand-white mt-8 grid gap-6 rounded-[1.6rem] border p-6 shadow-[0_20px_60px_rgba(46,31,51,0.14)] md:grid-cols-[auto_1fr_auto] md:items-center">
           <div className="bg-brand-accent-light/15 flex h-12 w-12 items-center justify-center rounded-2xl">
             <CalendarDays className="text-brand-accent-light h-6 w-6" />
           </div>
           <div>
-            <h3 className="text-xl">Retreats and Workshops for movement, rest and recovery.</h3>
+            <h3 className="text-xl">Retreats and workshops for movement, rest and recovery.</h3>
             <p className="text-brand-white/72 mt-2 text-sm leading-relaxed">
               Small retreat experiences for people who want flexible movement options, thoughtful
-              pacing and space to recover without pressure to perform wellness.
+              pacing and space to recover without pressure to perform.
             </p>
           </div>
           <Button asChild variant="secondary" className="justify-between">
@@ -235,13 +259,15 @@ export function HomePage({ testimonials }: HomePageProps) {
             {testimonials.map((testimonial, index) => (
               <blockquote
                 key={testimonial.id}
-                className={`flex h-full flex-col rounded-[1.65rem] border p-7 shadow-[0_18px_45px_rgba(46,31,51,0.06)] ${index === 1 ? "bg-brand-dark text-brand-white" : "bg-background"
-                  }`}
+                className={`flex h-full flex-col rounded-[1.65rem] border p-7 shadow-[0_18px_45px_rgba(46,31,51,0.06)] ${
+                  index === 1 ? "bg-brand-dark text-brand-white" : "bg-background"
+                }`}
               >
                 <p className="flex-1 text-xl leading-relaxed">{testimonial.quote}</p>
                 <footer
-                  className={`mt-5 text-sm font-medium ${index === 1 ? "text-brand-white/72" : "text-muted-foreground"
-                    }`}
+                  className={`mt-5 text-sm font-medium ${
+                    index === 1 ? "text-brand-white/72" : "text-muted-foreground"
+                  }`}
                 >
                   — {testimonial.authorName}
                 </footer>

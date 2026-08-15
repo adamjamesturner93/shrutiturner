@@ -219,10 +219,10 @@ export function CreateProgrammeModal({ open, onOpenChange, onCreate }: CreatePro
               <div className="bg-secondary/30 text-muted-foreground flex h-9 items-center rounded-md border px-3 text-sm">
                 {endDate
                   ? new Date(endDate).toLocaleDateString("en-GB", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })
                   : "Set start date & duration"}
               </div>
               <p className="text-muted-foreground text-xs">

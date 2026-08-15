@@ -103,7 +103,7 @@ export function RetreatBalancePage({
     <Layout>
       <SEO title={`${initialData.retreatTitle} Balance Payment`} noIndex />
 
-      <section className="marketing-grid overflow-hidden px-4 py-10 text-brand-white md:py-14">
+      <section className="marketing-grid text-brand-white overflow-hidden px-4 py-10 md:py-14">
         <div className="container mx-auto max-w-6xl">
           <Link
             href={`/retreats/${initialData.retreatSlug}`}
@@ -115,18 +115,18 @@ export function RetreatBalancePage({
           <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_0.88fr] lg:items-center lg:gap-10">
             <div>
               <h1 className="text-4xl leading-tight md:text-5xl">Retreat Balance Payment</h1>
-              <p className="mt-4 max-w-2xl text-lg leading-relaxed text-brand-white/80">
+              <p className="text-brand-white/80 mt-4 max-w-2xl text-lg leading-relaxed">
                 Use this secure link to settle the remaining balance for your retreat booking.
               </p>
             </div>
 
-            <div className="overflow-hidden rounded-[2rem] border border-brand-white/10 bg-brand-white/8 p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
-              <div className="rounded-[1.45rem] bg-brand-white/8 p-6">
+            <div className="border-brand-white/10 bg-brand-white/8 overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+              <div className="bg-brand-white/8 rounded-[1.45rem] p-6">
                 <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
                   Booking
                 </p>
                 <h2 className="mt-3 text-2xl">{initialData.retreatTitle}</h2>
-                <p className="mt-3 text-sm leading-relaxed text-brand-white/82">
+                <p className="text-brand-white/82 mt-3 text-sm leading-relaxed">
                   {initialData.retreatLocation} · {initialData.dateLabel}
                 </p>
               </div>
@@ -172,7 +172,7 @@ export function RetreatBalancePage({
               </div>
             </div>
 
-            <div className="rounded-[1.75rem] border border-brand-dark/10 bg-background p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+            <div className="border-brand-dark/10 bg-background rounded-[1.75rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
               <h3 className="mb-3 text-xl">What happens after payment</h3>
               <ul className="text-muted-foreground space-y-2 text-sm leading-relaxed">
                 <li>1. Stripe takes payment securely.</li>

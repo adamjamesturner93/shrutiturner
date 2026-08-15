@@ -138,34 +138,34 @@ export async function createPendingMarketingSubscriber(input: PendingMarketingSu
 
   const subscriber = existing
     ? await db.newsletterSubscriber.update({
-      where: { email },
-      data: {
-        firstName: firstName || existing.firstName || undefined,
-        userId: linkedUserId || undefined,
-        source: input.source || existing.source || undefined,
-        status: "pending",
-        consentedAt: now,
-        subscribedAt: existing.subscribedAt || now,
-        verifiedAt: null,
-        verificationTokenHash,
-        verificationTokenExpiresAt,
-        unsubscribedAt: null,
-      },
-    })
+        where: { email },
+        data: {
+          firstName: firstName || existing.firstName || undefined,
+          userId: linkedUserId || undefined,
+          source: input.source || existing.source || undefined,
+          status: "pending",
+          consentedAt: now,
+          subscribedAt: existing.subscribedAt || now,
+          verifiedAt: null,
+          verificationTokenHash,
+          verificationTokenExpiresAt,
+          unsubscribedAt: null,
+        },
+      })
     : await db.newsletterSubscriber.create({
-      data: {
-        email,
-        firstName,
-        userId: linkedUserId || undefined,
-        source: input.source || undefined,
-        status: "pending",
-        token: createLegacyToken(),
-        consentedAt: now,
-        subscribedAt: now,
-        verificationTokenHash,
-        verificationTokenExpiresAt,
-      },
-    });
+        data: {
+          email,
+          firstName,
+          userId: linkedUserId || undefined,
+          source: input.source || undefined,
+          status: "pending",
+          token: createLegacyToken(),
+          consentedAt: now,
+          subscribedAt: now,
+          verificationTokenHash,
+          verificationTokenExpiresAt,
+        },
+      });
 
   await recordMarketingConsentIfNeeded({
     userId: linkedUserId,
@@ -241,31 +241,31 @@ export async function subscribeMarketingEmail(input: {
 
   const subscriber = existing
     ? await db.newsletterSubscriber.update({
-      where: { email },
-      data: {
-        userId: linkedUserId || undefined,
-        source: input.source || undefined,
-        status: "subscribed",
-        consentedAt: now,
-        subscribedAt: now,
-        verifiedAt: now,
-        verificationTokenHash: null,
-        verificationTokenExpiresAt: null,
-        unsubscribedAt: null,
-      },
-    })
+        where: { email },
+        data: {
+          userId: linkedUserId || undefined,
+          source: input.source || undefined,
+          status: "subscribed",
+          consentedAt: now,
+          subscribedAt: now,
+          verifiedAt: now,
+          verificationTokenHash: null,
+          verificationTokenExpiresAt: null,
+          unsubscribedAt: null,
+        },
+      })
     : await db.newsletterSubscriber.create({
-      data: {
-        email,
-        userId: linkedUserId || undefined,
-        source: input.source || undefined,
-        status: "subscribed",
-        token: createLegacyToken(),
-        consentedAt: now,
-        subscribedAt: now,
-        verifiedAt: now,
-      },
-    });
+        data: {
+          email,
+          userId: linkedUserId || undefined,
+          source: input.source || undefined,
+          status: "subscribed",
+          token: createLegacyToken(),
+          consentedAt: now,
+          subscribedAt: now,
+          verifiedAt: now,
+        },
+      });
 
   if (subscriber.userId) {
     await ensureUserMarketingPreference(subscriber.userId, true);

@@ -54,7 +54,7 @@ export function DashboardSkeleton() {
 export function DashboardShellSkeleton({ children }: { children: ReactNode }) {
   return (
     <div className="dashboard-surface flex min-h-screen">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-brand-white/10 bg-[linear-gradient(180deg,rgba(46,31,51,0.98),rgba(86,52,74,0.98))] p-6 lg:flex">
+      <aside className="border-brand-white/10 fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r bg-[linear-gradient(180deg,rgba(46,31,51,0.98),rgba(86,52,74,0.98))] p-6 lg:flex">
         <div className="space-y-3">
           <Skeleton className="h-7 w-40 bg-white/15" />
           <Skeleton className="h-3 w-24 bg-white/10" />
@@ -84,7 +84,7 @@ export function DashboardShellSkeleton({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="fixed inset-x-0 top-0 z-40 border-b border-brand-white/10 bg-[linear-gradient(180deg,rgba(46,31,51,0.98),rgba(86,52,74,0.98))] px-4 py-3 lg:hidden">
+      <div className="border-brand-white/10 fixed inset-x-0 top-0 z-40 border-b bg-[linear-gradient(180deg,rgba(46,31,51,0.98),rgba(86,52,74,0.98))] px-4 py-3 lg:hidden">
         <div className="flex items-center justify-between">
           <Skeleton className="h-5 w-5 bg-white/15" />
           <Skeleton className="h-4 w-28 bg-white/15" />

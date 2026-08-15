@@ -22,7 +22,7 @@ export function Header() {
   const navLinks = [
     { path: "/about", label: "About" },
     { path: "/coaching", label: "Coaching" },
-    { path: "/retreats", label: "Retreats" },
+    { path: "/retreats", label: "Retreats & Workshops" },
     { path: "/blog", label: "Blog" },
   ];
 

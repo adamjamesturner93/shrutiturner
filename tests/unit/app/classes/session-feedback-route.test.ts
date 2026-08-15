@@ -29,9 +29,12 @@ describe("POST /api/classes/sessions/[id]/feedback", () => {
   });
 
   it("saves pre-class feedback for the authenticated user", async () => {
-    const response = await route.POST(createRequest({ stage: "pre", energyLevel: 4, flareToday: true }), {
-      params: Promise.resolve({ id: "session_123" }),
-    });
+    const response = await route.POST(
+      createRequest({ stage: "pre", energyLevel: 4, flareToday: true }),
+      {
+        params: Promise.resolve({ id: "session_123" }),
+      }
+    );
 
     expect(response.status).toBe(200);
     expect(saveSessionFeedbackMock).toHaveBeenCalledWith({
