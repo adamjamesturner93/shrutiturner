@@ -45,7 +45,7 @@ const LINKS = [
   {
     href: "/coaching",
     title: "Coaching Options",
-    subtitle: "Compare the four current support options",
+    subtitle: "Compare the three current support options",
     icon: Heart,
     colorClass: "text-brand-plum bg-brand-plum/10",
   },
