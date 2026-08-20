@@ -41,9 +41,6 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: "*",
       allow: "/",
       disallow: [
-        "/classes",
-        "/pricing",
-        "/schedule",
         "/auth",
         "/api",
         "/dashboard",
@@ -53,7 +50,6 @@ export default function robots(): MetadataRoute.Robots {
         "/email",
         "/r/",
         "/gift/redeem/",
-        "/classes/small-groups/*/checkout",
         "/retreats/*/checkout",
         "/retreats/balance/",
       ],

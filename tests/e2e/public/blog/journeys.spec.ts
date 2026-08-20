@@ -10,7 +10,13 @@ test("blog uses the revised introductory and newsletter copy", async ({ page }) 
   await page.goto("/blog");
 
   await expect(
-    page.getByRole("heading", { name: "Evidence based health and movement posts." })
+    page.getByRole("heading", { name: "Evidence-based health and movement posts." })
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Making science accessible without jargon or fluff — just clear explanations to help you understand your body.",
+      { exact: true }
+    )
   ).toBeVisible();
   for (const heading of [
     "Understand your body.",

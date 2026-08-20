@@ -23,10 +23,17 @@ test.describe("retreat catalogue", () => {
   test("lists The Middle Ground online workshop", async ({ page }) => {
     await page.goto("/retreats");
     await expect(page).toHaveTitle("Movement Retreats & Online Workshops | Shruti Turner");
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+      "content",
+      /^Small-group retreats and online workshops/
+    );
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "Movement retreats & online workshops" })
+      page.getByRole("heading", { level: 1, name: "Space to move, learn and reset." })
     ).toBeVisible();
+    await expect(
+      page.getByRole("img", { name: "Shruti Turner moving outdoors beside the sea" })
+    ).toHaveAttribute("src", /shruti-coaching\.jpeg/);
     const upcoming = page.locator("#retreats");
     await expect(upcoming.getByRole("heading", { name: "What’s coming up" })).toBeVisible();
 
@@ -39,14 +46,28 @@ test.describe("retreat catalogue", () => {
     await expect(workshopCard).toContainText("Live online");
     await expect(workshopCard).toContainText("2.5 hours");
     await expect(workshopCard).toContainText("£35");
+    await expect(workshopCard).not.toContainText("From £35");
     await expect(page.locator("#retreats article")).toHaveCount(1);
     await expect(
-      page.getByRole("heading", { name: "Experiences that work with you" })
+      page.getByRole("heading", { name: "More than just a workout. More than just time to relax." })
     ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Useful details before you book" })
     ).toBeVisible();
     await expectNoSeriousAccessibilityViolations(page);
+  });
+
+  test("navigates from the catalogue to retreat details without a blocking-route insight", async ({
+    page,
+  }) => {
+    await page.goto("/retreats");
+    await page.getByRole("link", { name: "Explore the workshop" }).click();
+
+    await expect(page).toHaveURL(/\/retreats\/the-middle-ground$/);
+    await expect(page.getByRole("heading", { level: 1, name: "The Middle Ground" })).toBeVisible();
+    await expect(
+      page.getByText("Next.js encountered runtime data during a navigation.")
+    ).toHaveCount(0);
   });
 
   test("shows a £35 full-payment workshop without accommodation or a deposit choice", async ({
@@ -61,7 +82,18 @@ test.describe("retreat catalogue", () => {
     ).toBeVisible();
     await expect(detailMain.getByText("Sunday, 4 October 2026")).toBeVisible();
     await expect(detailMain.getByText("Full payment at checkout", { exact: true })).toBeVisible();
-    await expect(detailMain.getByRole("heading", { name: "Choose your ticket" })).toBeVisible();
+    await expect(detailMain.getByRole("heading", { name: "Date", exact: true })).toBeVisible();
+    await expect(detailMain.getByRole("heading", { name: "Your ticket" })).toBeVisible();
+    await expect(detailMain.getByRole("heading", { name: "Choose your date" })).toHaveCount(0);
+    await expect(detailMain.getByRole("link", { name: "Book your place" }).first()).toBeVisible();
+    await expect(detailMain.getByText("Times shown in Europe/London").first()).toBeVisible();
+    await expect(
+      detailMain.getByText(
+        "For people who want to understand and adapt their movement as routines, energy and bodies change with the season.",
+        { exact: true }
+      )
+    ).toBeVisible();
+    await expect(detailMain).not.toContainText("From £35");
     await expect(detailMain.getByRole("heading", { name: "Accommodation" })).toHaveCount(0);
     await expect(detailMain.getByRole("heading", { name: "Food and drink" })).toHaveCount(0);
     await expect(detailMain.getByRole("heading", { name: "Not included" })).toHaveCount(0);

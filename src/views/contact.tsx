@@ -98,8 +98,8 @@ export function ContactPage() {
           <p className="text-brand-accent-light text-xs tracking-[0.3em] uppercase">Contact</p>
           <h1 className="mt-5 text-4xl leading-tight md:text-6xl">Get in touch.</h1>
           <p className="text-brand-white/80 mx-auto mt-6 max-w-2xl text-lg leading-relaxed md:text-xl">
-            Have a question that doesn’t fit anywhere else? Send me a message. If you’re interested
-            in personal coaching, start with the dedicated{" "}
+            Use this form for questions about workshops, retreats, accessibility, collaborations or
+            anything else. If you’re interested in personal coaching, start with the dedicated{" "}
             <Link
               href="/coaching/enquire"
               className="text-brand-accent-light underline underline-offset-4"

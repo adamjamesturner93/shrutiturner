@@ -69,8 +69,15 @@ test("homepage follows the streamlined structure and opens the accessible Venn d
     page.getByRole("heading", { name: "Your life doesn’t fit a perfect routine." })
   ).toBeVisible();
   await expect(
-    page.getByRole("img", { name: "Placeholder for a video about who Shruti works with" })
+    page.getByRole("heading", { name: "Retreats and workshops to move, learn and reset." })
   ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Small-group experiences combining adaptable movement, practical learning and space to rest, reflect or connect.",
+      { exact: true }
+    )
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Play About Shruti Turner video" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Explore Rehabilitation" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Explore Fitness" })).toBeVisible();
   const intersectionButton = page.getByRole("button", {
@@ -236,10 +243,9 @@ test("homepage follows the streamlined structure and opens the accessible Venn d
     "/coaching/enquire"
   );
   await expect(mainNavigation.getByRole("link", { name: "Contact", exact: true })).toHaveCount(0);
-  await expect(mainNavigation.getByRole("link", { name: "Retreats", exact: true })).toHaveAttribute(
-    "href",
-    "/retreats"
-  );
+  await expect(
+    mainNavigation.getByRole("link", { name: "Retreats & Workshops", exact: true })
+  ).toHaveAttribute("href", "/retreats");
   await expect(page.getByRole("navigation", { name: "Explore" })).toContainText("Contact");
   await expect(page.getByRole("navigation", { name: "Explore" })).toContainText("Retreats");
   await expect(page.getByRole("navigation", { name: "Client links" })).toContainText(

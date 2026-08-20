@@ -20,6 +20,11 @@ test("contact page submits the enquiry form and shows the success state", async 
   const mainContent = page.locator("#main-content");
 
   await expect(mainContent.getByRole("heading", { name: "Get in touch." })).toBeVisible();
+  await expect(
+    mainContent.getByText(
+      /questions about workshops, retreats, accessibility, collaborations or anything else/i
+    )
+  ).toBeVisible();
   await expect(mainContent.getByTestId("turnstile-bypass")).toBeVisible();
 
   await mainContent.getByLabel("Name *").fill("Taylor Jordan");

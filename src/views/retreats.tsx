@@ -19,15 +19,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/use-i18n";
 import { getRetreatCardImageSrc } from "@/lib/retreats/images";
-import {
-  getEffectiveRetreatRatePricePence,
-  type RetreatRatePlanInput,
-} from "@/lib/retreats/pricing";
-import type {
-  FaqItemContent,
-  RetreatCombinedContent,
-  RetreatRoomOptionContent,
-} from "@/lib/content/types";
+import { getRetreatPriceSummary } from "@/lib/retreats/presentation";
+import type { FaqItemContent, RetreatCombinedContent } from "@/lib/content/types";
 
 interface RetreatsPageProps {
   retreats?: RetreatCombinedContent[];
@@ -101,31 +94,6 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
   const retreatData = retreats ?? [];
   const retreatFaqs = faqs && faqs.length > 0 ? faqs : DEFAULT_RETREAT_FAQS;
   const { fmtDateRange } = useI18n();
-  const heroImageSrc = retreatData[0]
-    ? getRetreatCardImageSrc(retreatData[0])
-    : "/images/shruti-coaching.jpeg";
-
-  const getRoomRatePlans = (roomOption: RetreatRoomOptionContent): RetreatRatePlanInput[] => {
-    if (roomOption.ratePlans?.length) return roomOption.ratePlans;
-    return [
-      {
-        guestCount: roomOption.guestCountPerUnit || roomOption.guestsIncluded || 1,
-        totalPricePence: roomOption.normalPricePence,
-        earlyBirdPricePence: roomOption.earlyBirdPricePence,
-        earlyBirdEndsAt: undefined,
-      },
-    ];
-  };
-
-  const getStartingPrice = (retreat: RetreatCombinedContent) => {
-    const prices = retreat.dates.flatMap((date) =>
-      date.roomOptions.flatMap((roomOption) =>
-        getRoomRatePlans(roomOption).map((ratePlan) => getEffectiveRetreatRatePricePence(ratePlan))
-      )
-    );
-
-    return prices.length > 0 ? Math.min(...prices) : retreat.normalPrice * 100;
-  };
 
   const formatMoney = (pence: number) =>
     new Intl.NumberFormat("en-GB", {
@@ -168,8 +136,8 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
           <div className="border-brand-white/10 bg-brand-white/8 mx-auto max-w-xl overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
             <div className="aspect-[4/3] overflow-hidden rounded-[1.45rem]">
               <ImageWithFallback
-                src={heroImageSrc}
-                alt="A Shruti Turner retreat or online workshop experience"
+                src="/images/shruti-coaching.jpeg"
+                alt="Shruti Turner moving outdoors beside the sea"
                 className="h-full w-full object-cover"
                 preload
                 sizes="(max-width: 1024px) 100vw, 42vw"
@@ -187,48 +155,54 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
         />
 
         <div className="mt-10 grid gap-7 md:grid-cols-3">
-          {retreatData.map((retreat) => (
-            <article
-              key={retreat.id}
-              className="border-brand-dark/10 bg-background overflow-hidden rounded-[1.9rem] border shadow-[0_22px_55px_rgba(46,31,51,0.06)]"
-            >
-              <div className="relative aspect-[4/3]">
-                <ImageWithFallback
-                  src={getRetreatCardImageSrc(retreat)}
-                  alt={retreat.title}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <div className="flex flex-1 flex-col p-7">
-                <h3 className="text-3xl leading-tight">{retreat.title}</h3>
-                <p className="text-muted-foreground mt-3 leading-relaxed">{retreat.subtitle}</p>
-                <p className="text-muted-foreground mt-5 text-sm leading-relaxed">
-                  {retreat.dates[0]
-                    ? fmtDateRange(retreat.dates[0].startDate, retreat.dates[0].endDate)
-                    : "Dates to be announced"}
-                  {` · ${getFormatLabel(retreat)}`}
-                  {getDurationLabel(retreat) ? ` · ${getDurationLabel(retreat)}` : ""}
-                </p>
-
-                <div className="mt-auto flex flex-col gap-5 pt-7 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <p className="text-3xl">{formatMoney(getStartingPrice(retreat))}</p>
-                  </div>
-                  <Button
-                    asChild
-                    variant="link"
-                    className="h-auto justify-start p-0 sm:justify-end"
-                  >
-                    <Link href={`/retreats/${retreat.slug}`}>
-                      Explore the{" "}
-                      {retreat.experienceType === "online_workshop" ? "workshop" : "retreat"}
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
+          {retreatData.map((retreat) => {
+            const priceSummary = getRetreatPriceSummary(retreat);
+            return (
+              <article
+                key={retreat.id}
+                className="border-brand-dark/10 bg-background overflow-hidden rounded-[1.9rem] border shadow-[0_22px_55px_rgba(46,31,51,0.06)]"
+              >
+                <div className="relative aspect-[4/3]">
+                  <ImageWithFallback
+                    src={getRetreatCardImageSrc(retreat)}
+                    alt={retreat.title}
+                    className="h-full w-full object-cover"
+                  />
                 </div>
-              </div>
-            </article>
-          ))}
+                <div className="flex flex-1 flex-col p-7">
+                  <h3 className="text-3xl leading-tight">{retreat.title}</h3>
+                  <p className="text-muted-foreground mt-3 leading-relaxed">{retreat.subtitle}</p>
+                  <p className="text-muted-foreground mt-5 text-sm leading-relaxed">
+                    {retreat.dates[0]
+                      ? fmtDateRange(retreat.dates[0].startDate, retreat.dates[0].endDate)
+                      : "Dates to be announced"}
+                    {` · ${getFormatLabel(retreat)}`}
+                    {getDurationLabel(retreat) ? ` · ${getDurationLabel(retreat)}` : ""}
+                  </p>
+
+                  <div className="mt-auto flex flex-col gap-5 pt-7 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <p className="text-3xl">
+                        {priceSummary.isFromPrice ? "From " : ""}
+                        {formatMoney(priceSummary.lowestPricePence)}
+                      </p>
+                    </div>
+                    <Button
+                      asChild
+                      variant="link"
+                      className="h-auto justify-start p-0 sm:justify-end"
+                    >
+                      <Link href={`/retreats/${retreat.slug}`}>
+                        Explore the{" "}
+                        {retreat.experienceType === "online_workshop" ? "workshop" : "retreat"}
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
           {retreatData.length === 0 ? (
             <div className="border-brand-dark/10 bg-background rounded-[1.75rem] border p-8 md:col-span-2">
               <h3 className="text-2xl">New experiences are being planned.</h3>
@@ -269,9 +243,9 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
           <p className="text-muted-foreground mx-auto max-w-4xl text-center leading-relaxed">
             You don’t need to be fit, flexible, experienced at yoga or managing a health condition
             to take part. My sessions are designed with choice built in. You’re always welcome to
-            take options that are right for you, breaks as needed or approach something differently.
-            The aim isn’t for everyone to do the same thing, but to create a supportive environment
-            where you can explore what works for you.
+            choose options that are right for you, take breaks as needed or approach something
+            differently. The aim isn’t for everyone to do the same thing, but to create a supportive
+            environment where you can explore what works for you.
           </p>
         </div>
       </MarketingSection>

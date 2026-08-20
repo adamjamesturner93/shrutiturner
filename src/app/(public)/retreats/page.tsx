@@ -7,7 +7,7 @@ import { createRetreatItemListSchema, createWebPageSchema } from "@/lib/seo/stru
 export const metadata: Metadata = {
   title: "Movement Retreats & Online Workshops",
   description:
-    "Movement Small-group retreats and online workshops bringing together movement, strength and wellbeing, with adaptable sessions and practical ideas you can take into everyday life.",
+    "Small-group retreats and online workshops bringing together movement, strength and wellbeing, with adaptable sessions and practical ideas you can take into everyday life.",
   alternates: { canonical: "/retreats" },
   openGraph: {
     type: "website",

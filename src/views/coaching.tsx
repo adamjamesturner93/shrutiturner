@@ -246,7 +246,7 @@ export function CoachingPage() {
               {isIntroVideoPlaying ? (
                 <iframe
                   src="https://www.youtube-nocookie.com/embed/aJdsV7oZMdQ?autoplay=1"
-                  title="About Shruti Turner"
+                  title="How coaching works with Shruti Turner"
                   className="h-full w-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   referrerPolicy="strict-origin-when-cross-origin"
@@ -256,7 +256,7 @@ export function CoachingPage() {
                 <button
                   type="button"
                   className="group relative h-full w-full cursor-pointer"
-                  aria-label="Play About Shruti Turner video"
+                  aria-label="Play video explaining how coaching works"
                   data-youtube-id="aJdsV7oZMdQ"
                   onClick={() => setIsIntroVideoPlaying(true)}
                 >

@@ -98,5 +98,8 @@ describe("sitemap and robots", () => {
     expect(disallow).not.toContain("/unsubscribe");
     expect(disallow).not.toContain("/login");
     expect(disallow).not.toContain("/privacy");
+    expect(disallow).not.toContain("/classes");
+    expect(disallow).not.toContain("/pricing");
+    expect(disallow).not.toContain("/schedule");
   });
 });

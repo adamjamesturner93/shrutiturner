@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { mockNewsletterSignupCopy } from "../../helpers/newsletter";
 
@@ -19,14 +20,53 @@ test("subscribe page submits the lead-magnet form with the expected source", asy
 
   await page.goto("/subscribe");
   const mainContent = page.locator("#main-content");
+  await expect(
+    mainContent.getByRole("heading", {
+      name: "Practical ideas for moving, training and feeling stronger.",
+    })
+  ).toBeVisible();
+  await expect(
+    mainContent.getByRole("img", { name: "Shruti Turner smiling while hiking in Patagonia" })
+  ).toBeVisible();
+  await expect(
+    mainContent.getByRole("heading", { name: "Useful notes, not filler." })
+  ).toBeVisible();
+  for (const benefit of [
+    "Practical explanations of movement, strength and wellbeing",
+    "Ideas you can adapt to your goals, capacity and real life",
+    "New articles and first access to retreats and workshops",
+  ]) {
+    await expect(mainContent.getByText(benefit, { exact: true })).toBeVisible();
+  }
+  await expect(mainContent.locator(".marketing-grid")).toHaveCount(0);
+  await expect(mainContent.getByText("Inside the emails", { exact: true })).toHaveCount(0);
+  await expect(mainContent.getByText("Practical, useful emails", { exact: true })).toHaveCount(0);
+  await expect(mainContent.getByRole("heading", { name: "Join the newsletter." })).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Explore" })).toBeVisible();
+  await expect(page.locator("footer input")).toHaveCount(0);
+  await expect(mainContent).not.toContainText("fluctuating bodies");
+  await expect(mainContent).not.toContainText("PhD Biomechanics");
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+    "content",
+    /noindex,\s*follow/i
+  );
   await expect(mainContent.getByTestId("turnstile-bypass")).toBeVisible();
+  const accessibilityResults = await new AxeBuilder({ page })
+    .include("#main-content")
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+    .analyze();
+  expect(accessibilityResults.violations).toEqual([]);
+
   await mainContent.getByLabel("First name").fill("Taylor");
   await mainContent.getByLabel("Email address").fill("taylor@example.com");
   await mainContent.getByRole("checkbox").check();
-  await expect(mainContent.getByRole("button", { name: "Send Me the Free Guide" })).toBeEnabled();
-  await mainContent.getByRole("button", { name: "Send Me the Free Guide" }).click();
+  await expect(mainContent.getByRole("button", { name: "Join the newsletter" })).toBeEnabled();
+  await mainContent.getByRole("button", { name: "Join the newsletter" }).click();
 
-  await expect(page.getByRole("heading", { name: /Your guide is on its way/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Check your inbox." })).toBeVisible();
+  await expect(
+    page.getByText(/Your free guide will arrive straight after confirmation/i)
+  ).toBeVisible();
   expect(requestBody).toMatchObject({
     firstName: "Taylor",
     email: "taylor@example.com",

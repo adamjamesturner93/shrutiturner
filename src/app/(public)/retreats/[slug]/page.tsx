@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { RetreatDetailPage } from "@/views/retreat-detail";
 import { getOperationalRetreatBySlug } from "@/lib/retreats/service";
 import { JsonLd } from "@/components/json-ld";
 import { createRetreatEventSchemas } from "@/lib/seo/structured-data";
+import RetreatDetailLoading from "./loading";
 
 type RetreatPageProps = { params: Promise<{ slug: string }> };
 
@@ -31,7 +33,15 @@ export async function generateMetadata({ params }: RetreatPageProps): Promise<Me
   };
 }
 
-export default async function Page({ params }: RetreatPageProps) {
+export default function Page({ params }: RetreatPageProps) {
+  return (
+    <Suspense fallback={<RetreatDetailLoading />}>
+      <RetreatContent params={params} />
+    </Suspense>
+  );
+}
+
+async function RetreatContent({ params }: RetreatPageProps) {
   const { slug } = await params;
   const retreat = await getOperationalRetreatBySlug(slug);
   if (!retreat) notFound();

@@ -207,8 +207,8 @@ export function BlogPage({ posts }: BlogPageProps) {
                 Evidence based health and movement posts.
               </h1>
               <p className="text-brand-white/80 mt-4 max-w-2xl text-base leading-relaxed md:text-lg">
-                Making science accessible without the jargon or fluff, just clear explanations to
-                empower you to understand your body.
+                Making science accessible without jargon or fluff — just clear explanations to help
+                you understand your body.
               </p>
             </div>
 

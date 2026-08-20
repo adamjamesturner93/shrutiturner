@@ -13,6 +13,7 @@ describe("app url helpers", () => {
     expect(shouldRedirectToCanonicalProductionHost("shrutiturner.co.uk")).toBe(false);
     expect(shouldRedirectToCanonicalProductionHost("SHRUTITURNER.CO.UK")).toBe(false);
     expect(shouldRedirectToCanonicalProductionHost("shrutiturner.com")).toBe(true);
+    expect(shouldRedirectToCanonicalProductionHost("www.shrutiturner.co.uk")).toBe(true);
     expect(shouldRedirectToCanonicalProductionHost("www.shrutiturner.com")).toBe(true);
     expect(
       shouldRedirectToCanonicalProductionHost("move-well-adamjamesturner93s-projects.vercel.app")

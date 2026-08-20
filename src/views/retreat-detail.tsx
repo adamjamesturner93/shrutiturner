@@ -24,6 +24,11 @@ import {
   getEffectiveRetreatRatePricePence,
   isRetreatEarlyBirdActive,
 } from "@/lib/retreats/pricing";
+import {
+  getRetreatPriceSummary,
+  getRetreatRoomOptionPriceSummary,
+  getRetreatRoomRatePlans as getRoomRatePlans,
+} from "@/lib/retreats/presentation";
 import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content/types";
 import { useI18n } from "@/lib/use-i18n";
 
@@ -40,31 +45,9 @@ function formatMoney(value: number, currency = "GBP") {
   }).format(value / 100);
 }
 
-function getRoomRatePlans(roomOption: RetreatRoomOptionContent) {
-  if (roomOption.ratePlans && roomOption.ratePlans.length > 0) {
-    return [...roomOption.ratePlans].sort((a, b) => a.guestCount - b.guestCount);
-  }
-  return [
-    {
-      guestCount: roomOption.guestsIncluded,
-      totalPricePence: roomOption.normalPricePence,
-      earlyBirdPricePence: roomOption.earlyBirdPricePence,
-      currency: "GBP",
-    },
-  ];
-}
-
 function getDefaultGuestCount(roomOption: RetreatRoomOptionContent | null | undefined) {
   if (!roomOption) return 1;
   return getRoomRatePlans(roomOption)[0]?.guestCount || 1;
-}
-
-function getRoomRatePrice(roomOption: RetreatRoomOptionContent, guestCount?: number) {
-  const ratePlans = getRoomRatePlans(roomOption);
-  const selectedRatePlan =
-    ratePlans.find((ratePlan) => ratePlan.guestCount === guestCount) || ratePlans[0];
-  if (selectedRatePlan) return getEffectiveRetreatRatePricePence(selectedRatePlan);
-  return roomOption.normalPricePence;
 }
 
 function getRatePlanEarlyBirdEndLabel(ratePlan: ReturnType<typeof getRoomRatePlans>[number]) {
@@ -194,15 +177,10 @@ export function RetreatDetailPage({
     setSelectedGuestCount(getDefaultGuestCount(selectedRoom));
   }, [selectedGuestCount, selectedRoom, selectedRoomRatePlans]);
 
-  const priceFromPence = useMemo(() => {
-    if (!retreat) return retreat?.normalPrice ? retreat.normalPrice * 100 : 0;
-    const prices = retreat.dates.flatMap((date) =>
-      date.roomOptions.flatMap((roomOption) =>
-        getRoomRatePlans(roomOption).map((ratePlan) => getEffectiveRetreatRatePricePence(ratePlan))
-      )
-    );
-    return prices.length > 0 ? Math.min(...prices) : retreat.normalPrice * 100;
-  }, [retreat]);
+  const priceSummary = useMemo(
+    () => (retreat ? getRetreatPriceSummary(retreat) : { lowestPricePence: 0, isFromPrice: false }),
+    [retreat]
+  );
 
   const depositFromPence = useMemo(() => {
     if (!retreat) return 0;
@@ -251,11 +229,21 @@ export function RetreatDetailPage({
     retreat.deliveryMode === "online_live" ||
     retreat.deliveryMode === "online_on_demand" ||
     retreat.dates.every((date) => date.retreatType === "online");
+  const isLiveOnlineExperience =
+    retreat.deliveryMode === "online_live" ||
+    (retreat.deliveryMode !== "online_on_demand" &&
+      retreat.dates.some((date) => date.retreatType === "online"));
   const isFullPaymentOnly =
     retreat.dates.length > 0 &&
     retreat.dates.every((date) => date.paymentPolicy === "full_payment");
   const experienceLabel = isOnlineExperience ? "workshop" : "retreat";
   const optionLabel = isOnlineExperience ? "ticket" : "room";
+  const hasMultipleDates = retreat.dates.length > 1;
+  const hasMultipleOptions = (selectedDate?.roomOptions.length || 0) > 1;
+  const selectedTimezone = selectedDate?.timezone || "Europe/London";
+  const bestForCopy =
+    retreat.audienceDescription?.trim() ||
+    "People who want space to move, learn and explore what works for them, with support and choice built in.";
   const checkoutHref =
     selectedDate && selectedRoom
       ? `/retreats/${retreat.slug}/checkout?date=${selectedDate.id}&room=${selectedRoom.id}&guests=${selectedGuestCount}`
@@ -269,7 +257,7 @@ export function RetreatDetailPage({
       <div className="space-y-3">
         <Button asChild className="w-full" size="lg" disabled={!selectedDate || !selectedRoom}>
           <Link href={checkoutHref}>
-            Book this {experienceLabel}
+            {hasMultipleDates ? `Book this ${experienceLabel}` : "Book your place"}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>
@@ -294,6 +282,69 @@ export function RetreatDetailPage({
       )
     )
   );
+  const renderRoomOption = (roomOption: RetreatRoomOptionContent) => {
+    const isSelected = roomOption.id === selectedRoom?.id;
+    const firstRatePlan = getRoomRatePlans(roomOption)[0];
+    const earlyBirdSavingPence = firstRatePlan ? getEarlyBirdSavingPence(firstRatePlan) : 0;
+    const optionPriceSummary = getRetreatRoomOptionPriceSummary(roomOption);
+    const content = (
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p>{roomOption.label}</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {getRoomTypeLabel(roomOption)} ·{" "}
+            {getRoomRatePlans(roomOption).length > 1
+              ? "choose guest count"
+              : roomOption.guestsIncluded > 1
+                ? `for ${roomOption.guestsIncluded} guests`
+                : "for one guest"}
+          </p>
+        </div>
+        <div className="text-right">
+          <span className="text-sm">
+            {optionPriceSummary.isFromPrice ? "From " : ""}
+            {formatMoney(optionPriceSummary.lowestPricePence, retreat.currency)}
+          </span>
+          {firstRatePlan && earlyBirdSavingPence > 0 ? (
+            <span className="text-muted-foreground mt-1 block text-xs">
+              Save {formatMoney(earlyBirdSavingPence, retreat.currency)} · standard{" "}
+              {formatMoney(firstRatePlan.totalPricePence, retreat.currency)}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    );
+    const availabilityClassName =
+      roomOption.availableSpots <= 0 || roomOption.isWaitlistOnly ? "opacity-60" : "";
+
+    if (!hasMultipleOptions) {
+      return (
+        <div
+          key={roomOption.id}
+          className={`border-brand-dark/10 rounded-[1rem] border p-4 ${availabilityClassName}`}
+        >
+          {content}
+        </div>
+      );
+    }
+
+    return (
+      <button
+        key={roomOption.id}
+        type="button"
+        aria-pressed={isSelected}
+        onClick={() => {
+          setSelectedRoomId(roomOption.id);
+          setSelectedGuestCount(getDefaultGuestCount(roomOption));
+        }}
+        className={`rounded-[1rem] border p-4 text-left transition-colors ${
+          isSelected ? "border-brand-accent bg-brand-accent/5" : "hover:bg-secondary/20"
+        } ${availabilityClassName}`}
+      >
+        {content}
+      </button>
+    );
+  };
 
   return (
     <Layout>
@@ -331,7 +382,8 @@ export function RetreatDetailPage({
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <span className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 rounded-full border px-4 py-2 text-sm">
-                  {formatMoney(priceFromPence, retreat.currency)}
+                  {priceSummary.isFromPrice ? "From " : ""}
+                  {formatMoney(priceSummary.lowestPricePence, retreat.currency)}
                 </span>
                 {depositFromPence > 0 && !isFullPaymentOnly ? (
                   <span className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 rounded-full border px-4 py-2 text-sm">
@@ -343,6 +395,11 @@ export function RetreatDetailPage({
                     {fmtDateRange(selectedDate.startDate, selectedDate.endDate)}
                   </span>
                 ) : null}
+                {selectedDate && isLiveOnlineExperience ? (
+                  <span className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 rounded-full border px-4 py-2 text-sm">
+                    Times shown in {selectedTimezone}
+                  </span>
+                ) : null}
               </div>
               <div className="mt-7 flex flex-col gap-4 sm:flex-row">
                 <Button
@@ -350,7 +407,7 @@ export function RetreatDetailPage({
                   size="lg"
                   className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
                 >
-                  <a href="#booking">Choose Your Date</a>
+                  <a href="#booking">{hasMultipleDates ? "Choose Your Date" : "Book your place"}</a>
                 </Button>
                 <Button
                   asChild
@@ -389,8 +446,7 @@ export function RetreatDetailPage({
                       Best for
                     </p>
                     <p className="text-brand-white/84 mt-2 text-sm leading-relaxed">
-                      People who want time to explore and understand their body and what movement
-                      can look like as the seasons change.
+                      {bestForCopy}
                     </p>
                   </div>
                   {hasEarlyBirdPricing ? (
@@ -613,8 +669,10 @@ export function RetreatDetailPage({
                   Book this {experienceLabel}
                 </p>
                 <div className="mt-4 flex items-baseline gap-3">
-                  <span className="text-4xl">{formatMoney(priceFromPence, retreat.currency)}</span>
-                  {/* <span className="text-muted-foreground text-sm">from</span> */}
+                  <span className="text-4xl">
+                    {priceSummary.isFromPrice ? "From " : ""}
+                    {formatMoney(priceSummary.lowestPricePence, retreat.currency)}
+                  </span>
                 </div>
                 {depositFromPence > 0 && !isFullPaymentOnly ? (
                   <p className="text-muted-foreground mt-2 text-sm">
@@ -634,97 +692,79 @@ export function RetreatDetailPage({
                 ) : null}
 
                 <div className="mt-8">
-                  <h3 className="text-lg">Choose your date</h3>
+                  <h3 className="text-lg">{hasMultipleDates ? "Choose your date" : "Date"}</h3>
                   <div className="mt-4 grid gap-3">
-                    {retreat.dates.map((date) => {
-                      const isSelected = date.id === selectedDate?.id;
-                      return (
-                        <button
-                          key={date.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedDateId(date.id);
-                            const nextRoomId = getDefaultRoomOptionId(date);
-                            const nextRoom =
-                              date.roomOptions.find((roomOption) => roomOption.id === nextRoomId) ||
-                              date.roomOptions[0] ||
-                              null;
-                            setSelectedRoomId(nextRoomId);
-                            setSelectedGuestCount(getDefaultGuestCount(nextRoom));
-                          }}
-                          className={`rounded-[1rem] border p-4 text-left transition-colors ${
-                            isSelected
-                              ? "border-brand-accent bg-brand-accent/5"
-                              : "hover:bg-secondary/20"
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p>{fmtDateRange(date.startDate, date.endDate)}</p>
-                              <p className="text-muted-foreground mt-1 text-sm">
-                                Limited to {date.totalSpaces} places
-                              </p>
-                            </div>
-                            <Calendar className="text-brand-accent h-4 w-4" />
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {selectedDate ? (
-                  <div className="mt-8">
-                    <h3 className="text-lg">Choose your {optionLabel}</h3>
-                    <div className="mt-4 grid gap-3">
-                      {selectedDate.roomOptions.map((roomOption) => {
-                        const isSelected = roomOption.id === selectedRoom?.id;
-                        const firstRatePlan = getRoomRatePlans(roomOption)[0];
-                        const earlyBirdSavingPence = firstRatePlan
-                          ? getEarlyBirdSavingPence(firstRatePlan)
-                          : 0;
+                    {hasMultipleDates ? (
+                      retreat.dates.map((date) => {
+                        const isSelected = date.id === selectedDate?.id;
                         return (
                           <button
-                            key={roomOption.id}
+                            key={date.id}
                             type="button"
+                            aria-pressed={isSelected}
                             onClick={() => {
-                              setSelectedRoomId(roomOption.id);
-                              setSelectedGuestCount(getDefaultGuestCount(roomOption));
+                              setSelectedDateId(date.id);
+                              const nextRoomId = getDefaultRoomOptionId(date);
+                              const nextRoom =
+                                date.roomOptions.find(
+                                  (roomOption) => roomOption.id === nextRoomId
+                                ) ||
+                                date.roomOptions[0] ||
+                                null;
+                              setSelectedRoomId(nextRoomId);
+                              setSelectedGuestCount(getDefaultGuestCount(nextRoom));
                             }}
                             className={`rounded-[1rem] border p-4 text-left transition-colors ${
                               isSelected
                                 ? "border-brand-accent bg-brand-accent/5"
                                 : "hover:bg-secondary/20"
-                            } ${roomOption.availableSpots <= 0 || roomOption.isWaitlistOnly ? "opacity-60" : ""}`}
+                            }`}
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div>
-                                <p>{roomOption.label}</p>
+                                <p>{fmtDateRange(date.startDate, date.endDate)}</p>
                                 <p className="text-muted-foreground mt-1 text-sm">
-                                  {getRoomTypeLabel(roomOption)} ·{" "}
-                                  {getRoomRatePlans(roomOption).length > 1
-                                    ? "choose guest count"
-                                    : roomOption.guestsIncluded > 1
-                                      ? `for ${roomOption.guestsIncluded} guests`
-                                      : "for one guest"}
+                                  Limited to {date.totalSpaces} places
                                 </p>
-                              </div>
-                              <div className="text-right">
-                                <span className="text-sm">
-                                  {formatMoney(getRoomRatePrice(roomOption), retreat.currency)}
-                                </span>
-                                {firstRatePlan && earlyBirdSavingPence > 0 ? (
-                                  <span className="text-muted-foreground mt-1 block text-xs">
-                                    Save {formatMoney(earlyBirdSavingPence, retreat.currency)} ·
-                                    standard{" "}
-                                    {formatMoney(firstRatePlan.totalPricePence, retreat.currency)}
-                                  </span>
+                                {isLiveOnlineExperience ? (
+                                  <p className="text-muted-foreground mt-1 text-sm">
+                                    Times shown in {date.timezone || "Europe/London"}
+                                  </p>
                                 ) : null}
                               </div>
+                              <Calendar className="text-brand-accent h-4 w-4" />
                             </div>
                           </button>
                         );
-                      })}
+                      })
+                    ) : selectedDate ? (
+                      <div className="border-brand-dark/10 rounded-[1rem] border p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p>{fmtDateRange(selectedDate.startDate, selectedDate.endDate)}</p>
+                            <p className="text-muted-foreground mt-1 text-sm">
+                              Limited to {selectedDate.totalSpaces} places
+                            </p>
+                            {isLiveOnlineExperience ? (
+                              <p className="text-muted-foreground mt-1 text-sm">
+                                Times shown in {selectedTimezone}
+                              </p>
+                            ) : null}
+                          </div>
+                          <Calendar className="text-brand-accent h-4 w-4" />
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                {selectedDate ? (
+                  <div className="mt-8">
+                    <h3 className="text-lg">
+                      {hasMultipleOptions ? `Choose your ${optionLabel}` : `Your ${optionLabel}`}
+                    </h3>
+                    <div className="mt-4 grid gap-3">
+                      {selectedDate.roomOptions.map(renderRoomOption)}
                     </div>
                     {selectedRoom && selectedRoomRatePlans.length > 1 ? (
                       <div className="mt-5">

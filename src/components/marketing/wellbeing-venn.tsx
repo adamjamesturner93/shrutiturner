@@ -217,9 +217,9 @@ export function WellbeingVenn() {
                         <p key={paragraph}>{paragraph}</p>
                       ))}
                       {area.theAim ? (
-                        <>
-                          <strong>The aim: </strong> {area.theAim}{" "}
-                        </>
+                        <p>
+                          <strong>The aim:</strong> {area.theAim}
+                        </p>
                       ) : null}
                     </div>
                   </DialogDescription>

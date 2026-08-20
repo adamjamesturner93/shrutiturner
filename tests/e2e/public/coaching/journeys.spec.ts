@@ -53,14 +53,15 @@ test("coaching page presents three provisional support levels after the human pr
     )
   ).toBeVisible();
   await expect(
-    main.getByRole("img", { name: "Shruti Turner moving outdoors by the sea" })
-  ).toHaveAttribute("src", /shruti-coaching\.jpeg/);
-  await expect(
     main.getByText(
       "Your programme, check-ins and resources live in the Everfit app so they stay easy to access. Shruti is your coach; Everfit is simply where the work is organised.",
       { exact: true }
     )
   ).toBeVisible();
+  const coachingVideoButton = main.getByRole("button", {
+    name: "Play video explaining how coaching works",
+  });
+  await expect(coachingVideoButton).toHaveAttribute("data-youtube-id", "aJdsV7oZMdQ");
 
   await expect(main.getByRole("heading", { name: "Monthly Support" })).toBeVisible();
   await expect(main.getByRole("heading", { name: "Weekly Support" })).toBeVisible();
@@ -122,6 +123,12 @@ test("coaching page presents three provisional support levels after the human pr
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();
   expect(accessibilityResults.violations).toEqual([]);
+
+  await coachingVideoButton.click();
+  await expect(main.getByTitle("How coaching works with Shruti Turner")).toHaveAttribute(
+    "src",
+    "https://www.youtube-nocookie.com/embed/aJdsV7oZMdQ?autoplay=1"
+  );
 });
 
 test("legacy coaching application redirects to the live enquiry form", async ({ page }) => {
