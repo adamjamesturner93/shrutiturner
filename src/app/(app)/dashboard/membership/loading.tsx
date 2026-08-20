@@ -1,9 +1,12 @@
-import { DashboardShellSkeleton, MembershipPageSkeleton } from "@/components/dashboard-skeleton";
+import { DashboardShellSkeleton, RedirectPageSkeleton } from "@/components/dashboard-skeleton";
+import { LoadingRegion } from "@/components/loading-region";
 
 export default function DashboardMembershipLoading() {
   return (
-    <DashboardShellSkeleton>
-      <MembershipPageSkeleton />
-    </DashboardShellSkeleton>
+    <LoadingRegion label="Opening coaching">
+      <DashboardShellSkeleton>
+        <RedirectPageSkeleton label="Opening coaching…" />
+      </DashboardShellSkeleton>
+    </LoadingRegion>
   );
 }

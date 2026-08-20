@@ -1,12 +1,26 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { LoginPageLoading } from "@/components/public-loading";
 
 export const metadata: Metadata = {
   title: "Sign In",
   robots: { index: false, follow: false },
 };
 
-export default async function Page({
+export default function Page({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  return (
+    <Suspense fallback={<LoginPageLoading />}>
+      <SignupRedirect searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function SignupRedirect({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -26,5 +40,5 @@ export default async function Page({
     }
   }
 
-  redirect(query.toString() ? `/login?${query.toString()}` : "/login");
+  return redirect(query.toString() ? `/login?${query.toString()}` : "/login");
 }

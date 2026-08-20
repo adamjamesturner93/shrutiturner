@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Heart } from "lucide-react";
+import { Heart, LoaderCircle } from "lucide-react";
 import { motion } from "motion/react";
 import type { BlogEngagementDto } from "@/lib/api/types";
 import { cn } from "./ui/utils";
@@ -11,6 +11,7 @@ interface BlogReactionsProps {
 export function BlogReactions({ postId }: BlogReactionsProps) {
   const [hasReacted, setHasReacted] = useState(false);
   const [count, setCount] = useState(0);
+  const [pending, setPending] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -33,13 +34,19 @@ export function BlogReactions({ postId }: BlogReactionsProps) {
   }, [postId]);
 
   const handleToggle = async () => {
-    const response = await fetch(`/api/blog/${postId}/reactions/toggle`, {
-      method: "POST",
-    });
-    if (!response.ok) return;
-    const data = (await response.json()) as { hasReacted: boolean; reactionCount: number };
-    setHasReacted(data.hasReacted);
-    setCount(data.reactionCount);
+    if (pending) return;
+    setPending(true);
+    try {
+      const response = await fetch(`/api/blog/${postId}/reactions/toggle`, {
+        method: "POST",
+      });
+      if (!response.ok) return;
+      const data = (await response.json()) as { hasReacted: boolean; reactionCount: number };
+      setHasReacted(data.hasReacted);
+      setCount(data.reactionCount);
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -48,6 +55,8 @@ export function BlogReactions({ postId }: BlogReactionsProps) {
         <button
           type="button"
           onClick={() => void handleToggle()}
+          disabled={pending}
+          aria-busy={pending || undefined}
           className={cn(
             "inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-base font-semibold shadow-sm transition-all hover:-translate-y-0.5 focus-visible:ring-3 focus-visible:outline-none",
             hasReacted
@@ -57,11 +66,15 @@ export function BlogReactions({ postId }: BlogReactionsProps) {
           aria-label={hasReacted ? "Remove reaction" : "React with heart"}
           aria-pressed={hasReacted}
         >
-          <Heart
-            className={`h-5 w-5 transition-all ${
-              hasReacted ? "fill-destructive text-destructive" : ""
-            }`}
-          />
+          {pending ? (
+            <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden="true" />
+          ) : (
+            <Heart
+              className={`h-5 w-5 transition-all ${
+                hasReacted ? "fill-destructive text-destructive" : ""
+              }`}
+            />
+          )}
           <span className={count > 0 ? "tabular-nums" : undefined}>
             {count > 0 ? count : "Helpful"}
           </span>

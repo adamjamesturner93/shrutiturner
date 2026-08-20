@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { AdminBlogCommentDto } from "@/lib/api/types";
+import { InlineLoadingStatus } from "@/components/loading-region";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 
 function formatDateTime(value: string) {
@@ -162,7 +163,7 @@ export function AdminBlogComments({ initialData }: { initialData?: AdminBlogComm
           </CardContent>
         </Card>
 
-        {loading ? <p className="text-muted-foreground text-sm">Loading blog comments...</p> : null}
+        {loading ? <InlineLoadingStatus label="Loading blog comments…" /> : null}
 
         <div className="space-y-4">
           {comments.map((comment) => (

@@ -6,6 +6,8 @@ import { isOwnerAdminRole } from "@/lib/authz/roles";
 import { claimReferralCode } from "@/lib/referrals/referral-service";
 import { sanitizeRedirectPath } from "@/lib/navigation/safe-redirect";
 import { createCreditCheckoutSession } from "@/lib/billing/billing-service";
+import { LoadingRegion } from "@/components/loading-region";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   buildCreditCheckoutReturnPaths,
   buildPricingFallbackPath,
@@ -86,8 +88,22 @@ async function PostLoginRedirect({ searchParams }: PostLoginPageProps) {
 
 export default function PostLoginPage({ searchParams }: PostLoginPageProps) {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PostLoginLoading />}>
       <PostLoginRedirect searchParams={searchParams} />
     </Suspense>
+  );
+}
+
+function PostLoginLoading() {
+  return (
+    <LoadingRegion label="Signing you in" className="min-h-screen">
+      <div className="section-wash flex min-h-screen items-center justify-center px-4">
+        <div className="bg-background w-full max-w-sm rounded-[1.75rem] border p-8 text-center shadow-xl">
+          <Skeleton className="mx-auto h-14 w-14 rounded-full" />
+          <h1 className="mt-6 text-2xl">Signing you in</h1>
+          <p className="text-muted-foreground mt-2 text-sm">Preparing the right place for you…</p>
+        </div>
+      </div>
+    </LoadingRegion>
   );
 }

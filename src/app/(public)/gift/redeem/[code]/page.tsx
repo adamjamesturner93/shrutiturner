@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { getGiftRedemptionState } from "@/lib/gifts/service";
 import { GiftRedeemPage } from "@/views/gift-redeem";
+import { GiftRedeemPageLoading } from "@/components/public-loading";
 
 export async function generateMetadata({
   params,
@@ -15,7 +17,15 @@ export async function generateMetadata({
   };
 }
 
-export default async function Page({ params }: { params: Promise<{ code: string }> }) {
+export default function Page({ params }: { params: Promise<{ code: string }> }) {
+  return (
+    <Suspense fallback={<GiftRedeemPageLoading />}>
+      <GiftRedeemContent params={params} />
+    </Suspense>
+  );
+}
+
+async function GiftRedeemContent({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   const initialState = await getGiftRedemptionState(code);
   return <GiftRedeemPage code={code} initialState={initialState} />;

@@ -8,6 +8,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { AlertTriangle, ArrowLeft, Info } from "lucide-react";
 import type { AdminNewsletterCampaignDetailDto } from "@/lib/api/types";
+import { InlineLoadingStatus } from "@/components/loading-region";
 
 function formatRate(
   rate: number | null,
@@ -55,7 +56,7 @@ export function AdminCampaignDetail() {
           Back to Newsletter
         </Link>
 
-        {loading ? <p className="text-muted-foreground text-sm">Loading...</p> : null}
+        {loading ? <InlineLoadingStatus label="Loading campaign…" /> : null}
         {!loading && !campaign ? (
           <Card>
             <CardContent className="py-10 text-center">

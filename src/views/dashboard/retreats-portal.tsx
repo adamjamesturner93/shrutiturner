@@ -15,7 +15,8 @@ import {
   XCircle,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { DashboardSkeleton } from "@/components/dashboard-skeleton";
+import { RetreatBookingPageSkeleton } from "@/components/dashboard-skeleton";
+import { LoadingRegion } from "@/components/loading-region";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -250,7 +251,9 @@ export function DashboardRetreatDetail({
   if (loading) {
     return (
       <DashboardLayout title="Retreat Booking - Private Studio">
-        <DashboardSkeleton />
+        <LoadingRegion label="Loading your retreat booking">
+          <RetreatBookingPageSkeleton />
+        </LoadingRegion>
       </DashboardLayout>
     );
   }

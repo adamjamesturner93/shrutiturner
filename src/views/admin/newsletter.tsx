@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { InlineLoadingStatus } from "@/components/loading-region";
 
 type CampaignSummary = {
   id: string;
@@ -210,7 +211,7 @@ export function AdminNewsletter() {
           }
         />
 
-        {loading ? <p className="text-muted-foreground text-sm">Loading...</p> : null}
+        {loading ? <InlineLoadingStatus label="Loading newsletter analytics…" /> : null}
 
         {summary ? (
           <AppMetricGrid className="lg:grid-cols-2">

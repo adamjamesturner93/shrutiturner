@@ -16,7 +16,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { DashboardSkeleton } from "@/components/dashboard-skeleton";
+import { CoachingPageSkeleton } from "@/components/dashboard-skeleton";
+import { LoadingRegion } from "@/components/loading-region";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -603,7 +604,9 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
   if (loading) {
     return (
       <DashboardLayout title="Coaching - Private Studio">
-        <DashboardSkeleton />
+        <LoadingRegion label="Loading coaching">
+          <CoachingPageSkeleton />
+        </LoadingRegion>
       </DashboardLayout>
     );
   }

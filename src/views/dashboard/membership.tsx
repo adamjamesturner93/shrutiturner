@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useAuth } from "../../context/auth-context";
 import { DashboardLayout } from "../../components/dashboard-layout";
 import { MembershipPageSkeleton } from "../../components/dashboard-skeleton";
+import { LoadingRegion } from "@/components/loading-region";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import {
@@ -532,7 +533,9 @@ export function MembershipPage({
   if (loading) {
     return (
       <DashboardLayout title="Membership & Credits - Private Studio">
-        <MembershipPageSkeleton />
+        <LoadingRegion label="Loading membership and credits">
+          <MembershipPageSkeleton />
+        </LoadingRegion>
       </DashboardLayout>
     );
   }

@@ -99,6 +99,43 @@ export function DashboardShellSkeleton({ children }: { children: ReactNode }) {
   );
 }
 
+export function AdminShellSkeleton({ children }: { children: ReactNode }) {
+  return (
+    <div className="admin-surface flex min-h-screen">
+      <aside className="border-brand-white/10 fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r bg-[linear-gradient(180deg,rgba(46,31,51,0.99),rgba(86,52,74,0.99))] p-6 lg:flex">
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-40 bg-white/15" />
+          <Skeleton className="h-3 w-28 bg-white/10" />
+        </div>
+        <div className="mt-9 space-y-3">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <div key={index} className="flex items-center gap-3 rounded-xl px-3 py-2.5">
+              <Skeleton className="h-4 w-4 bg-white/12" />
+              <Skeleton className="h-4 w-28 bg-white/12" />
+            </div>
+          ))}
+        </div>
+        <div className="mt-auto space-y-3 border-t border-white/10 pt-4">
+          <Skeleton className="h-4 w-28 bg-white/12" />
+          <Skeleton className="h-4 w-24 bg-white/12" />
+        </div>
+      </aside>
+
+      <div className="border-brand-white/10 fixed inset-x-0 top-0 z-40 border-b bg-[linear-gradient(180deg,rgba(46,31,51,0.99),rgba(86,52,74,0.99))] px-4 py-3 lg:hidden">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-5 w-5 bg-white/15" />
+          <Skeleton className="h-5 w-36 bg-white/15" />
+          <div className="h-5 w-5" />
+        </div>
+      </div>
+
+      <main className="min-h-screen flex-1 pt-14 lg:ml-72 lg:pt-0">
+        <div className="mx-auto max-w-[92rem] p-6 md:p-8 lg:p-10">{children}</div>
+      </main>
+    </div>
+  );
+}
+
 export function AppShellPageSkeleton() {
   return (
     <div className="space-y-6">
@@ -146,6 +183,120 @@ export function AppShellPageSkeleton() {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+export function RedirectPageSkeleton({ label }: { label: string }) {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="bg-background w-full max-w-sm rounded-[1.5rem] border p-8 text-center shadow-sm">
+        <Skeleton className="mx-auto h-12 w-12 rounded-full" />
+        <p className="text-muted-foreground mt-5 text-sm">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+export function CoachingPageSkeleton() {
+  return (
+    <div className="space-y-8">
+      <div className="app-page-header space-y-3">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-12 w-72 max-w-full" />
+        <Skeleton className="h-4 w-[30rem] max-w-full" />
+      </div>
+      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="space-y-5 rounded-[1.5rem] border p-6">
+          <Skeleton className="h-7 w-48" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-5/6" />
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="space-y-3 rounded-2xl border p-4">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-full" />
+            </div>
+          ))}
+        </div>
+        <div className="space-y-4 rounded-[1.5rem] border p-6">
+          <Skeleton className="h-6 w-36" />
+          <Skeleton className="h-24 w-full rounded-2xl" />
+          <Skeleton className="h-10 w-full rounded-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function RetreatsListPageSkeleton() {
+  return (
+    <div className="space-y-8">
+      <div className="app-page-header space-y-3">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-12 w-64 max-w-full" />
+        <Skeleton className="h-4 w-[28rem] max-w-full" />
+      </div>
+      <div className="grid gap-5 lg:grid-cols-2">
+        {Array.from({ length: 2 }).map((_, index) => (
+          <div key={index} className="space-y-4 rounded-[1.5rem] border p-6">
+            <div className="flex items-center justify-between gap-4">
+              <Skeleton className="h-7 w-44" />
+              <Skeleton className="h-7 w-20 rounded-full" />
+            </div>
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-10 w-32 rounded-full" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function RetreatBookingPageSkeleton() {
+  return (
+    <div className="space-y-7">
+      <Skeleton className="h-4 w-32" />
+      <div className="app-page-header space-y-3">
+        <Skeleton className="h-12 w-80 max-w-full" />
+        <Skeleton className="h-4 w-[30rem] max-w-full" />
+      </div>
+      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="space-y-4 rounded-[1.5rem] border p-6">
+          <Skeleton className="h-7 w-48" />
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-4 w-full" />
+          ))}
+          <Skeleton className="h-32 w-full rounded-2xl" />
+        </div>
+        <div className="space-y-4 rounded-[1.5rem] border p-6">
+          <Skeleton className="h-6 w-36" />
+          <Skeleton className="h-20 w-full rounded-2xl" />
+          <Skeleton className="h-10 w-full rounded-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function AdminTablePageSkeleton() {
+  return (
+    <div className="space-y-7">
+      <div className="app-page-header space-y-3">
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-12 w-72 max-w-full" />
+        <Skeleton className="h-4 w-[32rem] max-w-full" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="app-metric-card space-y-3">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+        ))}
+      </div>
+      <TableSkeleton rows={6} />
     </div>
   );
 }

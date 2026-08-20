@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { LoginPage } from "@/views/login";
+import { LoginPageLoading } from "@/components/public-loading";
 
 export const metadata: Metadata = {
   title: { absolute: "Private Studio Login | Shruti Turner" },
@@ -8,7 +10,19 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-export default async function Page({
+export default function Page({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  return (
+    <Suspense fallback={<LoginPageLoading />}>
+      <LoginContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function LoginContent({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

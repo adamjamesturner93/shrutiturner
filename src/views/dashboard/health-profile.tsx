@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "../../components/dashboard-layout";
 import { HealthProfilePageSkeleton } from "../../components/dashboard-skeleton";
+import { LoadingRegion } from "@/components/loading-region";
 import { HealthProfileEditor } from "../../components/health-profile-editor";
 import { Badge } from "../../components/ui/badge";
 import { Calendar, Pencil } from "lucide-react";
@@ -163,7 +164,9 @@ export function HealthProfilePage({ initialProfile }: { initialProfile?: HealthP
   if (loading) {
     return (
       <DashboardLayout title="Health Profile - Private Studio">
-        <HealthProfilePageSkeleton />
+        <LoadingRegion label="Loading your health profile">
+          <HealthProfilePageSkeleton />
+        </LoadingRegion>
       </DashboardLayout>
     );
   }

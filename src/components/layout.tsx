@@ -1,3 +1,5 @@
+"use client";
+
 import { Header } from "./header";
 import { Footer } from "./footer";
 import { ScrollToTop } from "./scroll-to-top";

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { BlogPostPage } from "@/views/blog-post";
 import { formatAuthorList } from "@/lib/blog/view-model";
 import { getBlogPostBySlug, getBlogPostStaticParams, getBlogPosts } from "@/lib/content";
+import { BlogPostPageLoading } from "@/components/public-loading";
 
 export async function generateStaticParams() {
   return getBlogPostStaticParams();
@@ -51,7 +53,15 @@ export async function generateMetadata({
   };
 }
 
-export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+export default function Page({ params }: { params: Promise<{ slug: string }> }) {
+  return (
+    <Suspense fallback={<BlogPostPageLoading />}>
+      <BlogPostContent params={params} />
+    </Suspense>
+  );
+}
+
+async function BlogPostContent({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const [post, posts] = await Promise.all([getBlogPostBySlug(slug), getBlogPosts()]);
   if (!post) notFound();

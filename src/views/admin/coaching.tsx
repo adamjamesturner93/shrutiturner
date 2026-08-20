@@ -16,6 +16,7 @@ import { AdminLayout } from "@/components/admin-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { InlineLoadingStatus } from "@/components/loading-region";
 import {
   Select,
   SelectContent,
@@ -784,9 +785,7 @@ export function AdminCoaching({
           </CardContent>
         </Card>
 
-        {loading ? (
-          <p className="text-muted-foreground text-sm">Loading coaching enquiries...</p>
-        ) : null}
+        {loading ? <InlineLoadingStatus label="Loading coaching enquiries…" /> : null}
 
         <div className="space-y-4">
           {tabbedApplications.map((application) => (

@@ -5,6 +5,8 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AlertCircle, ArrowLeft, Calendar, Clock, Heart } from "lucide-react";
 import { DashboardLayout } from "../../components/dashboard-layout";
+import { DetailSkeleton } from "@/components/dashboard-skeleton";
+import { LoadingRegion } from "@/components/loading-region";
 import { Button } from "../../components/ui/button";
 import { PreJoinLobby } from "../../components/video/pre-join-lobby";
 import { VideoRoom, type RoomMode } from "../../components/video/video-room";
@@ -235,7 +237,9 @@ export function DashboardClassJoin({
   if (loadingSession) {
     return (
       <DashboardLayout title="Joining Class">
-        <div className="text-muted-foreground py-20 text-center">Loading class session...</div>
+        <LoadingRegion label="Loading class session">
+          <DetailSkeleton />
+        </LoadingRegion>
       </DashboardLayout>
     );
   }

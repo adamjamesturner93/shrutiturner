@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../context/auth-context";
+import { AdminShellSkeleton, AdminTablePageSkeleton } from "./dashboard-skeleton";
+import { LoadingRegion } from "./loading-region";
 
 export function AdminGuardWrapper({ children }: { children: React.ReactNode }) {
   const { authStatus, isSigningOut, isAuthenticated, isAdmin } = useAuth();
@@ -20,7 +22,13 @@ export function AdminGuardWrapper({ children }: { children: React.ReactNode }) {
   }, [authStatus, isSigningOut, isAuthenticated, isAdmin, pathname, router]);
 
   if (authStatus === "loading" || isSigningOut) {
-    return null;
+    return (
+      <LoadingRegion label={isSigningOut ? "Signing out" : "Checking administrator access"}>
+        <AdminShellSkeleton>
+          <AdminTablePageSkeleton />
+        </AdminShellSkeleton>
+      </LoadingRegion>
+    );
   }
 
   if (!isAuthenticated || !isAdmin) {

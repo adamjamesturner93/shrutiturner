@@ -1,10 +1,20 @@
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { DashboardRetreatDetail } from "@/views/dashboard/retreats-portal";
 import { auth } from "@/lib/auth";
 import { getMyRetreatBookingDetail } from "@/lib/retreats/service";
+import DashboardRetreatDetailLoading from "./loading";
 
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+export default function Page({ params }: { params: Promise<{ id: string }> }) {
+  return (
+    <Suspense fallback={<DashboardRetreatDetailLoading />}>
+      <DashboardRetreatContent params={params} />
+    </Suspense>
+  );
+}
+
+async function DashboardRetreatContent({ params }: { params: Promise<{ id: string }> }) {
   await connection();
   const session = await auth();
   if (!session?.user?.id) notFound();

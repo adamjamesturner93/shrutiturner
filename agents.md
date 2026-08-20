@@ -60,7 +60,6 @@ This is the Strength and Yoga Coaching web application. It includes the public m
 
 - Run `pnpm run typecheck`, `pnpm run lint`, and relevant tests for the area changed.
 - Use `pnpm run test:unit`, `pnpm run test:integration`, and `pnpm run test:e2e` selectively; `pnpm test` runs the full suite.
-- Before committing changes, identify the Jira ticket and Jira release/fix version they belong to. Include both in the commit or PR context so changes can be tracked against the intended release; if the ticket or version is unclear, ask before committing instead of guessing.
 - Summarize changed files and any follow-up risks.
 
 ## Local environment

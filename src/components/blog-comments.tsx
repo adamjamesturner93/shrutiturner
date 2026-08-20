@@ -6,6 +6,8 @@ import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { useI18n } from "../lib/use-i18n";
 import type { BlogCommentDto, BlogEngagementDto } from "@/lib/api/types";
+import { InlineLoadingStatus } from "@/components/loading-region";
+import { PendingButton } from "@/components/pending-button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -212,13 +214,15 @@ export function BlogComments({ postId }: BlogCommentsProps) {
                   rows={3}
                 />
                 <div className="flex gap-2">
-                  <Button
+                  <PendingButton
                     size="sm"
                     onClick={() => void postComment(replyText, comment.id)}
                     disabled={!replyText.trim() || submitting}
+                    pending={submitting}
+                    pendingLabel="Posting reply…"
                   >
                     Reply
-                  </Button>
+                  </PendingButton>
                   <Button
                     size="sm"
                     variant="outline"
@@ -270,19 +274,21 @@ export function BlogComments({ postId }: BlogCommentsProps) {
             rows={4}
           />
           <div className="flex justify-end">
-            <Button
+            <PendingButton
               onClick={() => void postComment(newComment)}
               disabled={!newComment.trim() || submitting}
+              pending={submitting}
+              pendingLabel="Posting comment…"
             >
               Post comment
-            </Button>
+            </PendingButton>
           </div>
         </div>
       )}
 
       {error ? <p className="mb-4 text-sm text-red-600">{error}</p> : null}
 
-      {loading ? <p className="text-muted-foreground text-sm">Loading comments...</p> : null}
+      {loading ? <InlineLoadingStatus label="Loading comments…" /> : null}
 
       {!loading && comments.length === 0 ? (
         <div className="text-muted-foreground rounded-lg border border-dashed p-6 text-sm">

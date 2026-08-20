@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AdminLayout } from "../../components/admin-layout";
+import { DetailSkeleton } from "@/components/dashboard-skeleton";
+import { LoadingRegion } from "@/components/loading-region";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -267,7 +269,9 @@ export function AdminClassDetail() {
   if (loading) {
     return (
       <AdminLayout title="Class Session - Admin">
-        <p className="text-muted-foreground">Loading class session...</p>
+        <LoadingRegion label="Loading class session">
+          <DetailSkeleton />
+        </LoadingRegion>
       </AdminLayout>
     );
   }

@@ -1009,7 +1009,12 @@ export function VideoRoom({
           ) : null}
 
           {!isReady ? (
-            <div className="bg-video-panel flex flex-1 items-center justify-center rounded-lg border border-white/5 text-sm text-white/60">
+            <div
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+              className="bg-video-panel flex flex-1 items-center justify-center rounded-lg border border-white/5 text-sm text-white/60"
+            >
               {isAutoRetrying
                 ? `${statusText} Attempt ${joinAttempt + 1} of ${MAX_ROOM_JOIN_RETRIES + 1}.`
                 : statusText}

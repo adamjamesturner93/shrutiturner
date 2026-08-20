@@ -12,6 +12,7 @@ import type {
 } from "@/lib/api/types";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 import { getApiErrorMessage, isApiSuccess } from "@/lib/api/client";
+import { InlineLoadingStatus } from "@/components/loading-region";
 
 export function AdminBusiness() {
   const [summary, setSummary] = useState<AdminBusinessMetricDto | null>(null);
@@ -110,7 +111,7 @@ export function AdminBusiness() {
           }
         />
 
-        {loading ? <p className="text-muted-foreground text-sm">Loading...</p> : null}
+        {loading ? <InlineLoadingStatus label="Loading business metrics…" /> : null}
         {!loading && !summary ? (
           <p className="text-muted-foreground text-sm">No business metrics available.</p>
         ) : null}

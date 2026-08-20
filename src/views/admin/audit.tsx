@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AppPageHeader } from "@/components/app-surface";
+import { InlineLoadingStatus } from "@/components/loading-region";
 
 type AuditRow = {
   id: string;
@@ -97,7 +98,7 @@ export function AdminAuditPage() {
             <CardTitle>Recent actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {loading ? <p className="text-muted-foreground text-sm">Loading audit log…</p> : null}
+            {loading ? <InlineLoadingStatus label="Loading audit log…" /> : null}
             {!loading && !rows.length ? (
               <p className="text-muted-foreground text-sm">No audit entries found.</p>
             ) : null}

@@ -204,6 +204,21 @@ test("related articles navigate to the linked post", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("article navigation does not surface a blocking-route insight", async ({ page }) => {
+  await page.goto("/blog");
+  const articleLink = page.locator('main article a[href^="/blog/"]').first();
+  const href = await articleLink.getAttribute("href");
+  expect(href).toMatch(/^\/blog\//);
+
+  await articleLink.click();
+
+  await expect(page).toHaveURL(new RegExp(`${href}$`));
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByText("Next.js encountered runtime data during a navigation.")).toHaveCount(
+    0
+  );
+});
+
 test("authenticated readers can post a comment and a reply", async ({ page }) => {
   const { email } = await seedBlogUser("discussion");
   const commentText = `Helpful comment ${Date.now()}`;

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { SEO } from "./seo";
+import { LoadingRegion } from "./loading-region";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -184,19 +185,24 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
   // Auth + profile guard: hold dashboard UI until session and member profile are hydrated.
   if (isDashboardBootstrapping) {
     return (
-      <div className="bg-secondary/20 flex min-h-screen items-center justify-center p-4">
-        <div className="bg-background w-full max-w-md rounded-2xl border p-8 text-center shadow-xl">
-          <div className="bg-primary/10 mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full">
-            <div className="animate-pulse">
-              <IconOnly className="h-8 w-auto" />
+      <LoadingRegion
+        label={isSigningOut ? "Signing out" : "Preparing your private studio"}
+        className="min-h-screen"
+      >
+        <div className="bg-secondary/20 flex min-h-screen items-center justify-center p-4">
+          <div className="bg-background w-full max-w-md rounded-2xl border p-8 text-center shadow-xl">
+            <div className="bg-primary/10 mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full">
+              <div className="animate-pulse">
+                <IconOnly className="h-8 w-auto" />
+              </div>
             </div>
+            <h2 className="text-lg">Preparing your studio</h2>
+            <p className="text-muted-foreground mt-2 text-sm">
+              {isSigningOut ? "Signing out…" : "Loading your dashboard details…"}
+            </p>
           </div>
-          <h2 className="text-lg">Preparing your studio</h2>
-          <p className="text-muted-foreground mt-2 text-sm">
-            {isSigningOut ? "Signing out..." : "Loading your dashboard details..."}
-          </p>
         </div>
-      </div>
+      </LoadingRegion>
     );
   }
 

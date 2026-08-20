@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Calendar, CheckCircle2, Gift, MapPin, Mountain } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { DashboardSkeleton } from "@/components/dashboard-skeleton";
+import { RetreatsListPageSkeleton } from "@/components/dashboard-skeleton";
+import { LoadingRegion } from "@/components/loading-region";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -85,7 +86,9 @@ export function DashboardRetreats({
   if (loading) {
     return (
       <DashboardLayout title="Retreats - Private Studio">
-        <DashboardSkeleton />
+        <LoadingRegion label="Loading your retreats">
+          <RetreatsListPageSkeleton />
+        </LoadingRegion>
       </DashboardLayout>
     );
   }

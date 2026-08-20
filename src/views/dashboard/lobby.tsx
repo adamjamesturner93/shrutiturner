@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DashboardLayout } from "../../components/dashboard-layout";
 import { DashboardSkeleton } from "../../components/dashboard-skeleton";
+import { LoadingRegion } from "@/components/loading-region";
 import { HealthProfileEditor } from "../../components/health-profile-editor";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -231,7 +232,9 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
   if (loading) {
     return (
       <DashboardLayout title="Studio Lobby - Shruti Turner">
-        <DashboardSkeleton />
+        <LoadingRegion label="Loading your studio dashboard">
+          <DashboardSkeleton />
+        </LoadingRegion>
       </DashboardLayout>
     );
   }

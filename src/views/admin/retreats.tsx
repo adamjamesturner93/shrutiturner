@@ -16,6 +16,7 @@ import { AdminLayout } from "@/components/admin-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { InlineLoadingStatus } from "@/components/loading-region";
 import {
   CreateRetreatModal,
   type CreateRetreatData,
@@ -167,7 +168,7 @@ export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSumma
           </Card>
         </div>
 
-        {loading ? <p className="text-muted-foreground text-sm">Loading retreats...</p> : null}
+        {loading ? <InlineLoadingStatus label="Loading retreats…" /> : null}
 
         <div className="space-y-4">
           {retreats.map((retreat) => {

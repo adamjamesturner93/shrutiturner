@@ -69,6 +69,8 @@ export function ImageWithFallback({
       <img
         src={src}
         alt={alt}
+        width={width}
+        height={height}
         className={className}
         style={style}
         loading={rest.loading === "eager" ? "eager" : "lazy"}

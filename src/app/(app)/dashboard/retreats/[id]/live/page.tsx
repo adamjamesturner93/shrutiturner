@@ -1,16 +1,25 @@
 import { connection } from "next/server";
 import { notFound, redirect } from "next/navigation";
+import { Suspense } from "react";
 import { auth } from "@/lib/auth";
 import { getRetreatLiveLandingState } from "@/lib/retreats/live-service";
 import { DashboardRetreatLive } from "@/views/dashboard/retreat-live";
+import RetreatLiveLoading from "./loading";
 
-export default async function Page({
-  params,
-  searchParams,
-}: {
+type RetreatLivePageProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+};
+
+export default function Page({ params, searchParams }: RetreatLivePageProps) {
+  return (
+    <Suspense fallback={<RetreatLiveLoading />}>
+      <RetreatLiveContent params={params} searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function RetreatLiveContent({ params, searchParams }: RetreatLivePageProps) {
   await connection();
   const { id: bookingId } = await params;
   const session = await auth();

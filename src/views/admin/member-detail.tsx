@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AdminLayout } from "../../components/admin-layout";
+import { DetailSkeleton } from "@/components/dashboard-skeleton";
+import { LoadingRegion } from "@/components/loading-region";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -142,12 +144,20 @@ export function AdminMemberDetail() {
   }, []);
 
   if (!member) {
+    if (loading) {
+      return (
+        <AdminLayout title="Member - Admin">
+          <LoadingRegion label="Loading member">
+            <DetailSkeleton />
+          </LoadingRegion>
+        </AdminLayout>
+      );
+    }
+
     return (
       <AdminLayout title="Member Not Found - Admin">
         <div className="py-20 text-center">
-          <p className="text-muted-foreground">
-            {loading ? "Loading member..." : loadError || "Member not found."}
-          </p>
+          <p className="text-muted-foreground">{loadError || "Member not found."}</p>
           <Link href="/admin/members">
             <Button variant="outline" className="mt-4">
               <ArrowLeft className="mr-2 h-4 w-4" /> Back to Members

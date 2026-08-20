@@ -21,6 +21,8 @@ import {
   Video,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
+import { DetailSkeleton } from "@/components/dashboard-skeleton";
+import { LoadingRegion } from "@/components/loading-region";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -544,7 +546,9 @@ export function AdminRetreatDetail({
   if (loading) {
     return (
       <AdminLayout title="Retreat - Admin">
-        <p className="text-muted-foreground">Loading retreat detail...</p>
+        <LoadingRegion label="Loading retreat administration">
+          <DetailSkeleton />
+        </LoadingRegion>
       </AdminLayout>
     );
   }

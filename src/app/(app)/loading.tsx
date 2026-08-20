@@ -1,9 +1,12 @@
 import { AppShellPageSkeleton, DashboardShellSkeleton } from "@/components/dashboard-skeleton";
+import { LoadingRegion } from "@/components/loading-region";
 
 export default function AppLoading() {
   return (
-    <DashboardShellSkeleton>
-      <AppShellPageSkeleton />
-    </DashboardShellSkeleton>
+    <LoadingRegion label="Loading your private studio">
+      <DashboardShellSkeleton>
+        <AppShellPageSkeleton />
+      </DashboardShellSkeleton>
+    </LoadingRegion>
   );
 }

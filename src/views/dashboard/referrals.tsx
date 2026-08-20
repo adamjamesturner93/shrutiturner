@@ -9,6 +9,7 @@ import { Gift, Copy, Check, Users, ArrowRight, Wallet } from "lucide-react";
 import Link from "next/link";
 import type { ReferralSummaryDto } from "@/lib/api/types";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
+import { InlineLoadingStatus } from "@/components/loading-region";
 
 export function DashboardReferrals() {
   const { referralAppliesTo, membership } = useAuth();
@@ -174,9 +175,7 @@ export function DashboardReferrals() {
       {/* Referral history */}
       <div className="bg-background rounded-lg border p-6">
         <h2 className="mb-4 text-xl">Referral History</h2>
-        {loading ? (
-          <p className="text-muted-foreground text-sm">Loading referral history...</p>
-        ) : null}
+        {loading ? <InlineLoadingStatus label="Loading referral history…" /> : null}
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
         {!loading && !error ? (
           <div className="space-y-3 text-sm">
