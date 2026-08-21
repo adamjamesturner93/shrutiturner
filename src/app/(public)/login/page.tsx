@@ -38,6 +38,7 @@ async function LoginContent({
       redirectTo={getValue("redirect")}
       intent={getValue("intent")}
       refCode={getValue("ref")}
+      emailHint={getValue("email")}
     />
   );
 }

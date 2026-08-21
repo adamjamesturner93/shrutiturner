@@ -51,6 +51,7 @@ type VideoRoomProps = {
   initialMuted?: boolean;
   initialCameraOn?: boolean;
   initialCommunityMode?: boolean;
+  initialRecording?: boolean;
   isRecorded?: boolean;
   chatEnabled?: boolean;
   onLeave: (reason: "left" | "ended" | "removed") => void;
@@ -127,6 +128,7 @@ export function VideoRoom({
   initialCommunityMode = false,
   isRecorded = false,
   chatEnabled = true,
+  initialRecording = false,
   onLeave,
   onEndSession,
   onStartRecording,
@@ -147,7 +149,7 @@ export function VideoRoom({
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isEnding, setIsEnding] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
+  const [isRecording, setIsRecording] = useState(initialRecording);
   const [raisedHands, setRaisedHands] = useState<Array<{ userId: string; name: string }>>([]);
   const [reaction, setReaction] = useState("");
   const [statusText, setStatusText] = useState("Connecting to the live room...");
@@ -761,8 +763,15 @@ export function VideoRoom({
 
   const endSession = async () => {
     if (!onEndSession) return;
+    if (!window.confirm("End this session for everyone? Participants will be disconnected.")) {
+      return;
+    }
     setIsEnding(true);
     try {
+      if (isRecording && onStopRecording) {
+        await onStopRecording();
+        setIsRecording(false);
+      }
       await onEndSession();
       await callObject?.sendAppMessage?.({ type: "room-ended" }, "*");
       await leaveRoom(callObject, false, "ended");
@@ -821,8 +830,15 @@ export function VideoRoom({
   if (pendingAcceptances.length > 0) {
     return (
       <div className="bg-video-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4 text-white">
-        <div className="bg-video-panel max-w-lg space-y-4 rounded-xl border border-white/10 p-6">
-          <h2 className="text-xl">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="recording-acceptance-title"
+          tabIndex={-1}
+          autoFocus
+          className="bg-video-panel max-w-lg space-y-4 rounded-xl border border-white/10 p-6"
+        >
+          <h2 id="recording-acceptance-title" className="text-xl">
             {requiresOnlyRecordingNotice
               ? "Recording acknowledgement required"
               : "Update your current acceptances"}
@@ -892,7 +908,11 @@ export function VideoRoom({
               </div>
             </>
           )}
-          {acceptanceError ? <p className="text-sm text-red-300">{acceptanceError}</p> : null}
+          {acceptanceError ? (
+            <p role="alert" className="text-sm text-red-300">
+              {acceptanceError}
+            </p>
+          ) : null}
         </div>
       </div>
     );
@@ -903,7 +923,9 @@ export function VideoRoom({
       <div className="bg-video-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4 text-white">
         <div className="bg-video-panel max-w-sm space-y-4 rounded-xl border border-white/10 p-6 text-center">
           <h2 className="text-xl">Unable to enter room</h2>
-          <p className="text-sm text-white/60">{roomError}</p>
+          <p role="alert" className="text-sm text-white/60">
+            {roomError}
+          </p>
           <div className="flex flex-col gap-3">
             {canRetryJoin ? (
               <button
@@ -1060,10 +1082,10 @@ export function VideoRoom({
           <ChatPanel
             messages={chatMessages}
             onClose={() => setShowChat(false)}
-            onSendMessage={(text) => void sendChatMessage(text)}
+            onSendMessage={(text) => sendChatMessage(text)}
             onSendAnnouncement={
               isInstructor && chatEndpoint
-                ? (text) => void sendChatMessage(text, "announcement")
+                ? (text) => sendChatMessage(text, "announcement")
                 : undefined
             }
           />
@@ -1133,8 +1155,10 @@ export function VideoRoom({
         />
         {isInstructor && onEndSession ? (
           <button
+            type="button"
             onClick={() => void endSession()}
             disabled={isEnding}
+            aria-label="End workshop for everyone"
             className="rounded-lg bg-red-500/20 px-3 py-2 text-xs text-red-300 transition-colors hover:bg-red-500/30 disabled:opacity-50"
           >
             {isEnding ? "Ending..." : "End class"}
@@ -1144,10 +1168,21 @@ export function VideoRoom({
           <button
             type="button"
             onClick={async () => {
-              if (isRecording) await onStopRecording();
-              else await onStartRecording();
-              setIsRecording((value) => !value);
+              try {
+                if (isRecording) await onStopRecording();
+                else await onStartRecording();
+                setIsRecording((value) => !value);
+                setStatusText(isRecording ? "Recording stopped" : "Recording started");
+              } catch (recordingError) {
+                setStatusText(
+                  recordingError instanceof Error
+                    ? recordingError.message
+                    : "Unable to update recording"
+                );
+              }
             }}
+            aria-pressed={isRecording}
+            aria-label={isRecording ? "Stop workshop recording" : "Start workshop recording"}
             className="rounded-lg bg-white/10 px-3 py-2 text-xs text-white hover:bg-white/15"
           >
             {isRecording ? "Stop recording" : "Record"}
@@ -1189,6 +1224,9 @@ function ControlButton({
   return (
     <button
       onClick={onClick}
+      type="button"
+      aria-label={label}
+      aria-pressed={active}
       className={`flex flex-col items-center gap-1 rounded-lg p-2 transition-colors sm:px-3 sm:py-2 ${
         danger
           ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
@@ -1231,16 +1269,20 @@ function InstructorView({
             actionSlot={
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={() => onMute(participant)}
                   className="rounded-full bg-black/40 p-1.5 text-white transition-colors hover:bg-red-500/50"
                   title={`Mute ${participant.name}`}
+                  aria-label={`Mute ${participant.name}`}
                 >
                   <VolumeX className="h-3 w-3" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => onRemove(participant)}
                   className="rounded-full bg-black/40 p-1.5 text-white transition-colors hover:bg-red-500/50"
                   title={`Remove ${participant.name}`}
+                  aria-label={`Remove ${participant.name}`}
                 >
                   <Phone className="h-3 w-3 rotate-135" />
                 </button>

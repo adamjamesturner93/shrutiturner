@@ -65,7 +65,17 @@ test("an entitled attendee sees the timezone-aware scheduled landing and calenda
 }) => {
   const email = `${PREFIX}${makeE2eAuthEmail("scheduled").split("@")[0]}@example.com`;
   const user = await db.user.create({
-    data: { email, firstName: "Asha", lastName: "Khan", isOnboarded: true },
+    data: {
+      email,
+      firstName: "Asha",
+      lastName: "Khan",
+      emailVerified: new Date(),
+      dob: new Date("1990-01-01T00:00:00.000Z"),
+      isOnboarded: true,
+      healthProfile: {
+        create: { declarationStatus: "none_declared", lastConfirmedAt: new Date() },
+      },
+    },
   });
   const policies = await db.policyDocumentVersion.findMany({
     where: {

@@ -23,6 +23,10 @@ vi.mock("@/lib/retreats/service", () => ({
   setUpRetreatOnlineRoom: setUpRetreatOnlineRoomMock,
 }));
 
+vi.mock("@/lib/retreats/workshop-setup", () => ({
+  getWorkshopSetupState: vi.fn(async () => ({ complete: true, missing: [] })),
+}));
+
 vi.mock("@/lib/legal/acceptance-service", () => ({
   assertCurrentAcceptances: assertCurrentAcceptancesMock,
   getPhysicalServiceAcceptanceRequirements: vi.fn(() => []),
@@ -61,6 +65,7 @@ function booking(roomState: "unprepared" | "prepared" = "prepared") {
       participantMicDefaultMuted: true,
       participantCameraDefaultOff: false,
       isRecorded: true,
+      status: "open",
     },
   };
 }

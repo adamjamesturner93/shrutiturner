@@ -11,6 +11,7 @@ vi.mock("@/lib/db", () => ({
       updateMany: updateBookingsMock,
     },
     retreatDate: { findMany: vi.fn() },
+    giftPurchase: { findMany: vi.fn(async () => []), updateMany: vi.fn(), update: vi.fn() },
   },
 }));
 
@@ -39,6 +40,7 @@ describe("retreat live reminders", () => {
         id: "booking_1",
         attendeeFirstName: "Asha",
         attendeeEmail: "asha@example.com",
+        attendeeUserId: "user_1",
         liveReminder24hSentAt: new Date(),
         liveReminder1hSentAt: null,
         retreatDate: {
@@ -69,6 +71,7 @@ describe("retreat live reminders", () => {
         id: "booking_1",
         attendeeFirstName: "Asha",
         attendeeEmail: "asha@example.com",
+        attendeeUserId: "user_1",
         liveReminder24hSentAt: null,
         liveReminder1hSentAt: null,
         retreatDate: {

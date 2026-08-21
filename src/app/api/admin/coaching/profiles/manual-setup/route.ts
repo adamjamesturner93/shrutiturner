@@ -7,7 +7,13 @@ type Body = {
   everfitConnectionStatus?: unknown;
 };
 
-const validManualSetupStatuses = new Set(["not_started", "invite_sent", "connected", "sync_issue"]);
+const validManualSetupStatuses = new Set([
+  "not_started",
+  "invite_sent",
+  "connected",
+  "sync_issue",
+  "removed",
+]);
 
 export async function PATCH(request: Request) {
   try {
@@ -28,7 +34,8 @@ export async function PATCH(request: Request) {
         | "not_started"
         | "invite_sent"
         | "connected"
-        | "sync_issue",
+        | "sync_issue"
+        | "removed",
       actorUserId: adminUser.id,
       requestId: request.headers.get("x-request-id"),
       requestPath: new URL(request.url).pathname,

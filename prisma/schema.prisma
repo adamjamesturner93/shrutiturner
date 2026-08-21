@@ -331,6 +331,13 @@ enum RetreatLiveRoomState {
   ended
 }
 
+enum RetreatLiveRecordingState {
+  idle
+  recording
+  stopped
+  failed
+}
+
 enum RetreatLiveDisplayMode {
   gallery
   presenter
@@ -358,6 +365,11 @@ enum GiftPurchaseStatus {
 enum GiftDeliveryTarget {
   recipient
   buyer
+}
+
+enum RetreatCancellationSource {
+  customer
+  event_cancelled
 }
 
 enum CoachingSupportTier {
@@ -423,6 +435,7 @@ enum EverfitConnectionStatus {
   invite_sent
   connected
   sync_issue
+  removed
 }
 
 enum CoachingSessionStatus {
@@ -584,6 +597,8 @@ model User {
   newsletterSubscriber                  NewsletterSubscriber?
   giftPurchasesMade                     GiftPurchase[]                            @relation("GiftPurchasePurchaser")
   giftPurchasesRedeemed                 GiftPurchase[]                            @relation("GiftPurchaseRedeemer")
+  giftCancellationsRequested            GiftCancellationRequest[]                 @relation("GiftCancellationRequester")
+  giftCancellationsReviewed             GiftCancellationRequest[]                 @relation("GiftCancellationReviewer")
   retreatBookingsPurchased              RetreatBooking[]                          @relation("RetreatBookingPurchaser")
   retreatBookingsAttending              RetreatBooking[]                          @relation("RetreatBookingAttendee")
   retreatAttendees                      RetreatAttendee[]
@@ -1678,50 +1693,51 @@ model NewsletterSignupEvent {
 }
 
 model RetreatDate {
-  id                          String                 @id @default(cuid())
-  externalDateId              String                 @unique
+  id                          String                    @id @default(cuid())
+  externalDateId              String                    @unique
   retreatSlug                 String
   retreatTitleSnapshot        String
   retreatLocationSnapshot     String
-  retreatType                 String                 @default("in_person")
-  timezone                    String                 @default("Europe/London")
+  retreatType                 String                    @default("in_person")
+  timezone                    String                    @default("Europe/London")
   startsAt                    DateTime
   endsAt                      DateTime
   capacity                    Int
-  status                      RetreatDateStatus      @default(draft)
-  currency                    String                 @default("GBP")
+  status                      RetreatDateStatus         @default(draft)
+  currency                    String                    @default("GBP")
   pricePence                  Int
   depositAmountPence          Int
-  singleRoomSupplementPence   Int                    @default(0)
+  singleRoomSupplementPence   Int                       @default(0)
   balanceDueAt                DateTime?
-  isRecorded                  Boolean                @default(false)
+  isRecorded                  Boolean                   @default(false)
   recordingScope              String?
-  replayAvailable             Boolean                @default(false)
+  replayAvailable             Boolean                   @default(false)
   replayAccessDurationDays    Int?
-  chatEnabled                 Boolean                @default(true)
-  participantMicDefaultMuted  Boolean                @default(false)
-  participantCameraDefaultOff Boolean                @default(false)
+  chatEnabled                 Boolean                   @default(true)
+  participantMicDefaultMuted  Boolean                   @default(false)
+  participantCameraDefaultOff Boolean                   @default(false)
   paymentPlanSnapshotJson     Json?
   refundPolicySnapshotJson    Json?
-  payInFullDiscountEnabled    Boolean                @default(true)
-  payInFullDiscountPercent    Int                    @default(5)
-  payInFullDiscountCapPence   Int                    @default(5000)
+  payInFullDiscountEnabled    Boolean                   @default(true)
+  payInFullDiscountPercent    Int                       @default(5)
+  payInFullDiscountCapPence   Int                       @default(5000)
   dailyRoomName               String?
   dailyRoomUrl                String?
-  onlineRoomSetupStatus       ClassRoomSetupStatus   @default(pending)
+  onlineRoomSetupStatus       ClassRoomSetupStatus      @default(pending)
   onlineRoomSetupError        String?
-  liveRoomState               RetreatLiveRoomState   @default(unprepared)
+  liveRoomState               RetreatLiveRoomState      @default(unprepared)
+  liveRecordingState          RetreatLiveRecordingState @default(idle)
   liveStartedAt               DateTime?
   liveEndedAt                 DateTime?
-  liveDisplayMode             RetreatLiveDisplayMode @default(gallery)
-  liveDisplayVersion          Int                    @default(0)
+  liveDisplayMode             RetreatLiveDisplayMode    @default(gallery)
+  liveDisplayVersion          Int                       @default(0)
   focusedPresenterUserId      String?
   liveChatDisabledAt          DateTime?
   refundRuleId                String?
   bookingOpensAt              DateTime?
   bookingClosesAt             DateTime?
-  createdAt                   DateTime               @default(now())
-  updatedAt                   DateTime               @updatedAt
+  createdAt                   DateTime                  @default(now())
+  updatedAt                   DateTime                  @updatedAt
 
   bookings                 RetreatBooking[]
   roomOptions              RetreatRoomOption[]
@@ -1974,6 +1990,7 @@ model RetreatCancellationRequest {
   requestedByEmail      String
   reason                String?                   @db.Text
   status                RetreatCancellationStatus @default(requested)
+  source                RetreatCancellationSource @default(customer)
   policySnapshotJson    Json
   refundableAmountPence Int
   adminDecisionReason   String?                   @db.Text
@@ -1989,6 +2006,32 @@ model RetreatCancellationRequest {
 
   @@index([bookingId, status, requestedAt])
   @@index([status, requestedAt])
+}
+
+model GiftCancellationRequest {
+  id                    String                    @id @default(cuid())
+  giftPurchaseId        String
+  requestedByUserId     String?
+  requestedByEmail      String
+  reason                String?                   @db.Text
+  status                RetreatCancellationStatus @default(requested)
+  source                RetreatCancellationSource @default(customer)
+  policySnapshotJson    Json
+  refundableAmountPence Int
+  adminDecisionReason   String?                   @db.Text
+  reviewedByUserId      String?
+  requestedAt           DateTime                  @default(now())
+  reviewedAt            DateTime?
+  completedAt           DateTime?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  giftPurchase GiftPurchase @relation(fields: [giftPurchaseId], references: [id], onDelete: Cascade)
+  requestedBy  User?        @relation("GiftCancellationRequester", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  reviewedBy   User?        @relation("GiftCancellationReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([giftPurchaseId, status, requestedAt])
+  @@index([status, source, requestedAt])
 }
 
 model RetreatRefund {
@@ -2214,6 +2257,8 @@ model GiftPurchase {
   purchasedAt              DateTime?
   redeemedAt               DateTime?
   deliveryEmailSentAt      DateTime?
+  liveReminder24hSentAt    DateTime?
+  liveReminder1hSentAt     DateTime?
   refundedAt               DateTime?
   createdAt                DateTime           @default(now())
   updatedAt                DateTime           @updatedAt
@@ -2227,6 +2272,7 @@ model GiftPurchase {
   retreatBooking        RetreatBooking?                @relation("GiftPurchaseRetreatBooking")
   enrolment             SmallGroupProgrammeEnrollment? @relation("GiftPurchaseProgrammeEnrollment")
   guestAcceptanceEvents GuestAcceptanceEvent[]
+  cancellationRequests  GiftCancellationRequest[]
 
   @@index([status, type, createdAt])
   @@index([recipientEmail, status])
@@ -2247,6 +2293,8 @@ model GuestAcceptanceEvent {
   metadataJson      Json?
   retreatBookingId  String?
   giftPurchaseId    String?
+  promotedToUserId  String?
+  promotedAt        DateTime?
   createdAt         DateTime       @default(now())
 
   policyVersion  PolicyDocumentVersion? @relation(fields: [policyVersionId], references: [id], onDelete: SetNull)
@@ -2291,8 +2339,8 @@ model CoachingApplication {
   convertedAt                      DateTime?
   paymentReminderSentAt            DateTime?
   paymentReminderSentByUserId      String?
-  createdAt                        DateTime                  @default(now())
-  updatedAt                        DateTime                  @updatedAt
+  createdAt                        DateTime                   @default(now())
+  updatedAt                        DateTime                   @updatedAt
 
   user          User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
   clientProfile CoachingClientProfile?

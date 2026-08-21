@@ -71,6 +71,8 @@ export function HealthProfileEditor({
     return expanded;
   });
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [consentAccepted, setConsentAccepted] = useState(initialConsentAccepted);
   const selectedCount = Object.keys(conditions).filter((k) => conditions[k]).length;
   const hasAdditionalNotes = additionalNotes.trim().length > 0;
@@ -118,20 +120,28 @@ export function HealthProfileEditor({
   };
 
   const handleSave = async () => {
-    await onSave(
-      {
-        declarationStatus,
-        conditions,
-        details,
-        tracksFlareCheckIns,
-        additionalNotes,
-        lastConfirmedAt: safeProfile.lastConfirmedAt,
-        lastUpdated: new Date().toISOString().split("T")[0],
-      },
-      consentAccepted
-    );
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setSaving(true);
+    setSaveError("");
+    try {
+      await onSave(
+        {
+          declarationStatus,
+          conditions,
+          details,
+          tracksFlareCheckIns,
+          additionalNotes,
+          lastConfirmedAt: safeProfile.lastConfirmedAt,
+          lastUpdated: new Date().toISOString().split("T")[0],
+        },
+        consentAccepted
+      );
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Unable to save your health profile.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -245,6 +255,11 @@ export function HealthProfileEditor({
       </label>
 
       {/* Actions */}
+      {saveError ? (
+        <p className="text-destructive text-sm" role="alert">
+          {saveError}
+        </p>
+      ) : null}
       <div className="flex items-center justify-between pt-2">
         <p className="text-muted-foreground text-xs">
           {declarationStatus === "none_declared"
@@ -255,20 +270,24 @@ export function HealthProfileEditor({
         </p>
         <div className="flex items-center gap-3">
           {onSkip && (
-            <Button variant="ghost" size="sm" onClick={onSkip}>
+            <Button type="button" variant="ghost" size="sm" onClick={onSkip}>
               Skip for now
             </Button>
           )}
           <Button
+            type="button"
             onClick={() => void handleSave()}
             size="sm"
             className="bg-brand-accent hover:bg-brand-accent/90"
             disabled={
+              saving ||
               (requireConsentAcknowledgement && !consentAccepted) ||
               declarationStatus === "incomplete"
             }
           >
-            {saved ? (
+            {saving ? (
+              "Saving…"
+            ) : saved ? (
               <>
                 <Check className="mr-1 h-4 w-4" />
                 Saved

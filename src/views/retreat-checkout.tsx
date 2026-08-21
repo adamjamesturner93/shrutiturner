@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -142,6 +142,7 @@ function getRoomGuestLabel(roomOption: RetreatRoomOptionContent) {
 }
 
 export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedContent | null }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { fmtDate, fmtDateRange } = useI18n();
   const { user, acceptTermsAndHealth, acceptHealthDataConsent, refreshAccountProfile } = useAuth();
@@ -353,15 +354,14 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
   const purchaserFirstName = formData.purchaserFirstName || user?.firstName || "";
   const purchaserLastName = formData.purchaserLastName || user?.lastName || "";
   const purchaserEmail = formData.purchaserEmail || user?.email || "";
-  const attendeeFirstName = formData.bookingForAnotherAttendee
+  const bookingForAnotherAttendee = !isOnlineExperience && formData.bookingForAnotherAttendee;
+  const attendeeFirstName = bookingForAnotherAttendee
     ? formData.attendeeFirstName
     : purchaserFirstName;
-  const attendeeLastName = formData.bookingForAnotherAttendee
+  const attendeeLastName = bookingForAnotherAttendee
     ? formData.attendeeLastName
     : purchaserLastName;
-  const attendeeEmail = formData.bookingForAnotherAttendee
-    ? formData.attendeeEmail
-    : purchaserEmail;
+  const attendeeEmail = bookingForAnotherAttendee ? formData.attendeeEmail : purchaserEmail;
 
   const resolvePendingLegalAcceptances = async () => {
     const needsTerms = pendingLegalAcceptances.some((item) => item.type === "terms");
@@ -412,7 +412,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
         return;
       }
 
-      if (formData.bookingForAnotherAttendee) {
+      if (bookingForAnotherAttendee) {
         if (!attendeeFirstName.trim() || !attendeeLastName.trim() || !attendeeEmail.trim()) {
           setError("Please complete the attendee details before continuing.");
           setIsSubmitting(false);
@@ -449,6 +449,10 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
       setError("Please complete the gift recipient details before continuing.");
       setIsSubmitting(false);
       return;
+    } else if (!termsSatisfied) {
+      setError("Please accept the purchase terms before continuing.");
+      setIsSubmitting(false);
+      return;
     }
 
     try {
@@ -456,6 +460,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
         await resolvePendingLegalAcceptances();
       }
 
+      if (purchaseMode === "gift" && user && !user.hasAgreedToTerms) {
+        await acceptTermsAndHealth(true, false);
+      }
       if (purchaseMode === "self" && user) {
         if (!user.hasAgreedToTerms || !user.hasAgreedToHealth) {
           await acceptTermsAndHealth(!user.hasAgreedToTerms, !user.hasAgreedToHealth);
@@ -501,11 +508,11 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
           acceptedHealthWaiverVersion:
             purchaseMode === "self"
               ? (user?.currentHealthWaiverVersion ?? CURRENT_HEALTH_WAIVER_VERSION)
-              : CURRENT_HEALTH_WAIVER_VERSION,
+              : null,
           acceptedHealthDataVersion:
             purchaseMode === "self"
               ? (user?.currentHealthDataConsentVersion ?? CURRENT_HEALTH_DATA_CONSENT_VERSION)
-              : CURRENT_HEALTH_DATA_CONSENT_VERSION,
+              : null,
           recipientFirstName: formData.recipientFirstName,
           recipientLastName: formData.recipientLastName,
           recipientEmail: formData.recipientEmail,
@@ -537,13 +544,13 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
         ) {
           throw new Error(
             payload.message ||
-            "The retreat legal agreements have changed. Refresh this page and review the latest versions before continuing."
+              "The retreat legal agreements have changed. Refresh this page and review the latest versions before continuing."
           );
         }
         if (response.status === 401 && payload?.code === "SESSION_INVALID") {
           const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`;
           await signOut({ redirect: false }).catch(() => null);
-          window.location.assign(`/login?redirect=${encodeURIComponent(returnTo)}`);
+          router.push(`/login?redirect=${encodeURIComponent(returnTo)}`);
           return;
         }
         throw new Error(payload?.message || "Failed to start checkout.");
@@ -636,8 +643,34 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
               </div>
             ) : null}
             {error ? (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              <div
+                className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+                role="alert"
+              >
                 {error}
+              </div>
+            ) : null}
+
+            {!user ? (
+              <div className="border-brand-accent/20 bg-brand-accent/5 rounded-[1.25rem] border p-4 text-sm">
+                <p className="font-medium">Already have a Private Studio account?</p>
+                <p className="text-muted-foreground mt-1">
+                  Sign in before entering your details so this {experienceLabel} is linked to your
+                  account immediately.
+                </p>
+                <Button asChild variant="outline" size="sm" className="mt-3">
+                  <Link
+                    href={`/login?intent=online-workshop&redirect=${encodeURIComponent(
+                      `/retreats/${retreat.slug}/checkout${
+                        selectedDate
+                          ? `?date=${selectedDate.id}${purchaseMode === "gift" ? "&gift=1" : ""}`
+                          : ""
+                      }`
+                    )}`}
+                  >
+                    Sign in first
+                  </Link>
+                </Button>
               </div>
             ) : null}
 
@@ -646,6 +679,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                 <Button
                   type="button"
                   variant={purchaseMode === "self" ? "default" : "outline"}
+                  aria-pressed={purchaseMode === "self"}
                   onClick={() => setPurchaseMode("self")}
                 >
                   Booking for me
@@ -653,6 +687,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                 <Button
                   type="button"
                   variant={purchaseMode === "gift" ? "default" : "outline"}
+                  aria-pressed={purchaseMode === "gift"}
                   onClick={() => setPurchaseMode("gift")}
                 >
                   Buy as a gift
@@ -670,10 +705,12 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                       <button
                         key={date.id}
                         type="button"
-                        className={`rounded-[1.25rem] border p-4 text-left transition-colors ${isSelected
-                          ? "border-brand-accent bg-brand-accent/5"
-                          : "hover:bg-secondary/20"
-                          }`}
+                        aria-pressed={isSelected}
+                        className={`rounded-[1.25rem] border p-4 text-left transition-colors ${
+                          isSelected
+                            ? "border-brand-accent bg-brand-accent/5"
+                            : "hover:bg-secondary/20"
+                        }`}
                         onClick={() => setSelectedDateId(date.id)}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -704,10 +741,12 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                           key={roomOption.id}
                           type="button"
                           disabled={isUnavailable}
-                          className={`rounded-[1.25rem] border p-5 text-left transition-colors ${isSelected
-                            ? "border-brand-accent bg-brand-accent/5"
-                            : "hover:bg-secondary/20"
-                            } ${isUnavailable ? "opacity-60" : ""}`}
+                          aria-pressed={isSelected}
+                          className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
+                            isSelected
+                              ? "border-brand-accent bg-brand-accent/5"
+                              : "hover:bg-secondary/20"
+                          } ${isUnavailable ? "opacity-60" : ""}`}
                           onClick={() => {
                             setSelectedRoomId(roomOption.id);
                             setSelectedGuestCount(getDefaultGuestCount(roomOption));
@@ -754,21 +793,21 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                                 {formatMoney(
                                   getRoomRatePlans(roomOption)[0]
                                     ? getEffectiveRetreatRatePricePence(
-                                      getRoomRatePlans(roomOption)[0]
-                                    )
+                                        getRoomRatePlans(roomOption)[0]
+                                      )
                                     : roomOption.normalPricePence,
                                   retreat.currency
                                 )}
                               </p>
                               {getRoomRatePlans(roomOption)[0] &&
-                                isRetreatEarlyBirdActive({
-                                  earlyBirdPricePence:
-                                    getRoomRatePlans(roomOption)[0]?.earlyBirdPricePence,
-                                  earlyBirdEndsAt: getRoomRatePlans(roomOption)[0]?.earlyBirdEndsAt,
-                                  totalPricePence:
-                                    getRoomRatePlans(roomOption)[0]?.totalPricePence ||
-                                    roomOption.normalPricePence,
-                                }) ? (
+                              isRetreatEarlyBirdActive({
+                                earlyBirdPricePence:
+                                  getRoomRatePlans(roomOption)[0]?.earlyBirdPricePence,
+                                earlyBirdEndsAt: getRoomRatePlans(roomOption)[0]?.earlyBirdEndsAt,
+                                totalPricePence:
+                                  getRoomRatePlans(roomOption)[0]?.totalPricePence ||
+                                  roomOption.normalPricePence,
+                              }) ? (
                                 <p className="text-muted-foreground mt-1 text-xs">
                                   Early bird saves{" "}
                                   {formatMoney(
@@ -778,7 +817,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                                   . Standard{" "}
                                   {formatMoney(
                                     getRoomRatePlans(roomOption)[0]?.totalPricePence ||
-                                    roomOption.normalPricePence,
+                                      roomOption.normalPricePence,
                                     retreat.currency
                                   )}
                                 </p>
@@ -792,8 +831,8 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                                     roomOption,
                                     getRoomRatePlans(roomOption)[0]
                                       ? getEffectiveRetreatRatePricePence(
-                                        getRoomRatePlans(roomOption)[0]
-                                      )
+                                          getRoomRatePlans(roomOption)[0]
+                                        )
                                       : roomOption.normalPricePence
                                   ),
                                   retreat.currency
@@ -816,11 +855,13 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                         <button
                           key={ratePlan.guestCount}
                           type="button"
+                          aria-pressed={selectedGuestCount === ratePlan.guestCount}
                           onClick={() => setSelectedGuestCount(ratePlan.guestCount)}
-                          className={`rounded-[1rem] border p-4 text-left transition-colors ${selectedGuestCount === ratePlan.guestCount
-                            ? "border-brand-accent bg-brand-accent/5"
-                            : "hover:bg-secondary/20"
-                            }`}
+                          className={`rounded-[1rem] border p-4 text-left transition-colors ${
+                            selectedGuestCount === ratePlan.guestCount
+                              ? "border-brand-accent bg-brand-accent/5"
+                              : "hover:bg-secondary/20"
+                          }`}
                         >
                           <p className="text-base">{getGuestCountLabel(ratePlan.guestCount)}</p>
                           <p className="text-muted-foreground mt-1 text-sm">
@@ -945,10 +986,12 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                     <div className="mt-6 grid gap-4 md:grid-cols-2">
                       <button
                         type="button"
-                        className={`rounded-[1.25rem] border p-5 text-left transition-colors ${paymentOption === "deposit"
-                          ? "border-brand-accent bg-brand-accent/5"
-                          : "hover:bg-secondary/20"
-                          }`}
+                        aria-pressed={paymentOption === "deposit"}
+                        className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
+                          paymentOption === "deposit"
+                            ? "border-brand-accent bg-brand-accent/5"
+                            : "hover:bg-secondary/20"
+                        }`}
                         onClick={() => setPaymentOption("deposit")}
                       >
                         <p className="text-xl">Pay deposit</p>
@@ -962,10 +1005,12 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
 
                       <button
                         type="button"
-                        className={`rounded-[1.25rem] border p-5 text-left transition-colors ${paymentOption === "pay_in_full"
-                          ? "border-brand-accent bg-brand-accent/5"
-                          : "hover:bg-secondary/20"
-                          }`}
+                        aria-pressed={paymentOption === "pay_in_full"}
+                        className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
+                          paymentOption === "pay_in_full"
+                            ? "border-brand-accent bg-brand-accent/5"
+                            : "hover:bg-secondary/20"
+                        }`}
                         onClick={() => setPaymentOption("pay_in_full")}
                       >
                         <p className="text-xl">Pay in full</p>
@@ -974,9 +1019,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                           today
                           {payInFullDiscountPence > 0
                             ? ` including a ${formatMoney(
-                              payInFullDiscountPence,
-                              retreat.currency
-                            )} discount.`
+                                payInFullDiscountPence,
+                                retreat.currency
+                              )} discount.`
                             : "."}
                         </p>
                       </button>
@@ -1038,169 +1083,182 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
 
               {purchaseMode === "self" ? (
                 <>
-                  <div className="marketing-panel rounded-[1.5rem] p-6">
-                    <div className="flex items-start gap-3 rounded-xl border p-4">
-                      <Checkbox
-                        id="bookingForAnotherAttendee"
-                        checked={formData.bookingForAnotherAttendee}
-                        onCheckedChange={(checked) =>
-                          setFormData((current) => ({
-                            ...current,
-                            bookingForAnotherAttendee: checked === true,
-                          }))
-                        }
-                      />
-                      <div>
-                        <label htmlFor="bookingForAnotherAttendee" className="cursor-pointer">
-                          The attendee is someone else
-                        </label>
-                        <p className="text-muted-foreground mt-1 text-sm">
-                          Keep the purchaser and attendee separate if you are securing the place for
-                          another person.
-                        </p>
+                  {!isOnlineExperience ? (
+                    <div className="marketing-panel rounded-[1.5rem] p-6">
+                      <div className="flex items-start gap-3 rounded-xl border p-4">
+                        <Checkbox
+                          id="bookingForAnotherAttendee"
+                          checked={formData.bookingForAnotherAttendee}
+                          onCheckedChange={(checked) =>
+                            setFormData((current) => ({
+                              ...current,
+                              bookingForAnotherAttendee: checked === true,
+                            }))
+                          }
+                        />
+                        <div>
+                          <label htmlFor="bookingForAnotherAttendee" className="cursor-pointer">
+                            The attendee is someone else
+                          </label>
+                          <p className="text-muted-foreground mt-1 text-sm">
+                            Keep the purchaser and attendee separate if you are securing the place
+                            for another person.
+                          </p>
+                        </div>
                       </div>
-                    </div>
 
-                    {formData.bookingForAnotherAttendee ? (
-                      <div className="mt-6">
-                        <h2 className="text-2xl">5. Attendee details</h2>
-                        <div className="mt-6 grid gap-4 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label htmlFor="attendeeFirstName">First name</Label>
-                            <Input
-                              id="attendeeFirstName"
-                              required={formData.bookingForAnotherAttendee}
-                              value={formData.attendeeFirstName}
-                              onChange={(event) =>
-                                setFormData((current) => ({
-                                  ...current,
-                                  attendeeFirstName: event.target.value,
-                                }))
-                              }
-                            />
+                      {formData.bookingForAnotherAttendee ? (
+                        <div className="mt-6">
+                          <h2 className="text-2xl">5. Attendee details</h2>
+                          <div className="mt-6 grid gap-4 md:grid-cols-2">
+                            <div className="space-y-2">
+                              <Label htmlFor="attendeeFirstName">First name</Label>
+                              <Input
+                                id="attendeeFirstName"
+                                required={formData.bookingForAnotherAttendee}
+                                value={formData.attendeeFirstName}
+                                onChange={(event) =>
+                                  setFormData((current) => ({
+                                    ...current,
+                                    attendeeFirstName: event.target.value,
+                                  }))
+                                }
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="attendeeLastName">Last name</Label>
+                              <Input
+                                id="attendeeLastName"
+                                required={formData.bookingForAnotherAttendee}
+                                value={formData.attendeeLastName}
+                                onChange={(event) =>
+                                  setFormData((current) => ({
+                                    ...current,
+                                    attendeeLastName: event.target.value,
+                                  }))
+                                }
+                              />
+                            </div>
                           </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="attendeeLastName">Last name</Label>
+                          <div className="mt-4 space-y-2">
+                            <Label htmlFor="attendeeEmail">Email</Label>
                             <Input
-                              id="attendeeLastName"
+                              id="attendeeEmail"
                               required={formData.bookingForAnotherAttendee}
-                              value={formData.attendeeLastName}
+                              type="email"
+                              value={formData.attendeeEmail}
                               onChange={(event) =>
                                 setFormData((current) => ({
                                   ...current,
-                                  attendeeLastName: event.target.value,
+                                  attendeeEmail: event.target.value,
                                 }))
                               }
                             />
                           </div>
                         </div>
-                        <div className="mt-4 space-y-2">
-                          <Label htmlFor="attendeeEmail">Email</Label>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {!isOnlineExperience ? (
+                    <div className="marketing-panel rounded-[1.5rem] p-6">
+                      <h2 className="text-2xl">6. Health, access and emergency details</h2>
+                      <div className="mt-6 grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="phone">Phone</Label>
                           <Input
-                            id="attendeeEmail"
-                            required={formData.bookingForAnotherAttendee}
-                            type="email"
-                            value={formData.attendeeEmail}
+                            id="phone"
+                            required
+                            value={formData.phone}
+                            onChange={(event) =>
+                              setFormData((current) => ({ ...current, phone: event.target.value }))
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="emergencyContactPhone">Emergency contact phone</Label>
+                          <Input
+                            id="emergencyContactPhone"
+                            required
+                            value={formData.emergencyContactPhone}
                             onChange={(event) =>
                               setFormData((current) => ({
                                 ...current,
-                                attendeeEmail: event.target.value,
+                                emergencyContactPhone: event.target.value,
                               }))
                             }
                           />
                         </div>
                       </div>
-                    ) : null}
-                  </div>
-
-                  <div className="marketing-panel rounded-[1.5rem] p-6">
-                    <h2 className="text-2xl">6. Health, access and emergency details</h2>
-                    <div className="mt-6 grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="phone">Phone</Label>
+                      <div className="mt-4 space-y-2">
+                        <Label htmlFor="emergencyContactName">Emergency contact name</Label>
                         <Input
-                          id="phone"
+                          id="emergencyContactName"
                           required
-                          value={formData.phone}
+                          value={formData.emergencyContactName}
                           onChange={(event) =>
-                            setFormData((current) => ({ ...current, phone: event.target.value }))
+                            setFormData((current) => ({
+                              ...current,
+                              emergencyContactName: event.target.value,
+                            }))
                           }
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="emergencyContactPhone">Emergency contact phone</Label>
-                        <Input
-                          id="emergencyContactPhone"
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="dietaryRequirements">Dietary requirements</Label>
+                          <Textarea
+                            id="dietaryRequirements"
+                            value={formData.dietaryRequirements}
+                            onChange={(event) =>
+                              setFormData((current) => ({
+                                ...current,
+                                dietaryRequirements: event.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="mobilityNeeds">Accessibility or mobility needs</Label>
+                          <Textarea
+                            id="mobilityNeeds"
+                            value={formData.mobilityNeeds}
+                            onChange={(event) =>
+                              setFormData((current) => ({
+                                ...current,
+                                mobilityNeeds: event.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-4 space-y-2">
+                        <Label htmlFor="medicalConditions">Health notes</Label>
+                        <Textarea
+                          id="medicalConditions"
                           required
-                          value={formData.emergencyContactPhone}
+                          value={formData.medicalConditions}
                           onChange={(event) =>
                             setFormData((current) => ({
                               ...current,
-                              emergencyContactPhone: event.target.value,
+                              medicalConditions: event.target.value,
                             }))
                           }
                         />
                       </div>
                     </div>
-                    <div className="mt-4 space-y-2">
-                      <Label htmlFor="emergencyContactName">Emergency contact name</Label>
-                      <Input
-                        id="emergencyContactName"
-                        required
-                        value={formData.emergencyContactName}
-                        onChange={(event) =>
-                          setFormData((current) => ({
-                            ...current,
-                            emergencyContactName: event.target.value,
-                          }))
-                        }
-                      />
+                  ) : (
+                    <div className="marketing-panel rounded-[1.5rem] p-6">
+                      <h2 className="text-2xl">5. Workshop setup</h2>
+                      <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                        After payment, you&apos;ll sign in or create your account and complete your
+                        date of birth, health profile and current workshop agreements before
+                        joining.
+                      </p>
                     </div>
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="dietaryRequirements">Dietary requirements</Label>
-                        <Textarea
-                          id="dietaryRequirements"
-                          value={formData.dietaryRequirements}
-                          onChange={(event) =>
-                            setFormData((current) => ({
-                              ...current,
-                              dietaryRequirements: event.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="mobilityNeeds">Accessibility or mobility needs</Label>
-                        <Textarea
-                          id="mobilityNeeds"
-                          value={formData.mobilityNeeds}
-                          onChange={(event) =>
-                            setFormData((current) => ({
-                              ...current,
-                              mobilityNeeds: event.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-4 space-y-2">
-                      <Label htmlFor="medicalConditions">Health notes</Label>
-                      <Textarea
-                        id="medicalConditions"
-                        required
-                        value={formData.medicalConditions}
-                        onChange={(event) =>
-                          setFormData((current) => ({
-                            ...current,
-                            medicalConditions: event.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
+                  )}
 
-                  {selectedRoom && selectedGuestCount > 1 ? (
+                  {!isOnlineExperience && selectedRoom && selectedGuestCount > 1 ? (
                     <div className="rounded-[1.5rem] border p-6">
                       <h2 className="text-2xl">7. Second guest details (optional for now)</h2>
                       <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
@@ -1460,15 +1518,37 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                     </div>
                   </div>
                   <div className="bg-secondary/20 text-muted-foreground mt-4 rounded-xl border p-4 text-sm">
-                    Gift purchases follow the{" "}
-                    <Link href="/terms" target="_blank" className="text-primary underline">
-                      Terms & Conditions
-                    </Link>{" "}
-                    and{" "}
-                    <Link href="/refund-policy" target="_blank" className="text-primary underline">
-                      Refund & Cancellation Policy
-                    </Link>
-                    .
+                    {user?.hasAgreedToTerms ? (
+                      <span>Purchase terms are already accepted on your account.</span>
+                    ) : (
+                      <label className="text-foreground flex cursor-pointer items-start gap-3">
+                        <Checkbox
+                          checked={formData.agreedToTerms}
+                          onCheckedChange={(checked) =>
+                            setFormData((current) => ({
+                              ...current,
+                              agreedToTerms: checked === true,
+                            }))
+                          }
+                        />
+                        <span>
+                          I agree to the{" "}
+                          <Link href="/terms" target="_blank" className="text-primary underline">
+                            Terms & Conditions
+                          </Link>{" "}
+                          and have read the{" "}
+                          <Link
+                            href="/refund-policy"
+                            target="_blank"
+                            className="text-primary underline"
+                          >
+                            Refund & Cancellation Policy
+                          </Link>
+                          . The recipient will accept the attendee health agreements when they
+                          redeem the gift.
+                        </span>
+                      </label>
+                    )}
                   </div>
                 </div>
               )}
@@ -1559,9 +1639,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                             This pays the {experienceLabel} balance in full
                             {payInFullDiscountPence > 0
                               ? ` and includes a ${formatMoney(
-                                payInFullDiscountPence,
-                                retreat.currency
-                              )} discount.`
+                                  payInFullDiscountPence,
+                                  retreat.currency
+                                )} discount.`
                               : "."}
                           </p>
                         ) : (

@@ -17,19 +17,23 @@ type HostState = {
   displayMode: "gallery" | "presenter";
   chatEnabled: boolean;
   isRecorded: boolean;
+  recordingState: "idle" | "recording" | "stopped" | "failed";
 };
 
 export function DashboardRetreatHostLive({ initialData }: { initialData: HostState }) {
   const [roomState, setRoomState] = useState(initialData.roomState);
   const [entered, setEntered] = useState(false);
+  const [error, setError] = useState("");
+  const [starting, setStarting] = useState(false);
   const lifecycle = async (action: string) => {
     const response = await fetch(`/api/retreats/host/${initialData.retreatDateId}/lifecycle`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action }),
     });
-    if (!response.ok) throw new Error("Unable to update session.");
-    return response.json();
+    const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+    if (!response.ok) throw new Error(payload?.message || "Unable to update session.");
+    return payload;
   };
   if (roomState === "ended" && !entered) {
     return (
@@ -55,15 +59,31 @@ export function DashboardRetreatHostLive({ initialData }: { initialData: HostSta
             Starting prepares the Daily room if needed. Assigned instructors receive access only to
             this retreat.
           </p>
+          {error ? (
+            <p role="alert" className="mt-4 text-sm text-red-700">
+              {error}
+            </p>
+          ) : null}
           <Button
             className="mt-6"
             onClick={async () => {
-              await lifecycle("start");
-              setRoomState("started");
-              setEntered(true);
+              setStarting(true);
+              setError("");
+              try {
+                await lifecycle("start");
+                setRoomState("started");
+                setEntered(true);
+              } catch (startError) {
+                setError(
+                  startError instanceof Error ? startError.message : "Unable to start session."
+                );
+              } finally {
+                setStarting(false);
+              }
             }}
+            disabled={starting}
           >
-            Start session and enter
+            {starting ? "Starting…" : "Start session and enter"}
           </Button>
         </div>
       </DashboardLayout>
@@ -88,6 +108,7 @@ export function DashboardRetreatHostLive({ initialData }: { initialData: HostSta
       classDuration={`${Math.max(1, Math.round((new Date(initialData.endsAt).getTime() - new Date(initialData.startsAt).getTime()) / 60000))} min`}
       registeredCount={initialData.registeredCount}
       initialCommunityMode={initialData.displayMode === "gallery"}
+      initialRecording={initialData.recordingState === "recording"}
       isRecorded={initialData.isRecorded}
       chatEnabled={initialData.chatEnabled}
       onLeave={() => setEntered(false)}
@@ -95,8 +116,12 @@ export function DashboardRetreatHostLive({ initialData }: { initialData: HostSta
         await lifecycle("end");
         setRoomState("ended");
       }}
-      onStartRecording={initialData.isRecorded ? () => lifecycle("start_recording") : undefined}
-      onStopRecording={initialData.isRecorded ? () => lifecycle("stop_recording") : undefined}
+      onStartRecording={
+        initialData.isRecorded ? async () => void (await lifecycle("start_recording")) : undefined
+      }
+      onStopRecording={
+        initialData.isRecorded ? async () => void (await lifecycle("stop_recording")) : undefined
+      }
     />
   );
 }

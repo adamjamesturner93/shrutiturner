@@ -80,6 +80,7 @@ const manualSetupLabels: Record<string, string> = {
   invite_sent: "Everfit invite sent",
   connected: "Active in Everfit",
   sync_issue: "Needs attention",
+  removed: "Access removed",
 };
 
 const profileStatusLabels: Record<string, string> = {
@@ -421,6 +422,14 @@ export function AdminCoaching({
     everfitConnectionStatus: string
   ) => {
     if (!application.coachingProfile) return;
+    if (
+      everfitConnectionStatus === "removed" &&
+      !window.confirm(
+        `Remove ${application.applicantName}'s Everfit access? This records the access as removed on their coaching profile.`
+      )
+    ) {
+      return;
+    }
     setSavingId(application.id);
     setError("");
     setNotice("");

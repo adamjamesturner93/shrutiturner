@@ -43,7 +43,37 @@ export function DeviceSelector({ onClose, onApply }: DeviceSelectorProps) {
   const [isApplying, setIsApplying] = useState(false);
   const [applyError, setApplyError] = useState("");
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const displayMicLevel = previewStream?.getAudioTracks().length ? micLevel : 0;
+
+  useEffect(() => {
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+    closeButtonRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+      if (event.key !== "Tab") return;
+      const dialog = closeButtonRef.current?.closest<HTMLElement>("[role=dialog]");
+      const focusable = dialog?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      previouslyFocusedRef.current?.focus();
+    };
+  }, [onClose]);
 
   useEffect(() => {
     let active = true;
@@ -243,10 +273,23 @@ export function DeviceSelector({ onClose, onApply }: DeviceSelectorProps) {
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
 
-      <div className="bg-video-panel relative flex max-h-[85vh] w-full max-w-sm flex-col rounded-xl border border-white/10 shadow-2xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="device-settings-title"
+        className="bg-video-panel relative flex max-h-[85vh] w-full max-w-sm flex-col rounded-xl border border-white/10 shadow-2xl"
+      >
         <div className="flex flex-shrink-0 items-center justify-between border-b border-white/10 p-4">
-          <h2 className="text-sm text-white">Device Settings</h2>
-          <button onClick={onClose} className="text-white/50 transition-colors hover:text-white">
+          <h2 id="device-settings-title" className="text-sm text-white">
+            Device Settings
+          </h2>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            aria-label="Close device settings"
+            onClick={onClose}
+            className="text-white/50 transition-colors hover:text-white"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -289,7 +332,14 @@ export function DeviceSelector({ onClose, onApply }: DeviceSelectorProps) {
               <span>Mic level</span>
               <span>{displayMicLevel}%</span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-white/10">
+            <div
+              role="meter"
+              aria-label="Microphone level"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={displayMicLevel}
+              className="h-2 overflow-hidden rounded-full bg-white/10"
+            >
               <div
                 className="bg-brand-accent h-full rounded-full transition-[width]"
                 style={{ width: `${displayMicLevel}%` }}
@@ -313,14 +363,20 @@ export function DeviceSelector({ onClose, onApply }: DeviceSelectorProps) {
           </button>
 
           {permissionError ? (
-            <div className="rounded-lg border border-amber-400/20 bg-amber-500/10 p-3 text-xs text-amber-100">
+            <div
+              role="alert"
+              className="rounded-lg border border-amber-400/20 bg-amber-500/10 p-3 text-xs text-amber-100"
+            >
               Camera or microphone access is blocked. Allow permissions in the browser to test
               devices.
             </div>
           ) : null}
 
           {applyError ? (
-            <div className="rounded-lg border border-red-400/20 bg-red-500/10 p-3 text-xs text-red-100">
+            <div
+              role="alert"
+              className="rounded-lg border border-red-400/20 bg-red-500/10 p-3 text-xs text-red-100"
+            >
               {applyError}
             </div>
           ) : null}
@@ -359,7 +415,7 @@ function DeviceSection({
         <Icon className="h-4 w-4 text-white/50" />
         <span className="text-xs tracking-wider text-white/50 uppercase">{label}</span>
       </div>
-      <div className="space-y-1">
+      <div role="radiogroup" aria-label={`${label} devices`} className="space-y-1">
         {options.length === 0 && (
           <div className="rounded-md border border-white/5 bg-white/5 px-3 py-2 text-sm text-white/40">
             No {label.toLowerCase()}s detected
@@ -367,8 +423,39 @@ function DeviceSection({
         )}
         {options.map((option) => (
           <button
+            type="button"
+            role="radio"
+            aria-checked={selected === option.id}
             key={option.id}
             onClick={() => onSelect(option.id)}
+            onKeyDown={(event) => {
+              if (
+                !["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft", "Home", "End"].includes(
+                  event.key
+                )
+              ) {
+                return;
+              }
+              event.preventDefault();
+              const buttons = Array.from(
+                event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
+                  '[role="radio"]'
+                ) || []
+              );
+              const currentIndex = buttons.indexOf(event.currentTarget);
+              const nextIndex =
+                event.key === "Home"
+                  ? 0
+                  : event.key === "End"
+                    ? buttons.length - 1
+                    : event.key === "ArrowDown" || event.key === "ArrowRight"
+                      ? (currentIndex + 1) % buttons.length
+                      : (currentIndex - 1 + buttons.length) % buttons.length;
+              const nextOption = options[nextIndex];
+              if (!nextOption) return;
+              onSelect(nextOption.id);
+              buttons[nextIndex]?.focus();
+            }}
             className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition-colors ${
               selected === option.id
                 ? "bg-brand-accent/20 text-brand-accent-light"

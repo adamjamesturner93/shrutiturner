@@ -18,16 +18,18 @@ export function LoginPage({
   redirectTo,
   intent,
   refCode,
+  emailHint,
 }: {
   redirectTo?: string | null;
   intent?: string | null;
   refCode?: string | null;
+  emailHint?: string | null;
 }) {
   const { data: session, status } = useSession();
   const router = useRouter();
 
   const [loginMethod, setLoginMethod] = useState<"passwordless" | "google" | null>(null);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(emailHint || "");
   const [codeSent, setCodeSent] = useState(false);
   const [code, setCode] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");

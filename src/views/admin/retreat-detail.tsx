@@ -99,8 +99,11 @@ export function AdminRetreatDetail({
     | "room"
     | "gift-refund"
     | "gift-recipient"
+    | "gift-cancellation"
     | "replay"
     | "configuration"
+    | "event-cancellation"
+    | "access-email"
   >("");
   const [earlyBirdDrafts, setEarlyBirdDrafts] = useState<
     Record<string, { pricePounds: string; endsAt: string }>
@@ -249,8 +252,11 @@ export function AdminRetreatDetail({
       | "room"
       | "gift-refund"
       | "gift-recipient"
+      | "gift-cancellation"
       | "replay"
-      | "configuration",
+      | "configuration"
+      | "event-cancellation"
+      | "access-email",
     request: () => Promise<Response>
   ) => {
     setActionLoading(action);
@@ -281,7 +287,9 @@ export function AdminRetreatDetail({
           action === "gift-refund" ||
           action === "gift-recipient" ||
           action === "replay" ||
-          action === "configuration") &&
+          action === "configuration" ||
+          action === "event-cancellation" ||
+          action === "access-email") &&
         payload &&
         "id" in payload
       ) {
@@ -297,11 +305,15 @@ export function AdminRetreatDetail({
                   ? "Gift purchase cancelled and refund submitted."
                   : action === "gift-recipient"
                     ? "Gift invitation updated and resent."
-                    : action === "replay"
-                      ? "Replay access updated."
-                      : action === "configuration"
-                        ? "Inventory and payment rules updated."
-                        : "Status updated."
+                    : action === "event-cancellation"
+                      ? "Workshop cancelled. Refund processing has started."
+                      : action === "access-email"
+                        ? "Workshop setup/access email sent."
+                        : action === "replay"
+                          ? "Replay access updated."
+                          : action === "configuration"
+                            ? "Inventory and payment rules updated."
+                            : "Status updated."
         );
       } else if (payload && "sent" in payload) {
         setActionMessage(`Emails sent: ${payload.sent}. Skipped: ${payload.skipped ?? 0}.`);
@@ -630,6 +642,37 @@ export function AdminRetreatDetail({
                 Close bookings
               </Button>
             ) : null}
+            {retreat.retreatType === "online" &&
+            !["cancelled", "completed"].includes(retreat.status) ? (
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={actionLoading !== ""}
+                onClick={() => {
+                  const reason = window.prompt(
+                    `Why is ${retreat.title} being cancelled? This will close access and issue full refunds.`,
+                    ""
+                  );
+                  if (!reason?.trim()) return;
+                  if (
+                    !window.confirm(
+                      `Cancel ${retreat.title} for ${retreat.bookings.length} booking(s) and ${retreat.gifts.length} gift purchase(s)? Full refunds will begin immediately.`
+                    )
+                  ) {
+                    return;
+                  }
+                  void runRetreatAction("event-cancellation", () =>
+                    fetch(`/api/admin/retreats/${retreat.id}/cancel`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ reason }),
+                    })
+                  );
+                }}
+              >
+                Cancel workshop
+              </Button>
+            ) : null}
             <Button
               variant="outline"
               onClick={() =>
@@ -674,12 +717,18 @@ export function AdminRetreatDetail({
         </div>
 
         {error ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div
+            role="alert"
+            className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+          >
             {error}
           </div>
         ) : null}
         {actionMessage ? (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          <div
+            role="status"
+            className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"
+          >
             {actionMessage}
           </div>
         ) : null}
@@ -1424,6 +1473,17 @@ export function AdminRetreatDetail({
                       <td className="py-3 pr-4">
                         <p>{gift.recipientName}</p>
                         <p className="text-muted-foreground mt-1 text-xs">{gift.recipientEmail}</p>
+                        <p className="text-muted-foreground mt-1 text-xs">
+                          {gift.deliveryEmailSentAt
+                            ? `Invite sent to ${gift.deliveryTarget === "buyer" ? "buyer" : "recipient"}`
+                            : "Invite pending"}
+                        </p>
+                        {retreat.retreatType === "online" && gift.status === "purchased" ? (
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            Reminders: {gift.liveReminder24hSentAt ? "24h sent" : "24h pending"} ·{" "}
+                            {gift.liveReminder1hSentAt ? "1h sent" : "1h pending"}
+                          </p>
+                        ) : null}
                       </td>
                       <td className="py-3 pr-4">
                         <p>{gift.roomLabel || "Retreat place"}</p>
@@ -1440,7 +1500,56 @@ export function AdminRetreatDetail({
                         </p>
                       </td>
                       <td className="py-3 text-right">
-                        {gift.status === "purchased" ? (
+                        {gift.cancellationRequest &&
+                        ["requested", "failed"].includes(gift.cancellationRequest.status) ? (
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={actionLoading !== ""}
+                              onClick={() =>
+                                void runRetreatAction("gift-cancellation", () =>
+                                  fetch(
+                                    `/api/admin/retreats/gift-cancellations/${gift.cancellationRequest!.id}`,
+                                    {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ action: "approve" }),
+                                    }
+                                  )
+                                )
+                              }
+                            >
+                              {gift.cancellationRequest.status === "failed"
+                                ? "Retry refund"
+                                : "Approve cancellation"}
+                            </Button>
+                            {gift.cancellationRequest.status === "requested" ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={actionLoading !== ""}
+                                onClick={() => {
+                                  const reason = window.prompt("Reason for rejecting this request");
+                                  if (!reason?.trim()) return;
+                                  void runRetreatAction("gift-cancellation", () =>
+                                    fetch(
+                                      `/api/admin/retreats/gift-cancellations/${gift.cancellationRequest!.id}`,
+                                      {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ action: "reject", reason }),
+                                      }
+                                    )
+                                  );
+                                }}
+                              >
+                                Reject
+                              </Button>
+                            ) : null}
+                          </div>
+                        ) : gift.status === "purchased" ? (
                           <div className="flex flex-wrap justify-end gap-2">
                             <Button
                               type="button"
@@ -1599,6 +1708,9 @@ export function AdminRetreatDetail({
                 <tr>
                   <th className="py-3 pr-4">Attendee</th>
                   <th className="py-3 pr-4">Purchaser</th>
+                  {retreat.retreatType === "online" ? (
+                    <th className="py-3 pr-4">Readiness</th>
+                  ) : null}
                   <th className="py-3 pr-4">Room</th>
                   <th className="py-3 pr-4">Extras</th>
                   <th className="py-3 pr-4">Payment</th>
@@ -1616,6 +1728,48 @@ export function AdminRetreatDetail({
                       <p>{booking.purchaserName}</p>
                       <p className="text-muted-foreground mt-1 text-xs">{booking.purchaserEmail}</p>
                     </td>
+                    {retreat.retreatType === "online" ? (
+                      <td className="py-3 pr-4">
+                        <div className="flex flex-col items-start gap-1">
+                          <Badge variant={booking.setupComplete ? "default" : "secondary"}>
+                            {booking.setupComplete ? "Ready" : "Setup needed"}
+                          </Badge>
+                          <span className="text-muted-foreground text-xs">
+                            {booking.accountLinked ? "Account linked" : "Account not linked"}
+                          </span>
+                          {!booking.setupComplete && booking.setupMissing.length > 0 ? (
+                            <span className="text-muted-foreground max-w-48 text-xs">
+                              Missing: {booking.setupMissing.join(", ").replaceAll("_", " ")}
+                            </span>
+                          ) : null}
+                          <span className="text-muted-foreground text-xs">
+                            {booking.liveAccessEnabled
+                              ? "Live access active"
+                              : "Live access inactive"}
+                          </span>
+                          <span className="text-muted-foreground text-xs">
+                            Reminders: {booking.liveReminder24hSentAt ? "24h sent" : "24h pending"}{" "}
+                            · {booking.liveReminder1hSentAt ? "1h sent" : "1h pending"}
+                          </span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={actionLoading !== ""}
+                            onClick={() =>
+                              void runRetreatAction("access-email", () =>
+                                fetch(
+                                  `/api/admin/retreats/${retreat.id}/bookings/${booking.id}/resend-access`,
+                                  { method: "POST" }
+                                )
+                              )
+                            }
+                          >
+                            Resend access email
+                          </Button>
+                        </div>
+                      </td>
+                    ) : null}
                     <td className="py-3 pr-4">
                       <p>{booking.roomType || "Shared"}</p>
                       {retreat.retreatType === "online" ? (

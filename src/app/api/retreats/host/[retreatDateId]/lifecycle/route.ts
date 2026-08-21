@@ -3,6 +3,7 @@ import { requireSessionUser } from "@/lib/api/auth-user";
 import { startRoomRecording, stopRoomRecording } from "@/lib/daily/service";
 import {
   getRetreatHostTokenContext,
+  updateRetreatLiveRecordingState,
   updateRetreatLiveLifecycle,
 } from "@/lib/retreats/live-service";
 
@@ -27,11 +28,18 @@ export async function PATCH(
       const access = await getRetreatHostTokenContext(retreatDateId, user.id);
       if (!access.canRecord)
         return NextResponse.json({ message: "Recording is disabled." }, { status: 403 });
-      const recording =
-        body.action === "start_recording"
-          ? await startRoomRecording(access.roomName)
-          : await stopRoomRecording(access.roomName);
-      return NextResponse.json({ recording });
+      try {
+        const recording =
+          body.action === "start_recording"
+            ? await startRoomRecording(access.roomName)
+            : await stopRoomRecording(access.roomName);
+        const recordingState = body.action === "start_recording" ? "recording" : "stopped";
+        await updateRetreatLiveRecordingState(retreatDateId, recordingState);
+        return NextResponse.json({ recording, recordingState });
+      } catch (error) {
+        await updateRetreatLiveRecordingState(retreatDateId, "failed");
+        throw error;
+      }
     }
     const retreatDate = await updateRetreatLiveLifecycle({
       retreatDateId,

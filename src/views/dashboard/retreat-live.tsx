@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CalendarDays, Video } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard-layout";
@@ -18,6 +19,7 @@ export type RetreatLiveLanding = {
   capacity: number;
   state:
     | "registration_incomplete"
+    | "cancelled"
     | "scheduled"
     | "waiting_room"
     | "pre_join"
@@ -35,6 +37,7 @@ export type RetreatLiveLanding = {
   defaultMicMuted: boolean;
   defaultCameraOff: boolean;
   registrationIncomplete: boolean;
+  setupMissing: string[];
   requiredAcceptances: Array<{ type: string }>;
   replayAssetId: string | null;
 };
@@ -124,6 +127,7 @@ function RetreatReplay({ assetId, title }: { assetId: string; title: string }) {
 }
 
 export function DashboardRetreatLive({ initialData }: { initialData: RetreatLiveLanding }) {
+  const router = useRouter();
   const [entered, setEntered] = useState(false);
   const [initialMuted, setInitialMuted] = useState(initialData.defaultMicMuted);
   const [initialCameraOn, setInitialCameraOn] = useState(!initialData.defaultCameraOff);
@@ -132,13 +136,24 @@ export function DashboardRetreatLive({ initialData }: { initialData: RetreatLive
     return (
       <StateCard
         title="Finish your retreat registration"
-        body="Before joining, add any missing display, access and health information and accept the current retreat policies."
+        body="Before joining, complete the workshop setup checklist for your account, health profile and current agreements."
       >
         <Button asChild>
-          <Link href="/dashboard/health">Update health and access details</Link>
+          <Link href={`/dashboard/retreats/${initialData.bookingId}/setup`}>
+            Finish workshop setup
+          </Link>
         </Button>
+      </StateCard>
+    );
+  }
+  if (initialData.state === "cancelled") {
+    return (
+      <StateCard
+        title="This workshop has been cancelled"
+        body="The room and replay are no longer available. The purchaser will receive refund updates by email."
+      >
         <Button variant="outline" asChild>
-          <Link href="/account">Review account and consents</Link>
+          <Link href="/contact">Contact Shruti</Link>
         </Button>
       </StateCard>
     );
@@ -224,7 +239,7 @@ export function DashboardRetreatLive({ initialData }: { initialData: RetreatLive
         setInitialCameraOn(settings.isCameraOn);
         setEntered(true);
       }}
-      onBack={() => window.location.assign(`/dashboard/retreats/${initialData.bookingId}`)}
+      onBack={() => router.push(`/dashboard/retreats/${initialData.bookingId}`)}
     />
   );
 }

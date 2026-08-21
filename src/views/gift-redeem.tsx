@@ -12,13 +12,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/auth-context";
 import type { PublicGiftRedemptionState } from "@/lib/gifts/service";
+import type { WorkshopSetupState } from "@/lib/retreats/workshop-setup";
 
 export function GiftRedeemPage({
   code,
   initialState,
+  initialSetupState,
 }: {
   code: string;
   initialState: PublicGiftRedemptionState;
+  initialSetupState?: WorkshopSetupState | null;
 }) {
   const { user } = useAuth();
   const router = useRouter();
@@ -88,6 +91,22 @@ export function GiftRedeemPage({
     );
   }
 
+  if (initialState.state === "cancellation_pending") {
+    return (
+      <Layout>
+        <SEO title="Gift cancellation pending" noIndex />
+        <section className="section-wash px-4 py-20">
+          <div className="marketing-panel mx-auto max-w-2xl rounded-[2rem] p-8 text-center">
+            <h1 className="text-3xl">This gift is not currently available</h1>
+            <p className="text-muted-foreground mt-4">
+              The purchaser has requested cancellation. Contact Shruti if you need help.
+            </p>
+          </div>
+        </section>
+      </Layout>
+    );
+  }
+
   if (initialState.state === "pending_payment") {
     return (
       <Layout>
@@ -123,7 +142,13 @@ export function GiftRedeemPage({
         message?: string;
         nextUrl?: string;
         supportUrl?: string;
+        code?: string;
+        setupUrl?: string;
       } | null;
+      if (response.status === 409 && payload?.code === "WORKSHOP_SETUP_REQUIRED") {
+        router.push(payload.setupUrl || `/gift/redeem/${code}/setup`);
+        return;
+      }
       if (!response.ok || !payload?.type) {
         throw new Error(payload?.message || "Failed to redeem gift.");
       }
@@ -142,6 +167,7 @@ export function GiftRedeemPage({
 
   const loginHref = `/login?redirect=/gift/redeem/${code}`;
   const needsSecondGuest = gift.retreat?.guestsIncluded === 2;
+  const isOnlineWorkshop = gift.retreat?.retreatType === "online";
 
   return (
     <Layout>
@@ -241,10 +267,24 @@ export function GiftRedeemPage({
                   </Button>
                 </div>
               </div>
+            ) : isOnlineWorkshop && initialSetupState && !initialSetupState.complete ? (
+              <div className="marketing-panel rounded-[1.5rem] p-6">
+                <h2 className="text-2xl">Complete your workshop setup</h2>
+                <p className="text-muted-foreground mt-3 leading-relaxed">
+                  Add the missing account, date of birth, health profile and agreement details
+                  before claiming this place.
+                </p>
+                <Button asChild className="mt-5">
+                  <Link href={`/gift/redeem/${code}/setup`}>Continue setup</Link>
+                </Button>
+              </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
                 {error ? (
-                  <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  <div
+                    role="alert"
+                    className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+                  >
                     {error}
                   </div>
                 ) : null}
@@ -302,7 +342,7 @@ export function GiftRedeemPage({
                   </div>
                 </div>
 
-                {gift.type === "retreat" ? (
+                {gift.type === "retreat" && !isOnlineWorkshop ? (
                   <>
                     <div className="marketing-panel rounded-[1.5rem] p-6">
                       <h2 className="text-2xl">Retreat details</h2>

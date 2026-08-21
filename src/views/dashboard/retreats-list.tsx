@@ -45,6 +45,37 @@ export function DashboardRetreats({
   const [gifts, setGifts] = useState<RetreatGiftPurchaseSummaryDto[]>(initialGifts || []);
   const [loading, setLoading] = useState(!initialData || !initialGifts);
   const [error, setError] = useState("");
+  const [cancellingGiftId, setCancellingGiftId] = useState("");
+
+  const requestGiftCancellation = async (gift: RetreatGiftPurchaseSummaryDto) => {
+    const reason = window.prompt(
+      "Why would you like to cancel this gift? The gift remains reserved until Shruti reviews the request.",
+      ""
+    );
+    if (reason === null) return;
+    setCancellingGiftId(gift.id);
+    setError("");
+    try {
+      const response = await fetch(`/api/me/retreat-gifts/${gift.id}/cancellation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) throw new Error(payload?.message || "Unable to request cancellation.");
+      const refreshed = await fetch("/api/me/retreat-gifts", { cache: "no-store" });
+      if (refreshed.ok) {
+        const next = (await refreshed.json()) as { data: RetreatGiftPurchaseSummaryDto[] };
+        setGifts(next.data);
+      }
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : "Unable to request cancellation."
+      );
+    } finally {
+      setCancellingGiftId("");
+    }
+  };
 
   useEffect(() => {
     if (initialData && initialGifts) return;
@@ -263,12 +294,32 @@ export function DashboardRetreats({
                               : "Payment is complete and delivery is being prepared."}
                       </p>
                     </div>
-                    <Button asChild variant="outline" className="md:min-w-48">
-                      <Link href={`/retreats/${gift.retreatSlug}`}>
-                        Retreat details
-                        <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
-                      </Link>
-                    </Button>
+                    <div className="flex flex-col gap-2 md:min-w-48">
+                      {gift.cancellation ? (
+                        <p
+                          className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900"
+                          role="status"
+                        >
+                          Cancellation {gift.cancellation.status.replaceAll("_", " ")} · estimated
+                          refund {formatCurrency(gift.cancellation.refundableAmountPence)}
+                        </p>
+                      ) : null}
+                      {gift.canRequestCancellation ? (
+                        <Button
+                          variant="outline"
+                          disabled={cancellingGiftId === gift.id}
+                          onClick={() => void requestGiftCancellation(gift)}
+                        >
+                          {cancellingGiftId === gift.id ? "Sending…" : "Request cancellation"}
+                        </Button>
+                      ) : null}
+                      <Button asChild variant="outline">
+                        <Link href={`/retreats/${gift.retreatSlug}`}>
+                          Retreat details
+                          <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                        </Link>
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}

@@ -7,6 +7,7 @@ import { sendPostmarkReactEmail } from "@/lib/postmark/client";
 import { setUpRetreatOnlineRoom } from "@/lib/retreats/service";
 import { purgeExpiredRetreatChat } from "@/lib/retreats/live-service";
 import RetreatLiveReminderEmail from "@/emails/retreat-live-reminder";
+import { retryPendingEventCancellationRefunds } from "@/lib/retreats/event-cancellation";
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -54,6 +55,7 @@ async function sendReminder(
     id: string;
     attendeeFirstName: string;
     attendeeEmail: string;
+    attendeeUserId: string | null;
     retreatDate: {
       retreatTitleSnapshot: string;
       startsAt: Date;
@@ -62,7 +64,12 @@ async function sendReminder(
   },
   timing: "24h" | "1h"
 ) {
-  const joinUrl = buildAbsoluteUrl(`/dashboard/retreats/${booking.id}/live`);
+  const destination = `/dashboard/retreats/${booking.id}/${booking.attendeeUserId ? "live" : "setup"}`;
+  const joinUrl = booking.attendeeUserId
+    ? buildAbsoluteUrl(destination)
+    : buildAbsoluteUrl(
+        `/login?intent=online-workshop&email=${encodeURIComponent(booking.attendeeEmail)}&redirect=${encodeURIComponent(destination)}`
+      );
   const calendarUrl = buildAbsoluteUrl(`/api/retreats/bookings/${booking.id}/calendar`);
   const dateTime = formatRetreatTime(booking.retreatDate.startsAt, booking.retreatDate.timezone);
   const reminderLabel = timing === "24h" ? "tomorrow" : "in about one hour";
@@ -87,15 +94,42 @@ async function sendReminder(
   });
 }
 
+export async function resendRetreatLiveAccessEmail(bookingId: string, retreatDateId: string) {
+  const booking = await db.retreatBooking.findFirst({
+    where: { id: bookingId, retreatDateId },
+    include: {
+      retreatDate: {
+        select: {
+          retreatType: true,
+          retreatTitleSnapshot: true,
+          startsAt: true,
+          timezone: true,
+          status: true,
+        },
+      },
+    },
+  });
+  if (
+    !booking ||
+    booking.retreatDate.retreatType !== "online" ||
+    booking.retreatDate.status === "cancelled"
+  ) {
+    throw new Error("NOT_FOUND");
+  }
+  if (!booking.attendeeEmail) throw new Error("ATTENDEE_EMAIL_MISSING");
+  await sendReminder(booking, "24h");
+  return booking;
+}
+
 export async function processRetreatLiveReminders() {
   const now = new Date();
   const bookings = await db.retreatBooking.findMany({
     where: {
       retreatDate: {
         retreatType: "online",
+        status: { not: "cancelled" },
         startsAt: { gt: now, lte: new Date(now.getTime() + 25 * HOUR_MS) },
       },
-      attendeeUserId: { not: null },
       bookingStatus: { in: ["deposit_paid", "balance_due", "paid_in_full"] },
       paymentStatus: { in: ["deposit_paid", "partially_paid", "paid_in_full"] },
     },
@@ -145,14 +179,81 @@ export async function processRetreatLiveReminders() {
       }
     }
   }
-  return { processed: bookings.length, sent24h, sent1h };
+
+  const gifts = await db.giftPurchase.findMany({
+    where: {
+      type: "retreat",
+      status: "purchased",
+      retreatDate: {
+        retreatType: "online",
+        status: { not: "cancelled" },
+        startsAt: { gt: now, lte: new Date(now.getTime() + 25 * HOUR_MS) },
+      },
+      cancellationRequests: {
+        none: { status: { in: ["requested", "approved", "processing", "failed"] } },
+      },
+    },
+    include: { retreatDate: true },
+  });
+  let giftRemindersSent = 0;
+  for (const gift of gifts) {
+    if (!gift.retreatDate) continue;
+    const remainingMs = gift.retreatDate.startsAt.getTime() - now.getTime();
+    const timing = remainingMs <= 90 * 60 * 1000 ? "1h" : "24h";
+    const timestampField = timing === "1h" ? "liveReminder1hSentAt" : "liveReminder24hSentAt";
+    if (gift[timestampField]) continue;
+    const claimed = await db.giftPurchase.updateMany({
+      where: { id: gift.id, [timestampField]: null },
+      data: { [timestampField]: new Date() },
+    });
+    if (!claimed.count) continue;
+    try {
+      const dateTime = formatRetreatTime(gift.retreatDate.startsAt, gift.retreatDate.timezone);
+      const redemptionUrl = buildAbsoluteUrl(`/gift/redeem/${gift.code}`);
+      const sendToBuyer = gift.deliveryTarget === "buyer";
+      await sendPostmarkReactEmail({
+        to: sendToBuyer ? gift.purchaserEmail : gift.recipientEmail,
+        subject: `${gift.retreatDate.retreatTitleSnapshot} begins ${timing === "1h" ? "in about one hour" : "tomorrow"}`,
+        react: RetreatLiveReminderEmail({
+          firstName: sendToBuyer ? gift.purchaserFirstName : gift.recipientFirstName,
+          retreatName: gift.retreatDate.retreatTitleSnapshot,
+          dateTime,
+          reminderLabel: timing === "1h" ? "in about one hour" : "tomorrow",
+          joinUrl: redemptionUrl,
+          calendarUrl: buildAbsoluteUrl(`/retreats/${gift.retreatDate.retreatSlug}`),
+        }),
+        textBody: `${gift.retreatDate.retreatTitleSnapshot} begins ${timing === "1h" ? "in about one hour" : "tomorrow"} (${dateTime}). Redeem and complete setup: ${redemptionUrl}`,
+        tag: `retreat-gift-live-reminder-${timing}`,
+        templateKey: `retreat-gift-live-reminder-${timing}`,
+        category: "transactional",
+        dispatchMode: "immediate_best_effort",
+        retryable: true,
+        metadata: { giftPurchaseId: gift.id, reminderTiming: timing },
+      });
+      giftRemindersSent += 1;
+    } catch (error) {
+      await db.giftPurchase.update({
+        where: { id: gift.id },
+        data: { [timestampField]: null },
+      });
+      console.error("Failed to send online workshop gift reminder", error);
+    }
+  }
+  return {
+    processed: bookings.length,
+    sent24h,
+    sent1h,
+    giftsProcessed: gifts.length,
+    giftRemindersSent,
+  };
 }
 
 export async function maintainRetreatLiveSessions() {
-  const [rooms, reminders, chat] = await Promise.all([
+  const [rooms, reminders, chat, cancellations] = await Promise.all([
     prepareUpcomingRetreatLiveRooms(),
     processRetreatLiveReminders(),
     purgeExpiredRetreatChat(),
+    retryPendingEventCancellationRefunds(),
   ]);
-  return { rooms, reminders, chat };
+  return { rooms, reminders, chat, cancellations };
 }

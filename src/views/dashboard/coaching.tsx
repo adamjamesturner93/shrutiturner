@@ -73,6 +73,7 @@ const everfitLabels: Record<string, string> = {
   invite_sent: "Invite sent",
   connected: "Active",
   sync_issue: "Needs attention",
+  removed: "Access removed",
 };
 
 const billingPhaseLabels: Record<string, string> = {
@@ -1065,12 +1066,19 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
                       <MessageCircle className="h-4 w-4" />
                     </Link>
                   </Button>
-                  <Button asChild variant="outline" className="w-full justify-between">
-                    <a href="https://everfit.io/" target="_blank" rel="noreferrer">
-                      Open Everfit
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </Button>
+                  {data.profile.everfitConnectionStatus === "removed" ? (
+                    <div className="bg-muted/40 text-muted-foreground rounded-lg border p-3 text-sm">
+                      Everfit access has been removed. Contact Shruti if you think you still need
+                      access.
+                    </div>
+                  ) : (
+                    <Button asChild variant="outline" className="w-full justify-between">
+                      <a href="https://everfit.io/" target="_blank" rel="noreferrer">
+                        Open Everfit
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  )}
                   {(data.profile.billingArrangement === "paid" || data.profile.billingStartsAt) &&
                   !data.profile.billingCancellationRequestedAt ? (
                     <>

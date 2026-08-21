@@ -15,12 +15,23 @@ import {
   assertCurrentAcceptances,
 } from "@/lib/legal/acceptance-service";
 import { setUpRetreatOnlineRoom } from "@/lib/retreats/service";
+import { getWorkshopSetupState } from "@/lib/retreats/workshop-setup";
 
 const CHAT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const CHAT_RATE_WINDOW_MS = 10_000;
 const CHAT_RATE_LIMIT = 5;
 const PAYMENT_STATUSES_WITH_ACCESS = ["deposit_paid", "partially_paid", "paid_in_full"];
 const BOOKING_STATUSES_WITH_ACCESS = ["deposit_paid", "balance_due", "paid_in_full"];
+
+export async function updateRetreatLiveRecordingState(
+  retreatDateId: string,
+  state: "recording" | "stopped" | "failed"
+) {
+  return db.retreatDate.update({
+    where: { id: retreatDateId },
+    data: { liveRecordingState: state },
+  });
+}
 
 function displayName(user: {
   firstName: string | null;
@@ -97,8 +108,10 @@ async function getBookingAccess(bookingId: string, userId: string) {
   ) {
     throw new Error("PAYMENT_REQUIRED");
   }
-  const entitlement = booking.onlineAccessEntitlements[0];
-  if (!entitlement?.liveAccessEnabled) throw new Error("FORBIDDEN");
+  const entitlement = booking.onlineAccessEntitlements[0] || null;
+  if (booking.retreatDate.status !== "cancelled" && !entitlement?.liveAccessEnabled) {
+    throw new Error("FORBIDDEN");
+  }
   return { booking, entitlement };
 }
 
@@ -116,14 +129,14 @@ async function getHostAccess(retreatDateId: string, userId: string, provisionRoo
 export async function getRetreatLiveLandingState(bookingId: string, userId: string) {
   const { booking, entitlement } = await getBookingAccess(bookingId, userId);
   const now = new Date();
-  const acceptanceStates = await getAcceptanceRequirementStates(
-    userId,
-    getPhysicalServiceAcceptanceRequirements("retreat_live_join")
-  );
-  const registrationIncomplete =
-    !booking.attendeeFirstName.trim() ||
-    !booking.attendeeLastName.trim() ||
-    acceptanceStates.some((acceptance) => !acceptance.isCurrent);
+  const [acceptanceStates, workshopSetup] = await Promise.all([
+    getAcceptanceRequirementStates(
+      userId,
+      getPhysicalServiceAcceptanceRequirements("retreat_live_join")
+    ),
+    getWorkshopSetupState(userId),
+  ]);
+  const registrationIncomplete = !workshopSetup.complete;
   const replayAsset = await db.replayAsset.findFirst({
     where: {
       retreatDateId: booking.retreatDateId,
@@ -144,16 +157,18 @@ export async function getRetreatLiveLandingState(bookingId: string, userId: stri
 
   let state:
     | "registration_incomplete"
+    | "cancelled"
     | "scheduled"
     | "waiting_room"
     | "pre_join"
     | "live"
     | "ended"
     | "replay_available" = "scheduled";
-  if (registrationIncomplete) state = "registration_incomplete";
+  if (booking.retreatDate.status === "cancelled") state = "cancelled";
+  else if (registrationIncomplete) state = "registration_incomplete";
   else if (booking.retreatDate.liveRoomState === RetreatLiveRoomState.ended) {
     state = replayAsset ? "replay_available" : "ended";
-  } else if (entitlement.liveAccessStartsAt && now < entitlement.liveAccessStartsAt) {
+  } else if (entitlement?.liveAccessStartsAt && now < entitlement.liveAccessStartsAt) {
     state = "scheduled";
   } else if (booking.retreatDate.liveRoomState === RetreatLiveRoomState.started) {
     state = "live";
@@ -187,6 +202,7 @@ export async function getRetreatLiveLandingState(bookingId: string, userId: stri
     defaultMicMuted: booking.retreatDate.participantMicDefaultMuted,
     defaultCameraOff: booking.retreatDate.participantCameraDefaultOff,
     registrationIncomplete,
+    setupMissing: workshopSetup.missing,
     requiredAcceptances: acceptanceStates.filter((acceptance) => !acceptance.isCurrent),
     replayAssetId: replayAsset?.id || null,
   };
@@ -194,6 +210,11 @@ export async function getRetreatLiveLandingState(bookingId: string, userId: stri
 
 export async function getRetreatParticipantTokenContext(bookingId: string, userId: string) {
   const { booking, entitlement } = await getBookingAccess(bookingId, userId);
+  if (booking.retreatDate.status === "cancelled" || !entitlement?.liveAccessEnabled) {
+    throw new Error("ROOM_CLOSED");
+  }
+  const workshopSetup = await getWorkshopSetupState(userId);
+  if (!workshopSetup.complete) throw new Error("REGISTRATION_INCOMPLETE");
   await assertCurrentAcceptances(
     userId,
     getPhysicalServiceAcceptanceRequirements("retreat_live_join")
@@ -266,6 +287,7 @@ export async function getRetreatHostTokenContext(retreatDateId: string, userId: 
     defaultMicMuted: false,
     defaultCameraOff: false,
     isRecorded: retreatDate.isRecorded,
+    recordingState: retreatDate.liveRecordingState,
   };
 }
 
@@ -299,6 +321,7 @@ export async function getRetreatHostPageState(retreatDateId: string, userId: str
     focusedPresenterUserId: retreatDate.focusedPresenterUserId,
     chatEnabled: retreatDate.chatEnabled && !retreatDate.liveChatDisabledAt,
     isRecorded: retreatDate.isRecorded,
+    recordingState: retreatDate.liveRecordingState,
     replayAsset,
   };
 }

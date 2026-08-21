@@ -66,6 +66,16 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
     if (isAcceptanceRequiredError(error)) {
       return NextResponse.json(error.details, { status: 409 });
     }
+    if (error instanceof Error && error.message === "WORKSHOP_SETUP_REQUIRED") {
+      return NextResponse.json(
+        {
+          code: "WORKSHOP_SETUP_REQUIRED",
+          message: "Complete your workshop setup before redeeming this gift.",
+          setupUrl: `/gift/redeem/${code}/setup`,
+        },
+        { status: 409 }
+      );
+    }
     if (
       error instanceof Error &&
       [

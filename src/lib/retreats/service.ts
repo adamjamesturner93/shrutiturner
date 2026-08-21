@@ -13,6 +13,7 @@ import {
   RetreatOnlineAccessType,
   RetreatPaymentStatus,
   RetreatDateStatus,
+  RetreatCancellationSource,
   RetreatCancellationStatus,
   RetreatRefundStatus,
   RetreatLiveRoomState,
@@ -67,6 +68,7 @@ import {
   type RetreatType,
 } from "@/lib/retreats/pricing";
 import { getRetreatImageSrc } from "@/lib/retreats/images";
+import { getWorkshopSetupState } from "@/lib/retreats/workshop-setup";
 
 const RETREAT_PAYMENT_WINDOW_MS = 30 * 60 * 1000;
 const ACTIVE_RETREAT_BOOKING_STATUSES: RetreatBookingStatus[] = [
@@ -393,11 +395,10 @@ async function createGuestAcceptanceEventsForRetreatPurchase(input: {
   guestCount?: number;
   purchaseMode: "self" | "gift";
 }) {
-  const acceptanceTypes = [
-    AcceptanceType.terms,
-    AcceptanceType.health_waiver,
-    AcceptanceType.health_data,
-  ] as const;
+  const acceptanceTypes =
+    input.purchaseMode === "gift"
+      ? ([AcceptanceType.terms] as const)
+      : ([AcceptanceType.terms, AcceptanceType.health_waiver, AcceptanceType.health_data] as const);
   const policies = await getCurrentPolicyVersions([...acceptanceTypes]);
   const acceptedAt = new Date();
 
@@ -1422,20 +1423,27 @@ export async function createRetreatCheckout(input: {
     await assertNoUserCheckoutDisputeHold(input.purchaserUserId);
   }
 
+  const acceptanceRequirements =
+    input.purchaseMode === "gift"
+      ? [{ type: AcceptanceType.terms, surface: "retreat_gift_checkout" }]
+      : [
+          { type: AcceptanceType.terms, surface: "retreat_checkout" },
+          { type: AcceptanceType.health_waiver, surface: "retreat_checkout" },
+          { type: AcceptanceType.health_data, surface: "retreat_checkout" },
+        ];
   const acceptanceStates = input.purchaserUserId
-    ? await assertCurrentAcceptances(input.purchaserUserId, [
-        { type: AcceptanceType.terms, surface: "retreat_checkout" },
-        { type: AcceptanceType.health_waiver, surface: "retreat_checkout" },
-        { type: AcceptanceType.health_data, surface: "retreat_checkout" },
-      ])
+    ? await assertCurrentAcceptances(input.purchaserUserId, acceptanceRequirements)
     : null;
 
   if (!input.purchaserUserId) {
-    if (
-      input.acceptedTermsVersion !== CURRENT_TERMS_VERSION ||
-      input.acceptedHealthWaiverVersion !== CURRENT_HEALTH_WAIVER_VERSION ||
-      input.acceptedHealthDataVersion !== CURRENT_HEALTH_DATA_CONSENT_VERSION
-    ) {
+    const missingGiftTerms =
+      input.purchaseMode === "gift" && input.acceptedTermsVersion !== CURRENT_TERMS_VERSION;
+    const missingSelfAcceptances =
+      input.purchaseMode === "self" &&
+      (input.acceptedTermsVersion !== CURRENT_TERMS_VERSION ||
+        input.acceptedHealthWaiverVersion !== CURRENT_HEALTH_WAIVER_VERSION ||
+        input.acceptedHealthDataVersion !== CURRENT_HEALTH_DATA_CONSENT_VERSION);
+    if (missingGiftTerms || missingSelfAcceptances) {
       throw new Error("RETREAT_LEGAL_ACCEPTANCE_REQUIRED");
     }
   }
@@ -1627,7 +1635,7 @@ export async function createRetreatCheckout(input: {
       });
     });
 
-    const successUrl = `${getBaseSiteUrl()}/retreats/${input.retreatSlug}/checkout?date=${input.retreatDateId}&gift=1&checkout=success`;
+    const successUrl = `${getBaseSiteUrl()}/retreats/checkout/success?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${getBaseSiteUrl()}/retreats/${input.retreatSlug}/checkout?date=${input.retreatDateId}&gift=1&checkout=cancelled`;
 
     const session = await stripe.checkout.sessions.create({
@@ -1906,7 +1914,7 @@ export async function createRetreatCheckout(input: {
     });
   });
 
-  const successUrl = `${getBaseSiteUrl()}/retreats/${input.retreatSlug}/checkout?date=${input.retreatDateId}&booking=${booking.id}&checkout=success`;
+  const successUrl = `${getBaseSiteUrl()}/retreats/checkout/success?session_id={CHECKOUT_SESSION_ID}`;
   const cancelUrl = `${getBaseSiteUrl()}/retreats/${input.retreatSlug}/checkout?date=${input.retreatDateId}&checkout=cancelled`;
 
   const session = await stripe.checkout.sessions.create({
@@ -1993,7 +2001,12 @@ async function sendDepositConfirmationEmail(bookingId: string) {
   });
   if (!booking) return;
 
-  const retreatDetailsUrl = buildAbsoluteUrl(`/retreats/${booking.retreatDate.retreatSlug}`);
+  const retreatDetailsUrl =
+    booking.retreatDate.retreatType === "online"
+      ? buildAbsoluteUrl(
+          `/login?intent=online-workshop&email=${encodeURIComponent(booking.attendeeEmail)}&redirect=${encodeURIComponent(`/dashboard/retreats/${booking.id}/setup`)}`
+        )
+      : buildAbsoluteUrl(`/retreats/${booking.retreatDate.retreatSlug}`);
   const paidInFull = booking.balanceAmountPence <= 0;
   const paidAmountLabel = paidInFull ? "Payment received" : "Deposit paid";
   const extras = booking.items.flatMap((item) =>
@@ -2120,6 +2133,52 @@ async function sendRetreatPaymentReceipt(bookingId: string, amountPaidPence: num
   });
 }
 
+async function refundPaymentReceivedAfterEventCancellation(bookingId: string) {
+  const booking = await db.retreatBooking.findUnique({
+    where: { id: bookingId },
+    include: {
+      retreatDate: { select: { status: true } },
+      cancellationRequests: {
+        where: { source: RetreatCancellationSource.event_cancelled },
+        orderBy: { requestedAt: "desc" },
+        take: 1,
+      },
+    },
+  });
+  if (booking?.retreatDate.status !== RetreatDateStatus.cancelled) return false;
+
+  const request = booking.cancellationRequests[0];
+  if (!request?.requestedByUserId) {
+    console.error("Cancelled retreat payment has no event cancellation request", { bookingId });
+    return true;
+  }
+  const refundableAmountPence = booking.depositPaidPence + booking.balancePaidPence;
+  await db.retreatCancellationRequest.update({
+    where: { id: request.id },
+    data: {
+      status: RetreatCancellationStatus.requested,
+      refundableAmountPence,
+      policySnapshotJson: {
+        source: "event_cancelled",
+        fullRefund: true,
+        actualPaidPence: refundableAmountPence,
+        refundableAmountPence,
+        paymentReceivedAfterCancellation: true,
+      },
+      reviewedAt: null,
+      completedAt: null,
+    },
+  });
+  await approveRetreatCancellation({
+    requestId: request.id,
+    actorUserId: request.requestedByUserId,
+    reason: request.reason,
+  }).catch((error) => {
+    console.error("Failed to refund payment received after retreat cancellation", error);
+  });
+  return true;
+}
+
 export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.Session) {
   const bookingId = session.metadata?.bookingId;
   const kind = session.metadata?.kind;
@@ -2221,6 +2280,8 @@ export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.S
 
     if (!paymentApplied) return true;
 
+    if (await refundPaymentReceivedAfterEventCancellation(booking.id)) return true;
+
     if (instalmentSequence === 1) {
       await assignRoomUnitAfterPayment(booking.id);
       await ensureRetreatOnlineAccessEntitlement(booking.id);
@@ -2268,6 +2329,7 @@ export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.S
       },
     });
     if (claimed.count === 0) return true;
+    if (await refundPaymentReceivedAfterEventCancellation(booking.id)) return true;
     await assignRoomUnitAfterPayment(booking.id);
     await ensureRetreatOnlineAccessEntitlement(booking.id);
     await Promise.allSettled([
@@ -2293,6 +2355,7 @@ export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.S
       },
     });
     if (claimed.count === 0) return true;
+    if (await refundPaymentReceivedAfterEventCancellation(booking.id)) return true;
     await sendRetreatPaymentReceipt(booking.id, amountPaidPence).catch((error) => {
       console.error("Failed to send retreat balance receipt", error);
     });
@@ -2317,6 +2380,9 @@ export async function createRetreatBalanceCheckout(input: {
     },
   });
   if (!booking) throw new Error("NOT_FOUND");
+  if (booking.retreatDate.status === RetreatDateStatus.cancelled) {
+    throw new Error("RETREAT_CANCELLED");
+  }
 
   const authorized =
     (input.userId &&
@@ -2954,6 +3020,7 @@ export async function approveRetreatCancellation(input: {
         booking: {
           include: {
             retreatDate: true,
+            giftPurchase: true,
             instalments: { orderBy: { sequence: "desc" } },
             refunds: { where: { status: RetreatRefundStatus.succeeded } },
           },
@@ -2998,10 +3065,13 @@ export async function approveRetreatCancellation(input: {
   const booking = request.booking;
   const refundRecord = request.refunds[0];
   const alreadyRefundedPence = booking.refunds.reduce((sum, refund) => sum + refund.amountPence, 0);
-  const actualPaidPence = Math.max(
-    booking.depositPaidPence + booking.balancePaidPence - alreadyRefundedPence,
-    0
-  );
+  const actualPaidPence = booking.giftPurchase
+    ? Math.max(
+        booking.giftPurchase.totalPaidPence -
+          Math.max(booking.giftPurchase.refundedAmountPence, alreadyRefundedPence),
+        0
+      )
+    : Math.max(booking.depositPaidPence + booking.balancePaidPence - alreadyRefundedPence, 0);
   const targetRefundPence = Math.min(request.refundableAmountPence, actualPaidPence);
 
   try {
@@ -3021,6 +3091,15 @@ export async function approveRetreatCancellation(input: {
       }
     }
     const fallbackSources = [
+      {
+        paymentIntentId: booking.giftPurchase?.stripePaymentIntentId,
+        amountPence: booking.giftPurchase
+          ? Math.max(
+              booking.giftPurchase.totalPaidPence - booking.giftPurchase.refundedAmountPence,
+              0
+            )
+          : 0,
+      },
       {
         paymentIntentId: booking.stripeBalancePaymentIntentId,
         amountPence: booking.balancePaidPence,
@@ -3112,6 +3191,17 @@ export async function approveRetreatCancellation(input: {
           cancelledAt: completedAt,
         },
       });
+      if (booking.giftPurchaseId && booking.giftPurchase) {
+        await tx.giftPurchase.update({
+          where: { id: booking.giftPurchaseId },
+          data: {
+            status: fullRefund ? GiftPurchaseStatus.refunded : GiftPurchaseStatus.cancelled,
+            refundedAmountPence: targetRefundPence,
+            stripeRefundId: stripeRefunds[0]?.id || booking.giftPurchase.stripeRefundId,
+            refundedAt: refundCompleted ? completedAt : null,
+          },
+        });
+      }
       return tx.retreatCancellationRequest.update({
         where: { id: request.id },
         data: {
@@ -3184,7 +3274,7 @@ export async function processRetreatRefundUpdated(refund: Stripe.Refund) {
         where: { id: retreatRefundId },
         include: {
           cancellationRequest: true,
-          booking: { include: { retreatDate: true } },
+          booking: { include: { retreatDate: true, giftPurchase: true } },
         },
       })
     : null;
@@ -3194,7 +3284,7 @@ export async function processRetreatRefundUpdated(refund: Stripe.Refund) {
       where: { status: RetreatRefundStatus.processing },
       include: {
         cancellationRequest: true,
-        booking: { include: { retreatDate: true } },
+        booking: { include: { retreatDate: true, giftPurchase: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 100,
@@ -3235,6 +3325,21 @@ export async function processRetreatRefundUpdated(refund: Stripe.Refund) {
         completedAt,
       },
     });
+    if (record.booking.giftPurchaseId && record.booking.giftPurchase) {
+      await tx.giftPurchase.update({
+        where: { id: record.booking.giftPurchaseId },
+        data: {
+          status: failed
+            ? GiftPurchaseStatus.cancelled
+            : succeeded
+              ? GiftPurchaseStatus.refunded
+              : GiftPurchaseStatus.cancelled,
+          refundedAmountPence: record.amountPence,
+          stripeRefundId: storedRefunds[0]?.id || record.booking.giftPurchase.stripeRefundId,
+          refundedAt: completedAt,
+        },
+      });
+    }
     if (!record.cancellationRequestId) return null;
     return tx.retreatCancellationRequest.update({
       where: { id: record.cancellationRequestId },
@@ -3581,8 +3686,8 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
         isRecorded: isOnline,
         replayAccessDurationDays: isOnline ? (sourceDate?.replayAccessDurationDays ?? 7) : null,
         chatEnabled: sourceDate?.chatEnabled ?? true,
-        participantMicDefaultMuted: sourceDate?.participantMicDefaultMuted ?? false,
-        participantCameraDefaultOff: sourceDate?.participantCameraDefaultOff ?? false,
+        participantMicDefaultMuted: sourceDate?.participantMicDefaultMuted ?? isOnline,
+        participantCameraDefaultOff: sourceDate?.participantCameraDefaultOff ?? isOnline,
         payInFullDiscountEnabled:
           !requiresFullPayment && (sourceDate?.payInFullDiscountEnabled ?? true),
         payInFullDiscountPercent: sourceDate?.payInFullDiscountPercent ?? 5,
@@ -4189,6 +4294,7 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
           cancellationRequests: {
             orderBy: { requestedAt: "desc" },
           },
+          onlineAccessEntitlements: true,
           items: {
             where: { itemType: RetreatBookingItemType.addon },
             include: { addon: true },
@@ -4234,7 +4340,10 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
       },
       giftPurchases: {
         where: { type: "retreat" },
-        include: { retreatRoomOption: true },
+        include: {
+          retreatRoomOption: true,
+          cancellationRequests: { orderBy: { requestedAt: "desc" }, take: 1 },
+        },
         orderBy: { createdAt: "asc" },
       },
       replayAssets: {
@@ -4271,6 +4380,17 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
         active: addon.active,
       };
     })
+  );
+  const workshopSetupByBooking = new Map(
+    bookingRows.retreatType === "online"
+      ? await Promise.all(
+          bookingRows.bookings.map(async (booking) => {
+            if (!booking.attendeeUserId) return [booking.id, null] as const;
+            const setup = await getWorkshopSetupState(booking.attendeeUserId);
+            return [booking.id, setup] as const;
+          })
+        )
+      : []
   );
 
   return {
@@ -4379,6 +4499,19 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
       status: gift.status,
       purchasedAt: gift.purchasedAt?.toISOString() || null,
       redeemedAt: gift.redeemedAt?.toISOString() || null,
+      deliveryTarget: gift.deliveryTarget,
+      deliveryEmailSentAt: gift.deliveryEmailSentAt?.toISOString() || null,
+      liveReminder24hSentAt: gift.liveReminder24hSentAt?.toISOString() || null,
+      liveReminder1hSentAt: gift.liveReminder1hSentAt?.toISOString() || null,
+      cancellationRequest: gift.cancellationRequests[0]
+        ? {
+            id: gift.cancellationRequests[0].id,
+            status: gift.cancellationRequests[0].status,
+            reason: gift.cancellationRequests[0].reason,
+            refundableAmountPence: gift.cancellationRequests[0].refundableAmountPence,
+            requestedAt: gift.cancellationRequests[0].requestedAt.toISOString(),
+          }
+        : null,
     })),
     bookings: bookingRows.bookings.map((booking) => ({
       id: booking.id,
@@ -4386,6 +4519,14 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
       purchaserEmail: booking.purchaserEmail,
       attendeeName: `${booking.attendeeFirstName} ${booking.attendeeLastName}`.trim(),
       attendeeEmail: booking.attendeeEmail,
+      accountLinked: Boolean(booking.attendeeUserId),
+      setupComplete: workshopSetupByBooking.get(booking.id)?.complete || false,
+      setupMissing: workshopSetupByBooking.get(booking.id)?.missing || [],
+      liveAccessEnabled: booking.onlineAccessEntitlements.some(
+        (entitlement) => entitlement.liveAccessEnabled
+      ),
+      liveReminder24hSentAt: booking.liveReminder24hSentAt?.toISOString() || null,
+      liveReminder1hSentAt: booking.liveReminder1hSentAt?.toISOString() || null,
       attendeeCount: booking.attendeeCount,
       roomType: booking.roomOptionLabelSnapshot || booking.roomType,
       roomOptionId: booking.roomOptionId,

@@ -207,7 +207,7 @@ export type CoachingDashboardDto = {
     billingArrangement: "paid" | "pro_bono";
     billingStartsAt: string | null;
     status: "application_pending" | "onboarding" | "active" | "paused" | "completed";
-    everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue";
+    everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue" | "removed";
     nextCheckInDueAt: string | null;
     nextCheckInStatus: "due" | "submitted" | "reviewed" | "overdue" | null;
     nextSessionStartsAt: string | null;
@@ -351,6 +351,13 @@ export type RetreatGiftPurchaseSummaryDto = {
   purchasedAt: string | null;
   deliveredAt: string | null;
   redeemedAt: string | null;
+  canRequestCancellation: boolean;
+  cancellation: null | {
+    id: string;
+    status: string;
+    refundableAmountPence: number;
+    requestedAt: string;
+  };
 };
 
 export type ReplayAssetSummaryDto = {
@@ -409,7 +416,7 @@ export type AdminCoachingApplicationDto = {
     billingArrangement: "paid" | "pro_bono";
     billingStartsAt: string | null;
     status: "application_pending" | "onboarding" | "active" | "paused" | "completed";
-    everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue";
+    everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue" | "removed";
     billingCancellationRequestedAt: string | null;
     billingFinalPaymentAt: string | null;
     billingEndsAt: string | null;
@@ -566,6 +573,17 @@ export type AdminRetreatDetailDto = {
     status: string;
     purchasedAt: string | null;
     redeemedAt: string | null;
+    deliveryTarget: string;
+    deliveryEmailSentAt: string | null;
+    liveReminder24hSentAt: string | null;
+    liveReminder1hSentAt: string | null;
+    cancellationRequest: null | {
+      id: string;
+      status: string;
+      reason: string | null;
+      refundableAmountPence: number;
+      requestedAt: string;
+    };
   }>;
   bookings: Array<{
     id: string;
@@ -573,6 +591,12 @@ export type AdminRetreatDetailDto = {
     purchaserEmail: string;
     attendeeName: string;
     attendeeEmail: string;
+    accountLinked: boolean;
+    setupComplete: boolean;
+    setupMissing: string[];
+    liveAccessEnabled: boolean;
+    liveReminder24hSentAt: string | null;
+    liveReminder1hSentAt: string | null;
     attendeeCount: number;
     roomType: string | null;
     roomOptionId: string | null;
