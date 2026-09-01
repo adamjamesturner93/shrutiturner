@@ -12,6 +12,7 @@ import { buildAbsoluteUrl } from "@/lib/app-url";
 import { assertNoUserCheckoutDisputeHold } from "@/lib/billing/dispute-service";
 import { getStripeClient } from "@/lib/billing/stripe-client";
 import { assertCurrentAcceptances } from "@/lib/legal/acceptance-service";
+import { getCurrentPolicyVersion } from "@/lib/legal/policy-service";
 import {
   getSmallGroupTemplateBySlug,
   getSmallGroupTemplates,
@@ -747,6 +748,7 @@ export async function createSmallGroupCheckout(input: {
   recipientEmail?: string;
   recipientMessage?: string;
   deliveryTarget?: "recipient" | "buyer";
+  acceptedTermsVersion?: string | null;
 }) {
   const requiresMemberCompliance = input.purchaseMode === "self";
   if (requiresMemberCompliance && !input.userId) {
@@ -758,11 +760,23 @@ export async function createSmallGroupCheckout(input: {
   }
 
   const acceptanceStates = input.userId
-    ? await assertCurrentAcceptances(input.userId, [
-        { type: AcceptanceType.terms, surface: "small_group_checkout" },
-        { type: AcceptanceType.health_waiver, surface: "small_group_checkout" },
-      ])
+    ? await assertCurrentAcceptances(
+        input.userId,
+        input.purchaseMode === "gift"
+          ? [{ type: AcceptanceType.terms, surface: "small_group_gift_checkout" }]
+          : [
+              { type: AcceptanceType.terms, surface: "small_group_checkout" },
+              { type: AcceptanceType.health_waiver, surface: "small_group_checkout" },
+            ]
+      )
     : null;
+  const guestGiftTermsPolicy =
+    input.purchaseMode === "gift" && !input.userId
+      ? await getCurrentPolicyVersion(AcceptanceType.terms)
+      : null;
+  if (guestGiftTermsPolicy && input.acceptedTermsVersion !== guestGiftTermsPolicy.version) {
+    throw new Error("PROGRAMME_LEGAL_ACCEPTANCE_REQUIRED");
+  }
 
   const programme = await getRunByRunSlug(input.runSlug);
   if (!programme || programme.templateSlug !== input.templateSlug) {
@@ -873,6 +887,26 @@ export async function createSmallGroupCheckout(input: {
       where: { id: gift.id },
       data: { stripeCheckoutSessionId: session.id },
     });
+
+    if (!input.userId) {
+      if (!guestGiftTermsPolicy) throw new Error("PROGRAMME_LEGAL_ACCEPTANCE_REQUIRED");
+      await db.guestAcceptanceEvent.create({
+        data: {
+          purchaserEmail,
+          type: AcceptanceType.terms,
+          policyVersionId: guestGiftTermsPolicy.id,
+          version: guestGiftTermsPolicy.version,
+          acceptanceSurface: "small_group_gift_checkout_guest",
+          acceptedAt: new Date(),
+          giftPurchaseId: gift.id,
+          metadataJson: {
+            purchaseMode: "gift",
+            templateSlug: programme.templateSlug,
+            programmeId: programme.id,
+          },
+        },
+      });
+    }
 
     return { checkoutUrl: session.url, giftPurchaseId: gift.id };
   }

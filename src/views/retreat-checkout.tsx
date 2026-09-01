@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -38,11 +38,8 @@ import {
 } from "@/lib/retreats/pricing";
 import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content/types";
 import { useI18n } from "@/lib/use-i18n";
-
-type PendingAcceptance = {
-  type: string;
-  currentVersion: string;
-};
+import { LegalAcceptanceChecklist } from "@/components/legal-acceptance-checklist";
+import type { AcceptanceRequirementState } from "@/lib/legal/acceptance-service";
 
 function formatMoney(pence: number, currency = "GBP") {
   return new Intl.NumberFormat("en-GB", {
@@ -142,6 +139,7 @@ function getRoomGuestLabel(roomOption: RetreatRoomOptionContent) {
 }
 
 export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedContent | null }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { fmtDate, fmtDateRange } = useI18n();
   const { user, acceptTermsAndHealth, acceptHealthDataConsent, refreshAccountProfile } = useAuth();
@@ -164,7 +162,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
   const [addonQuantities, setAddonQuantities] = useState<Record<string, number>>({});
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [pendingLegalAcceptances, setPendingLegalAcceptances] = useState<PendingAcceptance[]>([]);
+  const [pendingLegalAcceptances, setPendingLegalAcceptances] = useState<
+    AcceptanceRequirementState[]
+  >([]);
   const [formData, setFormData] = useState({
     purchaserFirstName: "",
     purchaserLastName: "",
@@ -363,33 +363,8 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
     ? formData.attendeeEmail
     : purchaserEmail;
 
-  const resolvePendingLegalAcceptances = async () => {
-    const needsTerms = pendingLegalAcceptances.some((item) => item.type === "terms");
-    const needsHealthWaiver = pendingLegalAcceptances.some((item) => item.type === "health_waiver");
-    const needsHealthData = pendingLegalAcceptances.some((item) => item.type === "health_data");
-    const unsupportedAcceptances = pendingLegalAcceptances.filter(
-      (item) =>
-        item.type !== "terms" && item.type !== "health_waiver" && item.type !== "health_data"
-    );
-
-    if (unsupportedAcceptances.length > 0) {
-      throw new Error("Some required agreements cannot be refreshed from this page yet.");
-    }
-
-    if (needsTerms || needsHealthWaiver) {
-      await acceptTermsAndHealth(needsTerms, needsHealthWaiver);
-    }
-
-    if (needsHealthData) {
-      await acceptHealthDataConsent();
-    }
-
-    await refreshAccountProfile();
-    setPendingLegalAcceptances([]);
-  };
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleSubmit = async (event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
     setError("");
     setIsSubmitting(true);
 
@@ -450,12 +425,13 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
       setIsSubmitting(false);
       return;
     }
+    if (purchaseMode === "gift" && !termsSatisfied) {
+      setError("Please agree to the current Terms & Conditions before buying this gift.");
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
-      if (pendingLegalAcceptances.length > 0) {
-        await resolvePendingLegalAcceptances();
-      }
-
       if (purchaseMode === "self" && user) {
         if (!user.hasAgreedToTerms || !user.hasAgreedToHealth) {
           await acceptTermsAndHealth(!user.hasAgreedToTerms, !user.hasAgreedToHealth);
@@ -518,7 +494,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
         checkoutUrl?: string;
         message?: string;
         code?: string;
-        requiredAcceptances?: PendingAcceptance[];
+        requiredAcceptances?: AcceptanceRequirementState[];
       } | null;
       if (!response.ok || !payload?.checkoutUrl) {
         if (
@@ -537,13 +513,13 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
         ) {
           throw new Error(
             payload.message ||
-            "The retreat legal agreements have changed. Refresh this page and review the latest versions before continuing."
+              "The retreat legal agreements have changed. Refresh this page and review the latest versions before continuing."
           );
         }
         if (response.status === 401 && payload?.code === "SESSION_INVALID") {
           const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`;
           await signOut({ redirect: false }).catch(() => null);
-          window.location.assign(`/login?redirect=${encodeURIComponent(returnTo)}`);
+          router.push(`/login?redirect=${encodeURIComponent(returnTo)}`);
           return;
         }
         throw new Error(payload?.message || "Failed to start checkout.");
@@ -640,6 +616,23 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                 {error}
               </div>
             ) : null}
+            {pendingLegalAcceptances.length > 0 ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <p className="mb-3 text-sm text-amber-900">
+                  Review and acknowledge every current agreement before checkout.
+                </p>
+                <LegalAcceptanceChecklist
+                  acceptances={pendingLegalAcceptances}
+                  surface="retreat_checkout"
+                  busy={isSubmitting}
+                  onAccepted={async () => {
+                    await refreshAccountProfile();
+                    setPendingLegalAcceptances([]);
+                    await handleSubmit();
+                  }}
+                />
+              </div>
+            ) : null}
 
             <div className="border-brand-dark/10 bg-background rounded-[1.5rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
               <div className="flex flex-wrap gap-3">
@@ -670,10 +663,11 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                       <button
                         key={date.id}
                         type="button"
-                        className={`rounded-[1.25rem] border p-4 text-left transition-colors ${isSelected
-                          ? "border-brand-accent bg-brand-accent/5"
-                          : "hover:bg-secondary/20"
-                          }`}
+                        className={`rounded-[1.25rem] border p-4 text-left transition-colors ${
+                          isSelected
+                            ? "border-brand-accent bg-brand-accent/5"
+                            : "hover:bg-secondary/20"
+                        }`}
                         onClick={() => setSelectedDateId(date.id)}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -704,10 +698,11 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                           key={roomOption.id}
                           type="button"
                           disabled={isUnavailable}
-                          className={`rounded-[1.25rem] border p-5 text-left transition-colors ${isSelected
-                            ? "border-brand-accent bg-brand-accent/5"
-                            : "hover:bg-secondary/20"
-                            } ${isUnavailable ? "opacity-60" : ""}`}
+                          className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
+                            isSelected
+                              ? "border-brand-accent bg-brand-accent/5"
+                              : "hover:bg-secondary/20"
+                          } ${isUnavailable ? "opacity-60" : ""}`}
                           onClick={() => {
                             setSelectedRoomId(roomOption.id);
                             setSelectedGuestCount(getDefaultGuestCount(roomOption));
@@ -754,21 +749,21 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                                 {formatMoney(
                                   getRoomRatePlans(roomOption)[0]
                                     ? getEffectiveRetreatRatePricePence(
-                                      getRoomRatePlans(roomOption)[0]
-                                    )
+                                        getRoomRatePlans(roomOption)[0]
+                                      )
                                     : roomOption.normalPricePence,
                                   retreat.currency
                                 )}
                               </p>
                               {getRoomRatePlans(roomOption)[0] &&
-                                isRetreatEarlyBirdActive({
-                                  earlyBirdPricePence:
-                                    getRoomRatePlans(roomOption)[0]?.earlyBirdPricePence,
-                                  earlyBirdEndsAt: getRoomRatePlans(roomOption)[0]?.earlyBirdEndsAt,
-                                  totalPricePence:
-                                    getRoomRatePlans(roomOption)[0]?.totalPricePence ||
-                                    roomOption.normalPricePence,
-                                }) ? (
+                              isRetreatEarlyBirdActive({
+                                earlyBirdPricePence:
+                                  getRoomRatePlans(roomOption)[0]?.earlyBirdPricePence,
+                                earlyBirdEndsAt: getRoomRatePlans(roomOption)[0]?.earlyBirdEndsAt,
+                                totalPricePence:
+                                  getRoomRatePlans(roomOption)[0]?.totalPricePence ||
+                                  roomOption.normalPricePence,
+                              }) ? (
                                 <p className="text-muted-foreground mt-1 text-xs">
                                   Early bird saves{" "}
                                   {formatMoney(
@@ -778,7 +773,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                                   . Standard{" "}
                                   {formatMoney(
                                     getRoomRatePlans(roomOption)[0]?.totalPricePence ||
-                                    roomOption.normalPricePence,
+                                      roomOption.normalPricePence,
                                     retreat.currency
                                   )}
                                 </p>
@@ -792,8 +787,8 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                                     roomOption,
                                     getRoomRatePlans(roomOption)[0]
                                       ? getEffectiveRetreatRatePricePence(
-                                        getRoomRatePlans(roomOption)[0]
-                                      )
+                                          getRoomRatePlans(roomOption)[0]
+                                        )
                                       : roomOption.normalPricePence
                                   ),
                                   retreat.currency
@@ -817,10 +812,11 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                           key={ratePlan.guestCount}
                           type="button"
                           onClick={() => setSelectedGuestCount(ratePlan.guestCount)}
-                          className={`rounded-[1rem] border p-4 text-left transition-colors ${selectedGuestCount === ratePlan.guestCount
-                            ? "border-brand-accent bg-brand-accent/5"
-                            : "hover:bg-secondary/20"
-                            }`}
+                          className={`rounded-[1rem] border p-4 text-left transition-colors ${
+                            selectedGuestCount === ratePlan.guestCount
+                              ? "border-brand-accent bg-brand-accent/5"
+                              : "hover:bg-secondary/20"
+                          }`}
                         >
                           <p className="text-base">{getGuestCountLabel(ratePlan.guestCount)}</p>
                           <p className="text-muted-foreground mt-1 text-sm">
@@ -945,10 +941,11 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                     <div className="mt-6 grid gap-4 md:grid-cols-2">
                       <button
                         type="button"
-                        className={`rounded-[1.25rem] border p-5 text-left transition-colors ${paymentOption === "deposit"
-                          ? "border-brand-accent bg-brand-accent/5"
-                          : "hover:bg-secondary/20"
-                          }`}
+                        className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
+                          paymentOption === "deposit"
+                            ? "border-brand-accent bg-brand-accent/5"
+                            : "hover:bg-secondary/20"
+                        }`}
                         onClick={() => setPaymentOption("deposit")}
                       >
                         <p className="text-xl">Pay deposit</p>
@@ -962,10 +959,11 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
 
                       <button
                         type="button"
-                        className={`rounded-[1.25rem] border p-5 text-left transition-colors ${paymentOption === "pay_in_full"
-                          ? "border-brand-accent bg-brand-accent/5"
-                          : "hover:bg-secondary/20"
-                          }`}
+                        className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
+                          paymentOption === "pay_in_full"
+                            ? "border-brand-accent bg-brand-accent/5"
+                            : "hover:bg-secondary/20"
+                        }`}
                         onClick={() => setPaymentOption("pay_in_full")}
                       >
                         <p className="text-xl">Pay in full</p>
@@ -974,9 +972,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                           today
                           {payInFullDiscountPence > 0
                             ? ` including a ${formatMoney(
-                              payInFullDiscountPence,
-                              retreat.currency
-                            )} discount.`
+                                payInFullDiscountPence,
+                                retreat.currency
+                              )} discount.`
                             : "."}
                         </p>
                       </button>
@@ -1460,6 +1458,28 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                     </div>
                   </div>
                   <div className="bg-secondary/20 text-muted-foreground mt-4 rounded-xl border p-4 text-sm">
+                    {user?.hasAgreedToTerms ? (
+                      <p className="mb-3 flex items-start gap-2 text-emerald-800">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0" />
+                        Current Terms & Conditions already accepted on your account.
+                      </p>
+                    ) : (
+                      <label className="text-foreground mb-3 flex items-start gap-3">
+                        <Checkbox
+                          checked={formData.agreedToTerms}
+                          onCheckedChange={(checked) =>
+                            setFormData((current) => ({
+                              ...current,
+                              agreedToTerms: checked === true,
+                            }))
+                          }
+                        />
+                        <span>
+                          I agree to the current Terms & Conditions and Refund & Cancellation Policy
+                          for this gift purchase.
+                        </span>
+                      </label>
+                    )}
                     Gift purchases follow the{" "}
                     <Link href="/terms" target="_blank" className="text-primary underline">
                       Terms & Conditions
@@ -1559,9 +1579,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                             This pays the {experienceLabel} balance in full
                             {payInFullDiscountPence > 0
                               ? ` and includes a ${formatMoney(
-                                payInFullDiscountPence,
-                                retreat.currency
-                              )} discount.`
+                                  payInFullDiscountPence,
+                                  retreat.currency
+                                )} discount.`
                               : "."}
                           </p>
                         ) : (

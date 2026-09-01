@@ -18,11 +18,8 @@ export const PATCH = handleApiRoute(
   async ({ request, sessionUser }) => {
     const body = await parseJsonBody<Record<string, unknown>>(request);
     const prefs = await updateNotificationPreferences(sessionUser!.id, {
-      classReminders: typeof body.classReminders === "boolean" ? body.classReminders : undefined,
-      scheduleUpdates: typeof body.scheduleUpdates === "boolean" ? body.scheduleUpdates : undefined,
-      programAnnouncements:
-        typeof body.programAnnouncements === "boolean" ? body.programAnnouncements : undefined,
-      marketingEmails: typeof body.marketingEmails === "boolean" ? body.marketingEmails : undefined,
+      newsletterSubscribed:
+        typeof body.newsletterSubscribed === "boolean" ? body.newsletterSubscribed : undefined,
     });
     return apiOk(prefs);
   },

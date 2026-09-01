@@ -35,6 +35,7 @@ type CampaignSummary = {
 
 type NewsletterSummary = {
   subscribed: number;
+  pending: number;
   unsubscribes30d: number;
   campaigns: CampaignSummary[];
   campaignsPagination: {
@@ -50,7 +51,7 @@ type SubscriberRow = {
   email: string;
   firstName: string | null;
   lastName: string | null;
-  marketingSubscribed: boolean;
+  status: "pending" | "subscribed" | "unsubscribed";
   source: string | null;
   updatedAt: string;
 };
@@ -63,7 +64,7 @@ type SubscribersResponse = {
   totalPages: number;
 };
 
-const FILTERS = ["all", "subscribed", "unsubscribed"] as const;
+const FILTERS = ["all", "pending", "subscribed", "unsubscribed"] as const;
 type FilterType = (typeof FILTERS)[number];
 const CAMPAIGN_STATUSES = [
   "all",
@@ -149,7 +150,7 @@ export function AdminNewsletter() {
     );
   }, [refreshSubscribers, refreshSummary]);
 
-  async function updateSubscriber(row: SubscriberRow, marketingSubscribed: boolean) {
+  async function unsubscribeSubscriber(row: SubscriberRow) {
     setUpdatingId(row.id);
     try {
       const response = await fetch(
@@ -157,7 +158,7 @@ export function AdminNewsletter() {
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ marketingEmails: marketingSubscribed }),
+          body: JSON.stringify({ status: "unsubscribed" }),
         }
       );
       if (!response.ok) return;
@@ -192,9 +193,9 @@ export function AdminNewsletter() {
     <AdminLayout title="Newsletter Analytics - Admin">
       <div className="space-y-6">
         <AppPageHeader
-          eyebrow="Marketing audience"
-          title="Marketing Email Audience"
-          description="Active consent, recent unsubscribes and campaign delivery for this website's marketing stream."
+          eyebrow="Newsletter audience"
+          title="Newsletter Audience"
+          description="Subscriber consent, pending confirmations, recent unsubscribes and newsletter campaign delivery."
           actions={
             <Button
               variant="outline"
@@ -214,7 +215,12 @@ export function AdminNewsletter() {
         {loading ? <InlineLoadingStatus label="Loading newsletter analytics…" /> : null}
 
         {summary ? (
-          <AppMetricGrid className="lg:grid-cols-2">
+          <AppMetricGrid className="lg:grid-cols-3">
+            <AppMetricCard
+              label="Awaiting confirmation"
+              value={summary.pending}
+              detail="pending email verification"
+            />
             <AppMetricCard
               label="Active subscribers"
               value={summary.subscribed}
@@ -340,8 +346,8 @@ export function AdminNewsletter() {
             <div>
               <h2 className="text-lg">Subscribers</h2>
               <p className="text-muted-foreground text-sm">
-                Search active and unsubscribed marketing contacts. Results are limited to 25 per
-                page.
+                Search newsletter subscribers and pending confirmations. Results are limited to 25
+                per page.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -404,23 +410,31 @@ export function AdminNewsletter() {
                         </p>
                       </td>
                       <td className="p-3">
-                        <Badge variant={subscriber.marketingSubscribed ? "default" : "outline"}>
-                          {subscriber.marketingSubscribed ? "Subscribed" : "Unsubscribed"}
+                        <Badge variant={subscriber.status === "subscribed" ? "default" : "outline"}>
+                          {subscriber.status === "pending"
+                            ? "Awaiting confirmation"
+                            : subscriber.status === "subscribed"
+                              ? "Subscribed"
+                              : "Unsubscribed"}
                         </Badge>
                       </td>
                       <td className="p-3">{subscriber.source || "Unknown"}</td>
                       <td className="p-3">{formatDateTime(subscriber.updatedAt)}</td>
                       <td className="p-3">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={updatingId === subscriber.id}
-                          onClick={() =>
-                            void updateSubscriber(subscriber, !subscriber.marketingSubscribed)
-                          }
-                        >
-                          {subscriber.marketingSubscribed ? "Unsubscribe" : "Resubscribe"}
-                        </Button>
+                        {subscriber.status === "subscribed" ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={updatingId === subscriber.id}
+                            onClick={() => void unsubscribeSubscriber(subscriber)}
+                          >
+                            Unsubscribe
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">
+                            Subscriber must opt in themselves
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}

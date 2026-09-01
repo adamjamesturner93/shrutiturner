@@ -39,19 +39,8 @@ function createLegacyToken() {
 }
 
 async function ensureUserMarketingPreference(userId: string, marketingEmails: boolean) {
-  await db.userNotificationPreference.upsert({
-    where: { userId },
-    create: {
-      userId,
-      marketingEmails,
-      classReminders: true,
-      scheduleUpdates: true,
-      programAnnouncements: true,
-    },
-    update: {
-      marketingEmails,
-    },
-  });
+  void userId;
+  void marketingEmails;
 }
 
 async function recordMarketingConsentIfNeeded(input: {

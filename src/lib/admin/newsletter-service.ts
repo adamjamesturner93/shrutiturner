@@ -3,7 +3,7 @@ import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { db } from "@/lib/db";
 import { syncMarketingPreferenceForUser } from "@/lib/newsletter/subscriber-service";
 
-export type SubscriptionType = "subscribed" | "unsubscribed";
+export type SubscriptionType = "pending" | "subscribed" | "unsubscribed";
 
 export type AdminSubscriberDto = {
   id: string;
@@ -11,13 +11,17 @@ export type AdminSubscriberDto = {
   email: string;
   firstName: string | null;
   lastName: string | null;
-  marketingSubscribed: boolean;
-  subscriptionType: SubscriptionType;
+  status: SubscriptionType;
   source: string | null;
+  consentedAt: string | null;
+  subscribedAt: string;
+  verifiedAt: string | null;
+  unsubscribedAt: string | null;
   updatedAt: string;
 };
 
 export type AdminSubscriberSegmentSummaryDto = {
+  pending: number;
   subscribed: number;
   unsubscribed: number;
   total: number;
@@ -60,6 +64,7 @@ export type AdminNewsletterCampaignDetailDto = AdminNewsletterCampaignSummaryDto
 
 export type AdminNewsletterSummaryDto = {
   totalSubscribers: number;
+  pending: number;
   subscribed: number;
   unsubscribed: number;
   unsubscribes30d: number;
@@ -117,10 +122,6 @@ export type AdminNewsletterSummaryDto = {
     }>;
   };
 };
-
-function toSubscriptionType(marketingSubscribed: boolean): SubscriptionType {
-  return marketingSubscribed ? "subscribed" : "unsubscribed";
-}
 
 function toPercent(value: number, total: number) {
   if (total <= 0) return 0;
@@ -250,15 +251,17 @@ function buildCampaignWhere(params: {
 }
 
 export async function getSubscriberSegmentSummary(): Promise<AdminSubscriberSegmentSummaryDto> {
-  const [subscribed, unsubscribed] = await Promise.all([
+  const [pending, subscribed, unsubscribed] = await Promise.all([
+    db.newsletterSubscriber.count({ where: { status: "pending" } }),
     db.newsletterSubscriber.count({ where: { status: "subscribed" } }),
     db.newsletterSubscriber.count({ where: { status: "unsubscribed" } }),
   ]);
 
   return {
+    pending,
     subscribed,
     unsubscribed,
-    total: subscribed + unsubscribed,
+    total: pending + subscribed + unsubscribed,
   };
 }
 
@@ -274,7 +277,7 @@ export async function listAdminSubscribers(params: {
   const type = params.type || "all";
 
   const where: Prisma.NewsletterSubscriberWhereInput = {
-    status: type === "all" ? undefined : type === "subscribed" ? "subscribed" : "unsubscribed",
+    status: type === "all" ? undefined : type,
     OR: search
       ? [
           { email: { contains: search, mode: "insensitive" } },
@@ -297,7 +300,12 @@ export async function listAdminSubscribers(params: {
         email: true,
         userId: true,
         status: true,
+        firstName: true,
         source: true,
+        consentedAt: true,
+        subscribedAt: true,
+        verifiedAt: true,
+        unsubscribedAt: true,
         updatedAt: true,
         user: {
           select: {
@@ -310,16 +318,18 @@ export async function listAdminSubscribers(params: {
   ]);
 
   const items: AdminSubscriberDto[] = subscribers.map((subscriber) => {
-    const marketingSubscribed = subscriber.status === "subscribed";
     return {
       id: subscriber.id,
       userId: subscriber.userId,
       email: subscriber.email,
-      firstName: subscriber.user?.firstName || null,
+      firstName: subscriber.user?.firstName || subscriber.firstName || null,
       lastName: subscriber.user?.lastName || null,
-      marketingSubscribed,
-      subscriptionType: toSubscriptionType(marketingSubscribed),
+      status: subscriber.status,
       source: subscriber.source || null,
+      consentedAt: subscriber.consentedAt?.toISOString() || null,
+      subscribedAt: subscriber.subscribedAt.toISOString(),
+      verifiedAt: subscriber.verifiedAt?.toISOString() || null,
+      unsubscribedAt: subscriber.unsubscribedAt?.toISOString() || null,
       updatedAt: subscriber.updatedAt.toISOString(),
     };
   });
@@ -336,14 +346,14 @@ export async function listAdminSubscribers(params: {
 export async function updateAdminSubscriber(
   identifier: string,
   updates: {
-    marketingEmails?: boolean;
+    status?: "unsubscribed";
     actorUserId?: string | null;
     requestId?: string | null;
     requestPath?: string | null;
     requestIp?: string | null;
   }
 ) {
-  if (typeof updates.marketingEmails !== "boolean") {
+  if (updates.status !== "unsubscribed") {
     throw new Error("INVALID_UPDATE");
   }
 
@@ -357,7 +367,10 @@ export async function updateAdminSubscriber(
       email: true,
       status: true,
       source: true,
+      consentedAt: true,
       subscribedAt: true,
+      verifiedAt: true,
+      unsubscribedAt: true,
       updatedAt: true,
       user: {
         select: {
@@ -368,24 +381,19 @@ export async function updateAdminSubscriber(
     },
   });
   if (!existing) throw new Error("NOT_FOUND");
-  if (updates.marketingEmails && existing.status !== "subscribed") {
-    throw new Error("SELF_SERVICE_OPT_IN_REQUIRED");
-  }
-
   if (existing.userId) {
-    await syncMarketingPreferenceForUser(existing.userId, updates.marketingEmails);
+    await syncMarketingPreferenceForUser(existing.userId, false);
   } else {
     await db.newsletterSubscriber.update({
       where: { id: existing.id },
       data: {
-        status: updates.marketingEmails ? "subscribed" : "unsubscribed",
-        subscribedAt: updates.marketingEmails ? new Date() : existing.subscribedAt,
-        unsubscribedAt: updates.marketingEmails ? null : new Date(),
+        status: "unsubscribed",
+        unsubscribedAt: new Date(),
       },
     });
   }
 
-  if (!updates.marketingEmails) {
+  {
     await db.emailDelivery.updateMany({
       where: {
         toEmail: existing.email.trim().toLowerCase(),
@@ -411,7 +419,12 @@ export async function updateAdminSubscriber(
       userId: true,
       email: true,
       status: true,
+      firstName: true,
       source: true,
+      consentedAt: true,
+      subscribedAt: true,
+      verifiedAt: true,
+      unsubscribedAt: true,
       updatedAt: true,
       user: {
         select: {
@@ -423,16 +436,18 @@ export async function updateAdminSubscriber(
   });
   if (!refreshed) throw new Error("NOT_FOUND");
 
-  const marketingSubscribed = refreshed.status === "subscribed";
   const result = {
     id: refreshed.id,
     userId: refreshed.userId,
     email: refreshed.email,
-    firstName: refreshed.user?.firstName || null,
+    firstName: refreshed.user?.firstName || refreshed.firstName || null,
     lastName: refreshed.user?.lastName || null,
-    marketingSubscribed,
-    subscriptionType: toSubscriptionType(marketingSubscribed),
+    status: refreshed.status,
     source: refreshed.source || null,
+    consentedAt: refreshed.consentedAt?.toISOString() || null,
+    subscribedAt: refreshed.subscribedAt.toISOString(),
+    verifiedAt: refreshed.verifiedAt?.toISOString() || null,
+    unsubscribedAt: refreshed.unsubscribedAt?.toISOString() || null,
     updatedAt: refreshed.updatedAt.toISOString(),
   };
 
@@ -839,6 +854,7 @@ export async function getAdminNewsletterSummary(
 
   return {
     totalSubscribers: segments.total,
+    pending: segments.pending,
     subscribed: segments.subscribed,
     unsubscribed: segments.unsubscribed,
     unsubscribes30d: subscriberUnsubscribes30d,

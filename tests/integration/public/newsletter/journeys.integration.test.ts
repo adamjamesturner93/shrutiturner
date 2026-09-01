@@ -146,7 +146,7 @@ describe("newsletter public journeys integration", () => {
     expect(preference).toBeNull();
   });
 
-  it("verifies a pending subscriber and updates the user's marketing preference", async () => {
+  it("verifies a pending subscriber in the canonical newsletter record", async () => {
     const email = makeEmail("verify");
     const rawToken = "verify_token_123";
     const user = await db.user.create({
@@ -179,14 +179,9 @@ describe("newsletter public journeys integration", () => {
     const refreshedSubscriber = await db.newsletterSubscriber.findUnique({
       where: { id: subscriber.id },
     });
-    const preference = await db.userNotificationPreference.findUnique({
-      where: { userId: user.id },
-    });
-
     expect(refreshedSubscriber?.status).toBe("subscribed");
     expect(refreshedSubscriber?.verifiedAt).toBeTruthy();
     expect(refreshedSubscriber?.verificationTokenHash).toBeNull();
-    expect(preference?.marketingEmails).toBe(true);
     expect(sendLeadMagnetDeliveryEmailMock).toHaveBeenCalledWith({
       email,
       firstName: "Verify",
@@ -210,13 +205,6 @@ describe("newsletter public journeys integration", () => {
         token: `tok_${Date.now()}`,
       },
     });
-    await db.userNotificationPreference.create({
-      data: {
-        userId: user.id,
-        marketingEmails: true,
-      },
-    });
-
     const response = await unsubscribeRoute.POST(
       createRequest("http://localhost/api/unsubscribe", {
         token: subscriber.token,
@@ -228,13 +216,8 @@ describe("newsletter public journeys integration", () => {
     const refreshedSubscriber = await db.newsletterSubscriber.findUnique({
       where: { id: subscriber.id },
     });
-    const preference = await db.userNotificationPreference.findUnique({
-      where: { userId: user.id },
-    });
-
     expect(refreshedSubscriber?.status).toBe("unsubscribed");
     expect(refreshedSubscriber?.unsubscribedAt).toBeTruthy();
-    expect(preference?.marketingEmails).toBe(false);
   });
 
   it("sends a confirmation email for manual unsubscribe without changing status immediately", async () => {

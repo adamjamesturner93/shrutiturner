@@ -27,11 +27,6 @@ import {
   assertNoUserCheckoutDisputeHold,
 } from "@/lib/billing/dispute-service";
 import {
-  CURRENT_HEALTH_DATA_CONSENT_VERSION,
-  CURRENT_HEALTH_WAIVER_VERSION,
-  CURRENT_TERMS_VERSION,
-} from "@/data/legal-documents";
-import {
   getRetreatBySlugCombined,
   getRetreatTemplates,
   getRetreatVenues,
@@ -393,11 +388,10 @@ async function createGuestAcceptanceEventsForRetreatPurchase(input: {
   guestCount?: number;
   purchaseMode: "self" | "gift";
 }) {
-  const acceptanceTypes = [
-    AcceptanceType.terms,
-    AcceptanceType.health_waiver,
-    AcceptanceType.health_data,
-  ] as const;
+  const acceptanceTypes =
+    input.purchaseMode === "gift"
+      ? ([AcceptanceType.terms] as const)
+      : ([AcceptanceType.terms, AcceptanceType.health_waiver, AcceptanceType.health_data] as const);
   const policies = await getCurrentPolicyVersions([...acceptanceTypes]);
   const acceptedAt = new Date();
 
@@ -1423,18 +1417,33 @@ export async function createRetreatCheckout(input: {
   }
 
   const acceptanceStates = input.purchaserUserId
-    ? await assertCurrentAcceptances(input.purchaserUserId, [
-        { type: AcceptanceType.terms, surface: "retreat_checkout" },
-        { type: AcceptanceType.health_waiver, surface: "retreat_checkout" },
-        { type: AcceptanceType.health_data, surface: "retreat_checkout" },
-      ])
+    ? await assertCurrentAcceptances(
+        input.purchaserUserId,
+        input.purchaseMode === "gift"
+          ? [{ type: AcceptanceType.terms, surface: "retreat_gift_checkout" }]
+          : [
+              { type: AcceptanceType.terms, surface: "retreat_checkout" },
+              { type: AcceptanceType.health_waiver, surface: "retreat_checkout" },
+              { type: AcceptanceType.health_data, surface: "retreat_checkout" },
+            ]
+      )
     : null;
 
   if (!input.purchaserUserId) {
+    const guestAcceptanceTypes =
+      input.purchaseMode === "gift"
+        ? [AcceptanceType.terms]
+        : [AcceptanceType.terms, AcceptanceType.health_waiver, AcceptanceType.health_data];
+    const guestPolicies = await getCurrentPolicyVersions(guestAcceptanceTypes);
+    const currentGuestVersions = new Map(
+      guestAcceptanceTypes.map((type, index) => [type, guestPolicies[index]?.version || ""])
+    );
     if (
-      input.acceptedTermsVersion !== CURRENT_TERMS_VERSION ||
-      input.acceptedHealthWaiverVersion !== CURRENT_HEALTH_WAIVER_VERSION ||
-      input.acceptedHealthDataVersion !== CURRENT_HEALTH_DATA_CONSENT_VERSION
+      input.acceptedTermsVersion !== currentGuestVersions.get(AcceptanceType.terms) ||
+      (input.purchaseMode === "self" &&
+        (input.acceptedHealthWaiverVersion !==
+          currentGuestVersions.get(AcceptanceType.health_waiver) ||
+          input.acceptedHealthDataVersion !== currentGuestVersions.get(AcceptanceType.health_data)))
     ) {
       throw new Error("RETREAT_LEGAL_ACCEPTANCE_REQUIRED");
     }
@@ -2311,6 +2320,9 @@ export async function createRetreatBalanceCheckout(input: {
     where: { id: input.bookingId },
     include: {
       retreatDate: true,
+      guestAcceptanceEvents: {
+        select: { type: true, version: true },
+      },
       instalments: {
         orderBy: { sequence: "asc" },
       },
@@ -2325,6 +2337,41 @@ export async function createRetreatBalanceCheckout(input: {
   if (!authorized) throw new Error("FORBIDDEN");
   if (booking.balanceAmountPence <= 0 || booking.paymentStatus === "paid_in_full") {
     throw new Error("BALANCE_NOT_DUE");
+  }
+
+  const snapshot =
+    booking.complianceSnapshotJson &&
+    typeof booking.complianceSnapshotJson === "object" &&
+    !Array.isArray(booking.complianceSnapshotJson)
+      ? (booking.complianceSnapshotJson as Record<string, unknown>)
+      : null;
+  const snapshotStates = Array.isArray(snapshot?.acceptanceStates)
+    ? (snapshot.acceptanceStates as Array<Record<string, unknown>>)
+    : [];
+  const evidenceTypes = new Set<string>([
+    ...booking.guestAcceptanceEvents
+      .filter((event) => Boolean(event.version))
+      .map((event) => event.type),
+    ...snapshotStates
+      .filter(
+        (state) =>
+          typeof state.type === "string" &&
+          typeof state.version === "string" &&
+          state.version.length > 0
+      )
+      .map((state) => state.type as string),
+  ]);
+  if (booking.acceptedTermsVersion) evidenceTypes.add(AcceptanceType.terms);
+  if (booking.acceptedHealthWaiverVersion) evidenceTypes.add(AcceptanceType.health_waiver);
+  if (booking.acceptedHealthDataVersion) evidenceTypes.add(AcceptanceType.health_data);
+
+  const requiredOriginalEvidence = [
+    AcceptanceType.terms,
+    AcceptanceType.health_waiver,
+    AcceptanceType.health_data,
+  ];
+  if (requiredOriginalEvidence.some((type) => !evidenceTypes.has(type))) {
+    throw new Error("ORIGINAL_ACCEPTANCE_EVIDENCE_MISSING");
   }
   await assertNoResourceDisputeHold("retreat_booking", booking.id);
 

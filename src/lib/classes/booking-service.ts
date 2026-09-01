@@ -1165,11 +1165,6 @@ export async function processThreeHourClassCutoff(now = new Date()) {
               name: true,
               timezone: true,
               dateFormat: true,
-              notificationPreference: {
-                select: {
-                  classReminders: true,
-                },
-              },
             },
           },
         },
@@ -1198,10 +1193,6 @@ export async function processThreeHourClassCutoff(now = new Date()) {
     });
 
     for (const booking of session.bookings) {
-      if (booking.user.notificationPreference?.classReminders === false) {
-        continue;
-      }
-
       const joinLink = `${getBaseSiteUrlFromEnv()}/dashboard/classes/${session.classDefinitionSlug}/join?sessionId=${session.id}`;
 
       void sendClassReminder(

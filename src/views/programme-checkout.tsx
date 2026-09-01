@@ -11,13 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/auth-context";
+import { LegalAcceptanceChecklist } from "@/components/legal-acceptance-checklist";
 import type { PublicProgrammeCheckoutState } from "@/lib/small-groups/service";
+import type { AcceptanceRequirementState } from "@/lib/legal/acceptance-service";
 import { buildSmallGroupTemplateCheckoutHref } from "@/lib/small-groups/routes";
-
-type PendingAcceptance = {
-  type: string;
-  currentVersion: string;
-};
+import { CURRENT_TERMS_VERSION } from "@/data/legal-documents";
 
 export function ProgrammeCheckoutPage({
   templateSlug,
@@ -26,7 +24,7 @@ export function ProgrammeCheckoutPage({
   templateSlug: string;
   initialState: PublicProgrammeCheckoutState;
 }) {
-  const { user, acceptTermsAndHealth, refreshAccountProfile } = useAuth();
+  const { user, refreshAccountProfile } = useAuth();
   const searchParams = useSearchParams();
   const checkoutState = searchParams.get("checkout");
   const isGiftDefault = searchParams.get("gift") === "1";
@@ -42,7 +40,9 @@ export function ProgrammeCheckoutPage({
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [pendingLegalAcceptances, setPendingLegalAcceptances] = useState<PendingAcceptance[]>([]);
+  const [pendingLegalAcceptances, setPendingLegalAcceptances] = useState<
+    AcceptanceRequirementState[]
+  >([]);
   const [formData, setFormData] = useState({
     purchaserFirstName: user?.firstName || "",
     purchaserLastName: user?.lastName || "",
@@ -55,6 +55,7 @@ export function ProgrammeCheckoutPage({
     recipientEmail: "",
     recipientMessage: "",
     deliveryTarget: "recipient" as "recipient" | "buyer",
+    agreedToTerms: false,
   });
 
   useEffect(() => {
@@ -91,39 +92,26 @@ export function ProgrammeCheckoutPage({
     );
   }
 
-  const resolvePendingLegalAcceptances = async () => {
-    const needsTerms = pendingLegalAcceptances.some((item) => item.type === "terms");
-    const needsHealthWaiver = pendingLegalAcceptances.some((item) => item.type === "health_waiver");
-    const unsupportedAcceptances = pendingLegalAcceptances.filter(
-      (item) => item.type !== "terms" && item.type !== "health_waiver"
-    );
-
-    if (unsupportedAcceptances.length > 0) {
-      throw new Error("Some required agreements cannot be refreshed from this page yet.");
-    }
-
-    if (needsTerms || needsHealthWaiver) {
-      await acceptTermsAndHealth(needsTerms, needsHealthWaiver);
-      await refreshAccountProfile();
-    }
-
-    setPendingLegalAcceptances([]);
-  };
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleSubmit = async (event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
     setSubmitting(true);
     setError("");
+    if (purchaseMode === "gift" && !user?.hasAgreedToTerms && !formData.agreedToTerms) {
+      setError("Agree to the current Terms & Conditions before buying this gift.");
+      setSubmitting(false);
+      return;
+    }
     try {
-      if (pendingLegalAcceptances.length > 0) {
-        await resolvePendingLegalAcceptances();
-      }
       const response = await fetch(`/api/classes/small-group/${templateSlug}/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           purchaseMode,
           runSlug: selectedRun.runSlug,
+          acceptedTermsVersion:
+            purchaseMode === "gift" && (user?.hasAgreedToTerms || formData.agreedToTerms)
+              ? CURRENT_TERMS_VERSION
+              : null,
           ...formData,
         }),
       });
@@ -131,7 +119,7 @@ export function ProgrammeCheckoutPage({
         checkoutUrl?: string;
         message?: string;
         code?: string;
-        requiredAcceptances?: PendingAcceptance[];
+        requiredAcceptances?: AcceptanceRequirementState[];
       } | null;
       if (!response.ok || !payload?.checkoutUrl) {
         if (
@@ -233,6 +221,23 @@ export function ProgrammeCheckoutPage({
             {error ? (
               <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                 {error}
+              </div>
+            ) : null}
+            {pendingLegalAcceptances.length > 0 ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <p className="mb-3 text-sm text-amber-900">
+                  Review and acknowledge the current agreements before checkout.
+                </p>
+                <LegalAcceptanceChecklist
+                  acceptances={pendingLegalAcceptances}
+                  surface="small_group_checkout"
+                  busy={submitting}
+                  onAccepted={async () => {
+                    await refreshAccountProfile();
+                    setPendingLegalAcceptances([]);
+                    await handleSubmit();
+                  }}
+                />
               </div>
             ) : null}
 
@@ -463,6 +468,34 @@ export function ProgrammeCheckoutPage({
                         }))
                       }
                     />
+                  </div>
+                  <div className="mt-4 rounded-xl border p-4 text-sm">
+                    {user?.hasAgreedToTerms ? (
+                      <p className="text-emerald-800">
+                        Current Terms & Conditions already accepted on your account.
+                      </p>
+                    ) : (
+                      <label className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={formData.agreedToTerms}
+                          onChange={(event) =>
+                            setFormData((current) => ({
+                              ...current,
+                              agreedToTerms: event.target.checked,
+                            }))
+                          }
+                          className="accent-brand-accent mt-0.5 h-4 w-4"
+                        />
+                        <span>
+                          I agree to the{" "}
+                          <Link href="/terms" target="_blank" className="text-primary underline">
+                            Terms & Conditions
+                          </Link>{" "}
+                          and Refund & Cancellation Policy for this gift purchase.
+                        </span>
+                      </label>
+                    )}
                   </div>
                 </div>
               )}

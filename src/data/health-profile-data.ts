@@ -127,6 +127,8 @@ export interface HealthProfile {
   lastConfirmedAt: string;
   lastUpdated: string;
   needsReview?: boolean;
+  reviewRequestedAt?: string | null;
+  reviewReason?: "admin_update" | "periodic" | null;
 }
 
 export const EMPTY_HEALTH_PROFILE: HealthProfile = {
@@ -153,6 +155,8 @@ export function normalizeHealthProfile(profile?: Partial<HealthProfile> | null):
     lastConfirmedAt: profile?.lastConfirmedAt || "",
     lastUpdated: profile?.lastUpdated || "",
     needsReview: Boolean(profile?.needsReview),
+    reviewRequestedAt: profile?.reviewRequestedAt || null,
+    reviewReason: profile?.reviewReason || null,
   };
 }
 

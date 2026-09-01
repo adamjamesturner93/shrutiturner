@@ -18,6 +18,7 @@ import {
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { CoachingPageSkeleton } from "@/components/dashboard-skeleton";
 import { LoadingRegion } from "@/components/loading-region";
+import { LegalAcceptanceChecklist } from "@/components/legal-acceptance-checklist";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -124,7 +125,7 @@ function statusVariant(value: string): "default" | "secondary" | "outline" | "de
 
 export function DashboardCoaching({ initialData }: { initialData?: CoachingDashboardDto | null }) {
   const searchParams = useSearchParams();
-  const { acceptTermsAndHealth, refreshAccountProfile } = useAuth();
+  const { refreshAccountProfile } = useAuth();
   const [data, setData] = useState<CoachingDashboardDto | null>(initialData || null);
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState("");
@@ -387,49 +388,11 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
     return payload.checkoutUrl;
   };
 
-  const resolvePendingLegalAcceptances = async () => {
-    const needsTerms = pendingLegalAcceptances.some((item) => item.type === "terms");
-    const needsHealthWaiver = pendingLegalAcceptances.some((item) => item.type === "health_waiver");
-    const needsCoachingAgreement = pendingLegalAcceptances.some(
-      (item) => item.type === "coaching_agreement"
-    );
-    const unsupportedAcceptances = pendingLegalAcceptances.filter(
-      (item) =>
-        item.type !== "terms" && item.type !== "health_waiver" && item.type !== "coaching_agreement"
-    );
-
-    if (unsupportedAcceptances.length > 0) {
-      throw new Error("Some required agreements cannot be refreshed from this page yet.");
-    }
-
-    if (needsTerms || needsHealthWaiver) {
-      await acceptTermsAndHealth(needsTerms, needsHealthWaiver);
-    }
-    if (needsCoachingAgreement) {
-      const response = await fetch("/api/me/acceptances", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "coaching_agreement",
-          surface: pendingLegalAction || "coaching_checkout",
-        }),
-      });
-      if (!response.ok) throw new Error("Failed to accept the Coaching Agreement.");
-    }
-
-    await refreshAccountProfile();
-    setPendingLegalAcceptances([]);
-    setPendingLegalAction(null);
-  };
-
   const startCoachingCheckout = async () => {
     if (!data?.application?.id) return;
     setCheckoutLoading(true);
     setError("");
     try {
-      if (pendingLegalAcceptances.length > 0) {
-        await resolvePendingLegalAcceptances();
-      }
       const checkoutUrl = await requestCoachingCheckout();
       if (!checkoutUrl) throw new Error("Failed to start coaching payment.");
       window.location.href = checkoutUrl;
@@ -505,9 +468,6 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
     setPackageChangeLoading(true);
     setError("");
     try {
-      if (pendingLegalAcceptances.length > 0) {
-        await resolvePendingLegalAcceptances();
-      }
       const response = await fetch("/api/me/coaching/package-change/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -836,16 +796,23 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
                   Coaching Agreement
                 </Link>
               </p>
-              <Button
-                disabled={checkoutLoading || packageChangeLoading}
-                onClick={() =>
+              <LegalAcceptanceChecklist
+                acceptances={pendingLegalAcceptances}
+                surface={
                   pendingLegalAction === "package_change"
-                    ? void confirmPackageChange()
-                    : void startCoachingCheckout()
+                    ? "coaching_package_change"
+                    : "coaching_checkout"
                 }
-              >
-                {checkoutLoading || packageChangeLoading ? "Continuing..." : "Accept and continue"}
-              </Button>
+                busy={checkoutLoading || packageChangeLoading}
+                onAccepted={async () => {
+                  const action = pendingLegalAction;
+                  await refreshAccountProfile();
+                  setPendingLegalAcceptances([]);
+                  setPendingLegalAction(null);
+                  if (action === "package_change") await confirmPackageChange();
+                  else await startCoachingCheckout();
+                }}
+              />
             </CardContent>
           </Card>
         ) : null}

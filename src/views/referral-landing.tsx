@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { ArrowRight, Gift } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { EditorialHero, PreFooterCtaSection, ProofBand } from "@/components/marketing/sections";
@@ -26,9 +25,7 @@ const referralProof = [
   },
 ] as const;
 
-export function ReferralLandingPage() {
-  const { code } = useParams<{ code: string }>();
-
+export function ReferralLandingPage({ code }: { code: string }) {
   return (
     <Layout>
       <SEO

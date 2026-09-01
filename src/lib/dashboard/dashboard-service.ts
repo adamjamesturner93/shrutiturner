@@ -84,6 +84,7 @@ export async function getDashboardSummary(userId: string): Promise<DashboardSumm
       select: {
         declarationStatus: true,
         lastConfirmedAt: true,
+        reviewRequestedAt: true,
       },
     }),
     getMyCoachingState(userId),
@@ -156,12 +157,17 @@ export async function getDashboardSummary(userId: string): Promise<DashboardSumm
       ctaLabel: "Complete health profile",
       dueAt: null,
     });
-  } else if (needsHealthDeclarationReview(healthProfile.lastConfirmedAt)) {
+  } else if (
+    healthProfile.reviewRequestedAt ||
+    needsHealthDeclarationReview(healthProfile.lastConfirmedAt)
+  ) {
     actions.push({
       id: "health-review",
       priority: "action",
       title: "Review your health profile",
-      detail: "Confirm that your health and movement context is still current.",
+      detail: healthProfile.reviewRequestedAt
+        ? "Shruti has updated this from information you shared. Check it is accurate and confirm it."
+        : "Confirm that your health and movement context is still current.",
       href: "/dashboard/health",
       ctaLabel: "Review health profile",
       dueAt: null,
@@ -346,7 +352,9 @@ export async function getDashboardSummary(userId: string): Promise<DashboardSumm
     hasHealthProfile: Boolean(healthProfile),
     healthDeclarationStatus: healthProfile?.declarationStatus ?? "incomplete",
     healthDeclarationLastConfirmedAt: healthProfile?.lastConfirmedAt.toISOString() ?? "",
-    healthDeclarationNeedsReview: needsHealthDeclarationReview(healthProfile?.lastConfirmedAt),
+    healthDeclarationNeedsReview:
+      Boolean(healthProfile?.reviewRequestedAt) ||
+      needsHealthDeclarationReview(healthProfile?.lastConfirmedAt),
     upcomingClasses: upcomingBookings.map((booking) => ({
       bookingId: booking.id,
       sessionId: booking.sessionId,

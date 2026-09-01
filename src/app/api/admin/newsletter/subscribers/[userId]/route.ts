@@ -3,7 +3,7 @@ import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { updateAdminSubscriber } from "@/lib/admin/newsletter-service";
 
 type Body = {
-  marketingEmails?: unknown;
+  status?: unknown;
 };
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ userId: string }> }) {
@@ -12,7 +12,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ userId
     const { userId } = await params;
     const body = (await req.json().catch(() => ({}))) as Body;
     const payload = await updateAdminSubscriber(userId, {
-      marketingEmails: typeof body.marketingEmails === "boolean" ? body.marketingEmails : undefined,
+      status: body.status === "unsubscribed" ? "unsubscribed" : undefined,
       actorUserId: adminUser.id,
       requestId: req.headers.get("x-request-id"),
       requestPath: new URL(req.url).pathname,
@@ -32,15 +32,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ userId
     }
     if (error instanceof Error && error.message === "INVALID_UPDATE") {
       return NextResponse.json({ message: "Invalid subscriber update." }, { status: 400 });
-    }
-    if (error instanceof Error && error.message === "SELF_SERVICE_OPT_IN_REQUIRED") {
-      return NextResponse.json(
-        {
-          message:
-            "This subscriber must opt back in themselves before marketing can be re-enabled.",
-        },
-        { status: 409 }
-      );
     }
     console.error("PATCH /api/admin/newsletter/subscribers/[userId] failed", error);
     return NextResponse.json({ message: "Failed to update subscriber." }, { status: 500 });

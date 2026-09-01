@@ -177,11 +177,6 @@ async function getAudienceEmails() {
   const subscribers = await db.newsletterSubscriber.findMany({
     where: {
       status: "subscribed",
-      OR: [
-        { user: null },
-        { user: { notificationPreference: { is: null } } },
-        { user: { notificationPreference: { is: { marketingEmails: true } } } },
-      ],
     },
     select: {
       id: true,

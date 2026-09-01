@@ -101,23 +101,6 @@ async function suppressSubscriberForCompliance(input: {
       nextRetryAt: null,
     },
   });
-
-  const userId = subscriber?.userId || input.userId;
-  if (userId) {
-    await db.userNotificationPreference.upsert({
-      where: { userId },
-      create: {
-        userId,
-        marketingEmails: false,
-        classReminders: true,
-        scheduleUpdates: true,
-        programAnnouncements: true,
-      },
-      update: {
-        marketingEmails: false,
-      },
-    });
-  }
 }
 
 export function verifyPostmarkWebhook(

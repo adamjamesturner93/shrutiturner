@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
@@ -11,6 +12,7 @@ import {
   Mail,
   RefreshCcw,
   Sparkles,
+  UserRound,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -832,6 +834,17 @@ export function AdminCoaching({
                         ) : null}
                         {application.isLinkedUserCoachingClient ? (
                           <Badge variant="default">Linked coaching client</Badge>
+                        ) : null}
+                        {application.userId ? (
+                          <Link
+                            href={`/admin/members/${application.userId}`}
+                            onClick={(event) => event.stopPropagation()}
+                            className="focus-visible:ring-brand-accent/50 hover:bg-secondary inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs focus-visible:ring-2 focus-visible:outline-none"
+                            aria-label={`View member record for ${application.applicantName}`}
+                          >
+                            <UserRound className="h-3 w-3" />
+                            View member
+                          </Link>
                         ) : null}
                         {!application.userId ? (
                           <Badge variant="outline">No linked account</Badge>

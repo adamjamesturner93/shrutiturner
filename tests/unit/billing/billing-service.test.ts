@@ -53,10 +53,19 @@ const openMembershipDunningFromInvoiceMock = vi.fn();
 const recoverMembershipDunningCaseMock = vi.fn();
 const sendPostmarkReactEmailMock = vi.fn();
 const upsertCoachingSubscriptionProjectionMock = vi.fn();
+const assertCurrentAcceptancesMock = vi.fn();
 
 vi.mock("@/lib/env", () => ({
   getBaseSiteUrlFromEnv: () => "http://localhost:3000",
 }));
+
+vi.mock("@/lib/legal/acceptance-service", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/legal/acceptance-service")>();
+  return {
+    ...original,
+    assertCurrentAcceptances: assertCurrentAcceptancesMock,
+  };
+});
 
 vi.mock("@/lib/db", () => ({
   db: {
@@ -221,6 +230,7 @@ function mockMetricRecomputeDefaults() {
 describe("billing-service Stripe integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    assertCurrentAcceptancesMock.mockResolvedValue([]);
 
     getActiveCatalogItemMock.mockResolvedValue({
       stripePriceId: "price_membership_monthly",
@@ -402,6 +412,11 @@ describe("billing-service Stripe integration", () => {
     const result = await createCoachingCheckoutSession("user_123", "application_123");
 
     expect(result.checkoutUrl).toBe("https://checkout.stripe.com/session");
+    expect(assertCurrentAcceptancesMock).toHaveBeenCalledWith("user_123", [
+      { type: "terms", surface: "coaching_checkout" },
+      { type: "health_waiver", surface: "coaching_checkout" },
+      { type: "coaching_agreement", surface: "coaching_checkout" },
+    ]);
     expect(stripeCheckoutSessionCreateMock).toHaveBeenCalledWith(
       expect.objectContaining({
         mode: "subscription",

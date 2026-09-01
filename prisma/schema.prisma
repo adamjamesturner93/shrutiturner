@@ -1233,6 +1233,7 @@ model HealthProfile {
   additionalNotes     String                  @default("")
   lastConfirmedAt     DateTime                @default(now())
   lastUpdatedAt       DateTime                @default(now())
+  reviewRequestedAt   DateTime?
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
 

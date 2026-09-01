@@ -3,7 +3,7 @@ import { LoaderCircle } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 
 type LoadingRegionProps = {
-  children: ReactNode;
+  children?: ReactNode;
   label: string;
   className?: string;
 };

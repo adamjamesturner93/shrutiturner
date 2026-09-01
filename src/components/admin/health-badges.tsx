@@ -1,12 +1,7 @@
 import { useState } from "react";
 import { Badge } from "../ui/badge";
 import { ChevronDown, ChevronUp, AlertTriangle, Users } from "lucide-react";
-import {
-  getMemberHealthSummary,
-  getMemberHealthByCategory,
-  MEMBER_HEALTH_PROFILES,
-  aggregateHealthForClass,
-} from "../../data/health-profile-data";
+import { getMemberHealthSummary, aggregateHealthForClass } from "../../data/health-profile-data";
 import type { AdminHealthProfileDto } from "@/lib/api/types";
 
 interface HealthBadgesProps {
@@ -65,22 +60,29 @@ export function HealthBadges({
 
 /** Full health profile card for member detail — shows per-category breakdowns with detail text */
 export function HealthProfileCard({
-  memberId,
   profile,
 }: {
   memberId: string;
   profile?: AdminHealthProfileDto | null;
 }) {
-  const legacyProfile = MEMBER_HEALTH_PROFILES[memberId];
-  const legacyCategories = getMemberHealthByCategory(memberId);
-  const categories = profile?.categories ?? legacyCategories;
-  const additionalNotes = profile?.additionalNotes ?? legacyProfile?.additionalNotes ?? "";
-  const lastUpdated = profile?.lastUpdated ?? legacyProfile?.lastUpdated ?? "";
+  const categories = profile?.categories ?? [];
+  const additionalNotes = profile?.additionalNotes ?? "";
+  const lastUpdated = profile?.lastUpdated ?? "";
 
-  if (categories.length === 0) {
+  if (!profile) {
     return (
       <div className="bg-secondary/30 text-muted-foreground rounded-lg p-4 text-sm">
-        No health conditions on file.
+        No health profile on file.
+      </div>
+    );
+  }
+
+  if (categories.length === 0 && !additionalNotes) {
+    return (
+      <div className="bg-secondary/30 text-muted-foreground rounded-lg p-4 text-sm">
+        {profile.declarationStatus === "none_declared"
+          ? "The member has declared that there is nothing relevant to share."
+          : "No health conditions on file."}
       </div>
     );
   }
@@ -92,7 +94,7 @@ export function HealthProfileCard({
           <p className="text-muted-foreground mb-1.5 text-xs">{cat.categoryTitle}</p>
           <div className="space-y-1.5">
             {cat.conditions.map((c, index) => (
-              <div key={`${cat.categoryId}-${"key" in c ? c.key : c.label}-${index}`}>
+              <div key={`${cat.categoryId}-${c.key}-${index}`}>
                 <Badge
                   variant="outline"
                   className="border-amber-200 bg-amber-50 text-xs text-amber-800"

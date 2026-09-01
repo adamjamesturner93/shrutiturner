@@ -41,6 +41,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { HealthProfileCard } from "../../components/admin/health-badges";
+import { HealthProfileEditor } from "@/components/health-profile-editor";
+import { EMPTY_HEALTH_PROFILE, type HealthProfile } from "@/data/health-profile-data";
 import { toast } from "sonner";
 import type { AdminMemberDetailDto } from "@/lib/api/types";
 
@@ -79,6 +81,11 @@ export function AdminMemberDetail() {
     anonymises?: string[];
     preserves?: string[];
   } | null>(null);
+  const [editingHealth, setEditingHealth] = useState(false);
+  const [healthSource, setHealthSource] = useState("");
+  const [healthSourceNote, setHealthSourceNote] = useState("");
+  const [healthSaving, setHealthSaving] = useState(false);
+  const [healthError, setHealthError] = useState("");
 
   const applyMemberState = (data: AdminMemberDetailDto) => {
     setMember(data);
@@ -268,6 +275,44 @@ export function AdminMemberDetail() {
       setCreditAmount("");
       setCreditReason("");
     })();
+  };
+
+  const handleAdminHealthSave = async (profile: HealthProfile) => {
+    if (!member || !healthSource) {
+      setHealthError("Choose where this health information was provided.");
+      return;
+    }
+    setHealthSaving(true);
+    setHealthError("");
+    try {
+      const response = await fetch(`/api/admin/members/${member.id}/health-profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...profile,
+          source: healthSource,
+          sourceNote: healthSourceNote,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | AdminMemberDetailDto
+        | { message?: string }
+        | null;
+      if (!response.ok) {
+        throw new Error(
+          (payload && "message" in payload && payload.message) || "Failed to update health profile."
+        );
+      }
+      applyMemberState(payload as AdminMemberDetailDto);
+      setEditingHealth(false);
+      setHealthSource("");
+      setHealthSourceNote("");
+      toast.success("Health profile saved and member review requested.");
+    } catch (error) {
+      setHealthError(error instanceof Error ? error.message : "Failed to update health profile.");
+    } finally {
+      setHealthSaving(false);
+    }
   };
 
   const handleSendMessage = async () => {
@@ -640,13 +685,78 @@ export function AdminMemberDetail() {
           {/* Health Profile */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <HeartPulse className="h-5 w-5 text-amber-600" />
-                Health Profile
-              </CardTitle>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <HeartPulse className="h-5 w-5 text-amber-600" />
+                  Health Profile
+                </CardTitle>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setEditingHealth((current) => !current)}
+                >
+                  <Edit3 className="mr-2 h-4 w-4" />
+                  {editingHealth ? "Cancel" : member.healthProfile ? "Edit" : "Add health context"}
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent>
-              <HealthProfileCard memberId={member.id} profile={member.healthProfile} />
+            <CardContent className="space-y-4">
+              {member.healthProfile?.needsMemberReview ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  Awaiting member review following an admin update.
+                </div>
+              ) : null}
+              {editingHealth ? (
+                <div className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="health-source">Information provided during</Label>
+                      <Select value={healthSource} onValueChange={setHealthSource}>
+                        <SelectTrigger id="health-source">
+                          <SelectValue placeholder="Choose source" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="coaching_enquiry">Coaching enquiry</SelectItem>
+                          <SelectItem value="consultation">Consultation</SelectItem>
+                          <SelectItem value="member_message">Member message</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="health-source-note">Source note (optional)</Label>
+                      <Input
+                        id="health-source-note"
+                        value={healthSourceNote}
+                        onChange={(event) => setHealthSourceNote(event.target.value)}
+                        placeholder="e.g. Consultation on 21 August"
+                      />
+                    </div>
+                  </div>
+                  <HealthProfileEditor
+                    profile={member.healthProfile || EMPTY_HEALTH_PROFILE}
+                    onSave={handleAdminHealthSave}
+                    requireConsentAcknowledgement={false}
+                    privacyMessage="Only add health information the member has provided and after current health-data consent. Saving records you as the editor, emails the member, and asks them to review the changes."
+                  />
+                  {healthSaving ? <p className="text-muted-foreground text-sm">Saving…</p> : null}
+                  {healthError ? (
+                    <p role="alert" className="text-sm text-red-600">
+                      {healthError}
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <>
+                  <HealthProfileCard memberId={member.id} profile={member.healthProfile} />
+                  {member.healthProfile?.lastUpdatedBy ? (
+                    <p className="text-muted-foreground text-xs">
+                      Last updated by {member.healthProfile.lastUpdatedBy.name}
+                      {member.healthProfile.lastUpdatedBy.isMember ? " (member)" : " (admin)"}.
+                    </p>
+                  ) : null}
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -910,59 +1020,98 @@ export function AdminMemberDetail() {
             </CardContent>
           </Card>
 
-          {/* Subscriptions */}
+          {/* Newsletter */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Subscriptions</CardTitle>
+              <CardTitle className="text-lg">Newsletter</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
-                  <div className="flex items-center gap-3">
-                    <Bell className="text-brand-accent h-4 w-4" />
-                    <span className="text-sm">Newsletter subscriber</span>
-                  </div>
-                  <Badge variant={member.newsletterSubscribed ? "default" : "outline"}>
-                    {member.newsletterSubscribed ? "Subscribed" : "Not subscribed"}
-                  </Badge>
+            <CardContent className="space-y-3">
+              <div className="bg-secondary/50 flex items-center justify-between gap-4 rounded-lg p-3">
+                <div className="flex items-center gap-3">
+                  <Bell className="text-brand-accent h-4 w-4" />
+                  <span className="text-sm">Newsletter status</span>
                 </div>
-                <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
-                  <div className="flex items-center gap-3">
-                    <Mail className="text-brand-accent h-4 w-4" />
-                    <span className="text-sm">Marketing emails</span>
-                  </div>
-                  <Badge variant={member.marketingEmails ? "default" : "outline"}>
-                    {member.marketingEmails ? "Enabled" : "Disabled"}
-                  </Badge>
-                </div>
-                <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
-                  <div className="flex items-center gap-3">
-                    <Bell className="text-brand-accent h-4 w-4" />
-                    <span className="text-sm">Class reminders</span>
-                  </div>
-                  <Badge variant={member.classReminders ? "default" : "outline"}>
-                    {member.classReminders ? "Enabled" : "Disabled"}
-                  </Badge>
-                </div>
-                <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
-                  <div className="flex items-center gap-3">
-                    <Bell className="text-brand-accent h-4 w-4" />
-                    <span className="text-sm">Schedule updates</span>
-                  </div>
-                  <Badge variant={member.scheduleUpdates ? "default" : "outline"}>
-                    {member.scheduleUpdates ? "Enabled" : "Disabled"}
-                  </Badge>
-                </div>
-                <div className="bg-secondary/50 flex items-center justify-between rounded-lg p-3">
-                  <div className="flex items-center gap-3">
-                    <Bell className="text-brand-accent h-4 w-4" />
-                    <span className="text-sm">Programme announcements</span>
-                  </div>
-                  <Badge variant={member.programAnnouncements ? "default" : "outline"}>
-                    {member.programAnnouncements ? "Enabled" : "Disabled"}
-                  </Badge>
-                </div>
+                <Badge
+                  variant={
+                    member.newsletterSubscription.status === "subscribed" ? "default" : "outline"
+                  }
+                >
+                  {member.newsletterSubscription.status === "never_subscribed"
+                    ? "Never subscribed"
+                    : member.newsletterSubscription.status === "pending"
+                      ? "Awaiting confirmation"
+                      : member.newsletterSubscription.status === "subscribed"
+                        ? "Subscribed"
+                        : "Unsubscribed"}
+                </Badge>
               </div>
+              {member.newsletterSubscription.source ? (
+                <p className="text-muted-foreground text-xs">
+                  Source: {member.newsletterSubscription.source.replaceAll("_", " ")}
+                </p>
+              ) : null}
+              {member.newsletterSubscription.updatedAt ? (
+                <p className="text-muted-foreground text-xs">
+                  Updated{" "}
+                  {new Date(member.newsletterSubscription.updatedAt).toLocaleString("en-GB")}
+                </p>
+              ) : null}
+              <Button asChild size="sm" variant="outline">
+                <Link href="/admin/newsletter">Open newsletter audience</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Shield className="text-brand-accent h-5 w-5" />
+                Legal Agreements
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {member.legalAgreements.map((agreement) => (
+                <div key={agreement.type} className="rounded-lg border p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    {agreement.href ? (
+                      <Link href={agreement.href} target="_blank" className="text-sm underline">
+                        {agreement.label}
+                      </Link>
+                    ) : (
+                      <span className="text-sm">{agreement.label}</span>
+                    )}
+                    <Badge variant={agreement.status === "current" ? "default" : "outline"}>
+                      {agreement.status.replaceAll("_", " ")}
+                    </Badge>
+                  </div>
+                  {agreement.acceptedAt ? (
+                    <p className="text-muted-foreground mt-2 text-xs">
+                      Accepted {new Date(agreement.acceptedAt).toLocaleString("en-GB")} · version{" "}
+                      {agreement.acceptedVersion}
+                    </p>
+                  ) : null}
+                </div>
+              ))}
+              <details className="rounded-lg border p-3">
+                <summary className="cursor-pointer text-sm font-medium">Acceptance history</summary>
+                <div className="mt-3 space-y-3">
+                  {member.legalAcceptanceHistory.length ? (
+                    member.legalAcceptanceHistory.map((event) => (
+                      <div key={event.id} className="border-l-2 pl-3 text-xs">
+                        <p className="font-medium">
+                          {event.label} · {event.version}
+                        </p>
+                        <p className="text-muted-foreground">
+                          {new Date(event.acceptedAt).toLocaleString("en-GB")} by {event.actorName}
+                        </p>
+                        <p className="text-muted-foreground">Surface: {event.surface}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground text-xs">No acceptance history recorded.</p>
+                  )}
+                </div>
+              </details>
             </CardContent>
           </Card>
         </div>
