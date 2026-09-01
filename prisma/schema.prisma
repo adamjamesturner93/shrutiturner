@@ -423,6 +423,7 @@ enum EverfitConnectionStatus {
   invite_sent
   connected
   sync_issue
+  closed
 }
 
 enum CoachingSessionStatus {

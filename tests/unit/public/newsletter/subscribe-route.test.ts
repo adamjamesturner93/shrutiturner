@@ -145,6 +145,7 @@ describe("POST /api/newsletter/subscribe", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       ok: true,
+      state: "subscribed",
       message: "You’re already confirmed. Keep an eye on your inbox for the next update.",
     });
     expect(sendNewsletterVerificationEmailMock).not.toHaveBeenCalled();
@@ -165,6 +166,7 @@ describe("POST /api/newsletter/subscribe", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       ok: true,
+      state: "pending",
       message: "Please check your inbox to confirm your email address.",
     });
     expect(createPendingMarketingSubscriberMock).toHaveBeenCalledWith({

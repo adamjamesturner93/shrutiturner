@@ -51,9 +51,10 @@ export function extractPrimaryEmailAddress(value: string) {
   return (match?.[1] || value).trim();
 }
 
-export function getNotificationInbox(envName: string) {
+export function getNotificationInbox(envName: string, fallback?: string) {
   const configured = process.env[envName];
   if (configured?.trim()) return configured.trim();
+  if (fallback?.trim()) return fallback.trim();
   return extractPrimaryEmailAddress(getPostmarkFromEmail());
 }
 

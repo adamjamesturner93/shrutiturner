@@ -102,6 +102,7 @@ function MarketingFooter({ showNewsletter = true }: { showNewsletter?: boolean }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [subscribed, setSubscribed] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
   const signupCopy = useNewsletterSignupCopy();
 
   const handleNewsletterSubmit = async (e: React.FormEvent) => {
@@ -123,14 +124,14 @@ function MarketingFooter({ showNewsletter = true }: { showNewsletter?: boolean }
       return;
     }
 
+    const nextSignupState = result.state || "pending";
+    setSuccessMessage(
+      nextSignupState === "subscribed"
+        ? result.message ||
+            "You’re already confirmed. Keep an eye on your inbox for the next update."
+        : "Please check your inbox to confirm your email address."
+    );
     setSubscribed(true);
-    setTimeout(() => {
-      setSubscribed(false);
-      setEmail("");
-      setFirstName("");
-      setConsent(false);
-      setTurnstileToken("");
-    }, 3000);
   };
 
   return (
@@ -191,7 +192,7 @@ function MarketingFooter({ showNewsletter = true }: { showNewsletter?: boolean }
                     </div>
                   </form>
                 ) : (
-                  <p className="text-brand-accent-light text-sm">{signupCopy.successMessage}</p>
+                  <p className="text-brand-accent-light text-sm">{successMessage}</p>
                 )}
                 {!subscribed ? (
                   <div className="mt-3">

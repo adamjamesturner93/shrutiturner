@@ -512,7 +512,9 @@ async function runCampaign(params: {
           recipient.firstName,
           unsubscribeUrl
         );
-        const tag = `contentful-${params.contentType}`;
+        // A campaign-specific tag lets reporting query Postmark directly without
+        // depending on webhook delivery for aggregate engagement statistics.
+        const tag = `newsletter-campaign-${params.campaignId}`;
         const metadata: Record<string, string> = {
           emailCategory: "marketing",
           campaignId: params.campaignId,

@@ -46,7 +46,6 @@ import RetreatCancellationEmail, {
 import RetreatBookingAdminEmail from "@/emails/retreat-booking-admin";
 import RetreatPaymentReceiptEmail from "@/emails/retreat-payment-receipt";
 import { createAdminActionLog } from "@/lib/admin/action-log-service";
-import { getAdminEmailAllowlist } from "@/lib/env";
 import { createSessionRoom, isDailyConfigured } from "@/lib/daily/service";
 import {
   buildRetreatInstalmentPlan,
@@ -62,6 +61,7 @@ import {
   type RetreatType,
 } from "@/lib/retreats/pricing";
 import { getRetreatImageSrc } from "@/lib/retreats/images";
+import { sendRetreatOperationalEmail } from "@/lib/retreats/notification-service";
 
 const RETREAT_PAYMENT_WINDOW_MS = 30 * 60 * 1000;
 const ACTIVE_RETREAT_BOOKING_STATUSES: RetreatBookingStatus[] = [
@@ -2076,29 +2076,24 @@ async function sendRetreatBookingAdminNotification(bookingId: string) {
       : "; paid in full"
   }.`;
   const adminUrl = buildAbsoluteUrl(`/admin/retreats/${booking.retreatDateId}`);
-  await Promise.allSettled(
-    getAdminEmailAllowlist().map((email) =>
-      sendPostmarkReactEmail({
-        to: email,
-        subject: `New booking: ${booking.retreatDate.retreatTitleSnapshot}`,
-        react: RetreatBookingAdminEmail({
-          purchaserName: `${booking.purchaserFirstName} ${booking.purchaserLastName}`.trim(),
-          purchaserEmail: booking.purchaserEmail,
-          retreatName: booking.retreatDate.retreatTitleSnapshot,
-          retreatDates: formatDateRange(booking.retreatDate.startsAt, booking.retreatDate.endsAt),
-          selection: booking.roomOptionLabelSnapshot || booking.roomType || "Retreat place",
-          guestCount: booking.attendeeCount,
-          paymentSummary,
-          adminUrl,
-        }),
-        textBody: `New booking for ${booking.retreatDate.retreatTitleSnapshot}\nPurchaser: ${booking.purchaserFirstName} ${booking.purchaserLastName} (${booking.purchaserEmail})\nSelection: ${booking.roomOptionLabelSnapshot || booking.roomType || "Retreat place"}\nGuests: ${booking.attendeeCount}\n${paymentSummary}\nOpen: ${adminUrl}`,
-        tag: "retreat-booking-admin",
-        templateKey: "retreat-booking-admin",
-        metadata: { bookingId: booking.id, retreatDateId: booking.retreatDateId },
-        dispatchMode: "immediate_best_effort",
-      })
-    )
-  );
+  await sendRetreatOperationalEmail({
+    subject: `New booking: ${booking.retreatDate.retreatTitleSnapshot}`,
+    react: RetreatBookingAdminEmail({
+      purchaserName: `${booking.purchaserFirstName} ${booking.purchaserLastName}`.trim(),
+      purchaserEmail: booking.purchaserEmail,
+      retreatName: booking.retreatDate.retreatTitleSnapshot,
+      retreatDates: formatDateRange(booking.retreatDate.startsAt, booking.retreatDate.endsAt),
+      selection: booking.roomOptionLabelSnapshot || booking.roomType || "Retreat place",
+      guestCount: booking.attendeeCount,
+      paymentSummary,
+      adminUrl,
+    }),
+    textBody: `New booking for ${booking.retreatDate.retreatTitleSnapshot}\nPurchaser: ${booking.purchaserFirstName} ${booking.purchaserLastName} (${booking.purchaserEmail})\nSelection: ${booking.roomOptionLabelSnapshot || booking.roomType || "Retreat place"}\nGuests: ${booking.attendeeCount}\n${paymentSummary}\nOpen: ${adminUrl}`,
+    tag: "retreat-booking-admin",
+    templateKey: "retreat-booking-admin",
+    metadata: { bookingId: booking.id, retreatDateId: booking.retreatDateId },
+    dispatchMode: "immediate_best_effort",
+  });
 }
 
 async function sendRetreatPaymentReceipt(bookingId: string, amountPaidPence: number) {
@@ -2909,33 +2904,30 @@ export async function requestRetreatCancellation(input: {
   if (result.created) {
     await Promise.all([
       sendRetreatCancellationCustomerEmail({ booking: result.booking, request: result.request }),
-      ...getAdminEmailAllowlist().map((adminEmail) =>
-        sendPostmarkReactEmail({
-          to: adminEmail,
-          subject: `Cancellation request: ${result.booking.retreatDate.retreatTitleSnapshot}`,
-          react: RetreatCancellationAdminEmail({
-            customerName:
-              `${result.booking.purchaserFirstName} ${result.booking.purchaserLastName}`.trim(),
-            customerEmail: result.booking.purchaserEmail,
-            retreatName: result.booking.retreatDate.retreatTitleSnapshot,
-            retreatDates: formatDateRange(
-              result.booking.retreatDate.startsAt,
-              result.booking.retreatDate.endsAt
-            ),
-            refundableAmount: formatCurrency(
-              result.request.refundableAmountPence,
-              result.booking.currency
-            ),
-            reason: result.request.reason,
-            adminUrl: buildAbsoluteUrl(`/admin/retreats/${result.booking.retreatDateId}`),
-          }),
-          textBody: `${result.booking.purchaserEmail} requested cancellation of ${result.booking.retreatDate.retreatTitleSnapshot}. Calculated refund: ${formatCurrency(result.request.refundableAmountPence, result.booking.currency)}. Review: ${buildAbsoluteUrl(`/admin/retreats/${result.booking.retreatDateId}`)}`,
-          tag: "retreat-cancellation-admin",
-          templateKey: "retreat-cancellation-admin",
-          metadata: { bookingId: result.booking.id, requestId: result.request.id },
-          dispatchMode: "immediate_best_effort",
-        })
-      ),
+      sendRetreatOperationalEmail({
+        subject: `Cancellation request: ${result.booking.retreatDate.retreatTitleSnapshot}`,
+        react: RetreatCancellationAdminEmail({
+          customerName:
+            `${result.booking.purchaserFirstName} ${result.booking.purchaserLastName}`.trim(),
+          customerEmail: result.booking.purchaserEmail,
+          retreatName: result.booking.retreatDate.retreatTitleSnapshot,
+          retreatDates: formatDateRange(
+            result.booking.retreatDate.startsAt,
+            result.booking.retreatDate.endsAt
+          ),
+          refundableAmount: formatCurrency(
+            result.request.refundableAmountPence,
+            result.booking.currency
+          ),
+          reason: result.request.reason,
+          adminUrl: buildAbsoluteUrl(`/admin/retreats/${result.booking.retreatDateId}`),
+        }),
+        textBody: `${result.booking.purchaserEmail} requested cancellation of ${result.booking.retreatDate.retreatTitleSnapshot}. Calculated refund: ${formatCurrency(result.request.refundableAmountPence, result.booking.currency)}. Review: ${buildAbsoluteUrl(`/admin/retreats/${result.booking.retreatDateId}`)}`,
+        tag: "retreat-cancellation-admin",
+        templateKey: "retreat-cancellation-admin",
+        metadata: { bookingId: result.booking.id, requestId: result.request.id },
+        dispatchMode: "immediate_best_effort",
+      }),
     ]).catch((error) => {
       console.error("Failed to send retreat cancellation request email", error);
     });

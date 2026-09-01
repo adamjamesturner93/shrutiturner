@@ -74,6 +74,7 @@ const everfitLabels: Record<string, string> = {
   invite_sent: "Invite sent",
   connected: "Active",
   sync_issue: "Needs attention",
+  closed: "Access closed",
 };
 
 const billingPhaseLabels: Record<string, string> = {

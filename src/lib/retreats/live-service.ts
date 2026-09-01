@@ -9,6 +9,7 @@ import {
 import { canManageRetreatDate } from "@/lib/authz/access";
 import { isStaffAdminRole } from "@/lib/authz/roles";
 import { db } from "@/lib/db";
+import { type DailyParticipantPermissions, updateRoomPermissions } from "@/lib/daily/service";
 import {
   getPhysicalServiceAcceptanceRequirements,
   getAcceptanceRequirementStates,
@@ -21,6 +22,26 @@ const CHAT_RATE_WINDOW_MS = 10_000;
 const CHAT_RATE_LIMIT = 5;
 const PAYMENT_STATUSES_WITH_ACCESS = ["deposit_paid", "partially_paid", "paid_in_full"];
 const BOOKING_STATUSES_WITH_ACCESS = ["deposit_paid", "balance_due", "paid_in_full"];
+
+export function buildRetreatParticipantPermissions(input: {
+  mode: RetreatLiveDisplayMode;
+  focusedPresenterUserId: string | null;
+}): DailyParticipantPermissions {
+  return {
+    hasPresence: true,
+    canSend: ["video", "audio"],
+    canReceive:
+      input.mode === RetreatLiveDisplayMode.gallery
+        ? { base: true }
+        : {
+            base: ["audio"],
+            byUserId: input.focusedPresenterUserId
+              ? { [input.focusedPresenterUserId]: true }
+              : undefined,
+          },
+    canAdmin: false,
+  };
+}
 
 function displayName(user: {
   firstName: string | null;
@@ -346,18 +367,53 @@ export async function updateRetreatDisplayMode(input: {
   mode: RetreatLiveDisplayMode;
   focusedPresenterUserId?: string | null;
 }) {
-  await getHostAccess(input.retreatDateId, input.userId);
-  return db.retreatDate.update({
+  const existing = await getHostAccess(input.retreatDateId, input.userId);
+  const focusedPresenterUserId =
+    input.mode === RetreatLiveDisplayMode.presenter
+      ? input.focusedPresenterUserId || input.userId
+      : null;
+  const retreatDate = await db.retreatDate.update({
     where: { id: input.retreatDateId },
     data: {
       liveDisplayMode: input.mode,
-      focusedPresenterUserId:
-        input.mode === RetreatLiveDisplayMode.presenter
-          ? input.focusedPresenterUserId || input.userId
-          : null,
+      focusedPresenterUserId,
       liveDisplayVersion: { increment: 1 },
     },
   });
+
+  if (!existing.dailyRoomName) {
+    return { retreatDate, dailySyncStatus: "skipped" as const };
+  }
+
+  try {
+    const activeAttendances = await db.retreatLiveAttendance.findMany({
+      where: { retreatDateId: input.retreatDateId, leftAt: null },
+      select: { dailySessionId: true },
+    });
+    const participantIds = Array.from(
+      new Set(activeAttendances.map((attendance) => attendance.dailySessionId))
+    );
+    if (participantIds.length === 0) {
+      return { retreatDate, dailySyncStatus: "skipped" as const };
+    }
+
+    const permissions = buildRetreatParticipantPermissions({
+      mode: input.mode,
+      focusedPresenterUserId,
+    });
+    await updateRoomPermissions({
+      roomName: existing.dailyRoomName,
+      data: Object.fromEntries(participantIds.map((participantId) => [participantId, permissions])),
+    });
+    return { retreatDate, dailySyncStatus: "synced" as const };
+  } catch (error) {
+    return {
+      retreatDate,
+      dailySyncStatus: "failed" as const,
+      dailySyncError:
+        error instanceof Error ? error.message : "Failed to sync display mode with Daily",
+    };
+  }
 }
 
 async function assertChatAccess(retreatDateId: string, userId: string) {

@@ -207,7 +207,7 @@ export type CoachingDashboardDto = {
     billingArrangement: "paid" | "pro_bono";
     billingStartsAt: string | null;
     status: "application_pending" | "onboarding" | "active" | "paused" | "completed";
-    everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue";
+    everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue" | "closed";
     nextCheckInDueAt: string | null;
     nextCheckInStatus: "due" | "submitted" | "reviewed" | "overdue" | null;
     nextSessionStartsAt: string | null;
@@ -409,7 +409,7 @@ export type AdminCoachingApplicationDto = {
     billingArrangement: "paid" | "pro_bono";
     billingStartsAt: string | null;
     status: "application_pending" | "onboarding" | "active" | "paused" | "completed";
-    everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue";
+    everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue" | "closed";
     billingCancellationRequestedAt: string | null;
     billingFinalPaymentAt: string | null;
     billingEndsAt: string | null;
@@ -1006,6 +1006,7 @@ export type AdminNewsletterCampaignDetailDto = {
   sourceSystem: string;
   messageStream: string | null;
   trackingState: "available" | "awaiting" | "unavailable";
+  reportingSource: "postmark_api" | "event_history";
   attentionReasons: string[];
   errorSummary: string | null;
   topLinks: Array<{ url: string; clicks: number }>;

@@ -12,6 +12,7 @@ export interface NewsletterSignupPayload {
 export async function submitNewsletterSignup(payload: NewsletterSignupPayload): Promise<{
   ok: boolean;
   message?: string;
+  state?: "pending" | "subscribed";
 }> {
   const res = await fetch("/api/newsletter/subscribe", {
     method: "POST",
@@ -24,9 +25,13 @@ export async function submitNewsletterSignup(payload: NewsletterSignupPayload): 
     }),
   });
 
-  const data = (await res.json().catch(() => null)) as { message?: string } | null;
+  const data = (await res.json().catch(() => null)) as {
+    message?: string;
+    state?: "pending" | "subscribed";
+  } | null;
   return {
     ok: res.ok,
     message: data?.message,
+    state: data?.state,
   };
 }

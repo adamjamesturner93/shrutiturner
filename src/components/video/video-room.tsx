@@ -144,6 +144,8 @@ export function VideoRoom({
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
   const [showChat, setShowChat] = useState(mode !== "live-class" && chatEnabled);
   const [communityMode, setCommunityMode] = useState(initialCommunityMode);
+  const [isCommunityModeUpdating, setIsCommunityModeUpdating] = useState(false);
+  const [communityModeNotice, setCommunityModeNotice] = useState("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isEnding, setIsEnding] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
@@ -693,43 +695,64 @@ export function VideoRoom({
     await callObject.sendAppMessage({ type: "moderation", action, targetUserId }, "*");
   };
 
-  const toggleCommunityMode = async () => {
-    const nextValue = !communityMode;
-    if (!isInstructor) {
-      setCommunityMode(nextValue);
-      return;
-    }
-    const response = await fetch(
-      displayModeEndpoint || `/api/classes/sessions/${sessionId}/community-mode`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          displayModeEndpoint
-            ? { mode: nextValue ? "gallery" : "presenter" }
-            : { enabled: nextValue }
-        ),
-      }
-    );
-    const payload = (await response.json().catch(() => null)) as {
-      dailySyncStatus?: string;
-      message?: string;
-    } | null;
-    if (!response.ok) {
-      setStatusText(payload?.message || "Unable to update community mode right now.");
-      return;
-    }
+  const updateCommunityMode = async (nextValue: boolean) => {
+    if (!isInstructor || nextValue === communityMode || isCommunityModeUpdating) return;
 
-    setCommunityMode(nextValue);
-    if (payload?.dailySyncStatus === "failed") {
-      setStatusText("Mode updated, but some participant permissions may need a retry.");
+    setIsCommunityModeUpdating(true);
+    setCommunityModeNotice("");
+    try {
+      const response = await fetch(
+        displayModeEndpoint || `/api/classes/sessions/${sessionId}/community-mode`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            displayModeEndpoint
+              ? { mode: nextValue ? "gallery" : "presenter" }
+              : { enabled: nextValue }
+          ),
+        }
+      );
+      const payload = (await response.json().catch(() => null)) as {
+        dailySyncStatus?: string;
+        message?: string;
+      } | null;
+      if (!response.ok) {
+        setCommunityModeNotice(
+          payload?.message || "Unable to update participant visibility right now."
+        );
+        return;
+      }
+      if (payload?.dailySyncStatus === "failed") {
+        setCommunityModeNotice(
+          "Participant visibility could not be changed for everyone. Please try again."
+        );
+        return;
+      }
+
+      setCommunityMode(nextValue);
+      try {
+        await callObject?.sendAppMessage?.(
+          displayModeEndpoint
+            ? { type: "display-mode", mode: nextValue ? "gallery" : "presenter" }
+            : { type: "community-mode", enabled: nextValue },
+          "*"
+        );
+        setCommunityModeNotice(
+          nextValue
+            ? "Community mode is on. Attendees can now see each other."
+            : "Focus mode is on. Attendees can now see only you and themselves."
+        );
+      } catch {
+        setCommunityModeNotice(
+          "Visibility permissions changed, but attendee screens may take a moment to refresh."
+        );
+      }
+    } catch {
+      setCommunityModeNotice("Unable to update participant visibility right now.");
+    } finally {
+      setIsCommunityModeUpdating(false);
     }
-    await callObject?.sendAppMessage?.(
-      displayModeEndpoint
-        ? { type: "display-mode", mode: nextValue ? "gallery" : "presenter" }
-        : { type: "community-mode", enabled: nextValue },
-      "*"
-    );
   };
 
   const toggleScreenShare = async () => {
@@ -955,22 +978,6 @@ export function VideoRoom({
             </span>
           </div>
 
-          {mode !== "live-class" || isInstructor ? (
-            <button
-              onClick={() => void toggleCommunityMode()}
-              disabled={false}
-              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs transition-colors ${
-                communityMode
-                  ? "bg-brand-accent text-white"
-                  : "bg-white/5 text-white/60 hover:bg-white/10"
-              }`}
-              title={communityMode ? "Community mode enabled" : "Focus mode enabled"}
-            >
-              {communityMode ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-              <span className="hidden sm:inline">{communityMode ? "Community" : "Focus"}</span>
-            </button>
-          ) : null}
-
           <button
             onClick={() => void leaveRoom(callObject, false, "left")}
             className="flex items-center gap-1.5 rounded-full bg-red-500/20 px-3 py-1.5 text-xs text-red-400 transition-colors hover:bg-red-500/30"
@@ -984,19 +991,62 @@ export function VideoRoom({
       <div className="flex flex-1 overflow-hidden">
         <div className="flex flex-1 flex-col gap-3 overflow-hidden p-3">
           {isReady ? (
-            <div className="bg-video-panel flex items-center justify-between rounded-lg border border-white/5 px-3 py-2 text-xs text-white/70">
-              <span>
-                {communityMode
-                  ? "Community mode is on. Participants can see one another."
-                  : "Focus mode is on. Only the instructor can see participant video and you can still turn your camera off."}
-              </span>
-              <Badge
-                className={
-                  communityMode ? "bg-brand-accent text-white" : "bg-white/10 text-white/70"
-                }
-              >
-                {communityMode ? "Community" : "Focus"}
-              </Badge>
+            <div className="bg-video-panel flex flex-col gap-3 rounded-lg border border-white/5 px-3 py-2.5 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="font-medium text-white">Participant visibility</p>
+                <p className="mt-0.5">
+                  {communityMode
+                    ? "Community mode: attendees can see the instructor, themselves and each other."
+                    : "Focus mode: attendees can see only the instructor and themselves; the instructor can still see everyone."}
+                </p>
+                {communityModeNotice ? (
+                  <p className="mt-1 text-white" role="status" aria-live="polite">
+                    {communityModeNotice}
+                  </p>
+                ) : null}
+              </div>
+              {isInstructor ? (
+                <div
+                  className="flex shrink-0 rounded-lg border border-white/10 bg-black/20 p-1"
+                  role="group"
+                  aria-label="Participant visibility mode"
+                >
+                  <button
+                    type="button"
+                    aria-pressed={!communityMode}
+                    disabled={isCommunityModeUpdating}
+                    onClick={() => void updateCommunityMode(false)}
+                    className={`flex items-center gap-1.5 rounded-md px-3 py-2 transition-colors disabled:cursor-wait disabled:opacity-60 ${
+                      !communityMode ? "bg-white text-black" : "text-white/70 hover:bg-white/10"
+                    }`}
+                  >
+                    <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
+                    Focus
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={communityMode}
+                    disabled={isCommunityModeUpdating}
+                    onClick={() => void updateCommunityMode(true)}
+                    className={`flex items-center gap-1.5 rounded-md px-3 py-2 transition-colors disabled:cursor-wait disabled:opacity-60 ${
+                      communityMode
+                        ? "bg-brand-accent text-white"
+                        : "text-white/70 hover:bg-white/10"
+                    }`}
+                  >
+                    <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                    Community
+                  </button>
+                </div>
+              ) : (
+                <Badge
+                  className={
+                    communityMode ? "bg-brand-accent text-white" : "bg-white/10 text-white/70"
+                  }
+                >
+                  {communityMode ? "Community" : "Focus"}
+                </Badge>
+              )}
             </div>
           ) : null}
           {reaction ? (

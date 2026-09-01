@@ -19,7 +19,7 @@
     "test:integration": "vitest run tests/integration",
     "test:e2e": "rm -rf .next && playwright test",
     "test:e2e:functional": "rm -rf .next && playwright test --grep-invert @a11y",
-    "test:e2e:newsletter": "rm -rf .next && playwright test tests/e2e/holding-page.spec.ts tests/e2e/public/newsletter/journeys.spec.ts",
+    "test:e2e:newsletter": "rm -rf .next && SITE_STAGE=live playwright test tests/e2e/public/newsletter/journeys.spec.ts && SITE_STAGE=holding playwright test tests/e2e/holding-page.spec.ts",
     "test:e2e:regression": "pnpm run test:e2e:functional",
     "test:a11y": "rm -rf .next && playwright test tests/e2e/public/accessibility.spec.ts",
     "test:lighthouse": "node scripts/lighthouse-public-scan.mjs",

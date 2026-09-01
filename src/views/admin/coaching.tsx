@@ -82,13 +82,14 @@ const manualSetupLabels: Record<string, string> = {
   invite_sent: "Everfit invite sent",
   connected: "Active in Everfit",
   sync_issue: "Needs attention",
+  closed: "Everfit access closed",
 };
 
 const profileStatusLabels: Record<string, string> = {
   onboarding: "Onboarding",
   active: "Active",
   paused: "Paused",
-  completed: "Completed",
+  completed: "Closed",
 };
 
 const packageEffectiveModeLabels: Record<string, string> = {
@@ -130,6 +131,7 @@ function badgeVariant(status: string): "default" | "secondary" | "outline" | "de
 }
 
 function matchesPipelineTab(application: AdminCoachingApplicationDto, tab: CoachingPipelineTab) {
+  const coachingAccountClosed = application.coachingProfile?.status === "completed";
   if (tab === "new") {
     return ["submitted", "under_review", "follow_up_needed"].includes(application.status);
   }
@@ -139,9 +141,14 @@ function matchesPipelineTab(application: AdminCoachingApplicationDto, tab: Coach
   if (tab === "waitlist") return application.status === "waitlisted";
   if (tab === "payment") return ["approved", "offer_sent"].includes(application.status);
   if (tab === "clients") {
-    return application.status === "converted" || Boolean(application.coachingProfile);
+    return (
+      !coachingAccountClosed &&
+      (application.status === "converted" || Boolean(application.coachingProfile))
+    );
   }
-  return application.status === "declined" || application.status === "withdrawn";
+  return (
+    coachingAccountClosed || application.status === "declined" || application.status === "withdrawn"
+  );
 }
 
 function pipelineTabForApplication(application: AdminCoachingApplicationDto): CoachingPipelineTab {
@@ -171,6 +178,11 @@ function sortApplicationsForTab(
 }
 
 function getOperationalNextStep(application: AdminCoachingApplicationDto) {
+  if (application.coachingProfile?.status === "completed") {
+    return application.coachingProfile.everfitConnectionStatus === "closed"
+      ? "This coaching account and its Everfit access are closed. Reopen the coaching status only if support resumes."
+      : "The coaching account is closed. Remove access in Everfit, then mark Everfit access closed below.";
+  }
   if (application.status === "submitted" || application.status === "under_review") {
     return "Review the enquiry, arrange the consultation and record its date here.";
   }
@@ -348,7 +360,9 @@ export function AdminCoaching({
       ["approved", "offer_sent"].includes(row.status)
     ).length;
     const activeClients = applications.filter(
-      (row) => row.status === "converted" || Boolean(row.coachingProfile)
+      (row) =>
+        row.coachingProfile?.status !== "completed" &&
+        (row.status === "converted" || Boolean(row.coachingProfile))
     ).length;
     return { submitted, underReview, waitlisted, awaitingPayment, activeClients };
   }, [applications]);
@@ -479,6 +493,15 @@ export function AdminCoaching({
     status: "onboarding" | "active" | "paused" | "completed"
   ) => {
     if (!application.coachingProfile) return;
+    if (
+      status === "completed" &&
+      application.coachingProfile.status !== "completed" &&
+      !window.confirm(
+        `Close ${application.applicantName}'s coaching account? This changes their website coaching status but does not cancel billing or remove Everfit access.`
+      )
+    ) {
+      return;
+    }
     setSavingId(application.id);
     setError("");
     setNotice("");
@@ -905,12 +928,24 @@ export function AdminCoaching({
                 </CardHeader>
               </summary>
               <CardContent className="space-y-5 border-t pt-5">
-                <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-                  <div className="space-y-3">
-                    <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                      Enquiry answers
-                    </p>
-                    <div className="space-y-3">
+                <div className="space-y-4">
+                  <details
+                    className="rounded-lg border p-4"
+                    open={!application.coachingProfile ? true : undefined}
+                  >
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+                      <span className="text-muted-foreground text-xs tracking-wide uppercase">
+                        Enquiry answers
+                      </span>
+                      <span className="text-muted-foreground text-xs">
+                        {
+                          Object.keys(application.answers).filter((key) => key !== "offerKey")
+                            .length
+                        }{" "}
+                        responses · View
+                      </span>
+                    </summary>
+                    <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                       {Object.entries(application.answers)
                         .filter(([key]) => key !== "offerKey")
                         .map(([key, value]) => (
@@ -922,10 +957,10 @@ export function AdminCoaching({
                           </div>
                         ))}
                     </div>
-                  </div>
+                  </details>
 
-                  <div className="space-y-4">
-                    <div className="bg-secondary/20 rounded-lg border p-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="bg-secondary/20 order-first rounded-lg border p-4 md:col-span-2">
                       <p className="text-muted-foreground mb-1 text-xs tracking-wide uppercase">
                         Next operational step
                       </p>
@@ -1082,7 +1117,7 @@ export function AdminCoaching({
                       />
                     </details>
 
-                    <div className="flex flex-col gap-2">
+                    <div className="contents">
                       <Button
                         disabled={savingId === application.id}
                         onClick={() => void saveApplication({ id: application.id })}
@@ -1215,7 +1250,7 @@ export function AdminCoaching({
 
                       {application.userId && application.isLinkedUserCoachingClient ? (
                         <details
-                          className="rounded-lg border border-amber-200 bg-amber-50 p-3"
+                          className="order-first rounded-lg border border-amber-200 bg-amber-50 p-3 md:col-span-2"
                           open={openClientManagementIds.has(application.id)}
                           onToggle={(event) => {
                             const isOpen = event.currentTarget.open;
@@ -1235,13 +1270,17 @@ export function AdminCoaching({
                           </summary>
                           <div className="mt-4">
                             {application.coachingProfile ? (
-                              <div className="mb-4 space-y-4">
+                              <div className="mb-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
                                 <div className="rounded-md border border-amber-200 bg-white/70 p-3">
                                   <p className="text-sm text-amber-950">Coaching status</p>
                                   <p className="mt-1 text-xs leading-relaxed text-amber-800">
                                     Current status:{" "}
                                     {profileStatusLabels[application.coachingProfile.status] ||
                                       application.coachingProfile.status}
+                                  </p>
+                                  <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                                    Closing the coaching account does not cancel Stripe billing or
+                                    remove access in Everfit. Complete those steps separately below.
                                   </p>
                                   <div className="mt-3 grid gap-2">
                                     {Object.entries(profileStatusLabels).map(([value, label]) => (
@@ -1265,7 +1304,11 @@ export function AdminCoaching({
                                           )
                                         }
                                       >
-                                        {label}
+                                        {value === "completed"
+                                          ? application.coachingProfile?.status === "completed"
+                                            ? "Coaching account closed"
+                                            : "Close coaching account"
+                                          : label}
                                       </Button>
                                     ))}
                                   </div>

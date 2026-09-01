@@ -159,6 +159,7 @@ export async function POST(req: Request) {
 
       return NextResponse.json({
         ok: true,
+        state: "subscribed",
         message: "You’re already confirmed. Keep an eye on your inbox for the next update.",
       });
     }
@@ -190,7 +191,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    message:
-      signupContent.successMessage || "Please check your inbox to confirm your email address.",
+    state: "pending",
+    message: "Please check your inbox to confirm your email address.",
   });
 }

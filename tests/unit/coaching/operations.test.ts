@@ -83,4 +83,36 @@ describe("coaching operations", () => {
       )
     ).toBe("final_month");
   });
+
+  it("keeps the Everfit closure action visible until access is marked closed", () => {
+    const profile = {
+      status: "completed",
+      everfitConnectionStatus: "connected",
+      billingPhase: "completed" as const,
+    };
+
+    expect(
+      getCoachingAdminTodos(
+        {
+          id: "closed-client",
+          applicantName: "Sam",
+          status: "converted",
+          coachingProfile: profile,
+        },
+        now
+      ).map((todo) => todo.kind)
+    ).toEqual(["close_everfit"]);
+
+    expect(
+      getCoachingAdminTodos(
+        {
+          id: "closed-client",
+          applicantName: "Sam",
+          status: "converted",
+          coachingProfile: { ...profile, everfitConnectionStatus: "closed" },
+        },
+        now
+      )
+    ).toEqual([]);
+  });
 });

@@ -29,6 +29,7 @@ type CampaignSummary = {
   sourceSystem: string;
   messageStream: string | null;
   trackingState: "available" | "awaiting" | "unavailable";
+  reportingSource: "postmark_api" | "event_history";
   attentionReasons: string[];
   errorSummary: string | null;
 };
@@ -37,6 +38,19 @@ type NewsletterSummary = {
   subscribed: number;
   pending: number;
   unsubscribes30d: number;
+  postmarkOverview: null | {
+    messageStream: string;
+    sent: number;
+    delivered: number;
+    uniqueOpens: number;
+    uniqueClicks: number;
+    bounced: number;
+    spamComplaints: number;
+    deliveryRate: number;
+    openRate: number;
+    clickRate: number;
+    bounceRate: number;
+  };
   campaigns: CampaignSummary[];
   campaignsPagination: {
     page: number;
@@ -240,9 +254,9 @@ export function AdminNewsletter() {
               <div>
                 <h2 className="text-lg">Campaign reporting</h2>
                 <p className="text-muted-foreground max-w-3xl text-sm">
-                  Uses Postmark webhook events for this application's marketing stream. Postmark's
-                  server overview also includes transactional email, so its totals are not the same
-                  scope.
+                  Aggregate delivery and engagement figures are queried directly from Postmark for
+                  this application's marketing stream. Subscriber consent and unsubscribe history
+                  remain in this application.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -258,6 +272,36 @@ export function AdminNewsletter() {
                 ))}
               </div>
             </div>
+
+            {summary?.postmarkOverview ? (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <AppMetricCard
+                  label="Sent by Postmark"
+                  value={summary.postmarkOverview.sent}
+                  detail={`${summary.postmarkOverview.deliveryRate}% delivered`}
+                />
+                <AppMetricCard
+                  label="Unique opens"
+                  value={summary.postmarkOverview.uniqueOpens}
+                  detail={`${summary.postmarkOverview.openRate}% of delivered`}
+                />
+                <AppMetricCard
+                  label="Unique clicks"
+                  value={summary.postmarkOverview.uniqueClicks}
+                  detail={`${summary.postmarkOverview.clickRate}% of delivered`}
+                />
+                <AppMetricCard
+                  label="Bounces"
+                  value={summary.postmarkOverview.bounced}
+                  detail={`${summary.postmarkOverview.bounceRate}% of sent`}
+                />
+              </div>
+            ) : (
+              <p className="text-muted-foreground rounded-lg border p-3 text-sm">
+                Postmark API statistics are unavailable. Campaign rows below use stored event
+                history where available.
+              </p>
+            )}
 
             <div className="flex flex-wrap gap-2">
               {CAMPAIGN_STATUSES.map((status) => (
@@ -309,6 +353,11 @@ export function AdminNewsletter() {
                     </div>
                     <div className="flex flex-wrap gap-2 text-xs">
                       <Badge variant="outline">{campaign.status}</Badge>
+                      <Badge variant="secondary">
+                        {campaign.reportingSource === "postmark_api"
+                          ? "Postmark API"
+                          : "Event history"}
+                      </Badge>
                       <Badge variant="outline">Delivered {campaign.delivered}</Badge>
                       <Badge variant="outline">
                         Open {formatRate(campaign.openRate, campaign.trackingState)}

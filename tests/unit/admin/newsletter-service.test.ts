@@ -6,6 +6,7 @@ const newsletterSubscriberFindManyMock = vi.fn();
 const emailEventFindManyMock = vi.fn();
 const emailCampaignCountMock = vi.fn();
 const emailCampaignFindManyMock = vi.fn();
+const getPostmarkOutboundStatsMock = vi.fn();
 
 vi.mock("@/lib/db", () => ({
   db: {
@@ -33,6 +34,10 @@ vi.mock("@/lib/newsletter/subscriber-service", () => ({
   syncMarketingPreferenceForUser: vi.fn(),
 }));
 
+vi.mock("@/lib/postmark/stats-service", () => ({
+  getPostmarkOutboundStats: getPostmarkOutboundStatsMock,
+}));
+
 const { getAdminNewsletterSummary } = await import("@/lib/admin/newsletter-service");
 
 describe("admin newsletter reporting service", () => {
@@ -56,6 +61,7 @@ describe("admin newsletter reporting service", () => {
       { type: "SpamComplaint", eventAt: new Date("2026-04-26T09:05:00.000Z") },
     ]);
     emailCampaignCountMock.mockResolvedValue(1);
+    getPostmarkOutboundStatsMock.mockResolvedValue(null);
     emailCampaignFindManyMock.mockResolvedValue([
       {
         id: "campaign_123",
@@ -148,6 +154,65 @@ describe("admin newsletter reporting service", () => {
       verifiedSubscribers: 1,
       bounces: 1,
       spamComplaints: 1,
+    });
+  });
+
+  it("uses Postmark's API for tagged campaign engagement statistics", async () => {
+    emailCampaignFindManyMock.mockResolvedValue([
+      {
+        id: "campaign_123",
+        providerCampaignId: "provider_123",
+        subject: "April newsletter",
+        status: "sent",
+        audienceType: "subscribers",
+        triggeredBy: "contentful_publish",
+        contentfulEntryId: "entry_123",
+        sentCount: 95,
+        failedCount: 5,
+        stream: "broadcast",
+        errorSummary: null,
+        sentAt: new Date("2026-04-26T09:00:00.000Z"),
+        scheduledAt: null,
+        createdAt: new Date("2026-04-26T08:00:00.000Z"),
+        emailEvents: [{ type: "Unsubscribe", metadataJson: null }],
+        emailDeliveries: [
+          {
+            status: "sent",
+            messageStream: "broadcast",
+            tag: "newsletter-campaign-campaign_123",
+            lastError: null,
+            resolvedAt: null,
+          },
+        ],
+      },
+    ]);
+    const apiStats = {
+      sent: 95,
+      delivered: 93,
+      bounced: 2,
+      spamComplaints: 1,
+      uniqueOpens: 40,
+      uniqueClicks: 12,
+      totalOpens: 50,
+      totalClicks: 15,
+      tracked: 95,
+    };
+    getPostmarkOutboundStatsMock.mockResolvedValue(apiStats);
+
+    const summary = await getAdminNewsletterSummary({ campaignDateRange: "30d" });
+
+    expect(getPostmarkOutboundStatsMock).toHaveBeenCalledWith({
+      tag: "newsletter-campaign-campaign_123",
+      messageStream: "broadcast",
+    });
+    expect(summary.campaigns[0]).toMatchObject({
+      reportingSource: "postmark_api",
+      delivered: 93,
+      opened: 40,
+      clicked: 12,
+      bounced: 2,
+      spamComplaints: 1,
+      unsubscribeRate: 1,
     });
   });
 });
