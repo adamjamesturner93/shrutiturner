@@ -448,6 +448,7 @@ export type AdminRetreatSummaryDto = {
   retreatSlug: string;
   title: string;
   location: string;
+  timezone: string;
   startDate: string;
   endDate: string;
   status: string;
@@ -474,6 +475,7 @@ export type AdminRetreatDetailDto = {
   retreatSlug: string;
   title: string;
   location: string;
+  timezone: string;
   startDate: string;
   endDate: string;
   status: string;

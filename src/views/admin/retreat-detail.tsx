@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { AdminRetreatDetailDto, AdminRetreatEvidenceDto } from "@/lib/api/types";
+import { formatRetreatDateTimeRange } from "@/lib/retreats/presentation";
 
 function formatCurrency(pence: number) {
   return new Intl.NumberFormat("en-GB", {
@@ -37,15 +38,6 @@ function formatCurrency(pence: number) {
     currency: "GBP",
     maximumFractionDigits: 0,
   }).format(pence / 100);
-}
-
-function formatDateRange(start: string, end: string) {
-  const formatter = new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-  return `${formatter.format(new Date(start))} - ${formatter.format(new Date(end))}`;
 }
 
 function toDateTimeLocal(value: string | null) {
@@ -635,7 +627,7 @@ export function AdminRetreatDetail({
               </span>
               <span className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                {formatDateRange(retreat.startDate, retreat.endDate)}
+                {formatRetreatDateTimeRange(retreat.startDate, retreat.endDate, retreat.timezone)}
               </span>
             </div>
           </div>

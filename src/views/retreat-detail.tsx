@@ -25,6 +25,7 @@ import {
   isRetreatEarlyBirdActive,
 } from "@/lib/retreats/pricing";
 import {
+  formatRetreatDateTimeRange,
   getRetreatPriceSummary,
   getRetreatRoomOptionPriceSummary,
   getRetreatRoomRatePlans as getRoomRatePlans,
@@ -146,7 +147,7 @@ export function RetreatDetailPage({
   otherRetreatsAtVenue = [],
 }: RetreatDetailPageProps) {
   const retreat = retreatProp ?? null;
-  const { fmtDate, fmtDateRange } = useI18n();
+  const { fmtDate } = useI18n();
   const [selectedDateId, setSelectedDateId] = useState(retreat?.dates[0]?.id || "");
   const [selectedRoomId, setSelectedRoomId] = useState(
     getDefaultRoomOptionId(retreat?.dates[0] || null)
@@ -392,7 +393,11 @@ export function RetreatDetailPage({
                 ) : null}
                 {selectedDate ? (
                   <span className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 rounded-full border px-4 py-2 text-sm">
-                    {fmtDateRange(selectedDate.startDate, selectedDate.endDate)}
+                    {formatRetreatDateTimeRange(
+                      selectedDate.startDate,
+                      selectedDate.endDate,
+                      selectedDate.timezone
+                    )}
                   </span>
                 ) : null}
                 {selectedDate && isLiveOnlineExperience ? (
@@ -722,7 +727,13 @@ export function RetreatDetailPage({
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div>
-                                <p>{fmtDateRange(date.startDate, date.endDate)}</p>
+                                <p>
+                                  {formatRetreatDateTimeRange(
+                                    date.startDate,
+                                    date.endDate,
+                                    date.timezone
+                                  )}
+                                </p>
                                 <p className="text-muted-foreground mt-1 text-sm">
                                   Limited to {date.totalSpaces} places
                                 </p>
@@ -741,7 +752,13 @@ export function RetreatDetailPage({
                       <div className="border-brand-dark/10 rounded-[1rem] border p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p>{fmtDateRange(selectedDate.startDate, selectedDate.endDate)}</p>
+                            <p>
+                              {formatRetreatDateTimeRange(
+                                selectedDate.startDate,
+                                selectedDate.endDate,
+                                selectedDate.timezone
+                              )}
+                            </p>
                             <p className="text-muted-foreground mt-1 text-sm">
                               Limited to {selectedDate.totalSpaces} places
                             </p>

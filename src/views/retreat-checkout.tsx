@@ -36,6 +36,7 @@ import {
   getEffectiveRetreatRatePricePence,
   isRetreatEarlyBirdActive,
 } from "@/lib/retreats/pricing";
+import { formatRetreatDateTimeRange } from "@/lib/retreats/presentation";
 import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content/types";
 import { useI18n } from "@/lib/use-i18n";
 import { LegalAcceptanceChecklist } from "@/components/legal-acceptance-checklist";
@@ -141,7 +142,7 @@ function getRoomGuestLabel(roomOption: RetreatRoomOptionContent) {
 export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedContent | null }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { fmtDate, fmtDateRange } = useI18n();
+  const { fmtDate } = useI18n();
   const { user, acceptTermsAndHealth, acceptHealthDataConsent, refreshAccountProfile } = useAuth();
 
   const queryDateId = searchParams.get("date");
@@ -672,7 +673,13 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                       >
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
-                            <p className="text-lg">{fmtDateRange(date.startDate, date.endDate)}</p>
+                            <p className="text-lg">
+                              {formatRetreatDateTimeRange(
+                                date.startDate,
+                                date.endDate,
+                                date.timezone
+                              )}
+                            </p>
                             <p className="text-muted-foreground mt-1 text-sm">
                               Limited to {date.totalSpaces} places
                             </p>
@@ -1518,7 +1525,11 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                   <span className="text-muted-foreground">Date</span>
                   <span className="max-w-[14rem] text-right">
                     {selectedDate
-                      ? fmtDateRange(selectedDate.startDate, selectedDate.endDate)
+                      ? formatRetreatDateTimeRange(
+                          selectedDate.startDate,
+                          selectedDate.endDate,
+                          selectedDate.timezone
+                        )
                       : "Select a date"}
                   </span>
                 </div>

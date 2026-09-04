@@ -17,9 +17,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { useI18n } from "@/lib/use-i18n";
 import { getRetreatCardImageSrc } from "@/lib/retreats/images";
-import { getRetreatPriceSummary } from "@/lib/retreats/presentation";
+import { formatRetreatDateTimeRange, getRetreatPriceSummary } from "@/lib/retreats/presentation";
 import type { FaqItemContent, RetreatCombinedContent } from "@/lib/content/types";
 
 interface RetreatsPageProps {
@@ -93,7 +92,6 @@ const RETREAT_PRINCIPLES = [
 export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
   const retreatData = retreats ?? [];
   const retreatFaqs = faqs && faqs.length > 0 ? faqs : DEFAULT_RETREAT_FAQS;
-  const { fmtDateRange } = useI18n();
 
   const formatMoney = (pence: number) =>
     new Intl.NumberFormat("en-GB", {
@@ -174,7 +172,11 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
                   <p className="text-muted-foreground mt-3 leading-relaxed">{retreat.subtitle}</p>
                   <p className="text-muted-foreground mt-5 text-sm leading-relaxed">
                     {retreat.dates[0]
-                      ? fmtDateRange(retreat.dates[0].startDate, retreat.dates[0].endDate)
+                      ? formatRetreatDateTimeRange(
+                          retreat.dates[0].startDate,
+                          retreat.dates[0].endDate,
+                          retreat.dates[0].timezone
+                        )
                       : "Dates to be announced"}
                     {` · ${getFormatLabel(retreat)}`}
                     {getDurationLabel(retreat) ? ` · ${getDurationLabel(retreat)}` : ""}
