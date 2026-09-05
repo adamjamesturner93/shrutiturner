@@ -215,8 +215,6 @@ async function run() {
     ["instructorProfile", "name"],
     ["leadMagnet", "title"],
     ["newsletterTemplate", "title"],
-    ["retreatScheduleDay", "title"],
-    ["retreatScheduleItem", "title"],
     ["testimonial", "authorName"],
   ] as const;
   for (const [contentTypeId, trackingFieldId] of slugEditors) {

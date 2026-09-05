@@ -10,6 +10,7 @@ const RETIRED_CONTENT_TYPES = [
   "themedWeekPromo",
   "transactionalEmailTemplate",
   "retreatInstance",
+  "retreatScheduleItem",
 ] as const;
 
 type ContentTypeLike = {

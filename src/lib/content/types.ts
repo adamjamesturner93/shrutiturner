@@ -43,7 +43,7 @@ export interface RetreatRoomOptionContent {
   id: string;
   label: string;
   description: string;
-  type: "shared_twin" | "single" | "shared_private" | "virtual";
+  type: "shared_twin" | "single" | "shared_private" | "private" | "virtual";
   bookingUnit?: "bed_space" | "whole_room" | "ticket" | "addon" | "online_live_place";
   /** Base units removed from a shared inventory pool for one booking. */
   inventoryUnitsPerBooking?: number;
@@ -309,20 +309,11 @@ export interface RetreatVenueContent {
   kitchenAccessDescription?: string;
 }
 
-export interface RetreatScheduleItemContent {
-  startTime: string;
-  endTime?: string;
-  title: string;
-  description?: string;
-  category?: string;
-  isOptional?: boolean;
-}
-
 export interface RetreatScheduleDayContent {
   day: string;
-  title?: string;
+  title: string;
+  subtitle?: string;
   activities: string[];
-  items?: RetreatScheduleItemContent[];
 }
 
 export interface RetreatInstanceContent {

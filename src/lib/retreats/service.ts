@@ -735,6 +735,7 @@ function toPublicRoomType(value: string): RetreatRoomOptionContent["type"] {
     value === "shared_twin" ||
     value === "single" ||
     value === "shared_private" ||
+    value === "private" ||
     value === "virtual"
   ) {
     return value;
@@ -1790,7 +1791,8 @@ export async function createRetreatCheckout(input: {
         guestTwoDietaryRequirements:
           normalizeText(input.guestTwoDietaryRequirements || "", 1000) || null,
         attendeeCount: quote.totalGuestCount,
-        singleRoomRequested: roomOption.roomType === "single",
+        singleRoomRequested:
+          roomOption.bookingUnit === RetreatBookingUnit.whole_room && quote.totalGuestCount === 1,
         roomType: roomOption.label,
         roomOptionLabelSnapshot: roomOption.label,
         roomOptionTypeSnapshot: roomOption.roomType,
@@ -3547,7 +3549,7 @@ export async function getAdminRetreatSummaries() {
 }
 
 export async function getAdminRetreatTemplates() {
-  const [templates, venues, latestDates] = await Promise.all([
+  const [templates, venues, latestDates, venueProfiles] = await Promise.all([
     getRetreatTemplates(),
     getRetreatVenues(),
     db.retreatDate.findMany({
@@ -3557,7 +3559,9 @@ export async function getAdminRetreatTemplates() {
         depositRules: { where: { active: true }, orderBy: { createdAt: "desc" } },
       },
     }),
+    db.retreatVenueProfile.findMany({ select: { contentfulVenueId: true } }),
   ]);
+  const configuredVenueIds = new Set(venueProfiles.map((profile) => profile.contentfulVenueId));
   const latestDateBySlug = new Map<string, (typeof latestDates)[number]>();
   for (const date of latestDates) {
     if (!latestDateBySlug.has(date.retreatSlug)) latestDateBySlug.set(date.retreatSlug, date);
@@ -3584,6 +3588,10 @@ export async function getAdminRetreatTemplates() {
         venue?.name ||
         sourceDate?.retreatLocationSnapshot ||
         (retreatType === "online" ? "Online (live through this website)" : "To be confirmed"),
+      venueId: venue?.id || null,
+      venueSlug: venue?.slug || null,
+      venueRoomsConfigured:
+        retreatType === "online" || Boolean(venue?.id && configuredVenueIds.has(venue.id)),
       retreatType,
       capacity: sourceDate?.capacity || (retreatType === "online" ? 30 : 10),
       pricePence: prices.length > 0 ? Math.min(...prices) : sourceDate?.pricePence || 0,
@@ -3593,6 +3601,164 @@ export async function getAdminRetreatTemplates() {
           : ("deposit" as const),
     };
   });
+}
+
+export type AdminRetreatVenueRoomGroupInput = {
+  name: string;
+  description?: string | null;
+  quantity: number;
+  capacityPerRoom: number;
+  bedSetup: string;
+  allowShared: boolean;
+  privateGuestCounts: number[];
+  roomNames: string[];
+};
+
+function readPrivateGuestCounts(value: unknown) {
+  return Array.isArray(value)
+    ? value
+        .filter((count): count is number => typeof count === "number" && Number.isInteger(count))
+        .sort((a, b) => a - b)
+    : [];
+}
+
+export async function getAdminRetreatVenues() {
+  const [venues, profiles] = await Promise.all([
+    getRetreatVenues(),
+    db.retreatVenueProfile.findMany({
+      include: {
+        roomGroups: {
+          where: { active: true },
+          orderBy: { displayOrder: "asc" },
+          include: { roomTemplates: { orderBy: { displayOrder: "asc" } } },
+        },
+      },
+    }),
+  ]);
+  const profileByContentfulId = new Map(
+    profiles.map((profile) => [profile.contentfulVenueId, profile] as const)
+  );
+
+  return venues
+    .filter(
+      (venue): venue is RetreatVenueContent & { id: string } =>
+        Boolean(venue.id) && venue.slug !== "online"
+    )
+    .map((venue) => {
+      const profile = profileByContentfulId.get(venue.id);
+      return {
+        contentfulVenueId: venue.id,
+        venueSlug: venue.slug,
+        name: venue.name,
+        displayLocation: venue.displayLocation,
+        configured: Boolean(profile?.roomGroups.length),
+        roomGroups:
+          profile?.roomGroups.map((group) => ({
+            id: group.id,
+            name: group.name,
+            description: group.description || "",
+            quantity: group.quantity,
+            capacityPerRoom: group.capacityPerRoom,
+            bedSetup: group.bedSetup,
+            allowShared: group.allowShared,
+            privateGuestCounts: readPrivateGuestCounts(group.privateGuestCountsJson),
+            roomNames: group.roomTemplates.map((room) => room.label),
+          })) || [],
+      };
+    });
+}
+
+export async function updateAdminRetreatVenueRooms(
+  contentfulVenueId: string,
+  roomGroups: AdminRetreatVenueRoomGroupInput[]
+) {
+  const venues = await getRetreatVenues();
+  const venue = venues.find((candidate) => candidate.id === contentfulVenueId);
+  if (!venue) throw new Error("RETREAT_VENUE_NOT_FOUND");
+  const supportedBedSetups = new Set([
+    "fixed_double",
+    "fixed_twin",
+    "convertible_double_twin",
+    "single",
+    "bunk_or_dorm",
+    "other",
+  ]);
+  const normalizedGroupNames = roomGroups.map((group) => group.name.trim().toLowerCase());
+  const normalizedRoomNames = roomGroups.flatMap((group) =>
+    group.roomNames.map((name) => name.trim().toLowerCase()).filter(Boolean)
+  );
+  if (
+    roomGroups.length === 0 ||
+    new Set(normalizedGroupNames).size !== normalizedGroupNames.length ||
+    new Set(normalizedRoomNames).size !== normalizedRoomNames.length ||
+    roomGroups.some((group) => {
+      const privateGuestCounts = [...new Set(group.privateGuestCounts)];
+      return (
+        !group.name.trim() ||
+        !supportedBedSetups.has(group.bedSetup) ||
+        !Number.isInteger(group.quantity) ||
+        group.quantity < 1 ||
+        group.quantity > 100 ||
+        !Number.isInteger(group.capacityPerRoom) ||
+        group.capacityPerRoom < 1 ||
+        group.capacityPerRoom > 20 ||
+        (group.allowShared &&
+          (group.capacityPerRoom < 2 ||
+            group.bedSetup === "fixed_double" ||
+            group.bedSetup === "single")) ||
+        (!group.allowShared && privateGuestCounts.length === 0) ||
+        privateGuestCounts.some(
+          (count) => !Number.isInteger(count) || count < 1 || count > group.capacityPerRoom
+        ) ||
+        group.roomNames.length > group.quantity ||
+        new Set(group.roomNames.map((name) => name.trim().toLowerCase()).filter(Boolean)).size !==
+          group.roomNames.map((name) => name.trim()).filter(Boolean).length
+      );
+    })
+  ) {
+    throw new Error("INVALID_RETREAT_VENUE_ROOMS");
+  }
+
+  await db.$transaction(async (tx) => {
+    const profile = await tx.retreatVenueProfile.upsert({
+      where: { contentfulVenueId },
+      create: {
+        contentfulVenueId,
+        venueSlug: venue.slug,
+        name: venue.name,
+      },
+      update: { venueSlug: venue.slug, name: venue.name },
+    });
+    await tx.retreatVenueRoomGroup.deleteMany({ where: { venueProfileId: profile.id } });
+    for (const [groupIndex, group] of roomGroups.entries()) {
+      const createdGroup = await tx.retreatVenueRoomGroup.create({
+        data: {
+          venueProfileId: profile.id,
+          name: group.name.trim(),
+          description: normalizeText(group.description || "", 1000) || null,
+          quantity: group.quantity,
+          capacityPerRoom: group.capacityPerRoom,
+          bedSetup: group.bedSetup.trim(),
+          allowShared: group.allowShared,
+          privateGuestCountsJson: [...new Set(group.privateGuestCounts)].sort((a, b) => a - b),
+          displayOrder: groupIndex,
+        },
+      });
+      for (let roomIndex = 0; roomIndex < group.quantity; roomIndex += 1) {
+        const customName = group.roomNames[roomIndex]?.trim();
+        await tx.retreatVenueRoomTemplate.create({
+          data: {
+            roomGroupId: createdGroup.id,
+            label: customName || `${group.name.trim()} ${roomIndex + 1}`,
+            displayOrder: roomIndex,
+          },
+        });
+      }
+    }
+  });
+
+  const venuesAfterUpdate = await getAdminRetreatVenues();
+  return venuesAfterUpdate.find((candidate) => candidate.contentfulVenueId === contentfulVenueId)!;
 }
 
 export type CreateAdminRetreatDateInput = {
@@ -3641,24 +3807,52 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
     throw new Error("INVALID_EARLY_BIRD");
   }
 
-  const sourceDate = await db.retreatDate.findFirst({
-    where: { retreatSlug: input.retreatSlug },
-    orderBy: { startsAt: "desc" },
-    include: {
-      inventoryPools: true,
-      roomOptions: {
-        orderBy: { displayOrder: "asc" },
-        include: {
-          inventoryPool: true,
-          ratePlans: { orderBy: { guestCount: "asc" } },
-          roomUnits: { orderBy: { label: "asc" } },
-        },
-      },
-      depositRules: { where: { active: true }, orderBy: { createdAt: "desc" } },
-      addons: { where: { active: true }, orderBy: { createdAt: "asc" } },
-      instructorAssignments: true,
-    },
-  });
+  const venueProfile =
+    input.retreatType === "in_person"
+      ? await (async () => {
+          const [templates, venues] = await Promise.all([
+            getRetreatTemplates(),
+            getRetreatVenues(),
+          ]);
+          const template = templates.find((candidate) => candidate.slug === input.retreatSlug);
+          const venue = template ? getTemplateVenue(template, venues) : undefined;
+          if (!venue?.id) throw new Error("RETREAT_VENUE_REQUIRED");
+          const profile = await db.retreatVenueProfile.findUnique({
+            where: { contentfulVenueId: venue.id },
+            include: {
+              roomGroups: {
+                where: { active: true },
+                orderBy: { displayOrder: "asc" },
+                include: { roomTemplates: { orderBy: { displayOrder: "asc" } } },
+              },
+            },
+          });
+          if (!profile?.roomGroups.length) throw new Error("RETREAT_VENUE_ROOMS_REQUIRED");
+          return profile;
+        })()
+      : null;
+
+  const sourceDate =
+    input.retreatType === "online"
+      ? await db.retreatDate.findFirst({
+          where: { retreatSlug: input.retreatSlug },
+          orderBy: { startsAt: "desc" },
+          include: {
+            inventoryPools: true,
+            roomOptions: {
+              orderBy: { displayOrder: "asc" },
+              include: {
+                inventoryPool: true,
+                ratePlans: { orderBy: { guestCount: "asc" } },
+                roomUnits: { orderBy: { label: "asc" } },
+              },
+            },
+            depositRules: { where: { active: true }, orderBy: { createdAt: "desc" } },
+            addons: { where: { active: true }, orderBy: { createdAt: "asc" } },
+            instructorAssignments: true,
+          },
+        })
+      : null;
   if (sourceDate && parseRetreatType(sourceDate.retreatType) !== input.retreatType) {
     throw new Error("RETREAT_TYPE_MISMATCH");
   }
@@ -3726,6 +3920,7 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
         payInFullDiscountPercent: sourceDate?.payInFullDiscountPercent ?? 5,
         payInFullDiscountCapPence: sourceDate?.payInFullDiscountCapPence ?? 5000,
         refundRuleId: sourceDate?.refundRuleId || null,
+        venueProfileId: venueProfile?.id || null,
         paymentPlanSnapshotJson: {
           depositType: requiresFullPayment ? "full_payment" : "percentage",
           depositPercentageBasisPoints,
@@ -3734,6 +3929,123 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
         },
       },
     });
+
+    if (venueProfile) {
+      for (const [groupIndex, group] of venueProfile.roomGroups.entries()) {
+        const pool = await tx.retreatInventoryPool.create({
+          data: {
+            retreatDateId: retreatDate.id,
+            inventoryType: RetreatInventoryType.bed_space,
+            name: group.name,
+            totalQuantity: group.quantity * group.capacityPerRoom,
+          },
+        });
+        let sharedOptionId: string | null = null;
+        if (group.allowShared) {
+          const shared = await tx.retreatRoomOption.create({
+            data: {
+              retreatDateId: retreatDate.id,
+              inventoryPoolId: pool.id,
+              externalRoomOptionId: `venue-${group.id}-shared`,
+              label: `${group.name} — Shared place`,
+              description: group.description,
+              roomType: "shared_twin",
+              bookingUnit: RetreatBookingUnit.bed_space,
+              inventoryUnitsPerBooking: 1,
+              guestsIncluded: 1,
+              guestCountPerUnit: 1,
+              allowedGuestCountsJson: [1],
+              capacity: pool.totalQuantity,
+              availableSpots: pool.totalQuantity,
+              pricePence: input.pricePence,
+              pricePerPersonPence: input.pricePence,
+              displayOrder: groupIndex * 2,
+            },
+          });
+          sharedOptionId = shared.id;
+          await tx.retreatRatePlan.create({
+            data: {
+              roomOptionId: shared.id,
+              guestCount: 1,
+              totalPricePence: input.pricePence,
+              earlyBirdPricePence: input.earlyBirdPricePence ?? null,
+              earlyBirdEndsAt: input.earlyBirdPricePence ? input.earlyBirdEndsAt : null,
+              currency: "GBP",
+            },
+          });
+        }
+
+        const privateGuestCounts = readPrivateGuestCounts(group.privateGuestCountsJson);
+        let privateOptionId: string | null = null;
+        if (privateGuestCounts.length > 0) {
+          const privatePrices = privateGuestCounts.map((count) => input.pricePence * count);
+          const privateRoom = await tx.retreatRoomOption.create({
+            data: {
+              retreatDateId: retreatDate.id,
+              inventoryPoolId: pool.id,
+              externalRoomOptionId: `venue-${group.id}-private`,
+              label: `${group.name} — Private room`,
+              description: group.description,
+              roomType: "private",
+              bookingUnit: RetreatBookingUnit.whole_room,
+              inventoryUnitsPerBooking: group.capacityPerRoom,
+              guestsIncluded: privateGuestCounts[0],
+              allowedGuestCountsJson: privateGuestCounts,
+              capacity: group.quantity,
+              availableSpots: group.quantity,
+              pricePence: Math.min(...privatePrices),
+              roomCount: group.quantity,
+              displayOrder: groupIndex * 2 + 1,
+            },
+          });
+          privateOptionId = privateRoom.id;
+          for (const [rateIndex, guestCount] of privateGuestCounts.entries()) {
+            await tx.retreatRatePlan.create({
+              data: {
+                roomOptionId: privateRoom.id,
+                guestCount,
+                totalPricePence: privatePrices[rateIndex],
+                earlyBirdPricePence:
+                  input.earlyBirdPricePence === null || input.earlyBirdPricePence === undefined
+                    ? null
+                    : input.earlyBirdPricePence * guestCount,
+                earlyBirdEndsAt: input.earlyBirdPricePence ? input.earlyBirdEndsAt : null,
+                currency: "GBP",
+              },
+            });
+          }
+        }
+
+        const roomOptionId = privateOptionId || sharedOptionId;
+        if (!roomOptionId) throw new Error("RETREAT_VENUE_ROOMS_REQUIRED");
+        for (const room of group.roomTemplates) {
+          await tx.retreatRoomUnit.create({
+            data: {
+              retreatDateId: retreatDate.id,
+              roomOptionId,
+              inventoryPoolId: pool.id,
+              label: room.label,
+              capacityUnits: group.capacityPerRoom,
+            },
+          });
+        }
+      }
+
+      await tx.retreatDepositRule.create({
+        data: {
+          retreatDateId: retreatDate.id,
+          depositType: requiresFullPayment
+            ? RetreatDepositType.full_payment
+            : RetreatDepositType.percentage,
+          depositPercentageBasisPoints,
+          fixedDepositAmountPence: null,
+          balanceDueAt,
+          balanceDueDaysBeforeStart,
+          active: true,
+        },
+      });
+      return retreatDate;
+    }
 
     if (sourceDate) {
       const inventoryPoolIds = new Map<string, string>();
@@ -3987,6 +4299,9 @@ async function validateRetreatDateForPublishing(
     errors.push("Booking must close no later than the experience start.");
   }
   if (retreatDate.capacity < 1) errors.push("Capacity must be at least one place.");
+  if (retreatDate.retreatType === "in_person" && !retreatDate.accommodationConfiguredAt) {
+    errors.push("Save accommodation choices and prices before opening bookings.");
+  }
 
   const templates = await getRetreatTemplates();
   if (!templates.some((template) => template.slug === retreatDate.retreatSlug)) {
@@ -4469,6 +4784,8 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
         }
       : null,
     pricingLocked: bookingRows.status !== RetreatDateStatus.draft,
+    accommodationConfigured:
+      bookingRows.retreatType === "online" || Boolean(bookingRows.accommodationConfiguredAt),
     inventoryPools: bookingRows.inventoryPools.map((pool) => ({
       id: pool.id,
       name: pool.name,
@@ -4479,6 +4796,8 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
     roomOptions: bookingRows.roomOptions.map((roomOption) => ({
       id: roomOption.id,
       label: roomOption.label,
+      description: roomOption.description,
+      roomType: roomOption.roomType,
       inventoryPoolId: roomOption.inventoryPoolId,
       inventoryUnitsPerBooking: roomOption.inventoryUnitsPerBooking,
       capacity: roomOption.capacity,
@@ -4635,6 +4954,129 @@ export type AdminRetreatConfigurationUpdate = {
     balanceDueDaysBeforeStart: number | null;
   };
 };
+
+export type AdminRetreatAccommodationUpdate = {
+  capacity: number;
+  roomOptions: Array<{ id: string; active: boolean }>;
+  ratePlans: Array<{ id: string; active: boolean; totalPricePence: number }>;
+};
+
+export async function updateAdminRetreatAccommodation(
+  retreatDateId: string,
+  input: AdminRetreatAccommodationUpdate
+) {
+  await db.$transaction(async (tx) => {
+    await lockRetreatResource(tx, `retreat-configuration:${retreatDateId}`);
+    const retreatDate = await tx.retreatDate.findUnique({
+      where: { id: retreatDateId },
+      include: {
+        roomOptions: { include: { ratePlans: true } },
+        depositRules: { where: { active: true }, orderBy: { createdAt: "desc" }, take: 1 },
+      },
+    });
+    if (!retreatDate) throw new Error("NOT_FOUND");
+    if (retreatDate.status !== RetreatDateStatus.draft) {
+      throw new Error("RETREAT_CONFIGURATION_LOCKED");
+    }
+    if (retreatDate.retreatType !== "in_person") throw new Error("INVALID_RETREAT_INVENTORY");
+    if (!Number.isInteger(input.capacity) || input.capacity < 1 || input.capacity > 200) {
+      throw new Error("INVALID_RETREAT_INVENTORY");
+    }
+
+    const optionIds = new Set(retreatDate.roomOptions.map((option) => option.id));
+    const ratePlans = retreatDate.roomOptions.flatMap((option) => option.ratePlans);
+    const rateIds = new Set(ratePlans.map((rate) => rate.id));
+    if (
+      input.roomOptions.length !== optionIds.size ||
+      input.ratePlans.length !== rateIds.size ||
+      new Set(input.roomOptions.map((option) => option.id)).size !== optionIds.size ||
+      new Set(input.ratePlans.map((rate) => rate.id)).size !== rateIds.size ||
+      input.roomOptions.some((option) => !optionIds.has(option.id)) ||
+      input.ratePlans.some(
+        (rate) =>
+          !rateIds.has(rate.id) ||
+          !Number.isInteger(rate.totalPricePence) ||
+          rate.totalPricePence < 0
+      )
+    ) {
+      throw new Error("INVALID_RETREAT_INVENTORY");
+    }
+
+    const optionActiveById = new Map(
+      input.roomOptions.map((option) => [option.id, option.active] as const)
+    );
+    const submittedRateById = new Map(input.ratePlans.map((rate) => [rate.id, rate] as const));
+    const activeOptions = retreatDate.roomOptions.filter(
+      (option) => optionActiveById.get(option.id) === true
+    );
+    if (
+      activeOptions.length === 0 ||
+      activeOptions.some(
+        (option) =>
+          !option.ratePlans.some((rate) => submittedRateById.get(rate.id)?.active === true)
+      )
+    ) {
+      throw new Error("INVALID_RETREAT_INVENTORY");
+    }
+
+    for (const rate of ratePlans) {
+      const submitted = submittedRateById.get(rate.id)!;
+      await tx.retreatRatePlan.update({
+        where: { id: rate.id },
+        data: {
+          totalPricePence: submitted.totalPricePence,
+          active: submitted.active,
+          ...(rate.earlyBirdPricePence !== null &&
+          rate.earlyBirdPricePence >= submitted.totalPricePence
+            ? { earlyBirdPricePence: null, earlyBirdEndsAt: null }
+            : {}),
+        },
+      });
+    }
+
+    for (const option of retreatDate.roomOptions) {
+      const activeRates = option.ratePlans
+        .map((rate) => submittedRateById.get(rate.id)!)
+        .filter((rate) => rate.active);
+      await tx.retreatRoomOption.update({
+        where: { id: option.id },
+        data: {
+          active: optionActiveById.get(option.id) === true,
+          pricePence:
+            activeRates.length > 0
+              ? Math.min(...activeRates.map((rate) => rate.totalPricePence))
+              : option.pricePence,
+        },
+      });
+    }
+
+    const activeRatePrices = activeOptions.flatMap((option) =>
+      option.ratePlans
+        .map((rate) => submittedRateById.get(rate.id)!)
+        .filter((rate) => rate.active)
+        .map((rate) => rate.totalPricePence)
+    );
+    const minimumPricePence = Math.min(...activeRatePrices);
+    const rule = retreatDate.depositRules[0];
+    const depositAmountPence =
+      rule?.depositType === RetreatDepositType.percentage
+        ? Math.round((minimumPricePence * (rule.depositPercentageBasisPoints || 0)) / 10000)
+        : rule?.depositType === RetreatDepositType.fixed_amount
+          ? Math.min(rule.fixedDepositAmountPence || 0, minimumPricePence)
+          : minimumPricePence;
+    await tx.retreatDate.update({
+      where: { id: retreatDateId },
+      data: {
+        capacity: input.capacity,
+        pricePence: minimumPricePence,
+        depositAmountPence,
+        accommodationConfiguredAt: new Date(),
+      },
+    });
+  });
+
+  return getAdminRetreatDetail(retreatDateId);
+}
 
 export async function updateAdminRetreatConfiguration(
   retreatDateId: string,

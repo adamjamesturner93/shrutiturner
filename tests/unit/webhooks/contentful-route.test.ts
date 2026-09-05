@@ -130,16 +130,16 @@ describe("POST /api/webhooks/contentful", () => {
     expect(revalidateTagMock).not.toHaveBeenCalledWith("content:all", "max");
   });
 
-  it("revalidates retreat content when a linked schedule activity is published", async () => {
+  it("revalidates retreat content when a linked schedule day is published", async () => {
     const route = await loadRoute();
     const response = await route.POST(
       new Request("http://localhost/api/webhooks/contentful", {
         method: "POST",
         headers: {
           "x-contentful-webhook-secret": "contentful-secret",
-          "x-contentful-topic": "ContentManagement.Entry.publish.retreatScheduleItem",
-          "x-contentful-content-type": "retreatScheduleItem",
-          "x-contentful-id": "schedule_item_1",
+          "x-contentful-topic": "ContentManagement.Entry.publish.retreatScheduleDay",
+          "x-contentful-content-type": "retreatScheduleDay",
+          "x-contentful-id": "schedule_day_1",
         },
         body: "{}",
       }) as never

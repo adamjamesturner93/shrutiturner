@@ -39,11 +39,11 @@ describe("/blog/[slug] page", () => {
   it("calls notFound for unknown slugs", async () => {
     getBlogPostBySlugMock.mockResolvedValue(null);
 
-    await expect(
-      page.default({
-        params: Promise.resolve({ slug: "missing-post" }),
-      })
-    ).rejects.toThrow("NEXT_NOT_FOUND");
+    const result = page.default({
+      params: Promise.resolve({ slug: "missing-post" }),
+    });
+    const content = result.props.children;
+    await expect(content.type(content.props)).rejects.toThrow("NEXT_NOT_FOUND");
 
     expect(notFoundMock).toHaveBeenCalledTimes(1);
   });
@@ -62,9 +62,11 @@ describe("/blog/[slug] page", () => {
       coverAlt: "",
     });
 
-    const result = await page.default({
+    const suspense = page.default({
       params: Promise.resolve({ slug: "strength-training-chronic-illness" }),
     });
+    const content = suspense.props.children;
+    const result = await content.type(content.props);
 
     expect(notFoundMock).not.toHaveBeenCalled();
     expect(result).toMatchObject({

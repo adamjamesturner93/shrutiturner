@@ -14,13 +14,15 @@ describe("/signup redirect page", () => {
   });
 
   it("redirects to /login and preserves query params", async () => {
-    await page.default({
+    const result = page.default({
       searchParams: Promise.resolve({
         redirect: "/gift/redeem/abc123",
         ref: "friend-code",
         intent: "book",
       }),
     });
+    const content = result.props.children;
+    await content.type(content.props);
 
     expect(redirectMock).toHaveBeenCalledWith(
       "/login?redirect=%2Fgift%2Fredeem%2Fabc123&ref=friend-code&intent=book"
@@ -28,9 +30,11 @@ describe("/signup redirect page", () => {
   });
 
   it("redirects to plain /login when there are no params", async () => {
-    await page.default({
+    const result = page.default({
       searchParams: Promise.resolve({}),
     });
+    const content = result.props.children;
+    await content.type(content.props);
 
     expect(redirectMock).toHaveBeenCalledWith("/login");
   });

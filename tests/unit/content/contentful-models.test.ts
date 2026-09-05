@@ -12,7 +12,6 @@ const retainedContentTypes = [
   "newsletterSignupContent",
   "newsletterTemplate",
   "retreatScheduleDay",
-  "retreatScheduleItem",
   "retreatTemplate",
   "retreatVenue",
   "smallGroupProgramme",
@@ -28,6 +27,7 @@ const retiredContentTypes = [
   "themedWeekPromo",
   "transactionalEmailTemplate",
   "retreatInstance",
+  "retreatScheduleItem",
 ] as const;
 
 describe("Contentful public content models", () => {
@@ -42,19 +42,21 @@ describe("Contentful public content models", () => {
     const seededTypes = SEED_GROUPS.map((group) => group.contentType).sort();
 
     expect(seededTypes).toEqual(
-      retainedContentTypes
-        .filter((type) => type !== "retreatScheduleDay" && type !== "retreatScheduleItem")
-        .sort()
+      retainedContentTypes.filter((type) => type !== "retreatScheduleDay").sort()
     );
   });
 
-  it("uses linked schedule days and activities instead of editable JSON", () => {
+  it("uses linked days with a multiline activity field instead of nested activity entries", () => {
     const template = PUBLIC_CONTENT_MODELS.find((model) => model.id === "retreatTemplate");
+    const day = PUBLIC_CONTENT_MODELS.find((model) => model.id === "retreatScheduleDay");
     const scheduleField = template?.fields.find((field) => field.id === "schedule");
     const scheduleDaysField = template?.fields.find((field) => field.id === "scheduleDays");
 
     expect(scheduleDaysField).toMatchObject({ type: "Array" });
     expect(scheduleField).toMatchObject({ disabled: true, omitted: false });
+    expect(day?.fields.find((field) => field.id === "subtitle")).toMatchObject({ type: "Symbol" });
+    expect(day?.fields.find((field) => field.id === "activities")).toMatchObject({ type: "Text" });
+    expect(PUBLIC_CONTENT_MODELS.map((model) => model.id)).not.toContain("retreatScheduleItem");
   });
 
   it("keeps newsletter publishing controlled by Contentful publish state", () => {

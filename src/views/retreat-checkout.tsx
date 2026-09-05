@@ -775,7 +775,8 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                                       <BedDouble className="h-4 w-4" />
                                       {roomOption.type === "single"
                                         ? "Private room"
-                                        : roomOption.type === "shared_private"
+                                        : roomOption.type === "shared_private" ||
+                                            roomOption.type === "private"
                                           ? "Private double room"
                                           : "Shared accommodation"}
                                     </>

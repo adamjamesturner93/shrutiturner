@@ -133,7 +133,7 @@ describe("Contentful public content mapping", () => {
     expect(posts[0]?.content).toContain("Intro **paragraph**.");
   });
 
-  it("maps linked retreat schedule days and activities in display order", async () => {
+  it("maps linked retreat schedule days from newline-separated activities", async () => {
     mocks.getEntries.mockResolvedValueOnce({
       items: [
         {
@@ -156,19 +156,9 @@ describe("Contentful public content mapping", () => {
           {
             sys: { id: "day_1" },
             fields: {
-              title: "Arrival",
-              dayLabel: "Day 1",
-              displayOrder: 1,
-              items: [{ sys: { id: "item_1" } }],
-            },
-          },
-          {
-            sys: { id: "item_1" },
-            fields: {
-              title: "Welcome circle",
-              startTime: "16:00",
-              displayOrder: 1,
-              isOptional: false,
+              title: "Earth",
+              subtitle: "Finding steady ground",
+              activities: "Welcome circle\n\nGentle movement\nReflection",
             },
           },
         ],
@@ -179,19 +169,10 @@ describe("Contentful public content mapping", () => {
 
     expect(templates[0]?.schedule).toEqual([
       {
-        day: "Arrival",
-        title: "Arrival",
-        activities: ["16:00 Welcome circle"],
-        items: [
-          {
-            startTime: "16:00",
-            endTime: undefined,
-            title: "Welcome circle",
-            description: undefined,
-            category: undefined,
-            isOptional: false,
-          },
-        ],
+        day: "Day 1",
+        title: "Earth",
+        subtitle: "Finding steady ground",
+        activities: ["Welcome circle", "Gentle movement", "Reflection"],
       },
     ]);
     expect(mocks.getEntries).toHaveBeenCalledWith("retreatTemplate", {

@@ -26,8 +26,14 @@ type ContentfulEntry = {
 
 type ContentfulEnvironment = {
   getEntries: (query: Record<string, unknown>) => Promise<{ items?: ContentfulEntry[] }>;
+  getEntry: (id: string) => Promise<ContentfulEntry>;
   createEntry: (
     contentType: string,
+    payload: { fields: Record<string, Record<string, unknown>> }
+  ) => Promise<ContentfulEntry>;
+  createEntryWithId: (
+    contentType: string,
+    id: string,
     payload: { fields: Record<string, Record<string, unknown>> }
   ) => Promise<ContentfulEntry>;
 };
@@ -146,6 +152,36 @@ async function upsertDraftEntry(
     await created.publish();
   }
 
+  return { action: "created", id: created.sys.id };
+}
+
+async function upsertDraftEntryWithId(
+  environment: ContentfulEnvironment,
+  contentType: string,
+  id: string,
+  entry: Record<string, unknown>
+) {
+  let existing: ContentfulEntry | null = null;
+  try {
+    existing = await environment.getEntry(id);
+  } catch (error: unknown) {
+    const details = error as { name?: string; code?: string; status?: number };
+    if (details.name !== "NotFound" && details.code !== "NotFound" && details.status !== 404) {
+      throw error;
+    }
+  }
+
+  if (existing) {
+    existing.fields = normalizeEntryFields(entry);
+    const updated = await existing.update();
+    if (publishSeed) await updated.publish();
+    return { action: "updated", id: existing.sys.id };
+  }
+
+  const created = await environment.createEntryWithId(contentType, id, {
+    fields: normalizeEntryFields(entry),
+  });
+  if (publishSeed) await created.publish();
   return { action: "created", id: created.sys.id };
 }
 
@@ -283,7 +319,6 @@ async function run() {
   if (retreatTemplateGroup) {
     report.retreatTemplate = { created: 0, updated: 0 };
     report.retreatScheduleDay = { created: 0, updated: 0 };
-    report.retreatScheduleItem = { created: 0, updated: 0 };
 
     for (const rawEntry of retreatTemplateGroup.entries) {
       const entry = rawEntry as Record<string, unknown> & {
@@ -310,48 +345,23 @@ async function run() {
           if (!rawDay || typeof rawDay !== "object" || Array.isArray(rawDay)) continue;
           const day = rawDay as Record<string, unknown>;
           const daySlug = `${templateSlug}-schedule-day-${dayIndex + 1}`;
-          const rawItems = Array.isArray(day.items)
-            ? day.items
-            : Array.isArray(day.activities)
-              ? day.activities.map((activity) => ({ title: activity }))
-              : [];
-          const itemLinks: Array<ReturnType<typeof toEntryLink>> = [];
-
-          for (const [itemIndex, rawItem] of rawItems.entries()) {
-            const item =
-              rawItem && typeof rawItem === "object" && !Array.isArray(rawItem)
-                ? (rawItem as Record<string, unknown>)
-                : { title: String(rawItem || "Session") };
-            const itemResult = await upsertDraftEntry(environment, "retreatScheduleItem", {
-              title: String(item.title || "Session"),
-              slug: `${daySlug}-item-${itemIndex + 1}`,
-              ...(typeof item.startTime === "string" && item.startTime
-                ? { startTime: item.startTime }
-                : {}),
-              ...(typeof item.endTime === "string" && item.endTime
-                ? { endTime: item.endTime }
-                : {}),
-              ...(typeof item.description === "string" && item.description
-                ? { description: item.description }
-                : {}),
-              ...(typeof item.category === "string" && item.category
-                ? { category: item.category }
-                : {}),
-              isOptional: item.isOptional === true,
-              displayOrder: itemIndex + 1,
-            });
-            report.retreatScheduleItem[itemResult.action as "created" | "updated"] += 1;
-            itemLinks.push(toEntryLink(itemResult.id));
-          }
+          const activities = Array.isArray(day.activities)
+            ? day.activities.map((activity) => String(activity).trim()).filter(Boolean)
+            : [];
 
           const dayLabel = String(day.day || `Day ${dayIndex + 1}`);
-          const dayResult = await upsertDraftEntry(environment, "retreatScheduleDay", {
-            title: String(day.title || dayLabel),
-            slug: daySlug,
-            dayLabel,
-            displayOrder: dayIndex + 1,
-            items: itemLinks,
-          });
+          const dayResult = await upsertDraftEntryWithId(
+            environment,
+            "retreatScheduleDay",
+            daySlug,
+            {
+              title: String(day.title || dayLabel),
+              ...(typeof day.subtitle === "string" && day.subtitle.trim()
+                ? { subtitle: day.subtitle.trim() }
+                : {}),
+              activities: activities.join("\n"),
+            }
+          );
           report.retreatScheduleDay[dayResult.action as "created" | "updated"] += 1;
           scheduleDays.push(toEntryLink(dayResult.id));
         }

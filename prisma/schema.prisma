@@ -1693,6 +1693,53 @@ model NewsletterSignupEvent {
   @@index([hashedEmail, createdAt])
 }
 
+model RetreatVenueProfile {
+  id                String   @id @default(cuid())
+  contentfulVenueId String   @unique
+  venueSlug         String   @unique
+  name              String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  roomGroups   RetreatVenueRoomGroup[]
+  retreatDates RetreatDate[]
+}
+
+model RetreatVenueRoomGroup {
+  id                     String   @id @default(cuid())
+  venueProfileId         String
+  name                   String
+  description            String?
+  quantity               Int
+  capacityPerRoom        Int
+  bedSetup               String
+  allowShared            Boolean  @default(false)
+  privateGuestCountsJson Json?
+  displayOrder           Int      @default(0)
+  active                 Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  venueProfile  RetreatVenueProfile        @relation(fields: [venueProfileId], references: [id], onDelete: Cascade)
+  roomTemplates RetreatVenueRoomTemplate[]
+
+  @@index([venueProfileId, active, displayOrder])
+}
+
+model RetreatVenueRoomTemplate {
+  id           String   @id @default(cuid())
+  roomGroupId  String
+  label        String
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  roomGroup RetreatVenueRoomGroup @relation(fields: [roomGroupId], references: [id], onDelete: Cascade)
+
+  @@unique([roomGroupId, label])
+  @@index([roomGroupId, displayOrder])
+}
+
 model RetreatDate {
   id                          String                    @id @default(cuid())
   externalDateId              String                    @unique
@@ -1735,6 +1782,8 @@ model RetreatDate {
   focusedPresenterUserId      String?
   liveChatDisabledAt          DateTime?
   refundRuleId                String?
+  venueProfileId              String?
+  accommodationConfiguredAt   DateTime?
   bookingOpensAt              DateTime?
   bookingClosesAt             DateTime?
   createdAt                   DateTime                  @default(now())
@@ -1750,6 +1799,7 @@ model RetreatDate {
   giftPurchases            GiftPurchase[]
   replayAssets             ReplayAsset[]
   refundRule               RefundRule?                       @relation(fields: [refundRuleId], references: [id], onDelete: SetNull)
+  venueProfile             RetreatVenueProfile?              @relation(fields: [venueProfileId], references: [id], onDelete: SetNull)
   instructorAssignments    RetreatDateInstructorAssignment[]
   liveAttendance           RetreatLiveAttendance[]
   liveChatMessages         RetreatLiveChatMessage[]
@@ -1760,6 +1810,7 @@ model RetreatDate {
   @@index([dailyRoomName])
   @@index([liveRoomState, startsAt])
   @@index([refundRuleId])
+  @@index([venueProfileId])
 }
 
 model RetreatRoomOption {

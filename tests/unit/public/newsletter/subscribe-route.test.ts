@@ -37,6 +37,7 @@ vi.mock("@/lib/newsletter/event-service", () => ({
 }));
 
 const route = await import("@/app/api/newsletter/subscribe/route");
+const { resetNewsletterSignupRateLimitStore } = await import("@/lib/newsletter/signup-rate-limit");
 
 function createRequest(body: Record<string, unknown>) {
   return new Request("http://localhost/api/newsletter/subscribe", {
@@ -49,7 +50,7 @@ function createRequest(body: Record<string, unknown>) {
 describe("POST /api/newsletter/subscribe", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    route.resetNewsletterSignupRateLimitStore();
+    resetNewsletterSignupRateLimitStore();
 
     verifyTurnstileTokenMock.mockResolvedValue(true);
     getNewsletterSignupContentMock.mockResolvedValue({

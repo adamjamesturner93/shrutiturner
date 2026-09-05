@@ -1033,9 +1033,9 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
                       <MessageCircle className="h-4 w-4" />
                     </Link>
                   </Button>
-                  {data.profile.everfitConnectionStatus === "removed" ? (
+                  {data.profile.everfitConnectionStatus === "closed" ? (
                     <div className="bg-muted/40 text-muted-foreground rounded-lg border p-3 text-sm">
-                      Everfit access has been removed. Contact Shruti if you think you still need
+                      Everfit access has been closed. Contact Shruti if you think you still need
                       access.
                     </div>
                   ) : (

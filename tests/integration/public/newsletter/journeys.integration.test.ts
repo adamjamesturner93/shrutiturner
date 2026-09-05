@@ -32,6 +32,7 @@ vi.mock("@/lib/newsletter/email-service", () => ({
 
 const { db } = await import("@/lib/db");
 const { hashVerificationToken } = await import("@/lib/newsletter/tokens");
+const { resetNewsletterSignupRateLimitStore } = await import("@/lib/newsletter/signup-rate-limit");
 const newsletterRoute = await import("@/app/api/newsletter/subscribe/route");
 const verifyRoute = await import("@/app/api/newsletter/verify/route");
 const unsubscribeRoute = await import("@/app/api/unsubscribe/route");
@@ -77,7 +78,7 @@ async function cleanupTestRows() {
 describe("newsletter public journeys integration", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
-    newsletterRoute.resetNewsletterSignupRateLimitStore();
+    resetNewsletterSignupRateLimitStore();
     process.env.POSTMARK_API_TOKEN = "postmark-token";
     process.env.NEXT_PUBLIC_SITE_URL = "https://shrutiturner.co.uk";
 

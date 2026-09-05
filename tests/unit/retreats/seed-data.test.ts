@@ -49,7 +49,7 @@ describe("retreat seed contract", () => {
       inventoryQuantity: 30,
       ratePlans: [{ guestCount: 1, totalPricePence: 3500 }],
     });
-    expect(retreat.schedule[0]?.items).toHaveLength(6);
+    expect(retreat.schedule[0]?.activities).toHaveLength(6);
     expect(retreat.whatToBring).toEqual([
       "Comfortable clothes",
       "Space to move in",

@@ -60,6 +60,7 @@ export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetre
 
   const hasEarlyBirdPrice = earlyBirdPricePounds.trim().length > 0;
   const hasEarlyBirdEndDate = earlyBirdEndsAt.length > 0;
+  const selectedTemplate = templates.find((item) => item.slug === retreatSlug);
   const canSubmit =
     retreatSlug.trim().length > 0 &&
     title.trim().length > 0 &&
@@ -67,6 +68,7 @@ export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetre
     startsAt.length > 0 &&
     endsAt.length > 0 &&
     capacity > 0 &&
+    (retreatType === "online" || selectedTemplate?.venueRoomsConfigured === true) &&
     hasEarlyBirdPrice === hasEarlyBirdEndDate;
 
   const applyPreset = useCallback((slug: string, availableTemplates: AdminRetreatTemplateDto[]) => {
@@ -189,6 +191,11 @@ export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetre
             ) : templates.length === 0 ? (
               <p className="text-muted-foreground text-xs">
                 Publish an experience in Contentful before creating a date.
+              </p>
+            ) : selectedTemplate?.retreatType === "in_person" &&
+              !selectedTemplate.venueRoomsConfigured ? (
+              <p className="text-xs text-amber-700">
+                Set up this venue&apos;s rooms before creating an in-person retreat date.
               </p>
             ) : null}
           </div>

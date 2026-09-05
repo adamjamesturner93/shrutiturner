@@ -34,8 +34,7 @@ function contentTypeToTags(contentType: string) {
   if (
     contentType === "retreatTemplate" ||
     contentType === "retreatVenue" ||
-    contentType === "retreatScheduleDay" ||
-    contentType === "retreatScheduleItem"
+    contentType === "retreatScheduleDay"
   ) {
     return ["content:retreats"];
   }
@@ -57,7 +56,6 @@ function topicToTags(topic: string) {
     "retreatTemplate",
     "retreatVenue",
     "retreatScheduleDay",
-    "retreatScheduleItem",
     "blogPost",
     "authorProfile",
     "newsletterSignupContent",

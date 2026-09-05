@@ -472,9 +472,33 @@ export type AdminRetreatTemplateDto = {
   title: string;
   location: string;
   retreatType: "in_person" | "online";
+  venueId: string | null;
+  venueSlug: string | null;
+  venueRoomsConfigured: boolean;
   capacity: number;
   pricePence: number;
   paymentPolicy: "deposit" | "full_payment";
+};
+
+export type AdminRetreatVenueRoomGroupDto = {
+  id: string;
+  name: string;
+  description: string;
+  quantity: number;
+  capacityPerRoom: number;
+  bedSetup: string;
+  allowShared: boolean;
+  privateGuestCounts: number[];
+  roomNames: string[];
+};
+
+export type AdminRetreatVenueDto = {
+  contentfulVenueId: string;
+  venueSlug: string;
+  name: string;
+  displayLocation: string;
+  configured: boolean;
+  roomGroups: AdminRetreatVenueRoomGroupDto[];
 };
 
 export type AdminRetreatDetailDto = {
@@ -515,6 +539,7 @@ export type AdminRetreatDetailDto = {
     balanceDueDaysBeforeStart: number | null;
   };
   pricingLocked: boolean;
+  accommodationConfigured: boolean;
   inventoryPools: Array<{
     id: string;
     name: string;
@@ -525,6 +550,8 @@ export type AdminRetreatDetailDto = {
   roomOptions: Array<{
     id: string;
     label: string;
+    description: string | null;
+    roomType: string;
     inventoryPoolId: string | null;
     inventoryUnitsPerBooking: number;
     capacity: number;

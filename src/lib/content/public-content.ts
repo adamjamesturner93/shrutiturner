@@ -171,7 +171,10 @@ function parseRetreatRoomOptions(value: unknown): RetreatRoomOptionContent[] {
       label: typeof option.label === "string" ? option.label : id,
       description: typeof option.description === "string" ? option.description : "",
       type:
-        option.type === "single" || option.type === "shared_private" || option.type === "virtual"
+        option.type === "single" ||
+        option.type === "shared_private" ||
+        option.type === "private" ||
+        option.type === "virtual"
           ? option.type
           : "shared_twin",
       bookingUnit:
@@ -237,32 +240,32 @@ function parseRetreatSchedule(value: unknown): RetreatScheduleDayContent[] {
   return value.filter(isRecord).map((day, index) => {
     const dayLabel =
       typeof day.day === "string" && day.day.trim() ? day.day.trim() : `Day ${index + 1}`;
-    const title = typeof day.title === "string" && day.title.trim() ? day.title.trim() : undefined;
-    const items = Array.isArray(day.items)
-      ? day.items.filter(isRecord).map((item) => ({
-          startTime: typeof item.startTime === "string" ? item.startTime : "",
-          endTime: typeof item.endTime === "string" ? item.endTime : undefined,
-          title: typeof item.title === "string" ? item.title : "Session",
-          description: typeof item.description === "string" ? item.description : undefined,
-          category: typeof item.category === "string" ? item.category : undefined,
-          isOptional: item.isOptional === true,
-        }))
+    const title = typeof day.title === "string" && day.title.trim() ? day.title.trim() : dayLabel;
+    const subtitle =
+      typeof day.subtitle === "string" && day.subtitle.trim() ? day.subtitle.trim() : undefined;
+    const itemTitles = Array.isArray(day.items)
+      ? day.items
+          .filter(isRecord)
+          .map((item) => (typeof item.title === "string" ? item.title.trim() : ""))
+          .filter(Boolean)
       : [];
     const activities = parseStringArray(day.activities);
 
     return {
-      day: title || dayLabel,
+      day: dayLabel,
       title,
-      activities:
-        activities.length > 0
-          ? activities
-          : items.map((item) => {
-              const time = item.endTime ? `${item.startTime}-${item.endTime}` : item.startTime;
-              return `${time} ${item.title}`.trim();
-            }),
-      items,
+      subtitle,
+      activities: activities.length > 0 ? activities : itemTitles,
     };
   });
+}
+
+function parseActivityLines(value: unknown) {
+  if (typeof value !== "string") return [];
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
 }
 
 function parseStructuredRetreatSchedule(
@@ -276,60 +279,25 @@ function parseStructuredRetreatSchedule(
       const dayEntry = getIncludedEntryById(includes, getLinkedEntryId(dayReference));
       if (!dayEntry) return null;
       const itemReferences = Array.isArray(dayEntry.fields.items) ? dayEntry.fields.items : [];
-      const items = itemReferences
-        .map((itemReference, itemIndex) => {
+      const legacyActivities = itemReferences
+        .map((itemReference) => {
           const itemEntry = getIncludedEntryById(includes, getLinkedEntryId(itemReference));
           if (!itemEntry) return null;
-          return {
-            startTime: optionalStringField(itemEntry.fields, "startTime") || "",
-            endTime: optionalStringField(itemEntry.fields, "endTime"),
-            title: optionalStringField(itemEntry.fields, "title") || "Session",
-            description: optionalStringField(itemEntry.fields, "description"),
-            category: optionalStringField(itemEntry.fields, "category"),
-            isOptional: itemEntry.fields.isOptional === true,
-            displayOrder:
-              typeof itemEntry.fields.displayOrder === "number"
-                ? itemEntry.fields.displayOrder
-                : itemIndex,
-          };
+          return optionalStringField(itemEntry.fields, "title") || null;
         })
-        .filter((item): item is NonNullable<typeof item> => Boolean(item))
-        .sort((a, b) => a.displayOrder - b.displayOrder)
-        .map((item) => ({
-          startTime: item.startTime,
-          endTime: item.endTime,
-          title: item.title,
-          description: item.description,
-          category: item.category,
-          isOptional: item.isOptional,
-        }));
-      const dayLabel =
-        optionalStringField(dayEntry.fields, "dayLabel") ||
-        optionalStringField(dayEntry.fields, "title") ||
-        `Day ${dayIndex + 1}`;
-      const title = optionalStringField(dayEntry.fields, "title");
+        .filter((activity): activity is string => Boolean(activity));
+      const dayLabel = optionalStringField(dayEntry.fields, "dayLabel") || `Day ${dayIndex + 1}`;
+      const title = optionalStringField(dayEntry.fields, "title") || dayLabel;
+      const activities = parseActivityLines(dayEntry.fields.activities);
       return {
-        day: title || dayLabel,
+        day: dayLabel,
         title,
-        activities: items.map((item) => {
-          const time = item.endTime ? `${item.startTime}-${item.endTime}` : item.startTime;
-          return `${time} ${item.title}`.trim();
-        }),
-        items,
-        displayOrder:
-          typeof dayEntry.fields.displayOrder === "number"
-            ? dayEntry.fields.displayOrder
-            : dayIndex,
+        subtitle: optionalStringField(dayEntry.fields, "subtitle"),
+        activities: activities.length > 0 ? activities : legacyActivities,
       };
     })
     .filter((day): day is NonNullable<typeof day> => Boolean(day))
-    .sort((a, b) => a.displayOrder - b.displayOrder)
-    .map((day) => ({
-      day: day.day,
-      title: day.title,
-      activities: day.activities,
-      items: day.items,
-    }));
+    .filter((day) => day.activities.length > 0);
 }
 
 function parseObjectArray<T>(

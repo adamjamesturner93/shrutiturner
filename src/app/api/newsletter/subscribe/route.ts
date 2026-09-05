@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { recordNewsletterSignupEvent } from "@/lib/newsletter/event-service";
 import { sendNewsletterVerificationEmail } from "@/lib/newsletter/email-service";
 import { createPendingMarketingSubscriber } from "@/lib/newsletter/subscriber-service";
+import { isNewsletterSignupRateLimited } from "@/lib/newsletter/signup-rate-limit";
 import { getClientIp, verifyTurnstileToken } from "@/lib/turnstile";
 
 type SignupRequestBody = {
@@ -17,14 +18,6 @@ type SignupRequestBody = {
 };
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const RATE_LIMIT_MAX = 5;
-const rateLimitStore = new Map<string, number[]>();
-
-export function resetNewsletterSignupRateLimitStore() {
-  rateLimitStore.clear();
-}
-
 function normalizeEmail(value: unknown) {
   if (typeof value !== "string") return "";
   return value.trim().toLowerCase();
@@ -51,25 +44,10 @@ function normalizeSource(
   return "inline";
 }
 
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const attempts = rateLimitStore.get(ip) || [];
-  const recent = attempts.filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS);
-
-  if (recent.length >= RATE_LIMIT_MAX) {
-    rateLimitStore.set(ip, recent);
-    return true;
-  }
-
-  recent.push(now);
-  rateLimitStore.set(ip, recent);
-  return false;
-}
-
 export async function POST(req: Request) {
   const ip = getClientIp(req);
 
-  if (isRateLimited(ip)) {
+  if (isNewsletterSignupRateLimited(ip)) {
     return NextResponse.json(
       { message: "Too many requests. Please try again shortly." },
       { status: 429 }

@@ -66,7 +66,7 @@ async function run() {
   const environment = (await space.getEnvironment(environmentId)) as Environment;
   const templates = await environment.getEntries({ content_type: "retreatTemplate", limit: 1000 });
   let migrated = 0;
-  let alreadyStructured = 0;
+  let alreadySimple = 0;
   let missingLegacySchedule = 0;
 
   for (const template of templates.items) {
@@ -75,7 +75,43 @@ async function run() {
     const schedule = scheduleField[locale];
     const existingScheduleDays = template.fields.scheduleDays?.[locale];
     if (Array.isArray(existingScheduleDays) && existingScheduleDays.length > 0) {
-      alreadyStructured += 1;
+      let templateChanged = false;
+      for (const dayLink of existingScheduleDays) {
+        const linkedDayId = record(dayLink)?.sys;
+        const dayId = record(linkedDayId)?.id;
+        if (typeof dayId !== "string") continue;
+        const dayEntry = await environment.getEntry(dayId);
+        const currentActivities = dayEntry.fields.activities?.[locale];
+        if (typeof currentActivities === "string" && currentActivities.trim()) continue;
+
+        const itemLinks = dayEntry.fields.items?.[locale];
+        if (!Array.isArray(itemLinks)) continue;
+        const activities: Array<{ title: string; order: number }> = [];
+        for (const [itemIndex, itemLink] of itemLinks.entries()) {
+          const linkedItemId = record(record(itemLink)?.sys)?.id;
+          if (typeof linkedItemId !== "string") continue;
+          const itemEntry = await environment.getEntry(linkedItemId);
+          const title = itemEntry.fields.title?.[locale];
+          if (typeof title !== "string" || !title.trim()) continue;
+          const displayOrder = itemEntry.fields.displayOrder?.[locale];
+          activities.push({
+            title: title.trim(),
+            order: typeof displayOrder === "number" ? displayOrder : itemIndex,
+          });
+        }
+        if (activities.length === 0) continue;
+        dayEntry.fields.activities = {
+          [locale]: activities
+            .sort((a, b) => a.order - b.order)
+            .map((activity) => activity.title)
+            .join("\n"),
+        };
+        const updatedDay = await dayEntry.update();
+        if (dayEntry.sys.publishedVersion) await updatedDay.publish();
+        templateChanged = true;
+      }
+      if (templateChanged) migrated += 1;
+      else alreadySimple += 1;
       continue;
     }
     if (!Array.isArray(schedule) || schedule.length === 0) {
@@ -96,23 +132,11 @@ async function run() {
         : Array.isArray(day.activities)
           ? day.activities.map((activity) => ({ title: activity }))
           : [];
-      const itemLinks: Array<ReturnType<typeof link>> = [];
-      for (const [itemIndex, rawItem] of rawItems.entries()) {
+      const activities: string[] = [];
+      for (const rawItem of rawItems) {
         const item = record(rawItem) || { title: String(rawItem || "Session") };
-        const itemId = `rsi-${template.sys.id}-${dayIndex + 1}-${itemIndex + 1}`;
-        const itemFields: Record<string, Record<string, unknown>> = {
-          title: { [locale]: String(item.title || "Session") },
-          slug: { [locale]: itemId },
-          isOptional: { [locale]: item.isOptional === true },
-          displayOrder: { [locale]: itemIndex + 1 },
-        };
-        for (const field of ["startTime", "endTime", "description", "category"] as const) {
-          if (typeof item[field] === "string" && item[field].trim()) {
-            itemFields[field] = { [locale]: item[field].trim() };
-          }
-        }
-        await upsertEntry(environment, "retreatScheduleItem", itemId, itemFields, publish);
-        itemLinks.push(link(itemId));
+        const title = String(item.title || "Session").trim();
+        if (title) activities.push(title);
       }
 
       const dayId = `rsd-${template.sys.id}-${dayIndex + 1}`;
@@ -123,10 +147,10 @@ async function run() {
         dayId,
         {
           title: { [locale]: String(day.title || dayLabel) },
-          slug: { [locale]: dayId },
-          dayLabel: { [locale]: dayLabel },
-          displayOrder: { [locale]: dayIndex + 1 },
-          items: { [locale]: itemLinks },
+          ...(typeof day.subtitle === "string" && day.subtitle.trim()
+            ? { subtitle: { [locale]: day.subtitle.trim() } }
+            : {}),
+          activities: { [locale]: activities.join("\n") },
         },
         publish
       );
@@ -141,7 +165,7 @@ async function run() {
   }
 
   console.log(
-    `Retreat schedule migration complete: ${migrated} migrated, ${alreadyStructured} already structured, ${missingLegacySchedule} without legacy schedules.`
+    `Retreat schedule migration complete: ${migrated} migrated, ${alreadySimple} already simple, ${missingLegacySchedule} without legacy schedules.`
   );
 }
 

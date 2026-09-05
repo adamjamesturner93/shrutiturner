@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Calendar,
+  BedDouble,
   ChevronRight,
   MapPin,
   Mountain,
@@ -110,10 +111,18 @@ export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSumma
               workshops.
             </p>
           </div>
-          <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" />
-            Create date
-          </Button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Button asChild variant="outline">
+              <Link href="/admin/retreats/venues">
+                <BedDouble className="mr-2 h-4 w-4" />
+                Venue rooms
+              </Link>
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create date
+            </Button>
+          </div>
         </div>
 
         {error ? (

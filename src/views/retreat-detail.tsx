@@ -8,7 +8,6 @@ import {
   BedDouble,
   Calendar,
   Check,
-  Clock,
   Gift,
   MapPin,
   MonitorPlay,
@@ -117,6 +116,7 @@ function getDefaultRoomOptionId(date: RetreatCombinedContent["dates"][number] | 
 function getRoomTypeLabel(roomOption: RetreatRoomOptionContent) {
   if (roomOption.type === "single") return "Private room";
   if (roomOption.type === "shared_private") return "Private room for two";
+  if (roomOption.type === "private") return "Private room";
   if (roomOption.type === "virtual") return "Virtual attendance";
   return "Shared room";
 }
@@ -537,39 +537,27 @@ export function RetreatDetailPage({
                       className="border-brand-dark/10 bg-brand-warm/45 rounded-[1.25rem] border p-5"
                     >
                       <p className="text-brand-accent text-xs tracking-[0.16em] uppercase">
-                        {getScheduleDateLabel(selectedDate?.startDate, dayIndex) || day.day}
+                        {getScheduleDateLabel(selectedDate?.startDate, dayIndex) ||
+                          day.day ||
+                          `Day ${dayIndex + 1}`}
                       </p>
-                      <h3 className="mt-1 text-xl">{day.title || day.day}</h3>
+                      <h3 className="mt-1 text-xl">{day.title}</h3>
+                      {day.subtitle ? (
+                        <p className="text-muted-foreground mt-1 text-sm italic">{day.subtitle}</p>
+                      ) : null}
                       <ul className="text-muted-foreground mt-4 space-y-4 text-sm leading-relaxed">
-                        {(day.items?.length ? day.items : day.activities).map((activity) => {
-                          const key =
-                            typeof activity === "string"
-                              ? activity
-                              : `${activity.startTime}-${activity.title}`;
-                          return (
-                            <li key={key} className="flex items-start gap-3">
-                              <Clock className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
-                              {typeof activity === "string" ? (
-                                <span>{activity}</span>
-                              ) : (
-                                <span>
-                                  <span className="text-foreground font-medium">
-                                    {activity.startTime}
-                                    {activity.endTime ? `-${activity.endTime}` : ""} ·{" "}
-                                    {activity.title}
-                                    {activity.isOptional &&
-                                    !activity.title.toLowerCase().includes("optional")
-                                      ? " (optional)"
-                                      : ""}
-                                  </span>
-                                  {activity.description ? (
-                                    <span className="mt-1 block">{activity.description}</span>
-                                  ) : null}
-                                </span>
-                              )}
-                            </li>
-                          );
-                        })}
+                        {day.activities.map((activity, activityIndex) => (
+                          <li
+                            key={`${activity}-${activityIndex}`}
+                            className="flex items-start gap-3"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="bg-brand-accent mt-[0.55rem] h-1.5 w-1.5 flex-shrink-0 rounded-full"
+                            />
+                            <span>{activity}</span>
+                          </li>
+                        ))}
                       </ul>
                     </div>
                   ))}

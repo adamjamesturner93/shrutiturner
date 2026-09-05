@@ -129,6 +129,20 @@ export async function POST(request: Request) {
     }
     if (
       error instanceof Error &&
+      ["RETREAT_VENUE_REQUIRED", "RETREAT_VENUE_ROOMS_REQUIRED"].includes(error.message)
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            error.message === "RETREAT_VENUE_REQUIRED"
+              ? "Link a published Contentful venue to this retreat first."
+              : "Set up this venue's rooms before creating the retreat date.",
+        },
+        { status: 409 }
+      );
+    }
+    if (
+      error instanceof Error &&
       [
         "INVALID_DATE_RANGE",
         "INVALID_CAPACITY",

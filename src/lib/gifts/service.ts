@@ -27,6 +27,7 @@ import { calculateRetreatRefund } from "@/lib/retreats/pricing";
 import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { getWorkshopSetupState } from "@/lib/retreats/workshop-setup";
 import { sendRetreatOperationalEmail } from "@/lib/retreats/notification-service";
+import { getAdminEmailAllowlist } from "@/lib/env";
 
 export type PublicGiftRedemptionState =
   | { state: "invalid"; gift: null }
@@ -959,7 +960,8 @@ export async function redeemGiftPurchase(input: {
           guestTwoEmail: input.guestTwoEmail ? normalizeEmail(input.guestTwoEmail) : null,
           guestTwoDietaryRequirements:
             normalizeText(input.guestTwoDietaryRequirements || "", 1000) || null,
-          singleRoomRequested: gift.retreatRoomOption.roomType === "single",
+          singleRoomRequested:
+            gift.retreatRoomOption.bookingUnit === "whole_room" && retreatGuestCount === 1,
           roomType: gift.retreatRoomOption.label,
           roomOptionLabelSnapshot: gift.retreatRoomOption.label,
           roomOptionTypeSnapshot: gift.retreatRoomOption.roomType,

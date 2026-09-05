@@ -26,26 +26,6 @@ export interface RetreatRoomOptionSeed extends RetreatRoomOptionContent {
   displayOrder?: number;
 }
 
-export interface RetreatScheduleItemSeed {
-  startTime: string;
-  endTime?: string;
-  title: string;
-  description?: string;
-  category:
-    | "yoga"
-    | "movement"
-    | "meditation"
-    | "breathwork"
-    | "food"
-    | "outdoors"
-    | "workshop"
-    | "free_time"
-    | "arrival"
-    | "departure"
-    | "other";
-  isOptional?: boolean;
-}
-
 export interface RetreatDate {
   id: string;
   startDate: string;
@@ -114,8 +94,8 @@ export interface Retreat {
   schedule: {
     day: string;
     title: string;
+    subtitle?: string;
     activities: string[];
-    items: RetreatScheduleItemSeed[];
   }[];
   accommodation: string;
   suitableFor: string[];
@@ -223,50 +203,12 @@ You'll leave with more confidence adapting your movement, a better understanding
         day: "Sunday 4 October",
         title: "The Middle Ground",
         activities: [
-          "09:30-09:45 Welcome and settling in",
-          "09:45-10:20 Gentle movement",
-          "10:20-10:50 Practical science",
-          "10:50-11:15 Reflection and journalling",
-          "11:15-11:40 Meditation",
-          "11:40-12:00 Playful exploration and closing",
-        ],
-        items: [
-          {
-            startTime: "09:30",
-            endTime: "09:45",
-            title: "Welcome and settling in",
-            category: "arrival",
-          },
-          {
-            startTime: "09:45",
-            endTime: "10:20",
-            title: "Gentle movement",
-            category: "movement",
-          },
-          {
-            startTime: "10:20",
-            endTime: "10:50",
-            title: "Practical science",
-            category: "workshop",
-          },
-          {
-            startTime: "10:50",
-            endTime: "11:15",
-            title: "Reflection and journalling",
-            category: "workshop",
-          },
-          {
-            startTime: "11:15",
-            endTime: "11:40",
-            title: "Meditation",
-            category: "meditation",
-          },
-          {
-            startTime: "11:40",
-            endTime: "12:00",
-            title: "Playful exploration and closing",
-            category: "movement",
-          },
+          "Welcome and settling in",
+          "Gentle movement",
+          "Practical exploration",
+          "Reflection and journalling",
+          "Time to slow down",
+          "Closing",
         ],
       },
     ],

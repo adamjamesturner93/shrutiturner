@@ -95,6 +95,7 @@ export function AdminRetreatDetail({
     | "gift-cancellation"
     | "replay"
     | "configuration"
+    | "accommodation"
     | "event-cancellation"
     | "access-email"
     | "community-mode"
@@ -113,6 +114,13 @@ export function AdminRetreatDetail({
   );
   const [roomOptionDrafts, setRoomOptionDrafts] = useState<
     Record<string, { inventoryPoolId: string; inventoryUnitsPerBooking: string; capacity: string }>
+  >({});
+  const [accommodationCapacity, setAccommodationCapacity] = useState("");
+  const [accommodationOptionDrafts, setAccommodationOptionDrafts] = useState<
+    Record<string, boolean>
+  >({});
+  const [standardRateDrafts, setStandardRateDrafts] = useState<
+    Record<string, { active: boolean; pricePounds: string }>
   >({});
   const [paymentDraft, setPaymentDraft] = useState({
     depositType: "percentage" as "percentage" | "fixed_amount" | "full_payment",
@@ -152,6 +160,21 @@ export function AdminRetreatDetail({
             inventoryPoolId: option.inventoryPoolId || "",
             inventoryUnitsPerBooking: String(option.inventoryUnitsPerBooking),
             capacity: String(option.capacity),
+          },
+        ])
+      )
+    );
+    setAccommodationCapacity(String(retreat.capacity));
+    setAccommodationOptionDrafts(
+      Object.fromEntries(retreat.roomOptions.map((option) => [option.id, option.active]))
+    );
+    setStandardRateDrafts(
+      Object.fromEntries(
+        retreat.ratePlans.map((ratePlan) => [
+          ratePlan.id,
+          {
+            active: ratePlan.active,
+            pricePounds: (ratePlan.totalPricePence / 100).toFixed(2),
           },
         ])
       )
@@ -249,6 +272,7 @@ export function AdminRetreatDetail({
       | "gift-cancellation"
       | "replay"
       | "configuration"
+      | "accommodation"
       | "event-cancellation"
       | "access-email",
     request: () => Promise<Response>
@@ -282,6 +306,7 @@ export function AdminRetreatDetail({
           action === "gift-recipient" ||
           action === "replay" ||
           action === "configuration" ||
+          action === "accommodation" ||
           action === "event-cancellation" ||
           action === "access-email") &&
         payload &&
@@ -307,7 +332,9 @@ export function AdminRetreatDetail({
                           ? "Replay access updated."
                           : action === "configuration"
                             ? "Inventory and payment rules updated."
-                            : "Status updated."
+                            : action === "accommodation"
+                              ? "Accommodation choices and prices updated."
+                              : "Status updated."
         );
       } else if (payload && "sent" in payload) {
         setActionMessage(`Emails sent: ${payload.sent}. Skipped: ${payload.skipped ?? 0}.`);
@@ -429,6 +456,41 @@ export function AdminRetreatDetail({
               paymentDraft.depositType === "full_payment" ? null : balanceDays,
           },
         }),
+      })
+    );
+  };
+
+  const saveAccommodation = async () => {
+    if (!retreat) return;
+    const capacity = Number(accommodationCapacity);
+    const roomOptions = retreat.roomOptions.map((option) => ({
+      id: option.id,
+      active: accommodationOptionDrafts[option.id] === true,
+    }));
+    const ratePlans = retreat.ratePlans.map((ratePlan) => {
+      const draft = standardRateDrafts[ratePlan.id];
+      return {
+        id: ratePlan.id,
+        active: draft?.active === true,
+        totalPricePence: Math.round(Number(draft?.pricePounds) * 100),
+      };
+    });
+    if (
+      !Number.isInteger(capacity) ||
+      capacity < 1 ||
+      ratePlans.some(
+        (ratePlan) => !Number.isInteger(ratePlan.totalPricePence) || ratePlan.totalPricePence < 0
+      )
+    ) {
+      setError("Enter a valid guest limit and total price for every accommodation choice.");
+      return;
+    }
+
+    await runRetreatAction("accommodation", () =>
+      fetch(`/api/admin/retreats/${retreat.id}/accommodation`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ capacity, roomOptions, ratePlans }),
       })
     );
   };
@@ -880,31 +942,22 @@ export function AdminRetreatDetail({
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">
-                {retreat.retreatType === "online" ? "Ticket inventory" : "Accommodation inventory"}
+                {retreat.retreatType === "online" ? "Ticket inventory" : "Room choices and prices"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <p className="text-muted-foreground text-sm">
-                Pools represent the real underlying stock. Options sharing a pool automatically
-                reduce one another. For a convertible twin/king room, use a pool of 2 base units,
-                set a shared bed to consume 1 and the whole king room to consume 2.
-              </p>
-
-              <div className="space-y-3">
-                <h3 className="font-medium">Inventory pools</h3>
-                {retreat.inventoryPools.map((pool) => (
+              {retreat.retreatType === "online" ? (
+                retreat.inventoryPools.map((pool) => (
                   <div
                     key={pool.id}
                     className="grid gap-3 rounded-lg border p-4 sm:grid-cols-[1fr_10rem] sm:items-end"
                   >
                     <div>
                       <p className="font-medium">{pool.name}</p>
-                      <p className="text-muted-foreground text-xs">
-                        {pool.inventoryType.replaceAll("_", " ")}
-                      </p>
+                      <p className="text-muted-foreground text-sm">Places available to sell.</p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor={`pool-quantity-${pool.id}`}>Base units</Label>
+                      <Label htmlFor={`pool-quantity-${pool.id}`}>Places</Label>
                       <Input
                         id={`pool-quantity-${pool.id}`}
                         type="number"
@@ -921,85 +974,144 @@ export function AdminRetreatDetail({
                       />
                     </div>
                   </div>
-                ))}
-              </div>
-
-              <div className="space-y-3">
-                <h3 className="font-medium">Sellable options</h3>
-                {retreat.roomOptions.map((option) => {
-                  const draft = roomOptionDrafts[option.id] || {
-                    inventoryPoolId: "",
-                    inventoryUnitsPerBooking: "1",
-                    capacity: "1",
-                  };
-                  return (
-                    <div key={option.id} className="rounded-lg border p-4">
-                      <p className="font-medium">{option.label}</p>
-                      <div className="mt-3 grid gap-3 md:grid-cols-3">
-                        <div className="space-y-2">
-                          <Label htmlFor={`option-pool-${option.id}`}>Shared pool</Label>
-                          <select
-                            id={`option-pool-${option.id}`}
-                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                            disabled={retreat.pricingLocked}
-                            value={draft.inventoryPoolId}
-                            onChange={(event) =>
-                              setRoomOptionDrafts((current) => ({
-                                ...current,
-                                [option.id]: { ...draft, inventoryPoolId: event.target.value },
-                              }))
-                            }
-                          >
-                            <option value="">Choose a pool</option>
-                            {retreat.inventoryPools.map((pool) => (
-                              <option key={pool.id} value={pool.id}>
-                                {pool.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`option-units-${option.id}`}>Units consumed</Label>
-                          <Input
-                            id={`option-units-${option.id}`}
-                            type="number"
-                            min="1"
-                            step="1"
-                            disabled={retreat.pricingLocked}
-                            value={draft.inventoryUnitsPerBooking}
-                            onChange={(event) =>
-                              setRoomOptionDrafts((current) => ({
-                                ...current,
-                                [option.id]: {
-                                  ...draft,
-                                  inventoryUnitsPerBooking: event.target.value,
-                                },
-                              }))
-                            }
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`option-capacity-${option.id}`}>Maximum bookings</Label>
-                          <Input
-                            id={`option-capacity-${option.id}`}
-                            type="number"
-                            min="1"
-                            step="1"
-                            disabled={retreat.pricingLocked}
-                            value={draft.capacity}
-                            onChange={(event) =>
-                              setRoomOptionDrafts((current) => ({
-                                ...current,
-                                [option.id]: { ...draft, capacity: event.target.value },
-                              }))
-                            }
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                ))
+              ) : (
+                <>
+                  <p className="text-muted-foreground text-sm">
+                    The physical rooms come from the venue setup. Shared places and private-room
+                    bookings draw from the same room stock, so a room cannot be sold twice.
+                  </p>
+                  <div className="max-w-xs space-y-2">
+                    <Label htmlFor="retreat-guest-limit">Overall guest limit</Label>
+                    <Input
+                      id="retreat-guest-limit"
+                      type="number"
+                      min="1"
+                      max="200"
+                      step="1"
+                      disabled={retreat.pricingLocked}
+                      value={accommodationCapacity}
+                      onChange={(event) => setAccommodationCapacity(event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-4">
+                    {retreat.inventoryPools.map((pool) => {
+                      const options = retreat.roomOptions.filter(
+                        (option) => option.inventoryPoolId === pool.id
+                      );
+                      const roomNames = retreat.roomUnits
+                        .filter((unit) => unit.inventoryPoolId === pool.id)
+                        .map((unit) => unit.label);
+                      return (
+                        <section key={pool.id} className="rounded-xl border p-4">
+                          <h3 className="font-medium">{pool.name}</h3>
+                          <p className="text-muted-foreground mt-1 text-sm">
+                            {roomNames.length} {roomNames.length === 1 ? "room" : "rooms"}
+                            {roomNames.length > 0 ? `: ${roomNames.join(", ")}` : ""}
+                          </p>
+                          <div className="mt-4 space-y-4">
+                            {options.map((option) => {
+                              const optionEnabled = accommodationOptionDrafts[option.id] === true;
+                              const rates = retreat.ratePlans.filter(
+                                (rate) => rate.roomOptionId === option.id
+                              );
+                              return (
+                                <div key={option.id} className="bg-muted/40 rounded-lg p-4">
+                                  <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                      <Label htmlFor={`option-enabled-${option.id}`}>
+                                        {option.bookingUnit === "whole_room"
+                                          ? "Private room"
+                                          : "Shared place"}
+                                      </Label>
+                                      <p className="text-muted-foreground mt-1 text-sm">
+                                        {option.bookingUnit === "whole_room"
+                                          ? "Reserves the entire room."
+                                          : "Reserves one place in the room."}
+                                      </p>
+                                    </div>
+                                    <Switch
+                                      id={`option-enabled-${option.id}`}
+                                      checked={optionEnabled}
+                                      disabled={retreat.pricingLocked}
+                                      onCheckedChange={(checked) =>
+                                        setAccommodationOptionDrafts((current) => ({
+                                          ...current,
+                                          [option.id]: checked,
+                                        }))
+                                      }
+                                    />
+                                  </div>
+                                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                    {rates.map((rate) => {
+                                      const draft = standardRateDrafts[rate.id] || {
+                                        active: rate.active,
+                                        pricePounds: (rate.totalPricePence / 100).toFixed(2),
+                                      };
+                                      return (
+                                        <div key={rate.id} className="space-y-2">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <Label htmlFor={`standard-rate-${rate.id}`}>
+                                              Total for {rate.guestCount}{" "}
+                                              {rate.guestCount === 1 ? "guest" : "guests"} (£)
+                                            </Label>
+                                            {rates.length > 1 ? (
+                                              <Switch
+                                                aria-label={`${rate.guestCount}-guest rate enabled`}
+                                                checked={draft.active}
+                                                disabled={retreat.pricingLocked || !optionEnabled}
+                                                onCheckedChange={(checked) =>
+                                                  setStandardRateDrafts((current) => ({
+                                                    ...current,
+                                                    [rate.id]: { ...draft, active: checked },
+                                                  }))
+                                                }
+                                              />
+                                            ) : null}
+                                          </div>
+                                          <Input
+                                            id={`standard-rate-${rate.id}`}
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={draft.pricePounds}
+                                            disabled={retreat.pricingLocked || !optionEnabled}
+                                            onChange={(event) =>
+                                              setStandardRateDrafts((current) => ({
+                                                ...current,
+                                                [rate.id]: {
+                                                  ...draft,
+                                                  pricePounds: event.target.value,
+                                                },
+                                              }))
+                                            }
+                                          />
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </section>
+                      );
+                    })}
+                  </div>
+                  {retreat.status === "draft" ? (
+                    <Button
+                      type="button"
+                      disabled={actionLoading !== ""}
+                      onClick={() => void saveAccommodation()}
+                    >
+                      <Save className="mr-2 h-4 w-4" />
+                      {actionLoading === "accommodation"
+                        ? "Saving..."
+                        : "Save room choices and prices"}
+                    </Button>
+                  ) : null}
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -1120,7 +1232,9 @@ export function AdminRetreatDetail({
                   <Save className="mr-2 h-4 w-4" />
                   {actionLoading === "configuration"
                     ? "Saving..."
-                    : "Save inventory and payment rules"}
+                    : retreat.retreatType === "online"
+                      ? "Save places and payment rules"
+                      : "Save payment rules"}
                 </Button>
               ) : null}
             </CardContent>
