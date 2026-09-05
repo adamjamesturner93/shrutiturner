@@ -134,6 +134,75 @@ export async function recordAcceptanceEvent(input: {
   });
 }
 
+export class AcceptanceVersionChangedError extends Error {
+  constructor() {
+    super("ACCEPTANCE_VERSION_CHANGED");
+  }
+}
+
+export async function recordAcknowledgedAcceptances(input: {
+  userId: string;
+  surface: string;
+  acceptances: Array<{
+    type: AcceptanceType;
+    policyVersionId: string;
+    version: string;
+    acknowledged: true;
+  }>;
+}) {
+  if (input.acceptances.length === 0) return [];
+  const policies = await getCurrentPolicyVersions(input.acceptances.map((item) => item.type));
+  for (const [index, acceptance] of input.acceptances.entries()) {
+    const policy = policies[index];
+    if (
+      !policy ||
+      policy.id !== acceptance.policyVersionId ||
+      policy.version !== acceptance.version ||
+      acceptance.acknowledged !== true
+    ) {
+      throw new AcceptanceVersionChangedError();
+    }
+  }
+
+  const acceptedAt = new Date();
+  return db.$transaction(async (tx) => {
+    const events: Array<{
+      id: string;
+      type: AcceptanceType;
+      version: string;
+      acceptedAt: Date;
+    }> = [];
+    let userUpdate: Prisma.UserUpdateInput = {};
+    for (const [index, acceptance] of input.acceptances.entries()) {
+      const policy = policies[index];
+      const event = await tx.acceptanceEvent.create({
+        data: {
+          userId: input.userId,
+          actorUserId: input.userId,
+          type: acceptance.type,
+          policyVersionId: policy.id,
+          version: policy.version,
+          acceptanceSurface: input.surface,
+          acceptedAt,
+          metadataJson: {
+            acknowledgementMethod: "explicit_checkbox",
+            acknowledged: true,
+          },
+        },
+      });
+      events.push(event);
+      userUpdate = {
+        ...userUpdate,
+        ...summaryUserAcceptanceUpdate(acceptance.type, policy.version, acceptedAt),
+      };
+    }
+    if (Object.keys(userUpdate).length > 0) {
+      await tx.user.update({ where: { id: input.userId }, data: userUpdate });
+    }
+    return events;
+  });
+}
+
 export async function getAcceptanceRequirementStates(
   userId: string,
   requirements: AcceptanceRequirement[]

@@ -37,7 +37,10 @@ describe("GET /api/me/notifications", () => {
     vi.clearAllMocks();
     connectionMock.mockResolvedValue(undefined);
     authMock.mockResolvedValue({ user: { id: "user_123", role: "member" } });
-    getNotificationPreferencesMock.mockResolvedValue({ classReminders: true });
+    getNotificationPreferencesMock.mockResolvedValue({
+      newsletterStatus: "subscribed",
+      newsletterSubscribed: true,
+    });
   });
 
   it("returns notification preferences for the current user", async () => {
@@ -46,7 +49,7 @@ describe("GET /api/me/notifications", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       success: true,
-      data: { classReminders: true },
+      data: { newsletterStatus: "subscribed", newsletterSubscribed: true },
     });
     expect(getNotificationPreferencesMock).toHaveBeenCalledWith("user_123");
   });
@@ -68,29 +71,26 @@ describe("PATCH /api/me/notifications", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: "user_123", role: "member" } });
-    updateNotificationPreferencesMock.mockResolvedValue({ classReminders: false });
+    updateNotificationPreferencesMock.mockResolvedValue({
+      newsletterStatus: "unsubscribed",
+      newsletterSubscribed: false,
+    });
   });
 
   it("passes notification updates through to the service", async () => {
     const response = await route.PATCH(
       createPatchRequest({
-        classReminders: false,
-        scheduleUpdates: true,
-        programAnnouncements: false,
-        marketingEmails: true,
+        newsletterSubscribed: false,
       })
     );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       success: true,
-      data: { classReminders: false },
+      data: { newsletterStatus: "unsubscribed", newsletterSubscribed: false },
     });
     expect(updateNotificationPreferencesMock).toHaveBeenCalledWith("user_123", {
-      classReminders: false,
-      scheduleUpdates: true,
-      programAnnouncements: false,
-      marketingEmails: true,
+      newsletterSubscribed: false,
     });
   });
 });

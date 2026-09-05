@@ -36,13 +36,11 @@ import {
   getEffectiveRetreatRatePricePence,
   isRetreatEarlyBirdActive,
 } from "@/lib/retreats/pricing";
+import { formatRetreatDateTimeRange } from "@/lib/retreats/presentation";
 import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content/types";
 import { useI18n } from "@/lib/use-i18n";
-
-type PendingAcceptance = {
-  type: string;
-  currentVersion: string;
-};
+import { LegalAcceptanceChecklist } from "@/components/legal-acceptance-checklist";
+import type { AcceptanceRequirementState } from "@/lib/legal/acceptance-service";
 
 function formatMoney(pence: number, currency = "GBP") {
   return new Intl.NumberFormat("en-GB", {
@@ -144,7 +142,7 @@ function getRoomGuestLabel(roomOption: RetreatRoomOptionContent) {
 export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedContent | null }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { fmtDate, fmtDateRange } = useI18n();
+  const { fmtDate } = useI18n();
   const { user, acceptTermsAndHealth, acceptHealthDataConsent, refreshAccountProfile } = useAuth();
 
   const queryDateId = searchParams.get("date");
@@ -165,7 +163,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
   const [addonQuantities, setAddonQuantities] = useState<Record<string, number>>({});
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [pendingLegalAcceptances, setPendingLegalAcceptances] = useState<PendingAcceptance[]>([]);
+  const [pendingLegalAcceptances, setPendingLegalAcceptances] = useState<
+    AcceptanceRequirementState[]
+  >([]);
   const [formData, setFormData] = useState({
     purchaserFirstName: "",
     purchaserLastName: "",
@@ -363,33 +363,8 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
     : purchaserLastName;
   const attendeeEmail = bookingForAnotherAttendee ? formData.attendeeEmail : purchaserEmail;
 
-  const resolvePendingLegalAcceptances = async () => {
-    const needsTerms = pendingLegalAcceptances.some((item) => item.type === "terms");
-    const needsHealthWaiver = pendingLegalAcceptances.some((item) => item.type === "health_waiver");
-    const needsHealthData = pendingLegalAcceptances.some((item) => item.type === "health_data");
-    const unsupportedAcceptances = pendingLegalAcceptances.filter(
-      (item) =>
-        item.type !== "terms" && item.type !== "health_waiver" && item.type !== "health_data"
-    );
-
-    if (unsupportedAcceptances.length > 0) {
-      throw new Error("Some required agreements cannot be refreshed from this page yet.");
-    }
-
-    if (needsTerms || needsHealthWaiver) {
-      await acceptTermsAndHealth(needsTerms, needsHealthWaiver);
-    }
-
-    if (needsHealthData) {
-      await acceptHealthDataConsent();
-    }
-
-    await refreshAccountProfile();
-    setPendingLegalAcceptances([]);
-  };
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleSubmit = async (event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
     setError("");
     setIsSubmitting(true);
 
@@ -454,15 +429,13 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
       setIsSubmitting(false);
       return;
     }
+    if (purchaseMode === "gift" && !termsSatisfied) {
+      setError("Please agree to the current Terms & Conditions before buying this gift.");
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
-      if (pendingLegalAcceptances.length > 0) {
-        await resolvePendingLegalAcceptances();
-      }
-
-      if (purchaseMode === "gift" && user && !user.hasAgreedToTerms) {
-        await acceptTermsAndHealth(true, false);
-      }
       if (purchaseMode === "self" && user) {
         if (!user.hasAgreedToTerms || !user.hasAgreedToHealth) {
           await acceptTermsAndHealth(!user.hasAgreedToTerms, !user.hasAgreedToHealth);
@@ -525,7 +498,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
         checkoutUrl?: string;
         message?: string;
         code?: string;
-        requiredAcceptances?: PendingAcceptance[];
+        requiredAcceptances?: AcceptanceRequirementState[];
       } | null;
       if (!response.ok || !payload?.checkoutUrl) {
         if (
@@ -650,6 +623,23 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                 {error}
               </div>
             ) : null}
+            {pendingLegalAcceptances.length > 0 ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <p className="mb-3 text-sm text-amber-900">
+                  Review and acknowledge every current agreement before checkout.
+                </p>
+                <LegalAcceptanceChecklist
+                  acceptances={pendingLegalAcceptances}
+                  surface="retreat_checkout"
+                  busy={isSubmitting}
+                  onAccepted={async () => {
+                    await refreshAccountProfile();
+                    setPendingLegalAcceptances([]);
+                    await handleSubmit();
+                  }}
+                />
+              </div>
+            ) : null}
 
             {!user ? (
               <div className="border-brand-accent/20 bg-brand-accent/5 rounded-[1.25rem] border p-4 text-sm">
@@ -715,7 +705,13 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                       >
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
-                            <p className="text-lg">{fmtDateRange(date.startDate, date.endDate)}</p>
+                            <p className="text-lg">
+                              {formatRetreatDateTimeRange(
+                                date.startDate,
+                                date.endDate,
+                                date.timezone
+                              )}
+                            </p>
                             <p className="text-muted-foreground mt-1 text-sm">
                               Limited to {date.totalSpaces} places
                             </p>
@@ -1519,9 +1515,12 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                   </div>
                   <div className="bg-secondary/20 text-muted-foreground mt-4 rounded-xl border p-4 text-sm">
                     {user?.hasAgreedToTerms ? (
-                      <span>Purchase terms are already accepted on your account.</span>
+                      <p className="mb-3 flex items-start gap-2 text-emerald-800">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0" />
+                        Current Terms & Conditions already accepted on your account.
+                      </p>
                     ) : (
-                      <label className="text-foreground flex cursor-pointer items-start gap-3">
+                      <label className="text-foreground mb-3 flex items-start gap-3">
                         <Checkbox
                           checked={formData.agreedToTerms}
                           onCheckedChange={(checked) =>
@@ -1578,7 +1577,11 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                   <span className="text-muted-foreground">Date</span>
                   <span className="max-w-[14rem] text-right">
                     {selectedDate
-                      ? fmtDateRange(selectedDate.startDate, selectedDate.endDate)
+                      ? formatRetreatDateTimeRange(
+                          selectedDate.startDate,
+                          selectedDate.endDate,
+                          selectedDate.timezone
+                        )
                       : "Select a date"}
                   </span>
                 </div>

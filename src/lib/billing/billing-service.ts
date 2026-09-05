@@ -1,5 +1,6 @@
 import {
   BillingEventStatus,
+  AcceptanceType,
   CreditEntryType,
   MembershipBillingInterval,
   MembershipStatus,
@@ -46,6 +47,7 @@ import CoachingCancellationNotificationEmail from "@/emails/coaching-cancellatio
 import CoachingPaymentConfirmationEmail from "@/emails/coaching-payment-confirmation";
 import CoachingCancellationClientEmail from "@/emails/coaching-cancellation-client";
 import { upsertCoachingSubscriptionProjection } from "@/lib/billing/coaching-subscription-projection";
+import { assertCurrentAcceptances } from "@/lib/legal/acceptance-service";
 
 const APP_URL = getBaseSiteUrlFromEnv();
 const STRIPE_METADATA_VALUE_MAX_LENGTH = 500;
@@ -627,6 +629,20 @@ export async function createCoachingCheckoutSession(
     billingStartsAt?: Date;
   }
 ) {
+  await assertCurrentAcceptances(userId, [
+    {
+      type: AcceptanceType.terms,
+      surface: options?.paidStartRequestId ? "coaching_package_change" : "coaching_checkout",
+    },
+    {
+      type: AcceptanceType.health_waiver,
+      surface: options?.paidStartRequestId ? "coaching_package_change" : "coaching_checkout",
+    },
+    {
+      type: AcceptanceType.coaching_agreement,
+      surface: options?.paidStartRequestId ? "coaching_package_change" : "coaching_checkout",
+    },
+  ]);
   const application = await db.coachingApplication.findFirst({
     where: {
       id: applicationId,

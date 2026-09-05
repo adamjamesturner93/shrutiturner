@@ -1,6 +1,10 @@
 import { AcceptanceType } from "@prisma/client";
 import { db } from "@/lib/db";
+import { buildAbsoluteUrl } from "@/lib/app-url";
 import { HEALTH_CATEGORIES } from "@/data/health-profile-data";
+import HealthProfileReviewRequestedEmail from "@/emails/health-profile-review-requested";
+import HealthProfileUpdatedNotificationEmail from "@/emails/health-profile-updated-notification";
+import { getNotificationInbox, sendPostmarkReactEmail } from "@/lib/postmark/client";
 import {
   assertCurrentAcceptances,
   getAcceptanceRequirementStates,
@@ -12,6 +16,12 @@ export type HealthProfileInput = {
   details?: Record<string, string>;
   tracksFlareCheckIns?: boolean;
   additionalNotes?: string;
+};
+
+export type HealthProfileUpdateContext = {
+  actor: "member" | "admin";
+  source?: "coaching_enquiry" | "consultation" | "member_message" | "other";
+  sourceNote?: string;
 };
 
 export type HealthDeclarationStatus = "incomplete" | "none_declared" | "context_declared";
@@ -91,6 +101,7 @@ export async function getHealthAccessState(userId: string) {
           declarationStatus: true,
           tracksFlareCheckIns: true,
           lastConfirmedAt: true,
+          reviewRequestedAt: true,
         },
       },
     },
@@ -116,7 +127,9 @@ export async function getHealthAccessState(userId: string) {
     hasCurrentHealthDataConsent,
     tracksFlareCheckIns: user.healthProfile?.tracksFlareCheckIns ?? false,
     lastConfirmedAt: user.healthProfile?.lastConfirmedAt?.toISOString() ?? "",
-    needsReview: needsHealthDeclarationReview(user.healthProfile?.lastConfirmedAt),
+    needsReview:
+      Boolean(user.healthProfile?.reviewRequestedAt) ||
+      needsHealthDeclarationReview(user.healthProfile?.lastConfirmedAt),
     isComplete: declarationStatus !== "incomplete" && hasCurrentHealthDataConsent,
     checkInMode: getHealthCheckInMode({
       declarationStatus,
@@ -157,6 +170,8 @@ export async function getHealthProfile(userId: string) {
       lastConfirmedAt: "",
       lastUpdated: "",
       needsReview: false,
+      reviewRequestedAt: null,
+      reviewReason: null,
     };
   }
 
@@ -176,14 +191,70 @@ export async function getHealthProfile(userId: string) {
     additionalNotes: profile.additionalNotes,
     lastConfirmedAt: profile.lastConfirmedAt.toISOString().slice(0, 10),
     lastUpdated: profile.lastUpdatedAt.toISOString().slice(0, 10),
-    needsReview: needsHealthDeclarationReview(profile.lastConfirmedAt),
+    needsReview:
+      Boolean(profile.reviewRequestedAt) || needsHealthDeclarationReview(profile.lastConfirmedAt),
+    reviewRequestedAt: profile.reviewRequestedAt?.toISOString() || null,
+    reviewReason: profile.reviewRequestedAt
+      ? ("admin_update" as const)
+      : needsHealthDeclarationReview(profile.lastConfirmedAt)
+        ? ("periodic" as const)
+        : null,
   };
+}
+
+async function sendHealthProfileUpdateEmail(input: { userId: string; actor: "member" | "admin" }) {
+  const user = await db.user.findUnique({
+    where: { id: input.userId },
+    select: { id: true, email: true, firstName: true, lastName: true, name: true },
+  });
+  if (!user) return;
+
+  const memberName =
+    user.name || `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
+
+  if (input.actor === "admin") {
+    await sendPostmarkReactEmail({
+      to: user.email,
+      userId: user.id,
+      subject: "Please review your health profile",
+      react: HealthProfileReviewRequestedEmail({
+        firstName: user.firstName || "there",
+        healthProfileUrl: buildAbsoluteUrl("/dashboard/health"),
+      }),
+      textBody: `Hi ${user.firstName || "there"},\n\nShruti has updated your health profile using information you shared. Please sign in to review it, correct anything that is not right, and confirm that it is current.\n\n${buildAbsoluteUrl("/dashboard/health")}\n\nFor privacy, this email does not include any health information.`,
+      tag: "health-profile-review-requested",
+      templateKey: "health-profile-review-requested",
+      category: "transactional",
+      retryable: true,
+      metadata: { userId: user.id },
+      dispatchMode: "immediate_best_effort",
+    });
+    return;
+  }
+
+  await sendPostmarkReactEmail({
+    to: getNotificationInbox("HEALTH_PROFILE_NOTIFICATION_EMAIL"),
+    subject: `Health profile updated: ${memberName}`,
+    react: HealthProfileUpdatedNotificationEmail({
+      memberName,
+      memberEmail: user.email,
+      memberUrl: buildAbsoluteUrl(`/admin/members/${user.id}`),
+    }),
+    textBody: `${memberName} (${user.email}) updated their health profile. Health details are intentionally omitted from email.\n\nReview: ${buildAbsoluteUrl(`/admin/members/${user.id}`)}`,
+    tag: "health-profile-updated-notification",
+    templateKey: "health-profile-updated-notification",
+    category: "transactional",
+    retryable: true,
+    metadata: { userId: user.id },
+    dispatchMode: "immediate_best_effort",
+  });
 }
 
 export async function upsertHealthProfile(
   userId: string,
   input: HealthProfileInput,
-  updatedByUserId: string
+  updatedByUserId: string,
+  context: HealthProfileUpdateContext = { actor: "member" }
 ) {
   await assertCurrentHealthDataAcceptance(userId, "health_profile");
 
@@ -203,6 +274,7 @@ export async function upsertHealthProfile(
     declarationStatus === "context_declared" ? Boolean(input.tracksFlareCheckIns) : false;
   const selectedKeys = declarationStatus === "context_declared" ? selected : new Set<string>();
   const now = new Date();
+  const isAdminUpdate = context.actor === "admin";
 
   const profile = await db.$transaction(async (tx) => {
     const upserted = await tx.healthProfile.upsert({
@@ -214,13 +286,15 @@ export async function upsertHealthProfile(
         additionalNotes,
         lastConfirmedAt: now,
         lastUpdatedAt: now,
+        reviewRequestedAt: isAdminUpdate ? now : null,
       },
       update: {
         declarationStatus,
         tracksFlareCheckIns,
         additionalNotes,
-        lastConfirmedAt: now,
+        ...(isAdminUpdate ? {} : { lastConfirmedAt: now }),
         lastUpdatedAt: now,
+        reviewRequestedAt: isAdminUpdate ? now : null,
       },
     });
 
@@ -244,6 +318,12 @@ export async function upsertHealthProfile(
       additionalNotes,
       lastConfirmedAt: now.toISOString().slice(0, 10),
       lastUpdated: now.toISOString().slice(0, 10),
+      reviewRequestedAt: isAdminUpdate ? now.toISOString() : null,
+      updateContext: {
+        actor: context.actor,
+        source: context.source || null,
+        sourceNote: context.sourceNote?.trim().slice(0, 500) || null,
+      },
     };
 
     await tx.healthProfileRevision.create({
@@ -257,6 +337,10 @@ export async function upsertHealthProfile(
     return upserted;
   });
 
+  await sendHealthProfileUpdateEmail({ userId, actor: context.actor }).catch((error) => {
+    console.error("Failed to send health profile update email", error);
+  });
+
   return {
     declarationStatus,
     conditions: Object.fromEntries(Array.from(selectedKeys).map((key) => [key, true])),
@@ -265,7 +349,9 @@ export async function upsertHealthProfile(
     additionalNotes,
     lastConfirmedAt: profile.lastConfirmedAt.toISOString().slice(0, 10),
     lastUpdated: profile.lastUpdatedAt.toISOString().slice(0, 10),
-    needsReview: false,
+    needsReview: isAdminUpdate,
+    reviewRequestedAt: profile.reviewRequestedAt?.toISOString() || null,
+    reviewReason: isAdminUpdate ? ("admin_update" as const) : null,
   };
 }
 
@@ -294,6 +380,7 @@ export async function confirmHealthProfile(userId: string, updatedByUserId: stri
       where: { id: existing.id },
       data: {
         lastConfirmedAt: now,
+        reviewRequestedAt: null,
       },
     });
 
@@ -315,6 +402,8 @@ export async function confirmHealthProfile(userId: string, updatedByUserId: stri
           additionalNotes: existing.additionalNotes,
           lastConfirmedAt: now.toISOString().slice(0, 10),
           lastUpdated: existing.lastUpdatedAt.toISOString().slice(0, 10),
+          reviewRequestedAt: null,
+          updateContext: { actor: "member", action: "confirmed_unchanged" },
         },
       },
     });
@@ -337,5 +426,7 @@ export async function confirmHealthProfile(userId: string, updatedByUserId: stri
     lastConfirmedAt: confirmed.lastConfirmedAt.toISOString().slice(0, 10),
     lastUpdated: existing.lastUpdatedAt.toISOString().slice(0, 10),
     needsReview: false,
+    reviewRequestedAt: null,
+    reviewReason: null,
   };
 }

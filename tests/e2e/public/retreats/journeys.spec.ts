@@ -2,6 +2,8 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
+const MIDDLE_GROUND_DATE_TIME = "09:30-12:00 4 October 2026";
+
 async function expectNoSeriousAccessibilityViolations(page: Page) {
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
@@ -42,7 +44,7 @@ test.describe("retreat catalogue", () => {
     });
     await expect(workshopHeading).toBeVisible();
     const workshopCard = page.locator("article").filter({ has: workshopHeading });
-    await expect(workshopCard).toContainText("4 October 2026");
+    await expect(workshopCard).toContainText(MIDDLE_GROUND_DATE_TIME);
     await expect(workshopCard).toContainText("Live online");
     await expect(workshopCard).toContainText("2.5 hours");
     await expect(workshopCard).toContainText("£35");
@@ -86,6 +88,9 @@ test.describe("retreat catalogue", () => {
     await expect(detailMain.getByRole("heading", { name: "Your ticket" })).toBeVisible();
     await expect(detailMain.getByRole("heading", { name: "Choose your date" })).toHaveCount(0);
     await expect(detailMain.getByRole("link", { name: "Book your place" }).first()).toBeVisible();
+    await expect(
+      detailMain.getByText(MIDDLE_GROUND_DATE_TIME, { exact: true }).first()
+    ).toBeVisible();
     await expect(detailMain.getByText("Times shown in Europe/London").first()).toBeVisible();
     await expect(
       detailMain.getByText(
@@ -103,6 +108,9 @@ test.describe("retreat catalogue", () => {
     );
 
     const checkoutMain = page.getByRole("main");
+    await expect(
+      checkoutMain.getByText(MIDDLE_GROUND_DATE_TIME, { exact: true }).first()
+    ).toBeVisible();
     await expect(
       checkoutMain.getByRole("heading", { name: "2. Choose your ticket" })
     ).toBeVisible();

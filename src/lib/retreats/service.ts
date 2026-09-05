@@ -28,11 +28,6 @@ import {
   assertNoUserCheckoutDisputeHold,
 } from "@/lib/billing/dispute-service";
 import {
-  CURRENT_HEALTH_DATA_CONSENT_VERSION,
-  CURRENT_HEALTH_WAIVER_VERSION,
-  CURRENT_TERMS_VERSION,
-} from "@/data/legal-documents";
-import {
   getRetreatBySlugCombined,
   getRetreatTemplates,
   getRetreatVenues,
@@ -52,7 +47,6 @@ import RetreatCancellationEmail, {
 import RetreatBookingAdminEmail from "@/emails/retreat-booking-admin";
 import RetreatPaymentReceiptEmail from "@/emails/retreat-payment-receipt";
 import { createAdminActionLog } from "@/lib/admin/action-log-service";
-import { getAdminEmailAllowlist } from "@/lib/env";
 import { createSessionRoom, isDailyConfigured } from "@/lib/daily/service";
 import {
   buildRetreatInstalmentPlan,
@@ -69,6 +63,7 @@ import {
 } from "@/lib/retreats/pricing";
 import { getRetreatImageSrc } from "@/lib/retreats/images";
 import { getWorkshopSetupState } from "@/lib/retreats/workshop-setup";
+import { sendRetreatOperationalEmail } from "@/lib/retreats/notification-service";
 
 const RETREAT_PAYMENT_WINDOW_MS = 30 * 60 * 1000;
 const ACTIVE_RETREAT_BOOKING_STATUSES: RetreatBookingStatus[] = [
@@ -1436,14 +1431,21 @@ export async function createRetreatCheckout(input: {
     : null;
 
   if (!input.purchaserUserId) {
-    const missingGiftTerms =
-      input.purchaseMode === "gift" && input.acceptedTermsVersion !== CURRENT_TERMS_VERSION;
-    const missingSelfAcceptances =
-      input.purchaseMode === "self" &&
-      (input.acceptedTermsVersion !== CURRENT_TERMS_VERSION ||
-        input.acceptedHealthWaiverVersion !== CURRENT_HEALTH_WAIVER_VERSION ||
-        input.acceptedHealthDataVersion !== CURRENT_HEALTH_DATA_CONSENT_VERSION);
-    if (missingGiftTerms || missingSelfAcceptances) {
+    const guestAcceptanceTypes =
+      input.purchaseMode === "gift"
+        ? [AcceptanceType.terms]
+        : [AcceptanceType.terms, AcceptanceType.health_waiver, AcceptanceType.health_data];
+    const guestPolicies = await getCurrentPolicyVersions(guestAcceptanceTypes);
+    const currentGuestVersions = new Map(
+      guestAcceptanceTypes.map((type, index) => [type, guestPolicies[index]?.version || ""])
+    );
+    if (
+      input.acceptedTermsVersion !== currentGuestVersions.get(AcceptanceType.terms) ||
+      (input.purchaseMode === "self" &&
+        (input.acceptedHealthWaiverVersion !==
+          currentGuestVersions.get(AcceptanceType.health_waiver) ||
+          input.acceptedHealthDataVersion !== currentGuestVersions.get(AcceptanceType.health_data)))
+    ) {
       throw new Error("RETREAT_LEGAL_ACCEPTANCE_REQUIRED");
     }
   }
@@ -2080,29 +2082,24 @@ async function sendRetreatBookingAdminNotification(bookingId: string) {
       : "; paid in full"
   }.`;
   const adminUrl = buildAbsoluteUrl(`/admin/retreats/${booking.retreatDateId}`);
-  await Promise.allSettled(
-    getAdminEmailAllowlist().map((email) =>
-      sendPostmarkReactEmail({
-        to: email,
-        subject: `New booking: ${booking.retreatDate.retreatTitleSnapshot}`,
-        react: RetreatBookingAdminEmail({
-          purchaserName: `${booking.purchaserFirstName} ${booking.purchaserLastName}`.trim(),
-          purchaserEmail: booking.purchaserEmail,
-          retreatName: booking.retreatDate.retreatTitleSnapshot,
-          retreatDates: formatDateRange(booking.retreatDate.startsAt, booking.retreatDate.endsAt),
-          selection: booking.roomOptionLabelSnapshot || booking.roomType || "Retreat place",
-          guestCount: booking.attendeeCount,
-          paymentSummary,
-          adminUrl,
-        }),
-        textBody: `New booking for ${booking.retreatDate.retreatTitleSnapshot}\nPurchaser: ${booking.purchaserFirstName} ${booking.purchaserLastName} (${booking.purchaserEmail})\nSelection: ${booking.roomOptionLabelSnapshot || booking.roomType || "Retreat place"}\nGuests: ${booking.attendeeCount}\n${paymentSummary}\nOpen: ${adminUrl}`,
-        tag: "retreat-booking-admin",
-        templateKey: "retreat-booking-admin",
-        metadata: { bookingId: booking.id, retreatDateId: booking.retreatDateId },
-        dispatchMode: "immediate_best_effort",
-      })
-    )
-  );
+  await sendRetreatOperationalEmail({
+    subject: `New booking: ${booking.retreatDate.retreatTitleSnapshot}`,
+    react: RetreatBookingAdminEmail({
+      purchaserName: `${booking.purchaserFirstName} ${booking.purchaserLastName}`.trim(),
+      purchaserEmail: booking.purchaserEmail,
+      retreatName: booking.retreatDate.retreatTitleSnapshot,
+      retreatDates: formatDateRange(booking.retreatDate.startsAt, booking.retreatDate.endsAt),
+      selection: booking.roomOptionLabelSnapshot || booking.roomType || "Retreat place",
+      guestCount: booking.attendeeCount,
+      paymentSummary,
+      adminUrl,
+    }),
+    textBody: `New booking for ${booking.retreatDate.retreatTitleSnapshot}\nPurchaser: ${booking.purchaserFirstName} ${booking.purchaserLastName} (${booking.purchaserEmail})\nSelection: ${booking.roomOptionLabelSnapshot || booking.roomType || "Retreat place"}\nGuests: ${booking.attendeeCount}\n${paymentSummary}\nOpen: ${adminUrl}`,
+    tag: "retreat-booking-admin",
+    templateKey: "retreat-booking-admin",
+    metadata: { bookingId: booking.id, retreatDateId: booking.retreatDateId },
+    dispatchMode: "immediate_best_effort",
+  });
 }
 
 async function sendRetreatPaymentReceipt(bookingId: string, amountPaidPence: number) {
@@ -2374,6 +2371,9 @@ export async function createRetreatBalanceCheckout(input: {
     where: { id: input.bookingId },
     include: {
       retreatDate: true,
+      guestAcceptanceEvents: {
+        select: { type: true, version: true },
+      },
       instalments: {
         orderBy: { sequence: "asc" },
       },
@@ -2391,6 +2391,41 @@ export async function createRetreatBalanceCheckout(input: {
   if (!authorized) throw new Error("FORBIDDEN");
   if (booking.balanceAmountPence <= 0 || booking.paymentStatus === "paid_in_full") {
     throw new Error("BALANCE_NOT_DUE");
+  }
+
+  const snapshot =
+    booking.complianceSnapshotJson &&
+    typeof booking.complianceSnapshotJson === "object" &&
+    !Array.isArray(booking.complianceSnapshotJson)
+      ? (booking.complianceSnapshotJson as Record<string, unknown>)
+      : null;
+  const snapshotStates = Array.isArray(snapshot?.acceptanceStates)
+    ? (snapshot.acceptanceStates as Array<Record<string, unknown>>)
+    : [];
+  const evidenceTypes = new Set<string>([
+    ...booking.guestAcceptanceEvents
+      .filter((event) => Boolean(event.version))
+      .map((event) => event.type),
+    ...snapshotStates
+      .filter(
+        (state) =>
+          typeof state.type === "string" &&
+          typeof state.version === "string" &&
+          state.version.length > 0
+      )
+      .map((state) => state.type as string),
+  ]);
+  if (booking.acceptedTermsVersion) evidenceTypes.add(AcceptanceType.terms);
+  if (booking.acceptedHealthWaiverVersion) evidenceTypes.add(AcceptanceType.health_waiver);
+  if (booking.acceptedHealthDataVersion) evidenceTypes.add(AcceptanceType.health_data);
+
+  const requiredOriginalEvidence = [
+    AcceptanceType.terms,
+    AcceptanceType.health_waiver,
+    AcceptanceType.health_data,
+  ];
+  if (requiredOriginalEvidence.some((type) => !evidenceTypes.has(type))) {
+    throw new Error("ORIGINAL_ACCEPTANCE_EVIDENCE_MISSING");
   }
   await assertNoResourceDisputeHold("retreat_booking", booking.id);
 
@@ -2928,33 +2963,30 @@ export async function requestRetreatCancellation(input: {
   if (result.created) {
     await Promise.all([
       sendRetreatCancellationCustomerEmail({ booking: result.booking, request: result.request }),
-      ...getAdminEmailAllowlist().map((adminEmail) =>
-        sendPostmarkReactEmail({
-          to: adminEmail,
-          subject: `Cancellation request: ${result.booking.retreatDate.retreatTitleSnapshot}`,
-          react: RetreatCancellationAdminEmail({
-            customerName:
-              `${result.booking.purchaserFirstName} ${result.booking.purchaserLastName}`.trim(),
-            customerEmail: result.booking.purchaserEmail,
-            retreatName: result.booking.retreatDate.retreatTitleSnapshot,
-            retreatDates: formatDateRange(
-              result.booking.retreatDate.startsAt,
-              result.booking.retreatDate.endsAt
-            ),
-            refundableAmount: formatCurrency(
-              result.request.refundableAmountPence,
-              result.booking.currency
-            ),
-            reason: result.request.reason,
-            adminUrl: buildAbsoluteUrl(`/admin/retreats/${result.booking.retreatDateId}`),
-          }),
-          textBody: `${result.booking.purchaserEmail} requested cancellation of ${result.booking.retreatDate.retreatTitleSnapshot}. Calculated refund: ${formatCurrency(result.request.refundableAmountPence, result.booking.currency)}. Review: ${buildAbsoluteUrl(`/admin/retreats/${result.booking.retreatDateId}`)}`,
-          tag: "retreat-cancellation-admin",
-          templateKey: "retreat-cancellation-admin",
-          metadata: { bookingId: result.booking.id, requestId: result.request.id },
-          dispatchMode: "immediate_best_effort",
-        })
-      ),
+      sendRetreatOperationalEmail({
+        subject: `Cancellation request: ${result.booking.retreatDate.retreatTitleSnapshot}`,
+        react: RetreatCancellationAdminEmail({
+          customerName:
+            `${result.booking.purchaserFirstName} ${result.booking.purchaserLastName}`.trim(),
+          customerEmail: result.booking.purchaserEmail,
+          retreatName: result.booking.retreatDate.retreatTitleSnapshot,
+          retreatDates: formatDateRange(
+            result.booking.retreatDate.startsAt,
+            result.booking.retreatDate.endsAt
+          ),
+          refundableAmount: formatCurrency(
+            result.request.refundableAmountPence,
+            result.booking.currency
+          ),
+          reason: result.request.reason,
+          adminUrl: buildAbsoluteUrl(`/admin/retreats/${result.booking.retreatDateId}`),
+        }),
+        textBody: `${result.booking.purchaserEmail} requested cancellation of ${result.booking.retreatDate.retreatTitleSnapshot}. Calculated refund: ${formatCurrency(result.request.refundableAmountPence, result.booking.currency)}. Review: ${buildAbsoluteUrl(`/admin/retreats/${result.booking.retreatDateId}`)}`,
+        tag: "retreat-cancellation-admin",
+        templateKey: "retreat-cancellation-admin",
+        metadata: { bookingId: result.booking.id, requestId: result.request.id },
+        dispatchMode: "immediate_best_effort",
+      }),
     ]).catch((error) => {
       console.error("Failed to send retreat cancellation request email", error);
     });
@@ -3495,6 +3527,7 @@ export async function getAdminRetreatSummaries() {
       retreatSlug: date.retreatSlug,
       title: date.retreatTitleSnapshot,
       location: date.retreatLocationSnapshot,
+      timezone: date.timezone,
       startDate: date.startsAt.toISOString(),
       endDate: date.endsAt.toISOString(),
       status: date.status,
@@ -4398,6 +4431,7 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
     retreatSlug: bookingRows.retreatSlug,
     title: bookingRows.retreatTitleSnapshot,
     location: bookingRows.retreatLocationSnapshot,
+    timezone: bookingRows.timezone,
     startDate: bookingRows.startsAt.toISOString(),
     endDate: bookingRows.endsAt.toISOString(),
     status: bookingRows.status,

@@ -7,9 +7,14 @@ import {
   serviceUnavailable,
   upstreamFailure,
 } from "@/lib/api/route";
+import { AcceptanceType } from "@prisma/client";
 import { createCreditCheckoutSession } from "@/lib/billing/billing-service";
 import { assertNoUserCheckoutDisputeHold } from "@/lib/billing/dispute-service";
 import { sanitizeRedirectPath } from "@/lib/navigation/safe-redirect";
+import {
+  assertCurrentAcceptances,
+  isAcceptanceRequiredError,
+} from "@/lib/legal/acceptance-service";
 
 export const POST = handleApiRoute(
   async ({ request, sessionUser }) => {
@@ -29,6 +34,10 @@ export const POST = handleApiRoute(
     await assertNoUserCheckoutDisputeHold(sessionUser!.id);
 
     try {
+      await assertCurrentAcceptances(sessionUser!.id, [
+        { type: AcceptanceType.terms, surface: "credit_checkout" },
+        { type: AcceptanceType.health_waiver, surface: "credit_checkout" },
+      ]);
       const result = await createCreditCheckoutSession(
         sessionUser!.id,
         bundleSize,
@@ -58,6 +67,12 @@ export const POST = handleApiRoute(
             "Checkout is temporarily blocked while an open payment dispute is under review."
           );
         }
+      }
+      if (isAcceptanceRequiredError(error)) {
+        throw conflict(
+          "Current legal acceptance is required before credit checkout.",
+          error.details
+        );
       }
       throw upstreamFailure("Failed to create checkout session");
     }

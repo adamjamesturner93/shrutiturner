@@ -17,6 +17,7 @@ type ProgrammeCheckoutBody = {
   recipientEmail?: unknown;
   recipientMessage?: unknown;
   deliveryTarget?: unknown;
+  acceptedTermsVersion?: unknown;
 };
 
 export async function POST(request: Request, context: { params: Promise<{ slug: string }> }) {
@@ -47,6 +48,8 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
       recipientEmail: typeof body.recipientEmail === "string" ? body.recipientEmail : "",
       recipientMessage: typeof body.recipientMessage === "string" ? body.recipientMessage : "",
       deliveryTarget: body.deliveryTarget === "buyer" ? "buyer" : "recipient",
+      acceptedTermsVersion:
+        typeof body.acceptedTermsVersion === "string" ? body.acceptedTermsVersion : null,
     });
     return NextResponse.json(result);
   } catch (error) {
@@ -61,6 +64,16 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
       ].includes(error.message)
     ) {
       return NextResponse.json({ message: "That programme is not available." }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "PROGRAMME_LEGAL_ACCEPTANCE_REQUIRED") {
+      return NextResponse.json(
+        {
+          code: "GUEST_LEGAL_ACCEPTANCE_REFRESH_REQUIRED",
+          message:
+            "The programme terms changed while you were reviewing them. Refresh and review the latest version before continuing.",
+        },
+        { status: 409 }
+      );
     }
     if (isAcceptanceRequiredError(error)) {
       return NextResponse.json(error.details, { status: 409 });

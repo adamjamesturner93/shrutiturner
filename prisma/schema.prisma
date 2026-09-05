@@ -435,7 +435,7 @@ enum EverfitConnectionStatus {
   invite_sent
   connected
   sync_issue
-  removed
+  closed
 }
 
 enum CoachingSessionStatus {
@@ -1248,6 +1248,7 @@ model HealthProfile {
   additionalNotes     String                  @default("")
   lastConfirmedAt     DateTime                @default(now())
   lastUpdatedAt       DateTime                @default(now())
+  reviewRequestedAt   DateTime?
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
 

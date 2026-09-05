@@ -26,6 +26,7 @@ export function SubscribePage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [signupState, setSignupState] = useState<"pending" | "subscribed">("pending");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +49,7 @@ export function SubscribePage() {
       return;
     }
 
+    setSignupState(result.state || "pending");
     setSubmitted(true);
   };
 
@@ -206,10 +208,15 @@ export function SubscribePage() {
                       <Check className="text-brand-accent-light h-6 w-6" />
                     </div>
                     <div>
-                      <h3 className="text-xl">Check your inbox.</h3>
+                      <h3 className="text-xl">
+                        {signupState === "subscribed"
+                          ? "You’re already subscribed."
+                          : "Check your inbox."}
+                      </h3>
                       <p className="text-brand-white/70 mt-2 text-sm leading-relaxed">
-                        Confirm your email to join the newsletter. Your free guide will arrive
-                        straight after confirmation.
+                        {signupState === "subscribed"
+                          ? "Your email is already confirmed, so there’s nothing else you need to do."
+                          : "Confirm your email to join the newsletter. Your free guide will arrive straight after confirmation."}
                       </p>
                     </div>
                     <Button
@@ -221,6 +228,7 @@ export function SubscribePage() {
                         setFirstName("");
                         setConsent(false);
                         setTurnstileToken("");
+                        setSignupState("pending");
                       }}
                     >
                       Use a different email

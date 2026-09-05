@@ -204,8 +204,9 @@ export function HealthProfilePage({ initialProfile }: { initialProfile?: HealthP
               <div>
                 <p className="text-sm text-amber-900">Please review your health declaration.</p>
                 <p className="mt-1 text-xs text-amber-800">
-                  Confirm that nothing has changed, or update it to capture new injuries, flares, or
-                  recovery changes.
+                  {profile.reviewReason === "admin_update"
+                    ? "Shruti updated this profile using information you shared. Check it carefully, correct anything that is not right, then confirm it is current."
+                    : "Confirm that nothing has changed, or update it to capture new injuries, flares, or recovery changes."}
                 </p>
               </div>
               <div className="flex gap-2">

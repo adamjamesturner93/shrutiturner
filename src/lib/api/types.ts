@@ -29,14 +29,14 @@ export type HealthProfileDto = {
   lastConfirmedAt: string;
   lastUpdated: string;
   needsReview: boolean;
+  reviewRequestedAt?: string | null;
+  reviewReason?: "admin_update" | "periodic" | null;
 };
 
 export type NotificationPreferencesDto = {
   userId: string;
-  classReminders: boolean;
-  scheduleUpdates: boolean;
-  programAnnouncements: boolean;
-  marketingEmails: boolean;
+  newsletterStatus: "never_subscribed" | "pending" | "subscribed" | "unsubscribed";
+  newsletterSubscribed: boolean;
   updatedAt: string;
 };
 
@@ -207,7 +207,7 @@ export type CoachingDashboardDto = {
     billingArrangement: "paid" | "pro_bono";
     billingStartsAt: string | null;
     status: "application_pending" | "onboarding" | "active" | "paused" | "completed";
-    everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue" | "removed";
+    everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue" | "closed";
     nextCheckInDueAt: string | null;
     nextCheckInStatus: "due" | "submitted" | "reviewed" | "overdue" | null;
     nextSessionStartsAt: string | null;
@@ -416,7 +416,7 @@ export type AdminCoachingApplicationDto = {
     billingArrangement: "paid" | "pro_bono";
     billingStartsAt: string | null;
     status: "application_pending" | "onboarding" | "active" | "paused" | "completed";
-    everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue" | "removed";
+    everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue" | "closed";
     billingCancellationRequestedAt: string | null;
     billingFinalPaymentAt: string | null;
     billingEndsAt: string | null;
@@ -455,6 +455,7 @@ export type AdminRetreatSummaryDto = {
   retreatSlug: string;
   title: string;
   location: string;
+  timezone: string;
   startDate: string;
   endDate: string;
   status: string;
@@ -481,6 +482,7 @@ export type AdminRetreatDetailDto = {
   retreatSlug: string;
   title: string;
   location: string;
+  timezone: string;
   startDate: string;
   endDate: string;
   status: string;
@@ -1004,25 +1006,6 @@ export type ClassSessionDetailDto = ClassSessionListItemDto & {
   waitlist: ClassWaitlistDto[];
 };
 
-export type AdminSubscriberDto = {
-  userId: string;
-  email: string;
-  firstName: string | null;
-  lastName: string | null;
-  newsletterSubscribed: boolean;
-  blogSubscribed: boolean;
-  subscriptionType: "newsletter" | "blog" | "both" | "neither";
-  updatedAt: string;
-};
-
-export type AdminSubscriberSegmentSummaryDto = {
-  newsletter: number;
-  blog: number;
-  both: number;
-  neither: number;
-  total: number;
-};
-
 export type AdminNewsletterCampaignDetailDto = {
   id: string;
   providerCampaignId: string;
@@ -1049,6 +1032,7 @@ export type AdminNewsletterCampaignDetailDto = {
   sourceSystem: string;
   messageStream: string | null;
   trackingState: "available" | "awaiting" | "unavailable";
+  reportingSource: "postmark_api" | "event_history";
   attentionReasons: string[];
   errorSummary: string | null;
   topLinks: Array<{ url: string; clicks: number }>;
@@ -1102,11 +1086,7 @@ export type AdminMemberListItemDto = {
   totalBookings: number;
   lastClassDate: string | null;
   notes: string;
-  newsletterSubscribed: boolean;
-  marketingEmails: boolean;
-  classReminders: boolean;
-  scheduleUpdates: boolean;
-  programAnnouncements: boolean;
+  newsletterStatus: "never_subscribed" | "pending" | "subscribed" | "unsubscribed";
   isInstructor: boolean;
   instructorProfileEntryId?: string | null;
   instructorProfileName?: string | null;
@@ -1128,8 +1108,51 @@ export type AdminHealthCategoryDto = {
 
 export type AdminHealthProfileDto = {
   categories: AdminHealthCategoryDto[];
+  declarationStatus: HealthDeclarationStatusDto;
+  conditions: Record<string, boolean>;
+  details: Record<string, string>;
+  tracksFlareCheckIns: boolean;
   additionalNotes: string;
+  lastConfirmedAt: string;
   lastUpdated: string;
+  reviewRequestedAt: string | null;
+  needsMemberReview: boolean;
+  lastUpdatedBy: {
+    id: string;
+    name: string;
+    isMember: boolean;
+  } | null;
+};
+
+export type AdminNewsletterSubscriptionDto = {
+  status: "never_subscribed" | "pending" | "subscribed" | "unsubscribed";
+  source: string | null;
+  consentedAt: string | null;
+  subscribedAt: string | null;
+  verifiedAt: string | null;
+  unsubscribedAt: string | null;
+  updatedAt: string | null;
+};
+
+export type AdminLegalAcceptanceHistoryDto = {
+  id: string;
+  type: string;
+  label: string;
+  version: string;
+  acceptedAt: string;
+  surface: string;
+  actorName: string;
+};
+
+export type AdminLegalAgreementDto = {
+  type: string;
+  label: string;
+  href: string | null;
+  status: "current" | "missing" | "superseded" | "expired" | "not_applicable";
+  currentVersion: string;
+  acceptedVersion: string | null;
+  acceptedAt: string | null;
+  expiresAt: string | null;
 };
 
 export type AdminMemberDetailDto = AdminMemberListItemDto & {
@@ -1142,6 +1165,9 @@ export type AdminMemberDetailDto = AdminMemberListItemDto & {
     by: string;
   }>;
   healthProfile: AdminHealthProfileDto | null;
+  newsletterSubscription: AdminNewsletterSubscriptionDto;
+  legalAgreements: AdminLegalAgreementDto[];
+  legalAcceptanceHistory: AdminLegalAcceptanceHistoryDto[];
 };
 
 export type BookSessionResultDto =

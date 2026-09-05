@@ -28,7 +28,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import type { AdminRetreatDetailDto, AdminRetreatEvidenceDto } from "@/lib/api/types";
+import { formatRetreatDateTimeRange } from "@/lib/retreats/presentation";
 
 function formatCurrency(pence: number) {
   return new Intl.NumberFormat("en-GB", {
@@ -36,15 +38,6 @@ function formatCurrency(pence: number) {
     currency: "GBP",
     maximumFractionDigits: 0,
   }).format(pence / 100);
-}
-
-function formatDateRange(start: string, end: string) {
-  const formatter = new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-  return `${formatter.format(new Date(start))} - ${formatter.format(new Date(end))}`;
 }
 
 function toDateTimeLocal(value: string | null) {
@@ -104,6 +97,7 @@ export function AdminRetreatDetail({
     | "configuration"
     | "event-cancellation"
     | "access-email"
+    | "community-mode"
   >("");
   const [earlyBirdDrafts, setEarlyBirdDrafts] = useState<
     Record<string, { pricePounds: string; endsAt: string }>
@@ -502,6 +496,52 @@ export function AdminRetreatDetail({
     }
   };
 
+  const updateCommunityMode = async (enabled: boolean) => {
+    if (!retreat || retreat.retreatType !== "online") return;
+    setActionLoading("community-mode");
+    setActionMessage("");
+    setError("");
+    try {
+      const response = await fetch(`/api/retreats/host/${retreat.id}/display-mode`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: enabled ? "gallery" : "presenter" }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        displayMode?: "gallery" | "presenter";
+        displayVersion?: number;
+        focusedPresenterUserId?: string | null;
+        message?: string;
+      } | null;
+      if (!response.ok || !payload?.displayMode) {
+        throw new Error(payload?.message || "Unable to update community mode.");
+      }
+      setRetreat((current) =>
+        current
+          ? {
+              ...current,
+              liveDisplayMode: payload.displayMode!,
+              liveDisplayVersion: payload.displayVersion ?? current.liveDisplayVersion,
+              focusedPresenterUserId:
+                payload.focusedPresenterUserId ??
+                (payload.displayMode === "gallery" ? null : current.focusedPresenterUserId),
+            }
+          : current
+      );
+      setActionMessage(
+        enabled
+          ? "Community mode will show everyone in the workshop."
+          : "Community mode is off; attendees will use presenter view."
+      );
+    } catch (updateError) {
+      setError(
+        updateError instanceof Error ? updateError.message : "Unable to update community mode."
+      );
+    } finally {
+      setActionLoading("");
+    }
+  };
+
   const decideCancellation = async (requestId: string, action: "approve" | "reject") => {
     if (!retreat) return;
     const reason = window.prompt(
@@ -599,7 +639,7 @@ export function AdminRetreatDetail({
               </span>
               <span className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                {formatDateRange(retreat.startDate, retreat.endDate)}
+                {formatRetreatDateTimeRange(retreat.startDate, retreat.endDate, retreat.timezone)}
               </span>
             </div>
           </div>
@@ -1272,6 +1312,25 @@ export function AdminRetreatDetail({
                         <p className="mt-2 text-red-700">{retreat.roomSetupError}</p>
                       ) : null}
                     </div>
+                  </div>
+                  <div className="bg-secondary/20 mt-4 flex items-start justify-between gap-4 rounded-lg border p-3">
+                    <div>
+                      <Label htmlFor="retreat-community-mode">Community mode</Label>
+                      <p
+                        id="retreat-community-mode-description"
+                        className="text-muted-foreground mt-1 text-xs"
+                      >
+                        When off, attendees use presenter view instead of seeing the full workshop
+                        gallery. The host can still change this during the session.
+                      </p>
+                    </div>
+                    <Switch
+                      id="retreat-community-mode"
+                      checked={retreat.liveDisplayMode === "gallery"}
+                      disabled={actionLoading !== ""}
+                      aria-describedby="retreat-community-mode-description"
+                      onCheckedChange={(checked) => void updateCommunityMode(checked)}
+                    />
                   </div>
                   <Button
                     type="button"

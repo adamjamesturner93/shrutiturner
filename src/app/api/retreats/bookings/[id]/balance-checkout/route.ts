@@ -40,6 +40,16 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         { status: 409 }
       );
     }
+    if (error instanceof Error && error.message === "ORIGINAL_ACCEPTANCE_EVIDENCE_MISSING") {
+      return NextResponse.json(
+        {
+          code: "ORIGINAL_ACCEPTANCE_EVIDENCE_MISSING",
+          message:
+            "We could not verify the agreement records from the original booking. Contact Shruti before making this payment.",
+        },
+        { status: 409 }
+      );
+    }
     console.error("POST /api/retreats/bookings/[id]/balance-checkout failed", error);
     return NextResponse.json({ message: "Failed to start balance checkout." }, { status: 500 });
   }

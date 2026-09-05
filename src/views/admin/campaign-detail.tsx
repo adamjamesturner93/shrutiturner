@@ -108,10 +108,13 @@ export function AdminCampaignDetail() {
                 <div>
                   <p className="text-brand-dark font-medium">Reporting scope</p>
                   <p className="text-muted-foreground">
+                    {campaign.reportingSource === "postmark_api"
+                      ? "Delivery, open, click and bounce totals are queried directly from Postmark."
+                      : "This older campaign uses stored event history because it predates campaign-specific Postmark reporting."}{" "}
                     These results cover this campaign only
                     {campaign.messageStream ? ` in the ${campaign.messageStream} stream` : ""}.
-                    Postmark's server overview also includes transactional messages, so its totals
-                    will be higher.
+                    Unsubscribes and the event timeline remain sourced from this application's
+                    records.
                   </p>
                 </div>
               </CardContent>

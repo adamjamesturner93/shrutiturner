@@ -12,7 +12,7 @@ const validManualSetupStatuses = new Set([
   "invite_sent",
   "connected",
   "sync_issue",
-  "removed",
+  "closed",
 ]);
 
 export async function PATCH(request: Request) {
@@ -35,7 +35,7 @@ export async function PATCH(request: Request) {
         | "invite_sent"
         | "connected"
         | "sync_issue"
-        | "removed",
+        | "closed",
       actorUserId: adminUser.id,
       requestId: request.headers.get("x-request-id"),
       requestPath: new URL(request.url).pathname,

@@ -92,9 +92,8 @@ function runStatus(env) {
   if (stdout) process.stdout.write(stdout);
   if (stderr) process.stderr.write(stderr);
 
-  const hasPendingMigrationsMessage = stdout.includes(
-    "Following migrations have not yet been applied:"
-  );
+  const hasPendingMigrationsMessage =
+    /Following migrations? (?:has|have) not yet been applied:/.test(stdout);
 
   if (result.status === 0) {
     return;

@@ -1,11 +1,15 @@
-import { ClassBookingStatus, MembershipStatus, UserRole } from "@prisma/client";
+import { AcceptanceType, ClassBookingStatus, MembershipStatus, UserRole } from "@prisma/client";
 import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { db } from "@/lib/db";
 import { adjustCredits, getCreditBalance } from "@/lib/credits/credit-service";
 import { getReferralBalancePence } from "@/lib/referrals/referral-discount-service";
 import { HEALTH_CATEGORIES } from "@/data/health-profile-data";
 import { getInstructorProfilesByIds } from "@/lib/content";
-import type { AdminHealthProfileDto } from "@/lib/api/types";
+import type { AdminHealthProfileDto, AdminLegalAgreementDto } from "@/lib/api/types";
+import {
+  getAcceptanceRequirementStates,
+  PHYSICAL_SERVICE_HEALTH_WAIVER_MAX_AGE_DAYS,
+} from "@/lib/legal/acceptance-service";
 
 function mapMembershipLabel(plan: string | null, status?: MembershipStatus | null) {
   if (!plan) return "Pay as you Go";
@@ -50,12 +54,29 @@ const CONDITION_LOOKUP = new Map(
 
 function toAdminHealthProfile(
   profile: {
+    userId: string;
+    declarationStatus: "none_declared" | "context_declared";
+    tracksFlareCheckIns: boolean;
     additionalNotes: string;
+    lastConfirmedAt: Date;
     lastUpdatedAt: Date;
+    reviewRequestedAt: Date | null;
     selections: Array<{ conditionKey: string; detail: string | null }>;
+    revisions: Array<{
+      updatedByUserId: string;
+      updatedByUser: {
+        id: string;
+        firstName: string | null;
+        lastName: string | null;
+        name: string | null;
+      };
+    }>;
   } | null
 ): AdminHealthProfileDto | null {
   if (!profile) return null;
+
+  const conditions: Record<string, boolean> = {};
+  const details: Record<string, string> = {};
 
   const categories = new Map<
     string,
@@ -67,6 +88,8 @@ function toAdminHealthProfile(
   >();
 
   for (const selection of profile.selections) {
+    conditions[selection.conditionKey] = true;
+    if (selection.detail) details[selection.conditionKey] = selection.detail;
     const metadata = CONDITION_LOOKUP.get(selection.conditionKey);
     const categoryId = metadata?.categoryId ?? "other";
     const categoryTitle = metadata?.categoryTitle ?? "Other";
@@ -88,40 +111,71 @@ function toAdminHealthProfile(
 
   return {
     categories: sortedCategories,
+    declarationStatus: profile.declarationStatus,
+    conditions,
+    details,
+    tracksFlareCheckIns: profile.tracksFlareCheckIns,
     additionalNotes: profile.additionalNotes ?? "",
+    lastConfirmedAt: profile.lastConfirmedAt.toISOString(),
     lastUpdated: profile.lastUpdatedAt.toISOString(),
+    reviewRequestedAt: profile.reviewRequestedAt?.toISOString() || null,
+    needsMemberReview: Boolean(profile.reviewRequestedAt),
+    lastUpdatedBy: profile.revisions[0]
+      ? {
+          id: profile.revisions[0].updatedByUser.id,
+          name:
+            profile.revisions[0].updatedByUser.name ||
+            `${profile.revisions[0].updatedByUser.firstName || ""} ${profile.revisions[0].updatedByUser.lastName || ""}`.trim() ||
+            "Unknown user",
+          isMember: profile.revisions[0].updatedByUserId === profile.userId,
+        }
+      : null,
   };
 }
 
 type NotificationSnapshot = {
-  newsletterSubscribed: boolean;
-  marketingEmails: boolean;
-  classReminders: boolean;
-  scheduleUpdates: boolean;
-  programAnnouncements: boolean;
+  newsletterStatus: "never_subscribed" | "pending" | "subscribed" | "unsubscribed";
+};
+
+function toNewsletterSubscription(
+  input: {
+    status: "pending" | "subscribed" | "unsubscribed";
+    source: string | null;
+    consentedAt: Date | null;
+    subscribedAt: Date;
+    verifiedAt: Date | null;
+    unsubscribedAt: Date | null;
+    updatedAt: Date;
+  } | null
+) {
+  return {
+    status: input?.status || ("never_subscribed" as const),
+    source: input?.source || null,
+    consentedAt: input?.consentedAt?.toISOString() || null,
+    subscribedAt: input?.subscribedAt?.toISOString() || null,
+    verifiedAt: input?.verifiedAt?.toISOString() || null,
+    unsubscribedAt: input?.unsubscribedAt?.toISOString() || null,
+    updatedAt: input?.updatedAt?.toISOString() || null,
+  };
+}
+
+const LEGAL_LABELS: Record<AcceptanceType, { label: string; href: string | null }> = {
+  terms: { label: "Terms & Conditions", href: "/terms" },
+  health_waiver: { label: "Health & Liability Waiver", href: "/health-declaration" },
+  health_data: { label: "Health Data Consent", href: "/privacy" },
+  coaching_agreement: { label: "Coaching Agreement", href: "/coaching-agreement" },
+  recording_notice: { label: "Recording Notice", href: null },
+  immediate_start: { label: "Immediate Start Acknowledgement", href: null },
+  marketing: { label: "Marketing Consent", href: null },
 };
 
 function toNotificationSnapshot(input: {
-  notificationPreference: {
-    marketingEmails: boolean;
-    classReminders: boolean;
-    scheduleUpdates: boolean;
-    programAnnouncements: boolean;
-  } | null;
   newsletterSubscriber: {
     status: "pending" | "subscribed" | "unsubscribed";
   } | null;
 }): NotificationSnapshot {
-  const marketingEmails = input.notificationPreference?.marketingEmails ?? true;
-
   return {
-    newsletterSubscribed:
-      input.newsletterSubscriber?.status === "subscribed" ||
-      (!input.newsletterSubscriber && marketingEmails),
-    marketingEmails,
-    classReminders: input.notificationPreference?.classReminders ?? true,
-    scheduleUpdates: input.notificationPreference?.scheduleUpdates ?? true,
-    programAnnouncements: input.notificationPreference?.programAnnouncements ?? true,
+    newsletterStatus: input.newsletterSubscriber?.status || "never_subscribed",
   };
 }
 
@@ -207,14 +261,6 @@ export async function listAdminMembers(filters: {
         take: 1,
         select: { createdAt: true },
       },
-      notificationPreference: {
-        select: {
-          marketingEmails: true,
-          classReminders: true,
-          scheduleUpdates: true,
-          programAnnouncements: true,
-        },
-      },
       newsletterSubscriber: {
         select: {
           status: true,
@@ -242,7 +288,6 @@ export async function listAdminMembers(filters: {
       const referralBalancePence = await getReferralBalancePence(user.id);
       const metrics = bookingMetrics.get(user.id) || { totalBookings: 0, lastClassDate: null };
       const notification = toNotificationSnapshot({
-        notificationPreference: user.notificationPreference,
         newsletterSubscriber: user.newsletterSubscriber,
       });
       const risk = toRiskStatus({
@@ -323,24 +368,48 @@ export async function getAdminMemberDetail(userId: string) {
         where: { status: "rewarded" },
         select: { id: true },
       },
-      notificationPreference: {
-        select: {
-          marketingEmails: true,
-          classReminders: true,
-          scheduleUpdates: true,
-          programAnnouncements: true,
-        },
-      },
       newsletterSubscriber: {
         select: {
           status: true,
+          source: true,
+          consentedAt: true,
+          subscribedAt: true,
+          verifiedAt: true,
+          unsubscribedAt: true,
+          updatedAt: true,
         },
       },
       healthProfile: {
         include: {
           selections: true,
+          revisions: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            include: {
+              updatedByUser: {
+                select: { id: true, firstName: true, lastName: true, name: true },
+              },
+            },
+          },
         },
       },
+      acceptanceEvents: {
+        where: {
+          type: {
+            in: [
+              AcceptanceType.terms,
+              AcceptanceType.health_waiver,
+              AcceptanceType.health_data,
+              AcceptanceType.coaching_agreement,
+            ],
+          },
+        },
+        orderBy: { acceptedAt: "desc" },
+        include: {
+          actor: { select: { id: true, firstName: true, lastName: true, name: true, email: true } },
+        },
+      },
+      coachingApplications: { select: { id: true }, take: 1 },
     },
   });
 
@@ -357,9 +426,53 @@ export async function getAdminMemberDetail(userId: string) {
     ? (await getInstructorProfilesByIds([user.instructorProfileEntryId]))[0]
     : null;
   const notification = toNotificationSnapshot({
-    notificationPreference: user.notificationPreference,
     newsletterSubscriber: user.newsletterSubscriber,
   });
+  const coachingAgreementApplies =
+    user.isCoachingClient ||
+    user.coachingApplications.length > 0 ||
+    user.acceptanceEvents.some((event) => event.type === AcceptanceType.coaching_agreement);
+  const acceptanceRequirements = [
+    { type: AcceptanceType.terms, surface: "admin_member_detail" },
+    {
+      type: AcceptanceType.health_waiver,
+      surface: "admin_member_detail",
+      maxAgeDays: PHYSICAL_SERVICE_HEALTH_WAIVER_MAX_AGE_DAYS,
+    },
+    { type: AcceptanceType.health_data, surface: "admin_member_detail" },
+    ...(coachingAgreementApplies
+      ? [{ type: AcceptanceType.coaching_agreement, surface: "admin_member_detail" }]
+      : []),
+  ];
+  const legalStates = await getAcceptanceRequirementStates(user.id, acceptanceRequirements);
+  const legalAgreements: AdminLegalAgreementDto[] = legalStates.map((state) => ({
+    type: state.type,
+    label: LEGAL_LABELS[state.type].label,
+    href: LEGAL_LABELS[state.type].href,
+    status: state.isCurrent
+      ? ("current" as const)
+      : state.staleReason === "version"
+        ? ("superseded" as const)
+        : state.staleReason === "expired"
+          ? ("expired" as const)
+          : ("missing" as const),
+    currentVersion: state.currentVersion,
+    acceptedVersion: state.acceptedVersion,
+    acceptedAt: state.acceptedAt,
+    expiresAt: state.expiresAt,
+  }));
+  if (!coachingAgreementApplies) {
+    legalAgreements.push({
+      type: AcceptanceType.coaching_agreement,
+      label: LEGAL_LABELS.coaching_agreement.label,
+      href: LEGAL_LABELS.coaching_agreement.href,
+      status: "not_applicable",
+      currentVersion: "",
+      acceptedVersion: null,
+      acceptedAt: null,
+      expiresAt: null,
+    });
+  }
 
   return {
     id: user.id,
@@ -400,6 +513,21 @@ export async function getAdminMemberDetail(userId: string) {
       by: entry.createdByUserId || "system",
     })),
     healthProfile: toAdminHealthProfile(user.healthProfile),
+    newsletterSubscription: toNewsletterSubscription(user.newsletterSubscriber),
+    legalAgreements,
+    legalAcceptanceHistory: user.acceptanceEvents.map((event) => ({
+      id: event.id,
+      type: event.type,
+      label: LEGAL_LABELS[event.type].label,
+      version: event.version,
+      acceptedAt: event.acceptedAt.toISOString(),
+      surface: event.acceptanceSurface,
+      actorName:
+        event.actor?.name ||
+        `${event.actor?.firstName || ""} ${event.actor?.lastName || ""}`.trim() ||
+        event.actor?.email ||
+        "System",
+    })),
   };
 }
 

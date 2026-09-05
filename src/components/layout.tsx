@@ -4,7 +4,7 @@ import { Header } from "./header";
 import { Footer } from "./footer";
 import { ScrollToTop } from "./scroll-to-top";
 import { NewsletterPopup } from "./newsletter";
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, Suspense, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 
@@ -16,11 +16,11 @@ interface LayoutProps {
 
 const NO_POPUP_PATHS = ["/blog", "/login", "/dashboard", "/unsubscribe", "/subscribe"];
 
-export function Layout({
-  children,
-  showFooterNewsletter = true,
-  footerVariant = "marketing",
-}: LayoutProps) {
+function NewsletterPopupController({
+  footerVariant,
+}: {
+  footerVariant: NonNullable<LayoutProps["footerVariant"]>;
+}) {
   const [showPopup, setShowPopup] = useState(false);
   const pathname = usePathname();
   const { isAuthenticated } = useAuth();
@@ -80,6 +80,14 @@ export function Layout({
     };
   }, [canShowPopup]);
 
+  return <NewsletterPopup isOpen={canShowPopup && showPopup} onClose={() => setShowPopup(false)} />;
+}
+
+export function Layout({
+  children,
+  showFooterNewsletter = true,
+  footerVariant = "marketing",
+}: LayoutProps) {
   return (
     <div className="flex min-h-screen flex-col">
       <a
@@ -88,13 +96,19 @@ export function Layout({
       >
         Skip to main content
       </a>
-      <ScrollToTop />
-      <Header />
+      <Suspense fallback={null}>
+        <ScrollToTop />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Header />
+      </Suspense>
       <main id="main-content" className="flex-1">
         {children}
       </main>
       <Footer showNewsletter={showFooterNewsletter} variant={footerVariant} />
-      <NewsletterPopup isOpen={canShowPopup && showPopup} onClose={() => setShowPopup(false)} />
+      <Suspense fallback={null}>
+        <NewsletterPopupController footerVariant={footerVariant} />
+      </Suspense>
     </div>
   );
 }

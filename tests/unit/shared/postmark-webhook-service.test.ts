@@ -8,7 +8,6 @@ const emailCampaignFindUniqueMock = vi.fn();
 const emailEventUpsertMock = vi.fn();
 const newsletterSubscriberFindUniqueMock = vi.fn();
 const newsletterSubscriberUpdateMock = vi.fn();
-const userNotificationPreferenceUpsertMock = vi.fn();
 
 vi.mock("@/lib/db", () => ({
   db: {
@@ -30,9 +29,6 @@ vi.mock("@/lib/db", () => ({
       findUnique: newsletterSubscriberFindUniqueMock,
       update: newsletterSubscriberUpdateMock,
     },
-    userNotificationPreference: {
-      upsert: userNotificationPreferenceUpsertMock,
-    },
   },
 }));
 
@@ -49,7 +45,6 @@ describe("ingestPostmarkEvent", () => {
     emailEventUpsertMock.mockResolvedValue(undefined);
     newsletterSubscriberFindUniqueMock.mockResolvedValue(null);
     newsletterSubscriberUpdateMock.mockResolvedValue(undefined);
-    userNotificationPreferenceUpsertMock.mockResolvedValue(undefined);
   });
 
   it("links events to a delivery via metadata and inherits the delivery campaign", async () => {
@@ -160,16 +155,6 @@ describe("ingestPostmarkEvent", () => {
         retryable: false,
         nextRetryAt: null,
       }),
-    });
-    expect(userNotificationPreferenceUpsertMock).toHaveBeenCalledWith({
-      where: { userId: "user_123" },
-      create: expect.objectContaining({
-        userId: "user_123",
-        marketingEmails: false,
-      }),
-      update: {
-        marketingEmails: false,
-      },
     });
   });
 });

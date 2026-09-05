@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api/auth-user";
 import { createMeetingToken, isDailyConfigured } from "@/lib/daily/service";
-import { getRetreatParticipantTokenContext } from "@/lib/retreats/live-service";
+import {
+  buildRetreatParticipantPermissions,
+  getRetreatParticipantTokenContext,
+} from "@/lib/retreats/live-service";
 import { isAcceptanceRequiredError } from "@/lib/legal/acceptance-service";
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
@@ -18,12 +21,10 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
       userName: access.userName,
       isOwner: false,
       expiresAt: access.expiresAt,
-      permissions: {
-        hasPresence: true,
-        canSend: ["video", "audio"],
-        canReceive: { base: true },
-        canAdmin: false,
-      },
+      permissions: buildRetreatParticipantPermissions({
+        mode: access.displayMode,
+        focusedPresenterUserId: access.focusedPresenterUserId,
+      }),
     });
     return NextResponse.json({
       token,

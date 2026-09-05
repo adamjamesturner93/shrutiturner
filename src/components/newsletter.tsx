@@ -20,7 +20,19 @@ export function NewsletterPopup({ isOpen, onClose }: NewsletterPopupProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [signupState, setSignupState] = useState<"pending" | "subscribed">("pending");
+  const [successMessage, setSuccessMessage] = useState("");
   const signupCopy = useNewsletterSignupCopy();
+
+  const closePopup = () => {
+    onClose();
+    setSubmitted(false);
+    setEmail("");
+    setFirstName("");
+    setConsent(false);
+    setTurnstileToken("");
+    setSuccessMessage("");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,15 +52,15 @@ export function NewsletterPopup({ isOpen, onClose }: NewsletterPopupProps) {
       return;
     }
 
+    const nextSignupState = result.state || "pending";
+    setSignupState(nextSignupState);
+    setSuccessMessage(
+      nextSignupState === "subscribed"
+        ? result.message ||
+            "You’re already confirmed. Keep an eye on your inbox for the next update."
+        : "Please check your inbox to confirm your email address."
+    );
     setSubmitted(true);
-    setTimeout(() => {
-      onClose();
-      setSubmitted(false);
-      setEmail("");
-      setFirstName("");
-      setConsent(false);
-      setTurnstileToken("");
-    }, 2000);
   };
 
   if (!isOpen) return null;
@@ -57,7 +69,7 @@ export function NewsletterPopup({ isOpen, onClose }: NewsletterPopupProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <div className="bg-background animate-in fade-in zoom-in relative w-full max-w-md rounded-lg border p-8 shadow-lg duration-200">
         <button
-          onClick={onClose}
+          onClick={closePopup}
           className="text-muted-foreground hover:text-foreground absolute top-4 right-4 transition-colors"
           aria-label="Close"
         >
@@ -129,8 +141,10 @@ export function NewsletterPopup({ isOpen, onClose }: NewsletterPopupProps) {
             <div className="bg-primary/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
               <Check className="text-primary h-8 w-8" />
             </div>
-            <h3 className="mb-2 text-xl">You&apos;re subscribed!</h3>
-            <p className="text-muted-foreground">{signupCopy.successMessage}</p>
+            <h3 className="mb-2 text-xl">
+              {signupState === "subscribed" ? "You’re already subscribed." : "Check your inbox."}
+            </h3>
+            <p className="text-muted-foreground">{successMessage}</p>
           </div>
         )}
       </div>
@@ -150,6 +164,8 @@ export function NewsletterInline({ buttonLabel }: NewsletterInlineProps = {}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [signupState, setSignupState] = useState<"pending" | "subscribed">("pending");
+  const [successMessage, setSuccessMessage] = useState("");
   const signupCopy = useNewsletterSignupCopy();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -170,14 +186,15 @@ export function NewsletterInline({ buttonLabel }: NewsletterInlineProps = {}) {
       return;
     }
 
+    const nextSignupState = result.state || "pending";
+    setSignupState(nextSignupState);
+    setSuccessMessage(
+      nextSignupState === "subscribed"
+        ? result.message ||
+            "You’re already confirmed. Keep an eye on your inbox for the next update."
+        : "Please check your inbox to confirm your email address."
+    );
     setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      setEmail("");
-      setFirstName("");
-      setConsent(false);
-      setTurnstileToken("");
-    }, 3000);
   };
 
   if (submitted) {
@@ -186,8 +203,10 @@ export function NewsletterInline({ buttonLabel }: NewsletterInlineProps = {}) {
         <div className="bg-primary/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
           <Check className="text-primary h-8 w-8" />
         </div>
-        <h3 className="mb-2 text-xl">You&apos;re subscribed!</h3>
-        <p className="text-muted-foreground">Check your inbox for a confirmation email.</p>
+        <h3 className="mb-2 text-xl">
+          {signupState === "subscribed" ? "You’re already subscribed." : "Check your inbox."}
+        </h3>
+        <p className="text-muted-foreground">{successMessage}</p>
       </div>
     );
   }
@@ -195,19 +214,32 @@ export function NewsletterInline({ buttonLabel }: NewsletterInlineProps = {}) {
   return (
     <form onSubmit={handleSubmit} className="mx-auto max-w-lg space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Input
-          type="text"
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-          placeholder="First name"
-        />
-        <Input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder={signupCopy.formPlaceholder}
-          required
-        />
+        <div className="space-y-2">
+          <Label htmlFor="newsletter-inline-first-name" className="sr-only">
+            First name
+          </Label>
+          <Input
+            id="newsletter-inline-first-name"
+            type="text"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            placeholder="First name"
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="newsletter-inline-email" className="sr-only">
+            Email address
+          </Label>
+          <Input
+            id="newsletter-inline-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder={signupCopy.formPlaceholder}
+            required
+          />
+        </div>
       </div>
 
       <Button

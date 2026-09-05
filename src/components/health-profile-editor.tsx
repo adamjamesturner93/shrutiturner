@@ -34,6 +34,7 @@ interface HealthProfileEditorProps {
   onSkip?: () => void;
   requireConsentAcknowledgement?: boolean;
   initialConsentAccepted?: boolean;
+  privacyMessage?: string;
 }
 
 export function HealthProfileEditor({
@@ -43,6 +44,7 @@ export function HealthProfileEditor({
   onSkip,
   requireConsentAcknowledgement = true,
   initialConsentAccepted = false,
+  privacyMessage = "This information is only visible to Shruti and is used to tailor sessions for your body. You can update or remove anything at any time. Individual details are never sold or shared for marketing; anonymised grouped patterns may be used for research, education or public posts.",
 }: HealthProfileEditorProps) {
   const safeProfile = normalizeHealthProfile(profile);
   const [conditions, setConditions] = useState<Record<string, boolean>>(() => ({
@@ -150,12 +152,7 @@ export function HealthProfileEditor({
       <div className="border-brand-accent/10 bg-brand-accent/5 flex items-start gap-3 rounded-lg border p-3">
         <Info className="text-brand-accent mt-0.5 h-4 w-4 flex-shrink-0" />
         <div className="text-muted-foreground text-xs leading-relaxed">
-          <p>
-            This information is only visible to Shruti and is used to tailor sessions for your body.
-            You can update or remove anything at any time. Individual details are never sold or
-            shared for marketing; anonymised grouped patterns may be used for research, education or
-            public posts.
-          </p>
+          <p>{privacyMessage}</p>
         </div>
       </div>
 

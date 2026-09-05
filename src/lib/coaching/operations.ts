@@ -163,7 +163,11 @@ export function getCoachingAdminTodos(
     }
   }
 
-  if (profile?.status === "completed" && profile.everfitConnectionStatus === "connected") {
+  if (
+    profile?.status === "completed" &&
+    profile.everfitConnectionStatus !== "not_started" &&
+    profile.everfitConnectionStatus !== "closed"
+  ) {
     todos.push({
       ...base,
       id: `close-everfit-${application.id}`,

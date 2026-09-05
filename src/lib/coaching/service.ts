@@ -894,7 +894,7 @@ export async function leaveCoachingWaitlist(userId: string) {
 
 export async function updateCoachingProfileManualSetupStatus(input: {
   profileId: string;
-  everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue" | "removed";
+  everfitConnectionStatus: "not_started" | "invite_sent" | "connected" | "sync_issue" | "closed";
   actorUserId?: string | null;
   requestId?: string | null;
   requestPath?: string | null;

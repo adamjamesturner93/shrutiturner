@@ -22,6 +22,7 @@ import {
   type CreateRetreatData,
 } from "@/components/admin/create-retreat-modal";
 import type { AdminRetreatSummaryDto } from "@/lib/api/types";
+import { formatRetreatDateTimeRange } from "@/lib/retreats/presentation";
 
 function formatCurrency(pence: number) {
   return new Intl.NumberFormat("en-GB", {
@@ -29,15 +30,6 @@ function formatCurrency(pence: number) {
     currency: "GBP",
     maximumFractionDigits: 0,
   }).format(pence / 100);
-}
-
-function formatDateRange(start: string, end: string) {
-  const formatter = new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-  return `${formatter.format(new Date(start))} - ${formatter.format(new Date(end))}`;
 }
 
 function statusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
@@ -204,7 +196,11 @@ export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSumma
                           </span>
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3.5 w-3.5" />
-                            {formatDateRange(retreat.startDate, retreat.endDate)}
+                            {formatRetreatDateTimeRange(
+                              retreat.startDate,
+                              retreat.endDate,
+                              retreat.timezone
+                            )}
                           </span>
                         </div>
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content/types";
 import {
+  formatRetreatDateTimeRange,
   getRetreatPriceSummary,
   getRetreatRoomOptionPriceSummary,
 } from "@/lib/retreats/presentation";
@@ -95,5 +96,54 @@ describe("retreat price presentation", () => {
       lowestPricePence: 42500,
       isFromPrice: false,
     });
+  });
+});
+
+describe("retreat date and time presentation", () => {
+  it("formats a one-day retreat with both times and one date", () => {
+    expect(
+      formatRetreatDateTimeRange(
+        "2027-10-05T07:30:00.000Z",
+        "2027-10-05T11:00:00.000Z",
+        "Europe/London"
+      )
+    ).toBe("08:30-12:00 5 October 2027");
+  });
+
+  it("formats a multi-day retreat in the same month without repeating the month or year", () => {
+    expect(
+      formatRetreatDateTimeRange(
+        "2027-10-04T07:30:00.000Z",
+        "2027-10-06T17:00:00.000Z",
+        "Europe/London"
+      )
+    ).toBe("08:30 4 - 18:00 6 October 2027");
+  });
+
+  it("keeps cross-month and cross-year ranges unambiguous", () => {
+    expect(
+      formatRetreatDateTimeRange(
+        "2027-09-30T07:30:00.000Z",
+        "2027-10-02T17:00:00.000Z",
+        "Europe/London"
+      )
+    ).toBe("08:30 30 September - 18:00 2 October 2027");
+    expect(
+      formatRetreatDateTimeRange(
+        "2027-12-31T08:30:00.000Z",
+        "2028-01-02T18:00:00.000Z",
+        "Europe/London"
+      )
+    ).toBe("08:30 31 December 2027 - 18:00 2 January 2028");
+  });
+
+  it("uses the retreat timezone when the local date differs from UTC", () => {
+    expect(
+      formatRetreatDateTimeRange(
+        "2027-07-01T23:30:00.000Z",
+        "2027-07-02T01:00:00.000Z",
+        "Europe/London"
+      )
+    ).toBe("00:30-02:00 2 July 2027");
   });
 });

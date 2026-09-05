@@ -23,10 +23,10 @@ import RetreatCancellationEmail, {
   RetreatCancellationAdminEmail,
 } from "@/emails/retreat-cancellation";
 import { assertCurrentAcceptances } from "@/lib/legal/acceptance-service";
-import { getAdminEmailAllowlist } from "@/lib/env";
 import { calculateRetreatRefund } from "@/lib/retreats/pricing";
 import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { getWorkshopSetupState } from "@/lib/retreats/workshop-setup";
+import { sendRetreatOperationalEmail } from "@/lib/retreats/notification-service";
 
 export type PublicGiftRedemptionState =
   | { state: "invalid"; gift: null }
@@ -102,31 +102,26 @@ async function sendRetreatGiftAdminNotification(giftId: string) {
   if (!gift?.retreatDate) return;
 
   const adminUrl = buildAbsoluteUrl(`/admin/retreats/${gift.retreatDate.id}`);
-  await Promise.allSettled(
-    getAdminEmailAllowlist().map((email) =>
-      sendPostmarkReactEmail({
-        to: email,
-        subject: `New retreat gift: ${gift.retreatDate!.retreatTitleSnapshot}`,
-        react: RetreatBookingAdminEmail({
-          purchaserName: `${gift.purchaserFirstName} ${gift.purchaserLastName}`.trim(),
-          purchaserEmail: gift.purchaserEmail,
-          retreatName: gift.retreatDate!.retreatTitleSnapshot,
-          retreatDates: formatDateRange(gift.retreatDate!.startsAt, gift.retreatDate!.endsAt),
-          selection: gift.retreatRoomOption?.label || "Retreat place",
-          guestCount: gift.retreatGuestCount || 1,
-          paymentSummary: `${formatCurrency(gift.totalPaidPence, gift.currency)} received in full.`,
-          adminUrl,
-          isGift: true,
-          recipientEmail: gift.recipientEmail,
-        }),
-        textBody: `New gift purchase for ${gift.retreatDate!.retreatTitleSnapshot}\nPurchaser: ${gift.purchaserFirstName} ${gift.purchaserLastName} (${gift.purchaserEmail})\nRecipient: ${gift.recipientEmail}\nSelection: ${gift.retreatRoomOption?.label || "Retreat place"}\nPaid: ${formatCurrency(gift.totalPaidPence, gift.currency)}\nOpen: ${adminUrl}`,
-        tag: "retreat-gift-admin",
-        templateKey: "retreat-gift-admin",
-        metadata: { giftPurchaseId: gift.id, retreatDateId: gift.retreatDate!.id },
-        dispatchMode: "immediate_best_effort",
-      })
-    )
-  );
+  await sendRetreatOperationalEmail({
+    subject: `New retreat gift: ${gift.retreatDate!.retreatTitleSnapshot}`,
+    react: RetreatBookingAdminEmail({
+      purchaserName: `${gift.purchaserFirstName} ${gift.purchaserLastName}`.trim(),
+      purchaserEmail: gift.purchaserEmail,
+      retreatName: gift.retreatDate!.retreatTitleSnapshot,
+      retreatDates: formatDateRange(gift.retreatDate!.startsAt, gift.retreatDate!.endsAt),
+      selection: gift.retreatRoomOption?.label || "Retreat place",
+      guestCount: gift.retreatGuestCount || 1,
+      paymentSummary: `${formatCurrency(gift.totalPaidPence, gift.currency)} received in full.`,
+      adminUrl,
+      isGift: true,
+      recipientEmail: gift.recipientEmail,
+    }),
+    textBody: `New gift purchase for ${gift.retreatDate!.retreatTitleSnapshot}\nPurchaser: ${gift.purchaserFirstName} ${gift.purchaserLastName} (${gift.purchaserEmail})\nRecipient: ${gift.recipientEmail}\nSelection: ${gift.retreatRoomOption?.label || "Retreat place"}\nPaid: ${formatCurrency(gift.totalPaidPence, gift.currency)}\nOpen: ${adminUrl}`,
+    tag: "retreat-gift-admin",
+    templateKey: "retreat-gift-admin",
+    metadata: { giftPurchaseId: gift.id, retreatDateId: gift.retreatDate!.id },
+    dispatchMode: "immediate_best_effort",
+  });
 }
 
 async function sendGiftDeliveryEmail(giftId: string) {

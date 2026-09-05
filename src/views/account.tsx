@@ -67,7 +67,7 @@ type AccountTab = "profile" | "preferences" | "notifications";
 const TABS: { key: AccountTab; label: string; icon: typeof User }[] = [
   { key: "profile", label: "Profile", icon: User },
   { key: "preferences", label: "Preferences", icon: Settings },
-  { key: "notifications", label: "Notifications", icon: Bell },
+  { key: "notifications", label: "Newsletter", icon: Bell },
 ];
 
 const ONBOARDING_STEP_LABELS: Record<OnboardingStateDto["missingSteps"][number], string> = {
@@ -130,10 +130,8 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
   const [timezone, setTimezone] = useState(initialAccount.profile.timezone || "Europe/London");
   const [dateFormat, setDateFormat] = useState(initialAccount.profile.dateFormat || "DD/MM/YYYY");
   const [notifications, setNotifications] = useState({
-    classReminders: initialAccount.notifications.classReminders,
-    scheduleUpdates: initialAccount.notifications.scheduleUpdates,
-    programAnnouncements: initialAccount.notifications.programAnnouncements,
-    marketingEmails: initialAccount.notifications.marketingEmails,
+    newsletterStatus: initialAccount.notifications.newsletterStatus,
+    newsletterSubscribed: initialAccount.notifications.newsletterSubscribed,
   });
 
   const [hasAgreedToTerms, setHasAgreedToTerms] = useState(initialAccount.profile.hasAgreedToTerms);
@@ -181,10 +179,8 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
     setHealthAgreedAt(data.profile.healthAgreedAt);
     setOnboardingState(data.profile.onboarding);
     setNotifications({
-      classReminders: data.notifications.classReminders,
-      scheduleUpdates: data.notifications.scheduleUpdates,
-      programAnnouncements: data.notifications.programAnnouncements,
-      marketingEmails: data.notifications.marketingEmails,
+      newsletterStatus: data.notifications.newsletterStatus,
+      newsletterSubscribed: data.notifications.newsletterSubscribed,
     });
     setNewEmail("");
     setEmailChangeCode("");
@@ -391,12 +387,12 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
       });
       if (!res.ok) {
         const payload = (await res.json().catch(() => null)) as unknown;
-        throw new Error(getApiErrorMessage(payload, "Failed to update notification preferences."));
+        throw new Error(getApiErrorMessage(payload, "Failed to update newsletter subscription."));
       }
       setNotificationsSaved(true);
       setTimeout(() => setNotificationsSaved(false), 3000);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to update notification preferences.");
+      setError(e instanceof Error ? e.message : "Failed to update newsletter subscription.");
     }
   };
 
@@ -868,77 +864,32 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
 
           {activeTab === "notifications" ? (
             <div className="space-y-8">
-              {/* <div className="bg-background space-y-4 rounded-lg border p-6">
-                <div className="mb-2 flex items-center gap-3">
-                  <Bell className="text-primary h-5 w-5" />
-                  <h2 className="text-xl">Coaching & Resource Notifications</h2>
-                </div>
-                <div className="space-y-3">
-                  <label className="flex items-center justify-between py-2">
-                    <span className="text-sm">Coaching reminders</span>
-                    <input
-                      type="checkbox"
-                      checked={notifications.classReminders}
-                      onChange={(e) =>
-                        setNotifications((prev) => ({
-                          ...prev,
-                          classReminders: e.target.checked,
-                        }))
-                      }
-                      className="accent-brand-accent"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between py-2">
-                    <span className="text-sm">New article and resource updates</span>
-                    <input
-                      type="checkbox"
-                      checked={notifications.scheduleUpdates}
-                      onChange={(e) =>
-                        setNotifications((prev) => ({
-                          ...prev,
-                          scheduleUpdates: e.target.checked,
-                        }))
-                      }
-                      className="accent-brand-accent"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between py-2">
-                    <span className="text-sm">Programme announcements</span>
-                    <input
-                      type="checkbox"
-                      checked={notifications.programAnnouncements}
-                      onChange={(e) =>
-                        setNotifications((prev) => ({
-                          ...prev,
-                          programAnnouncements: e.target.checked,
-                        }))
-                      }
-                      className="accent-brand-accent"
-                    />
-                  </label>
-                </div>
-              </div> */}
-
               <div className="bg-background space-y-4 rounded-lg border p-6">
                 <div className="mb-2 flex items-center gap-3">
                   <Mail className="text-primary h-5 w-5" />
-                  <h2 className="text-xl">Email Subscriptions</h2>
+                  <h2 className="text-xl">Newsletter</h2>
                 </div>
                 <div className="space-y-3">
                   <label className="flex items-center justify-between py-2">
                     <div>
-                      <span className="text-sm">Newsletter & Blog Updates</span>
+                      <span className="text-sm">Newsletter subscription</span>
                       <p className="text-muted-foreground text-xs">
-                        Articles, coaching updates and training insights
+                        Practical articles, adaptable training ideas and new events.
                       </p>
+                      {notifications.newsletterStatus === "pending" ? (
+                        <p className="mt-1 text-xs text-amber-700">
+                          Awaiting confirmation from the link in your email.
+                        </p>
+                      ) : null}
                     </div>
                     <input
                       type="checkbox"
-                      checked={notifications.marketingEmails}
+                      checked={notifications.newsletterSubscribed}
                       onChange={(e) =>
                         setNotifications((prev) => ({
                           ...prev,
-                          marketingEmails: e.target.checked,
+                          newsletterStatus: e.target.checked ? "subscribed" : "unsubscribed",
+                          newsletterSubscribed: e.target.checked,
                         }))
                       }
                       className="accent-brand-accent"
@@ -947,7 +898,7 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
                 </div>
                 <div className="flex items-center gap-3">
                   <Button variant="outline" onClick={handleNotificationsSave}>
-                    Update Preferences
+                    Update subscription
                   </Button>
                   {notificationsSaved ? (
                     <span className="text-brand-accent flex items-center gap-1 text-sm">

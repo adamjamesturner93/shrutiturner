@@ -6,6 +6,7 @@ import { useAuth } from "../../context/auth-context";
 import { DashboardLayout } from "../../components/dashboard-layout";
 import { MembershipPageSkeleton } from "../../components/dashboard-skeleton";
 import { LoadingRegion } from "@/components/loading-region";
+import { LegalAcceptanceChecklist } from "@/components/legal-acceptance-checklist";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import {
@@ -40,6 +41,7 @@ import {
   SUBSCRIPTION_DISCLOSURE_VERSION,
 } from "@/lib/billing/subscription-disclosure";
 import { getApiErrorMessage, isApiSuccess } from "@/lib/api/client";
+import type { AcceptanceRequirementState } from "@/lib/legal/acceptance-service";
 
 type CheckoutResult = {
   checkoutUrl: string;
@@ -51,16 +53,6 @@ type PortalResult = {
 
 type ChangePlanResult = {
   mode: "already_current" | "immediate" | "period_end";
-};
-
-type AcceptanceRequirementState = {
-  type: string;
-  surface: string;
-  currentVersion: string;
-  acceptedVersion: string | null;
-  policyVersionId: string;
-  acceptanceEventId: string | null;
-  isCurrent: boolean;
 };
 
 type CheckoutErrorResponse = {
@@ -129,7 +121,7 @@ export function MembershipPage({
   initialHistory?: BillingHistoryItemDto[];
   initialPricing?: PublicPricingDto | null;
 }) {
-  const { acceptTermsAndHealth, acceptHealthDataConsent, refreshAccountProfile } = useAuth();
+  const { refreshAccountProfile } = useAuth();
   const searchParams = useSearchParams();
   const hasServerData =
     initialState !== undefined && initialHistory !== undefined && initialPricing !== undefined;
@@ -148,6 +140,7 @@ export function MembershipPage({
   const [changePlanMessage, setChangePlanMessage] = useState("");
   const [showDisclosure, setShowDisclosure] = useState(false);
   const [pendingInterval, setPendingInterval] = useState<"monthly" | "annual" | null>(null);
+  const [pendingCreditBundle, setPendingCreditBundle] = useState<1 | 3 | 10 | null>(null);
   const [disclosureAccepted, setDisclosureAccepted] = useState(false);
   const [pendingLegalAcceptances, setPendingLegalAcceptances] = useState<
     AcceptanceRequirementState[]
@@ -312,39 +305,11 @@ export function MembershipPage({
     return result;
   };
 
-  const resolvePendingLegalAcceptances = async () => {
-    const needsTerms = pendingLegalAcceptances.some((item) => item.type === "terms");
-    const needsHealthWaiver = pendingLegalAcceptances.some((item) => item.type === "health_waiver");
-    const needsHealthData = pendingLegalAcceptances.some((item) => item.type === "health_data");
-    const unsupportedAcceptances = pendingLegalAcceptances.filter(
-      (item) =>
-        item.type !== "terms" && item.type !== "health_waiver" && item.type !== "health_data"
-    );
-
-    if (unsupportedAcceptances.length > 0) {
-      throw new Error("Some required agreements cannot be refreshed from this page yet.");
-    }
-
-    if (needsTerms || needsHealthWaiver) {
-      await acceptTermsAndHealth(needsTerms, needsHealthWaiver);
-    }
-
-    if (needsHealthData) {
-      await acceptHealthDataConsent();
-    }
-
-    await refreshAccountProfile();
-    setPendingLegalAcceptances([]);
-  };
-
   const continueToMembershipCheckout = async () => {
     if (!pendingInterval) return;
     setWorking(true);
     setError("");
     try {
-      if (pendingLegalAcceptances.length > 0) {
-        await resolvePendingLegalAcceptances();
-      }
       const payload = await requestMembershipCheckout();
       window.location.href = payload.checkoutUrl;
     } catch (e) {
@@ -354,6 +319,8 @@ export function MembershipPage({
   };
 
   const startCreditsCheckout = async (bundleSize: 1 | 3 | 10) => {
+    setPendingCreditBundle(bundleSize);
+    setPendingLegalAcceptances([]);
     setWorking(true);
     setError("");
     try {
@@ -365,9 +332,24 @@ export function MembershipPage({
           ...buildCreditCheckoutReturnPaths(bundleSize),
         }),
       });
-      const payload = await res.json().catch(() => null);
-      if (!res.ok)
-        throw new Error(getApiErrorMessage(payload, "Failed to start credits checkout."));
+      const payload = (await res.json().catch(() => null)) as
+        | CheckoutErrorResponse
+        | CheckoutResult
+        | null;
+      if (!res.ok) {
+        const checkoutError = extractCheckoutError(payload as CheckoutErrorResponse | null);
+        if (
+          res.status === 409 &&
+          checkoutError.code === "LEGAL_ACCEPTANCE_REQUIRED" &&
+          Array.isArray(checkoutError.requiredAcceptances)
+        ) {
+          setPendingLegalAcceptances(checkoutError.requiredAcceptances);
+          throw new Error(
+            "Updated legal agreements are required before checkout. Review them below to continue."
+          );
+        }
+        throw new Error(checkoutError.message);
+      }
       const result = unwrapApiData<CheckoutResult>(payload);
       if (!result?.checkoutUrl) throw new Error("Failed to start credits checkout.");
       window.location.href = result.checkoutUrl;
@@ -1393,8 +1375,8 @@ export function MembershipPage({
                       ))}
                     </ul>
                     <p className="text-amber-900/80">
-                      Continue again to record the current versions on your account, then checkout
-                      will restart automatically.
+                      Explicitly acknowledge each current document below. Checkout restarts only
+                      after every acceptance is recorded.
                     </p>
                   </div>
                 </div>
@@ -1439,6 +1421,20 @@ export function MembershipPage({
               <span>{disclosure.acknowledgementLabel}</span>
             </label>
 
+            {pendingLegalAcceptances.length > 0 ? (
+              <LegalAcceptanceChecklist
+                acceptances={pendingLegalAcceptances}
+                surface="membership_checkout"
+                busy={working}
+                disabled={!disclosureAccepted}
+                onAccepted={async () => {
+                  await refreshAccountProfile();
+                  setPendingLegalAcceptances([]);
+                  await continueToMembershipCheckout();
+                }}
+              />
+            ) : null}
+
             <p className="text-muted-foreground text-xs leading-relaxed">
               Version {disclosure.version}. You can also review the{" "}
               <a href="/terms" className="text-primary underline">
@@ -1466,17 +1462,41 @@ export function MembershipPage({
             </Button>
             <Button
               onClick={() => void continueToMembershipCheckout()}
-              disabled={working || !disclosureAccepted}
+              disabled={working || !disclosureAccepted || pendingLegalAcceptances.length > 0}
             >
-              {working
-                ? pendingLegalAcceptances.length > 0
-                  ? "Refreshing agreements..."
-                  : "Opening checkout..."
-                : pendingLegalAcceptances.length > 0
-                  ? "Accept agreements and continue"
-                  : "Acknowledge and continue"}
+              {working ? "Opening checkout..." : "Acknowledge and continue"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={pendingCreditBundle !== null && pendingLegalAcceptances.length > 0}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingCreditBundle(null);
+            setPendingLegalAcceptances([]);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Review agreements before checkout</DialogTitle>
+            <DialogDescription>
+              Each current agreement must be acknowledged before a class-credit payment can begin.
+            </DialogDescription>
+          </DialogHeader>
+          <LegalAcceptanceChecklist
+            acceptances={pendingLegalAcceptances}
+            surface="credit_checkout"
+            busy={working}
+            onAccepted={async () => {
+              const bundle = pendingCreditBundle;
+              await refreshAccountProfile();
+              setPendingLegalAcceptances([]);
+              if (bundle) await startCreditsCheckout(bundle);
+            }}
+          />
         </DialogContent>
       </Dialog>
     </DashboardLayout>

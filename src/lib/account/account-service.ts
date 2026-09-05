@@ -19,10 +19,10 @@ import {
   recordAcceptanceEvent,
 } from "@/lib/legal/acceptance-service";
 import { recordUserLifecycleEvent } from "@/lib/user-lifecycle";
-import type { HealthDeclarationStatusDto } from "@/lib/api/types";
+import type { HealthDeclarationStatusDto, NotificationPreferencesDto } from "@/lib/api/types";
 
 const ACCOUNT_MARKETING_CONSENT_WORDING =
-  "I want to receive marketing emails, newsletter updates and occasional offers from Shruti Turner. I can unsubscribe at any time.";
+  "I want to receive Shruti Turner's newsletter, including practical articles, adaptable training ideas and new events. I can unsubscribe at any time.";
 
 const DATE_FORMATS = new Set(["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"]);
 
@@ -52,10 +52,7 @@ export type AccountUpdateInput = {
 };
 
 export type NotificationPreferenceInput = {
-  classReminders?: boolean;
-  scheduleUpdates?: boolean;
-  programAnnouncements?: boolean;
-  marketingEmails?: boolean;
+  newsletterSubscribed?: boolean;
 };
 
 function calculateAge(dob: Date): number {
@@ -68,10 +65,19 @@ function calculateAge(dob: Date): number {
   return age;
 }
 
-async function getOrCreateNotificationPreferences(userId: string) {
-  const existing = await db.userNotificationPreference.findUnique({ where: { userId } });
-  if (existing) return existing;
-  return db.userNotificationPreference.create({ data: { userId } });
+async function getNewsletterPreferenceSnapshot(userId: string) {
+  const subscriber = await db.newsletterSubscriber.findUnique({
+    where: { userId },
+    select: { status: true, updatedAt: true },
+  });
+  const newsletterStatus: NotificationPreferencesDto["newsletterStatus"] =
+    subscriber?.status || "never_subscribed";
+  return {
+    userId,
+    newsletterStatus,
+    newsletterSubscribed: newsletterStatus === "subscribed",
+    updatedAt: subscriber?.updatedAt || new Date(0),
+  };
 }
 
 function mapLegalAcceptance<T extends LegalAcceptanceShape>(user: T) {
@@ -117,6 +123,7 @@ function mapHealthDeclaration(
     declarationStatus: "none_declared" | "context_declared";
     lastConfirmedAt: Date;
     tracksFlareCheckIns: boolean;
+    reviewRequestedAt: Date | null;
   } | null
 ) {
   const healthDeclarationStatus: HealthDeclarationStatusDto =
@@ -127,7 +134,8 @@ function mapHealthDeclaration(
     hasHealthProfile: healthDeclarationStatus !== "incomplete",
     healthDeclarationStatus,
     healthDeclarationLastConfirmedAt,
-    healthDeclarationNeedsReview: needsHealthDeclarationReview(profile?.lastConfirmedAt),
+    healthDeclarationNeedsReview:
+      Boolean(profile?.reviewRequestedAt) || needsHealthDeclarationReview(profile?.lastConfirmedAt),
     tracksFlareCheckIns: profile?.tracksFlareCheckIns ?? false,
   };
 }
@@ -168,7 +176,7 @@ export async function getAccount(userId: string, siteUrl: string) {
         isCoachingClient: true,
       },
     }),
-    getOrCreateNotificationPreferences(userId),
+    getNewsletterPreferenceSnapshot(userId),
     getReferralSummary(userId, siteUrl),
   ]);
 
@@ -180,6 +188,7 @@ export async function getAccount(userId: string, siteUrl: string) {
       declarationStatus: true,
       lastConfirmedAt: true,
       tracksFlareCheckIns: true,
+      reviewRequestedAt: true,
     },
   });
   const healthDeclaration = mapHealthDeclaration(healthProfile);
@@ -379,6 +388,7 @@ export async function updateAccount(userId: string, input: AccountUpdateInput) {
       declarationStatus: true,
       lastConfirmedAt: true,
       tracksFlareCheckIns: true,
+      reviewRequestedAt: true,
     },
   });
   const healthDeclaration = mapHealthDeclaration(healthProfile);
@@ -538,7 +548,7 @@ export async function confirmEmailChange(
 }
 
 export async function getNotificationPreferences(userId: string) {
-  const preferences = await getOrCreateNotificationPreferences(userId);
+  const preferences = await getNewsletterPreferenceSnapshot(userId);
   return mapNotificationPreferences(preferences);
 }
 
@@ -546,30 +556,12 @@ export async function updateNotificationPreferences(
   userId: string,
   input: NotificationPreferenceInput
 ) {
-  await getOrCreateNotificationPreferences(userId);
-
-  const data: NotificationPreferenceInput = {};
-  for (const key of [
-    "classReminders",
-    "scheduleUpdates",
-    "programAnnouncements",
-    "marketingEmails",
-  ] as const) {
-    if (typeof input[key] === "boolean") data[key] = input[key];
-  }
-
-  const updated = await db.userNotificationPreference.update({
-    where: { userId },
-    data,
-  });
-
-  if (typeof data.marketingEmails === "boolean") {
-    await syncMarketingPreferenceForUser(userId, data.marketingEmails, {
+  if (typeof input.newsletterSubscribed === "boolean") {
+    await syncMarketingPreferenceForUser(userId, input.newsletterSubscribed, {
       source: "account",
       surface: "account_notifications",
       wordingText: ACCOUNT_MARKETING_CONSENT_WORDING,
     });
   }
-
-  return mapNotificationPreferences(updated);
+  return getNotificationPreferences(userId);
 }

@@ -2,15 +2,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const findBookingMock = vi.fn();
 const findRetreatDateMock = vi.fn();
+const updateRetreatDateMock = vi.fn();
 const findUserOrThrowMock = vi.fn();
 const canManageRetreatDateMock = vi.fn();
 const setUpRetreatOnlineRoomMock = vi.fn();
 const assertCurrentAcceptancesMock = vi.fn();
+const findRetreatAttendancesMock = vi.fn();
+const updateRoomPermissionsMock = vi.fn();
 
 vi.mock("@/lib/db", () => ({
   db: {
     retreatBooking: { findFirst: findBookingMock },
-    retreatDate: { findUnique: findRetreatDateMock },
+    retreatDate: { findUnique: findRetreatDateMock, update: updateRetreatDateMock },
+    retreatLiveAttendance: { findMany: findRetreatAttendancesMock },
     user: { findUniqueOrThrow: findUserOrThrowMock },
   },
 }));
@@ -31,6 +35,10 @@ vi.mock("@/lib/legal/acceptance-service", () => ({
   assertCurrentAcceptances: assertCurrentAcceptancesMock,
   getPhysicalServiceAcceptanceRequirements: vi.fn(() => []),
   getAcceptanceRequirementStates: vi.fn(() => []),
+}));
+
+vi.mock("@/lib/daily/service", () => ({
+  updateRoomPermissions: updateRoomPermissionsMock,
 }));
 
 const service = await import("@/lib/retreats/live-service");
@@ -74,6 +82,8 @@ describe("retreat live access boundaries", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     assertCurrentAcceptancesMock.mockResolvedValue([]);
+    findRetreatAttendancesMock.mockResolvedValue([]);
+    updateRoomPermissionsMock.mockResolvedValue({});
     findUserOrThrowMock.mockResolvedValue({
       firstName: "Asha",
       lastName: "Khan",
@@ -99,6 +109,23 @@ describe("retreat live access boundaries", () => {
       canModerate: false,
       canPublishReplay: false,
       roomState: "prepared",
+    });
+  });
+
+  it("limits presenter mode attendees to instructor video while preserving room audio", () => {
+    expect(
+      service.buildRetreatParticipantPermissions({
+        mode: "presenter",
+        focusedPresenterUserId: "host_1",
+      })
+    ).toEqual({
+      hasPresence: true,
+      canSend: ["video", "audio"],
+      canReceive: {
+        base: ["audio"],
+        byUserId: { host_1: true },
+      },
+      canAdmin: false,
     });
   });
 
@@ -128,5 +155,82 @@ describe("retreat live access boundaries", () => {
     const result = await service.getRetreatHostTokenContext("retreat_1", "host_1");
     expect(setUpRetreatOnlineRoomMock).toHaveBeenCalledWith("retreat_1");
     expect(result).toMatchObject({ participantRole: "host", canModerate: true });
+  });
+
+  it("persists presenter view when a host turns community mode off", async () => {
+    canManageRetreatDateMock.mockResolvedValue(true);
+    findRetreatDateMock.mockResolvedValue({
+      ...booking().retreatDate,
+      startsAt: new Date(),
+      timezone: "Europe/London",
+      capacity: 12,
+    });
+    updateRetreatDateMock.mockResolvedValue({
+      ...booking().retreatDate,
+      liveDisplayMode: "presenter",
+      liveDisplayVersion: 2,
+      focusedPresenterUserId: "host_1",
+    });
+
+    const result = await service.updateRetreatDisplayMode({
+      retreatDateId: "retreat_1",
+      userId: "host_1",
+      mode: "presenter",
+    });
+
+    expect(updateRetreatDateMock).toHaveBeenCalledWith({
+      where: { id: "retreat_1" },
+      data: {
+        liveDisplayMode: "presenter",
+        focusedPresenterUserId: "host_1",
+        liveDisplayVersion: { increment: 1 },
+      },
+    });
+    expect(result).toMatchObject({
+      retreatDate: {
+        liveDisplayMode: "presenter",
+        focusedPresenterUserId: "host_1",
+      },
+      dailySyncStatus: "skipped",
+    });
+  });
+
+  it("updates active attendee permissions when the host changes visibility mode", async () => {
+    canManageRetreatDateMock.mockResolvedValue(true);
+    findRetreatDateMock.mockResolvedValue({
+      ...booking().retreatDate,
+      startsAt: new Date(),
+      timezone: "Europe/London",
+      capacity: 12,
+    });
+    updateRetreatDateMock.mockResolvedValue({
+      ...booking().retreatDate,
+      liveDisplayMode: "presenter",
+      liveDisplayVersion: 2,
+      focusedPresenterUserId: "host_1",
+    });
+    findRetreatAttendancesMock.mockResolvedValue([
+      { dailySessionId: "daily_attendee_1" },
+      { dailySessionId: "daily_attendee_2" },
+    ]);
+
+    const result = await service.updateRetreatDisplayMode({
+      retreatDateId: "retreat_1",
+      userId: "host_1",
+      mode: "presenter",
+    });
+
+    expect(updateRoomPermissionsMock).toHaveBeenCalledWith({
+      roomName: "room_1",
+      data: {
+        daily_attendee_1: expect.objectContaining({
+          canReceive: { base: ["audio"], byUserId: { host_1: true } },
+        }),
+        daily_attendee_2: expect.objectContaining({
+          canReceive: { base: ["audio"], byUserId: { host_1: true } },
+        }),
+      },
+    });
+    expect(result.dailySyncStatus).toBe("synced");
   });
 });

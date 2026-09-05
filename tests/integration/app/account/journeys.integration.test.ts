@@ -60,7 +60,7 @@ describe("account journeys integration", () => {
     });
   });
 
-  it("persists notification settings and syncs marketing preference changes", async () => {
+  it("persists the canonical newsletter subscription preference", async () => {
     const email = createAccountTestEmail("notifications", "member");
     const user = await db.user.create({
       data: {
@@ -69,23 +69,18 @@ describe("account journeys integration", () => {
     });
 
     const updated = await updateNotificationPreferences(user.id, {
-      classReminders: false,
-      scheduleUpdates: false,
-      programAnnouncements: true,
-      marketingEmails: false,
+      newsletterSubscribed: false,
     });
 
     expect(updated).toMatchObject({
-      classReminders: false,
-      scheduleUpdates: false,
-      programAnnouncements: true,
-      marketingEmails: false,
+      newsletterStatus: "never_subscribed",
+      newsletterSubscribed: false,
     });
     expect(syncMarketingPreferenceForUserMock).toHaveBeenCalledWith(user.id, false, {
       source: "account",
       surface: "account_notifications",
       wordingText:
-        "I want to receive marketing emails, newsletter updates and occasional offers from Shruti Turner. I can unsubscribe at any time.",
+        "I want to receive Shruti Turner's newsletter, including practical articles, adaptable training ideas and new events. I can unsubscribe at any time.",
     });
   });
 

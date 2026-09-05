@@ -2,8 +2,9 @@ import { Prisma } from "@prisma/client";
 import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { db } from "@/lib/db";
 import { syncMarketingPreferenceForUser } from "@/lib/newsletter/subscriber-service";
+import { getPostmarkOutboundStats } from "@/lib/postmark/stats-service";
 
-export type SubscriptionType = "subscribed" | "unsubscribed";
+export type SubscriptionType = "pending" | "subscribed" | "unsubscribed";
 
 export type AdminSubscriberDto = {
   id: string;
@@ -11,13 +12,17 @@ export type AdminSubscriberDto = {
   email: string;
   firstName: string | null;
   lastName: string | null;
-  marketingSubscribed: boolean;
-  subscriptionType: SubscriptionType;
+  status: SubscriptionType;
   source: string | null;
+  consentedAt: string | null;
+  subscribedAt: string;
+  verifiedAt: string | null;
+  unsubscribedAt: string | null;
   updatedAt: string;
 };
 
 export type AdminSubscriberSegmentSummaryDto = {
+  pending: number;
   subscribed: number;
   unsubscribed: number;
   total: number;
@@ -49,6 +54,7 @@ export type AdminNewsletterCampaignSummaryDto = {
   sourceSystem: string;
   messageStream: string | null;
   trackingState: "available" | "awaiting" | "unavailable";
+  reportingSource: "postmark_api" | "event_history";
   attentionReasons: string[];
   errorSummary: string | null;
 };
@@ -60,6 +66,7 @@ export type AdminNewsletterCampaignDetailDto = AdminNewsletterCampaignSummaryDto
 
 export type AdminNewsletterSummaryDto = {
   totalSubscribers: number;
+  pending: number;
   subscribed: number;
   unsubscribed: number;
   unsubscribes30d: number;
@@ -78,6 +85,19 @@ export type AdminNewsletterSummaryDto = {
     unsubscribed: number;
   }>;
   campaigns: AdminNewsletterCampaignSummaryDto[];
+  postmarkOverview: null | {
+    messageStream: string;
+    sent: number;
+    delivered: number;
+    uniqueOpens: number;
+    uniqueClicks: number;
+    bounced: number;
+    spamComplaints: number;
+    deliveryRate: number;
+    openRate: number;
+    clickRate: number;
+    bounceRate: number;
+  };
   campaignsPagination: {
     page: number;
     pageSize: number;
@@ -117,10 +137,6 @@ export type AdminNewsletterSummaryDto = {
     }>;
   };
 };
-
-function toSubscriptionType(marketingSubscribed: boolean): SubscriptionType {
-  return marketingSubscribed ? "subscribed" : "unsubscribed";
-}
 
 function toPercent(value: number, total: number) {
   if (total <= 0) return 0;
@@ -250,15 +266,17 @@ function buildCampaignWhere(params: {
 }
 
 export async function getSubscriberSegmentSummary(): Promise<AdminSubscriberSegmentSummaryDto> {
-  const [subscribed, unsubscribed] = await Promise.all([
+  const [pending, subscribed, unsubscribed] = await Promise.all([
+    db.newsletterSubscriber.count({ where: { status: "pending" } }),
     db.newsletterSubscriber.count({ where: { status: "subscribed" } }),
     db.newsletterSubscriber.count({ where: { status: "unsubscribed" } }),
   ]);
 
   return {
+    pending,
     subscribed,
     unsubscribed,
-    total: subscribed + unsubscribed,
+    total: pending + subscribed + unsubscribed,
   };
 }
 
@@ -274,7 +292,7 @@ export async function listAdminSubscribers(params: {
   const type = params.type || "all";
 
   const where: Prisma.NewsletterSubscriberWhereInput = {
-    status: type === "all" ? undefined : type === "subscribed" ? "subscribed" : "unsubscribed",
+    status: type === "all" ? undefined : type,
     OR: search
       ? [
           { email: { contains: search, mode: "insensitive" } },
@@ -297,7 +315,12 @@ export async function listAdminSubscribers(params: {
         email: true,
         userId: true,
         status: true,
+        firstName: true,
         source: true,
+        consentedAt: true,
+        subscribedAt: true,
+        verifiedAt: true,
+        unsubscribedAt: true,
         updatedAt: true,
         user: {
           select: {
@@ -310,16 +333,18 @@ export async function listAdminSubscribers(params: {
   ]);
 
   const items: AdminSubscriberDto[] = subscribers.map((subscriber) => {
-    const marketingSubscribed = subscriber.status === "subscribed";
     return {
       id: subscriber.id,
       userId: subscriber.userId,
       email: subscriber.email,
-      firstName: subscriber.user?.firstName || null,
+      firstName: subscriber.user?.firstName || subscriber.firstName || null,
       lastName: subscriber.user?.lastName || null,
-      marketingSubscribed,
-      subscriptionType: toSubscriptionType(marketingSubscribed),
+      status: subscriber.status,
       source: subscriber.source || null,
+      consentedAt: subscriber.consentedAt?.toISOString() || null,
+      subscribedAt: subscriber.subscribedAt.toISOString(),
+      verifiedAt: subscriber.verifiedAt?.toISOString() || null,
+      unsubscribedAt: subscriber.unsubscribedAt?.toISOString() || null,
       updatedAt: subscriber.updatedAt.toISOString(),
     };
   });
@@ -336,14 +361,14 @@ export async function listAdminSubscribers(params: {
 export async function updateAdminSubscriber(
   identifier: string,
   updates: {
-    marketingEmails?: boolean;
+    status?: "unsubscribed";
     actorUserId?: string | null;
     requestId?: string | null;
     requestPath?: string | null;
     requestIp?: string | null;
   }
 ) {
-  if (typeof updates.marketingEmails !== "boolean") {
+  if (updates.status !== "unsubscribed") {
     throw new Error("INVALID_UPDATE");
   }
 
@@ -357,7 +382,10 @@ export async function updateAdminSubscriber(
       email: true,
       status: true,
       source: true,
+      consentedAt: true,
       subscribedAt: true,
+      verifiedAt: true,
+      unsubscribedAt: true,
       updatedAt: true,
       user: {
         select: {
@@ -368,24 +396,19 @@ export async function updateAdminSubscriber(
     },
   });
   if (!existing) throw new Error("NOT_FOUND");
-  if (updates.marketingEmails && existing.status !== "subscribed") {
-    throw new Error("SELF_SERVICE_OPT_IN_REQUIRED");
-  }
-
   if (existing.userId) {
-    await syncMarketingPreferenceForUser(existing.userId, updates.marketingEmails);
+    await syncMarketingPreferenceForUser(existing.userId, false);
   } else {
     await db.newsletterSubscriber.update({
       where: { id: existing.id },
       data: {
-        status: updates.marketingEmails ? "subscribed" : "unsubscribed",
-        subscribedAt: updates.marketingEmails ? new Date() : existing.subscribedAt,
-        unsubscribedAt: updates.marketingEmails ? null : new Date(),
+        status: "unsubscribed",
+        unsubscribedAt: new Date(),
       },
     });
   }
 
-  if (!updates.marketingEmails) {
+  {
     await db.emailDelivery.updateMany({
       where: {
         toEmail: existing.email.trim().toLowerCase(),
@@ -411,7 +434,12 @@ export async function updateAdminSubscriber(
       userId: true,
       email: true,
       status: true,
+      firstName: true,
       source: true,
+      consentedAt: true,
+      subscribedAt: true,
+      verifiedAt: true,
+      unsubscribedAt: true,
       updatedAt: true,
       user: {
         select: {
@@ -423,16 +451,18 @@ export async function updateAdminSubscriber(
   });
   if (!refreshed) throw new Error("NOT_FOUND");
 
-  const marketingSubscribed = refreshed.status === "subscribed";
   const result = {
     id: refreshed.id,
     userId: refreshed.userId,
     email: refreshed.email,
-    firstName: refreshed.user?.firstName || null,
+    firstName: refreshed.user?.firstName || refreshed.firstName || null,
     lastName: refreshed.user?.lastName || null,
-    marketingSubscribed,
-    subscriptionType: toSubscriptionType(marketingSubscribed),
+    status: refreshed.status,
     source: refreshed.source || null,
+    consentedAt: refreshed.consentedAt?.toISOString() || null,
+    subscribedAt: refreshed.subscribedAt.toISOString(),
+    verifiedAt: refreshed.verifiedAt?.toISOString() || null,
+    unsubscribedAt: refreshed.unsubscribedAt?.toISOString() || null,
     updatedAt: refreshed.updatedAt.toISOString(),
   };
 
@@ -577,6 +607,7 @@ export async function getAdminNewsletterSummary(
     dateRange: params.campaignDateRange,
   });
   const [
+    postmarkStats,
     segments,
     subscriberUnsubscribes30d,
     newSubscribers30d,
@@ -588,6 +619,14 @@ export async function getAdminNewsletterSummary(
     campaignTotal,
     campaigns,
   ] = await Promise.all([
+    getPostmarkOutboundStats({
+      range:
+        params.campaignDateRange === "7d" ||
+        params.campaignDateRange === "30d" ||
+        params.campaignDateRange === "90d"
+          ? params.campaignDateRange
+          : "all",
+    }),
     getSubscriberSegmentSummary(),
     db.newsletterSubscriber.count({
       where: {
@@ -647,7 +686,13 @@ export async function getAdminNewsletterSummary(
           select: { type: true, metadataJson: true },
         },
         emailDeliveries: {
-          select: { status: true, messageStream: true, lastError: true, resolvedAt: true },
+          select: {
+            status: true,
+            messageStream: true,
+            tag: true,
+            lastError: true,
+            resolvedAt: true,
+          },
         },
       },
     }),
@@ -662,7 +707,13 @@ export async function getAdminNewsletterSummary(
           select: { type: true, metadataJson: true },
         },
         emailDeliveries: {
-          select: { status: true, messageStream: true, lastError: true, resolvedAt: true },
+          select: {
+            status: true,
+            messageStream: true,
+            tag: true,
+            lastError: true,
+            resolvedAt: true,
+          },
         },
       },
     }),
@@ -689,77 +740,97 @@ export async function getAdminNewsletterSummary(
     sourceMap.set(source, existing);
   }
 
-  const campaignDtos: AdminNewsletterCampaignSummaryDto[] = campaigns.map((campaign) => {
-    const agg = aggregateCampaignRows(campaign.emailEvents);
-    const totalRecipients = Math.max(
-      campaign.sentCount + campaign.failedCount,
-      agg.delivered + agg.bounced,
-      agg.delivered
-    );
-    const deliveredOrTotal = Math.max(totalRecipients, 1);
-    const delivered = Math.max(agg.delivered, campaign.sentCount, 0);
-    const sentDate = campaign.sentAt || campaign.scheduledAt || campaign.createdAt;
-    const trackingState = getCampaignTrackingState({
-      eventCount: campaign.emailEvents.length,
-      sentDate,
-    });
-    const bounceRate = toPercent(agg.bounced, deliveredOrTotal);
-    const unresolvedDeliveryError = campaign.emailDeliveries.find(
-      (delivery) =>
-        !delivery.resolvedAt &&
-        (delivery.status === "failed" || delivery.status === "dead_letter") &&
-        delivery.lastError
-    )?.lastError;
-    const errorSummary = campaign.errorSummary || unresolvedDeliveryError || null;
-    const attentionReasons = getCampaignAttentionReasons({
-      failedCount: campaign.failedCount,
-      status: campaign.status,
-      bounceRate,
-      spamComplaints: agg.spamComplaints,
-      errorSummary,
-    });
-    return {
-      id: campaign.id,
-      providerCampaignId: campaign.providerCampaignId,
-      subject: campaign.subject,
-      status:
-        campaign.status === "scheduled" ||
-        campaign.status === "sending" ||
-        campaign.status === "failed" ||
-        campaign.status === "failed_partial"
-          ? (campaign.status as "scheduled" | "sending" | "failed" | "failed_partial")
-          : "sent",
-      sentDate: sentDate.toISOString(),
-      totalRecipients,
-      delivered,
-      opened: agg.opened,
-      clicked: agg.clicked,
-      bounced: agg.bounced,
-      spamComplaints: agg.spamComplaints,
-      unsubscribed: agg.unsubscribed,
-      failedSends: campaign.failedCount,
-      deliveryRate: toPercent(delivered, deliveredOrTotal),
-      openRate:
-        trackingState === "available" ? toPercent(agg.opened, Math.max(delivered, 1)) : null,
-      clickRate:
-        trackingState === "available" ? toPercent(agg.clicked, Math.max(delivered, 1)) : null,
-      clickToOpenRate:
-        trackingState === "available" ? toPercent(agg.clicked, Math.max(agg.opened, 1)) : null,
-      unsubscribeRate: toPercent(agg.unsubscribed, deliveredOrTotal),
-      bounceRate,
-      complaintRate: toPercent(agg.spamComplaints, deliveredOrTotal),
-      audienceType: campaign.audienceType || null,
-      triggeredBy: campaign.triggeredBy || null,
-      sourceSystem: getCampaignSourceSystem(campaign),
-      messageStream:
-        campaign.stream ||
-        campaign.emailDeliveries.find((delivery) => delivery.messageStream)?.messageStream ||
-        null,
-      trackingState,
-      attentionReasons,
-      errorSummary,
-    };
-  });
+  const campaignDtos: AdminNewsletterCampaignSummaryDto[] = await Promise.all(
+    campaigns.map(async (campaign) => {
+      const agg = aggregateCampaignRows(campaign.emailEvents);
+      const reportingDelivery = campaign.emailDeliveries.find((delivery) =>
+        delivery.tag?.startsWith("newsletter-campaign-")
+      );
+      const providerStats = reportingDelivery?.tag
+        ? await getPostmarkOutboundStats({
+            tag: reportingDelivery.tag,
+            messageStream: reportingDelivery.messageStream || campaign.stream || undefined,
+          })
+        : null;
+      const totalRecipients = Math.max(
+        campaign.sentCount + campaign.failedCount,
+        (providerStats?.sent || 0) + campaign.failedCount,
+        (providerStats?.delivered || agg.delivered) + (providerStats?.bounced || agg.bounced),
+        providerStats?.delivered || agg.delivered
+      );
+      const deliveredOrTotal = Math.max(totalRecipients, 1);
+      const delivered = providerStats
+        ? providerStats.delivered
+        : Math.max(agg.delivered, campaign.sentCount, 0);
+      const opened = providerStats?.uniqueOpens ?? agg.opened;
+      const clicked = providerStats?.uniqueClicks ?? agg.clicked;
+      const bounced = providerStats?.bounced ?? agg.bounced;
+      const spamComplaints = providerStats?.spamComplaints ?? agg.spamComplaints;
+      const sentDate = campaign.sentAt || campaign.scheduledAt || campaign.createdAt;
+      const trackingState = getCampaignTrackingState({
+        eventCount: providerStats
+          ? providerStats.sent + providerStats.tracked
+          : campaign.emailEvents.length,
+        sentDate,
+      });
+      const bounceRate = toPercent(bounced, deliveredOrTotal);
+      const unresolvedDeliveryError = campaign.emailDeliveries.find(
+        (delivery) =>
+          !delivery.resolvedAt &&
+          (delivery.status === "failed" || delivery.status === "dead_letter") &&
+          delivery.lastError
+      )?.lastError;
+      const errorSummary = campaign.errorSummary || unresolvedDeliveryError || null;
+      const attentionReasons = getCampaignAttentionReasons({
+        failedCount: campaign.failedCount,
+        status: campaign.status,
+        bounceRate,
+        spamComplaints,
+        errorSummary,
+      });
+      return {
+        id: campaign.id,
+        providerCampaignId: campaign.providerCampaignId,
+        subject: campaign.subject,
+        status:
+          campaign.status === "scheduled" ||
+          campaign.status === "sending" ||
+          campaign.status === "failed" ||
+          campaign.status === "failed_partial"
+            ? (campaign.status as "scheduled" | "sending" | "failed" | "failed_partial")
+            : "sent",
+        sentDate: sentDate.toISOString(),
+        totalRecipients,
+        delivered,
+        opened,
+        clicked,
+        bounced,
+        spamComplaints,
+        unsubscribed: agg.unsubscribed,
+        failedSends: campaign.failedCount,
+        deliveryRate: toPercent(delivered, deliveredOrTotal),
+        openRate: trackingState === "available" ? toPercent(opened, Math.max(delivered, 1)) : null,
+        clickRate:
+          trackingState === "available" ? toPercent(clicked, Math.max(delivered, 1)) : null,
+        clickToOpenRate:
+          trackingState === "available" ? toPercent(clicked, Math.max(opened, 1)) : null,
+        unsubscribeRate: toPercent(agg.unsubscribed, deliveredOrTotal),
+        bounceRate,
+        complaintRate: toPercent(spamComplaints, deliveredOrTotal),
+        audienceType: campaign.audienceType || null,
+        triggeredBy: campaign.triggeredBy || null,
+        sourceSystem: getCampaignSourceSystem(campaign),
+        messageStream:
+          campaign.stream ||
+          campaign.emailDeliveries.find((delivery) => delivery.messageStream)?.messageStream ||
+          null,
+        trackingState,
+        reportingSource: providerStats ? "postmark_api" : "event_history",
+        attentionReasons,
+        errorSummary,
+      };
+    })
+  );
 
   const trendBuckets = createTrendBuckets(audienceRangeStart || thirtyDaysAgo, audienceRangeEnd);
   const sourceSegmentMap = new Map<
@@ -839,6 +910,7 @@ export async function getAdminNewsletterSummary(
 
   return {
     totalSubscribers: segments.total,
+    pending: segments.pending,
     subscribed: segments.subscribed,
     unsubscribed: segments.unsubscribed,
     unsubscribes30d: subscriberUnsubscribes30d,
@@ -851,6 +923,22 @@ export async function getAdminNewsletterSummary(
     },
     sourceAttribution: Array.from(sourceMap.values()).sort((a, b) => b.total - a.total),
     campaigns: campaignDtos,
+    postmarkOverview: postmarkStats
+      ? {
+          messageStream:
+            campaigns.find((campaign) => campaign.stream)?.stream || "marketing message stream",
+          sent: postmarkStats.sent,
+          delivered: postmarkStats.delivered,
+          uniqueOpens: postmarkStats.uniqueOpens,
+          uniqueClicks: postmarkStats.uniqueClicks,
+          bounced: postmarkStats.bounced,
+          spamComplaints: postmarkStats.spamComplaints,
+          deliveryRate: toPercent(postmarkStats.delivered, Math.max(postmarkStats.sent, 1)),
+          openRate: toPercent(postmarkStats.uniqueOpens, Math.max(postmarkStats.delivered, 1)),
+          clickRate: toPercent(postmarkStats.uniqueClicks, Math.max(postmarkStats.delivered, 1)),
+          bounceRate: toPercent(postmarkStats.bounced, Math.max(postmarkStats.sent, 1)),
+        }
+      : null,
     campaignsPagination: {
       page: campaignPage,
       pageSize: campaignPageSize,
@@ -883,7 +971,7 @@ export async function getAdminNewsletterCampaign(
         orderBy: { eventAt: "asc" },
       },
       emailDeliveries: {
-        select: { status: true, messageStream: true, lastError: true, resolvedAt: true },
+        select: { status: true, messageStream: true, tag: true, lastError: true, resolvedAt: true },
       },
     },
   });
@@ -891,6 +979,15 @@ export async function getAdminNewsletterCampaign(
   if (!campaign) return null;
 
   const agg = aggregateCampaignRows(campaign.emailEvents);
+  const reportingDelivery = campaign.emailDeliveries.find((delivery) =>
+    delivery.tag?.startsWith("newsletter-campaign-")
+  );
+  const providerStats = reportingDelivery?.tag
+    ? await getPostmarkOutboundStats({
+        tag: reportingDelivery.tag,
+        messageStream: reportingDelivery.messageStream || campaign.stream || undefined,
+      })
+    : null;
   const eventTimelineByDate = new Map<
     string,
     { opened: number; clicked: number; bounced: number }
@@ -907,17 +1004,26 @@ export async function getAdminNewsletterCampaign(
 
   const totalRecipients = Math.max(
     campaign.sentCount + campaign.failedCount,
-    agg.delivered + agg.bounced,
-    agg.delivered
+    (providerStats?.sent || 0) + campaign.failedCount,
+    (providerStats?.delivered || agg.delivered) + (providerStats?.bounced || agg.bounced),
+    providerStats?.delivered || agg.delivered
   );
-  const delivered = Math.max(agg.delivered, campaign.sentCount, 0);
+  const delivered = providerStats
+    ? providerStats.delivered
+    : Math.max(agg.delivered, campaign.sentCount, 0);
+  const opened = providerStats?.uniqueOpens ?? agg.opened;
+  const clicked = providerStats?.uniqueClicks ?? agg.clicked;
+  const bounced = providerStats?.bounced ?? agg.bounced;
+  const spamComplaints = providerStats?.spamComplaints ?? agg.spamComplaints;
   const deliveredOrTotal = Math.max(totalRecipients, 1);
   const sentDate = campaign.sentAt || campaign.scheduledAt || campaign.createdAt;
   const trackingState = getCampaignTrackingState({
-    eventCount: campaign.emailEvents.length,
+    eventCount: providerStats
+      ? providerStats.sent + providerStats.tracked
+      : campaign.emailEvents.length,
     sentDate,
   });
-  const bounceRate = toPercent(agg.bounced, deliveredOrTotal);
+  const bounceRate = toPercent(bounced, deliveredOrTotal);
   const unresolvedDeliveryError = campaign.emailDeliveries.find(
     (delivery) =>
       !delivery.resolvedAt &&
@@ -929,7 +1035,7 @@ export async function getAdminNewsletterCampaign(
     failedCount: campaign.failedCount,
     status: campaign.status,
     bounceRate,
-    spamComplaints: agg.spamComplaints,
+    spamComplaints,
     errorSummary,
   });
 
@@ -947,21 +1053,19 @@ export async function getAdminNewsletterCampaign(
     sentDate: sentDate.toISOString(),
     totalRecipients,
     delivered,
-    opened: agg.opened,
-    clicked: agg.clicked,
-    bounced: agg.bounced,
-    spamComplaints: agg.spamComplaints,
+    opened,
+    clicked,
+    bounced,
+    spamComplaints,
     unsubscribed: agg.unsubscribed,
     failedSends: campaign.failedCount,
     deliveryRate: toPercent(delivered, deliveredOrTotal),
-    openRate: trackingState === "available" ? toPercent(agg.opened, Math.max(delivered, 1)) : null,
-    clickRate:
-      trackingState === "available" ? toPercent(agg.clicked, Math.max(delivered, 1)) : null,
-    clickToOpenRate:
-      trackingState === "available" ? toPercent(agg.clicked, Math.max(agg.opened, 1)) : null,
+    openRate: trackingState === "available" ? toPercent(opened, Math.max(delivered, 1)) : null,
+    clickRate: trackingState === "available" ? toPercent(clicked, Math.max(delivered, 1)) : null,
+    clickToOpenRate: trackingState === "available" ? toPercent(clicked, Math.max(opened, 1)) : null,
     unsubscribeRate: toPercent(agg.unsubscribed, deliveredOrTotal),
     bounceRate,
-    complaintRate: toPercent(agg.spamComplaints, deliveredOrTotal),
+    complaintRate: toPercent(spamComplaints, deliveredOrTotal),
     audienceType: campaign.audienceType || null,
     triggeredBy: campaign.triggeredBy || null,
     sourceSystem: getCampaignSourceSystem(campaign),
@@ -970,6 +1074,7 @@ export async function getAdminNewsletterCampaign(
       campaign.emailDeliveries.find((delivery) => delivery.messageStream)?.messageStream ||
       null,
     trackingState,
+    reportingSource: providerStats ? "postmark_api" : "event_history",
     attentionReasons,
     errorSummary,
     topLinks: agg.topLinks,

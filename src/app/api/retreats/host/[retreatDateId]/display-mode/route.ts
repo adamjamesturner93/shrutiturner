@@ -20,16 +20,18 @@ export async function PATCH(
     ) {
       return NextResponse.json({ message: "Invalid display mode." }, { status: 400 });
     }
-    const retreatDate = await updateRetreatDisplayMode({
+    const result = await updateRetreatDisplayMode({
       retreatDateId,
       userId: user.id,
       mode: body.mode as RetreatLiveDisplayMode,
       focusedPresenterUserId: body.focusedPresenterUserId,
     });
     return NextResponse.json({
-      displayMode: retreatDate.liveDisplayMode,
-      displayVersion: retreatDate.liveDisplayVersion,
-      focusedPresenterUserId: retreatDate.focusedPresenterUserId,
+      displayMode: result.retreatDate.liveDisplayMode,
+      displayVersion: result.retreatDate.liveDisplayVersion,
+      focusedPresenterUserId: result.retreatDate.focusedPresenterUserId,
+      dailySyncStatus: result.dailySyncStatus,
+      dailySyncError: result.dailySyncError || null,
     });
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
