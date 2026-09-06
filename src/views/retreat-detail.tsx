@@ -24,6 +24,7 @@ import {
   isRetreatEarlyBirdActive,
 } from "@/lib/retreats/pricing";
 import {
+  formatRetreatDate,
   formatRetreatDateTimeRange,
   getRetreatPriceSummary,
   getRetreatRoomOptionPriceSummary,
@@ -133,13 +134,7 @@ function getScheduleDateLabel(startDate: string | undefined, dayIndex: number) {
   const date = new Date(`${isoDay}T12:00:00.000Z`);
   if (Number.isNaN(date.getTime())) return "";
   date.setUTCDate(date.getUTCDate() + dayIndex);
-  return new Intl.DateTimeFormat("en-GB", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(date);
+  return formatRetreatDate(date, "UTC", true);
 }
 
 export function RetreatDetailPage({

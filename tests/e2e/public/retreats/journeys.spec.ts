@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-const MIDDLE_GROUND_DATE_TIME = "09:30-12:00 4 October 2026";
+const MIDDLE_GROUND_DATE_TIME = "09:30-12:00 4th October 2026";
 
 async function expectNoSeriousAccessibilityViolations(page: Page) {
   const results = await new AxeBuilder({ page })
@@ -82,7 +82,7 @@ test.describe("retreat catalogue", () => {
     await expect(
       detailMain.getByRole("heading", { level: 1, name: "The Middle Ground" })
     ).toBeVisible();
-    await expect(detailMain.getByText("Sunday, 4 October 2026")).toBeVisible();
+    await expect(detailMain.getByText("Sunday, 4th October 2026")).toBeVisible();
     await expect(detailMain.getByText("Full payment at checkout", { exact: true })).toBeVisible();
     await expect(detailMain.getByRole("heading", { name: "Date", exact: true })).toBeVisible();
     await expect(detailMain.getByRole("heading", { name: "Your ticket" })).toBeVisible();

@@ -32,6 +32,53 @@ function getRetreatDateParts(date: Date, timezone: string): RetreatDateParts {
   };
 }
 
+function formatOrdinalDay(day: string) {
+  const value = Number(day);
+  const remainder100 = value % 100;
+  const suffix =
+    remainder100 >= 11 && remainder100 <= 13
+      ? "th"
+      : value % 10 === 1
+        ? "st"
+        : value % 10 === 2
+          ? "nd"
+          : value % 10 === 3
+            ? "rd"
+            : "th";
+  return `${value}${suffix}`;
+}
+
+function formatRetreatDayMonth(date: Date, timezone: string) {
+  const parts = getRetreatDateParts(date, timezone);
+  const month = new Intl.DateTimeFormat("en-GB", {
+    month: "long",
+    timeZone: timezone,
+  }).format(date);
+  return `${formatOrdinalDay(parts.day)} ${month}`;
+}
+
+function formatRetreatFullDate(date: Date, timezone: string) {
+  const parts = getRetreatDateParts(date, timezone);
+  const monthYear = new Intl.DateTimeFormat("en-GB", {
+    month: "long",
+    year: "numeric",
+    timeZone: timezone,
+  }).format(date);
+  return `${formatOrdinalDay(parts.day)} ${monthYear}`;
+}
+
+export function formatRetreatDate(
+  value: Date | string,
+  timezone = DEFAULT_RETREAT_TIMEZONE,
+  includeWeekday = false
+) {
+  const date = typeof value === "string" ? new Date(value) : value;
+  const weekday = includeWeekday
+    ? `${new Intl.DateTimeFormat("en-GB", { weekday: "long", timeZone: timezone }).format(date)}, `
+    : "";
+  return `${weekday}${formatRetreatFullDate(date, timezone)}`;
+}
+
 export function formatRetreatDateTimeRange(
   start: Date | string,
   end: Date | string,
@@ -47,17 +94,6 @@ export function formatRetreatDateTimeRange(
     hour12: false,
     timeZone: timezone,
   });
-  const dayMonthFormatter = new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "long",
-    timeZone: timezone,
-  });
-  const fullDateFormatter = new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: timezone,
-  });
   const startTime = timeFormatter.format(startsAt);
   const endTime = timeFormatter.format(endsAt);
 
@@ -66,7 +102,7 @@ export function formatRetreatDateTimeRange(
     startParts.month === endParts.month &&
     startParts.year === endParts.year
   ) {
-    return `${startTime}-${endTime} ${fullDateFormatter.format(startsAt)}`;
+    return `${startTime}-${endTime} ${formatRetreatFullDate(startsAt, timezone)}`;
   }
 
   if (startParts.month === endParts.month && startParts.year === endParts.year) {
@@ -75,14 +111,14 @@ export function formatRetreatDateTimeRange(
       year: "numeric",
       timeZone: timezone,
     }).format(endsAt);
-    return `${startTime} ${startParts.day} - ${endTime} ${endParts.day} ${monthYear}`;
+    return `${startTime} ${formatOrdinalDay(startParts.day)} - ${endTime} ${formatOrdinalDay(endParts.day)} ${monthYear}`;
   }
 
   if (startParts.year === endParts.year) {
-    return `${startTime} ${dayMonthFormatter.format(startsAt)} - ${endTime} ${fullDateFormatter.format(endsAt)}`;
+    return `${startTime} ${formatRetreatDayMonth(startsAt, timezone)} - ${endTime} ${formatRetreatFullDate(endsAt, timezone)}`;
   }
 
-  return `${startTime} ${fullDateFormatter.format(startsAt)} - ${endTime} ${fullDateFormatter.format(endsAt)}`;
+  return `${startTime} ${formatRetreatFullDate(startsAt, timezone)} - ${endTime} ${formatRetreatFullDate(endsAt, timezone)}`;
 }
 
 export function getRetreatRoomRatePlans(

@@ -31,6 +31,29 @@ function record(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
+function firstLocale(fields: Record<string, Record<string, unknown>>, ...fieldIds: string[]) {
+  for (const fieldId of fieldIds) {
+    const locale = Object.keys(fields[fieldId] || {})[0];
+    if (locale) return locale;
+  }
+  return "en-US";
+}
+
+function localizedString(field: Record<string, unknown> | undefined, locale: string) {
+  const preferred = field?.[locale];
+  if (typeof preferred === "string" && preferred.trim()) return preferred.trim();
+  const fallback = Object.values(field || {}).find(
+    (value): value is string => typeof value === "string" && Boolean(value.trim())
+  );
+  return fallback?.trim() || "";
+}
+
+function localizedArray(field: Record<string, unknown> | undefined, locale: string) {
+  const preferred = field?.[locale];
+  if (Array.isArray(preferred)) return preferred;
+  return Object.values(field || {}).find(Array.isArray) || [];
+}
+
 async function getEntry(environment: Environment, id: string) {
   try {
     return await environment.getEntry(id);
@@ -61,57 +84,56 @@ async function upsertEntry(
   return publish ? entry.publish() : entry;
 }
 
+async function migrateLinkedScheduleDay(environment: Environment, dayEntry: Entry) {
+  const locale = firstLocale(dayEntry.fields, "activities", "items", "title");
+  if (localizedString(dayEntry.fields.activities, locale)) return "already-simple" as const;
+
+  const itemLinks = localizedArray(dayEntry.fields.items, locale);
+  const activities: string[] = [];
+  for (const itemLink of itemLinks) {
+    const linkedItemId = record(record(itemLink)?.sys)?.id;
+    if (typeof linkedItemId !== "string") continue;
+    const itemEntry = await getEntry(environment, linkedItemId);
+    if (!itemEntry) continue;
+    const title = localizedString(itemEntry.fields.title, locale);
+    if (title) activities.push(title);
+  }
+  if (activities.length === 0) return "empty" as const;
+
+  dayEntry.fields.activities = {
+    ...(dayEntry.fields.activities || {}),
+    [locale]: activities.join("\n"),
+  };
+  const updatedDay = await dayEntry.update();
+  if (dayEntry.sys.publishedVersion) await updatedDay.publish();
+  console.log(`Migrated schedule day ${dayEntry.sys.id}: ${activities.length} activities`);
+  return "migrated" as const;
+}
+
 async function run() {
   const space = await client.getSpace(spaceId);
   const environment = (await space.getEnvironment(environmentId)) as Environment;
   const templates = await environment.getEntries({ content_type: "retreatTemplate", limit: 1000 });
+  const scheduleDays = await environment.getEntries({
+    content_type: "retreatScheduleDay",
+    limit: 1000,
+  });
   let migrated = 0;
   let alreadySimple = 0;
   let missingLegacySchedule = 0;
 
+  for (const dayEntry of scheduleDays.items) {
+    const result = await migrateLinkedScheduleDay(environment, dayEntry);
+    if (result === "migrated") migrated += 1;
+    if (result === "already-simple") alreadySimple += 1;
+  }
+
   for (const template of templates.items) {
     const scheduleField = template.fields.schedule || {};
-    const locale = Object.keys(scheduleField)[0] || "en-US";
+    const locale = firstLocale(template.fields, "scheduleDays", "schedule", "title");
     const schedule = scheduleField[locale];
     const existingScheduleDays = template.fields.scheduleDays?.[locale];
     if (Array.isArray(existingScheduleDays) && existingScheduleDays.length > 0) {
-      let templateChanged = false;
-      for (const dayLink of existingScheduleDays) {
-        const linkedDayId = record(dayLink)?.sys;
-        const dayId = record(linkedDayId)?.id;
-        if (typeof dayId !== "string") continue;
-        const dayEntry = await environment.getEntry(dayId);
-        const currentActivities = dayEntry.fields.activities?.[locale];
-        if (typeof currentActivities === "string" && currentActivities.trim()) continue;
-
-        const itemLinks = dayEntry.fields.items?.[locale];
-        if (!Array.isArray(itemLinks)) continue;
-        const activities: Array<{ title: string; order: number }> = [];
-        for (const [itemIndex, itemLink] of itemLinks.entries()) {
-          const linkedItemId = record(record(itemLink)?.sys)?.id;
-          if (typeof linkedItemId !== "string") continue;
-          const itemEntry = await environment.getEntry(linkedItemId);
-          const title = itemEntry.fields.title?.[locale];
-          if (typeof title !== "string" || !title.trim()) continue;
-          const displayOrder = itemEntry.fields.displayOrder?.[locale];
-          activities.push({
-            title: title.trim(),
-            order: typeof displayOrder === "number" ? displayOrder : itemIndex,
-          });
-        }
-        if (activities.length === 0) continue;
-        dayEntry.fields.activities = {
-          [locale]: activities
-            .sort((a, b) => a.order - b.order)
-            .map((activity) => activity.title)
-            .join("\n"),
-        };
-        const updatedDay = await dayEntry.update();
-        if (dayEntry.sys.publishedVersion) await updatedDay.publish();
-        templateChanged = true;
-      }
-      if (templateChanged) migrated += 1;
-      else alreadySimple += 1;
       continue;
     }
     if (!Array.isArray(schedule) || schedule.length === 0) {
@@ -164,8 +186,25 @@ async function run() {
     console.log(`Migrated retreat schedule: ${template.sys.id}`);
   }
 
+  const verifiedDays = await environment.getEntries({
+    content_type: "retreatScheduleDay",
+    limit: 1000,
+  });
+  const incompleteDays = verifiedDays.items.filter((dayEntry) => {
+    const locale = firstLocale(dayEntry.fields, "activities", "items", "title");
+    return (
+      localizedArray(dayEntry.fields.items, locale).length > 0 &&
+      !localizedString(dayEntry.fields.activities, locale)
+    );
+  });
+  if (incompleteDays.length > 0) {
+    throw new Error(
+      `Schedule migration incomplete for: ${incompleteDays.map((day) => day.sys.id).join(", ")}`
+    );
+  }
+
   console.log(
-    `Retreat schedule migration complete: ${migrated} migrated, ${alreadySimple} already simple, ${missingLegacySchedule} without legacy schedules.`
+    `Retreat schedule migration complete: ${migrated} entries migrated, ${alreadySimple} days already simple, ${missingLegacySchedule} templates without schedules. Verified ${verifiedDays.items.length} schedule days.`
   );
 }
 

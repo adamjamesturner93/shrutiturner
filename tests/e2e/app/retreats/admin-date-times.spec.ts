@@ -4,7 +4,7 @@ import { AuthChallengePurpose } from "@prisma/client";
 import type { Page } from "@playwright/test";
 import { db } from "../../helpers/db";
 
-const MIDDLE_GROUND_DATE_TIME = "09:30-12:00 4 October 2026";
+const MIDDLE_GROUND_DATE_TIME = "09:30-12:00 4th October 2026";
 const EMAIL_PREFIX = "e2e-admin-retreat-date-times-";
 
 async function signInAsAdmin(page: Page, email: string) {

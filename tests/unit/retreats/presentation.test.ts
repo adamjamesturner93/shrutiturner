@@ -107,7 +107,7 @@ describe("retreat date and time presentation", () => {
         "2027-10-05T11:00:00.000Z",
         "Europe/London"
       )
-    ).toBe("08:30-12:00 5 October 2027");
+    ).toBe("08:30-12:00 5th October 2027");
   });
 
   it("formats a multi-day retreat in the same month without repeating the month or year", () => {
@@ -117,7 +117,7 @@ describe("retreat date and time presentation", () => {
         "2027-10-06T17:00:00.000Z",
         "Europe/London"
       )
-    ).toBe("08:30 4 - 18:00 6 October 2027");
+    ).toBe("08:30 4th - 18:00 6th October 2027");
   });
 
   it("keeps cross-month and cross-year ranges unambiguous", () => {
@@ -127,14 +127,14 @@ describe("retreat date and time presentation", () => {
         "2027-10-02T17:00:00.000Z",
         "Europe/London"
       )
-    ).toBe("08:30 30 September - 18:00 2 October 2027");
+    ).toBe("08:30 30th September - 18:00 2nd October 2027");
     expect(
       formatRetreatDateTimeRange(
         "2027-12-31T08:30:00.000Z",
         "2028-01-02T18:00:00.000Z",
         "Europe/London"
       )
-    ).toBe("08:30 31 December 2027 - 18:00 2 January 2028");
+    ).toBe("08:30 31st December 2027 - 18:00 2nd January 2028");
   });
 
   it("uses the retreat timezone when the local date differs from UTC", () => {
@@ -144,6 +144,28 @@ describe("retreat date and time presentation", () => {
         "2027-07-02T01:00:00.000Z",
         "Europe/London"
       )
-    ).toBe("00:30-02:00 2 July 2027");
+    ).toBe("00:30-02:00 2nd July 2027");
+  });
+
+  it.each([
+    [1, "1st"],
+    [2, "2nd"],
+    [3, "3rd"],
+    [4, "4th"],
+    [11, "11th"],
+    [12, "12th"],
+    [13, "13th"],
+    [21, "21st"],
+    [22, "22nd"],
+    [23, "23rd"],
+  ])("uses the correct ordinal suffix for day %i", (day, ordinal) => {
+    const isoDay = String(day).padStart(2, "0");
+    expect(
+      formatRetreatDateTimeRange(
+        `2027-10-${isoDay}T08:30:00.000Z`,
+        `2027-10-${isoDay}T11:00:00.000Z`,
+        "UTC"
+      )
+    ).toBe(`08:30-11:00 ${ordinal} October 2027`);
   });
 });
