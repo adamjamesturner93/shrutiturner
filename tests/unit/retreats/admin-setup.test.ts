@@ -12,8 +12,12 @@ const db = {
 const send = vi.fn();
 vi.mock("@/lib/db", () => ({ db }));
 vi.mock("@/lib/postmark/client", () => ({ sendPostmarkReactEmail: send }));
-const { createAdminRetreatDate, updateAdminRetreatTicketPrices, sendRetreatBalanceDueEmails } =
-  await import("@/lib/retreats/service");
+const {
+  createAdminRetreatDate,
+  updateAdminRetreatTicketPrices,
+  updateAdminRetreatEarlyBirdRates,
+  sendRetreatBalanceDueEmails,
+} = await import("@/lib/retreats/service");
 beforeEach(() => {
   vi.clearAllMocks();
   db.$transaction.mockImplementation((callback: (tx: typeof db) => Promise<unknown>) =>
@@ -30,6 +34,68 @@ beforeEach(() => {
   });
 });
 describe("guided draft setup", () => {
+  it.each(["online_workshop", "in_person_workshop", "day_retreat", "residential_retreat"])(
+    "adds a first early-bird offer to a published %s",
+    async (eventKind) => {
+      const earlyBirdEndsAt = new Date("2030-09-01");
+      db.retreatDate.findUnique
+        .mockResolvedValueOnce({
+          id: "date",
+          status: "open",
+          eventKind,
+          startsAt: new Date("2030-10-01"),
+          roomOptions: [
+            {
+              ratePlans: [
+                {
+                  id: "rate",
+                  totalPricePence: 3500,
+                  earlyBirdPricePence: null,
+                  earlyBirdEndsAt: null,
+                },
+              ],
+            },
+          ],
+        })
+        // Isolate the pricing write from the subsequent full admin-page read.
+        .mockRejectedValueOnce(new Error("ADMIN_DETAIL_REFRESH"));
+      await expect(
+        updateAdminRetreatEarlyBirdRates("date", [
+          { ratePlanId: "rate", earlyBirdPricePence: 3000, earlyBirdEndsAt },
+        ])
+      ).rejects.toThrow("ADMIN_DETAIL_REFRESH");
+      expect(db.retreatRatePlan.update).toHaveBeenCalledWith({
+        where: { id: "rate" },
+        data: { earlyBirdPricePence: 3000, earlyBirdEndsAt },
+      });
+    }
+  );
+
+  it("does not change a published offer's agreed price", async () => {
+    db.retreatDate.findUnique.mockResolvedValueOnce({
+      id: "date",
+      status: "open",
+      startsAt: new Date("2030-10-01"),
+      roomOptions: [
+        {
+          ratePlans: [
+            {
+              id: "rate",
+              totalPricePence: 3500,
+              earlyBirdPricePence: 3000,
+              earlyBirdEndsAt: new Date("2030-09-01"),
+            },
+          ],
+        },
+      ],
+    });
+    await expect(
+      updateAdminRetreatEarlyBirdRates("date", [
+        { ratePlanId: "rate", earlyBirdPricePence: 2500, earlyBirdEndsAt: new Date("2030-09-02") },
+      ])
+    ).rejects.toThrow("RETREAT_PRICING_LOCKED");
+    expect(db.retreatRatePlan.update).not.toHaveBeenCalled();
+  });
   const input = {
     retreatSlug: "workshop",
     title: "Workshop",

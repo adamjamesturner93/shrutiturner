@@ -8,7 +8,7 @@ describe("checkout acceptance requirements and recorded evidence", () => {
         purchaseMode: "self",
         requiresPracticalRegistration: false,
       })
-    ).toEqual(["terms", "health_waiver"]);
+    ).toEqual(["terms"]);
   });
   it("retains all three agreements for in-person purchases", () => {
     expect(

@@ -127,7 +127,14 @@ test("two guests remain grouped, register privately, and have an operational adm
     const menu = page.getByRole("dialog", { name: "Admin navigation" });
     await expect(menu.getByRole("link", { name: "View website" })).toHaveAttribute("href", "/");
     await expect(menu.getByRole("button", { name: "Sign out", exact: true })).toBeVisible();
-    expect((await new AxeBuilder({ page }).include('[role="dialog"]').withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .include('[role="dialog"]')
+          .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+          .analyze()
+      ).violations
+    ).toEqual([]);
     await page.keyboard.press("Escape");
     await expect(menuButton).toBeFocused();
     expect(
@@ -147,19 +154,28 @@ test("two guests remain grouped, register privately, and have an operational adm
     const cancellationDialog = page.getByRole("dialog");
     await expect(cancellationDialog).toContainText("1 bookings · 2 guests");
     await expect(cancellationDialog).toContainText("£182.00");
-    await expect(cancellationDialog.getByRole("button", { name: "Cancel event and start refunds" })).toBeDisabled();
+    await expect(
+      cancellationDialog.getByRole("button", { name: "Cancel event and start refunds" })
+    ).toBeDisabled();
     await cancellationDialog.getByRole("button", { name: "Keep event", exact: true }).click();
-    expect((await db.retreatDate.findUniqueOrThrow({ where: { id: date.id } })).status).toBe("closed");
+    expect((await db.retreatDate.findUniqueOrThrow({ where: { id: date.id } })).status).toBe(
+      "closed"
+    );
 
     console.log(
       "Admin grouping, payment view and mobile accessibility verified; signing in guest."
     );
     await page.goto("/dashboard/retreats");
-    const bookingCard = page.locator('[data-slot="card"]').filter({ has: page.getByRole("heading", { name: "Registration operations fixture", exact: true }) });
+    const bookingCard = page.locator('[data-slot="card"]').filter({
+      has: page.getByRole("heading", { name: "Registration operations fixture", exact: true }),
+    });
     await expect(bookingCard).toContainText("2 guests · booked together");
     await expect(bookingCard).toContainText("Alex Buyer (you)");
     await expect(bookingCard).toContainText("Sam Friend");
-    await expect(bookingCard.getByRole("link", { name: "View retreat details" })).toHaveAttribute("href", new RegExp(`date=${date.id}`));
+    await expect(bookingCard.getByRole("link", { name: "Public retreat page" })).toHaveAttribute(
+      "href",
+      new RegExp(`date=${date.id}`)
+    );
     guestContext = await browser.newContext({ baseURL: test.info().project.use.baseURL });
     const guestPage = await guestContext.newPage();
     guestPage.setDefaultTimeout(30_000);
@@ -246,12 +262,15 @@ test("creation continues into draft setup and copies settings only when requeste
     await page.getByRole("button", { name: "Continue" }).click();
     const createdResponse = page.waitForResponse(
       (response) =>
-        response.url().endsWith("/api/admin/retreats/create-draft") && response.request().method() === "POST"
+        response.url().endsWith("/api/admin/retreats/create-draft") &&
+        response.request().method() === "POST"
     );
     await page.getByRole("button", { name: "Create draft and continue" }).click();
     const created = await createdResponse;
     expect(created.status()).toBe(201);
-    const { data: { id } } = await created.json();
+    const {
+      data: { id },
+    } = await created.json();
     dateIds.push(id);
     await expect(page).toHaveURL(new RegExp(`/admin/retreats/${id}\\?section=setup`));
     await expect(page.getByRole("heading", { name: "Get ready to open bookings" })).toBeVisible();

@@ -1512,7 +1512,7 @@ export async function createRetreatCheckout(input: {
 
   const checkoutAcceptanceTypes = getRetreatCheckoutAcceptanceTypes({
     purchaseMode: input.purchaseMode,
-    requiresPracticalRegistration: eventCapabilities.requiresPracticalRegistration,
+    requiresPracticalRegistration: eventCapabilities.requiresCheckoutPracticalRegistration,
   });
   const acceptanceRequirements = checkoutAcceptanceTypes.map((type) => ({
     type,
@@ -1531,10 +1531,11 @@ export async function createRetreatCheckout(input: {
     if (
       input.acceptedTermsVersion !== currentGuestVersions.get(AcceptanceType.terms) ||
       (input.purchaseMode === "self" &&
+        eventCapabilities.requiresCheckoutPracticalRegistration &&
         input.acceptedHealthWaiverVersion !==
           currentGuestVersions.get(AcceptanceType.health_waiver)) ||
       (input.purchaseMode === "self" &&
-        eventCapabilities.requiresPracticalRegistration &&
+        eventCapabilities.requiresCheckoutPracticalRegistration &&
         (input.acceptedHealthWaiverVersion !==
           currentGuestVersions.get(AcceptanceType.health_waiver) ||
           input.acceptedHealthDataVersion !== currentGuestVersions.get(AcceptanceType.health_data)))
@@ -1780,7 +1781,7 @@ export async function createRetreatCheckout(input: {
 
     if (!input.purchaserUserId) {
       await createGuestAcceptanceEventsForRetreatPurchase({
-        requiresPracticalRegistration: eventCapabilities.requiresPracticalRegistration,
+        requiresPracticalRegistration: eventCapabilities.requiresCheckoutPracticalRegistration,
         purchaserEmail,
         surface: "retreat_gift_checkout_guest",
         giftPurchaseId: gift.id,
@@ -1901,8 +1902,12 @@ export async function createRetreatCheckout(input: {
         bedPreference,
         guestsIncluded: quote.totalGuestCount,
         acceptedTermsVersion: input.acceptedTermsVersion || null,
-        acceptedHealthWaiverVersion: input.acceptedHealthWaiverVersion || null,
-        acceptedHealthDataVersion: input.acceptedHealthDataVersion || null,
+        acceptedHealthWaiverVersion: eventCapabilities.requiresCheckoutPracticalRegistration
+          ? input.acceptedHealthWaiverVersion || null
+          : null,
+        acceptedHealthDataVersion: eventCapabilities.requiresCheckoutPracticalRegistration
+          ? input.acceptedHealthDataVersion || null
+          : null,
         complianceSnapshotJson:
           acceptanceStates || input.acceptedTermsVersion || input.acceptedHealthWaiverVersion
             ? {
@@ -1915,8 +1920,12 @@ export async function createRetreatCheckout(input: {
                     surface: state.surface,
                   })) || [],
                 acceptedTermsVersion: input.acceptedTermsVersion || null,
-                acceptedHealthWaiverVersion: input.acceptedHealthWaiverVersion || null,
-                acceptedHealthDataVersion: input.acceptedHealthDataVersion || null,
+                acceptedHealthWaiverVersion: eventCapabilities.requiresCheckoutPracticalRegistration
+                  ? input.acceptedHealthWaiverVersion || null
+                  : null,
+                acceptedHealthDataVersion: eventCapabilities.requiresCheckoutPracticalRegistration
+                  ? input.acceptedHealthDataVersion || null
+                  : null,
                 retreatDateId: retreatDate.id,
                 roomOptionId: roomOption.id,
               }
@@ -2087,7 +2096,7 @@ export async function createRetreatCheckout(input: {
 
   if (!input.purchaserUserId) {
     await createGuestAcceptanceEventsForRetreatPurchase({
-      requiresPracticalRegistration: eventCapabilities.requiresPracticalRegistration,
+      requiresPracticalRegistration: eventCapabilities.requiresCheckoutPracticalRegistration,
       purchaserEmail,
       surface: "retreat_checkout_guest",
       retreatBookingId: booking.id,
@@ -2721,64 +2730,79 @@ export async function getMyRetreatBookings(userId: string) {
     include: {
       retreatDate: true,
       roomOption: true,
-      attendees: { where: { status: { not: "cancelled" } }, orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] },
+      attendees: {
+        where: { status: { not: "cancelled" } },
+        orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+      },
       items: { where: { itemType: RetreatBookingItemType.addon }, include: { addon: true } },
       cancellationRequests: { orderBy: { requestedAt: "desc" }, take: 1 },
     },
     orderBy: { retreatDate: { startsAt: "asc" } },
   });
 
-  return Promise.all(bookings.map(async (booking) => ({
-    id: booking.id,
-    registrations: await Promise.all(booking.attendees.map(async (attendee) => ({
-      id: attendee.id, name: `${attendee.firstName} ${attendee.lastName}`.trim(), isOwn: attendee.userId === userId,
-      complete: (await getAttendeeReadiness(attendee, getRetreatEventCapabilities(booking.retreatDate.eventKind).requiresPracticalRegistration)).complete,
-    }))),
-    retreatDateId: booking.retreatDate.id,
-    retreatSlug: booking.retreatDate.retreatSlug,
-    retreatTitle: booking.retreatDate.retreatTitleSnapshot,
-    retreatType: booking.retreatDate.retreatType,
-    eventKind: booking.retreatDate.eventKind,
-    location: booking.retreatDate.retreatLocationSnapshot,
-    startsAt: booking.retreatDate.startsAt.toISOString(),
-    endsAt: booking.retreatDate.endsAt.toISOString(),
-    bookingStatus: booking.bookingStatus,
-    paymentStatus: booking.paymentStatus,
-    totalPricePence: booking.totalPricePence,
-    depositPaidPence: booking.depositPaidPence,
-    balanceAmountPence: booking.balanceAmountPence,
-    balanceDueAt: booking.balanceDueAt?.toISOString() || null,
-    roomType: booking.roomOptionLabelSnapshot || booking.roomType,
-    attendeeCount: booking.attendeeCount,
-    addons: booking.items.flatMap((item) =>
-      item.addon
-        ? [
-            {
-              id: item.addon.id,
-              name: item.addon.name,
-              quantity: item.quantity,
-              totalPricePence: item.totalPricePence,
-            },
-          ]
-        : []
-    ),
-    dietaryRequirements: booking.attendeeUserId === userId ? booking.dietaryRequirements : null,
-    medicalConditions: booking.attendeeUserId === userId ? booking.medicalConditions : null,
-    mobilityNeeds: booking.attendeeUserId === userId ? booking.mobilityNeeds : null,
-    liveRoomPrepared: booking.retreatDate.onlineRoomSetupStatus === "ready",
-    canPayBalance:
-      booking.purchaserUserId === userId &&
-      booking.paymentStatus !== "paid_in_full" &&
-      booking.balanceAmountPence > 0,
-    canRequestCancellation:
-      booking.purchaserUserId === userId &&
-      ACTIVE_RETREAT_BOOKING_STATUSES.includes(booking.bookingStatus) &&
-      booking.retreatDate.startsAt > new Date() &&
-      !booking.cancellationRequests.some((request) =>
-        OPEN_RETREAT_CANCELLATION_STATUSES.includes(request.status)
+  return Promise.all(
+    bookings.map(async (booking) => ({
+      id: booking.id,
+      registrations: await Promise.all(
+        booking.attendees.map(async (attendee) => ({
+          id: attendee.id,
+          name: `${attendee.firstName} ${attendee.lastName}`.trim(),
+          isOwn: attendee.userId === userId,
+          complete: (
+            await getAttendeeReadiness(
+              attendee,
+              getRetreatEventCapabilities(booking.retreatDate.eventKind)
+                .requiresPracticalRegistration
+            )
+          ).complete,
+        }))
       ),
-    latestCancellation: serializeCancellationRequest(booking.cancellationRequests[0] || null),
-  })));
+      retreatDateId: booking.retreatDate.id,
+      retreatSlug: booking.retreatDate.retreatSlug,
+      retreatTitle: booking.retreatDate.retreatTitleSnapshot,
+      retreatType: booking.retreatDate.retreatType,
+      eventKind: booking.retreatDate.eventKind,
+      location: booking.retreatDate.retreatLocationSnapshot,
+      startsAt: booking.retreatDate.startsAt.toISOString(),
+      endsAt: booking.retreatDate.endsAt.toISOString(),
+      bookingStatus: booking.bookingStatus,
+      paymentStatus: booking.paymentStatus,
+      totalPricePence: booking.totalPricePence,
+      depositPaidPence: booking.depositPaidPence,
+      balanceAmountPence: booking.balanceAmountPence,
+      balanceDueAt: booking.balanceDueAt?.toISOString() || null,
+      roomType: booking.roomOptionLabelSnapshot || booking.roomType,
+      attendeeCount: booking.attendeeCount,
+      addons: booking.items.flatMap((item) =>
+        item.addon
+          ? [
+              {
+                id: item.addon.id,
+                name: item.addon.name,
+                quantity: item.quantity,
+                totalPricePence: item.totalPricePence,
+              },
+            ]
+          : []
+      ),
+      dietaryRequirements: booking.attendeeUserId === userId ? booking.dietaryRequirements : null,
+      medicalConditions: booking.attendeeUserId === userId ? booking.medicalConditions : null,
+      mobilityNeeds: booking.attendeeUserId === userId ? booking.mobilityNeeds : null,
+      liveRoomPrepared: booking.retreatDate.onlineRoomSetupStatus === "ready",
+      canPayBalance:
+        booking.purchaserUserId === userId &&
+        booking.paymentStatus !== "paid_in_full" &&
+        booking.balanceAmountPence > 0,
+      canRequestCancellation:
+        booking.purchaserUserId === userId &&
+        ACTIVE_RETREAT_BOOKING_STATUSES.includes(booking.bookingStatus) &&
+        booking.retreatDate.startsAt > new Date() &&
+        !booking.cancellationRequests.some((request) =>
+          OPEN_RETREAT_CANCELLATION_STATUSES.includes(request.status)
+        ),
+      latestCancellation: serializeCancellationRequest(booking.cancellationRequests[0] || null),
+    }))
+  );
 }
 
 export async function getMyRetreatBookingDetail(userId: string, bookingId: string) {
@@ -5819,6 +5843,7 @@ export async function updateAdminRetreatEarlyBirdRates(
 
       if (
         retreatDate.status !== RetreatDateStatus.draft &&
+        ratePlan.earlyBirdPricePence !== null &&
         !canExtendPublishedEarlyBirdRate({
           existingPricePence: ratePlan.earlyBirdPricePence,
           existingEndsAt: ratePlan.earlyBirdEndsAt,
@@ -5830,16 +5855,14 @@ export async function updateAdminRetreatEarlyBirdRates(
         throw new Error("RETREAT_PRICING_LOCKED");
       }
 
-      if (retreatDate.status !== RetreatDateStatus.draft && ratePlan.earlyBirdPricePence === null) {
-        continue;
-      }
-
       const hasPrice = update.earlyBirdPricePence !== null;
       const hasEndDate = update.earlyBirdEndsAt !== null;
       if (hasPrice !== hasEndDate) throw new Error("INVALID_EARLY_BIRD");
       if (
         hasPrice &&
-        (update.earlyBirdPricePence! < 0 ||
+        (!Number.isSafeInteger(update.earlyBirdPricePence) ||
+          !Number.isFinite(update.earlyBirdEndsAt!.getTime()) ||
+          update.earlyBirdPricePence! < 0 ||
           update.earlyBirdPricePence! >= ratePlan.totalPricePence ||
           update.earlyBirdEndsAt! >= retreatDate.startsAt)
       ) {

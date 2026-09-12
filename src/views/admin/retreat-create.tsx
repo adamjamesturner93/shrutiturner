@@ -218,8 +218,19 @@ export function AdminRetreatCreate({
   const publishContent = false;
   const [busy, setBusy] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const draftFingerprint = JSON.stringify({ mode, formatId, experienceId, content, listFields, startsAt, endsAt, venueId, capacity, price });
-  const initialFingerprint = useRef(draftFingerprint);
+  const draftFingerprint = JSON.stringify({
+    mode,
+    formatId,
+    experienceId,
+    content,
+    listFields,
+    startsAt,
+    endsAt,
+    venueId,
+    capacity,
+    price,
+  });
+  const [initialFingerprint] = useState(draftFingerprint);
   const requiresVenue = eventKind !== "online_workshop";
   const requiresRooms = eventKind === "residential_retreat";
   const selectedVenue = venues.find((venue) => venue.contentfulVenueId === venueId) || null;
@@ -342,7 +353,10 @@ export function AdminRetreatCreate({
 
   return (
     <AdminLayout title="Create event - Admin">
-      <UnsavedChangesGuard dirty={!leaving && draftFingerprint !== initialFingerprint.current} onDiscard={() => setLeaving(true)} />
+      <UnsavedChangesGuard
+        dirty={!leaving && draftFingerprint !== initialFingerprint}
+        onDiscard={() => setLeaving(true)}
+      />
       <div className="mx-auto max-w-5xl space-y-6">
         <Button asChild variant="ghost" className="-ml-3">
           <Link href="/admin/retreats">

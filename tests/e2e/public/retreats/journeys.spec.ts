@@ -182,7 +182,7 @@ test.describe("retreat catalogue", () => {
     await main.getByLabel("Last name", { exact: true }).fill("Fixture");
     await main.getByLabel("Email", { exact: true }).fill("checkout-fixture@example.com");
     await main.getByRole("checkbox", { name: /I agree to the Terms/ }).check();
-    await main.getByRole("checkbox", { name: /Health & Liability Waiver/ }).check();
+    await expect(main.getByRole("checkbox", { name: /Health & Liability Waiver/ })).toHaveCount(0);
     await page.route("**/api/retreats/the-middle-ground/checkout", (route) =>
       route.fulfill({
         status: 503,
@@ -202,7 +202,7 @@ test.describe("retreat catalogue", () => {
       acceptedHealthDataVersion: null,
     });
     expect(body.acceptedTermsVersion).toBeTruthy();
-    expect(body.acceptedHealthWaiverVersion).toBeTruthy();
+    expect(body.acceptedHealthWaiverVersion).toBeNull();
     await expect(main.getByText("Fixture: payment provider is not contacted.")).toBeVisible();
   });
 

@@ -338,7 +338,8 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
       : "residential_retreat");
   const isOnlineExperience = selectedEventKind === "online_workshop";
   const requiresAccommodation = selectedEventKind === "residential_retreat";
-  const requiresPracticalRegistration = !isOnlineExperience;
+  const requiresPracticalRegistration =
+    requiresAccommodation || selectedEventKind === "day_retreat";
   const isSimpleCheckout = !requiresAccommodation;
   const experienceLabel = selectedEventKind.includes("workshop") ? "workshop" : "retreat";
   const optionLabel = requiresAccommodation ? "room" : "ticket";
@@ -416,7 +417,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
     if (purchaseMode === "self") {
       if (
         !termsSatisfied ||
-        !waiverSatisfied ||
+        (requiresPracticalRegistration && !waiverSatisfied) ||
         (requiresPracticalRegistration && !healthDataSatisfied)
       ) {
         setError("Please complete the required agreements before continuing.");
@@ -474,8 +475,11 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
 
     try {
       if (purchaseMode === "self" && user) {
-        if (!user.hasAgreedToTerms || !user.hasAgreedToHealth) {
-          await acceptTermsAndHealth(!user.hasAgreedToTerms, !user.hasAgreedToHealth);
+        if (!user.hasAgreedToTerms || (requiresPracticalRegistration && !user.hasAgreedToHealth)) {
+          await acceptTermsAndHealth(
+            !user.hasAgreedToTerms,
+            requiresPracticalRegistration && !user.hasAgreedToHealth
+          );
         }
         if (requiresPracticalRegistration && !user.hasConsentedToHealthData) {
           await acceptHealthDataConsent();
@@ -519,7 +523,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
               ? (user?.currentTermsVersion ?? CURRENT_TERMS_VERSION)
               : CURRENT_TERMS_VERSION,
           acceptedHealthWaiverVersion:
-            purchaseMode === "self"
+            purchaseMode === "self" && requiresPracticalRegistration
               ? (user?.currentHealthWaiverVersion ?? CURRENT_HEALTH_WAIVER_VERSION)
               : null,
           acceptedHealthDataVersion:
@@ -1510,30 +1514,6 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                       </label>
                     )}
 
-                    {isOnlineExperience && !user?.hasAgreedToHealth ? (
-                      <label className="mt-4 flex items-start gap-3 text-sm">
-                        <Checkbox
-                          checked={formData.agreedToHealth}
-                          onCheckedChange={(checked) =>
-                            setFormData((current) => ({
-                              ...current,
-                              agreedToHealth: checked === true,
-                            }))
-                          }
-                        />
-                        <span>
-                          I have read and agree to the{" "}
-                          <Link
-                            href="/health-declaration"
-                            target="_blank"
-                            className="text-primary underline"
-                          >
-                            Health & Liability Waiver
-                          </Link>
-                          .
-                        </span>
-                      </label>
-                    ) : null}
                     {requiresPracticalRegistration ? (
                       <>
                         {user?.hasAgreedToHealth ? (

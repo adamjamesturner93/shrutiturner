@@ -7,5 +7,5 @@ export function getRetreatCheckoutAcceptanceTypes(input: {
   if (input.purchaseMode === "gift") return [AcceptanceType.terms];
   return input.requiresPracticalRegistration
     ? [AcceptanceType.terms, AcceptanceType.health_waiver, AcceptanceType.health_data]
-    : [AcceptanceType.terms, AcceptanceType.health_waiver];
+    : [AcceptanceType.terms];
 }

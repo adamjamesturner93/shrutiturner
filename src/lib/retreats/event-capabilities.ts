@@ -12,6 +12,7 @@ export type RetreatEventCapabilities = {
   requiresAccommodation: boolean;
   requiresVenue: boolean;
   requiresPracticalRegistration: boolean;
+  requiresCheckoutPracticalRegistration: boolean;
   usesLiveRoom: boolean;
   allowsMultipleGuests: boolean;
   paymentPolicy: "deposit_or_full" | "full_payment";
@@ -23,6 +24,7 @@ const CAPABILITIES: Record<RetreatEventKind, RetreatEventCapabilities> = {
     requiresAccommodation: true,
     requiresVenue: true,
     requiresPracticalRegistration: true,
+    requiresCheckoutPracticalRegistration: true,
     usesLiveRoom: false,
     allowsMultipleGuests: true,
     paymentPolicy: "deposit_or_full",
@@ -32,6 +34,7 @@ const CAPABILITIES: Record<RetreatEventKind, RetreatEventCapabilities> = {
     requiresAccommodation: false,
     requiresVenue: true,
     requiresPracticalRegistration: true,
+    requiresCheckoutPracticalRegistration: true,
     usesLiveRoom: false,
     allowsMultipleGuests: false,
     paymentPolicy: "full_payment",
@@ -41,6 +44,7 @@ const CAPABILITIES: Record<RetreatEventKind, RetreatEventCapabilities> = {
     requiresAccommodation: false,
     requiresVenue: true,
     requiresPracticalRegistration: true,
+    requiresCheckoutPracticalRegistration: false,
     usesLiveRoom: false,
     allowsMultipleGuests: false,
     paymentPolicy: "full_payment",
@@ -50,6 +54,7 @@ const CAPABILITIES: Record<RetreatEventKind, RetreatEventCapabilities> = {
     requiresAccommodation: false,
     requiresVenue: false,
     requiresPracticalRegistration: false,
+    requiresCheckoutPracticalRegistration: false,
     usesLiveRoom: true,
     allowsMultipleGuests: false,
     paymentPolicy: "full_payment",

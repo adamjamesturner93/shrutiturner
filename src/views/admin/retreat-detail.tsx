@@ -943,17 +943,16 @@ export function AdminRetreatDetail({
           </>
         ) : null}
         <div id="setup-controls" className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          {section === "setup" &&
-          setupStep === "rooms" &&
-          retreat.ratePlans.some((ratePlan) => ratePlan.earlyBirdPricePence !== null) ? (
+          {section === "setup" && setupStep === "rooms" && retreat.ratePlans.length > 0 ? (
             <details className="rounded-xl border bg-white p-5 lg:col-span-2">
               <summary className="cursor-pointer font-semibold">
-                Early-bird deadlines · optional
+                Early-bird prices · optional
               </summary>
               <div className="mt-5 space-y-5">
                 <p className="text-muted-foreground text-sm">
-                  Published prices are locked so guests see the same offer. You can extend an
-                  existing early-bird deadline, but cannot change, add or remove its price.
+                  Add an early-bird offer for future bookings. Existing bookings keep their agreed
+                  price. Once published, an existing offer's price stays fixed, but its deadline can
+                  be extended.
                 </p>
                 <div className="space-y-4">
                   {retreat.ratePlans.map((ratePlan) => {
@@ -982,7 +981,15 @@ export function AdminRetreatDetail({
                             max={(ratePlan.totalPricePence - 1) / 100}
                             step="0.01"
                             value={draft.pricePounds}
-                            disabled={retreat.pricingLocked}
+                            disabled={
+                              retreat.pricingLocked && ratePlan.earlyBirdPricePence !== null
+                            }
+                            onChange={(event) =>
+                              setEarlyBirdDrafts((current) => ({
+                                ...current,
+                                [ratePlan.id]: { ...draft, pricePounds: event.target.value },
+                              }))
+                            }
                           />
                         </div>
                         <div className="space-y-2">
@@ -993,7 +1000,7 @@ export function AdminRetreatDetail({
                             min={toDateTimeLocal(ratePlan.earlyBirdEndsAt)}
                             max={toDateTimeLocal(retreat.startDate)}
                             value={draft.endsAt}
-                            disabled={ratePlan.earlyBirdPricePence === null}
+                            disabled={!draft.pricePounds.trim()}
                             onChange={(event) =>
                               setEarlyBirdDrafts((current) => ({
                                 ...current,
@@ -1008,14 +1015,11 @@ export function AdminRetreatDetail({
                 </div>
                 <Button
                   type="button"
-                  disabled={
-                    actionLoading !== "" ||
-                    !retreat.ratePlans.some((ratePlan) => ratePlan.earlyBirdPricePence !== null)
-                  }
+                  disabled={actionLoading !== ""}
                   onClick={() => void saveEarlyBirdRates()}
                 >
                   <Save className="mr-2 h-4 w-4" />
-                  {actionLoading === "early-bird" ? "Saving..." : "Save early-bird deadlines"}
+                  {actionLoading === "early-bird" ? "Saving..." : "Save early-bird prices"}
                 </Button>
               </div>
             </details>
