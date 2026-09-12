@@ -5,6 +5,14 @@ import { syncMarketingPreferenceForUser } from "@/lib/newsletter/subscriber-serv
 import { getPostmarkOutboundStats } from "@/lib/postmark/stats-service";
 
 export type SubscriptionType = "pending" | "subscribed" | "unsubscribed";
+export type NewsletterCampaignStatus =
+  | "preparing"
+  | "scheduled"
+  | "sending"
+  | "sent"
+  | "failed"
+  | "failed_partial"
+  | "reconciliation_required";
 
 export type AdminSubscriberDto = {
   id: string;
@@ -32,7 +40,7 @@ export type AdminNewsletterCampaignSummaryDto = {
   id: string;
   providerCampaignId: string;
   subject: string;
-  status: "sent" | "scheduled" | "sending" | "failed" | "failed_partial";
+  status: NewsletterCampaignStatus;
   sentDate: string;
   totalRecipients: number;
   delivered: number;
@@ -60,6 +68,16 @@ export type AdminNewsletterCampaignSummaryDto = {
 };
 
 export type AdminNewsletterCampaignDetailDto = AdminNewsletterCampaignSummaryDto & {
+  deliveryStateCounts: {
+    queued: number;
+    sending: number;
+    sent: number;
+    failed: number;
+    deadLetter: number;
+  };
+  canRetry: boolean;
+  canReconcile: boolean;
+  ambiguousDeliveries: Array<{ id: string; email: string; attemptCount: number }>;
   topLinks: Array<{ url: string; clicks: number }>;
   eventTimeline: Array<{ date: string; opened: number; clicked: number; bounced: number }>;
 };
@@ -143,6 +161,20 @@ function toPercent(value: number, total: number) {
   return Math.round((value / total) * 1000) / 10;
 }
 
+function normalizeCampaignStatus(status: string): NewsletterCampaignStatus {
+  if (
+    status === "preparing" ||
+    status === "scheduled" ||
+    status === "sending" ||
+    status === "failed" ||
+    status === "failed_partial" ||
+    status === "reconciliation_required"
+  ) {
+    return status;
+  }
+  return "sent";
+}
+
 function getCampaignSourceSystem(campaign: {
   contentfulEntryId: string | null;
   triggeredBy: string | null;
@@ -172,6 +204,9 @@ function getCampaignAttentionReasons(input: {
     reasons.push(`${input.failedCount} recipient${input.failedCount === 1 ? "" : "s"} failed`);
   }
   if (input.status === "failed") reasons.push("Campaign sending failed");
+  if (input.status === "reconciliation_required") {
+    reasons.push("Postmark did not return a definite outcome for one or more recipients");
+  }
   if (input.bounceRate >= 5) reasons.push(`Bounce rate is ${input.bounceRate}%`);
   if (input.spamComplaints > 0) {
     reasons.push(`${input.spamComplaints} spam complaint${input.spamComplaints === 1 ? "" : "s"}`);
@@ -247,8 +282,10 @@ function buildCampaignWhere(params: {
     params.status === "sent" ||
     params.status === "scheduled" ||
     params.status === "sending" ||
+    params.status === "preparing" ||
     params.status === "failed" ||
-    params.status === "failed_partial"
+    params.status === "failed_partial" ||
+    params.status === "reconciliation_required"
   ) {
     where.status = params.status;
   }
@@ -753,6 +790,7 @@ export async function getAdminNewsletterSummary(
           })
         : null;
       const totalRecipients = Math.max(
+        campaign.emailDeliveries.length,
         campaign.sentCount + campaign.failedCount,
         (providerStats?.sent || 0) + campaign.failedCount,
         (providerStats?.delivered || agg.delivered) + (providerStats?.bounced || agg.bounced),
@@ -792,13 +830,7 @@ export async function getAdminNewsletterSummary(
         id: campaign.id,
         providerCampaignId: campaign.providerCampaignId,
         subject: campaign.subject,
-        status:
-          campaign.status === "scheduled" ||
-          campaign.status === "sending" ||
-          campaign.status === "failed" ||
-          campaign.status === "failed_partial"
-            ? (campaign.status as "scheduled" | "sending" | "failed" | "failed_partial")
-            : "sent",
+        status: normalizeCampaignStatus(campaign.status),
         sentDate: sentDate.toISOString(),
         totalRecipients,
         delivered,
@@ -971,7 +1003,17 @@ export async function getAdminNewsletterCampaign(
         orderBy: { eventAt: "asc" },
       },
       emailDeliveries: {
-        select: { status: true, messageStream: true, tag: true, lastError: true, resolvedAt: true },
+        select: {
+          id: true,
+          toEmail: true,
+          attemptCount: true,
+          status: true,
+          messageStream: true,
+          tag: true,
+          lastError: true,
+          resolvedAt: true,
+          retryable: true,
+        },
       },
     },
   });
@@ -1003,6 +1045,7 @@ export async function getAdminNewsletterCampaign(
   }
 
   const totalRecipients = Math.max(
+    campaign.emailDeliveries.length,
     campaign.sentCount + campaign.failedCount,
     (providerStats?.sent || 0) + campaign.failedCount,
     (providerStats?.delivered || agg.delivered) + (providerStats?.bounced || agg.bounced),
@@ -1043,13 +1086,7 @@ export async function getAdminNewsletterCampaign(
     id: campaign.id,
     providerCampaignId: campaign.providerCampaignId,
     subject: campaign.subject,
-    status:
-      campaign.status === "scheduled" ||
-      campaign.status === "sending" ||
-      campaign.status === "failed" ||
-      campaign.status === "failed_partial"
-        ? (campaign.status as "scheduled" | "sending" | "failed" | "failed_partial")
-        : "sent",
+    status: normalizeCampaignStatus(campaign.status),
     sentDate: sentDate.toISOString(),
     totalRecipients,
     delivered,
@@ -1077,6 +1114,24 @@ export async function getAdminNewsletterCampaign(
     reportingSource: providerStats ? "postmark_api" : "event_history",
     attentionReasons,
     errorSummary,
+    deliveryStateCounts: {
+      queued: campaign.emailDeliveries.filter((delivery) => delivery.status === "queued").length,
+      sending: campaign.emailDeliveries.filter((delivery) => delivery.status === "sending").length,
+      sent: campaign.emailDeliveries.filter((delivery) => delivery.status === "sent").length,
+      failed: campaign.emailDeliveries.filter((delivery) => delivery.status === "failed").length,
+      deadLetter: campaign.emailDeliveries.filter((delivery) => delivery.status === "dead_letter")
+        .length,
+    },
+    canRetry: !(campaign.processingLeaseExpiresAt && campaign.processingLeaseExpiresAt > new Date()) && !campaign.emailDeliveries.some((delivery) => delivery.status === "sending") && (Boolean(!campaign.audiencePreparedAt && campaign.audienceSnapshotJson) || campaign.emailDeliveries.some(
+      (delivery) =>
+        !delivery.resolvedAt &&
+        delivery.retryable &&
+        (delivery.status === "queued" || delivery.status === "failed")
+    )),
+    ambiguousDeliveries: campaign.emailDeliveries.filter((delivery) => delivery.status === "sending" && !delivery.resolvedAt).map((delivery) => ({ id: delivery.id, email: delivery.toEmail, attemptCount: delivery.attemptCount })),
+    canReconcile: !(campaign.processingLeaseExpiresAt && campaign.processingLeaseExpiresAt > new Date()) && campaign.emailDeliveries.some(
+      (delivery) => !delivery.resolvedAt && delivery.status === "sending"
+    ),
     topLinks: agg.topLinks,
     eventTimeline: Array.from(eventTimelineByDate.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))

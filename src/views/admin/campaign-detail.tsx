@@ -2,13 +2,21 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AdminLayout } from "../../components/admin-layout";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { AlertTriangle, ArrowLeft, Info } from "lucide-react";
 import type { AdminNewsletterCampaignDetailDto } from "@/lib/api/types";
 import { InlineLoadingStatus } from "@/components/loading-region";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 function formatRate(
   rate: number | null,
@@ -22,28 +30,94 @@ export function AdminCampaignDetail() {
   const { id } = useParams<{ id: string }>();
   const [campaign, setCampaign] = useState<AdminNewsletterCampaignDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
+  const [action, setAction] = useState<"retry" | "confirm_delivered" | "confirm_not_sent" | null>(
+    null
+  );
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [selectedDeliveryIds, setSelectedDeliveryIds] = useState<string[]>([]);
+  const [reconciliationNote, setReconciliationNote] = useState("");
+  const [confirmation, setConfirmation] = useState<"confirm_delivered" | "confirm_not_sent" | null>(
+    null
+  );
+  const [confirmationError, setConfirmationError] = useState("");
+  const [loadError, setLoadError] = useState("");
+
+  const loadCampaign = useCallback(async () => {
+    setLoadError("");
+    try {
+      const response = await fetch(`/api/admin/newsletter/${encodeURIComponent(id)}`, {
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new Error("Campaign details could not be loaded. Please retry.");
+      }
+      setCampaign((await response.json()) as AdminNewsletterCampaignDetailDto);
+    } catch (error) {
+      setLoadError(
+        error instanceof Error ? error.message : "Campaign details could not be loaded."
+      );
+    }
+  }, [id]);
 
   useEffect(() => {
     let active = true;
-    void (async () => {
-      try {
-        const response = await fetch(`/api/admin/newsletter/${encodeURIComponent(id)}`, {
-          cache: "no-store",
-        });
-        if (!response.ok) {
-          if (active) setCampaign(null);
-          return;
-        }
-        const payload = (await response.json()) as AdminNewsletterCampaignDetailDto;
-        if (active) setCampaign(payload);
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
+    void loadCampaign().finally(() => {
+      if (active) setLoading(false);
+    });
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [loadCampaign]);
+
+  async function runAction(nextAction: "retry" | "confirm_delivered" | "confirm_not_sent") {
+    if (action || loadError) return;
+    setConfirmationError("");
+    setAction(nextAction);
+    setActionMessage(null);
+    try {
+      const endpoint =
+        nextAction === "retry"
+          ? `/api/admin/newsletter/campaigns/${encodeURIComponent(id)}/retry`
+          : `/api/admin/newsletter/campaigns/${encodeURIComponent(id)}/reconcile`;
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body:
+          nextAction === "retry"
+            ? undefined
+            : JSON.stringify({
+                resolution: nextAction,
+                note: reconciliationNote,
+                deliveries: campaign?.ambiguousDeliveries
+                  .filter((row) => selectedDeliveryIds.includes(row.id))
+                  .map(({ id, attemptCount }) => ({ id, attemptCount })),
+              }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as { message?: string };
+      if (!response.ok) throw new Error(payload.message || "The campaign could not be updated");
+      setConfirmation(null);
+      setActionMessage(
+        nextAction === "retry"
+          ? "Eligible failed messages were retried."
+          : nextAction === "confirm_delivered"
+            ? "Selected messages were recorded as sent by the provider."
+            : "Unknown messages were marked as not sent. Review the failed count before retrying."
+      );
+      await loadCampaign();
+      setSelectedDeliveryIds([]);
+      setReconciliationNote("");
+    } catch (error) {
+      if (nextAction !== "retry")
+        setConfirmationError(
+          error instanceof Error ? error.message : "The campaign could not be updated"
+        );
+      setActionMessage(
+        error instanceof Error ? error.message : "The campaign could not be updated"
+      );
+    } finally {
+      setAction(null);
+    }
+  }
 
   return (
     <AdminLayout title="Campaign Detail - Admin">
@@ -57,7 +131,15 @@ export function AdminCampaignDetail() {
         </Link>
 
         {loading ? <InlineLoadingStatus label="Loading campaign…" /> : null}
-        {!loading && !campaign ? (
+        {loadError ? (
+          <div role="alert" className="rounded-lg border p-4">
+            <p>{loadError}</p>
+            <Button variant="outline" className="mt-2" onClick={() => void loadCampaign()}>
+              Retry loading campaign
+            </Button>
+          </div>
+        ) : null}
+        {!loading && !loadError && !campaign ? (
           <Card>
             <CardContent className="py-10 text-center">
               <p className="text-brand-dark text-sm">Campaign not found.</p>
@@ -99,8 +181,102 @@ export function AdminCampaignDetail() {
                       </p>
                     </details>
                   ) : null}
+                  {campaign.canReconcile ? (
+                    <div className="space-y-3 rounded-lg border border-red-300 bg-white/70 p-4">
+                      <div>
+                        <p className="font-medium text-red-950">
+                          {campaign.deliveryStateCounts.sending} recipient outcome
+                          {campaign.deliveryStateCounts.sending === 1 ? " is" : "s are"} unknown
+                        </p>
+                        <p className="mt-1 text-sm text-red-900">
+                          Check this campaign in Postmark before choosing an outcome. Do not retry
+                          until every unknown message has been reconciled.
+                        </p>
+                      </div>
+                      <fieldset className="space-y-2">
+                        <legend className="text-sm font-medium">
+                          Select recipients whose outcome you have verified
+                        </legend>
+                        {(campaign.ambiguousDeliveries || []).map((delivery) => (
+                          <label key={delivery.id} className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={selectedDeliveryIds.includes(delivery.id)}
+                              onChange={(event) =>
+                                setSelectedDeliveryIds((current) =>
+                                  event.target.checked
+                                    ? [...current, delivery.id]
+                                    : current.filter((id) => id !== delivery.id)
+                                )
+                              }
+                            />
+                            {delivery.email} · attempt {delivery.attemptCount}
+                          </label>
+                        ))}
+                        <label className="block text-sm">
+                          Provider evidence / reference
+                          <textarea
+                            className="mt-1 w-full rounded border p-2"
+                            maxLength={2000}
+                            value={reconciliationNote}
+                            onChange={(event) => setReconciliationNote(event.target.value)}
+                          />
+                        </label>
+                      </fieldset>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => {
+                            setConfirmationError("");
+                            setConfirmation("confirm_delivered");
+                          }}
+                          disabled={
+                            Boolean(loadError) ||
+                            action !== null ||
+                            !selectedDeliveryIds.length ||
+                            !reconciliationNote.trim()
+                          }
+                        >
+                          {action === "confirm_delivered" ? "Saving…" : "Postmark shows sent"}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => {
+                            setConfirmationError("");
+                            setConfirmation("confirm_not_sent");
+                          }}
+                          disabled={
+                            Boolean(loadError) ||
+                            action !== null ||
+                            !selectedDeliveryIds.length ||
+                            !reconciliationNote.trim()
+                          }
+                        >
+                          {action === "confirm_not_sent" ? "Saving…" : "Postmark shows not sent"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                  {!campaign.canReconcile && campaign.canRetry ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => void runAction("retry")}
+                      disabled={action !== null || Boolean(loadError)}
+                    >
+                      {action === "retry" ? "Retrying…" : "Retry eligible failed messages"}
+                    </Button>
+                  ) : null}
                 </CardContent>
               </Card>
+            ) : null}
+            {actionMessage ? (
+              <p className="text-muted-foreground text-sm" role="status">
+                {actionMessage}
+              </p>
             ) : null}
             <Card>
               <CardContent className="flex gap-3 pt-6 text-sm">
@@ -147,6 +323,18 @@ export function AdminCampaignDetail() {
                   <Outcome label="Unsubscribed" value={campaign.unsubscribed} />
                   <Outcome label="Failed sends" value={campaign.failedSends} />
                 </div>
+                <details className="text-muted-foreground text-sm">
+                  <summary className="text-foreground cursor-pointer font-medium">
+                    Processing states
+                  </summary>
+                  <p className="mt-2">
+                    Queued {campaign.deliveryStateCounts.queued} · Sending/unknown{" "}
+                    {campaign.deliveryStateCounts.sending} · Sent{" "}
+                    {campaign.deliveryStateCounts.sent}
+                    {" · "}Failed {campaign.deliveryStateCounts.failed} · No further retries{" "}
+                    {campaign.deliveryStateCounts.deadLetter}
+                  </p>
+                </details>
               </CardContent>
             </Card>
             <Card>
@@ -190,6 +378,51 @@ export function AdminCampaignDetail() {
           </>
         ) : null}
       </div>
+      <Dialog
+        open={Boolean(confirmation)}
+        onOpenChange={(open) => {
+          if (!open && !action) setConfirmation(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Confirm outcome for {selectedDeliveryIds.length} selected recipients
+            </DialogTitle>
+            <DialogDescription>
+              {confirmation === "confirm_not_sent"
+                ? "Only confirm if provider evidence shows these messages were not sent. This makes them eligible for a separate retry. An incorrect confirmation can cause duplicate emails."
+                : "Confirm that provider evidence shows these selected messages were sent. They will not be retried. This does not establish inbox delivery or that someone read the email."}
+            </DialogDescription>
+          </DialogHeader>
+          <p className="text-sm whitespace-pre-wrap">
+            <span className="font-medium">Evidence: </span>
+            {reconciliationNote}
+          </p>
+          {confirmationError ? (
+            <p role="alert" className="text-destructive text-sm">
+              {confirmationError}
+            </p>
+          ) : null}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={Boolean(action)}
+              onClick={() => setConfirmation(null)}
+            >
+              Keep reviewing
+            </Button>
+            <Button
+              disabled={Boolean(action)}
+              onClick={() => {
+                if (confirmation) void runAction(confirmation);
+              }}
+            >
+              {action ? "Saving…" : "Confirm selected outcomes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }

@@ -2,6 +2,7 @@ import { connection, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { createAdminRetreatDate, getAdminRetreatSummaries } from "@/lib/retreats/service";
+import { getLegacyRetreatType, isRetreatEventKind } from "@/lib/retreats/event-capabilities";
 
 function stringField(body: Record<string, unknown>, key: string) {
   const value = body[key];
@@ -53,6 +54,8 @@ export async function POST(request: Request) {
     const title = stringField(body, "title");
     const location = stringField(body, "location");
     const retreatTypeValue = stringField(body, "retreatType");
+    const eventKindValue = stringField(body, "eventKind");
+    const eventKind = isRetreatEventKind(eventKindValue) ? eventKindValue : null;
     const startsAt = parseDateField(stringField(body, "startsAt"));
     const endsAt = parseDateField(stringField(body, "endsAt"));
     const capacity = numberField(body, "capacity");
@@ -77,7 +80,8 @@ export async function POST(request: Request) {
       );
     }
 
-    if (retreatTypeValue !== "in_person" && retreatTypeValue !== "online") {
+    const retreatType = eventKind ? getLegacyRetreatType(eventKind) : retreatTypeValue;
+    if (retreatType !== "in_person" && retreatType !== "online") {
       return NextResponse.json(
         { message: "Retreat type must be in_person or online." },
         { status: 400 }
@@ -101,15 +105,21 @@ export async function POST(request: Request) {
     }
 
     const retreatDate = await createAdminRetreatDate({
+      copyFromDateId: stringField(body, "copyFromDateId") || null,
+      experienceId: stringField(body, "experienceId") || null,
+      formatPresetId: stringField(body, "formatPresetId") || null,
+      venueProfileId: stringField(body, "venueProfileId") || null,
+      venueContentfulId: stringField(body, "venueContentfulId") || null,
       retreatSlug,
       title,
       location,
-      retreatType: retreatTypeValue,
+      retreatType,
+      eventKind: eventKind || undefined,
       startsAt,
       endsAt,
       capacity,
       pricePence,
-      paymentPolicy: retreatTypeValue === "online" ? "full_payment" : paymentPolicyValue,
+      paymentPolicy: retreatType === "online" ? "full_payment" : paymentPolicyValue,
       earlyBirdPricePence,
       earlyBirdEndsAt,
     });

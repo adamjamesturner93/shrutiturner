@@ -1,7 +1,6 @@
 "use client";
-
-import { useCallback, useEffect, useState } from "react";
-import { Calendar, CheckCircle, Info, Link2, PoundSterling, Video } from "lucide-react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   Dialog,
   DialogContent,
@@ -9,17 +8,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../ui/dialog";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { AdminRetreatTemplateDto } from "@/lib/api/types";
-
-interface CreateRetreatModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onCreate?: (data: CreateRetreatData) => Promise<void> | void;
-}
 
 export interface CreateRetreatData {
   retreatSlug: string;
@@ -31,353 +24,229 @@ export interface CreateRetreatData {
   capacity: number;
   pricePence: number;
   paymentPolicy: "deposit" | "full_payment";
+  copyFromDateId?: string | null;
   earlyBirdPricePence?: number | null;
   earlyBirdEndsAt?: string | null;
 }
 
-function toPence(value: string) {
-  const pounds = Number(value);
-  if (!Number.isFinite(pounds) || pounds < 0) return 0;
-  return Math.round(pounds * 100);
-}
-
-export function CreateRetreatModal({ open, onOpenChange, onCreate }: CreateRetreatModalProps) {
+export function CreateRetreatModal({
+  open,
+  onOpenChange,
+  onCreate,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreate?: (data: CreateRetreatData) => Promise<void> | void;
+}) {
   const [templates, setTemplates] = useState<AdminRetreatTemplateDto[]>([]);
-  const [templatesLoading, setTemplatesLoading] = useState(false);
-  const [retreatSlug, setRetreatSlug] = useState("");
-  const [title, setTitle] = useState("");
-  const [location, setLocation] = useState("");
-  const [retreatType, setRetreatType] = useState<"in_person" | "online">("in_person");
-  const [startsAt, setStartsAt] = useState("");
-  const [endsAt, setEndsAt] = useState("");
-  const [capacity, setCapacity] = useState(10);
-  const [pricePounds, setPricePounds] = useState("0");
-  const [paymentPolicy, setPaymentPolicy] = useState<"deposit" | "full_payment">("deposit");
-  const [earlyBirdPricePounds, setEarlyBirdPricePounds] = useState("");
-  const [earlyBirdEndsAt, setEarlyBirdEndsAt] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState("");
-
-  const hasEarlyBirdPrice = earlyBirdPricePounds.trim().length > 0;
-  const hasEarlyBirdEndDate = earlyBirdEndsAt.length > 0;
-  const selectedTemplate = templates.find((item) => item.slug === retreatSlug);
-  const canSubmit =
-    retreatSlug.trim().length > 0 &&
-    title.trim().length > 0 &&
-    location.trim().length > 0 &&
-    startsAt.length > 0 &&
-    endsAt.length > 0 &&
-    capacity > 0 &&
-    (retreatType === "online" || selectedTemplate?.venueRoomsConfigured === true) &&
-    hasEarlyBirdPrice === hasEarlyBirdEndDate;
-
-  const applyPreset = useCallback((slug: string, availableTemplates: AdminRetreatTemplateDto[]) => {
-    const preset = availableTemplates.find((item) => item.slug === slug);
-    if (!preset) {
-      setRetreatSlug(slug);
-      return;
-    }
-    setRetreatSlug(preset.slug);
-    setTitle(preset.title);
-    setLocation(preset.location);
-    setRetreatType(preset.retreatType);
-    setPaymentPolicy(preset.paymentPolicy);
-    setCapacity(preset.capacity);
-    setPricePounds(String(preset.pricePence / 100));
-    setEarlyBirdPricePounds("");
-    setEarlyBirdEndsAt("");
-  }, []);
-
+  const [slug, setSlug] = useState("");
+  const [step, setStep] = useState(1);
+  const [starts, setStarts] = useState("");
+  const [ends, setEnds] = useState("");
+  const [copy, setCopy] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const selected = templates.find((template) => template.slug === slug);
   useEffect(() => {
     if (!open) return;
     let active = true;
-    setTemplatesLoading(true);
-    setSubmitError("");
-    void fetch("/api/admin/retreats/templates", { cache: "no-store" })
+    setStep(1);
+    setCopy(false);
+    setStarts("");
+    setEnds("");
+    setError("");
+    void fetch("/api/admin/retreats/templates")
       .then(async (response) => {
-        if (!response.ok) throw new Error("Failed to load Contentful experiences.");
-        return (await response.json()) as AdminRetreatTemplateDto[];
-      })
-      .then((items) => {
-        if (!active) return;
-        setTemplates(items);
-        if (items.length > 0) applyPreset(items[0].slug, items);
-      })
-      .catch((error) => {
+        if (!response.ok) throw new Error("Unable to load experiences.");
+        const data = (await response.json()) as AdminRetreatTemplateDto[];
         if (active) {
-          setSubmitError(error instanceof Error ? error.message : "Failed to load experiences.");
+          setTemplates(data);
+          setSlug(data[0]?.slug || "");
         }
       })
-      .finally(() => {
-        if (active) setTemplatesLoading(false);
+      .catch((error) => {
+        if (active) setError(error.message);
       });
     return () => {
       active = false;
     };
-  }, [applyPreset, open]);
-
-  function resetAndClose() {
-    setSubmitting(false);
-    setSubmitError("");
-    onOpenChange(false);
-  }
-
-  async function handleCreate() {
-    if (!canSubmit || submitting) return;
-    setSubmitting(true);
-    setSubmitError("");
+  }, [open]);
+  async function createDraft() {
+    if (!selected) return;
+    const start = new Date(starts),
+      end = new Date(ends);
+    if (
+      !Number.isFinite(start.getTime()) ||
+      !Number.isFinite(end.getTime()) ||
+      start <= new Date() ||
+      end <= start
+    ) {
+      setError("Choose a future start and an end after the start.");
+      return;
+    }
+    setBusy(true);
+    setError("");
     try {
       await onCreate?.({
-        retreatSlug: retreatSlug.trim(),
-        title: title.trim(),
-        location: location.trim(),
-        retreatType,
-        startsAt: new Date(startsAt).toISOString(),
-        endsAt: new Date(endsAt).toISOString(),
-        capacity,
-        pricePence: toPence(pricePounds),
-        paymentPolicy: retreatType === "online" ? "full_payment" : paymentPolicy,
-        earlyBirdPricePence: hasEarlyBirdPrice ? toPence(earlyBirdPricePounds) : null,
-        earlyBirdEndsAt: hasEarlyBirdEndDate ? new Date(earlyBirdEndsAt).toISOString() : null,
+        retreatSlug: selected.slug,
+        title: selected.title,
+        location: selected.location,
+        retreatType: selected.retreatType,
+        startsAt: start.toISOString(),
+        endsAt: end.toISOString(),
+        capacity: selected.capacity,
+        pricePence: copy ? selected.pricePence : 0,
+        paymentPolicy: copy
+          ? selected.paymentPolicy
+          : selected.retreatType === "online"
+            ? "full_payment"
+            : "deposit",
+        copyFromDateId: copy ? selected.previousDate?.id : null,
       });
-      resetAndClose();
+      onOpenChange(false);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Failed to create date.");
+      setError(error instanceof Error ? error.message : "Unable to create draft.");
     } finally {
-      setSubmitting(false);
+      setBusy(false);
     }
   }
-
   return (
-    <Dialog open={open} onOpenChange={resetAndClose}>
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        if (!busy) onOpenChange(value);
+      }}
+    >
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Create retreat or workshop date</DialogTitle>
+          <DialogTitle>{step === 1 ? "1. Choose your experience" : "2. Set the dates"}</DialogTitle>
           <DialogDescription>
-            Create the operational date, ticket inventory and payment setup for an existing
-            Contentful experience slug.
+            Create a private draft, then review rooms or tickets, prices and payments before opening
+            bookings.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-5 py-2">
-          <div className="text-muted-foreground bg-secondary/50 flex items-start gap-2 rounded-md p-3 text-xs">
-            <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-            <span>
-              Editorial copy, images and long-form details stay in Contentful. This form creates the
-              dated booking record in the website database. Online workshops get a live ticket
-              option and full-payment rule automatically.
-            </span>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="retreat-preset" className="flex items-center gap-2">
-              <Link2 className="h-4 w-4" />
-              Existing experience
-            </Label>
-            <select
-              id="retreat-preset"
-              value={retreatSlug}
-              onChange={(event) => applyPreset(event.target.value, templates)}
-              className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-10 w-full rounded-md border px-3 py-2 text-sm transition-colors outline-none focus-visible:ring-[3px]"
-            >
-              {templates.map((experience) => (
-                <option key={experience.slug} value={experience.slug}>
-                  {experience.title}
-                </option>
-              ))}
-            </select>
-            {templatesLoading ? (
-              <p className="text-muted-foreground text-xs">Loading published experiences...</p>
-            ) : templates.length === 0 ? (
-              <p className="text-muted-foreground text-xs">
-                Publish an experience in Contentful before creating a date.
-              </p>
-            ) : selectedTemplate?.retreatType === "in_person" &&
-              !selectedTemplate.venueRoomsConfigured ? (
-              <p className="text-xs text-amber-700">
-                Set up this venue&apos;s rooms before creating an in-person retreat date.
-              </p>
-            ) : null}
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="retreat-slug">Contentful experience slug</Label>
-              <Input
-                id="retreat-slug"
-                value={retreatSlug}
-                onChange={(event) => setRetreatSlug(event.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="retreat-type" className="flex items-center gap-2">
-                <Video className="h-4 w-4" />
-                Type
-              </Label>
+        <ol
+          className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-2 text-xs"
+          aria-label="Setup steps"
+        >
+          <li>1. Experience</li>
+          <li>2. Dates</li>
+          <li>3. Rooms / tickets</li>
+          <li>4. Prices & payment</li>
+          <li>5. Review</li>
+        </ol>
+        {error ? (
+          <p role="alert" className="text-destructive">
+            {error}
+          </p>
+        ) : null}
+        {step === 1 ? (
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="new-experience">Published experience</Label>
               <select
-                id="retreat-type"
-                value={retreatType}
+                id="new-experience"
+                className="bg-background h-11 w-full rounded-md border px-3"
+                value={slug}
                 onChange={(event) => {
-                  const nextType = event.target.value === "online" ? "online" : "in_person";
-                  setRetreatType(nextType);
-                  setPaymentPolicy(nextType === "online" ? "full_payment" : "deposit");
+                  setSlug(event.target.value);
+                  setCopy(false);
                 }}
-                className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-10 w-full rounded-md border px-3 py-2 text-sm transition-colors outline-none focus-visible:ring-[3px]"
               >
-                <option value="online">Online workshop</option>
-                <option value="in_person">In-person retreat</option>
+                <option value="">Choose an experience</option>
+                {templates.map((template) => (
+                  <option key={template.slug} value={template.slug}>
+                    {template.title}
+                  </option>
+                ))}
               </select>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="retreat-payment-policy">Payment policy</Label>
-            <select
-              id="retreat-payment-policy"
-              value={retreatType === "online" ? "full_payment" : paymentPolicy}
-              disabled={retreatType === "online"}
-              onChange={(event) =>
-                setPaymentPolicy(event.target.value === "full_payment" ? "full_payment" : "deposit")
-              }
-              className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-10 w-full rounded-md border px-3 py-2 text-sm transition-colors outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <option value="deposit">Deposit, then balance later</option>
-              <option value="full_payment">Full payment required</option>
-            </select>
-            <p className="text-muted-foreground text-xs">
-              Full-payment-only dates do not receive the separate pay-in-full discount. Online
-              workshops always require full payment.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="retreat-title">Public title snapshot</Label>
-            <Input
-              id="retreat-title"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="retreat-location">Location snapshot</Label>
-            <Input
-              id="retreat-location"
-              value={location}
-              onChange={(event) => setLocation(event.target.value)}
-            />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="retreat-start" className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Starts
-              </Label>
-              <input
-                id="retreat-start"
-                type="datetime-local"
-                value={startsAt}
-                onChange={(event) => setStartsAt(event.target.value)}
-                className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-10 w-full rounded-md border px-3 py-2 text-sm transition-colors outline-none focus-visible:ring-[3px]"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="retreat-end">Ends</Label>
-              <input
-                id="retreat-end"
-                type="datetime-local"
-                value={endsAt}
-                onChange={(event) => setEndsAt(event.target.value)}
-                className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-10 w-full rounded-md border px-3 py-2 text-sm transition-colors outline-none focus-visible:ring-[3px]"
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="retreat-capacity">Capacity</Label>
-              <Input
-                id="retreat-capacity"
-                type="number"
-                min={1}
-                max={200}
-                value={capacity}
-                onChange={(event) => setCapacity(Number.parseInt(event.target.value, 10) || 0)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="retreat-price" className="flex items-center gap-2">
-                <PoundSterling className="h-4 w-4" />
-                Standard price
-              </Label>
-              <Input
-                id="retreat-price"
-                type="number"
-                min={0}
-                step={1}
-                value={pricePounds}
-                onChange={(event) => setPricePounds(event.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="rounded-lg border p-4">
-            <div>
-              <p className="text-sm font-medium">Early bird pricing</p>
-              <p className="text-muted-foreground mt-1 text-xs">
-                Optional. If set, checkout uses this lower price until the end date, then
-                automatically reverts to the standard price.
+            {selected ? (
+              <p>
+                {selected.retreatType === "online" ? "Live online workshop" : "Residential retreat"}{" "}
+                · {selected.location}
               </p>
-            </div>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="retreat-early-bird-price" className="flex items-center gap-2">
-                  <PoundSterling className="h-4 w-4" />
-                  Early bird price
-                </Label>
-                <Input
-                  id="retreat-early-bird-price"
-                  type="number"
-                  min={0}
-                  step={1}
-                  value={earlyBirdPricePounds}
-                  onChange={(event) => setEarlyBirdPricePounds(event.target.value)}
-                  placeholder="Optional"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="retreat-early-bird-end">Early bird ends</Label>
-                <input
-                  id="retreat-early-bird-end"
-                  type="datetime-local"
-                  value={earlyBirdEndsAt}
-                  onChange={(event) => setEarlyBirdEndsAt(event.target.value)}
-                  className="border-input bg-input-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-10 w-full rounded-md border px-3 py-2 text-sm transition-colors outline-none focus-visible:ring-[3px]"
-                />
-              </div>
-            </div>
-            {hasEarlyBirdPrice !== hasEarlyBirdEndDate ? (
-              <p className="mt-3 text-xs text-red-700">
-                Add both an early bird price and an end date, or leave both blank.
+            ) : (
+              <p className="text-muted-foreground">
+                Publish the experience content in Contentful first. Opening bookings is a separate
+                final step here.
+              </p>
+            )}
+            {selected?.retreatType === "in_person" && !selected.venueRoomsConfigured ? (
+              <p>
+                Set up the venue's reusable rooms first.{" "}
+                <Link href="/admin/retreats/venues" className="underline">
+                  Open venue room setup
+                </Link>
               </p>
             ) : null}
+            {selected?.previousDate ? (
+              <label className="flex gap-3 rounded-xl border p-4">
+                <input
+                  type="checkbox"
+                  checked={copy}
+                  onChange={(event) => setCopy(event.target.checked)}
+                />
+                <span>
+                  Reuse settings from{" "}
+                  {new Date(selected.previousDate.startsAt).toLocaleDateString("en-GB")}
+                  <span className="text-muted-foreground mt-1 block text-sm">
+                    Copies rooms/tickets, prices, payment rules and extras for review. Does not copy
+                    bookings, guests or early-bird deadlines. Leave unticked to use the current
+                    venue rooms and enter new prices.
+                  </span>
+                </span>
+              </label>
+            ) : null}
           </div>
-
-          {submitError ? (
-            <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              {submitError}
+        ) : (
+          <div className="space-y-4">
+            <p className="font-medium">{selected?.title}</p>
+            <p className="text-muted-foreground text-sm">
+              Enter times in your browser's timezone (
+              {Intl.DateTimeFormat().resolvedOptions().timeZone}). The event is displayed in
+              Europe/London; review the converted times on the draft.
+            </p>
+            <div>
+              <Label htmlFor="new-start">Arrival / start</Label>
+              <Input
+                id="new-start"
+                type="datetime-local"
+                value={starts}
+                onChange={(event) => setStarts(event.target.value)}
+              />
             </div>
-          ) : null}
-        </div>
-
+            <div>
+              <Label htmlFor="new-end">Departure / end</Label>
+              <Input
+                id="new-end"
+                type="datetime-local"
+                value={ends}
+                onChange={(event) => setEnds(event.target.value)}
+              />
+            </div>
+            <p className="text-muted-foreground text-sm">
+              Nothing becomes bookable yet. Next you will confirm capacity, prices and payment
+              rules.
+            </p>
+          </div>
+        )}
         <DialogFooter>
-          <Button variant="ghost" onClick={resetAndClose}>
-            Cancel
-          </Button>
-          <Button onClick={handleCreate} disabled={!canSubmit || submitting || templatesLoading}>
-            <CheckCircle className="mr-2 h-4 w-4" />
-            {submitting ? "Creating..." : "Create date"}
+          {step > 1 ? (
+            <Button variant="outline" disabled={busy} onClick={() => setStep(1)}>
+              Back
+            </Button>
+          ) : null}
+          <Button
+            disabled={
+              busy ||
+              !selected ||
+              (selected.retreatType === "in_person" && !selected.venueRoomsConfigured) ||
+              (step === 2 && (!starts || !ends))
+            }
+            onClick={() => (step === 1 ? setStep(2) : void createDraft())}
+          >
+            {busy ? "Creating…" : step === 1 ? "Next: dates" : "Create draft and continue"}
           </Button>
         </DialogFooter>
       </DialogContent>

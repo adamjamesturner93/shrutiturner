@@ -50,6 +50,7 @@ export async function addCredits({
   stripePaymentIntentId,
   stripeInvoiceId,
   createdByUserId,
+  tx = db,
 }: {
   userId: string;
   amount: number;
@@ -61,9 +62,10 @@ export async function addCredits({
   stripePaymentIntentId?: string;
   stripeInvoiceId?: string;
   createdByUserId?: string;
+  tx?: Prisma.TransactionClient | typeof db;
 }) {
   if (amount <= 0) throw new Error("CREDIT_AMOUNT_MUST_BE_POSITIVE");
-  return db.creditLedgerEntry.create({
+  return tx.creditLedgerEntry.create({
     data: {
       userId,
       amount,

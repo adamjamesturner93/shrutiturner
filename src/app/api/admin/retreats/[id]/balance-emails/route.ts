@@ -6,6 +6,27 @@ type BalanceEmailBody = {
   mode?: unknown;
 };
 
+export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+  try {
+    await requireStaffAdminUser();
+    const { id } = await context.params;
+    return NextResponse.json(
+      await sendRetreatBalanceDueEmails({ retreatDateId: id, preview: true })
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const status =
+      message === "UNAUTHORIZED"
+        ? 401
+        : message === "FORBIDDEN"
+          ? 403
+          : message === "NOT_FOUND"
+            ? 404
+            : 500;
+    return NextResponse.json({ message: "Unable to preview payment emails." }, { status });
+  }
+}
+
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const adminUser = await requireStaffAdminUser();

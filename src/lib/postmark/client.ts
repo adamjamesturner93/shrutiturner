@@ -157,6 +157,27 @@ export async function attemptEmailDelivery(deliveryId: string) {
     return { skipped: true as const, reason: "terminal" };
   }
 
+  if (existing.category === "marketing" && existing.campaignId) {
+    const subscriber = await db.newsletterSubscriber.findUnique({
+      where: { email: existing.toEmail.trim().toLowerCase() },
+      select: { status: true },
+    });
+    if (!subscriber || subscriber.status !== "subscribed") {
+      await db.emailDelivery.update({
+        where: { id: deliveryId },
+        data: {
+          retryable: false,
+          nextRetryAt: null,
+          resolvedAt: new Date(),
+          resolutionCode: "recipient_not_subscribed",
+          resolutionNote:
+            "Marketing delivery was not sent because the recipient is not subscribed.",
+        },
+      });
+      return { skipped: true as const, reason: "recipient_not_subscribed" };
+    }
+  }
+
   const claimed = await db.emailDelivery.updateMany({
     where: {
       id: deliveryId,
@@ -286,6 +307,10 @@ export async function processDueEmailDeliveries(limit = 50) {
         in: [EmailDeliveryStatus.queued, EmailDeliveryStatus.failed],
       },
       resolvedAt: null,
+      NOT: {
+        category: "marketing",
+        campaignId: { not: null },
+      },
       OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: now } }],
     },
     orderBy: [{ createdAt: "asc" }],

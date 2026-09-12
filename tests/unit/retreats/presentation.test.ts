@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content/types";
 import {
   formatRetreatDateTimeRange,
+  getRetreatCardDateLabels,
   getRetreatPriceSummary,
   getRetreatRoomOptionPriceSummary,
 } from "@/lib/retreats/presentation";
@@ -100,6 +101,31 @@ describe("retreat price presentation", () => {
 });
 
 describe("retreat date and time presentation", () => {
+  it.each([
+    [
+      "2026-09-18T15:00:00Z",
+      "2026-09-20T13:00:00Z",
+      "18th–20th September 2026",
+      "Arrive 16:00 · Leave 14:00",
+    ],
+    ["2026-10-04T08:30:00Z", "2026-10-04T11:00:00Z", "4th October 2026", "09:30–12:00"],
+    [
+      "2026-09-30T15:00:00Z",
+      "2026-10-02T13:00:00Z",
+      "30th September–2nd October 2026",
+      "Arrive 16:00 · Leave 14:00",
+    ],
+    [
+      "2026-12-31T16:00:00Z",
+      "2027-01-02T14:00:00Z",
+      "31st December 2026–2nd January 2027",
+      "Arrive 16:00 · Leave 14:00",
+    ],
+    ["2026-07-01T23:30:00Z", "2026-07-02T01:00:00Z", "2nd July 2026", "00:30–02:00"],
+  ])("separates card dates and times for %s", (start, end, dateLabel, timeLabel) => {
+    expect(getRetreatCardDateLabels(start, end, "Europe/London")).toEqual({ dateLabel, timeLabel });
+  });
+
   it("formats a one-day retreat with both times and one date", () => {
     expect(
       formatRetreatDateTimeRange(

@@ -1,4 +1,5 @@
 import { PUBLIC_CONTENT_MODELS } from "../migrations/001-public-content-models.ts";
+import { RETREAT_EDITOR_LAYOUTS } from "../migrations/retreat-editor-layouts.ts";
 import { createClient } from "contentful-management";
 import { getContentfulScriptEnv } from "./env.ts";
 
@@ -178,6 +179,31 @@ async function configureSlugEditor(contentTypeId: string, trackingFieldId: strin
     payload.editors = editorInterface.editors;
   }
 
+  if (RETREAT_EDITOR_LAYOUTS[contentTypeId]) {
+    const modelResponse = await fetch(`${CMA_BASE_URL}/content_types/${contentTypeId}`, {
+      headers: { Authorization: `Bearer ${managementToken}` },
+    });
+    if (!modelResponse.ok)
+      throw new Error(`Unable to read ${contentTypeId} fields for its editor layout`);
+    const model = (await modelResponse.json()) as { fields: Array<{ id: string }> };
+    const layout = RETREAT_EDITOR_LAYOUTS[contentTypeId].map((group) => ({
+      ...group,
+      items: [...group.items],
+    }));
+    const included = new Set(
+      layout.flatMap((group) => group.items.map((item) => ("fieldId" in item ? item.fieldId : "")))
+    );
+    const legacy = model.fields.filter((field) => !included.has(field.id));
+    // Contentful requires disabled legacy fields in the layout too; their values remain intact.
+    layout[layout.length - 1].items.push(...legacy.map((field) => ({ fieldId: field.id })));
+    payload.editorLayout = layout;
+    payload.groupControls = layout.map((group) => ({
+      groupId: group.groupId,
+      widgetId: "topLevelTab",
+      widgetNamespace: "builtin",
+    }));
+  }
+
   const putRes = await fetch(`${CMA_BASE_URL}/content_types/${contentTypeId}/editor_interface`, {
     method: "PUT",
     headers: {
@@ -210,6 +236,8 @@ async function run() {
 
   // Auto-generate slugs in the Contentful UI while still allowing manual edits.
   const slugEditors = [
+    ["retreatTemplate", "title"],
+    ["retreatVenue", "name"],
     ["authorProfile", "name"],
     ["blogPost", "title"],
     ["instructorProfile", "name"],

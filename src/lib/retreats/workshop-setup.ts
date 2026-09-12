@@ -45,7 +45,7 @@ export async function getWorkshopSetupState(userId: string): Promise<WorkshopSet
         emailVerified: true,
         dob: true,
         healthProfile: {
-          select: { declarationStatus: true, lastConfirmedAt: true },
+          select: { declarationStatus: true, lastConfirmedAt: true, reviewRequestedAt: true },
         },
       },
     }),
@@ -60,7 +60,11 @@ export async function getWorkshopSetupState(userId: string): Promise<WorkshopSet
   if (!user.emailVerified) missing.push("verified_email");
   if (!user.firstName?.trim() || !user.lastName?.trim()) missing.push("name");
   if (!user.dob) missing.push("date_of_birth");
-  if (!user.healthProfile || needsHealthDeclarationReview(user.healthProfile.lastConfirmedAt)) {
+  if (
+    !user.healthProfile ||
+    user.healthProfile.reviewRequestedAt ||
+    needsHealthDeclarationReview(user.healthProfile.lastConfirmedAt)
+  ) {
     missing.push("health_profile");
   }
   for (const acceptance of acceptanceStates) {

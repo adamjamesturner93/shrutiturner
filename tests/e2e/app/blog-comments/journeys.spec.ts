@@ -39,6 +39,12 @@ test("admin can hide, restore and delete a blog comment thread", async ({ page }
 
   threadCard = await searchComments();
   await threadCard.getByRole("button", { name: "Delete" }).click();
+  const confirmation = page.getByRole("dialog");
+  await expect(confirmation).toContainText("permanently deletes");
+  await confirmation.getByRole("button", { name: "Keep comment" }).click();
+  await expect(threadCard.getByText(topLevelContent)).toBeVisible();
+  await threadCard.getByRole("button", { name: "Delete" }).click();
+  await confirmation.getByRole("button", { name: "Delete permanently" }).click();
   await expect(page.getByText(topLevelContent)).toHaveCount(0);
 
   await page.goto(`/blog/${POST_SLUG}`);

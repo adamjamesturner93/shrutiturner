@@ -31,6 +31,25 @@ const retiredContentTypes = [
 ] as const;
 
 describe("Contentful public content models", () => {
+  it("retires duplicate venue room fields while retaining an optional editorial stay overview", () => {
+    const venue = PUBLIC_CONTENT_MODELS.find((model) => model.id === "retreatVenue");
+    for (const id of ["accommodationOptions", "accommodationType"]) {
+      expect(venue?.fields.find((field) => field.id === id)).toMatchObject({
+        disabled: true,
+        omitted: true,
+      });
+    }
+    const template = PUBLIC_CONTENT_MODELS.find((model) => model.id === "retreatTemplate");
+    expect(template?.fields.find((field) => field.id === "accommodationDescription")).toMatchObject(
+      { name: "Stay overview (optional)", type: "Text" }
+    );
+    const venueSeed = SEED_GROUPS.find((group) => group.contentType === "retreatVenue");
+    for (const entry of venueSeed?.entries || []) {
+      expect(entry).not.toHaveProperty("accommodationOptions");
+      expect(entry).not.toHaveProperty("accommodationType");
+    }
+  });
+
   it("keeps only business-owner editable marketing and newsletter models", () => {
     const modelIds = PUBLIC_CONTENT_MODELS.map((model) => model.id).sort();
 

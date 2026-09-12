@@ -112,6 +112,8 @@ export const PUBLIC_CONTENT_MODELS: ContentTypeDefinition[] = [
   {
     id: "retreatVenue",
     name: "Retreat Venue",
+    description:
+      "Venue story, location, travel and access information. Configure rooms, beds and selling options in the app's Venue room setup.",
     displayField: "name",
     fields: [
       { id: "name", name: "Name", type: "Symbol", required: true },
@@ -127,8 +129,10 @@ export const PUBLIC_CONTENT_MODELS: ContentTypeDefinition[] = [
       { id: "country", name: "Country", type: "Symbol" },
       {
         id: "accommodationOptions",
-        name: "Accommodation Options",
+        name: "Legacy accommodation options (managed in app)",
         type: "Array",
+        disabled: true,
+        omitted: true,
         items: { type: "Symbol" },
       },
       { id: "travelInformation", name: "Travel Information", type: "Text" },
@@ -141,7 +145,13 @@ export const PUBLIC_CONTENT_MODELS: ContentTypeDefinition[] = [
         name: "Local Transfer Information",
         type: "Text",
       },
-      { id: "accommodationType", name: "Accommodation Type", type: "Text" },
+      {
+        id: "accommodationType",
+        name: "Legacy accommodation type (managed in app)",
+        type: "Text",
+        disabled: true,
+        omitted: true,
+      },
       { id: "facilities", name: "Facilities", type: "Array", items: { type: "Symbol" } },
       { id: "accessibilityNotes", name: "Accessibility Notes", type: "Text" },
       {
@@ -202,6 +212,8 @@ export const PUBLIC_CONTENT_MODELS: ContentTypeDefinition[] = [
   {
     id: "retreatTemplate",
     name: "Retreat Template",
+    description:
+      "The reusable public experience: story, imagery, schedule and venue. Dates, prices, guests and booking availability are managed in the app. Publishing this content does not open bookings.",
     displayField: "title",
     fields: [
       { id: "title", name: "Title", type: "Symbol", required: true },
@@ -209,6 +221,7 @@ export const PUBLIC_CONTENT_MODELS: ContentTypeDefinition[] = [
       { id: "slug", name: "Slug", type: "Symbol", required: true, validations: [{ unique: true }] },
       { id: "shortDescription", name: "Short Description", type: "Text", required: true },
       { id: "fullDescription", name: "Full Description", type: "Text", required: true },
+      { id: "atmosphereDescription", name: "Atmosphere", type: "Text" },
       {
         id: "experienceType",
         name: "Experience Type",
@@ -270,7 +283,7 @@ export const PUBLIC_CONTENT_MODELS: ContentTypeDefinition[] = [
         disabled: true,
         omitted: false,
       },
-      { id: "accommodationDescription", name: "Accommodation Description", type: "Text" },
+      { id: "accommodationDescription", name: "Stay overview (optional)", type: "Text" },
       {
         id: "venue",
         name: "Venue",

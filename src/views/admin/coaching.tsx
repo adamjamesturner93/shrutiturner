@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   ChevronDown,
@@ -11,6 +11,7 @@ import {
   Filter,
   Mail,
   RefreshCcw,
+  Search,
   Sparkles,
   UserRound,
 } from "lucide-react";
@@ -39,7 +40,7 @@ import {
 } from "@/components/ui/dialog";
 import type { AdminCoachingApplicationDto } from "@/lib/api/types";
 import type { ApiSuccess } from "@/lib/api/route";
-import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
+import { AppPageHeader } from "@/components/app-surface";
 import { activeCoachingTiers, coachingTiers } from "@/data/marketing";
 
 const tierLabels: Record<string, string> = {
@@ -217,11 +218,14 @@ function getOperationalNextStep(application: AdminCoachingApplicationDto) {
 
 export function AdminCoaching({
   initialData,
+  focusApplicationId,
 }: {
   initialData?: AdminCoachingApplicationDto[] | null;
+  focusApplicationId?: string;
 }) {
   const searchParams = useSearchParams();
-  const selectedApplicationId = searchParams.get("application");
+  const router = useRouter();
+  const selectedApplicationId = focusApplicationId || searchParams.get("application");
   const [applications, setApplications] = useState<AdminCoachingApplicationDto[]>(
     initialData || []
   );
@@ -229,6 +233,7 @@ export function AdminCoaching({
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<CoachingPipelineTab>("new");
   const [tierFilter, setTierFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [reminderSendingId, setReminderSendingId] = useState<string | null>(null);
   const [cancellingUserId, setCancellingUserId] = useState<string | null>(null);
@@ -255,11 +260,6 @@ export function AdminCoaching({
     const newRows = rows.filter((row) => !knownApplicationIds.current.has(row.id));
     if (newRows.length === 0) return;
     newRows.forEach((row) => knownApplicationIds.current.add(row.id));
-    setOpenApplicationIds((current) => {
-      const next = new Set(current);
-      newRows.filter((row) => row.todos.length > 0).forEach((row) => next.add(row.id));
-      return next;
-    });
     setOpenClientManagementIds((current) => {
       const next = new Set(current);
       newRows
@@ -344,6 +344,12 @@ export function AdminCoaching({
   }, [initialData]);
 
   useEffect(() => {
+    if (!focusApplicationId && selectedApplicationId) {
+      router.replace(`/admin/coaching/${encodeURIComponent(selectedApplicationId)}`);
+    }
+  }, [focusApplicationId, selectedApplicationId, router]);
+
+  useEffect(() => {
     if (!selectedApplicationId) return;
     const selected = applications.find((application) => application.id === selectedApplicationId);
     if (selected) {
@@ -351,21 +357,6 @@ export function AdminCoaching({
       setOpenApplicationIds((current) => new Set(current).add(selected.id));
     }
   }, [applications, selectedApplicationId]);
-
-  const summary = useMemo(() => {
-    const submitted = applications.filter((row) => row.status === "submitted").length;
-    const underReview = applications.filter((row) => row.status === "under_review").length;
-    const waitlisted = applications.filter((row) => row.status === "waitlisted").length;
-    const awaitingPayment = applications.filter((row) =>
-      ["approved", "offer_sent"].includes(row.status)
-    ).length;
-    const activeClients = applications.filter(
-      (row) =>
-        row.coachingProfile?.status !== "completed" &&
-        (row.status === "converted" || Boolean(row.coachingProfile))
-    ).length;
-    return { submitted, underReview, waitlisted, awaitingPayment, activeClients };
-  }, [applications]);
 
   const tabCounts = useMemo(
     () =>
@@ -381,10 +372,19 @@ export function AdminCoaching({
   const tabbedApplications = useMemo(
     () =>
       sortApplicationsForTab(
-        applications.filter((application) => matchesPipelineTab(application, activeTab)),
+        applications.filter((application) => {
+          if (focusApplicationId) return application.id === focusApplicationId;
+          if (!matchesPipelineTab(application, activeTab)) return false;
+          const query = search.trim().toLowerCase();
+          return (
+            !query ||
+            application.applicantName.toLowerCase().includes(query) ||
+            application.applicantEmail.toLowerCase().includes(query)
+          );
+        }),
         activeTab
       ),
-    [activeTab, applications]
+    [activeTab, applications, search, focusApplicationId]
   );
 
   const activeTabLabel =
@@ -731,7 +731,12 @@ export function AdminCoaching({
       <div className="space-y-6">
         <AppPageHeader
           eyebrow="Coaching pipeline"
-          title="Coaching Enquiries"
+          title={
+            focusApplicationId
+              ? applications.find((row) => row.id === focusApplicationId)?.applicantName ||
+                "Coaching record"
+              : "Coaching"
+          }
           description="Review enquiries, track consultations, recommend support and manage active coaching clients."
           actions={
             <Button variant="outline" onClick={() => void loadApplications()}>
@@ -752,649 +757,729 @@ export function AdminCoaching({
           </div>
         ) : null}
 
-        <AppMetricGrid className="lg:grid-cols-5">
-          <AppMetricCard
-            label="Submitted"
-            value={summary.submitted}
-            detail="awaiting initial review"
-          />
-          <AppMetricCard
-            label="Under review"
-            value={summary.underReview}
-            detail="active decision queue"
-          />
-          <AppMetricCard label="Waiting list" value={summary.waitlisted} detail="oldest first" />
-          <AppMetricCard
-            label="Awaiting payment"
-            value={summary.awaitingPayment}
-            detail="recommendation sent"
-          />
-          <AppMetricCard
-            label="Clients"
-            value={summary.activeClients}
-            detail="onboarding or active"
-          />
-        </AppMetricGrid>
-
-        <Card>
-          <CardContent className="space-y-4 pt-6">
-            <Tabs
-              value={activeTab}
-              onValueChange={(value) => setActiveTab(value as CoachingPipelineTab)}
-            >
-              <TabsList className="h-auto flex-wrap justify-start">
-                {pipelineTabs.map((tab) => (
-                  <TabsTrigger key={tab.value} value={tab.value}>
-                    {tab.label} ({tabCounts[tab.value]})
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-            <div className="flex items-center gap-2">
-              <Filter className="text-brand-accent h-4 w-4" />
-              <span className="text-sm">Tier filter</span>
-            </div>
-            <div className="max-w-sm">
-              <Select
-                value={tierFilter}
-                onValueChange={(value) => {
-                  setTierFilter(value);
-                  void loadApplications(value);
-                }}
+        {focusApplicationId ? (
+          <Link href="/admin/coaching" className="inline-block underline">
+            Back to coaching pipeline
+          </Link>
+        ) : (
+          <Card>
+            <CardContent className="space-y-4 pt-6">
+              <Tabs
+                value={activeTab}
+                onValueChange={(value) => setActiveTab(value as CoachingPipelineTab)}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Tier" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All tiers</SelectItem>
-                  {Object.entries(tierLabels).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
+                <TabsList className="h-auto flex-wrap justify-start">
+                  {pipelineTabs.map((tab) => (
+                    <TabsTrigger key={tab.value} value={tab.value}>
+                      {tab.label} ({tabCounts[tab.value]})
+                    </TabsTrigger>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+                </TabsList>
+              </Tabs>
+              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_240px]">
+                <div className="relative">
+                  <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+                  <Input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search name or email"
+                    aria-label="Search coaching enquiries"
+                    className="pl-9"
+                  />
+                </div>
+                <div className="relative">
+                  <Filter className="text-brand-accent pointer-events-none absolute top-1/2 left-3 z-10 h-4 w-4 -translate-y-1/2" />
+                  <Select
+                    value={tierFilter}
+                    onValueChange={(value) => {
+                      setTierFilter(value);
+                      void loadApplications(value);
+                    }}
+                  >
+                    <SelectTrigger className="pl-9" aria-label="Filter by coaching tier">
+                      <SelectValue placeholder="Tier" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All support levels</SelectItem>
+                      {Object.entries(tierLabels).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <p className="text-muted-foreground text-sm" role="status">
+                Showing {tabbedApplications.length} {activeTabLabel}
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {loading ? <InlineLoadingStatus label="Loading coaching enquiries…" /> : null}
 
         <div className="space-y-4">
-          {tabbedApplications.map((application) => (
-            <details
-              key={application.id}
-              className="group bg-card text-card-foreground rounded-xl border"
-              open={openApplicationIds.has(application.id)}
-              onToggle={(event) => {
-                const isOpen = event.currentTarget.open;
-                setOpenApplicationIds((current) => {
-                  const next = new Set(current);
-                  if (isOpen) next.add(application.id);
-                  else next.delete(application.id);
-                  return next;
-                });
-              }}
-            >
-              <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-                <CardHeader className="gap-3">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{application.applicantName}</CardTitle>
-                      <p className="text-muted-foreground mt-1 text-sm">
-                        {application.applicantEmail}
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {application.status !== "converted" ? (
-                          <Badge variant={badgeVariant(application.status)}>
-                            {application.status.replaceAll("_", " ")}
-                          </Badge>
-                        ) : null}
-                        <Badge variant="outline">
-                          {application.offerKey
-                            ? offerLabels[application.offerKey]
-                            : tierLabels[application.tier] || application.tier}
-                        </Badge>
-                        {application.coachingProfile?.billingArrangement === "pro_bono" ? (
-                          <Badge variant="secondary">Pro bono</Badge>
-                        ) : null}
-                        {application.coachingProfile?.billingStartsAt ? (
-                          <Badge variant="outline">
-                            Paid from {formatDateOnly(application.coachingProfile.billingStartsAt)}
-                          </Badge>
-                        ) : null}
-                        {application.isLinkedUserCoachingClient ? (
-                          <Badge variant="default">Linked coaching client</Badge>
-                        ) : null}
-                        {application.userId ? (
-                          <Link
-                            href={`/admin/members/${application.userId}`}
-                            onClick={(event) => event.stopPropagation()}
-                            className="focus-visible:ring-brand-accent/50 hover:bg-secondary inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs focus-visible:ring-2 focus-visible:outline-none"
-                            aria-label={`View member record for ${application.applicantName}`}
-                          >
-                            <UserRound className="h-3 w-3" />
-                            View member
-                          </Link>
-                        ) : null}
-                        {!application.userId ? (
-                          <Badge variant="outline">No linked account</Badge>
-                        ) : null}
-                        {application.coachingProfile &&
-                        application.coachingProfile.billingPhase !== "not_configured" ? (
-                          <Badge
-                            variant={
-                              application.coachingProfile.billingPhase === "payment_problem"
-                                ? "destructive"
-                                : application.coachingProfile.billingPhase === "final_month"
-                                  ? "default"
-                                  : "outline"
-                            }
-                          >
-                            {billingPhaseLabels[application.coachingProfile.billingPhase]}
-                          </Badge>
-                        ) : null}
-                        {application.todos.map((todo) => (
-                          <Badge
-                            key={todo.id}
-                            variant={todo.priority === "overdue" ? "destructive" : "secondary"}
-                            className="gap-1"
-                          >
-                            {todo.priority === "overdue" ? (
-                              <AlertTriangle className="h-3 w-3" />
-                            ) : null}
-                            TODO: {todo.title}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="text-muted-foreground flex items-start gap-3 text-sm md:text-right">
+          {tabbedApplications.map((application) =>
+            focusApplicationId ? (
+              <details
+                key={application.id}
+                className="group bg-card text-card-foreground rounded-xl border"
+                open={openApplicationIds.has(application.id)}
+                onToggle={(event) => {
+                  const isOpen = event.currentTarget.open;
+                  setOpenApplicationIds((current) => {
+                    const next = new Set(current);
+                    if (isOpen) return new Set([application.id]);
+                    else next.delete(application.id);
+                    return next;
+                  });
+                }}
+              >
+                <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                  <CardHeader className="gap-3">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div>
-                        <p>Submitted {formatDateTime(application.createdAt)}</p>
-                        {application.reviewedAt ? (
-                          <p className="mt-1">Reviewed {formatDateTime(application.reviewedAt)}</p>
-                        ) : null}
-                        {application.waitlistedAt ? (
-                          <p className="mt-1">
-                            Waitlisted {formatDateTime(application.waitlistedAt)}
-                          </p>
-                        ) : null}
-                        {application.waitlistLeftAt ? (
-                          <p className="mt-1">
-                            Left waitlist {formatDateTime(application.waitlistLeftAt)}
-                          </p>
-                        ) : null}
-                        {application.consultationScheduledAt ? (
-                          <p className="mt-1">
-                            Consultation {formatDateTime(application.consultationScheduledAt)}
-                          </p>
-                        ) : null}
+                        <CardTitle className="text-lg">{application.applicantName}</CardTitle>
+                        <p className="text-muted-foreground mt-1 text-sm">
+                          {application.applicantEmail}
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {application.status !== "converted" ? (
+                            <Badge variant={badgeVariant(application.status)}>
+                              {application.status.replaceAll("_", " ")}
+                            </Badge>
+                          ) : null}
+                          <Badge variant="outline">
+                            {application.offerKey
+                              ? offerLabels[application.offerKey]
+                              : tierLabels[application.tier] || application.tier}
+                          </Badge>
+                          {application.coachingProfile?.billingArrangement === "pro_bono" ? (
+                            <Badge variant="secondary">Pro bono</Badge>
+                          ) : null}
+                          {application.coachingProfile?.billingStartsAt ? (
+                            <Badge variant="outline">
+                              Paid from{" "}
+                              {formatDateOnly(application.coachingProfile.billingStartsAt)}
+                            </Badge>
+                          ) : null}
+                          {application.isLinkedUserCoachingClient ? (
+                            <Badge variant="default">Linked coaching client</Badge>
+                          ) : null}
+                          {application.userId ? (
+                            <Link
+                              href={`/admin/members/${application.userId}`}
+                              onClick={(event) => event.stopPropagation()}
+                              className="focus-visible:ring-brand-accent/50 hover:bg-secondary inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs focus-visible:ring-2 focus-visible:outline-none"
+                              aria-label={`View member record for ${application.applicantName}`}
+                            >
+                              <UserRound className="h-3 w-3" />
+                              View member
+                            </Link>
+                          ) : null}
+                          {!application.userId ? (
+                            <Badge variant="outline">No linked account</Badge>
+                          ) : null}
+                          {application.coachingProfile &&
+                          application.coachingProfile.billingPhase !== "not_configured" ? (
+                            <Badge
+                              variant={
+                                application.coachingProfile.billingPhase === "payment_problem"
+                                  ? "destructive"
+                                  : application.coachingProfile.billingPhase === "final_month"
+                                    ? "default"
+                                    : "outline"
+                              }
+                            >
+                              {billingPhaseLabels[application.coachingProfile.billingPhase]}
+                            </Badge>
+                          ) : null}
+                          {application.todos.map((todo) => (
+                            <Badge
+                              key={todo.id}
+                              variant={todo.priority === "overdue" ? "destructive" : "secondary"}
+                              className="gap-1"
+                            >
+                              {todo.priority === "overdue" ? (
+                                <AlertTriangle className="h-3 w-3" />
+                              ) : null}
+                              TODO: {todo.title}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                      <ChevronDown className="mt-1 h-5 w-5 transition-transform group-open:rotate-180" />
-                    </div>
-                  </div>
-                </CardHeader>
-              </summary>
-              <CardContent className="space-y-5 border-t pt-5">
-                <div className="space-y-4">
-                  <details
-                    className="rounded-lg border p-4"
-                    open={!application.coachingProfile ? true : undefined}
-                  >
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
-                      <span className="text-muted-foreground text-xs tracking-wide uppercase">
-                        Enquiry answers
-                      </span>
-                      <span className="text-muted-foreground text-xs">
-                        {
-                          Object.keys(application.answers).filter((key) => key !== "offerKey")
-                            .length
-                        }{" "}
-                        responses · View
-                      </span>
-                    </summary>
-                    <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                      {Object.entries(application.answers)
-                        .filter(([key]) => key !== "offerKey")
-                        .map(([key, value]) => (
-                          <div key={key} className="rounded-lg border p-3">
-                            <p className="text-muted-foreground mb-1 text-xs tracking-wide uppercase">
-                              {answerLabels[key] || key}
+                      <div className="text-muted-foreground flex items-start gap-3 text-sm md:text-right">
+                        <div>
+                          <p>Submitted {formatDateTime(application.createdAt)}</p>
+                          {application.reviewedAt ? (
+                            <p className="mt-1">
+                              Reviewed {formatDateTime(application.reviewedAt)}
                             </p>
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{value}</p>
-                          </div>
-                        ))}
+                          ) : null}
+                          {application.waitlistedAt ? (
+                            <p className="mt-1">
+                              Waitlisted {formatDateTime(application.waitlistedAt)}
+                            </p>
+                          ) : null}
+                          {application.waitlistLeftAt ? (
+                            <p className="mt-1">
+                              Left waitlist {formatDateTime(application.waitlistLeftAt)}
+                            </p>
+                          ) : null}
+                          {application.consultationScheduledAt ? (
+                            <p className="mt-1">
+                              Consultation {formatDateTime(application.consultationScheduledAt)}
+                            </p>
+                          ) : null}
+                        </div>
+                        <ChevronDown className="mt-1 h-5 w-5 transition-transform group-open:rotate-180" />
+                      </div>
                     </div>
-                  </details>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="bg-secondary/20 order-first rounded-lg border p-4 md:col-span-2">
-                      <p className="text-muted-foreground mb-1 text-xs tracking-wide uppercase">
-                        Next operational step
-                      </p>
+                  </CardHeader>
+                </summary>
+                <CardContent className="space-y-5 border-t pt-5">
+                  <div className="space-y-4">
+                    <section
+                      className="bg-secondary/20 rounded-lg border p-4"
+                      aria-label="Next operational step"
+                    >
+                      <h2 className="mb-1 font-semibold">Next operational step</h2>
                       <p className="text-sm leading-relaxed">
                         {getOperationalNextStep(application)}
                       </p>
-                    </div>
-
-                    <details
-                      className="rounded-lg border p-4"
-                      open={application.consultationStatus !== "completed" ? true : undefined}
-                    >
+                    </section>
+                    <details className="rounded-lg border p-4">
                       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
                         <span className="text-muted-foreground text-xs tracking-wide uppercase">
-                          {application.consultationStatus === "completed"
-                            ? `Consultation complete${application.consultationCompletedAt ? ` · ${formatDateTime(application.consultationCompletedAt)}` : ""}`
-                            : "Consultation"}
+                          Enquiry answers
                         </span>
                         <span className="text-muted-foreground text-xs">
-                          {application.consultationStatus === "completed"
-                            ? application.consultationNotes
-                              ? "Notes recorded · Edit"
-                              : "Add notes"
-                            : "Schedule and record"}
+                          {
+                            Object.keys(application.answers).filter((key) => key !== "offerKey")
+                              .length
+                          }{" "}
+                          responses · View
                         </span>
                       </summary>
-                      <div className="mt-3 space-y-3">
-                        <Input
-                          type="datetime-local"
-                          value={consultationDateDrafts[application.id] || ""}
-                          onChange={(event) =>
-                            setConsultationDateDrafts((current) => ({
-                              ...current,
-                              [application.id]: event.target.value,
-                            }))
-                          }
-                          aria-label={`Consultation date for ${application.applicantName}`}
-                        />
-                        <Textarea
-                          aria-label={`Private consultation notes for ${application.applicantName}`}
-                          value={consultationNotesDrafts[application.id] || ""}
-                          rows={4}
-                          onChange={(event) =>
-                            setConsultationNotesDrafts((current) => ({
-                              ...current,
-                              [application.id]: event.target.value,
-                            }))
-                          }
-                          placeholder="Private consultation notes."
-                        />
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          <Button
-                            variant="outline"
-                            disabled={
-                              savingId === application.id || !consultationDateDrafts[application.id]
-                            }
-                            onClick={() =>
-                              void saveApplication({
-                                id: application.id,
-                                status: "consultation_scheduled",
-                                consultationStatus: "scheduled",
-                              })
-                            }
-                          >
-                            Mark scheduled
-                          </Button>
-                          <Button
-                            variant="outline"
-                            disabled={savingId === application.id}
-                            onClick={() =>
-                              void saveApplication({
-                                id: application.id,
-                                status: "consultation_completed",
-                                consultationStatus: "completed",
-                              })
-                            }
-                          >
-                            Mark completed
-                          </Button>
-                        </div>
+                      <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        {Object.entries(application.answers)
+                          .filter(([key]) => key !== "offerKey")
+                          .map(([key, value]) => (
+                            <div key={key} className="rounded-lg border p-3">
+                              <p className="text-muted-foreground mb-1 text-xs tracking-wide uppercase">
+                                {answerLabels[key] || key}
+                              </p>
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{value}</p>
+                            </div>
+                          ))}
                       </div>
                     </details>
 
-                    <div className="space-y-3 rounded-lg border p-4">
-                      <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                        Recommended support
-                      </p>
-                      <Select
-                        value={recommendationDrafts[application.id] || ""}
-                        onValueChange={(value) =>
-                          setRecommendationDrafts((current) => ({
-                            ...current,
-                            [application.id]: value,
-                          }))
-                        }
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <details
+                        className="rounded-lg border p-4"
+                        open={application.consultationStatus !== "completed" ? true : undefined}
                       >
-                        <SelectTrigger
-                          aria-label={`Recommended support for ${application.applicantName}`}
-                        >
-                          <SelectValue placeholder="Choose a support level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {activeCoachingTiers.map((offer) => (
-                            <SelectItem key={offer.id} value={offer.id}>
-                              {offer.name} · {offer.priceLabel}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+                          <span className="text-muted-foreground text-xs tracking-wide uppercase">
+                            {application.consultationStatus === "completed"
+                              ? `Consultation complete${application.consultationCompletedAt ? ` · ${formatDateTime(application.consultationCompletedAt)}` : ""}`
+                              : "Consultation"}
+                          </span>
+                          <span className="text-muted-foreground text-xs">
+                            {application.consultationStatus === "completed"
+                              ? application.consultationNotes
+                                ? "Notes recorded · Edit"
+                                : "Add notes"
+                              : "Schedule and record"}
+                          </span>
+                        </summary>
+                        <div className="mt-3 space-y-3">
+                          <Input
+                            type="datetime-local"
+                            value={consultationDateDrafts[application.id] || ""}
+                            onChange={(event) =>
+                              setConsultationDateDrafts((current) => ({
+                                ...current,
+                                [application.id]: event.target.value,
+                              }))
+                            }
+                            aria-label={`Consultation date for ${application.applicantName}`}
+                          />
+                          <Textarea
+                            aria-label={`Private consultation notes for ${application.applicantName}`}
+                            value={consultationNotesDrafts[application.id] || ""}
+                            rows={4}
+                            onChange={(event) =>
+                              setConsultationNotesDrafts((current) => ({
+                                ...current,
+                                [application.id]: event.target.value,
+                              }))
+                            }
+                            placeholder="Private consultation notes."
+                          />
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <Button
+                              variant="outline"
+                              disabled={
+                                savingId === application.id ||
+                                !consultationDateDrafts[application.id]
+                              }
+                              onClick={() =>
+                                void saveApplication({
+                                  id: application.id,
+                                  status: "consultation_scheduled",
+                                  consultationStatus: "scheduled",
+                                })
+                              }
+                            >
+                              Mark scheduled
+                            </Button>
+                            <Button
+                              variant="outline"
+                              disabled={savingId === application.id}
+                              onClick={() =>
+                                void saveApplication({
+                                  id: application.id,
+                                  status: "consultation_completed",
+                                  consultationStatus: "completed",
+                                })
+                              }
+                            >
+                              Mark completed
+                            </Button>
+                          </div>
+                        </div>
+                      </details>
 
-                    <div>
-                      <p className="text-muted-foreground mb-2 text-xs tracking-wide uppercase">
-                        Internal notes
-                      </p>
-                      <Textarea
-                        value={notesDrafts[application.id] || ""}
-                        rows={7}
-                        onChange={(event) =>
-                          setNotesDrafts((current) => ({
-                            ...current,
-                            [application.id]: event.target.value,
-                          }))
-                        }
-                        placeholder="Add review notes, follow-up questions, or conversion context."
-                      />
-                    </div>
-
-                    <details className="rounded-lg border p-4">
-                      <summary className="text-muted-foreground cursor-pointer list-none text-xs tracking-wide uppercase [&::-webkit-details-marker]:hidden">
-                        Client-facing decision note
-                        {decisionDrafts[application.id]?.trim() ? " · Added" : " · Not added"}
-                      </summary>
-                      <Textarea
-                        className="mt-3"
-                        value={decisionDrafts[application.id] || ""}
-                        rows={4}
-                        disabled={
-                          application.status === "converted" ||
-                          application.isLinkedUserCoachingClient
-                        }
-                        onChange={(event) =>
-                          setDecisionDrafts((current) => ({
-                            ...current,
-                            [application.id]: event.target.value,
-                          }))
-                        }
-                        placeholder={
-                          application.status === "converted" ||
-                          application.isLinkedUserCoachingClient
-                            ? "Decision notes are locked after conversion. Use internal notes for ongoing context."
-                            : "Shown to the client in approval/rejection email and their coaching dashboard. Required before rejection."
-                        }
-                      />
-                    </details>
-
-                    <div className="contents">
-                      <Button
-                        disabled={savingId === application.id}
-                        onClick={() => void saveApplication({ id: application.id })}
-                        variant="outline"
-                      >
-                        <ClipboardList className="mr-2 h-4 w-4" />
-                        Save notes
-                      </Button>
-
-                      {application.status === "submitted" ? (
-                        <Button
-                          disabled={savingId === application.id}
-                          onClick={() =>
-                            void saveApplication({ id: application.id, status: "under_review" })
+                      <div className="space-y-3 rounded-lg border p-4">
+                        <p className="text-muted-foreground text-xs tracking-wide uppercase">
+                          Recommended support
+                        </p>
+                        <Select
+                          value={recommendationDrafts[application.id] || ""}
+                          onValueChange={(value) =>
+                            setRecommendationDrafts((current) => ({
+                              ...current,
+                              [application.id]: value,
+                            }))
                           }
                         >
-                          Start review
-                        </Button>
-                      ) : null}
+                          <SelectTrigger
+                            aria-label={`Recommended support for ${application.applicantName}`}
+                          >
+                            <SelectValue placeholder="Choose a support level" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {activeCoachingTiers.map((offer) => (
+                              <SelectItem key={offer.id} value={offer.id}>
+                                {offer.name} · {offer.priceLabel}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                      {application.status === "consultation_completed" ? (
+                      <div>
+                        <p className="text-muted-foreground mb-2 text-xs tracking-wide uppercase">
+                          Internal notes
+                        </p>
+                        <Textarea
+                          value={notesDrafts[application.id] || ""}
+                          rows={7}
+                          onChange={(event) =>
+                            setNotesDrafts((current) => ({
+                              ...current,
+                              [application.id]: event.target.value,
+                            }))
+                          }
+                          placeholder="Add review notes, follow-up questions, or conversion context."
+                        />
+                      </div>
+
+                      <details className="rounded-lg border p-4">
+                        <summary className="text-muted-foreground cursor-pointer list-none text-xs tracking-wide uppercase [&::-webkit-details-marker]:hidden">
+                          Client-facing decision note
+                          {decisionDrafts[application.id]?.trim() ? " · Added" : " · Not added"}
+                        </summary>
+                        <Textarea
+                          className="mt-3"
+                          value={decisionDrafts[application.id] || ""}
+                          rows={4}
+                          disabled={
+                            application.status === "converted" ||
+                            application.isLinkedUserCoachingClient
+                          }
+                          onChange={(event) =>
+                            setDecisionDrafts((current) => ({
+                              ...current,
+                              [application.id]: event.target.value,
+                            }))
+                          }
+                          placeholder={
+                            application.status === "converted" ||
+                            application.isLinkedUserCoachingClient
+                              ? "Decision notes are locked after conversion. Use internal notes for ongoing context."
+                              : "Shown to the client in approval/rejection email and their coaching dashboard. Required before rejection."
+                          }
+                        />
+                      </details>
+
+                      <div className="contents">
                         <Button
                           disabled={savingId === application.id}
-                          onClick={() =>
-                            void saveApplication({ id: application.id, status: "waitlisted" })
-                          }
+                          onClick={() => void saveApplication({ id: application.id })}
                           variant="outline"
                         >
-                          Add to waiting list
+                          <ClipboardList className="mr-2 h-4 w-4" />
+                          Save notes
                         </Button>
-                      ) : null}
 
-                      {application.status === "consultation_completed" ||
-                      application.status === "waitlisted" ? (
-                        <>
+                        {application.status === "submitted" ? (
                           <Button
                             disabled={savingId === application.id}
                             onClick={() =>
-                              void saveApplication({ id: application.id, status: "offer_sent" })
+                              void saveApplication({ id: application.id, status: "under_review" })
                             }
                           >
-                            {application.status === "waitlisted"
-                              ? "Send offer from waiting list"
-                              : "Send recommendation"}
+                            Start review
                           </Button>
+                        ) : null}
+
+                        {application.status === "consultation_completed" ? (
                           <Button
                             disabled={savingId === application.id}
                             onClick={() =>
-                              void saveApplication({ id: application.id, status: "declined" })
+                              void saveApplication({ id: application.id, status: "waitlisted" })
                             }
                             variant="outline"
                           >
-                            Decline enquiry
+                            Add to waiting list
                           </Button>
-                        </>
-                      ) : null}
+                        ) : null}
 
-                      {application.status === "declined" || application.status === "withdrawn" ? (
-                        <Button
-                          disabled={savingId === application.id}
-                          onClick={() =>
-                            void saveApplication({ id: application.id, status: "under_review" })
-                          }
-                          variant="outline"
-                        >
-                          Reopen for review
-                        </Button>
-                      ) : null}
+                        {application.status === "consultation_completed" ||
+                        application.status === "waitlisted" ? (
+                          <>
+                            <Button
+                              disabled={savingId === application.id}
+                              onClick={() =>
+                                void saveApplication({ id: application.id, status: "offer_sent" })
+                              }
+                            >
+                              {application.status === "waitlisted"
+                                ? "Send offer from waiting list"
+                                : "Send recommendation"}
+                            </Button>
+                            <Button
+                              disabled={savingId === application.id}
+                              onClick={() =>
+                                void saveApplication({ id: application.id, status: "declined" })
+                              }
+                              variant="outline"
+                            >
+                              Decline enquiry
+                            </Button>
+                          </>
+                        ) : null}
 
-                      {application.status === "approved" || application.status === "offer_sent" ? (
-                        <div className="text-muted-foreground space-y-3 rounded-lg border p-3 text-xs leading-relaxed">
-                          <p>
-                            Recommendation sent and awaiting client agreements and payment. A
-                            reminder links them back to the website so everything stays attached to
-                            their account.
-                          </p>
-                          {application.paymentReminderSentAt ? (
+                        {application.status === "declined" || application.status === "withdrawn" ? (
+                          <Button
+                            disabled={savingId === application.id}
+                            onClick={() =>
+                              void saveApplication({ id: application.id, status: "under_review" })
+                            }
+                            variant="outline"
+                          >
+                            Reopen for review
+                          </Button>
+                        ) : null}
+
+                        {application.status === "approved" ||
+                        application.status === "offer_sent" ? (
+                          <div className="text-muted-foreground space-y-3 rounded-lg border p-3 text-xs leading-relaxed">
                             <p>
-                              Last reminder sent {formatDateTime(application.paymentReminderSentAt)}
-                              .
+                              Recommendation sent and awaiting client agreements and payment. A
+                              reminder links them back to the website so everything stays attached
+                              to their account.
                             </p>
-                          ) : null}
-                          <Button
-                            className="w-full"
-                            disabled={
-                              reminderSendingId === application.id ||
-                              savingId === application.id ||
-                              !application.userId
-                            }
-                            onClick={() => void sendPaymentReminder(application)}
-                            variant="outline"
+                            {application.paymentReminderSentAt ? (
+                              <p>
+                                Last reminder sent{" "}
+                                {formatDateTime(application.paymentReminderSentAt)}.
+                              </p>
+                            ) : null}
+                            <Button
+                              className="w-full"
+                              disabled={
+                                reminderSendingId === application.id ||
+                                savingId === application.id ||
+                                !application.userId
+                              }
+                              onClick={() => void sendPaymentReminder(application)}
+                              variant="outline"
+                            >
+                              <Mail className="mr-2 h-4 w-4" />
+                              Send payment reminder
+                            </Button>
+                          </div>
+                        ) : null}
+
+                        {application.status === "consultation_completed" ||
+                        application.status === "approved" ||
+                        application.status === "offer_sent" ||
+                        application.status === "waitlisted" ? (
+                          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                            <p className="text-sm text-amber-950">Start pro-bono support</p>
+                            <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                              This bypasses Stripe and creates a pro-bono coaching arrangement. The
+                              client receives a confirmation email. Use only when no payment should
+                              be collected.
+                            </p>
+                            <Button
+                              className="mt-3 w-full"
+                              variant="outline"
+                              disabled={
+                                savingId === application.id ||
+                                !application.userId ||
+                                application.isLinkedUserCoachingClient
+                              }
+                              onClick={() =>
+                                void saveApplication({
+                                  id: application.id,
+                                  convertToClient: true,
+                                })
+                              }
+                            >
+                              <Sparkles className="mr-2 h-4 w-4" />
+                              Start pro-bono support
+                            </Button>
+                          </div>
+                        ) : null}
+
+                        {application.userId && application.isLinkedUserCoachingClient ? (
+                          <details
+                            className="order-first rounded-lg border border-amber-200 bg-amber-50 p-3 md:col-span-2"
+                            open={openClientManagementIds.has(application.id)}
+                            onToggle={(event) => {
+                              const isOpen = event.currentTarget.open;
+                              setOpenClientManagementIds((current) => {
+                                const next = new Set(current);
+                                if (isOpen) next.add(application.id);
+                                else next.delete(application.id);
+                                return next;
+                              });
+                            }}
                           >
-                            <Mail className="mr-2 h-4 w-4" />
-                            Send payment reminder
-                          </Button>
-                        </div>
-                      ) : null}
-
-                      {application.status === "consultation_completed" ||
-                      application.status === "approved" ||
-                      application.status === "offer_sent" ||
-                      application.status === "waitlisted" ? (
-                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                          <p className="text-sm text-amber-950">Start pro-bono support</p>
-                          <p className="mt-1 text-xs leading-relaxed text-amber-800">
-                            This bypasses Stripe and creates a pro-bono coaching arrangement. The
-                            client receives a confirmation email. Use only when no payment should be
-                            collected.
-                          </p>
-                          <Button
-                            className="mt-3 w-full"
-                            variant="outline"
-                            disabled={
-                              savingId === application.id ||
-                              !application.userId ||
-                              application.isLinkedUserCoachingClient
-                            }
-                            onClick={() =>
-                              void saveApplication({
-                                id: application.id,
-                                convertToClient: true,
-                              })
-                            }
-                          >
-                            <Sparkles className="mr-2 h-4 w-4" />
-                            Start pro-bono support
-                          </Button>
-                        </div>
-                      ) : null}
-
-                      {application.userId && application.isLinkedUserCoachingClient ? (
-                        <details
-                          className="order-first rounded-lg border border-amber-200 bg-amber-50 p-3 md:col-span-2"
-                          open={openClientManagementIds.has(application.id)}
-                          onToggle={(event) => {
-                            const isOpen = event.currentTarget.open;
-                            setOpenClientManagementIds((current) => {
-                              const next = new Set(current);
-                              if (isOpen) next.add(application.id);
-                              else next.delete(application.id);
-                              return next;
-                            });
-                          }}
-                        >
-                          <summary className="cursor-pointer list-none text-sm font-medium text-amber-950 [&::-webkit-details-marker]:hidden">
-                            Client management
-                            {application.coachingProfile
-                              ? ` · ${profileStatusLabels[application.coachingProfile.status] || application.coachingProfile.status}`
-                              : ""}
-                          </summary>
-                          <div className="mt-4">
-                            {application.coachingProfile ? (
-                              <div className="mb-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-                                <div className="rounded-md border border-amber-200 bg-white/70 p-3">
-                                  <p className="text-sm text-amber-950">Coaching status</p>
-                                  <p className="mt-1 text-xs leading-relaxed text-amber-800">
-                                    Current status:{" "}
-                                    {profileStatusLabels[application.coachingProfile.status] ||
-                                      application.coachingProfile.status}
-                                  </p>
-                                  <p className="mt-1 text-xs leading-relaxed text-amber-800">
-                                    Closing the coaching account does not cancel Stripe billing or
-                                    remove access in Everfit. Complete those steps separately below.
-                                  </p>
-                                  <div className="mt-3 grid gap-2">
-                                    {Object.entries(profileStatusLabels).map(([value, label]) => (
-                                      <Button
-                                        key={value}
-                                        size="sm"
-                                        variant={
-                                          application.coachingProfile?.status === value
-                                            ? "default"
-                                            : "outline"
-                                        }
-                                        disabled={savingId === application.id}
-                                        onClick={() =>
-                                          void updateProfileStatus(
-                                            application,
-                                            value as
-                                              | "onboarding"
-                                              | "active"
-                                              | "paused"
-                                              | "completed"
-                                          )
-                                        }
-                                      >
-                                        {value === "completed"
-                                          ? application.coachingProfile?.status === "completed"
-                                            ? "Coaching account closed"
-                                            : "Close coaching account"
-                                          : label}
-                                      </Button>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                <div className="rounded-md border border-amber-200 bg-white/70 p-3">
-                                  <p className="text-sm text-amber-950">Manual Everfit setup</p>
-                                  <p className="mt-1 text-xs leading-relaxed text-amber-800">
-                                    Current status:{" "}
-                                    {manualSetupLabels[
-                                      application.coachingProfile.everfitConnectionStatus
-                                    ] || application.coachingProfile.everfitConnectionStatus}
-                                  </p>
-                                  <div className="mt-3 grid gap-2">
-                                    {Object.entries(manualSetupLabels).map(([value, label]) => (
-                                      <Button
-                                        key={value}
-                                        size="sm"
-                                        variant={
-                                          application.coachingProfile?.everfitConnectionStatus ===
-                                          value
-                                            ? "default"
-                                            : "outline"
-                                        }
-                                        disabled={savingId === application.id}
-                                        onClick={() =>
-                                          void updateManualSetupStatus(application, value)
-                                        }
-                                      >
-                                        {label}
-                                      </Button>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                {application.coachingProfile.billingArrangement === "pro_bono" ? (
+                            <summary className="cursor-pointer list-none text-sm font-medium text-amber-950 [&::-webkit-details-marker]:hidden">
+                              Client management
+                              {application.coachingProfile
+                                ? ` · ${profileStatusLabels[application.coachingProfile.status] || application.coachingProfile.status}`
+                                : ""}
+                            </summary>
+                            <div className="mt-4">
+                              {application.coachingProfile ? (
+                                <div className="mb-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
                                   <div className="rounded-md border border-amber-200 bg-white/70 p-3">
-                                    <p className="text-sm text-amber-950">
-                                      {application.coachingProfile.billingStartsAt
-                                        ? "Paid plan scheduled"
-                                        : "Move to a paid plan"}
+                                    <p className="text-sm text-amber-950">Coaching status</p>
+                                    <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                                      Current status:{" "}
+                                      {profileStatusLabels[application.coachingProfile.status] ||
+                                        application.coachingProfile.status}
                                     </p>
-                                    {application.coachingProfile.billingStartsAt ? (
-                                      <p className="mt-1 text-xs leading-relaxed text-amber-800">
-                                        Stripe setup is complete. Pro-bono support continues until{" "}
-                                        {formatDateOnly(
-                                          application.coachingProfile.billingStartsAt
-                                        )}
-                                        , when the first paid billing period begins.
-                                      </p>
-                                    ) : application.coachingProfile.pendingPackageChange
-                                        ?.requestType === "paid_start" ? (
-                                      <p className="mt-1 text-xs leading-relaxed text-amber-800">
-                                        Payment setup requested for{" "}
-                                        {offerLabels[
-                                          application.coachingProfile.pendingPackageChange
-                                            .toOfferKey
-                                        ] ||
-                                          application.coachingProfile.pendingPackageChange
-                                            .toOfferKey}
-                                        . Billing is scheduled to start{" "}
-                                        {application.coachingProfile.pendingPackageChange
-                                          .billingStartsAt
-                                          ? formatDateOnly(
-                                              application.coachingProfile.pendingPackageChange
-                                                .billingStartsAt
+                                    <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                                      Closing the coaching account does not cancel Stripe billing or
+                                      remove access in Everfit. Complete those steps separately
+                                      below.
+                                    </p>
+                                    <div className="mt-3 grid gap-2">
+                                      {Object.entries(profileStatusLabels).map(([value, label]) => (
+                                        <Button
+                                          key={value}
+                                          size="sm"
+                                          variant={
+                                            application.coachingProfile?.status === value
+                                              ? "default"
+                                              : "outline"
+                                          }
+                                          disabled={savingId === application.id}
+                                          onClick={() =>
+                                            void updateProfileStatus(
+                                              application,
+                                              value as
+                                                | "onboarding"
+                                                | "active"
+                                                | "paused"
+                                                | "completed"
                                             )
-                                          : "on the agreed date"}
-                                        .
+                                          }
+                                        >
+                                          {value === "completed"
+                                            ? application.coachingProfile?.status === "completed"
+                                              ? "Coaching account closed"
+                                              : "Close coaching account"
+                                            : label}
+                                        </Button>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  <div className="rounded-md border border-amber-200 bg-white/70 p-3">
+                                    <p className="text-sm text-amber-950">Manual Everfit setup</p>
+                                    <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                                      Current status:{" "}
+                                      {manualSetupLabels[
+                                        application.coachingProfile.everfitConnectionStatus
+                                      ] || application.coachingProfile.everfitConnectionStatus}
+                                    </p>
+                                    <div className="mt-3 grid gap-2">
+                                      {Object.entries(manualSetupLabels).map(([value, label]) => (
+                                        <Button
+                                          key={value}
+                                          size="sm"
+                                          variant={
+                                            application.coachingProfile?.everfitConnectionStatus ===
+                                            value
+                                              ? "default"
+                                              : "outline"
+                                          }
+                                          disabled={savingId === application.id}
+                                          onClick={() =>
+                                            void updateManualSetupStatus(application, value)
+                                          }
+                                        >
+                                          {label}
+                                        </Button>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  {application.coachingProfile.billingArrangement === "pro_bono" ? (
+                                    <div className="rounded-md border border-amber-200 bg-white/70 p-3">
+                                      <p className="text-sm text-amber-950">
+                                        {application.coachingProfile.billingStartsAt
+                                          ? "Paid plan scheduled"
+                                          : "Move to a paid plan"}
                                       </p>
-                                    ) : (
-                                      <p className="mt-1 text-xs leading-relaxed text-amber-800">
-                                        Choose the paid plan and the date billing should start. The
-                                        client will receive an email and complete Stripe setup from
-                                        their coaching dashboard.
-                                      </p>
-                                    )}
-                                    {!application.coachingProfile.billingStartsAt ? (
+                                      {application.coachingProfile.billingStartsAt ? (
+                                        <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                                          Stripe setup is complete. Pro-bono support continues until{" "}
+                                          {formatDateOnly(
+                                            application.coachingProfile.billingStartsAt
+                                          )}
+                                          , when the first paid billing period begins.
+                                        </p>
+                                      ) : application.coachingProfile.pendingPackageChange
+                                          ?.requestType === "paid_start" ? (
+                                        <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                                          Payment setup requested for{" "}
+                                          {offerLabels[
+                                            application.coachingProfile.pendingPackageChange
+                                              .toOfferKey
+                                          ] ||
+                                            application.coachingProfile.pendingPackageChange
+                                              .toOfferKey}
+                                          . Billing is scheduled to start{" "}
+                                          {application.coachingProfile.pendingPackageChange
+                                            .billingStartsAt
+                                            ? formatDateOnly(
+                                                application.coachingProfile.pendingPackageChange
+                                                  .billingStartsAt
+                                              )
+                                            : "on the agreed date"}
+                                          .
+                                        </p>
+                                      ) : (
+                                        <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                                          Choose the paid plan and the date billing should start.
+                                          The client will receive an email and complete Stripe setup
+                                          from their coaching dashboard.
+                                        </p>
+                                      )}
+                                      {!application.coachingProfile.billingStartsAt ? (
+                                        <div className="mt-3 grid gap-2">
+                                          <Select
+                                            value={packageOfferDrafts[application.id] || ""}
+                                            onValueChange={(value) =>
+                                              setPackageOfferDrafts((current) => ({
+                                                ...current,
+                                                [application.id]: value,
+                                              }))
+                                            }
+                                          >
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Paid plan" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {activeCoachingTiers.map((offer) => (
+                                                <SelectItem key={offer.id} value={offer.id}>
+                                                  {offer.name}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                          <div>
+                                            <label
+                                              className="mb-1 block text-xs text-amber-900"
+                                              htmlFor={`paid-start-${application.id}`}
+                                            >
+                                              Billing start date
+                                            </label>
+                                            <Input
+                                              id={`paid-start-${application.id}`}
+                                              type="date"
+                                              min={todayForDateInput()}
+                                              value={paidStartDateDrafts[application.id] || ""}
+                                              onChange={(event) =>
+                                                setPaidStartDateDrafts((current) => ({
+                                                  ...current,
+                                                  [application.id]: event.target.value,
+                                                }))
+                                              }
+                                            />
+                                          </div>
+                                          <Textarea
+                                            value={packageNoteDrafts[application.id] || ""}
+                                            rows={3}
+                                            onChange={(event) =>
+                                              setPackageNoteDrafts((current) => ({
+                                                ...current,
+                                                [application.id]: event.target.value,
+                                              }))
+                                            }
+                                            placeholder="Optional note shown in the paid-plan email."
+                                          />
+                                          <Button
+                                            size="sm"
+                                            disabled={savingId === application.id}
+                                            onClick={() => void requestPaidStart(application)}
+                                          >
+                                            <CreditCard className="mr-2 h-4 w-4" />
+                                            Email paid-plan setup
+                                          </Button>
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  ) : (
+                                    <div className="rounded-md border border-amber-200 bg-white/70 p-3">
+                                      <p className="text-sm text-amber-950">Package change</p>
+                                      {application.coachingProfile.pendingPackageChange ? (
+                                        <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                                          Pending client confirmation:{" "}
+                                          {offerLabels[
+                                            application.coachingProfile.pendingPackageChange
+                                              .toOfferKey
+                                          ] ||
+                                            application.coachingProfile.pendingPackageChange
+                                              .toOfferKey}
+                                        </p>
+                                      ) : (
+                                        <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                                          Ask the client to confirm a package move from their
+                                          coaching dashboard.
+                                        </p>
+                                      )}
                                       <div className="mt-3 grid gap-2">
                                         <Select
                                           value={packageOfferDrafts[application.id] || ""}
@@ -1406,7 +1491,7 @@ export function AdminCoaching({
                                           }
                                         >
                                           <SelectTrigger>
-                                            <SelectValue placeholder="Paid plan" />
+                                            <SelectValue placeholder="New package" />
                                           </SelectTrigger>
                                           <SelectContent>
                                             {activeCoachingTiers.map((offer) => (
@@ -1416,26 +1501,30 @@ export function AdminCoaching({
                                             ))}
                                           </SelectContent>
                                         </Select>
-                                        <div>
-                                          <label
-                                            className="mb-1 block text-xs text-amber-900"
-                                            htmlFor={`paid-start-${application.id}`}
-                                          >
-                                            Billing start date
-                                          </label>
-                                          <Input
-                                            id={`paid-start-${application.id}`}
-                                            type="date"
-                                            min={todayForDateInput()}
-                                            value={paidStartDateDrafts[application.id] || ""}
-                                            onChange={(event) =>
-                                              setPaidStartDateDrafts((current) => ({
-                                                ...current,
-                                                [application.id]: event.target.value,
-                                              }))
-                                            }
-                                          />
-                                        </div>
+                                        <Select
+                                          value={
+                                            packageModeDrafts[application.id] || "next_invoice"
+                                          }
+                                          onValueChange={(value) =>
+                                            setPackageModeDrafts((current) => ({
+                                              ...current,
+                                              [application.id]: value,
+                                            }))
+                                          }
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Timing" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {Object.entries(packageEffectiveModeLabels).map(
+                                              ([value, label]) => (
+                                                <SelectItem key={value} value={value}>
+                                                  {label}
+                                                </SelectItem>
+                                              )
+                                            )}
+                                          </SelectContent>
+                                        </Select>
                                         <Textarea
                                           value={packageNoteDrafts[application.id] || ""}
                                           rows={3}
@@ -1445,178 +1534,119 @@ export function AdminCoaching({
                                               [application.id]: event.target.value,
                                             }))
                                           }
-                                          placeholder="Optional note shown in the paid-plan email."
+                                          placeholder="Optional note shown in the package-change email."
                                         />
                                         <Button
                                           size="sm"
                                           disabled={savingId === application.id}
-                                          onClick={() => void requestPaidStart(application)}
+                                          onClick={() => void requestPackageChange(application)}
                                         >
-                                          <CreditCard className="mr-2 h-4 w-4" />
-                                          Email paid-plan setup
+                                          Request client confirmation
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          disabled={savingId === application.id}
+                                          onClick={() =>
+                                            void requestPackageChange(application, true)
+                                          }
+                                        >
+                                          Manually apply without client confirmation
                                         </Button>
                                       </div>
-                                    ) : null}
-                                  </div>
-                                ) : (
-                                  <div className="rounded-md border border-amber-200 bg-white/70 p-3">
-                                    <p className="text-sm text-amber-950">Package change</p>
-                                    {application.coachingProfile.pendingPackageChange ? (
-                                      <p className="mt-1 text-xs leading-relaxed text-amber-800">
-                                        Pending client confirmation:{" "}
-                                        {offerLabels[
-                                          application.coachingProfile.pendingPackageChange
-                                            .toOfferKey
-                                        ] ||
-                                          application.coachingProfile.pendingPackageChange
-                                            .toOfferKey}
-                                      </p>
-                                    ) : (
-                                      <p className="mt-1 text-xs leading-relaxed text-amber-800">
-                                        Ask the client to confirm a package move from their coaching
-                                        dashboard.
-                                      </p>
-                                    )}
-                                    <div className="mt-3 grid gap-2">
-                                      <Select
-                                        value={packageOfferDrafts[application.id] || ""}
-                                        onValueChange={(value) =>
-                                          setPackageOfferDrafts((current) => ({
-                                            ...current,
-                                            [application.id]: value,
-                                          }))
-                                        }
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="New package" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {activeCoachingTiers.map((offer) => (
-                                            <SelectItem key={offer.id} value={offer.id}>
-                                              {offer.name}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                      <Select
-                                        value={packageModeDrafts[application.id] || "next_invoice"}
-                                        onValueChange={(value) =>
-                                          setPackageModeDrafts((current) => ({
-                                            ...current,
-                                            [application.id]: value,
-                                          }))
-                                        }
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Timing" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {Object.entries(packageEffectiveModeLabels).map(
-                                            ([value, label]) => (
-                                              <SelectItem key={value} value={value}>
-                                                {label}
-                                              </SelectItem>
-                                            )
-                                          )}
-                                        </SelectContent>
-                                      </Select>
-                                      <Textarea
-                                        value={packageNoteDrafts[application.id] || ""}
-                                        rows={3}
-                                        onChange={(event) =>
-                                          setPackageNoteDrafts((current) => ({
-                                            ...current,
-                                            [application.id]: event.target.value,
-                                          }))
-                                        }
-                                        placeholder="Optional note shown in the package-change email."
-                                      />
-                                      <Button
-                                        size="sm"
-                                        disabled={savingId === application.id}
-                                        onClick={() => void requestPackageChange(application)}
-                                      >
-                                        Request client confirmation
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        disabled={savingId === application.id}
-                                        onClick={() => void requestPackageChange(application, true)}
-                                      >
-                                        Manually apply without client confirmation
-                                      </Button>
                                     </div>
-                                  </div>
-                                )}
-                              </div>
-                            ) : null}
-                            {application.coachingProfile?.billingArrangement === "paid" ||
-                            application.coachingProfile?.billingStartsAt ? (
-                              <>
-                                {application.coachingProfile.billingPhase !== "active" ? (
-                                  <div className="mb-3 rounded-md border border-amber-300 bg-white/70 p-3 text-xs leading-relaxed text-amber-900">
-                                    <p className="font-medium">
-                                      {billingPhaseLabels[
-                                        application.coachingProfile.billingPhase
-                                      ] || application.coachingProfile.billingPhase}
-                                    </p>
-                                    {application.coachingProfile.billingEndsAt ? (
-                                      <p className="mt-1">
-                                        Coaching is due to end{" "}
-                                        {formatDateTime(application.coachingProfile.billingEndsAt)}.
+                                  )}
+                                </div>
+                              ) : null}
+                              {application.coachingProfile?.billingArrangement === "paid" ||
+                              application.coachingProfile?.billingStartsAt ? (
+                                <>
+                                  {application.coachingProfile.billingPhase !== "active" ? (
+                                    <div className="mb-3 rounded-md border border-amber-300 bg-white/70 p-3 text-xs leading-relaxed text-amber-900">
+                                      <p className="font-medium">
+                                        {billingPhaseLabels[
+                                          application.coachingProfile.billingPhase
+                                        ] || application.coachingProfile.billingPhase}
                                       </p>
-                                    ) : null}
-                                  </div>
-                                ) : null}
-                                <p className="text-sm text-amber-950">Cancel coaching billing</p>
-                                <p className="mt-1 text-xs leading-relaxed text-amber-800">
-                                  Uses the agreed notice structure: the next Stripe payment is still
-                                  taken and becomes the client's final coaching payment.
-                                </p>
-                                <Button
-                                  className="mt-3 w-full"
-                                  variant="outline"
-                                  disabled={
-                                    cancellingUserId === application.userId ||
-                                    application.coachingProfile.billingPhase !== "active"
-                                  }
-                                  onClick={() => void scheduleClientCancellation(application)}
-                                >
-                                  {cancellingUserId === application.userId
-                                    ? "Scheduling..."
-                                    : "Schedule final payment cancellation"}
-                                </Button>
-                                <Button
-                                  className="mt-2 w-full border-red-300 text-red-800 hover:bg-red-50"
-                                  variant="outline"
-                                  disabled={
-                                    cancellingUserId === application.userId ||
-                                    application.coachingProfile.billingPhase !== "active"
-                                  }
-                                  onClick={() => {
-                                    setEndRenewalReason("");
-                                    setEndRenewalApplication(application);
-                                  }}
-                                >
-                                  Stop future payments now
-                                </Button>
-                                <p className="mt-2 text-xs leading-relaxed text-amber-800">
-                                  Admin override: collects no further payments and leaves access in
-                                  place until the end of the period already paid for. It does not
-                                  refund an existing payment.
-                                </p>
-                              </>
-                            ) : null}
-                          </div>
-                        </details>
-                      ) : null}
+                                      {application.coachingProfile.billingEndsAt ? (
+                                        <p className="mt-1">
+                                          Coaching is due to end{" "}
+                                          {formatDateTime(
+                                            application.coachingProfile.billingEndsAt
+                                          )}
+                                          .
+                                        </p>
+                                      ) : null}
+                                    </div>
+                                  ) : null}
+                                  <p className="text-sm text-amber-950">Cancel coaching billing</p>
+                                  <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                                    Uses the agreed notice structure: the next Stripe payment is
+                                    still taken and becomes the client's final coaching payment.
+                                  </p>
+                                  <Button
+                                    className="mt-3 w-full"
+                                    variant="outline"
+                                    disabled={
+                                      cancellingUserId === application.userId ||
+                                      application.coachingProfile.billingPhase !== "active"
+                                    }
+                                    onClick={() => void scheduleClientCancellation(application)}
+                                  >
+                                    {cancellingUserId === application.userId
+                                      ? "Scheduling..."
+                                      : "Schedule final payment cancellation"}
+                                  </Button>
+                                  <Button
+                                    className="mt-2 w-full border-red-300 text-red-800 hover:bg-red-50"
+                                    variant="outline"
+                                    disabled={
+                                      cancellingUserId === application.userId ||
+                                      application.coachingProfile.billingPhase !== "active"
+                                    }
+                                    onClick={() => {
+                                      setEndRenewalReason("");
+                                      setEndRenewalApplication(application);
+                                    }}
+                                  >
+                                    Stop future payments now
+                                  </Button>
+                                  <p className="mt-2 text-xs leading-relaxed text-amber-800">
+                                    Admin override: collects no further payments and leaves access
+                                    in place until the end of the period already paid for. It does
+                                    not refund an existing payment.
+                                  </p>
+                                </>
+                              ) : null}
+                            </div>
+                          </details>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
+                </CardContent>
+              </details>
+            ) : (
+              <Link
+                key={application.id}
+                href={`/admin/coaching/${application.id}`}
+                className="hover:bg-secondary/30 block rounded-xl border bg-white p-4 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="font-semibold">{application.applicantName}</h2>
+                    <p className="text-muted-foreground text-sm">{application.applicantEmail}</p>
+                  </div>
+                  <Badge variant="outline">{application.status.replaceAll("_", " ")}</Badge>
                 </div>
-              </CardContent>
-            </details>
-          ))}
+                <p className="mt-3 text-sm">
+                  <span className="font-medium">Next: </span>
+                  {getOperationalNextStep(application)}
+                </p>
+                <p className="mt-2 text-sm underline">Open coaching record</p>
+              </Link>
+            )
+          )}
         </div>
 
         {!loading && tabbedApplications.length === 0 ? (

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import {
   monthlyRecurringValuePence,
   refreshCoachingSubscriptionProjections,
@@ -8,11 +9,8 @@ import type { AdminBusinessMetricDto } from "@/lib/api/types";
 export type AdminBusinessSummary = AdminBusinessMetricDto;
 
 export async function getAdminBusinessSummary(): Promise<AdminBusinessSummary> {
-  const projectionRefresh = await refreshCoachingSubscriptionProjections().catch(() => ({
-    refreshed: 0,
-    failed: 1,
-  }));
   const now = new Date();
+  const staleBefore = new Date(now.getTime() - 15 * 60 * 1000);
   const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
@@ -25,7 +23,7 @@ export async function getAdminBusinessSummary(): Promise<AdminBusinessSummary> {
     failedPayments7d,
     failedPayments30d,
     latestProjection,
-    profilesWithoutProjection,
+    profilesWithStripeSubscription,
   ] = await Promise.all([
     db.coachingClientProfile.count({
       where: { status: { in: ["onboarding", "active", "paused"] } },
@@ -63,8 +61,12 @@ export async function getAdminBusinessSummary(): Promise<AdminBusinessSummary> {
       orderBy: { lastStripeEventAt: "desc" },
       select: { lastStripeEventAt: true },
     }),
-    db.coachingClientProfile.count({
-      where: { stripeSubscriptionId: { not: null }, subscriptionProjection: null },
+    db.coachingClientProfile.findMany({
+      where: { stripeSubscriptionId: { not: null } },
+      select: {
+        id: true,
+        subscriptionProjection: { select: { lastStripeEventAt: true } },
+      },
     }),
   ]);
 
@@ -83,7 +85,11 @@ export async function getAdminBusinessSummary(): Promise<AdminBusinessSummary> {
     activeOneToOneClients,
     operationalOneToOneClients,
     trackedSubscriptions: activeSubscriptions.length,
-    subscriptionsNeedingSync: profilesWithoutProjection + projectionRefresh.failed,
+    subscriptionsNeedingSync: profilesWithStripeSubscription.filter(
+      (profile) =>
+        !profile.subscriptionProjection ||
+        profile.subscriptionProjection.lastStripeEventAt < staleBefore
+    ).length,
     monthlyRecurringRevenuePence,
     newPaidClientsThisMonth,
     endingSoonCount,
@@ -91,4 +97,36 @@ export async function getAdminBusinessSummary(): Promise<AdminBusinessSummary> {
     failedPayments30d: failedPayments30d._sum.failedPaymentsCount || 0,
     dataFreshnessIso: latestProjection?.lastStripeEventAt.toISOString() || null,
   };
+}
+
+export async function reconcileAdminBusinessSubscriptions(input: {
+  actorUserId: string;
+  requestId?: string | null;
+  requestPath?: string | null;
+  requestIp?: string | null;
+}) {
+  const before = await getAdminBusinessSummary();
+  const reconciliation = await refreshCoachingSubscriptionProjections();
+  const summary = await getAdminBusinessSummary();
+
+  await createAdminActionLog({
+    actorUserId: input.actorUserId,
+    actionType: "business_subscription_projections_reconciled",
+    targetType: "business_billing",
+    targetId: "coaching_subscriptions",
+    requestId: input.requestId,
+    requestPath: input.requestPath,
+    requestIp: input.requestIp,
+    oldValueJson: {
+      subscriptionsNeedingSync: before.subscriptionsNeedingSync,
+      dataFreshnessIso: before.dataFreshnessIso,
+    },
+    newValueJson: {
+      ...reconciliation,
+      subscriptionsNeedingSync: summary.subscriptionsNeedingSync,
+      dataFreshnessIso: summary.dataFreshnessIso,
+    },
+  });
+
+  return { ...reconciliation, summary };
 }

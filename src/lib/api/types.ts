@@ -275,6 +275,8 @@ export type CoachingDashboardDto = {
 
 export type RetreatBookingSummaryDto = {
   id: string;
+  registrations?: Array<{ id: string; name: string; complete: boolean; isOwn: boolean }>;
+  retreatDateId?: string;
   retreatSlug: string;
   retreatTitle: string;
   retreatType: string;
@@ -313,6 +315,7 @@ export type RetreatBookingSummaryDto = {
 };
 
 export type RetreatBookingDetailDto = RetreatBookingSummaryDto & {
+  registrations?: Array<{ id: string; name: string; complete: boolean; isOwn: boolean }>;
   emergencyContactName: string;
   emergencyContactPhone: string;
   secondaryGuest: {
@@ -336,6 +339,7 @@ export type RetreatBookingDetailDto = RetreatBookingSummaryDto & {
 
 export type RetreatGiftPurchaseSummaryDto = {
   id: string;
+  retreatDateId?: string;
   retreatSlug: string;
   retreatTitle: string;
   location: string;
@@ -451,6 +455,8 @@ export type AdminCoachingApplicationDto = {
 };
 
 export type AdminRetreatSummaryDto = {
+  currentPricePence?: number;
+  priceVaries?: boolean;
   id: string;
   retreatSlug: string;
   title: string;
@@ -460,6 +466,7 @@ export type AdminRetreatSummaryDto = {
   endDate: string;
   status: string;
   retreatType: string;
+  eventKind: "residential_retreat" | "day_retreat" | "in_person_workshop" | "online_workshop";
   bookedSpaces: number;
   totalSpaces: number;
   revenuePence: number;
@@ -468,6 +475,7 @@ export type AdminRetreatSummaryDto = {
 };
 
 export type AdminRetreatTemplateDto = {
+  previousDate?: { id: string; startsAt: string } | null;
   slug: string;
   title: string;
   location: string;
@@ -501,7 +509,36 @@ export type AdminRetreatVenueDto = {
   roomGroups: AdminRetreatVenueRoomGroupDto[];
 };
 
+export type AdminRetreatAttendeeDto = {
+  healthProfileHref?: string | null;
+  id: string;
+  bookingId: string;
+  name: string;
+  email: string;
+  isPrimary: boolean;
+  accountLinked: boolean;
+  status: string;
+  complete: boolean;
+  missing: string[];
+  phone: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  dietaryRequirements: string;
+  mobilityNeeds: string;
+  practicalConfirmedAt: string | null;
+  invitations: Array<{
+    id: string;
+    email: string;
+    status: string;
+    requestedAt: string;
+    sentAt: string | null;
+  }>;
+};
+
 export type AdminRetreatDetailDto = {
+  publicDateId?: string;
+  contentLinks?: { experience: string | null; venue: string | null };
+  publishReadiness?: { valid: boolean; errors: string[] } | null;
   id: string;
   retreatSlug: string;
   title: string;
@@ -511,6 +548,7 @@ export type AdminRetreatDetailDto = {
   endDate: string;
   status: string;
   retreatType: string;
+  eventKind: "residential_retreat" | "day_retreat" | "in_person_workshop" | "online_workshop";
   liveRoomPrepared: boolean;
   liveRoomState: "unprepared" | "prepared" | "started" | "ended";
   liveDisplayMode: "gallery" | "presenter";
@@ -616,6 +654,7 @@ export type AdminRetreatDetailDto = {
   }>;
   bookings: Array<{
     id: string;
+    attendees?: AdminRetreatAttendeeDto[];
     purchaserName: string;
     purchaserEmail: string;
     attendeeName: string;
@@ -632,6 +671,7 @@ export type AdminRetreatDetailDto = {
     inventoryPoolId: string | null;
     roomUnitId: string | null;
     roomUnitLabel: string | null;
+    bedPreference?: string | null;
     addons: Array<{
       id: string;
       name: string;
@@ -1037,7 +1077,14 @@ export type AdminNewsletterCampaignDetailDto = {
   id: string;
   providerCampaignId: string;
   subject: string;
-  status: "sent" | "scheduled" | "sending" | "failed" | "failed_partial";
+  status:
+    | "preparing"
+    | "scheduled"
+    | "sending"
+    | "sent"
+    | "failed"
+    | "failed_partial"
+    | "reconciliation_required";
   sentDate: string;
   totalRecipients: number;
   delivered: number;
@@ -1062,6 +1109,16 @@ export type AdminNewsletterCampaignDetailDto = {
   reportingSource: "postmark_api" | "event_history";
   attentionReasons: string[];
   errorSummary: string | null;
+  deliveryStateCounts: {
+    queued: number;
+    sending: number;
+    sent: number;
+    failed: number;
+    deadLetter: number;
+  };
+  canRetry: boolean;
+  canReconcile: boolean;
+  ambiguousDeliveries: Array<{ id: string; email: string; attemptCount: number }>;
   topLinks: Array<{ url: string; clicks: number }>;
   eventTimeline: Array<{ date: string; opened: number; clicked: number; bounced: number }>;
 };

@@ -194,6 +194,7 @@ export const RETREAT_TEMPLATE_SEED = {
     slug: r.slug,
     shortDescription: r.shortDescription,
     fullDescription: r.fullDescription,
+    atmosphereDescription: r.atmosphereDescription,
     experienceType: r.experienceType,
     deliveryMode: r.deliveryMode,
     durationLabel: r.durationLabel,

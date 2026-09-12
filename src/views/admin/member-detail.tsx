@@ -11,6 +11,7 @@ import { Button } from "../../components/ui/button";
 import { Textarea } from "../../components/ui/textarea";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Switch } from "../../components/ui/switch";
 import {
   Select,
@@ -480,15 +481,15 @@ export function AdminMemberDetail() {
         </div>
 
         {/* Direct message form */}
-        {showMessageForm && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
+        <Dialog open={showMessageForm} onOpenChange={(open) => { if (!messageSending) setShowMessageForm(open); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-lg">
                 <Send className="text-brand-accent h-5 w-5" />
                 Send Email to {member.firstName}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </DialogTitle>
+            <DialogDescription>Send a direct message about this member’s account or coaching.</DialogDescription></DialogHeader>
+            <div className="space-y-4">
               <p className="text-muted-foreground text-xs">
                 This will send an email to {member.email} via Postmark.
               </p>
@@ -545,9 +546,9 @@ export function AdminMemberDetail() {
                   Cancel
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Stats grid */}
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -583,107 +584,28 @@ export function AdminMemberDetail() {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Roles */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Shield className="text-brand-dark h-5 w-5" />
-                  Roles
-                </CardTitle>
-                <span className="text-muted-foreground text-xs">Changes save automatically</span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="border-border/60 bg-secondary/30 flex items-start gap-4 rounded-lg border p-4">
-                <Switch
-                  id="role-instructor"
-                  checked={isInstructor}
-                  onCheckedChange={(checked) => void handleRoleToggle("instructor", checked)}
-                  className="data-[state=checked]:bg-brand-accent mt-0.5"
-                />
-                <label htmlFor="role-instructor" className="flex-1 cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">Instructor</span>
-                    {isInstructor && (
-                      <Badge className="border-brand-dark/30 bg-brand-dark/10 text-brand-dark text-micro px-1.5 py-0">
-                        Active
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    Grants admin access, unlimited class membership and ability to lead classes.
-                  </p>
-                </label>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="instructor-profile">Instructor Profile</Label>
-                <Select
-                  value={instructorProfileEntryId}
-                  onValueChange={(value) => {
-                    setInstructorProfileEntryId(value);
-                    if (isInstructor) {
-                      void (async () => {
-                        const response = await fetch(`/api/admin/members/${member.id}`, {
-                          method: "PATCH",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            isInstructor: true,
-                            instructorProfileEntryId: value,
-                          }),
-                        });
-                        if (!response.ok) {
-                          toast.error("Failed to update instructor profile.");
-                          return;
-                        }
-                        applyMemberState((await response.json()) as AdminMemberDetailDto);
-                      })();
-                    }
-                  }}
-                >
-                  <SelectTrigger id="instructor-profile">
-                    <SelectValue placeholder="Select instructor profile" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {instructorProfiles.map((profile) => (
-                      <SelectItem key={profile.id} value={profile.id}>
-                        {profile.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-muted-foreground text-xs">
-                  Required when assigning instructor role. Used for class bio display.
-                </p>
-              </div>
-              <div className="border-border/60 bg-secondary/30 flex items-start gap-4 rounded-lg border p-4">
-                <Switch
-                  id="role-coaching"
-                  checked={isCoachingClient}
-                  onCheckedChange={(checked) => void handleRoleToggle("coaching", checked)}
-                  className="data-[state=checked]:bg-brand-accent mt-0.5"
-                />
-                <label htmlFor="role-coaching" className="flex-1 cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">Coaching Client</span>
-                    {isCoachingClient && (
-                      <Badge className="text-micro border-amber-200 bg-amber-50 px-1.5 py-0 text-amber-700">
-                        Active
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    Marks this member as a 1:1 coaching client. Access and platform details to be
-                    configured separately.
-                  </p>
-                </label>
-              </div>
-            </CardContent>
-          </Card>
+        <nav aria-label="Member record sections" className="flex flex-wrap items-center gap-2">
+          <span className="text-muted-foreground mr-1 text-sm">Jump to</span>
+          {[
+            ["health", "Health"],
+            ["membership", "Membership & credits"],
+            ["activity", "Activity"],
+            ["notes", "Notes"],
+            ["communications", "Newsletter"],
+            ["access-privacy", "Access & privacy"],
+          ].map(([sectionId, label]) => (
+            <a
+              key={sectionId}
+              href={`#${sectionId}`}
+              className="hover:bg-secondary focus-visible:ring-brand-accent/50 rounded-full border px-3 py-1.5 text-sm focus-visible:ring-2 focus-visible:outline-none"
+            >
+              {label}
+            </a>
+          ))}
+        </nav>
 
-          {/* Health Profile */}
-          <Card>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <Card id="health" className="scroll-mt-24">
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <CardTitle className="flex items-center gap-2 text-lg">
@@ -760,84 +682,7 @@ export function AdminMemberDetail() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Shield className="text-brand-dark h-5 w-5" />
-                Privacy Tools
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground text-sm">
-                Export the member record or anonymise personal data while preserving finance,
-                dispute, auditand evidence links through an anonymised user shell.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => void handlePrivacyExport()}
-                  disabled={privacyBusy !== null}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  {privacyBusy === "export" ? "Generating export..." : "Export user data"}
-                </Button>
-                <Button variant="outline" onClick={() => void handleDeletePreview()}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Check deletion
-                </Button>
-              </div>
-              {deletePreview ? (
-                <div className="rounded-lg border p-3 text-sm">
-                  <p>
-                    {deletePreview.blocked
-                      ? `Deletion is blocked: ${deletePreview.blockReason || "active hold"}`
-                      : "Deletion can proceed. Personal data will be anonymised and active sessions revoked."}
-                  </p>
-                  {!deletePreview.blocked && deletePreview.deletes?.length ? (
-                    <div className="mt-3 space-y-3">
-                      <div>
-                        <p className="font-medium">Deleted now</p>
-                        <ul className="text-muted-foreground mt-1 list-disc pl-5">
-                          {deletePreview.deletes.map((item) => (
-                            <li key={item}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <p className="font-medium">Anonymised but preserved</p>
-                        <ul className="text-muted-foreground mt-1 list-disc pl-5">
-                          {deletePreview.anonymises?.map((item) => (
-                            <li key={item}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <p className="font-medium">Retained for finance, audit, or disputes</p>
-                        <ul className="text-muted-foreground mt-1 list-disc pl-5">
-                          {deletePreview.preserves?.map((item) => (
-                            <li key={item}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  ) : null}
-                  {!deletePreview.blocked ? (
-                    <Button
-                      className="mt-3"
-                      variant="destructive"
-                      onClick={() => void handlePrivacyDelete()}
-                      disabled={privacyBusy !== null}
-                    >
-                      {privacyBusy === "delete" ? "Anonymising..." : "Anonymise member"}
-                    </Button>
-                  ) : null}
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
-
-          {/* Manage Credits */}
-          <Card>
+          <Card id="membership" className="scroll-mt-24">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <CreditCard className="text-brand-accent h-5 w-5" />
@@ -970,7 +815,7 @@ export function AdminMemberDetail() {
           </Card>
 
           {/* Notes */}
-          <Card>
+          <Card id="notes" className="scroll-mt-24">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg">Instructor Notes</CardTitle>
               <Button
@@ -1021,7 +866,7 @@ export function AdminMemberDetail() {
           </Card>
 
           {/* Newsletter */}
-          <Card>
+          <Card id="communications" className="scroll-mt-24">
             <CardHeader>
               <CardTitle className="text-lg">Newsletter</CardTitle>
             </CardHeader>
@@ -1117,7 +962,7 @@ export function AdminMemberDetail() {
         </div>
 
         {/* Activity summary */}
-        <Card>
+        <Card id="activity" className="scroll-mt-24">
           <CardHeader>
             <CardTitle className="text-lg">Activity</CardTitle>
           </CardHeader>
@@ -1156,6 +1001,189 @@ export function AdminMemberDetail() {
             </div>
           </CardContent>
         </Card>
+        <details id="access-privacy" className="scroll-mt-24 rounded-xl border bg-white p-4">
+          <summary className="cursor-pointer font-medium">Access & privacy</summary>
+          <p className="text-muted-foreground my-3 text-sm">Permission changes and data requests. These actions are separate from normal member follow-up.</p>
+          <div className="grid gap-6 lg:grid-cols-2">
+          {/* Roles */}
+          <Card id="access" className="scroll-mt-24">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Shield className="text-brand-dark h-5 w-5" />
+                  Roles
+                </CardTitle>
+                <span className="text-muted-foreground text-xs">Changes save automatically</span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="border-border/60 bg-secondary/30 flex items-start gap-4 rounded-lg border p-4">
+                <Switch
+                  id="role-instructor"
+                  checked={isInstructor}
+                  onCheckedChange={(checked) => void handleRoleToggle("instructor", checked)}
+                  className="data-[state=checked]:bg-brand-accent mt-0.5"
+                />
+                <label htmlFor="role-instructor" className="flex-1 cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">Instructor</span>
+                    {isInstructor && (
+                      <Badge className="border-brand-dark/30 bg-brand-dark/10 text-brand-dark text-micro px-1.5 py-0">
+                        Active
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    Grants admin access, unlimited class membership and ability to lead classes.
+                  </p>
+                </label>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="instructor-profile">Instructor Profile</Label>
+                <Select
+                  value={instructorProfileEntryId}
+                  onValueChange={(value) => {
+                    setInstructorProfileEntryId(value);
+                    if (isInstructor) {
+                      void (async () => {
+                        const response = await fetch(`/api/admin/members/${member.id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            isInstructor: true,
+                            instructorProfileEntryId: value,
+                          }),
+                        });
+                        if (!response.ok) {
+                          toast.error("Failed to update instructor profile.");
+                          return;
+                        }
+                        applyMemberState((await response.json()) as AdminMemberDetailDto);
+                      })();
+                    }
+                  }}
+                >
+                  <SelectTrigger id="instructor-profile">
+                    <SelectValue placeholder="Select instructor profile" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {instructorProfiles.map((profile) => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        {profile.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-muted-foreground text-xs">
+                  Required when assigning instructor role. Used for class bio display.
+                </p>
+              </div>
+              <div className="border-border/60 bg-secondary/30 flex items-start gap-4 rounded-lg border p-4">
+                <Switch
+                  id="role-coaching"
+                  checked={isCoachingClient}
+                  onCheckedChange={(checked) => void handleRoleToggle("coaching", checked)}
+                  className="data-[state=checked]:bg-brand-accent mt-0.5"
+                />
+                <label htmlFor="role-coaching" className="flex-1 cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">Coaching Client</span>
+                    {isCoachingClient && (
+                      <Badge className="text-micro border-amber-200 bg-amber-50 px-1.5 py-0 text-amber-700">
+                        Active
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    Marks this member as a 1:1 coaching client. Access and platform details to be
+                    configured separately.
+                  </p>
+                </label>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Health Profile */}
+          <Card id="privacy" className="scroll-mt-24">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Shield className="text-brand-dark h-5 w-5" />
+                Privacy Tools
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground text-sm">
+                Export the member record or anonymise personal data while preserving finance,
+                dispute, auditand evidence links through an anonymised user shell.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => void handlePrivacyExport()}
+                  disabled={privacyBusy !== null}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  {privacyBusy === "export" ? "Generating export..." : "Export user data"}
+                </Button>
+                <Button variant="outline" onClick={() => void handleDeletePreview()}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Check deletion
+                </Button>
+              </div>
+              {deletePreview ? (
+                <div className="rounded-lg border p-3 text-sm">
+                  <p>
+                    {deletePreview.blocked
+                      ? `Deletion is blocked: ${deletePreview.blockReason || "active hold"}`
+                      : "Deletion can proceed. Personal data will be anonymised and active sessions revoked."}
+                  </p>
+                  {!deletePreview.blocked && deletePreview.deletes?.length ? (
+                    <div className="mt-3 space-y-3">
+                      <div>
+                        <p className="font-medium">Deleted now</p>
+                        <ul className="text-muted-foreground mt-1 list-disc pl-5">
+                          {deletePreview.deletes.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="font-medium">Anonymised but preserved</p>
+                        <ul className="text-muted-foreground mt-1 list-disc pl-5">
+                          {deletePreview.anonymises?.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="font-medium">Retained for finance, audit, or disputes</p>
+                        <ul className="text-muted-foreground mt-1 list-disc pl-5">
+                          {deletePreview.preserves?.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  ) : null}
+                  {!deletePreview.blocked ? (
+                    <Button
+                      className="mt-3"
+                      variant="destructive"
+                      onClick={() => void handlePrivacyDelete()}
+                      disabled={privacyBusy !== null}
+                    >
+                      {privacyBusy === "delete" ? "Anonymising..." : "Anonymise member"}
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          {/* Manage Credits */}
+
+          </div>
+        </details>
       </div>
     </AdminLayout>
   );

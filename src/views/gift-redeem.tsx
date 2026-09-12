@@ -478,19 +478,10 @@ export function GiftRedeemPage({
                             }
                           />
                         </div>
-                        <div className="mt-4 space-y-2">
-                          <Label htmlFor="guestTwoDietaryRequirements">Dietary requirements</Label>
-                          <Textarea
-                            id="guestTwoDietaryRequirements"
-                            value={formData.guestTwoDietaryRequirements}
-                            onChange={(event) =>
-                              setFormData((current) => ({
-                                ...current,
-                                guestTwoDietaryRequirements: event.target.value,
-                              }))
-                            }
-                          />
-                        </div>
+                        <p className="text-muted-foreground mt-4 text-sm">
+                          Your guest will receive an invitation to complete their own private
+                          registration details.
+                        </p>
                       </div>
                     ) : null}
                   </>

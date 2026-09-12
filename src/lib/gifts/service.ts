@@ -27,6 +27,7 @@ import { calculateRetreatRefund } from "@/lib/retreats/pricing";
 import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { getWorkshopSetupState } from "@/lib/retreats/workshop-setup";
 import { sendRetreatOperationalEmail } from "@/lib/retreats/notification-service";
+import { inviteRetreatBookingAttendees } from "@/lib/retreats/registration-service";
 import { getAdminEmailAllowlist } from "@/lib/env";
 
 export type PublicGiftRedemptionState =
@@ -807,6 +808,7 @@ export async function getMyRetreatGiftPurchases(userId: string) {
       ? [
           {
             id: gift.id,
+            retreatDateId: gift.retreatDate.id,
             retreatSlug: gift.retreatDate.retreatSlug,
             retreatTitle: gift.retreatDate.retreatTitleSnapshot,
             location: gift.retreatDate.retreatLocationSnapshot,
@@ -911,6 +913,12 @@ export async function redeemGiftPurchase(input: {
       gift.retreatGuestCount ?? gift.retreatRoomOption.guestsIncluded,
       1
     );
+    if (
+      retreatGuestCount > 1 &&
+      input.guestTwoEmail &&
+      normalizeEmail(input.guestTwoEmail) === attendeeEmail
+    )
+      throw new Error("SECOND_GUEST_EMAIL_MUST_DIFFER");
     await assertCurrentAcceptances(user.id, [
       { type: AcceptanceType.terms, surface: "retreat_gift_redemption" },
       { type: AcceptanceType.health_waiver, surface: "retreat_gift_redemption" },
@@ -958,13 +966,12 @@ export async function redeemGiftPurchase(input: {
           guestTwoFirstName: normalizeText(input.guestTwoFirstName || "", 80) || null,
           guestTwoLastName: normalizeText(input.guestTwoLastName || "", 80) || null,
           guestTwoEmail: input.guestTwoEmail ? normalizeEmail(input.guestTwoEmail) : null,
-          guestTwoDietaryRequirements:
-            normalizeText(input.guestTwoDietaryRequirements || "", 1000) || null,
           singleRoomRequested:
             gift.retreatRoomOption.bookingUnit === "whole_room" && retreatGuestCount === 1,
           roomType: gift.retreatRoomOption.label,
           roomOptionLabelSnapshot: gift.retreatRoomOption.label,
           roomOptionTypeSnapshot: gift.retreatRoomOption.roomType,
+          bedPreference: gift.retreatBedPreference,
           attendeeCount: retreatGuestCount,
           guestsIncluded: retreatGuestCount,
           giftPurchaseId: gift.id,
@@ -1039,6 +1046,7 @@ export async function redeemGiftPurchase(input: {
     });
 
     await assignRoomUnitAfterPayment(booking.id);
+    await inviteRetreatBookingAttendees(booking.id);
     await ensureRetreatOnlineAccessEntitlement(booking.id);
     const nextUrl = `/dashboard/retreats/${booking.id}${
       gift.retreatDate.retreatType === "online" ? "/live" : ""

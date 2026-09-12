@@ -552,6 +552,23 @@ export async function executePrivacyDeletion(actorUserId: string, userId: string
       },
     });
 
+    await tx.retreatAttendee.updateMany({
+      where: { userId },
+      data: {
+        firstName: "Deleted",
+        lastName: "User",
+        displayName: "Deleted User",
+        email: replacementEmail,
+        claimToken: null,
+        dietaryRequirements: null,
+        mobilityNeeds: null,
+        phone: null,
+        emergencyContactName: null,
+        emergencyContactPhone: null,
+        practicalConfirmedAt: null,
+      },
+    });
+
     await tx.smallGroupProgrammeEnrollment.updateMany({
       where: { userId },
       data: {

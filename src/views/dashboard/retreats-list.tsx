@@ -9,6 +9,8 @@ import { LoadingRegion } from "@/components/loading-region";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import type { RetreatBookingSummaryDto, RetreatGiftPurchaseSummaryDto } from "@/lib/api/types";
 
 function formatDateRange(start: string, end: string) {
@@ -37,22 +39,29 @@ function paymentBadge(status: string): "default" | "secondary" | "outline" | "de
 export function DashboardRetreats({
   initialData,
   initialGifts,
+  registrations = [],
+  registrationLoadFailed = false,
 }: {
   initialData?: RetreatBookingSummaryDto[] | null;
   initialGifts?: RetreatGiftPurchaseSummaryDto[] | null;
+  registrations?: Array<{ id: string; bookingId?: string; title: string; complete: boolean; startsAt: string }>;
+  registrationLoadFailed?: boolean;
 }) {
   const [bookings, setBookings] = useState<RetreatBookingSummaryDto[]>(initialData || []);
   const [gifts, setGifts] = useState<RetreatGiftPurchaseSummaryDto[]>(initialGifts || []);
   const [loading, setLoading] = useState(!initialData || !initialGifts);
   const [error, setError] = useState("");
   const [cancellingGiftId, setCancellingGiftId] = useState("");
+  const [giftToCancel, setGiftToCancel] = useState<RetreatGiftPurchaseSummaryDto | null>(null);
+  const [giftReason, setGiftReason] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+  const [bookingLoadError, setBookingLoadError] = useState("");
+  const [giftLoadError, setGiftLoadError] = useState("");
+  const separateRegistrations = registrations.filter((registration) =>
+    !bookings.some((booking) => booking.id === registration.bookingId && booking.registrations?.length));
 
   const requestGiftCancellation = async (gift: RetreatGiftPurchaseSummaryDto) => {
-    const reason = window.prompt(
-      "Why would you like to cancel this gift? The gift remains reserved until Shruti reviews the request.",
-      ""
-    );
-    if (reason === null) return;
+    const reason = giftReason;
     setCancellingGiftId(gift.id);
     setError("");
     try {
@@ -63,6 +72,7 @@ export function DashboardRetreats({
       });
       const payload = (await response.json().catch(() => null)) as { message?: string } | null;
       if (!response.ok) throw new Error(payload?.message || "Unable to request cancellation.");
+      setGiftToCancel(null);
       const refreshed = await fetch("/api/me/retreat-gifts", { cache: "no-store" });
       if (refreshed.ok) {
         const next = (await refreshed.json()) as { data: RetreatGiftPurchaseSummaryDto[] };
@@ -78,29 +88,42 @@ export function DashboardRetreats({
   };
 
   useEffect(() => {
-    if (initialData && initialGifts) return;
+    if (initialData && initialGifts && !reloadKey) return;
     let active = true;
     void (async () => {
       setLoading(true);
       setError("");
+      setBookingLoadError("");
+      setGiftLoadError("");
       try {
-        const [bookingResponse, giftResponse] = await Promise.all([
-          fetch("/api/me/retreats", { cache: "no-store" }),
-          fetch("/api/me/retreat-gifts", { cache: "no-store" }),
+        await Promise.all([
+          (async () => {
+            try {
+              const response = await fetch("/api/me/retreats", { cache: "no-store" });
+              if (!response.ok) throw new Error();
+              const payload = await response.json();
+              if (active) setBookings(payload.data);
+            } catch {
+              if (active)
+                setBookingLoadError(
+                  "Your bookings could not be loaded. Gifts are still available."
+                );
+            }
+          })(),
+          (async () => {
+            try {
+              const response = await fetch("/api/me/retreat-gifts", { cache: "no-store" });
+              if (!response.ok) throw new Error();
+              const payload = await response.json();
+              if (active) setGifts(payload.data);
+            } catch {
+              if (active)
+                setGiftLoadError(
+                  "Your gifts could not be loaded. Your bookings are still available."
+                );
+            }
+          })(),
         ]);
-        if (!bookingResponse.ok || !giftResponse.ok) throw new Error("Failed to load retreats.");
-        const bookingPayload = (await bookingResponse.json()) as {
-          success: true;
-          data: RetreatBookingSummaryDto[];
-        };
-        const giftPayload = (await giftResponse.json()) as {
-          success: true;
-          data: RetreatGiftPurchaseSummaryDto[];
-        };
-        if (active) {
-          setBookings(bookingPayload.data);
-          setGifts(giftPayload.data);
-        }
       } catch (loadError) {
         if (active) {
           setError(loadError instanceof Error ? loadError.message : "Failed to load retreats.");
@@ -112,7 +135,7 @@ export function DashboardRetreats({
     return () => {
       active = false;
     };
-  }, [initialData, initialGifts]);
+  }, [initialData, initialGifts, reloadKey]);
 
   if (loading) {
     return (
@@ -128,10 +151,9 @@ export function DashboardRetreats({
     <DashboardLayout title="Retreats - Private Studio">
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl">Your Retreats</h1>
+          <h1 className="text-3xl">Your retreats & workshops</h1>
           <p className="text-muted-foreground mt-2 max-w-2xl">
-            View booking status, balance payments and the essentials for any retreat you have booked
-            through the studio.
+            Your bookings, guest registrations and joining information.
           </p>
         </div>
 
@@ -141,13 +163,83 @@ export function DashboardRetreats({
           </div>
         ) : null}
 
+        {bookingLoadError || giftLoadError ? (
+          <div role="alert" className="rounded-lg border p-3">
+            {bookingLoadError && <p>{bookingLoadError}</p>}
+            {giftLoadError && <p>{giftLoadError}</p>}
+            <Button
+              variant="outline"
+              className="mt-2"
+              onClick={() => setReloadKey((value) => value + 1)}
+            >
+              Try again
+            </Button>
+          </div>
+        ) : null}
+        <Dialog
+          open={Boolean(giftToCancel)}
+          onOpenChange={(open) => {
+            if (!open && !cancellingGiftId) setGiftToCancel(null);
+          }}
+        >
+          <DialogContent>
+            <DialogTitle>Request gift cancellation</DialogTitle>
+            <DialogDescription>
+              {giftToCancel?.retreatTitle} —{" "}
+              {giftToCancel ? formatDateRange(giftToCancel.startsAt, giftToCancel.endsAt) : ""}. The
+              gift stays reserved until Shruti reviews your request. Any refund is confirmed
+              separately.
+            </DialogDescription>
+            <label className="space-y-2">
+              <span>Reason (optional)</span>
+              <Textarea
+                value={giftReason}
+                onChange={(event) => setGiftReason(event.target.value)}
+                maxLength={2000}
+              />
+            </label>
+            {error && <p role="alert">{error}</p>}
+            <Button
+              disabled={Boolean(cancellingGiftId)}
+              onClick={() => giftToCancel && void requestGiftCancellation(giftToCancel)}
+            >
+              {cancellingGiftId ? "Sending request…" : "Send request"}
+            </Button>
+          </DialogContent>
+        </Dialog>
+
+        {registrationLoadFailed && <p role="alert">Registration status could not be loaded. Open your booking to check details or reload this page.</p>}
+        {separateRegistrations.length ? (
+          <section className="space-y-4" aria-labelledby="my-registrations">
+            <h2 id="my-registrations" className="text-xl">
+              My registrations
+            </h2>
+            {separateRegistrations.map((registration) => (
+              <Card key={registration.id}>
+                <CardContent className="flex flex-wrap items-center justify-between gap-4 py-5">
+                  <div>
+                    <h3 className="font-medium">{registration.title}</h3>
+                    <p className="text-muted-foreground text-sm">
+                      {registration.complete ? "Registration complete" : "Registration needed"}
+                    </p>
+                  </div>
+                  <Button asChild variant="outline">
+                    <Link href={`/dashboard/retreats/registration/${registration.id}`}>
+                      My registration
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </section>
+        ) : null}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl">Booked retreats</h2>
+            <h2 className="text-xl">Bookings I manage</h2>
             <Badge variant="outline">{bookings.length}</Badge>
           </div>
 
-          {bookings.length === 0 ? (
+          {bookingLoadError && bookings.length === 0 ? null : bookings.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <Mountain className="text-muted-foreground mx-auto mb-3 h-8 w-8" />
@@ -184,6 +276,14 @@ export function DashboardRetreats({
                         </div>
                       </div>
 
+                      {booking.registrations?.length ? <div className="space-y-2">
+                        <p className="text-sm font-medium">{booking.registrations.length} {booking.registrations.length === 1 ? "guest" : "guests"} · booked together</p>
+                        {booking.registrations.map((registration) => <div key={registration.id} className="flex flex-wrap items-center gap-2 text-sm">
+                          <span>{registration.name}{registration.isOwn ? " (you)" : ""}</span>
+                          <Badge variant={registration.complete ? "secondary" : "outline"}>{registration.complete ? "Registration complete" : "Registration needed"}</Badge>
+                          {registration.isOwn && <Link className="text-primary underline" href={`/dashboard/retreats/registration/${registration.id}`}>{registration.complete ? "Review details" : "Complete registration"}</Link>}
+                        </div>)}
+                      </div> : null}
                       <div className="grid gap-3 sm:grid-cols-3">
                         <div>
                           <p className="text-muted-foreground text-xs tracking-wide uppercase">
@@ -233,7 +333,9 @@ export function DashboardRetreats({
                         </Link>
                       </Button>
                       <Button asChild variant="outline" className="w-full">
-                        <Link href={`/retreats/${booking.retreatSlug}`}>
+                        <Link
+                          href={`/retreats/${booking.retreatSlug}${booking.retreatDateId ? `?date=${encodeURIComponent(booking.retreatDateId)}` : ""}`}
+                        >
                           Public retreat page
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </Link>
@@ -308,13 +410,19 @@ export function DashboardRetreats({
                         <Button
                           variant="outline"
                           disabled={cancellingGiftId === gift.id}
-                          onClick={() => void requestGiftCancellation(gift)}
+                          onClick={() => {
+                            setGiftReason("");
+                            setError("");
+                            setGiftToCancel(gift);
+                          }}
                         >
                           {cancellingGiftId === gift.id ? "Sending…" : "Request cancellation"}
                         </Button>
                       ) : null}
                       <Button asChild variant="outline">
-                        <Link href={`/retreats/${gift.retreatSlug}`}>
+                        <Link
+                          href={`/retreats/${gift.retreatSlug}${gift.retreatDateId ? `?date=${encodeURIComponent(gift.retreatDateId)}` : ""}`}
+                        >
                           Retreat details
                           <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
                         </Link>

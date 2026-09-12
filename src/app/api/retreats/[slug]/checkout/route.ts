@@ -8,6 +8,7 @@ type RetreatCheckoutBody = {
   retreatDateId?: unknown;
   roomOptionId?: unknown;
   guestCount?: unknown;
+  bedPreference?: unknown;
   purchaseMode?: unknown;
   paymentOption?: unknown;
   purchaserFirstName?: unknown;
@@ -52,6 +53,7 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
       retreatDateId: typeof body.retreatDateId === "string" ? body.retreatDateId : "",
       roomOptionId: typeof body.roomOptionId === "string" ? body.roomOptionId : "",
       guestCount: typeof body.guestCount === "number" ? body.guestCount : undefined,
+      bedPreference: body.bedPreference,
       purchaseMode: body.purchaseMode === "gift" ? "gift" : "self",
       paymentOption: body.paymentOption === "pay_in_full" ? "pay_in_full" : "deposit",
       purchaserUserId: session?.user?.id || null,
@@ -105,6 +107,15 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
     revalidateTag("retreats-public", "max");
     return NextResponse.json(result);
   } catch (error) {
+    if (
+      error instanceof Error &&
+      ["RETREAT_BED_PREFERENCE_REQUIRED", "RETREAT_BED_PREFERENCE_INVALID"].includes(error.message)
+    ) {
+      return NextResponse.json(
+        { message: "Choose an available bed arrangement for your room." },
+        { status: 400 }
+      );
+    }
     if (error instanceof Error && error.message === "USER_NOT_FOUND") {
       return NextResponse.json(
         {
@@ -112,6 +123,15 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
           message: "Your account session is no longer valid. Please sign in again.",
         },
         { status: 401 }
+      );
+    }
+    if (error instanceof Error && error.message === "SECOND_GUEST_EMAIL_MUST_DIFFER") {
+      return NextResponse.json(
+        {
+          message:
+            "Please use a different email address for each guest so they can complete their own registration.",
+        },
+        { status: 400 }
       );
     }
     if (

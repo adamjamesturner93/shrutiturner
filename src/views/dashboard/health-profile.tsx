@@ -175,6 +175,7 @@ export function HealthProfilePage({ initialProfile }: { initialProfile?: HealthP
     <DashboardLayout title="Health Profile - Private Studio">
       <div className="space-y-6">
         <AppPageHeader
+          compact
           eyebrow="Health and safety"
           title="Health Profile"
           description="Help Shruti understand your body so sessions can be tailored for you."
@@ -185,7 +186,10 @@ export function HealthProfilePage({ initialProfile }: { initialProfile?: HealthP
             </p>
           }
           actions={
-            !editing ? (
+            !editing &&
+            (profile.declarationStatus === "none_declared" ||
+              activeConditions.length > 0 ||
+              Boolean(profile.additionalNotes)) ? (
               <button
                 onClick={() => setEditing(true)}
                 className="mt-1 flex items-center gap-1.5 rounded-full border border-white/16 bg-white/8 px-3 py-2 text-sm font-medium text-[rgba(250,250,248,0.96)] transition-colors hover:bg-white/14 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
@@ -267,14 +271,14 @@ export function HealthProfilePage({ initialProfile }: { initialProfile?: HealthP
                 />
               ) : activeConditions.length === 0 && !profile.additionalNotes ? (
                 <AppEmptyState
-                  title="No health declaration recorded yet."
-                  description="Complete your declaration so booking and join flows can use the right prompts."
+                  title="Your health profile is not complete yet."
+                  description="Share anything Shruti should know before your session."
                   action={
                     <button
                       onClick={() => setEditing(true)}
                       className="text-brand-accent text-sm hover:underline"
                     >
-                      Complete declaration
+                      Complete health profile
                     </button>
                   }
                   className="py-10"

@@ -22,17 +22,27 @@ import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-su
 
 export function AdminDashboard({ initialData }: { initialData?: AdminDashboardSummaryDto | null }) {
   const [emailHealth, setEmailHealth] = useState<AdminEmailDeliveryHealthDto | null>(null);
+  const [emailHealthLoading, setEmailHealthLoading] = useState(true);
+  const [emailHealthError, setEmailHealthError] = useState("");
   const [emailActionId, setEmailActionId] = useState<string | null>(null);
   const [emailActionMessage, setEmailActionMessage] = useState<string | null>(null);
 
   const refreshEmailHealth = useCallback(async () => {
+    setEmailHealthLoading(true);
+    setEmailHealthError("");
+    try {
     const res = await fetch("/api/admin/email-deliveries", { cache: "no-store" });
-    if (!res.ok) return;
+    if (!res.ok) throw new Error("Email delivery status is unavailable.");
     const payload = (await res.json()) as {
       success?: boolean;
       data?: AdminEmailDeliveryHealthDto;
     };
-    if (payload.success && payload.data) setEmailHealth(payload.data);
+    if (!payload.success || !payload.data) throw new Error("Email delivery status is unavailable.");
+    setEmailHealth(payload.data);
+    } catch {
+      setEmailHealth(null);
+      setEmailHealthError("Email delivery status is unavailable. This does not mean there are no failures.");
+    } finally { setEmailHealthLoading(false); }
   }, []);
 
   useEffect(() => {
@@ -76,24 +86,23 @@ export function AdminDashboard({ initialData }: { initialData?: AdminDashboardSu
       <div className="space-y-6">
         <AppPageHeader
           eyebrow="Admin overview"
-          title="Instructor Dashboard"
+          title="Admin overview"
           description="Coaching applications, retreats, clients, newsletter and business operations."
         />
 
         <AppMetricGrid>
           <AppMetricCard
             label="Coaching TODOs"
-            value={initialData?.coachingTodos.length || "Clear"}
-            detail={initialData?.coachingTodos.length ? "actions need attention" : "nothing due"}
+            value={initialData ? initialData.coachingTodos.length || "Clear" : "Unavailable"}
+            detail={initialData ? initialData.coachingTodos.length ? "actions need attention" : "nothing due" : "Coaching workload could not be verified"}
           />
-          <AppMetricCard label="Retreats" value="Enabled" detail="dates, rooms and balances" />
-          <AppMetricCard label="Newsletter" value="Live" detail="subscribers and campaigns" />
           <AppMetricCard
             label="Email delivery"
-            value={failedEmailCount > 0 ? failedEmailCount : "Clear"}
-            detail={failedEmailCount > 0 ? "needs attention" : "no failures reported"}
+            value={emailHealthLoading ? "Loading…" : !emailHealth ? "Unavailable" : failedEmailCount > 0 ? failedEmailCount : "Clear"}
+            detail={emailHealth ? failedEmailCount > 0 ? "needs attention" : "no failures reported" : "Delivery status has not been verified"}
           />
         </AppMetricGrid>
+        {emailHealthError ? <div role="alert" className="rounded-lg border p-4"><p>{emailHealthError}</p><Button variant="outline" className="mt-2" onClick={() => void refreshEmailHealth()}>Retry delivery status</Button></div> : null}
 
         {initialData?.coachingTodos.length ? (
           <Card className="border-amber-200 bg-amber-50/60">

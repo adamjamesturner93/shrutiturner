@@ -8,6 +8,7 @@ export function AppPageHeader({
   actions,
   meta,
   className,
+  compact = false,
 }: {
   eyebrow?: string;
   title: ReactNode;
@@ -15,9 +16,10 @@ export function AppPageHeader({
   actions?: ReactNode;
   meta?: ReactNode;
   className?: string;
+  compact?: boolean;
 }) {
   return (
-    <section className={cn("app-page-header", className)}>
+    <section className={cn("app-page-header", compact && "app-page-header-compact", className)}>
       <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="space-y-3">
           {eyebrow ? <p className="app-page-eyebrow">{eyebrow}</p> : null}

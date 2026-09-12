@@ -63,6 +63,11 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
     });
     return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof Error && error.message === "SECOND_GUEST_EMAIL_MUST_DIFFER")
+      return NextResponse.json(
+        { message: "Each guest needs their own email address to complete registration." },
+        { status: 400 }
+      );
     if (isAcceptanceRequiredError(error)) {
       return NextResponse.json(error.details, { status: 409 });
     }

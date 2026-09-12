@@ -54,6 +54,21 @@ export async function linkPendingRecordsForUser(userId: string, emailInput: stri
   const email = normalizeEmail(emailInput);
   if (!email) return;
 
+  const verifiedUser = await db.user.findUnique({
+    where: { id: userId },
+    select: { email: true, emailVerified: true },
+  });
+  if (verifiedUser?.emailVerified && normalizeEmail(verifiedUser.email) === email) {
+    await db.retreatAttendee.updateMany({
+      where: {
+        email: { equals: email, mode: "insensitive" },
+        userId: null,
+        status: "pending_claim",
+      },
+      data: { userId, status: "claimed", claimedAt: new Date(), claimToken: null },
+    });
+  }
+
   await Promise.all([
     ensureSubscriberLinkedToUser(userId, email),
     db.retreatBooking.updateMany({

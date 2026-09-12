@@ -29,6 +29,7 @@ function checkoutRequest() {
     body: JSON.stringify({
       retreatDateId: "date_1",
       roomOptionId: "ticket_1",
+      bedPreference: "twin",
       purchaserFirstName: "Reader",
       purchaserLastName: "One",
       purchaserEmail: "reader@example.com",
@@ -73,6 +74,7 @@ describe("POST /api/retreats/[slug]/checkout", () => {
       expect.objectContaining({
         retreatSlug: "sankalpa-online-workshop",
         paymentOption: "pay_in_full",
+        bedPreference: "twin",
         purchaserUserId: null,
         addons: [{ addonId: "massage_1", quantity: 1 }],
       })
@@ -100,6 +102,20 @@ describe("POST /api/retreats/[slug]/checkout", () => {
         "Availability changed while you were booking. Refresh the page and choose from the remaining options.",
     });
   });
+
+  it.each(["RETREAT_BED_PREFERENCE_REQUIRED", "RETREAT_BED_PREFERENCE_INVALID"])(
+    "rejects an invalid bed arrangement: %s",
+    async (code) => {
+      createRetreatCheckoutMock.mockRejectedValue(new Error(code));
+      const response = await route.POST(checkoutRequest(), {
+        params: Promise.resolve({ slug: "sankalpa-online-workshop" }),
+      });
+      expect(response.status).toBe(400);
+      await expect(response.json()).resolves.toEqual({
+        message: "Choose an available bed arrangement for your room.",
+      });
+    }
+  );
 
   it("returns a validation response when attendee details are missing", async () => {
     createRetreatCheckoutMock.mockRejectedValue(new Error("ATTENDEE_REQUIRED"));

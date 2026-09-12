@@ -1,5 +1,6 @@
 import { render } from "@react-email/render";
-import { EmailDeliveryAttemptStatus, EmailDeliveryStatus, type Prisma } from "@prisma/client";
+import { randomUUID } from "node:crypto";
+import { EmailDeliveryAttemptStatus, EmailDeliveryStatus, Prisma } from "@prisma/client";
 import { ServerClient } from "postmark";
 import BlogPostEmail from "@/emails/blog-post";
 import NewsletterEmail from "@/emails/newsletter";
@@ -14,10 +15,6 @@ type CampaignAudienceType = "newsletter" | "blog";
 type SupportedContentType = "blogPost" | "newsletterTemplate";
 type SendEmailBatchResponse = Awaited<ReturnType<ServerClient["sendEmailBatch"]>>;
 type CampaignEntry = Awaited<ReturnType<typeof loadEntry>>;
-type ExistingCampaign = {
-  id: string;
-  status: string;
-};
 type CampaignRecipient = {
   subscriberId: string;
   userId: string | null;
@@ -28,14 +25,6 @@ type CampaignRecipient = {
 const POSTMARK_FROM_EMAIL =
   process.env.POSTMARK_FROM_EMAIL || "Shruti Turner <shruti@shrutiturner.co.uk>";
 const POSTMARK_STREAM = getPostmarkMessageStream("marketing");
-const AUTO_SKIP_CAMPAIGN_STATUSES = new Set([
-  "sending",
-  "scheduled",
-  "sent",
-  "failed",
-  "failed_partial",
-]);
-
 function chunk<T>(input: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < input.length; i += size) out.push(input.slice(i, i + size));
@@ -136,6 +125,7 @@ function getAlreadyProcessedReason(status: string) {
   if (status === "sending") return "already_sending";
   if (status === "failed_partial") return "already_partially_sent";
   if (status === "failed") return "already_failed";
+  if (status === "preparing") return "already_preparing";
   return "already_processed";
 }
 
@@ -414,8 +404,17 @@ async function createCampaignDelivery(input: {
   tag: string;
   metadata: Record<string, string>;
 }) {
-  return db.emailDelivery.create({
-    data: {
+  const campaignRecipientKey = `${input.campaignId}:${input.recipient.subscriberId}`;
+  const payloadJson = toJsonValue({
+    htmlBody: input.htmlBody,
+    textBody: input.textBody,
+  });
+  const metadataJson = toJsonValue(input.metadata);
+  const delivery = await db.emailDelivery.upsert({
+    where: { campaignRecipientKey },
+    update: {},
+    create: {
+      campaignRecipientKey,
       toEmail: input.recipient.email,
       userId: input.recipient.userId || undefined,
       campaignId: input.campaignId,
@@ -425,24 +424,31 @@ async function createCampaignDelivery(input: {
       subject: input.subject,
       tag: input.tag,
       messageStream: POSTMARK_STREAM,
-      status: EmailDeliveryStatus.sending,
+      status: EmailDeliveryStatus.queued,
       retryable: true,
-      attemptCount: 1,
+      attemptCount: 0,
       maxAttempts: 3,
-      payloadJson: toJsonValue({
-        htmlBody: input.htmlBody,
-        textBody: input.textBody,
-      }),
-      metadataJson: toJsonValue(input.metadata),
+      payloadJson,
+      metadataJson,
     },
-    select: {
-      id: true,
-    },
+    select: { id: true },
   });
+  return {
+    id: delivery.id,
+    toEmail: input.recipient.email,
+    subject: input.subject,
+    tag: input.tag,
+    messageStream: POSTMARK_STREAM,
+    payloadJson,
+    metadataJson,
+    attemptCount: 0,
+    payload: { htmlBody: input.htmlBody, textBody: input.textBody },
+  } satisfies PreparedCampaignDelivery;
 }
 
 async function recordCampaignDeliveryResult(input: {
   deliveryId: string;
+  attemptId: string;
   attemptNumber: number;
   item: {
     ErrorCode?: number;
@@ -451,110 +457,353 @@ async function recordCampaignDeliveryResult(input: {
   };
 }) {
   const failed = Boolean(input.item.ErrorCode && input.item.ErrorCode !== 0);
+  if (!failed && !input.item.MessageID) throw new Error("CAMPAIGN_PROVIDER_OUTCOME_UNKNOWN");
   const now = new Date();
 
-  await db.emailDelivery.update({
-    where: { id: input.deliveryId },
+  await db.$transaction([
+    db.emailDelivery.update({
+      where: { id: input.deliveryId },
+      data: {
+        status: failed ? EmailDeliveryStatus.failed : EmailDeliveryStatus.sent,
+        attemptCount: input.attemptNumber,
+        providerMessageId: input.item.MessageID || undefined,
+        lastError: failed ? input.item.Message || "Postmark campaign send failed" : null,
+        nextRetryAt: null,
+        sentAt: failed ? undefined : now,
+      },
+    }),
+    db.emailDeliveryAttempt.update({
+      where: { id: input.attemptId },
+      data: {
+        status: failed ? EmailDeliveryAttemptStatus.failed : EmailDeliveryAttemptStatus.sent,
+        providerMessageId: input.item.MessageID || undefined,
+        errorMessage: failed ? input.item.Message || "Postmark campaign send failed" : null,
+        responseJson: toJsonValue(input.item),
+        finishedAt: now,
+      },
+    }),
+  ]);
+}
+
+type StoredCampaignPayload = {
+  htmlBody: string;
+  textBody: string;
+};
+
+type PreparedCampaignDelivery = {
+  id: string;
+  toEmail: string;
+  subject: string;
+  tag: string;
+  messageStream: string | null;
+  payloadJson: unknown;
+  metadataJson: unknown;
+  attemptCount: number;
+  payload?: StoredCampaignPayload;
+};
+
+function readStoredCampaignPayload(value: unknown): StoredCampaignPayload {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("CAMPAIGN_DELIVERY_PAYLOAD_INVALID");
+  }
+  const record = value as Record<string, unknown>;
+  if (typeof record.htmlBody !== "string" || typeof record.textBody !== "string") {
+    throw new Error("CAMPAIGN_DELIVERY_PAYLOAD_INVALID");
+  }
+  return { htmlBody: record.htmlBody, textBody: record.textBody };
+}
+
+function readStoredMetadata(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string")
+  );
+}
+
+async function refreshCampaignCounts(campaignId: string, fallbackError?: string) {
+  const grouped = await db.emailDelivery.groupBy({
+    by: ["status"],
+    where: { campaignId, OR: [{ resolvedAt: null }, { status: EmailDeliveryStatus.sent }] },
+    _count: { _all: true },
+  });
+  const counts = new Map(grouped.map((row) => [row.status, row._count._all]));
+  const sentCount = counts.get(EmailDeliveryStatus.sent) || 0;
+  const failedCount =
+    (counts.get(EmailDeliveryStatus.failed) || 0) +
+    (counts.get(EmailDeliveryStatus.dead_letter) || 0);
+  const queuedCount = counts.get(EmailDeliveryStatus.queued) || 0;
+  const ambiguousCount = counts.get(EmailDeliveryStatus.sending) || 0;
+  const recipientCount = sentCount + failedCount + queuedCount + ambiguousCount;
+  const status =
+    ambiguousCount > 0
+      ? "reconciliation_required"
+      : failedCount > 0
+        ? sentCount > 0
+          ? "failed_partial"
+          : "failed"
+        : queuedCount > 0
+          ? "queued"
+          : recipientCount === 0
+            ? "sent"
+            : "sent";
+
+  await db.emailCampaign.update({
+    where: { id: campaignId },
     data: {
-      status: failed ? EmailDeliveryStatus.failed : EmailDeliveryStatus.sent,
-      providerMessageId: input.item.MessageID || undefined,
-      lastError: failed ? input.item.Message || "Postmark campaign send failed" : null,
-      sentAt: failed ? undefined : now,
+      status,
+      sentAt: sentCount > 0 ? new Date() : undefined,
+      sentCount,
+      failedCount,
+      errorSummary: fallbackError?.slice(0, 2000) || null,
     },
   });
 
-  await db.emailDeliveryAttempt.create({
-    data: {
-      deliveryId: input.deliveryId,
-      attemptNumber: input.attemptNumber,
-      status: failed ? EmailDeliveryAttemptStatus.failed : EmailDeliveryAttemptStatus.sent,
-      providerMessageId: input.item.MessageID || undefined,
-      errorMessage: failed ? input.item.Message || "Postmark campaign send failed" : null,
-      responseJson: toJsonValue(input.item),
-      finishedAt: now,
+  return { status, sentCount, failedCount, queuedCount, ambiguousCount };
+}
+
+export async function reconcileContentfulCampaign(input: {
+  campaignId: string;
+  resolution: "confirm_delivered" | "confirm_not_sent";
+  deliveries: Array<{ id: string; attemptCount: number }>;
+  note: string;
+  actorUserId: string;
+  requestId?: string | null;
+  requestPath?: string | null;
+  requestIp?: string | null;
+}) {
+  if (!input.deliveries?.length || !input.note?.trim() || input.note.length > 2000 || new Set(input.deliveries.map((row) => row.id)).size !== input.deliveries.length) {
+    throw new Error("CAMPAIGN_RECONCILIATION_EVIDENCE_REQUIRED");
+  }
+  return withCampaignLease(input.campaignId, async () => {
+  const campaign = await db.emailCampaign.findUnique({
+    where: { id: input.campaignId },
+    select: {
+      id: true,
+      status: true,
+      sentCount: true,
+      failedCount: true,
+      errorSummary: true,
+      contentfulEntryId: true,
     },
+  });
+  if (!campaign) throw new Error("CAMPAIGN_NOT_FOUND");
+
+  const ambiguous = await db.emailDelivery.findMany({
+    where: {
+      campaignId: campaign.id,
+      status: EmailDeliveryStatus.sending,
+      resolvedAt: null,
+      OR: input.deliveries.map(({ id, attemptCount }) => ({ id, attemptCount })),
+    },
+    select: { id: true },
+  });
+  if (ambiguous.length !== input.deliveries.length) {
+    await refreshCampaignCounts(campaign.id);
+    throw new Error("CAMPAIGN_RECONCILIATION_NOT_REQUIRED");
+  }
+
+  const now = new Date();
+  const deliveryIds = ambiguous.map((delivery) => delivery.id);
+  await db.$transaction([
+    db.emailDelivery.updateMany({
+      where: { id: { in: deliveryIds }, status: EmailDeliveryStatus.sending },
+      data:
+        input.resolution === "confirm_delivered"
+          ? {
+              status: EmailDeliveryStatus.sent,
+              retryable: false,
+              sentAt: now,
+              nextRetryAt: null,
+              lastError: null,
+              resolutionNote: input.note.trim(),
+              resolvedByUserId: input.actorUserId,
+            }
+          : {
+              status: EmailDeliveryStatus.failed,
+              retryable: true,
+              nextRetryAt: now,
+              lastError: "Administrator confirmed that the provider did not send this message.",
+              resolutionNote: input.note.trim(),
+              resolvedByUserId: input.actorUserId,
+            },
+    }),
+    db.emailDeliveryAttempt.updateMany({
+      where: {
+        deliveryId: { in: deliveryIds },
+        status: EmailDeliveryAttemptStatus.started,
+      },
+      data:
+        input.resolution === "confirm_delivered"
+          ? {
+              status: EmailDeliveryAttemptStatus.sent,
+              finishedAt: now,
+              errorMessage: null,
+            }
+          : {
+              status: EmailDeliveryAttemptStatus.failed,
+              finishedAt: now,
+              errorMessage: "Administrator confirmed that the provider did not send this message.",
+            },
+    }),
+  ]);
+
+  const counts = await refreshCampaignCounts(campaign.id);
+  const result = {
+    ok: true,
+    campaignId: campaign.id,
+    resolution: input.resolution,
+    reconciledCount: ambiguous.length,
+    status: counts.status,
+  };
+
+  await createAdminActionLog({
+    actorUserId: input.actorUserId,
+    actionType: "newsletter_campaign_reconciled",
+    targetType: "email_campaign",
+    targetId: campaign.id,
+    requestId: input.requestId,
+    requestPath: input.requestPath,
+    requestIp: input.requestIp,
+    oldValueJson: {
+      status: campaign.status,
+      sentCount: campaign.sentCount,
+      failedCount: campaign.failedCount,
+      errorSummary: campaign.errorSummary,
+    },
+    newValueJson: { ...result, deliveryIds, note: input.note.trim() },
+  });
+
+  return result;
   });
 }
 
-async function runCampaign(params: {
+async function prepareCampaignAudience(params: {
   campaignId: string;
   contentType: SupportedContentType;
   contentfulEntryId: string;
   audienceType: CampaignAudienceType;
-  entry?: NonNullable<CampaignEntry>;
+  entry: NonNullable<CampaignEntry>;
+  audience: CampaignRecipient[];
 }) {
-  const postmarkToken = getPostmarkToken();
-  if (!postmarkToken) {
-    throw new Error("POSTMARK_NOT_CONFIGURED");
-  }
-
-  const entry = params.entry || (await loadEntry(params.contentType, params.contentfulEntryId));
-  if (!entry) {
-    throw new Error("CONTENTFUL_ENTRY_NOT_FOUND");
-  }
-
-  const audience = await getAudienceEmails();
-  const client = new ServerClient(postmarkToken);
-
-  let sentCount = 0;
-  let failedCount = 0;
-  const errors: string[] = [];
-
-  for (const batch of chunk(audience, 300)) {
-    const messages = await Promise.all(
-      batch.map(async (recipient) => {
-        const unsubscribeUrl = `${getBaseSiteUrlFromEnv()}/unsubscribe?token=${encodeURIComponent(
-          createSignedUnsubscribeToken(recipient.subscriberId)
-        )}`;
-        const rendered = await renderCampaignMessage(
-          params.contentType,
-          entry,
-          recipient.firstName,
-          unsubscribeUrl
-        );
-        // A campaign-specific tag lets reporting query Postmark directly without
-        // depending on webhook delivery for aggregate engagement statistics.
-        const tag = `newsletter-campaign-${params.campaignId}`;
-        const metadata: Record<string, string> = {
-          emailCategory: "marketing",
-          campaignId: params.campaignId,
-          contentfulEntryId: params.contentfulEntryId,
-          audienceType: params.audienceType,
-          source: "contentful_publish",
-          subscriberId: recipient.subscriberId,
-        };
-        const delivery = await createCampaignDelivery({
-          recipient,
-          campaignId: params.campaignId,
-          contentType: params.contentType,
-          subject: rendered.subject,
-          htmlBody: rendered.html,
-          textBody: rendered.text,
-          tag,
-          metadata,
-        });
-        return {
-          deliveryId: delivery.id,
-          message: {
-            From: POSTMARK_FROM_EMAIL,
-            To: recipient.email,
-            Subject: rendered.subject,
-            HtmlBody: rendered.html,
-            TextBody: rendered.text,
-            MessageStream: POSTMARK_STREAM,
-            Tag: tag,
-            Metadata: {
-              ...metadata,
-              deliveryId: delivery.id,
-            },
-          },
-        };
+  const audience = params.audience;
+  const prepared: PreparedCampaignDelivery[] = [];
+  for (const recipient of audience) {
+    const unsubscribeUrl = `${getBaseSiteUrlFromEnv()}/unsubscribe?token=${encodeURIComponent(
+      createSignedUnsubscribeToken(recipient.subscriberId)
+    )}`;
+    const rendered = await renderCampaignMessage(
+      params.contentType,
+      params.entry,
+      recipient.firstName,
+      unsubscribeUrl
+    );
+    const tag = `newsletter-campaign-${params.campaignId}`;
+    const metadata: Record<string, string> = {
+      emailCategory: "marketing",
+      campaignId: params.campaignId,
+      contentfulEntryId: params.contentfulEntryId,
+      audienceType: params.audienceType,
+      source: "contentful_publish",
+      subscriberId: recipient.subscriberId,
+    };
+    prepared.push(
+      await createCampaignDelivery({
+        recipient,
+        campaignId: params.campaignId,
+        contentType: params.contentType,
+        subject: rendered.subject,
+        htmlBody: rendered.html,
+        textBody: rendered.text,
+        tag,
+        metadata,
       })
     );
+  }
 
-    const response = (await client.sendEmailBatch(
-      messages.map((item) => item.message)
-    )) as SendEmailBatchResponse;
+  await db.emailCampaign.update({
+    where: { id: params.campaignId },
+    data: { audiencePreparedAt: new Date(), status: "sending" },
+  });
+  return prepared;
+}
+
+async function sendPreparedCampaignDeliveries(
+  campaignId: string,
+  deliveries: PreparedCampaignDelivery[]
+) {
+  return withCampaignLease(campaignId, async (token) => {
+  const ambiguous = await db.emailDelivery.count({ where: { campaignId, status: EmailDeliveryStatus.sending } });
+  if (ambiguous > 0) throw new Error("CAMPAIGN_RECONCILIATION_REQUIRED");
+  const postmarkToken = getPostmarkToken();
+  if (!postmarkToken) throw new Error("POSTMARK_NOT_CONFIGURED");
+  const client = new ServerClient(postmarkToken, { timeout: 60 });
+  const errors: string[] = [];
+
+  for (const deliveryBatch of chunk(deliveries, 300)) {
+    await renewCampaignLease(campaignId, token);
+    const subscribed = new Set((await db.newsletterSubscriber.findMany({
+      where: { status: "subscribed", email: { in: deliveryBatch.map((row) => row.toEmail) } },
+      select: { email: true },
+    })).map((row) => row.email.toLowerCase()));
+    const claimed: Array<{
+      delivery: PreparedCampaignDelivery;
+      attemptId: string;
+      attemptNumber: number;
+    }> = [];
+    for (const delivery of deliveryBatch) {
+      if (!subscribed.has(delivery.toEmail.toLowerCase())) {
+        await db.emailDelivery.updateMany({
+          where: { id: delivery.id, status: { in: [EmailDeliveryStatus.queued, EmailDeliveryStatus.failed] }, resolvedAt: null },
+          data: { retryable: false, resolvedAt: new Date(), resolutionCode: "recipient_not_subscribed", nextRetryAt: null },
+        });
+        continue;
+      }
+      readStoredCampaignPayload(delivery.payloadJson);
+      const attemptNumber = delivery.attemptCount + 1;
+      const attempt = await db.$transaction(async (tx) => {
+      const claim = await tx.emailDelivery.updateMany({
+        where: {
+          id: delivery.id,
+          status: { in: [EmailDeliveryStatus.queued, EmailDeliveryStatus.failed] },
+          resolvedAt: null,
+          retryable: true,
+          attemptCount: delivery.attemptCount,
+        },
+        data: { status: EmailDeliveryStatus.sending, attemptCount: attemptNumber },
+      });
+      if (claim.count === 0) return null;
+      return tx.emailDeliveryAttempt.create({
+        data: {
+          deliveryId: delivery.id,
+          attemptNumber,
+          status: EmailDeliveryAttemptStatus.started,
+        },
+        select: { id: true },
+      });
+      });
+      if (!attempt) continue;
+      claimed.push({ delivery, attemptId: attempt.id, attemptNumber });
+    }
+
+    if (claimed.length === 0) continue;
+    const messages = claimed.map(({ delivery }) => {
+      const payload = delivery.payload || readStoredCampaignPayload(delivery.payloadJson);
+      const metadata = readStoredMetadata(delivery.metadataJson);
+      return {
+        From: POSTMARK_FROM_EMAIL,
+        To: delivery.toEmail,
+        Subject: delivery.subject,
+        HtmlBody: payload.htmlBody,
+        TextBody: payload.textBody,
+        MessageStream: delivery.messageStream || POSTMARK_STREAM,
+        Tag: delivery.tag,
+        Metadata: { ...metadata, deliveryId: delivery.id },
+      };
+    });
+
+    await renewCampaignLease(campaignId, token);
+    const response = (await client.sendEmailBatch(messages)) as SendEmailBatchResponse;
+    await renewCampaignLease(campaignId, token);
     const items = response as Array<{
       ErrorCode?: number;
       Message?: string;
@@ -562,34 +811,72 @@ async function runCampaign(params: {
     }>;
 
     for (const [index, item] of items.entries()) {
-      const delivery = messages[index];
+      const delivery = claimed[index];
       if (delivery) {
         await recordCampaignDeliveryResult({
-          deliveryId: delivery.deliveryId,
-          attemptNumber: 1,
+          deliveryId: delivery.delivery.id,
+          attemptId: delivery.attemptId,
+          attemptNumber: delivery.attemptNumber,
           item,
         });
       }
 
       if (item.ErrorCode && item.ErrorCode !== 0) {
-        failedCount += 1;
         if (item.Message) errors.push(item.Message);
-      } else {
-        sentCount += 1;
       }
     }
   }
-
-  await db.emailCampaign.update({
-    where: { id: params.campaignId },
-    data: {
-      status: failedCount > 0 ? "failed_partial" : "sent",
-      sentAt: new Date(),
-      sentCount,
-      failedCount,
-      errorSummary: errors.length ? Array.from(new Set(errors)).join(" | ").slice(0, 2000) : null,
-    },
+  return refreshCampaignCounts(
+    campaignId,
+    errors.length ? Array.from(new Set(errors)).join(" | ") : undefined
+  );
   });
+}
+
+const CAMPAIGN_LEASE_MS = 15 * 60 * 1000;
+
+async function renewCampaignLease(campaignId: string, token: string) {
+  const renewed = await db.emailCampaign.updateMany({
+    where: { id: campaignId, processingToken: token },
+    data: { processingLeaseExpiresAt: new Date(Date.now() + CAMPAIGN_LEASE_MS) },
+  });
+  if (!renewed.count) throw new Error("CAMPAIGN_BUSY");
+}
+
+async function withCampaignLease<T>(campaignId: string, work: (token: string) => Promise<T>): Promise<T> {
+  const token = randomUUID();
+  const claim = await db.emailCampaign.updateMany({
+    where: { id: campaignId, OR: [{ processingLeaseExpiresAt: null }, { processingLeaseExpiresAt: { lt: new Date() } }] },
+    data: { processingToken: token, processingLeaseExpiresAt: new Date(Date.now() + CAMPAIGN_LEASE_MS) },
+  });
+  if (!claim.count) throw new Error("CAMPAIGN_BUSY");
+  try {
+    return await work(token);
+  } catch (error) {
+    await refreshCampaignCounts(campaignId, error instanceof Error ? error.message : "Campaign interrupted");
+    throw error;
+  } finally {
+    await db.emailCampaign.updateMany({
+      where: { id: campaignId, processingToken: token },
+      data: { processingToken: null, processingLeaseExpiresAt: null },
+    });
+  }
+}
+
+function readFrozenAudience(value: unknown): CampaignRecipient[] {
+  if (!Array.isArray(value)) throw new Error("CAMPAIGN_AUDIENCE_REQUIRES_REVIEW");
+  return value.map((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error("CAMPAIGN_AUDIENCE_REQUIRES_REVIEW");
+    const row = item as Record<string, unknown>;
+    if (typeof row.subscriberId !== "string" || typeof row.email !== "string" || typeof row.firstName !== "string" || (row.userId !== null && typeof row.userId !== "string")) throw new Error("CAMPAIGN_AUDIENCE_REQUIRES_REVIEW");
+    return { subscriberId: row.subscriberId, email: row.email, firstName: row.firstName, userId: row.userId as string | null };
+  });
+}
+
+function getSourceIssueKey(contentType: SupportedContentType, entryId: string) {
+  const space = process.env.CONTENTFUL_SPACE_ID || "unknown-space";
+  const environment = process.env.CONTENTFUL_ENVIRONMENT || "master";
+  return `contentful:${space}:${environment}:${contentType}:${entryId}`;
 }
 
 export async function triggerContentfulPublishCampaign(input: {
@@ -603,6 +890,38 @@ export async function triggerContentfulPublishCampaign(input: {
   }
 
   const contentType = input.contentType as SupportedContentType;
+  const audienceType = mapAudience(contentType);
+  const sourceIssueKey = getSourceIssueKey(contentType, input.contentfulEntryId);
+  const existingByIssue = await db.emailCampaign.findUnique({
+    where: { sourceIssueKey },
+    select: { id: true, status: true },
+  });
+  const legacyExisting = existingByIssue
+    ? null
+    : await db.emailCampaign.findFirst({
+        where: {
+          contentfulEntryId: input.contentfulEntryId,
+          contentfulContentType: contentType,
+          audienceType,
+        },
+        orderBy: { createdAt: "asc" },
+        select: { id: true, status: true },
+      });
+  const existing = existingByIssue || legacyExisting;
+  if (existing) {
+    if (!existingByIssue) {
+      await db.emailCampaign.update({
+        where: { id: existing.id },
+        data: { sourceIssueKey },
+      });
+    }
+    return {
+      skipped: true as const,
+      reason: getAlreadyProcessedReason(existing.status),
+      campaignId: existing.id,
+    };
+  }
+
   const entry = await loadEntry(contentType, input.contentfulEntryId);
   if (!entry) {
     throw new Error("CONTENTFUL_ENTRY_NOT_FOUND");
@@ -612,82 +931,64 @@ export async function triggerContentfulPublishCampaign(input: {
     contentType,
     fields: entry.fields,
   });
-  const audienceType = mapAudience(contentType);
-  const providerCampaignId =
-    contentType === "blogPost"
-      ? `contentful:${contentType}:${input.contentfulEntryId}:${audienceType}`
-      : `contentful:${contentType}:${input.contentfulEntryId}:${input.contentfulVersion || "latest"}:${audienceType}`;
-
-  const existingByProviderId = await db.emailCampaign.findUnique({
-    where: { providerCampaignId },
-    select: { id: true, status: true },
-  });
-  const existing: ExistingCampaign | null =
-    existingByProviderId ||
-    (contentType === "blogPost"
-      ? await db.emailCampaign.findFirst({
-          where: {
-            contentfulEntryId: input.contentfulEntryId,
-            contentfulContentType: contentType,
-            audienceType,
-          },
-          orderBy: { createdAt: "desc" },
-          select: { id: true, status: true },
-        })
-      : null);
-
-  if (existing && AUTO_SKIP_CAMPAIGN_STATUSES.has(existing.status)) {
-    return {
-      skipped: true as const,
-      reason: getAlreadyProcessedReason(existing.status),
-      campaignId: existing.id,
-    };
-  }
-
   if (!readiness.ready) {
     return { skipped: true as const, reason: readiness.reason };
   }
 
-  const campaign = existing
-    ? await db.emailCampaign.update({
-        where: { id: existing.id },
-        data: {
-          subject: getEntrySubject(contentType, entry.fields),
-          status: "sending",
-          scheduledAt: null,
-          errorSummary: null,
-        },
-      })
-    : await db.emailCampaign.create({
-        data: {
-          providerCampaignId,
-          subject: getEntrySubject(contentType, entry.fields),
-          stream: POSTMARK_STREAM,
-          status: "sending",
-          audienceType,
-          triggeredBy: "contentful_publish",
-          contentfulEntryId: input.contentfulEntryId,
-          contentfulContentType: contentType,
-        },
+  const providerCampaignId = `contentful:${contentType}:${input.contentfulEntryId}:${audienceType}`;
+  const audience = await getAudienceEmails();
+  let campaign: { id: string };
+  try {
+    campaign = await db.emailCampaign.create({
+      data: {
+        providerCampaignId,
+        sourceIssueKey,
+        sourceVersion: input.contentfulVersion || null,
+        contentSnapshotJson: toJsonValue(entry),
+        audienceSnapshotJson: toJsonValue(audience),
+        subject: getEntrySubject(contentType, entry.fields),
+        stream: POSTMARK_STREAM,
+        status: "preparing",
+        audienceType,
+        triggeredBy: "contentful_publish",
+        contentfulEntryId: input.contentfulEntryId,
+        contentfulContentType: contentType,
+      },
+      select: { id: true },
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      const raced = await db.emailCampaign.findUnique({
+        where: { sourceIssueKey },
+        select: { id: true, status: true },
       });
+      if (raced) {
+        return {
+          skipped: true as const,
+          reason: getAlreadyProcessedReason(raced.status),
+          campaignId: raced.id,
+        };
+      }
+    }
+    throw error;
+  }
 
   try {
-    await runCampaign({
+    const deliveries = await prepareCampaignAudience({
       campaignId: campaign.id,
       contentType,
       contentfulEntryId: input.contentfulEntryId,
       audienceType,
       entry,
+      audience,
     });
+    await sendPreparedCampaignDeliveries(campaign.id, deliveries);
     return { skipped: false as const, campaignId: campaign.id };
   } catch (error) {
-    await db.emailCampaign.update({
-      where: { id: campaign.id },
-      data: {
-        status: "failed",
-        errorSummary: error instanceof Error ? error.message : "Failed to send campaign",
-      },
-    });
+    await refreshCampaignCounts(
+      campaign.id,
+      error instanceof Error ? error.message : "Failed to send campaign"
+    );
     throw error;
   }
 }
@@ -710,26 +1011,98 @@ export async function retryContentfulCampaign(input: {
       contentfulEntryId: true,
       contentfulContentType: true,
       audienceType: true,
+      audiencePreparedAt: true,
+      contentSnapshotJson: true,
+      audienceSnapshotJson: true,
     },
   });
   if (!campaign) throw new Error("CAMPAIGN_NOT_FOUND");
-  if (!campaign.contentfulEntryId || !campaign.contentfulContentType) {
+  if (
+    !campaign.contentfulEntryId ||
+    !campaign.contentfulContentType ||
+    !campaign.contentSnapshotJson
+  ) {
     throw new Error("CAMPAIGN_NOT_RETRYABLE");
   }
 
-  await db.emailCampaign.update({
-    where: { id: campaign.id },
-    data: { status: "sending", sentCount: 0, failedCount: 0, errorSummary: null },
+  if (!campaign.audiencePreparedAt) {
+    if (campaign.contentfulContentType !== "blogPost" && campaign.contentfulContentType !== "newsletterTemplate") throw new Error("CAMPAIGN_NOT_RETRYABLE");
+    const entry = campaign.contentSnapshotJson as NonNullable<CampaignEntry>;
+    if (!entry.fields || typeof entry.fields !== "object") throw new Error("CAMPAIGN_NOT_RETRYABLE");
+    await prepareCampaignAudience({
+      campaignId: campaign.id, contentType: campaign.contentfulContentType,
+      contentfulEntryId: campaign.contentfulEntryId,
+      audienceType: mapAudience(campaign.contentfulContentType), entry,
+      audience: readFrozenAudience(campaign.audienceSnapshotJson),
+    });
+  }
+
+  const ambiguous = await db.emailDelivery.count({
+    where: { campaignId: campaign.id, status: EmailDeliveryStatus.sending },
+  });
+  if (ambiguous > 0) throw new Error("CAMPAIGN_RECONCILIATION_REQUIRED");
+
+  const retryable = await db.emailDelivery.findMany({
+    where: {
+      campaignId: campaign.id,
+      status: { in: [EmailDeliveryStatus.queued, EmailDeliveryStatus.failed] },
+      retryable: true,
+      resolvedAt: null,
+    },
+    select: {
+      id: true,
+      toEmail: true,
+      subject: true,
+      tag: true,
+      messageStream: true,
+      payloadJson: true,
+      metadataJson: true,
+      attemptCount: true,
+    },
   });
 
-  await runCampaign({
+  const activeSubscribers = new Set(
+    (
+      await db.newsletterSubscriber.findMany({
+        where: {
+          status: "subscribed",
+          email: { in: retryable.map((delivery) => delivery.toEmail.trim().toLowerCase()) },
+        },
+        select: { email: true },
+      })
+    ).map((subscriber) => subscriber.email.trim().toLowerCase())
+  );
+  const eligible = retryable.filter((delivery) =>
+    activeSubscribers.has(delivery.toEmail.trim().toLowerCase())
+  );
+  const suppressed = retryable.filter(
+    (delivery) => !activeSubscribers.has(delivery.toEmail.trim().toLowerCase())
+  );
+  if (suppressed.length) {
+    await db.emailDelivery.updateMany({
+      where: { id: { in: suppressed.map((delivery) => delivery.id) } },
+      data: {
+        retryable: false,
+        resolvedAt: new Date(),
+        resolutionCode: "recipient_not_subscribed",
+        resolutionNote: "Not retried because the original recipient is no longer subscribed.",
+        nextRetryAt: null,
+      },
+    });
+  }
+
+  if (eligible.length) {
+    await sendPreparedCampaignDeliveries(campaign.id, eligible);
+  } else {
+    await refreshCampaignCounts(campaign.id);
+  }
+
+  const result = {
+    ok: true,
     campaignId: campaign.id,
-    contentType: campaign.contentfulContentType as SupportedContentType,
-    contentfulEntryId: campaign.contentfulEntryId,
-    audienceType: (campaign.audienceType as CampaignAudienceType) || "newsletter",
-  });
-
-  const result = { ok: true, campaignId: campaign.id };
+    retriedCount: eligible.length,
+    suppressedCount: suppressed.length,
+  };
 
   if (input.actorUserId) {
     await createAdminActionLog({
@@ -768,6 +1141,7 @@ export async function processDueContentfulCampaigns(now = new Date(), limit = 25
       contentfulEntryId: true,
       contentfulContentType: true,
       audienceType: true,
+      audiencePreparedAt: true,
     },
   });
 
@@ -775,29 +1149,38 @@ export async function processDueContentfulCampaigns(now = new Date(), limit = 25
   let failed = 0;
 
   for (const campaign of campaigns) {
-    if (!campaign.contentfulEntryId || !campaign.contentfulContentType) continue;
+    if (
+      !campaign.contentfulEntryId ||
+      !campaign.contentfulContentType ||
+      !campaign.audiencePreparedAt
+    ) {
+      continue;
+    }
     try {
-      await db.emailCampaign.update({
-        where: { id: campaign.id },
-        data: { status: "sending", errorSummary: null },
+      const deliveries = await db.emailDelivery.findMany({
+        where: {
+          campaignId: campaign.id,
+          status: EmailDeliveryStatus.queued,
+          resolvedAt: null,
+        },
+        select: {
+          id: true,
+          toEmail: true,
+          subject: true,
+          tag: true,
+          messageStream: true,
+          payloadJson: true,
+          metadataJson: true,
+          attemptCount: true,
+        },
       });
-      await runCampaign({
-        campaignId: campaign.id,
-        contentType: campaign.contentfulContentType as SupportedContentType,
-        contentfulEntryId: campaign.contentfulEntryId,
-        audienceType: (campaign.audienceType as CampaignAudienceType) || "newsletter",
-      });
+      await sendPreparedCampaignDeliveries(campaign.id, deliveries);
       processed += 1;
     } catch (error) {
       failed += 1;
-      await db.emailCampaign.update({
-        where: { id: campaign.id },
-        data: {
-          status: "failed",
-          errorSummary:
-            error instanceof Error ? error.message : "Failed to send scheduled campaign",
-        },
-      });
+      if (!(error instanceof Error && error.message === "CAMPAIGN_BUSY")) {
+        await refreshCampaignCounts(campaign.id, error instanceof Error ? error.message : "Failed to send scheduled campaign");
+      }
     }
   }
 

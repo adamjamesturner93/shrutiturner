@@ -27,6 +27,7 @@ function NewsletterPopupController({
   const canShowPopup =
     footerVariant === "marketing" &&
     !isAuthenticated &&
+    !pathname.split("/").includes("checkout") &&
     !NO_POPUP_PATHS.some((pathPrefix) => pathname.startsWith(pathPrefix));
 
   useEffect(() => {

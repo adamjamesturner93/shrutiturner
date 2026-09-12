@@ -15,6 +15,8 @@ import {
 } from "../components/ui/select";
 import Link from "next/link";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { UnsavedChangesGuard } from "@/components/unsaved-changes-guard";
 import {
   User,
   Mail,
@@ -33,6 +35,7 @@ import { getTimezoneOptions } from "../lib/date-i18n";
 import type { AccountDto, OnboardingStateDto } from "@/lib/api/types";
 import { AppPageHeader } from "@/components/app-surface";
 import { getApiErrorMessage, isApiSuccess } from "@/lib/api/client";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 const UNANSWERED_VALUE = "__unanswered__";
 const PREFER_NOT_TO_SAY_VALUE = "prefer_not_to_say";
@@ -116,9 +119,11 @@ function fromSelectValue(value: string) {
 }
 
 export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) {
+  const [savedAccount, setSavedAccount] = useState(initialAccount);
   const { logout, acceptTermsAndHealth, refreshAccountProfile } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<AccountTab>("profile");
+  const searchParams = useSearchParams();
+  const activeTab = TABS.find((tab) => tab.key === searchParams.get("section"))?.key || "profile";
 
   const [displayName, setDisplayName] = useState(
     getDisplayName(initialAccount.profile.firstName, initialAccount.profile.lastName)
@@ -159,6 +164,7 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
   const [emailChangeBusy, setEmailChangeBusy] = useState<"request" | "confirm" | null>(null);
   const [emailChangeMessage, setEmailChangeMessage] = useState("");
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState(false);
 
   const [dobError, setDobError] = useState("");
   const [error, setError] = useState("");
@@ -166,6 +172,7 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
   const [emailChangeError, setEmailChangeError] = useState("");
 
   const applyAccountData = (data: AccountDto) => {
+    setSavedAccount(data);
     setDisplayName(getDisplayName(data.profile.firstName, data.profile.lastName));
     setEmail(data.profile.email || "");
     setDob(data.profile.dob || "");
@@ -276,11 +283,6 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
   };
 
   const handleDeleteAccount = async () => {
-    const confirmed = window.confirm(
-      "Delete this account? Personal data will be anonymised and active sessions will be revoked."
-    );
-    if (!confirmed) return;
-
     setDeleteBusy(true);
     setEmailChangeError("");
     try {
@@ -389,6 +391,7 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
         const payload = (await res.json().catch(() => null)) as unknown;
         throw new Error(getApiErrorMessage(payload, "Failed to update newsletter subscription."));
       }
+      await reloadAccount();
       setNotificationsSaved(true);
       setTimeout(() => setNotificationsSaved(false), 3000);
     } catch (e) {
@@ -404,18 +407,33 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
   });
 
   const currentDatePreview = formatDateForDisplay(new Date().toISOString(), dateFormat);
+  const dirty = displayName !== getDisplayName(savedAccount.profile.firstName, savedAccount.profile.lastName) ||
+    dob !== (savedAccount.profile.dob || "") || gender !== toSelectValue(savedAccount.profile.gender) ||
+    ethnicity !== toSelectValue(savedAccount.profile.ethnicity) ||
+    timezone !== (savedAccount.profile.timezone || "Europe/London") ||
+    dateFormat !== (savedAccount.profile.dateFormat || "DD/MM/YYYY") ||
+    notifications.newsletterSubscribed !== savedAccount.notifications.newsletterSubscribed || Boolean(newEmail || emailChangeCode);
 
   return (
     <DashboardLayout title="Account - Shruti Turner">
+      <UnsavedChangesGuard dirty={dirty} onDiscard={() => applyAccountData(savedAccount)} />
       <AppPageHeader
+        compact
         eyebrow="Account"
         title="Your account"
         description="Keep the practical details current so Shruti can contact you, use the right name and keep required agreements in place."
         className="mb-6"
       />
       {error ? <p className="mb-6 text-sm text-red-600">{error}</p> : null}
+      {dirty && <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
+        <p role="status" className="text-sm">Unsaved changes — save in this section before leaving.</p>
+        <Button variant="outline" onClick={() => applyAccountData(savedAccount)}>Discard changes</Button>
+      </div>}
 
-      <div className="bg-background mb-8 rounded-lg border p-6">
+      <details className="bg-background mb-4 rounded-lg border p-3">
+        <summary className="cursor-pointer font-medium">
+          Account status{!hasAgreedToTerms || !hasAgreedToHealth ? " — agreements need review" : ""}
+        </summary>
         <div className="grid gap-4 md:grid-cols-3">
           <div>
             <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">Profile</p>
@@ -424,7 +442,7 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
           </div>
           <div>
             <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">Email</p>
-            <p className="mt-2 text-lg">Verified sign-in</p>
+            <p className="mt-2 text-lg">Sign-in email</p>
             <p className="text-muted-foreground mt-1 text-sm">
               Used for account access and updates.
             </p>
@@ -437,7 +455,7 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
             <p className="text-muted-foreground mt-1 text-sm">Terms and health waiver status.</p>
           </div>
         </div>
-      </div>
+      </details>
       <>
         {onboardingState && !onboardingState.isComplete ? (
           <div className="bg-background mb-8 flex flex-col gap-4 rounded-lg border p-6 lg:flex-row lg:items-center lg:justify-between">
@@ -470,13 +488,15 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
           </div>
         ) : null}
 
-        <div className="mb-8 flex gap-1 overflow-x-auto border-b">
+        <nav aria-label="Account sections" className="mb-4 flex gap-1 overflow-x-auto border-b">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             return (
-              <button
+              <Link
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                href={`?${new URLSearchParams({ ...Object.fromEntries(searchParams.entries()), section: tab.key })}`}
+                scroll={false}
+                aria-current={activeTab === tab.key ? "page" : undefined}
                 className={`relative px-4 py-2.5 text-sm whitespace-nowrap transition-colors ${
                   activeTab === tab.key
                     ? "text-foreground"
@@ -490,10 +510,10 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
                 {activeTab === tab.key ? (
                   <span className="bg-primary absolute right-0 bottom-0 left-0 h-0.5" />
                 ) : null}
-              </button>
+              </Link>
             );
           })}
-        </div>
+        </nav>
 
         <div className="max-w-3xl">
           {activeTab === "profile" ? (
@@ -668,10 +688,19 @@ export function AccountPage({ initialAccount }: { initialAccount: AccountDto }) 
                     type="button"
                     variant="destructive"
                     disabled={deleteBusy}
-                    onClick={handleDeleteAccount}
+                    onClick={() => setDeleteConfirmation(true)}
                   >
                     {deleteBusy ? "Deleting..." : "Delete account"}
                   </Button>
+                  <Dialog open={deleteConfirmation} onOpenChange={(open) => { if (!deleteBusy) setDeleteConfirmation(open); }}>
+                    <DialogContent>
+                      <DialogTitle>Delete your account?</DialogTitle>
+                      <DialogDescription>Your personal data will be anonymised and you will be signed out. Records required for finance, disputes and audit are retained. This cannot be undone.</DialogDescription>
+                      {emailChangeError && <p role="alert">{emailChangeError}</p>}
+                      <Button variant="outline" disabled={deleteBusy} onClick={() => setDeleteConfirmation(false)}>Keep account</Button>
+                      <Button variant="destructive" disabled={deleteBusy} onClick={() => void handleDeleteAccount()}>{deleteBusy ? "Deleting…" : "Permanently delete account"}</Button>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </div>
 

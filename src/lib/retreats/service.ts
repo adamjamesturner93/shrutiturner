@@ -17,8 +17,10 @@ import {
   RetreatCancellationStatus,
   RetreatRefundStatus,
   RetreatLiveRoomState,
+  RetreatEventKind,
 } from "@prisma/client";
 import type Stripe from "stripe";
+import { getRetreatCheckoutAcceptanceTypes } from "@/lib/retreats/checkout-acceptances";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/lib/db";
 import { buildAbsoluteUrl, getBaseSiteUrl } from "@/lib/app-url";
@@ -62,8 +64,27 @@ import {
   type RetreatType,
 } from "@/lib/retreats/pricing";
 import { getRetreatImageSrc } from "@/lib/retreats/images";
+import { validateBedPreference, getBedPreferenceLabel } from "@/lib/retreats/bed-preference";
+import { getRetreatRatePriceSummary } from "@/lib/retreats/presentation";
 import { getWorkshopSetupState } from "@/lib/retreats/workshop-setup";
+import {
+  getAttendeeReadiness,
+  getAdminRegistrationRows,
+  inviteRetreatBookingAttendees,
+} from "@/lib/retreats/registration-service";
 import { sendRetreatOperationalEmail } from "@/lib/retreats/notification-service";
+import {
+  getRetreatExperience,
+  getPublishedRetreatExperienceTemplateBySlug,
+  getPublishedRetreatExperienceTemplateById,
+  listPublishedRetreatExperienceTemplates,
+} from "@/lib/retreats/experience-service";
+import {
+  getDefaultEventKind,
+  getLegacyRetreatType,
+  getRetreatEventCapabilities,
+} from "@/lib/retreats/event-capabilities";
+import { getRetreatFormat } from "@/lib/retreats/format-service";
 
 const RETREAT_PAYMENT_WINDOW_MS = 30 * 60 * 1000;
 const ACTIVE_RETREAT_BOOKING_STATUSES: RetreatBookingStatus[] = [
@@ -251,11 +272,13 @@ export async function assignRoomUnitAfterPayment(bookingId: string) {
           },
           select: { inventoryPoolId: true, quantity: true },
         },
-        retreatDate: { select: { retreatType: true } },
+        retreatDate: { select: { eventKind: true } },
       },
     });
     if (!booking || booking.roomUnitId || !booking.roomOptionId) return null;
-    if (booking.retreatDate.retreatType === "online") return null;
+    if (!getRetreatEventCapabilities(booking.retreatDate.eventKind).requiresAccommodation) {
+      return null;
+    }
 
     const inventoryPoolId = booking.roomOption?.inventoryPoolId || null;
     const requestedUnits = Math.max(
@@ -380,6 +403,7 @@ async function releaseRoomUnitForBooking(bookingId: string) {
 }
 
 async function createGuestAcceptanceEventsForRetreatPurchase(input: {
+  requiresPracticalRegistration: boolean;
   purchaserEmail: string;
   surface: string;
   retreatBookingId?: string;
@@ -390,10 +414,7 @@ async function createGuestAcceptanceEventsForRetreatPurchase(input: {
   guestCount?: number;
   purchaseMode: "self" | "gift";
 }) {
-  const acceptanceTypes =
-    input.purchaseMode === "gift"
-      ? ([AcceptanceType.terms] as const)
-      : ([AcceptanceType.terms, AcceptanceType.health_waiver, AcceptanceType.health_data] as const);
+  const acceptanceTypes = getRetreatCheckoutAcceptanceTypes(input);
   const policies = await getCurrentPolicyVersions([...acceptanceTypes]);
   const acceptedAt = new Date();
 
@@ -708,11 +729,12 @@ async function assertRetreatCapacityAvailableForUpdate(
 
 type OperationalRetreatDate = Prisma.RetreatDateGetPayload<{
   include: {
-    roomOptions: { include: { ratePlans: true; inventoryPool: true } };
+    roomOptions: { include: { ratePlans: true; inventoryPool: true; venueRoomGroup: true } };
     bookings: { include: { items: true } };
     depositRules: true;
     addons: { include: { inventoryPool: true } };
     giftPurchases: true;
+    venueProfile: true;
   };
 }>;
 
@@ -736,7 +758,8 @@ function toPublicRoomType(value: string): RetreatRoomOptionContent["type"] {
     value === "single" ||
     value === "shared_private" ||
     value === "private" ||
-    value === "virtual"
+    value === "virtual" ||
+    value === "ticket"
   ) {
     return value;
   }
@@ -770,6 +793,7 @@ function mapOperationalRoomOption(
     description: roomOption.description || "",
     type: toPublicRoomType(roomOption.roomType),
     bookingUnit: roomOption.bookingUnit,
+    bedSetup: roomOption.venueRoomGroup?.bedSetup,
     inventoryUnitsPerBooking: roomOption.inventoryUnitsPerBooking,
     guestsIncluded: roomOption.guestsIncluded,
     guestCountPerUnit: roomOption.guestCountPerUnit ?? undefined,
@@ -896,8 +920,14 @@ async function mapOperationalDate(
 
   return {
     id: date.externalDateId,
+    eventKind: date.eventKind,
+    isRecorded: date.isRecorded,
     retreatType: parseRetreatType(date.retreatType),
     timezone: date.timezone,
+    location: date.retreatLocationSnapshot,
+    venueId: date.venueProfile?.contentfulVenueId,
+    venueSlug: date.venueProfile?.venueSlug,
+    venueName: date.venueProfile?.name,
     startDate: date.startsAt.toISOString(),
     endDate: date.endsAt.toISOString(),
     availableSpaces: Math.max(date.capacity - bookedSpaces, 0),
@@ -929,24 +959,43 @@ async function buildOperationalRetreatFromTemplate(input: {
   dates: OperationalRetreatDate[];
   venues: RetreatVenueContent[];
 }): Promise<RetreatCombinedContent | null> {
-  const mappedDates = await Promise.all(
+  const baseMappedDates = await Promise.all(
     [...input.dates]
       .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
       .map(mapOperationalDate)
   );
-  if (mappedDates.length === 0) return null;
+  if (baseMappedDates.length === 0) return null;
+  const mappedDates = baseMappedDates.map((date) => {
+    const dateVenue = input.venues.find(
+      (candidate) =>
+        (date.venueId && candidate.id === date.venueId) ||
+        (date.venueSlug && candidate.slug === date.venueSlug)
+    );
+    return {
+      ...date,
+      location: dateVenue?.displayLocation || dateVenue?.name || date.location,
+      venueName: dateVenue?.name || date.venueName,
+      venue: dateVenue,
+    };
+  });
 
   const firstDate = input.dates.reduce((earliest, date) =>
     date.startsAt < earliest.startsAt ? date : earliest
   );
   const earlyBirdEndsAt = getSoonestEarlyBirdEndsAt(input.dates);
   const venue = getTemplateVenue(input.template, input.venues);
-  if (input.template.schedule.length === 0) {
+  const dateVenue = input.venues.find(
+    (candidate) =>
+      candidate.id === firstDate.venueProfile?.contentfulVenueId ||
+      candidate.slug === firstDate.venueProfile?.venueSlug
+  );
+  const resolvedVenue = venue || dateVenue;
+  if (input.template.schedule.length === 0 && !input.template.scheduleMarkdown?.trim()) {
     throw new Error(
       `CONTENTFUL_CONTENT_MISSING: retreatTemplate "${input.template.slug}" is missing its schedule`
     );
   }
-  if (input.template.deliveryMode === "in_person" && !venue) {
+  if (input.template.deliveryMode === "in_person" && !resolvedVenue) {
     throw new Error(
       `CONTENTFUL_CONTENT_MISSING: retreatTemplate "${input.template.slug}" is missing its venue`
     );
@@ -958,8 +1007,8 @@ async function buildOperationalRetreatFromTemplate(input: {
     title: input.template.title,
     subtitle: input.template.subtitle,
     location:
-      venue?.displayLocation ||
-      venue?.name ||
+      resolvedVenue?.displayLocation ||
+      resolvedVenue?.name ||
       firstDate.retreatLocationSnapshot ||
       "Location to be confirmed",
     imageUrl: getRetreatImageSrc({
@@ -968,6 +1017,7 @@ async function buildOperationalRetreatFromTemplate(input: {
     }),
     shortDescription: input.template.shortDescription,
     fullDescription: input.template.fullDescription,
+    atmosphereDescription: input.template.atmosphereDescription,
     dates: mappedDates,
     earlyBirdPrice: firstDate.pricePence / 100,
     earlyBirdDeadline:
@@ -980,11 +1030,8 @@ async function buildOperationalRetreatFromTemplate(input: {
     included: input.template.included,
     notIncluded: input.template.notIncluded,
     schedule: input.template.schedule,
-    accommodation:
-      input.template.accommodationDescription ||
-      venue?.accommodationType ||
-      venue?.description ||
-      "",
+    scheduleMarkdown: input.template.scheduleMarkdown,
+    accommodation: input.template.accommodationDescription || "",
     suitableFor: input.template.suitableFor,
     experienceType: input.template.experienceType,
     deliveryMode: input.template.deliveryMode,
@@ -995,10 +1042,12 @@ async function buildOperationalRetreatFromTemplate(input: {
     whatToBring: input.template.whatToBring,
     seoTitle: input.template.seoTitle,
     seoDescription: input.template.seoDescription,
-    venueId: venue?.id,
-    venueSlug: venue?.slug,
-    venueName: venue?.name,
-    venue,
+    imageAlt: input.template.imageAlt,
+    imageFocalPoint: input.template.imageFocalPoint,
+    venueId: resolvedVenue?.id,
+    venueSlug: resolvedVenue?.slug,
+    venueName: resolvedVenue?.name,
+    venue: resolvedVenue,
   };
 }
 
@@ -1015,7 +1064,9 @@ async function getBookableOperationalDates(slug?: string): Promise<OperationalRe
   };
   return db.retreatDate.findMany({
     where: {
-      ...(slug ? { retreatSlug: slug } : {}),
+      ...(slug
+        ? { OR: [{ experience: { slug } }, { experienceId: null, retreatSlug: slug }] }
+        : {}),
       status: { in: ["open", "sold_out"] },
       endsAt: { gte: now },
       AND: [
@@ -1029,6 +1080,7 @@ async function getBookableOperationalDates(slug?: string): Promise<OperationalRe
         include: {
           ratePlans: { where: { active: true }, orderBy: { guestCount: "asc" } },
           inventoryPool: true,
+          venueRoomGroup: true,
         },
         orderBy: { displayOrder: "asc" },
       },
@@ -1056,6 +1108,7 @@ async function getBookableOperationalDates(slug?: string): Promise<OperationalRe
           ],
         },
       },
+      venueProfile: true,
     },
     orderBy: { startsAt: "asc" },
   });
@@ -1282,7 +1335,7 @@ async function getSyncedRetreatDateAndRoomOption(input: {
       externalDateId: input.retreatDateId,
     },
     include: {
-      roomOptions: { include: { ratePlans: true } },
+      roomOptions: { include: { ratePlans: true, venueRoomGroup: true } },
       depositRules: {
         where: { active: true },
         orderBy: { createdAt: "desc" },
@@ -1328,13 +1381,25 @@ export async function getOperationalRetreatBySlug(
   cacheLife({ stale: 30, revalidate: 60, expire: 300 });
   cacheTag("retreats-public");
 
-  const [templates, venues, operationalDates] = await Promise.all([
-    getRetreatTemplates(),
-    getRetreatVenues(),
+  const [appTemplate, operationalDates] = await Promise.all([
+    getPublishedRetreatExperienceTemplateBySlug(slug),
     getBookableOperationalDates(slug),
   ]);
   if (operationalDates.length === 0) return null;
-  const template = templates.find((item) => item.slug === slug);
+  if (appTemplate) {
+    const venues = await getRetreatVenues().catch((error) => {
+      console.error("Unable to load optional Contentful venue details for app-owned event", error);
+      return [];
+    });
+    return buildOperationalRetreatFromTemplate({
+      template: appTemplate,
+      dates: operationalDates,
+      venues,
+    });
+  }
+
+  const [cmsTemplates, venues] = await Promise.all([getRetreatTemplates(), getRetreatVenues()]);
+  const template = cmsTemplates.find((item) => item.slug === slug);
   if (!template) {
     throw new Error(`CONTENTFUL_CONTENT_MISSING: retreatTemplate "${slug}" is not published`);
   }
@@ -1346,11 +1411,25 @@ export async function listOperationalRetreats(): Promise<RetreatCombinedContent[
   cacheLife({ stale: 30, revalidate: 60, expire: 300 });
   cacheTag("retreats-public");
 
-  const [templates, venues, operationalDates] = await Promise.all([
-    getRetreatTemplates(),
-    getRetreatVenues(),
+  const [appTemplates, operationalDates] = await Promise.all([
+    listPublishedRetreatExperienceTemplates(),
     getBookableOperationalDates(),
   ]);
+  const [cmsTemplates, venues] = await Promise.all([
+    getRetreatTemplates().catch((error) => {
+      console.error("Unable to load legacy Contentful event pages", error);
+      return [];
+    }),
+    getRetreatVenues().catch((error) => {
+      console.error("Unable to load optional Contentful venue details", error);
+      return [];
+    }),
+  ]);
+  const appSlugs = new Set(appTemplates.map((template) => template.slug));
+  const templates = [
+    ...appTemplates,
+    ...cmsTemplates.filter((template) => !appSlugs.has(template.slug)),
+  ];
   const templateBySlug = new Map(templates.map((template) => [template.slug, template]));
   const operationalDatesBySlug = new Map<string, OperationalRetreatDate[]>();
 
@@ -1365,8 +1444,9 @@ export async function listOperationalRetreats(): Promise<RetreatCombinedContent[
     [...slugs].map(async (slug) => {
       const dates = operationalDatesBySlug.get(slug) ?? [];
       const template = templateBySlug.get(slug);
-      if (!template || template.schedule.length === 0) return null;
-      if (template.deliveryMode === "in_person" && !getTemplateVenue(template, venues)) return null;
+      if (!template || (template.schedule.length === 0 && !template.scheduleMarkdown?.trim())) {
+        return null;
+      }
       return buildOperationalRetreatFromTemplate({ template, dates, venues });
     })
   );
@@ -1379,6 +1459,7 @@ export async function createRetreatCheckout(input: {
   retreatDateId: string;
   roomOptionId: string;
   guestCount?: number;
+  bedPreference?: unknown;
   purchaseMode: "self" | "gift";
   purchaserUserId?: string | null;
   purchaserFirstName: string;
@@ -1419,23 +1500,30 @@ export async function createRetreatCheckout(input: {
     await assertNoUserCheckoutDisputeHold(input.purchaserUserId);
   }
 
-  const acceptanceRequirements =
-    input.purchaseMode === "gift"
-      ? [{ type: AcceptanceType.terms, surface: "retreat_gift_checkout" }]
-      : [
-          { type: AcceptanceType.terms, surface: "retreat_checkout" },
-          { type: AcceptanceType.health_waiver, surface: "retreat_checkout" },
-          { type: AcceptanceType.health_data, surface: "retreat_checkout" },
-        ];
+  const { retreatDate, roomOption } = await getSyncedRetreatDateAndRoomOption({
+    retreatSlug: input.retreatSlug,
+    retreatDateId: input.retreatDateId,
+    roomOptionId: input.roomOptionId,
+  });
+  const eventCapabilities = getRetreatEventCapabilities(
+    retreatDate.eventKind,
+    retreatDate.retreatType
+  );
+
+  const checkoutAcceptanceTypes = getRetreatCheckoutAcceptanceTypes({
+    purchaseMode: input.purchaseMode,
+    requiresPracticalRegistration: eventCapabilities.requiresPracticalRegistration,
+  });
+  const acceptanceRequirements = checkoutAcceptanceTypes.map((type) => ({
+    type,
+    surface: input.purchaseMode === "gift" ? "retreat_gift_checkout" : "retreat_checkout",
+  }));
   const acceptanceStates = input.purchaserUserId
     ? await assertCurrentAcceptances(input.purchaserUserId, acceptanceRequirements)
     : null;
 
   if (!input.purchaserUserId) {
-    const guestAcceptanceTypes =
-      input.purchaseMode === "gift"
-        ? [AcceptanceType.terms]
-        : [AcceptanceType.terms, AcceptanceType.health_waiver, AcceptanceType.health_data];
+    const guestAcceptanceTypes = checkoutAcceptanceTypes;
     const guestPolicies = await getCurrentPolicyVersions(guestAcceptanceTypes);
     const currentGuestVersions = new Map(
       guestAcceptanceTypes.map((type, index) => [type, guestPolicies[index]?.version || ""])
@@ -1443,6 +1531,10 @@ export async function createRetreatCheckout(input: {
     if (
       input.acceptedTermsVersion !== currentGuestVersions.get(AcceptanceType.terms) ||
       (input.purchaseMode === "self" &&
+        input.acceptedHealthWaiverVersion !==
+          currentGuestVersions.get(AcceptanceType.health_waiver)) ||
+      (input.purchaseMode === "self" &&
+        eventCapabilities.requiresPracticalRegistration &&
         (input.acceptedHealthWaiverVersion !==
           currentGuestVersions.get(AcceptanceType.health_waiver) ||
           input.acceptedHealthDataVersion !== currentGuestVersions.get(AcceptanceType.health_data)))
@@ -1451,12 +1543,15 @@ export async function createRetreatCheckout(input: {
     }
   }
 
-  const { retreatDate, roomOption } = await getSyncedRetreatDateAndRoomOption({
-    retreatSlug: input.retreatSlug,
-    retreatDateId: input.retreatDateId,
-    roomOptionId: input.roomOptionId,
-  });
   const selectedGuestCount = Math.max(Math.trunc(input.guestCount || roomOption.guestsIncluded), 1);
+  if (!eventCapabilities.allowsMultipleGuests && selectedGuestCount !== 1) {
+    throw new Error("RETREAT_GUEST_COUNT_INVALID");
+  }
+  const bedPreference = validateBedPreference(
+    { bookingUnit: roomOption.bookingUnit, bedSetup: roomOption.venueRoomGroup?.bedSetup },
+    selectedGuestCount,
+    input.bedPreference
+  );
   const ratePlans =
     roomOption.ratePlans.length > 0
       ? roomOption.ratePlans.map((ratePlan) => ({
@@ -1633,6 +1728,7 @@ export async function createRetreatCheckout(input: {
               ? selectedRatePlan.id
               : undefined,
           retreatGuestCount: quote.totalGuestCount,
+          retreatBedPreference: bedPreference,
           expiresAt: new Date(Date.now() + RETREAT_PAYMENT_WINDOW_MS),
         },
       });
@@ -1684,6 +1780,7 @@ export async function createRetreatCheckout(input: {
 
     if (!input.purchaserUserId) {
       await createGuestAcceptanceEventsForRetreatPurchase({
+        requiresPracticalRegistration: eventCapabilities.requiresPracticalRegistration,
         purchaserEmail,
         surface: "retreat_gift_checkout_guest",
         giftPurchaseId: gift.id,
@@ -1702,6 +1799,13 @@ export async function createRetreatCheckout(input: {
   const attendeeEmail = normalizeEmail(input.attendeeEmail || purchaserEmail);
   if (!attendeeFirstName || !attendeeLastName || !attendeeEmail) {
     throw new Error("ATTENDEE_REQUIRED");
+  }
+  if (
+    quote.totalGuestCount > 1 &&
+    input.guestTwoEmail &&
+    normalizeEmail(input.guestTwoEmail) === attendeeEmail
+  ) {
+    throw new Error("SECOND_GUEST_EMAIL_MUST_DIFFER");
   }
 
   const payInFullDiscountPence = calculatePayInFullDiscount(
@@ -1788,14 +1892,13 @@ export async function createRetreatCheckout(input: {
         guestTwoFirstName: normalizeText(input.guestTwoFirstName || "", 80) || null,
         guestTwoLastName: normalizeText(input.guestTwoLastName || "", 80) || null,
         guestTwoEmail: input.guestTwoEmail ? normalizeEmail(input.guestTwoEmail) : null,
-        guestTwoDietaryRequirements:
-          normalizeText(input.guestTwoDietaryRequirements || "", 1000) || null,
         attendeeCount: quote.totalGuestCount,
         singleRoomRequested:
           roomOption.bookingUnit === RetreatBookingUnit.whole_room && quote.totalGuestCount === 1,
         roomType: roomOption.label,
         roomOptionLabelSnapshot: roomOption.label,
         roomOptionTypeSnapshot: roomOption.roomType,
+        bedPreference,
         guestsIncluded: quote.totalGuestCount,
         acceptedTermsVersion: input.acceptedTermsVersion || null,
         acceptedHealthWaiverVersion: input.acceptedHealthWaiverVersion || null,
@@ -1848,6 +1951,11 @@ export async function createRetreatCheckout(input: {
               lastName: attendeeLastName,
               displayName: `${attendeeFirstName} ${attendeeLastName}`.trim(),
               isPrimary: true,
+              phone: normalizeText(input.phone || "", 40),
+              emergencyContactName: normalizeText(input.emergencyContactName || "", 120),
+              emergencyContactPhone: normalizeText(input.emergencyContactPhone || "", 40),
+              dietaryRequirements: normalizeText(input.dietaryRequirements || "", 1000) || null,
+              mobilityNeeds: normalizeText(input.mobilityNeeds || "", 1000) || null,
               isPurchaser: attendeeEmail === purchaserEmail,
               userId:
                 input.purchaserUserId && attendeeEmail === purchaserEmail
@@ -1886,8 +1994,11 @@ export async function createRetreatCheckout(input: {
         items: {
           create: [
             {
-              itemType:
-                retreatDate.retreatType === "online" ? "online_live_place" : "accommodation",
+              itemType: eventCapabilities.usesLiveRoom
+                ? "online_live_place"
+                : eventCapabilities.admission === "ticket"
+                  ? "ticket"
+                  : "accommodation",
               inventoryPoolId: roomOption.inventoryPoolId,
               roomOptionId: roomOption.id,
               ratePlanId:
@@ -1976,6 +2087,7 @@ export async function createRetreatCheckout(input: {
 
   if (!input.purchaserUserId) {
     await createGuestAcceptanceEventsForRetreatPurchase({
+      requiresPracticalRegistration: eventCapabilities.requiresPracticalRegistration,
       purchaserEmail,
       surface: "retreat_checkout_guest",
       retreatBookingId: booking.id,
@@ -2013,6 +2125,7 @@ async function sendDepositConfirmationEmail(bookingId: string) {
       : buildAbsoluteUrl(`/retreats/${booking.retreatDate.retreatSlug}`);
   const paidInFull = booking.balanceAmountPence <= 0;
   const paidAmountLabel = paidInFull ? "Payment received" : "Deposit paid";
+  const bedArrangement = getBedPreferenceLabel(booking.bedPreference);
   const extras = booking.items.flatMap((item) =>
     item.addon ? [`${item.addon.name} × ${item.quantity}`] : []
   );
@@ -2033,9 +2146,10 @@ async function sendDepositConfirmationEmail(bookingId: string) {
       retreatDetailsUrl,
       transactionRef: booking.id,
       paidInFull,
+      bedArrangement,
       extras,
     }),
-    textBody: `${paidInFull ? "Payment" : "Deposit"} received for ${booking.retreatDate.retreatTitleSnapshot}\nDates: ${formatDateRange(booking.retreatDate.startsAt, booking.retreatDate.endsAt)}\n${paidAmountLabel}: ${formatCurrency(paidInFull ? booking.totalPricePence : booking.depositAmountPence, booking.currency)}\nRemaining balance: ${formatCurrency(booking.balanceAmountPence, booking.currency)}${extras.length ? `\nExtras: ${extras.join(", ")}` : ""}\nDetails: ${retreatDetailsUrl}`,
+    textBody: `${paidInFull ? "Payment" : "Deposit"} received for ${booking.retreatDate.retreatTitleSnapshot}\nDates: ${formatDateRange(booking.retreatDate.startsAt, booking.retreatDate.endsAt)}${bedArrangement ? `\nBed arrangement: ${bedArrangement}` : ""}\n${paidAmountLabel}: ${formatCurrency(paidInFull ? booking.totalPricePence : booking.depositAmountPence, booking.currency)}\nRemaining balance: ${formatCurrency(booking.balanceAmountPence, booking.currency)}${extras.length ? `\nExtras: ${extras.join(", ")}` : ""}\nDetails: ${retreatDetailsUrl}`,
     tag: "retreat-deposit-confirmation",
     templateKey: "retreat-deposit-confirmation",
     metadata: {
@@ -2084,6 +2198,12 @@ async function sendRetreatBookingAdminNotification(bookingId: string) {
       : "; paid in full"
   }.`;
   const adminUrl = buildAbsoluteUrl(`/admin/retreats/${booking.retreatDateId}`);
+  const selection = [
+    booking.roomOptionLabelSnapshot || booking.roomType || "Retreat place",
+    getBedPreferenceLabel(booking.bedPreference),
+  ]
+    .filter(Boolean)
+    .join(" · ");
   await sendRetreatOperationalEmail({
     subject: `New booking: ${booking.retreatDate.retreatTitleSnapshot}`,
     react: RetreatBookingAdminEmail({
@@ -2091,12 +2211,12 @@ async function sendRetreatBookingAdminNotification(bookingId: string) {
       purchaserEmail: booking.purchaserEmail,
       retreatName: booking.retreatDate.retreatTitleSnapshot,
       retreatDates: formatDateRange(booking.retreatDate.startsAt, booking.retreatDate.endsAt),
-      selection: booking.roomOptionLabelSnapshot || booking.roomType || "Retreat place",
+      selection,
       guestCount: booking.attendeeCount,
       paymentSummary,
       adminUrl,
     }),
-    textBody: `New booking for ${booking.retreatDate.retreatTitleSnapshot}\nPurchaser: ${booking.purchaserFirstName} ${booking.purchaserLastName} (${booking.purchaserEmail})\nSelection: ${booking.roomOptionLabelSnapshot || booking.roomType || "Retreat place"}\nGuests: ${booking.attendeeCount}\n${paymentSummary}\nOpen: ${adminUrl}`,
+    textBody: `New booking for ${booking.retreatDate.retreatTitleSnapshot}\nPurchaser: ${booking.purchaserFirstName} ${booking.purchaserLastName} (${booking.purchaserEmail})\nSelection: ${selection}\nGuests: ${booking.attendeeCount}\n${paymentSummary}\nOpen: ${adminUrl}`,
     tag: "retreat-booking-admin",
     templateKey: "retreat-booking-admin",
     metadata: { bookingId: booking.id, retreatDateId: booking.retreatDateId },
@@ -2287,6 +2407,7 @@ export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.S
       await Promise.allSettled([
         sendDepositConfirmationEmail(booking.id),
         sendRetreatBookingAdminNotification(booking.id),
+        inviteRetreatBookingAttendees(booking.id),
       ]);
     } else {
       const paidInstalment = await db.retreatBookingInstalment.findUnique({
@@ -2334,6 +2455,7 @@ export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.S
     await Promise.allSettled([
       sendDepositConfirmationEmail(booking.id),
       sendRetreatBookingAdminNotification(booking.id),
+      inviteRetreatBookingAttendees(booking.id),
     ]);
     return true;
   }
@@ -2599,17 +2721,24 @@ export async function getMyRetreatBookings(userId: string) {
     include: {
       retreatDate: true,
       roomOption: true,
+      attendees: { where: { status: { not: "cancelled" } }, orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] },
       items: { where: { itemType: RetreatBookingItemType.addon }, include: { addon: true } },
       cancellationRequests: { orderBy: { requestedAt: "desc" }, take: 1 },
     },
     orderBy: { retreatDate: { startsAt: "asc" } },
   });
 
-  return bookings.map((booking) => ({
+  return Promise.all(bookings.map(async (booking) => ({
     id: booking.id,
+    registrations: await Promise.all(booking.attendees.map(async (attendee) => ({
+      id: attendee.id, name: `${attendee.firstName} ${attendee.lastName}`.trim(), isOwn: attendee.userId === userId,
+      complete: (await getAttendeeReadiness(attendee, getRetreatEventCapabilities(booking.retreatDate.eventKind).requiresPracticalRegistration)).complete,
+    }))),
+    retreatDateId: booking.retreatDate.id,
     retreatSlug: booking.retreatDate.retreatSlug,
     retreatTitle: booking.retreatDate.retreatTitleSnapshot,
     retreatType: booking.retreatDate.retreatType,
+    eventKind: booking.retreatDate.eventKind,
     location: booking.retreatDate.retreatLocationSnapshot,
     startsAt: booking.retreatDate.startsAt.toISOString(),
     endsAt: booking.retreatDate.endsAt.toISOString(),
@@ -2633,11 +2762,14 @@ export async function getMyRetreatBookings(userId: string) {
           ]
         : []
     ),
-    dietaryRequirements: booking.dietaryRequirements,
-    medicalConditions: booking.medicalConditions,
-    mobilityNeeds: booking.mobilityNeeds,
+    dietaryRequirements: booking.attendeeUserId === userId ? booking.dietaryRequirements : null,
+    medicalConditions: booking.attendeeUserId === userId ? booking.medicalConditions : null,
+    mobilityNeeds: booking.attendeeUserId === userId ? booking.mobilityNeeds : null,
     liveRoomPrepared: booking.retreatDate.onlineRoomSetupStatus === "ready",
-    canPayBalance: booking.paymentStatus !== "paid_in_full" && booking.balanceAmountPence > 0,
+    canPayBalance:
+      booking.purchaserUserId === userId &&
+      booking.paymentStatus !== "paid_in_full" &&
+      booking.balanceAmountPence > 0,
     canRequestCancellation:
       booking.purchaserUserId === userId &&
       ACTIVE_RETREAT_BOOKING_STATUSES.includes(booking.bookingStatus) &&
@@ -2646,7 +2778,7 @@ export async function getMyRetreatBookings(userId: string) {
         OPEN_RETREAT_CANCELLATION_STATUSES.includes(request.status)
       ),
     latestCancellation: serializeCancellationRequest(booking.cancellationRequests[0] || null),
-  }));
+  })));
 }
 
 export async function getMyRetreatBookingDetail(userId: string, bookingId: string) {
@@ -2664,12 +2796,28 @@ export async function getMyRetreatBookingDetail(userId: string, bookingId: strin
     },
   });
   if (!booking) throw new Error("NOT_FOUND");
+  const registrations = await Promise.all(
+    booking.attendees.map(async (attendee) => ({
+      id: attendee.id,
+      name: `${attendee.firstName} ${attendee.lastName}`.trim(),
+      isOwn: attendee.userId === userId,
+      complete: (
+        await getAttendeeReadiness(
+          attendee,
+          getRetreatEventCapabilities(booking.retreatDate.eventKind).requiresPracticalRegistration
+        )
+      ).complete,
+    }))
+  );
 
   return {
+    registrations,
     id: booking.id,
+    retreatDateId: booking.retreatDate.id,
     retreatSlug: booking.retreatDate.retreatSlug,
     retreatTitle: booking.retreatDate.retreatTitleSnapshot,
     retreatType: booking.retreatDate.retreatType,
+    eventKind: booking.retreatDate.eventKind,
     location: booking.retreatDate.retreatLocationSnapshot,
     startsAt: booking.retreatDate.startsAt.toISOString(),
     endsAt: booking.retreatDate.endsAt.toISOString(),
@@ -2693,16 +2841,15 @@ export async function getMyRetreatBookingDetail(userId: string, bookingId: strin
           ]
         : []
     ),
-    dietaryRequirements: booking.dietaryRequirements,
-    medicalConditions: booking.medicalConditions,
-    mobilityNeeds: booking.mobilityNeeds,
+    dietaryRequirements: booking.attendeeUserId === userId ? booking.dietaryRequirements : null,
+    medicalConditions: booking.attendeeUserId === userId ? booking.medicalConditions : null,
+    mobilityNeeds: booking.attendeeUserId === userId ? booking.mobilityNeeds : null,
     liveRoomPrepared: booking.retreatDate.onlineRoomSetupStatus === "ready",
-    onlineAccess:
-      booking.retreatDate.retreatType === "online"
-        ? await getRetreatOnlineAccessState(booking.id, userId)
-        : null,
-    emergencyContactName: booking.emergencyContactName,
-    emergencyContactPhone: booking.emergencyContactPhone,
+    onlineAccess: getRetreatEventCapabilities(booking.retreatDate.eventKind).usesLiveRoom
+      ? await getRetreatOnlineAccessState(booking.id, userId)
+      : null,
+    emergencyContactName: booking.attendeeUserId === userId ? booking.emergencyContactName : "",
+    emergencyContactPhone: booking.attendeeUserId === userId ? booking.emergencyContactPhone : "",
     secondaryGuest:
       booking.attendeeCount > 1
         ? (() => {
@@ -2713,12 +2860,15 @@ export async function getMyRetreatBookingDetail(userId: string, bookingId: strin
               firstName: attendee?.firstName || booking.guestTwoFirstName || "",
               lastName: attendee?.lastName || booking.guestTwoLastName || "",
               email,
-              dietaryRequirements: booking.guestTwoDietaryRequirements,
+              dietaryRequirements: null,
               status: attendee?.status || "pending_claim",
             };
           })()
         : null,
-    canPayBalance: booking.paymentStatus !== "paid_in_full" && booking.balanceAmountPence > 0,
+    canPayBalance:
+      booking.purchaserUserId === userId &&
+      booking.paymentStatus !== "paid_in_full" &&
+      booking.balanceAmountPence > 0,
     canRequestCancellation:
       booking.purchaserUserId === userId &&
       ACTIVE_RETREAT_BOOKING_STATUSES.includes(booking.bookingStatus) &&
@@ -2741,7 +2891,6 @@ export async function updateMyRetreatSecondaryGuest(input: {
   const firstName = normalizeText(input.firstName, 80);
   const lastName = normalizeText(input.lastName, 80);
   const email = normalizeEmail(input.email);
-  const dietaryRequirements = normalizeText(input.dietaryRequirements || "", 1000) || null;
   if (!firstName || !lastName || !email || !email.includes("@")) {
     throw new Error("INVALID_SECONDARY_GUEST");
   }
@@ -2753,6 +2902,7 @@ export async function updateMyRetreatSecondaryGuest(input: {
       include: { attendees: true, retreatDate: true },
     });
     if (!booking) throw new Error("NOT_FOUND");
+    if (normalizeEmail(booking.attendeeEmail) === email) throw new Error("INVALID_SECONDARY_GUEST");
     if (
       booking.attendeeCount < 2 ||
       !ACTIVE_RETREAT_BOOKING_STATUSES.includes(booking.bookingStatus) ||
@@ -2762,7 +2912,7 @@ export async function updateMyRetreatSecondaryGuest(input: {
     }
 
     const attendee = booking.attendees.find((entry) => !entry.isPrimary);
-    if (attendee?.status === "claimed" && normalizeEmail(attendee.email) !== email) {
+    if (attendee?.status === "claimed") {
       throw new Error("SECONDARY_GUEST_ALREADY_CLAIMED");
     }
 
@@ -2772,20 +2922,23 @@ export async function updateMyRetreatSecondaryGuest(input: {
         guestTwoFirstName: firstName,
         guestTwoLastName: lastName,
         guestTwoEmail: email,
-        guestTwoDietaryRequirements: dietaryRequirements,
       },
     });
 
     if (attendee) {
-      await tx.retreatAttendee.update({
-        where: { id: attendee.id },
+      const updated = await tx.retreatAttendee.updateMany({
+        where: { id: attendee.id, status: "pending_claim", userId: null },
         data: {
           firstName,
           lastName,
           displayName: `${firstName} ${lastName}`.trim(),
           email,
+          ...(attendee.email !== email
+            ? { invitationQueuedAt: null, claimToken: createBalanceToken() }
+            : {}),
         },
       });
+      if (!updated.count) throw new Error("SECONDARY_GUEST_ALREADY_CLAIMED");
     } else {
       await tx.retreatAttendee.create({
         data: {
@@ -2803,6 +2956,7 @@ export async function updateMyRetreatSecondaryGuest(input: {
     }
   });
 
+  await inviteRetreatBookingAttendees(input.bookingId);
   return getMyRetreatBookingDetail(input.userId, input.bookingId);
 }
 
@@ -3494,7 +3648,7 @@ export async function getAdminRetreatSummaries() {
     orderBy: { startsAt: "asc" },
     include: {
       bookings: true,
-      roomOptions: { include: { ratePlans: { where: { active: true } } } },
+      roomOptions: { where: { active: true }, include: { ratePlans: { where: { active: true } } } },
     },
   });
 
@@ -3511,7 +3665,19 @@ export async function getAdminRetreatSummaries() {
       0
     );
 
-    const ratePlans = date.roomOptions.flatMap((roomOption) => roomOption.ratePlans);
+    const ratePlans = date.roomOptions.flatMap((roomOption) =>
+      roomOption.ratePlans.length
+        ? roomOption.ratePlans
+        : [
+            {
+              guestCount: roomOption.guestsIncluded,
+              totalPricePence: roomOption.pricePence,
+              earlyBirdPricePence: null,
+              earlyBirdEndsAt: null,
+            },
+          ]
+    );
+    const priceSummary = getRetreatRatePriceSummary(ratePlans, date.pricePence);
     const normalPrices = ratePlans.map((ratePlan) => ratePlan.totalPricePence);
     const activeEarlyBirdPrices = ratePlans
       .filter(
@@ -3534,9 +3700,12 @@ export async function getAdminRetreatSummaries() {
       endDate: date.endsAt.toISOString(),
       status: date.status,
       retreatType: date.retreatType,
+      eventKind: date.eventKind,
       bookedSpaces,
       totalSpaces: date.capacity,
       revenuePence,
+      currentPricePence: priceSummary.lowestPricePence,
+      priceVaries: priceSummary.isFromPrice,
       earlyBirdPricePence:
         activeEarlyBirdPrices.length > 0
           ? Math.min(...activeEarlyBirdPrices)
@@ -3559,7 +3728,10 @@ export async function getAdminRetreatTemplates() {
         depositRules: { where: { active: true }, orderBy: { createdAt: "desc" } },
       },
     }),
-    db.retreatVenueProfile.findMany({ select: { contentfulVenueId: true } }),
+    db.retreatVenueProfile.findMany({
+      where: { roomGroups: { some: { active: true } } },
+      select: { contentfulVenueId: true },
+    }),
   ]);
   const configuredVenueIds = new Set(venueProfiles.map((profile) => profile.contentfulVenueId));
   const latestDateBySlug = new Map<string, (typeof latestDates)[number]>();
@@ -3592,6 +3764,9 @@ export async function getAdminRetreatTemplates() {
       venueSlug: venue?.slug || null,
       venueRoomsConfigured:
         retreatType === "online" || Boolean(venue?.id && configuredVenueIds.has(venue.id)),
+      previousDate: sourceDate
+        ? { id: sourceDate.id, startsAt: sourceDate.startsAt.toISOString() }
+        : null,
       retreatType,
       capacity: sourceDate?.capacity || (retreatType === "online" ? 30 : 10),
       pricePence: prices.length > 0 ? Math.min(...prices) : sourceDate?.pricePence || 0,
@@ -3604,6 +3779,7 @@ export async function getAdminRetreatTemplates() {
 }
 
 export type AdminRetreatVenueRoomGroupInput = {
+  id?: string;
   name: string;
   description?: string | null;
   quantity: number;
@@ -3683,12 +3859,14 @@ export async function updateAdminRetreatVenueRooms(
     "bunk_or_dorm",
     "other",
   ]);
+  const groupIds = roomGroups.flatMap((group) => (group.id ? [group.id] : []));
   const normalizedGroupNames = roomGroups.map((group) => group.name.trim().toLowerCase());
   const normalizedRoomNames = roomGroups.flatMap((group) =>
     group.roomNames.map((name) => name.trim().toLowerCase()).filter(Boolean)
   );
   if (
     roomGroups.length === 0 ||
+    new Set(groupIds).size !== groupIds.length ||
     new Set(normalizedGroupNames).size !== normalizedGroupNames.length ||
     new Set(normalizedRoomNames).size !== normalizedRoomNames.length ||
     roomGroups.some((group) => {
@@ -3729,21 +3907,34 @@ export async function updateAdminRetreatVenueRooms(
       },
       update: { venueSlug: venue.slug, name: venue.name },
     });
-    await tx.retreatVenueRoomGroup.deleteMany({ where: { venueProfileId: profile.id } });
+    const existingGroups = await tx.retreatVenueRoomGroup.findMany({
+      where: { venueProfileId: profile.id },
+    });
+    const retainedIds: string[] = [];
     for (const [groupIndex, group] of roomGroups.entries()) {
-      const createdGroup = await tx.retreatVenueRoomGroup.create({
-        data: {
-          venueProfileId: profile.id,
-          name: group.name.trim(),
-          description: normalizeText(group.description || "", 1000) || null,
-          quantity: group.quantity,
-          capacityPerRoom: group.capacityPerRoom,
-          bedSetup: group.bedSetup.trim(),
-          allowShared: group.allowShared,
-          privateGuestCountsJson: [...new Set(group.privateGuestCounts)].sort((a, b) => a - b),
-          displayOrder: groupIndex,
-        },
-      });
+      const existingGroup = group.id
+        ? existingGroups.find((candidate) => candidate.id === group.id)
+        : existingGroups.find(
+            (candidate) =>
+              candidate.active && candidate.name.toLowerCase() === group.name.trim().toLowerCase()
+          );
+      const data = {
+        venueProfileId: profile.id,
+        name: group.name.trim(),
+        description: normalizeText(group.description || "", 1000) || null,
+        quantity: group.quantity,
+        capacityPerRoom: group.capacityPerRoom,
+        bedSetup: group.bedSetup.trim(),
+        allowShared: group.allowShared,
+        privateGuestCountsJson: [...new Set(group.privateGuestCounts)].sort((a, b) => a - b),
+        displayOrder: groupIndex,
+        active: true,
+      };
+      const createdGroup = existingGroup
+        ? await tx.retreatVenueRoomGroup.update({ where: { id: existingGroup.id }, data })
+        : await tx.retreatVenueRoomGroup.create({ data });
+      retainedIds.push(createdGroup.id);
+      await tx.retreatVenueRoomTemplate.deleteMany({ where: { roomGroupId: createdGroup.id } });
       for (let roomIndex = 0; roomIndex < group.quantity; roomIndex += 1) {
         const customName = group.roomNames[roomIndex]?.trim();
         await tx.retreatVenueRoomTemplate.create({
@@ -3755,6 +3946,11 @@ export async function updateAdminRetreatVenueRooms(
         });
       }
     }
+    // Existing date inventory keeps its source group when that group is retired.
+    await tx.retreatVenueRoomGroup.updateMany({
+      where: { venueProfileId: profile.id, id: { notIn: retainedIds } },
+      data: { active: false },
+    });
   });
 
   const venuesAfterUpdate = await getAdminRetreatVenues();
@@ -3762,10 +3958,16 @@ export async function updateAdminRetreatVenueRooms(
 }
 
 export type CreateAdminRetreatDateInput = {
+  copyFromDateId?: string | null;
   retreatSlug: string;
   title: string;
   location: string;
   retreatType: "in_person" | "online";
+  eventKind?: RetreatEventKind;
+  experienceId?: string | null;
+  formatPresetId?: string | null;
+  venueProfileId?: string | null;
+  venueContentfulId?: string | null;
   startsAt: Date;
   endsAt: Date;
   capacity: number;
@@ -3785,7 +3987,11 @@ function buildRetreatDateExternalId(input: CreateAdminRetreatDateInput) {
   return `${slugPart}-${datePart}-${Date.now()}`;
 }
 
-export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput) {
+export async function createAdminRetreatDate(
+  input: CreateAdminRetreatDateInput,
+  transaction?: Prisma.TransactionClient
+) {
+  const client = transaction || db;
   if (input.endsAt <= input.startsAt) {
     throw new Error("INVALID_DATE_RANGE");
   }
@@ -3807,61 +4013,121 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
     throw new Error("INVALID_EARLY_BIRD");
   }
 
-  const venueProfile =
-    input.retreatType === "in_person"
-      ? await (async () => {
+  const eventKind = input.eventKind || getDefaultEventKind(input.retreatType);
+  const capabilities = getRetreatEventCapabilities(eventKind);
+  const retreatType = getLegacyRetreatType(eventKind);
+  if (input.retreatType !== retreatType) throw new Error("RETREAT_TYPE_MISMATCH");
+  const experience = input.experienceId
+    ? await getRetreatExperience(input.experienceId, client)
+    : null;
+  if (
+    (input.experienceId && !experience) ||
+    (experience && (experience.slug !== input.retreatSlug || experience.eventKind !== eventKind))
+  ) {
+    throw new Error("RETREAT_TYPE_MISMATCH");
+  }
+  const formatPresetId = input.formatPresetId || experience?.formatPresetId || null;
+  const format = formatPresetId ? await getRetreatFormat(formatPresetId, client) : null;
+  if (
+    (formatPresetId && !format) ||
+    (format && (!format.active || format.eventKind !== eventKind)) ||
+    (experience?.formatPresetId && experience.formatPresetId !== formatPresetId)
+  ) {
+    throw new Error("RETREAT_TYPE_MISMATCH");
+  }
+
+  const venueProfile = capabilities.requiresVenue
+    ? await (async () => {
+        let venueProfileId =
+          input.venueProfileId || format?.operationalDefaults.venueProfileId || null;
+        if (transaction && !venueProfileId) throw new Error("RETREAT_VENUE_REQUIRED");
+        if (!venueProfileId && input.venueContentfulId) {
+          const venues = await getRetreatVenues();
+          const venue = venues.find((candidate) => candidate.id === input.venueContentfulId);
+          if (!venue?.id) throw new Error("RETREAT_VENUE_REQUIRED");
+          venueProfileId = (
+            await db.retreatVenueProfile.upsert({
+              where: { contentfulVenueId: venue.id },
+              create: {
+                contentfulVenueId: venue.id,
+                venueSlug: venue.slug,
+                name: venue.name,
+              },
+              update: { venueSlug: venue.slug, name: venue.name },
+              select: { id: true },
+            })
+          ).id;
+        }
+        if (!venueProfileId) {
           const [templates, venues] = await Promise.all([
             getRetreatTemplates(),
             getRetreatVenues(),
           ]);
           const template = templates.find((candidate) => candidate.slug === input.retreatSlug);
           const venue = template ? getTemplateVenue(template, venues) : undefined;
-          if (!venue?.id) throw new Error("RETREAT_VENUE_REQUIRED");
-          const profile = await db.retreatVenueProfile.findUnique({
-            where: { contentfulVenueId: venue.id },
-            include: {
-              roomGroups: {
-                where: { active: true },
-                orderBy: { displayOrder: "asc" },
-                include: { roomTemplates: { orderBy: { displayOrder: "asc" } } },
-              },
-            },
-          });
-          if (!profile?.roomGroups.length) throw new Error("RETREAT_VENUE_ROOMS_REQUIRED");
-          return profile;
-        })()
-      : null;
-
-  const sourceDate =
-    input.retreatType === "online"
-      ? await db.retreatDate.findFirst({
-          where: { retreatSlug: input.retreatSlug },
-          orderBy: { startsAt: "desc" },
+          if (venue?.id) {
+            venueProfileId =
+              (
+                await db.retreatVenueProfile.findUnique({
+                  where: { contentfulVenueId: venue.id },
+                  select: { id: true },
+                })
+              )?.id || null;
+          }
+        }
+        if (!venueProfileId) throw new Error("RETREAT_VENUE_REQUIRED");
+        const profile = await client.retreatVenueProfile.findUnique({
+          where: { id: venueProfileId },
           include: {
-            inventoryPools: true,
-            roomOptions: {
+            roomGroups: {
+              where: { active: true },
               orderBy: { displayOrder: "asc" },
-              include: {
-                inventoryPool: true,
-                ratePlans: { orderBy: { guestCount: "asc" } },
-                roomUnits: { orderBy: { label: "asc" } },
-              },
+              include: { roomTemplates: { orderBy: { displayOrder: "asc" } } },
             },
-            depositRules: { where: { active: true }, orderBy: { createdAt: "desc" } },
-            addons: { where: { active: true }, orderBy: { createdAt: "asc" } },
-            instructorAssignments: true,
           },
-        })
-      : null;
-  if (sourceDate && parseRetreatType(sourceDate.retreatType) !== input.retreatType) {
+        });
+        if (!profile) throw new Error("RETREAT_VENUE_REQUIRED");
+        if (capabilities.requiresAccommodation && !profile.roomGroups.length) {
+          throw new Error("RETREAT_VENUE_ROOMS_REQUIRED");
+        }
+        return profile;
+      })()
+    : null;
+
+  const sourceDate = input.copyFromDateId
+    ? await client.retreatDate.findFirst({
+        where: { id: input.copyFromDateId, retreatSlug: input.retreatSlug },
+        orderBy: { startsAt: "desc" },
+        include: {
+          inventoryPools: true,
+          roomOptions: {
+            orderBy: { displayOrder: "asc" },
+            include: {
+              inventoryPool: true,
+              ratePlans: { orderBy: { guestCount: "asc" } },
+              roomUnits: { orderBy: { label: "asc" } },
+            },
+          },
+          depositRules: { where: { active: true }, orderBy: { createdAt: "desc" } },
+          addons: { where: { active: true }, orderBy: { createdAt: "asc" } },
+          instructorAssignments: true,
+        },
+      })
+    : null;
+  if (
+    (input.copyFromDateId && !sourceDate) ||
+    (sourceDate && parseRetreatType(sourceDate.retreatType) !== input.retreatType) ||
+    (sourceDate && sourceDate.eventKind !== eventKind) ||
+    (sourceDate && venueProfile && sourceDate.venueProfileId !== venueProfile.id)
+  ) {
     throw new Error("RETREAT_TYPE_MISMATCH");
   }
 
   const externalDateId = buildRetreatDateExternalId(input);
-  const isOnline = input.retreatType === "online";
+  const isOnline = capabilities.usesLiveRoom;
   const sourceDepositRule = sourceDate?.depositRules[0] || null;
   const requiresFullPayment =
-    isOnline ||
+    capabilities.paymentPolicy === "full_payment" ||
     input.paymentPolicy === "full_payment" ||
     sourceDepositRule?.depositType === RetreatDepositType.full_payment;
   const sourcePrices =
@@ -3891,9 +4157,9 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
     requiresFullPayment || balanceDueDaysBeforeStart === null
       ? null
       : new Date(input.startsAt.getTime() - balanceDueDaysBeforeStart * 86400000);
-  const targetCapacity = sourceDate && !isOnline ? sourceDate.capacity : input.capacity;
+  const targetCapacity = input.capacity;
 
-  return db.$transaction(async (tx) => {
+  const persist = async (tx: Prisma.TransactionClient) => {
     const retreatDate = await tx.retreatDate.create({
       data: {
         externalDateId,
@@ -3901,7 +4167,10 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
         retreatTitleSnapshot: input.title,
         retreatLocationSnapshot: input.location,
         retreatType: input.retreatType,
-        timezone: "Europe/London",
+        eventKind,
+        experienceId: experience?.id || null,
+        formatPresetId,
+        timezone: format?.operationalDefaults.timezone || "Europe/London",
         startsAt: input.startsAt,
         endsAt: input.endsAt,
         capacity: targetCapacity,
@@ -3910,9 +4179,14 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
         pricePence: standardPricePence,
         depositAmountPence,
         balanceDueAt,
-        isRecorded: isOnline,
-        replayAccessDurationDays: isOnline ? (sourceDate?.replayAccessDurationDays ?? 7) : null,
-        chatEnabled: sourceDate?.chatEnabled ?? true,
+        isRecorded:
+          isOnline && (sourceDate?.isRecorded ?? format?.operationalDefaults.isRecorded ?? true),
+        replayAccessDurationDays: isOnline
+          ? (sourceDate?.replayAccessDurationDays ??
+            format?.operationalDefaults.replayAccessDurationDays ??
+            7)
+          : null,
+        chatEnabled: sourceDate?.chatEnabled ?? format?.operationalDefaults.chatEnabled ?? true,
         participantMicDefaultMuted: sourceDate?.participantMicDefaultMuted ?? isOnline,
         participantCameraDefaultOff: sourceDate?.participantCameraDefaultOff ?? isOnline,
         payInFullDiscountEnabled:
@@ -3930,7 +4204,7 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
       },
     });
 
-    if (venueProfile) {
+    if (venueProfile && capabilities.requiresAccommodation && !sourceDate) {
       for (const [groupIndex, group] of venueProfile.roomGroups.entries()) {
         const pool = await tx.retreatInventoryPool.create({
           data: {
@@ -3947,6 +4221,7 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
               retreatDateId: retreatDate.id,
               inventoryPoolId: pool.id,
               externalRoomOptionId: `venue-${group.id}-shared`,
+              venueRoomGroupId: group.id,
               label: `${group.name} — Shared place`,
               description: group.description,
               roomType: "shared_twin",
@@ -3984,6 +4259,7 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
               retreatDateId: retreatDate.id,
               inventoryPoolId: pool.id,
               externalRoomOptionId: `venue-${group.id}-private`,
+              venueRoomGroupId: group.id,
               label: `${group.name} — Private room`,
               description: group.description,
               roomType: "private",
@@ -4075,6 +4351,7 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
               ? inventoryPoolIds.get(option.inventoryPoolId) || null
               : null,
             externalRoomOptionId: option.externalRoomOptionId,
+            venueRoomGroupId: option.venueRoomGroupId,
             label: option.label,
             description: option.description,
             roomType: option.roomType,
@@ -4181,12 +4458,10 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
 
     const inventoryType = isOnline
       ? RetreatInventoryType.online_live_place
-      : RetreatInventoryType.bed_space;
-    const bookingUnit = isOnline
-      ? RetreatBookingUnit.online_live_place
-      : RetreatBookingUnit.bed_space;
-    const optionLabel = isOnline ? "Live Workshop Ticket" : "General Place";
-    const optionId = isOnline ? "live-workshop-ticket" : "general-place";
+      : RetreatInventoryType.ticket;
+    const bookingUnit = isOnline ? RetreatBookingUnit.online_live_place : RetreatBookingUnit.ticket;
+    const optionLabel = isOnline ? "Live workshop ticket" : "Event ticket";
+    const optionId = isOnline ? "live-workshop-ticket" : "event-ticket";
 
     const inventoryPool = await tx.retreatInventoryPool.create({
       data: {
@@ -4206,8 +4481,8 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
         label: optionLabel,
         description: isOnline
           ? "Live online workshop access with replay access when a replay is published."
-          : "General retreat place. Configure accommodation before opening public bookings.",
-        roomType: isOnline ? "virtual" : "shared_twin",
+          : "Admission for one person.",
+        roomType: isOnline ? "virtual" : "ticket",
         bookingUnit,
         inventoryUnitsPerBooking: 1,
         guestsIncluded: 1,
@@ -4247,20 +4522,9 @@ export async function createAdminRetreatDate(input: CreateAdminRetreatDateInput)
       },
     });
 
-    if (!isOnline) {
-      await tx.retreatRoomUnit.create({
-        data: {
-          retreatDateId: retreatDate.id,
-          roomOptionId: roomOption.id,
-          inventoryPoolId: inventoryPool.id,
-          label: "General capacity",
-          capacityUnits: input.capacity,
-        },
-      });
-    }
-
     return retreatDate;
-  });
+  };
+  return transaction ? persist(transaction) : db.$transaction(persist);
 }
 
 export type RetreatPublishValidation = {
@@ -4299,20 +4563,28 @@ async function validateRetreatDateForPublishing(
     errors.push("Booking must close no later than the experience start.");
   }
   if (retreatDate.capacity < 1) errors.push("Capacity must be at least one place.");
-  if (retreatDate.retreatType === "in_person" && !retreatDate.accommodationConfiguredAt) {
-    errors.push("Save accommodation choices and prices before opening bookings.");
+  const capabilities = getRetreatEventCapabilities(retreatDate.eventKind);
+  if (!retreatDate.accommodationConfiguredAt) {
+    errors.push(
+      capabilities.requiresAccommodation
+        ? "Save accommodation choices and prices before opening bookings."
+        : "Save ticket prices before opening bookings."
+    );
   }
 
-  const templates = await getRetreatTemplates();
-  if (!templates.some((template) => template.slug === retreatDate.retreatSlug)) {
-    errors.push("A published Contentful experience with this slug is required.");
+  const appTemplate = retreatDate.experienceId
+    ? await getPublishedRetreatExperienceTemplateById(retreatDate.experienceId)
+    : null;
+  const templates = retreatDate.experienceId ? [] : await getRetreatTemplates();
+  if (!appTemplate && !templates.some((template) => template.slug === retreatDate.retreatSlug)) {
+    errors.push("Publish the event page before opening bookings.");
   }
   if (retreatDate.inventoryPools.length === 0) {
     errors.push("At least one active inventory pool is required.");
   }
   if (retreatDate.roomOptions.length === 0) {
     errors.push(
-      retreatDate.retreatType === "online"
+      capabilities.admission === "ticket"
         ? "At least one active ticket is required."
         : "At least one active accommodation option is required."
     );
@@ -4339,7 +4611,7 @@ async function validateRetreatDateForPublishing(
       }
     }
 
-    if (retreatDate.retreatType === "in_person") {
+    if (capabilities.requiresAccommodation) {
       const physicalCapacity = retreatDate.roomOptions
         .flatMap((candidate) => candidate.roomUnits)
         .filter((unit) =>
@@ -4358,11 +4630,78 @@ async function validateRetreatDateForPublishing(
   }
 
   const rule = retreatDate.depositRules[0];
-  if (retreatDate.retreatType === "online" && rule?.depositType !== "full_payment") {
-    errors.push("Online experiences must use full payment.");
+  if (capabilities.paymentPolicy === "full_payment" && rule?.depositType !== "full_payment") {
+    errors.push("This event format must use full payment.");
   }
 
   return { valid: errors.length === 0, errors };
+}
+
+export async function updateAdminRetreatTicketPrices(
+  retreatDateId: string,
+  rates: Array<{ id: string; pricePence: number }>
+) {
+  await db.$transaction(async (tx) => {
+    await lockRetreatResource(tx, `retreat-configuration:${retreatDateId}`);
+    const date = await tx.retreatDate.findUnique({
+      where: { id: retreatDateId },
+      include: { roomOptions: { include: { ratePlans: true } } },
+    });
+    if (!date) throw new Error("NOT_FOUND");
+    if (
+      date.status !== "draft" ||
+      getRetreatEventCapabilities(date.eventKind, date.retreatType).admission !== "ticket"
+    )
+      throw new Error("RETREAT_PRICING_LOCKED");
+    const existing = date.roomOptions.flatMap((option) => option.ratePlans);
+    if (date.roomOptions.some((option) => !option.ratePlans.length))
+      throw new Error("INVALID_PRICE");
+    if (
+      !rates.length ||
+      rates.length !== existing.length ||
+      new Set(rates.map((rate) => rate.id)).size !== rates.length ||
+      rates.some(
+        (rate) =>
+          !existing.some((item) => item.id === rate.id) ||
+          !Number.isSafeInteger(rate.pricePence) ||
+          rate.pricePence < 0
+      )
+    )
+      throw new Error("INVALID_PRICE");
+    for (const rate of rates) {
+      const old = existing.find((item) => item.id === rate.id)!;
+      await tx.retreatRatePlan.update({
+        where: { id: rate.id },
+        data: {
+          totalPricePence: rate.pricePence,
+          ...(old.earlyBirdPricePence !== null && old.earlyBirdPricePence >= rate.pricePence
+            ? { earlyBirdPricePence: null, earlyBirdEndsAt: null }
+            : {}),
+        },
+      });
+    }
+    const minimum = Math.min(...rates.map((rate) => rate.pricePence));
+    for (const option of date.roomOptions)
+      await tx.retreatRoomOption.update({
+        where: { id: option.id },
+        data: {
+          pricePence: Math.min(
+            ...rates
+              .filter((rate) => option.ratePlans.some((item) => item.id === rate.id))
+              .map((rate) => rate.pricePence)
+          ),
+        },
+      });
+    await tx.retreatDate.update({
+      where: { id: date.id },
+      data: {
+        pricePence: minimum,
+        depositAmountPence: minimum,
+        accommodationConfiguredAt: new Date(),
+      },
+    });
+  });
+  return { saved: true };
 }
 
 export async function publishAdminRetreatDate(retreatDateId: string) {
@@ -4427,6 +4766,7 @@ export async function sendRetreatBalanceDueEmails(input: {
   retreatDateId: string;
   mode?: "due" | "chaser";
   actorUserId?: string | null;
+  preview?: boolean;
 }) {
   const retreatDate = await db.retreatDate.findUnique({
     where: { id: input.retreatDateId },
@@ -4444,6 +4784,8 @@ export async function sendRetreatBalanceDueEmails(input: {
   });
   if (!retreatDate) throw new Error("NOT_FOUND");
 
+  const recipients: Array<{ bookingId: string; name: string; email: string; amountPence: number }> =
+    [];
   let sent = 0;
   let skippedPaidInFull = 0;
   let skippedNoPaymentDue = 0;
@@ -4469,6 +4811,13 @@ export async function sendRetreatBalanceDueEmails(input: {
       skippedNoPaymentLink += 1;
       continue;
     }
+    recipients.push({
+      bookingId: booking.id,
+      name: `${booking.purchaserFirstName} ${booking.purchaserLastName}`,
+      email: booking.purchaserEmail,
+      amountPence: nextInstalment?.amountPence || booking.balanceAmountPence,
+    });
+    if (input.preview) continue;
     const paymentUrl = buildAbsoluteUrl(`/retreats/balance/${booking.balancePaymentUrlToken}`);
     await sendPostmarkReactEmail({
       to: booking.purchaserEmail,
@@ -4515,6 +4864,7 @@ export async function sendRetreatBalanceDueEmails(input: {
 
   return {
     sent,
+    recipients,
     skipped: skippedPaidInFull + skippedNoPaymentDue + skippedNoPaymentLink,
     skippedPaidInFull,
     skippedNoPaymentDue,
@@ -4630,6 +4980,7 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
   const bookingRows = await db.retreatDate.findUnique({
     where: { id: retreatDateId },
     include: {
+      venueProfile: true,
       inventoryPools: { orderBy: { createdAt: "asc" } },
       bookings: {
         orderBy: { createdAt: "asc" },
@@ -4702,6 +5053,23 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
   });
   if (!bookingRows) throw new Error("NOT_FOUND");
 
+  const [registrationRows, templates, venues, publishReadiness] = await Promise.all([
+    getAdminRegistrationRows(retreatDateId),
+    getRetreatTemplates(),
+    getRetreatVenues(),
+    bookingRows.status === "draft"
+      ? validateRetreatDateForPublishing(retreatDateId)
+      : Promise.resolve(null),
+  ]);
+  const contentTemplate = templates.find((template) => template.slug === bookingRows.retreatSlug);
+  const contentVenue =
+    venues.find((venue) => venue.id === bookingRows.venueProfile?.contentfulVenueId) ||
+    (contentTemplate ? getTemplateVenue(contentTemplate, venues) : null);
+  const contentfulLink = (entryId?: string) =>
+    entryId && process.env.CONTENTFUL_SPACE_ID
+      ? `https://app.contentful.com/spaces/${process.env.CONTENTFUL_SPACE_ID}/environments/${process.env.CONTENTFUL_ENVIRONMENT || "master"}/entries/${entryId}`
+      : null;
+
   const revenuePence =
     bookingRows.bookings.reduce(
       (sum, booking) => sum + booking.depositPaidPence + booking.balancePaidPence,
@@ -4743,6 +5111,14 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
 
   return {
     id: bookingRows.id,
+    publicDateId: bookingRows.externalDateId,
+    contentLinks: {
+      experience: bookingRows.experienceId
+        ? `/admin/retreats/experiences/${bookingRows.experienceId}`
+        : contentfulLink(contentTemplate?.id),
+      venue: contentfulLink(contentVenue?.id),
+    },
+    publishReadiness,
     retreatSlug: bookingRows.retreatSlug,
     title: bookingRows.retreatTitleSnapshot,
     location: bookingRows.retreatLocationSnapshot,
@@ -4751,6 +5127,7 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
     endDate: bookingRows.endsAt.toISOString(),
     status: bookingRows.status,
     retreatType: bookingRows.retreatType,
+    eventKind: bookingRows.eventKind,
     liveRoomPrepared: bookingRows.onlineRoomSetupStatus === ClassRoomSetupStatus.ready,
     liveRoomState: bookingRows.liveRoomState,
     liveDisplayMode: bookingRows.liveDisplayMode,
@@ -4785,7 +5162,8 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
       : null,
     pricingLocked: bookingRows.status !== RetreatDateStatus.draft,
     accommodationConfigured:
-      bookingRows.retreatType === "online" || Boolean(bookingRows.accommodationConfiguredAt),
+      !getRetreatEventCapabilities(bookingRows.eventKind).requiresAccommodation ||
+      Boolean(bookingRows.accommodationConfiguredAt),
     inventoryPools: bookingRows.inventoryPools.map((pool) => ({
       id: pool.id,
       name: pool.name,
@@ -4868,6 +5246,7 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
     })),
     bookings: bookingRows.bookings.map((booking) => ({
       id: booking.id,
+      attendees: registrationRows.filter((attendee) => attendee.bookingId === booking.id),
       purchaserName: `${booking.purchaserFirstName} ${booking.purchaserLastName}`.trim(),
       purchaserEmail: booking.purchaserEmail,
       attendeeName: `${booking.attendeeFirstName} ${booking.attendeeLastName}`.trim(),
@@ -4886,6 +5265,7 @@ export async function getAdminRetreatDetail(retreatDateId: string) {
       inventoryPoolId: booking.roomOption?.inventoryPoolId || null,
       roomUnitId: booking.roomUnitId,
       roomUnitLabel: booking.roomUnit?.label || null,
+      bedPreference: booking.bedPreference,
       addons: booking.items.flatMap((item) =>
         item.addon
           ? [
@@ -4978,7 +5358,9 @@ export async function updateAdminRetreatAccommodation(
     if (retreatDate.status !== RetreatDateStatus.draft) {
       throw new Error("RETREAT_CONFIGURATION_LOCKED");
     }
-    if (retreatDate.retreatType !== "in_person") throw new Error("INVALID_RETREAT_INVENTORY");
+    if (!getRetreatEventCapabilities(retreatDate.eventKind).requiresAccommodation) {
+      throw new Error("INVALID_RETREAT_INVENTORY");
+    }
     if (!Number.isInteger(input.capacity) || input.capacity < 1 || input.capacity > 200) {
       throw new Error("INVALID_RETREAT_INVENTORY");
     }
@@ -5168,7 +5550,8 @@ export async function updateAdminRetreatConfiguration(
     const payment = input.payment;
     const isFullPayment = payment.depositType === "full_payment";
     if (
-      (retreatDate.retreatType === "online" && !isFullPayment) ||
+      (getRetreatEventCapabilities(retreatDate.eventKind).paymentPolicy === "full_payment" &&
+        !isFullPayment) ||
       (payment.depositType === "percentage" &&
         (!Number.isInteger(payment.depositPercentageBasisPoints) ||
           (payment.depositPercentageBasisPoints || 0) < 1 ||

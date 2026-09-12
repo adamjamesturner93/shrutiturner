@@ -1,19 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sendEmailBatchMock = vi.fn();
+const renderMock = vi.fn();
 const emailCampaignFindUniqueMock = vi.fn();
 const emailCampaignFindFirstMock = vi.fn();
 const emailCampaignFindManyMock = vi.fn();
 const emailCampaignCreateMock = vi.fn();
 const emailCampaignUpdateMock = vi.fn();
+const emailCampaignUpdateManyMock = vi.fn();
 const newsletterSubscriberFindManyMock = vi.fn();
 const emailDeliveryCreateMock = vi.fn();
 const emailDeliveryUpdateMock = vi.fn();
+const emailDeliveryUpdateManyMock = vi.fn();
+const emailDeliveryFindManyMock = vi.fn();
+const emailDeliveryCountMock = vi.fn();
+const emailDeliveryGroupByMock = vi.fn();
 const emailDeliveryAttemptCreateMock = vi.fn();
+const emailDeliveryAttemptUpdateMock = vi.fn();
+const emailDeliveryAttemptUpdateManyMock = vi.fn();
 const getEntriesMock = vi.fn();
 
 vi.mock("@react-email/render", () => ({
-  render: vi.fn().mockResolvedValue("<html>Email</html>"),
+  render: renderMock,
 }));
 
 vi.mock("postmark", () => ({
@@ -32,17 +40,29 @@ vi.mock("@/lib/db", () => ({
       findMany: emailCampaignFindManyMock,
       create: emailCampaignCreateMock,
       update: emailCampaignUpdateMock,
+      updateMany: emailCampaignUpdateManyMock,
     },
     newsletterSubscriber: {
       findMany: newsletterSubscriberFindManyMock,
     },
     emailDelivery: {
       create: emailDeliveryCreateMock,
+      upsert: ({ create }: { create: Record<string, unknown> }) => emailDeliveryCreateMock({ data: create }),
       update: emailDeliveryUpdateMock,
+      updateMany: emailDeliveryUpdateManyMock,
+      findMany: emailDeliveryFindManyMock,
+      count: emailDeliveryCountMock,
+      groupBy: emailDeliveryGroupByMock,
     },
     emailDeliveryAttempt: {
       create: emailDeliveryAttemptCreateMock,
+      update: emailDeliveryAttemptUpdateMock,
+      updateMany: emailDeliveryAttemptUpdateManyMock,
     },
+    $transaction: vi.fn(async (operations: Array<Promise<unknown>> | ((tx: unknown) => Promise<unknown>)) => {
+      if (typeof operations === "function") return operations((await import("@/lib/db")).db);
+      return Promise.all(operations);
+    }),
   },
 }));
 
@@ -67,14 +87,22 @@ vi.mock("@/lib/admin/action-log-service", () => ({
   createAdminActionLog: vi.fn(),
 }));
 
-const { processDueContentfulCampaigns, triggerContentfulPublishCampaign } =
-  await import("@/lib/newsletter/campaign-automation");
+const {
+  processDueContentfulCampaigns,
+  reconcileContentfulCampaign,
+  triggerContentfulPublishCampaign,
+  retryContentfulCampaign,
+} = await import("@/lib/newsletter/campaign-automation");
 
 describe("triggerContentfulPublishCampaign", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    renderMock.mockResolvedValue("<html>Email</html>");
     process.env.POSTMARK_FROM_EMAIL = "Shruti <hello@example.com>";
+    process.env.CONTENTFUL_SPACE_ID = "space_test";
+    process.env.CONTENTFUL_ENVIRONMENT = "sandbox";
     emailCampaignFindUniqueMock.mockResolvedValue(null);
+    emailCampaignUpdateManyMock.mockResolvedValue({ count: 1 });
     emailCampaignFindFirstMock.mockResolvedValue(null);
     emailCampaignFindManyMock.mockResolvedValue([]);
     emailCampaignCreateMock.mockResolvedValue({
@@ -106,9 +134,24 @@ describe("triggerContentfulPublishCampaign", () => {
         user: { firstName: "Rhea" },
       },
     ]);
-    emailDeliveryCreateMock.mockResolvedValue({ id: "delivery_1" });
+    emailDeliveryCreateMock.mockImplementation(({ data }: { data: Record<string, unknown> }) => ({
+      id: "delivery_1",
+      toEmail: data.toEmail,
+      subject: data.subject,
+      tag: data.tag,
+      messageStream: data.messageStream,
+      payloadJson: data.payloadJson,
+      metadataJson: data.metadataJson,
+      attemptCount: 0,
+    }));
     emailDeliveryUpdateMock.mockResolvedValue({ id: "delivery_1" });
+    emailDeliveryUpdateManyMock.mockResolvedValue({ count: 1 });
+    emailDeliveryFindManyMock.mockResolvedValue([]);
+    emailDeliveryCountMock.mockResolvedValue(0);
+    emailDeliveryGroupByMock.mockResolvedValue([{ status: "sent", _count: { _all: 1 } }]);
     emailDeliveryAttemptCreateMock.mockResolvedValue({ id: "attempt_1" });
+    emailDeliveryAttemptUpdateMock.mockResolvedValue({ id: "attempt_1" });
+    emailDeliveryAttemptUpdateManyMock.mockResolvedValue({ count: 1 });
     sendEmailBatchMock.mockResolvedValue([{ ErrorCode: 0, MessageID: "message_1" }]);
   });
 
@@ -164,8 +207,13 @@ describe("triggerContentfulPublishCampaign", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           deliveryId: "delivery_1",
-          providerMessageId: "message_1",
+          status: "started",
         }),
+      })
+    );
+    expect(emailDeliveryAttemptUpdateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ providerMessageId: "message_1" }),
       })
     );
   });
@@ -317,7 +365,7 @@ describe("triggerContentfulPublishCampaign", () => {
     ).resolves.toEqual({ skipped: false, campaignId: "campaign_123" });
 
     expect(emailCampaignFindUniqueMock).toHaveBeenCalledWith({
-      where: { providerCampaignId: "contentful:blogPost:blog_123:blog" },
+      where: { sourceIssueKey: "contentful:space_test:sandbox:blogPost:blog_123" },
       select: { id: true, status: true },
     });
     expect(emailCampaignFindFirstMock).toHaveBeenCalledWith({
@@ -326,7 +374,7 @@ describe("triggerContentfulPublishCampaign", () => {
         contentfulContentType: "blogPost",
         audienceType: "blog",
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "asc" },
       select: { id: true, status: true },
     });
     expect(emailCampaignCreateMock).toHaveBeenCalledWith(
@@ -397,7 +445,7 @@ describe("triggerContentfulPublishCampaign", () => {
     });
 
     expect(emailCampaignFindUniqueMock).toHaveBeenCalledWith({
-      where: { providerCampaignId: "contentful:blogPost:blog_123:blog" },
+      where: { sourceIssueKey: "contentful:space_test:sandbox:blogPost:blog_123" },
       select: { id: true, status: true },
     });
     expect(emailCampaignCreateMock).not.toHaveBeenCalled();
@@ -439,6 +487,50 @@ describe("triggerContentfulPublishCampaign", () => {
     expect(sendEmailBatchMock).not.toHaveBeenCalled();
   });
 
+  it("requires an explicit provider outcome before ambiguous deliveries can be retried", async () => {
+    emailCampaignFindUniqueMock.mockResolvedValueOnce({
+      id: "campaign_123",
+      status: "reconciliation_required",
+      sentCount: 1,
+      failedCount: 0,
+      errorSummary: "Provider response was interrupted",
+      contentfulEntryId: "entry_123",
+    });
+    emailDeliveryFindManyMock.mockResolvedValueOnce([{ id: "delivery_unknown" }]);
+    emailDeliveryGroupByMock.mockResolvedValueOnce([
+      { status: "sent", _count: { _all: 1 } },
+      { status: "failed", _count: { _all: 1 } },
+    ]);
+
+    await expect(
+      reconcileContentfulCampaign({
+        campaignId: "campaign_123",
+        resolution: "confirm_not_sent",
+        deliveries: [{ id: "delivery_unknown", attemptCount: 1 }],
+        note: "Checked Postmark outbound search for this recipient and attempt.",
+        actorUserId: "admin_1",
+      })
+    ).resolves.toMatchObject({
+      campaignId: "campaign_123",
+      resolution: "confirm_not_sent",
+      reconciledCount: 1,
+      status: "failed_partial",
+    });
+
+    expect(emailDeliveryUpdateManyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: { in: ["delivery_unknown"] } }),
+        data: expect.objectContaining({ status: "failed", retryable: true }),
+      })
+    );
+    expect(emailDeliveryAttemptUpdateManyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "failed" }),
+      })
+    );
+    expect(sendEmailBatchMock).not.toHaveBeenCalled();
+  });
+
   it("does not resend a republished blog post when an earlier campaign exists for the entry id", async () => {
     emailCampaignFindUniqueMock.mockResolvedValueOnce(null);
     emailCampaignFindFirstMock.mockResolvedValueOnce({
@@ -471,7 +563,10 @@ describe("triggerContentfulPublishCampaign", () => {
     });
 
     expect(emailCampaignCreateMock).not.toHaveBeenCalled();
-    expect(emailCampaignUpdateMock).not.toHaveBeenCalled();
+    expect(emailCampaignUpdateMock).toHaveBeenCalledWith({
+      where: { id: "campaign_by_entry" },
+      data: { sourceIssueKey: "contentful:space_test:sandbox:blogPost:blog_123" },
+    });
     expect(sendEmailBatchMock).not.toHaveBeenCalled();
   });
 
@@ -500,11 +595,32 @@ describe("triggerContentfulPublishCampaign", () => {
     expect(emailCampaignCreateMock).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          status: "sending",
+          status: "preparing",
         }),
       })
     );
     expect(sendEmailBatchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks only claimed deliveries as needing reconciliation after an ambiguous provider failure", async () => {
+    sendEmailBatchMock.mockRejectedValueOnce(new Error("Provider connection closed"));
+    emailDeliveryGroupByMock.mockResolvedValue([{ status: "sending", _count: { _all: 1 } }]);
+
+    await expect(
+      triggerContentfulPublishCampaign({
+        contentType: "newsletterTemplate",
+        contentfulEntryId: "entry_123",
+        contentfulVersion: "10",
+      })
+    ).rejects.toThrow("Provider connection closed");
+
+    expect(emailCampaignUpdateMock).toHaveBeenLastCalledWith({
+      where: { id: "campaign_123" },
+      data: expect.objectContaining({
+        status: "reconciliation_required",
+        errorSummary: "Provider connection closed",
+      }),
+    });
   });
 
   it("skips newsletter templates that are missing required send fields", async () => {
@@ -531,6 +647,49 @@ describe("triggerContentfulPublishCampaign", () => {
     expect(sendEmailBatchMock).not.toHaveBeenCalled();
   });
 
+  it("recovers an interrupted preparation using only its frozen audience", async () => {
+    emailCampaignFindUniqueMock.mockResolvedValueOnce({
+      id: "campaign_123", contentfulEntryId: "entry_123", contentfulContentType: "newsletterTemplate",
+      audiencePreparedAt: null, contentSnapshotJson: { sys: { id: "entry_123" }, fields: { subject: "Frozen subject", body: "Frozen body" } },
+      audienceSnapshotJson: [{ subscriberId: "original", userId: null, email: "original@example.com", firstName: "Original" }],
+    });
+    newsletterSubscriberFindManyMock.mockResolvedValue([{ email: "new@example.com" }]);
+    await retryContentfulCampaign({ campaignId: "campaign_123" });
+    expect(emailDeliveryCreateMock).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ toEmail: "original@example.com", subject: "Frozen subject" }) }));
+    expect(emailDeliveryCreateMock).toHaveBeenCalledTimes(1);
+    expect(getEntriesMock).not.toHaveBeenCalled();
+    expect(sendEmailBatchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not invent a recipient list for an older interrupted preparation", async () => {
+    emailCampaignFindUniqueMock.mockResolvedValueOnce({
+      id: "campaign_123", contentfulEntryId: "entry_123", contentfulContentType: "newsletterTemplate",
+      audiencePreparedAt: null, contentSnapshotJson: { fields: { subject: "Frozen" } }, audienceSnapshotJson: null,
+    });
+    await expect(retryContentfulCampaign({ campaignId: "campaign_123" })).rejects.toThrow("CAMPAIGN_AUDIENCE_REQUIRES_REVIEW");
+    expect(newsletterSubscriberFindManyMock).not.toHaveBeenCalled();
+  });
+
+  it("blocks reconciliation while another worker owns the campaign", async () => {
+    emailCampaignUpdateManyMock.mockResolvedValueOnce({ count: 0 });
+    await expect(reconcileContentfulCampaign({ campaignId: "campaign_123", actorUserId: "admin_1", resolution: "confirm_not_sent", deliveries: [{ id: "delivery_1", attemptCount: 1 }], note: "Checked provider" })).rejects.toThrow("CAMPAIGN_BUSY");
+    expect(emailDeliveryUpdateManyMock).not.toHaveBeenCalled();
+    expect(sendEmailBatchMock).not.toHaveBeenCalled();
+  });
+
+  it("releases the lease and exposes ambiguity after a failed retry", async () => {
+    emailCampaignFindUniqueMock.mockResolvedValueOnce({
+      id: "campaign_123", contentfulEntryId: "entry_123", contentfulContentType: "newsletterTemplate",
+      audiencePreparedAt: new Date(), contentSnapshotJson: { fields: { subject: "Frozen" } },
+    });
+    emailDeliveryFindManyMock.mockResolvedValueOnce([{ id: "delivery_1", toEmail: "reader@example.com", subject: "Frozen", tag: "tag", messageStream: "broadcast", payloadJson: { htmlBody: "<p>Frozen</p>", textBody: "Frozen" }, metadataJson: {}, attemptCount: 1 }]);
+    sendEmailBatchMock.mockRejectedValueOnce(new Error("Request timed out"));
+    emailDeliveryGroupByMock.mockResolvedValue([{ status: "sending", _count: { _all: 1 } }]);
+    await expect(retryContentfulCampaign({ campaignId: "campaign_123" })).rejects.toThrow("Request timed out");
+    expect(emailCampaignUpdateMock).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "reconciliation_required" }) }));
+    expect(emailCampaignUpdateManyMock).toHaveBeenLastCalledWith(expect.objectContaining({ data: { processingToken: null, processingLeaseExpiresAt: null } }));
+  });
+
   it("processes due scheduled Contentful campaigns", async () => {
     emailCampaignFindManyMock.mockResolvedValue([
       {
@@ -538,6 +697,19 @@ describe("triggerContentfulPublishCampaign", () => {
         contentfulEntryId: "entry_123",
         contentfulContentType: "newsletterTemplate",
         audienceType: "newsletter",
+        audiencePreparedAt: new Date("2026-05-15T09:00:00.000Z"),
+      },
+    ]);
+    emailDeliveryFindManyMock.mockResolvedValueOnce([
+      {
+        id: "delivery_1",
+        toEmail: "reader@example.com",
+        subject: "April newsletter",
+        tag: "newsletter-campaign-campaign_123",
+        messageStream: "broadcast",
+        payloadJson: { htmlBody: "<html>Email</html>", textBody: "Newsletter" },
+        metadataJson: { campaignId: "campaign_123" },
+        attemptCount: 0,
       },
     ]);
 

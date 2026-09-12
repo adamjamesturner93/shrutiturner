@@ -1,12 +1,11 @@
 import {
-  BillingRefundStatus,
   MembershipBillingInterval,
   MembershipStatus,
   Prisma,
   SubscriptionComplianceEventKind,
 } from "@prisma/client";
 import { db } from "@/lib/db";
-import { getStripeClient } from "@/lib/billing/stripe-client";
+import { createHash } from "node:crypto";
 import { MEMBERSHIP_TRIAL_DAYS } from "@/lib/billing/price-map";
 import {
   ANNUAL_RENEWAL_REMINDER_LEAD_DAYS,
@@ -40,11 +39,6 @@ type NoticeMembership = Prisma.MembershipSubscriptionGetPayload<{
     };
   };
 }>;
-type StripeInvoiceWithPaymentIntent = Awaited<
-  ReturnType<ReturnType<typeof getStripeClient>["invoices"]["retrieve"]>
-> & {
-  payment_intent?: string | { id?: string | null } | null;
-};
 
 function addDays(date: Date, days: number) {
   return new Date(date.getTime() + days * 86400000);
@@ -161,17 +155,20 @@ export function calculateProratedRefundAmount(params: {
   );
 }
 
-export async function recordSubscriptionComplianceEvent(params: {
-  userId: string;
-  membershipId?: string | null;
-  kind: SubscriptionComplianceEventKind;
-  status: string;
-  channel?: string;
-  summary: string;
-  metadataJson?: Prisma.InputJsonValue;
-  eventAt?: Date;
-}) {
-  return db.subscriptionComplianceEvent.create({
+export async function recordSubscriptionComplianceEvent(
+  params: {
+    userId: string;
+    membershipId?: string | null;
+    kind: SubscriptionComplianceEventKind;
+    status: string;
+    channel?: string;
+    summary: string;
+    metadataJson?: Prisma.InputJsonValue;
+    eventAt?: Date;
+  },
+  tx: Prisma.TransactionClient | typeof db = db
+) {
+  return tx.subscriptionComplianceEvent.create({
     data: {
       userId: params.userId,
       membershipId: params.membershipId || undefined,
@@ -645,94 +642,23 @@ export async function issueMembershipRefund(params: {
 }) {
   const membership = await db.membershipSubscription.findUnique({
     where: { id: params.membershipId },
-    select: {
-      id: true,
-      latestInvoiceId: true,
-      latestInvoiceAmountPence: true,
-      userId: true,
-    },
+    select: { latestInvoiceId: true, userId: true },
   });
-  if (!membership?.latestInvoiceId || params.amountPence <= 0) {
-    return null;
+  if (!membership || membership.userId !== params.userId) throw new Error("MEMBERSHIP_NOT_FOUND");
+  if (!membership.latestInvoiceId || params.amountPence <= 0) return null;
+  // Share the manual refund reservation protocol. The first reservation freezes the amount;
+  // retries must not issue a second prorated refund merely because another day has elapsed.
+  const { createMembershipRefund } = await import("@/lib/billing/refund-service");
+  try {
+    return await createMembershipRefund({
+      ...params, actorUserId: params.userId, source: "cooling_off",
+      expectedInvoiceId: membership.latestInvoiceId,
+      idempotencyKey: createHash("sha256").update(`cooling-off:${params.membershipId}:${membership.latestInvoiceId}`).digest("hex"),
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "REFUND_AMOUNT_EXCEEDS_REMAINING") return null;
+    throw error;
   }
-  const alreadyRefunded = await db.billingRefund.aggregate({
-    where: {
-      membershipId: params.membershipId,
-      stripeInvoiceId: membership.latestInvoiceId,
-      status: {
-        in: [
-          BillingRefundStatus.pending,
-          BillingRefundStatus.succeeded,
-          BillingRefundStatus.credited,
-        ],
-      },
-    },
-    _sum: { amountPence: true },
-  });
-  const remainingPence = Math.max(
-    0,
-    (membership.latestInvoiceAmountPence || 0) - (alreadyRefunded._sum.amountPence || 0)
-  );
-  const amountPence = Math.min(params.amountPence, remainingPence);
-  if (amountPence <= 0) return null;
-
-  const stripe = getStripeClient();
-  const invoice = await stripe.invoices.retrieve(membership.latestInvoiceId);
-  const hydratedInvoice = invoice as StripeInvoiceWithPaymentIntent;
-  const paymentIntentId =
-    typeof hydratedInvoice.payment_intent === "string"
-      ? hydratedInvoice.payment_intent
-      : hydratedInvoice.payment_intent?.id;
-
-  if (!paymentIntentId) {
-    throw new Error("MISSING_PAYMENT_INTENT");
-  }
-
-  const refund = await stripe.refunds.create({
-    payment_intent: paymentIntentId,
-    amount: amountPence,
-    reason: "requested_by_customer",
-    metadata: {
-      membershipId: params.membershipId,
-      userId: params.userId,
-      reason: params.reason,
-    },
-  });
-
-  await db.billingRefund.create({
-    data: {
-      userId: params.userId,
-      membershipId: params.membershipId,
-      amountPence,
-      reason: params.reason,
-      status:
-        refund.status === "succeeded"
-          ? BillingRefundStatus.succeeded
-          : refund.status === "failed"
-            ? BillingRefundStatus.failed
-            : BillingRefundStatus.pending,
-      stripeRefundId: refund.id,
-      stripeInvoiceId: membership.latestInvoiceId,
-      paymentIntentId,
-      metadataJson: refund as unknown as Prisma.InputJsonValue,
-    },
-  });
-
-  await recordSubscriptionComplianceEvent({
-    userId: params.userId,
-    membershipId: params.membershipId,
-    kind: SubscriptionComplianceEventKind.refund_issued,
-    status: refund.status || "pending",
-    channel: "stripe",
-    summary: `Refund initiated for ${formatMoney(amountPence)}.`,
-    metadataJson: {
-      refundId: refund.id,
-      amountPence,
-      reason: params.reason,
-    },
-  });
-
-  return refund;
 }
 
 export function getNextMonthlyReminderDate(params: { startsAt: Date; sentCount: number }) {

@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const membershipFindUniqueMock = vi.fn();
 const refundAggregateMock = vi.fn();
 const refundCreateMock = vi.fn();
+const refundFindMock = vi.fn();
+const refundUpdateMock = vi.fn();
 const addCreditsMock = vi.fn();
 const createAdminActionLogMock = vi.fn();
 const stripeInvoiceRetrieveMock = vi.fn();
@@ -18,7 +20,14 @@ vi.mock("@/lib/db", () => ({
     billingRefund: {
       aggregate: refundAggregateMock,
       create: refundCreateMock,
+      findUnique: refundFindMock,
+      findFirst: vi.fn().mockResolvedValue(null),
+      findUniqueOrThrow: refundFindMock,
+      update: refundUpdateMock,
     },
+    $queryRaw: vi.fn(),
+    $transaction: async (work: (tx: unknown) => Promise<unknown>) =>
+      work((await import("@/lib/db")).db),
   },
 }));
 
@@ -57,10 +66,12 @@ describe("membership refund service", () => {
       latestInvoiceAmountPence: 3500,
     });
     refundAggregateMock.mockResolvedValue({ _sum: { amountPence: 0 } });
-    refundCreateMock.mockResolvedValue({
+    refundFindMock.mockResolvedValue(null);
+    refundCreateMock.mockImplementation(async ({ data }) => ({
+      ...data,
       id: "refund_123",
-      status: BillingRefundStatus.pending,
-    });
+      createdAt: new Date(),
+    }));
     addCreditsMock.mockResolvedValue({});
     createAdminActionLogMock.mockResolvedValue({});
     recordSubscriptionComplianceEventMock.mockResolvedValue({});
@@ -74,6 +85,8 @@ describe("membership refund service", () => {
     await expect(
       createMembershipRefund({
         membershipId: "membership_123",
+        idempotencyKey: "request-1234567890",
+        expectedInvoiceId: "in_123",
         actorUserId: "admin_123",
         amountPence: 500,
         reason: "Too much paid",
@@ -87,6 +100,8 @@ describe("membership refund service", () => {
   it("records credit-instead adjustments without calling Stripe refunds", async () => {
     await createMembershipRefund({
       membershipId: "membership_123",
+      idempotencyKey: "request-1234567890",
+      expectedInvoiceId: "in_123",
       actorUserId: "admin_123",
       amountPence: 1800,
       reason: "Client requested credits",
@@ -112,5 +127,37 @@ describe("membership refund service", () => {
         createdByUserId: "admin_123",
       })
     );
+  });
+
+  it("keeps an ambiguous provider outcome reserved and sends a stable key", async () => {
+    stripeRefundCreateMock.mockRejectedValue(new Error("timeout"));
+    await expect(
+      createMembershipRefund({
+        membershipId: "membership_123",
+        actorUserId: "admin_123",
+        amountPence: 500,
+        reason: "Correction",
+        idempotencyKey: "request-1234567890",
+        expectedInvoiceId: "in_123",
+      })
+    ).rejects.toThrow("timeout");
+    expect(stripeRefundCreateMock).toHaveBeenCalledWith(expect.objectContaining({ amount: 500 }), {
+      idempotencyKey: expect.stringMatching(/^mrefund_/),
+    });
+    expect(refundUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a stale selected invoice before reserving money", async () => {
+    await expect(
+      createMembershipRefund({
+        membershipId: "membership_123",
+        actorUserId: "admin_123",
+        amountPence: 500,
+        reason: "Correction",
+        idempotencyKey: "request-1234567890",
+        expectedInvoiceId: "in_old",
+      })
+    ).rejects.toThrow("REFUND_PREVIEW_STALE");
+    expect(refundCreateMock).not.toHaveBeenCalled();
   });
 });

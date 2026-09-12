@@ -18,6 +18,7 @@ const {
   getBlogPosts,
   getFeaturedTestimonials,
   getRetreatTemplates,
+  getRetreatVenues,
 } = await import("@/lib/content/public-content");
 
 const richTextDocument = {
@@ -133,6 +134,27 @@ describe("Contentful public content mapping", () => {
     expect(posts[0]?.content).toContain("Intro **paragraph**.");
   });
 
+  it("ignores retired CMS room fields while preserving venue copy", async () => {
+    mocks.getEntries.mockResolvedValueOnce({
+      items: [
+        {
+          sys: { id: "venue_1" },
+          fields: {
+            slug: "powis-house",
+            name: "Powis House",
+            description: "A countryside setting.",
+            accommodationOptions: ["Outdated room inventory"],
+            accommodationType: "Old room description",
+          },
+        },
+      ],
+    });
+    const [venue] = await getRetreatVenues();
+    expect(venue.description).toBe("A countryside setting.");
+    expect(venue).not.toHaveProperty("accommodationOptions");
+    expect(venue).not.toHaveProperty("accommodationType");
+  });
+
   it("maps linked retreat schedule days from newline-separated activities", async () => {
     mocks.getEntries.mockResolvedValueOnce({
       items: [
@@ -144,6 +166,7 @@ describe("Contentful public content mapping", () => {
             subtitle: "A calmer way to plan",
             shortDescription: "Short description",
             fullDescription: "Full description",
+            atmosphereDescription: "Quiet time and room to move at your own pace.",
             suitableFor: [],
             included: [],
             notIncluded: [],
@@ -166,6 +189,10 @@ describe("Contentful public content mapping", () => {
     });
 
     const templates = await getRetreatTemplates();
+
+    expect(templates[0]?.atmosphereDescription).toBe(
+      "Quiet time and room to move at your own pace."
+    );
 
     expect(templates[0]?.schedule).toEqual([
       {

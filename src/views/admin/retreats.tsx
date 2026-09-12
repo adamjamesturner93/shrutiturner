@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useAdminSection } from "@/components/admin/use-admin-section";
 import Link from "next/link";
 import {
   Calendar,
+  FileText,
+  LayoutTemplate,
   BedDouble,
   ChevronRight,
   MapPin,
@@ -17,11 +20,15 @@ import { AdminLayout } from "@/components/admin-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { InlineLoadingStatus } from "@/components/loading-region";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-  CreateRetreatModal,
-  type CreateRetreatData,
-} from "@/components/admin/create-retreat-modal";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { InlineLoadingStatus } from "@/components/loading-region";
 import type { AdminRetreatSummaryDto } from "@/lib/api/types";
 import { formatRetreatDateTimeRange } from "@/lib/retreats/presentation";
 
@@ -40,11 +47,31 @@ function statusVariant(status: string): "default" | "secondary" | "outline" | "d
   return "secondary";
 }
 
+const EVENT_KIND_LABELS: Record<AdminRetreatSummaryDto["eventKind"], string> = {
+  residential_retreat: "Residential retreat",
+  day_retreat: "Day retreat",
+  in_person_workshop: "In-person workshop",
+  online_workshop: "Online workshop",
+};
+
 export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSummaryDto[] | null }) {
   const [retreats, setRetreats] = useState<AdminRetreatSummaryDto[]>(initialData || []);
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState("");
-  const [createOpen, setCreateOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [lifecycle, setLifecycle] = useAdminSection(
+    "lifecycle",
+    ["current", "draft", "past", "all"] as const,
+    "current"
+  );
+  const visibleRetreats = retreats.filter((retreat) => {
+    const archived =
+      ["completed", "cancelled"].includes(retreat.status) || new Date(retreat.endDate) < new Date();
+    if (lifecycle === "current" && (archived || retreat.status === "draft")) return false;
+    if (lifecycle === "draft" && retreat.status !== "draft") return false;
+    if (lifecycle === "past" && !archived) return false;
+    return `${retreat.title} ${retreat.location}`.toLowerCase().includes(search.toLowerCase());
+  });
 
   useEffect(() => {
     if (initialData) return;
@@ -70,27 +97,6 @@ export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSumma
     };
   }, [initialData]);
 
-  async function reloadRetreats() {
-    const response = await fetch("/api/admin/retreats", { cache: "no-store" });
-    if (!response.ok) throw new Error("Failed to load retreats.");
-    const payload = (await response.json()) as AdminRetreatSummaryDto[];
-    setRetreats(payload);
-  }
-
-  async function handleCreate(data: CreateRetreatData) {
-    setError("");
-    const response = await fetch("/api/admin/retreats", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-      throw new Error(payload?.message || "Failed to create retreat or workshop date.");
-    }
-    await reloadRetreats();
-  }
-
   const summary = useMemo(() => {
     const totalRevenuePence = retreats.reduce((sum, retreat) => sum + retreat.revenuePence, 0);
     const totalBooked = retreats.reduce((sum, retreat) => sum + retreat.bookedSpaces, 0);
@@ -112,15 +118,36 @@ export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSumma
             </p>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-            <Button asChild variant="outline">
-              <Link href="/admin/retreats/venues">
-                <BedDouble className="mr-2 h-4 w-4" />
-                Venue rooms
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">Manage setup</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link href="/admin/retreats/experiences">
+                    <FileText aria-hidden="true" />
+                    Event pages
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/admin/retreats/formats">
+                    <LayoutTemplate aria-hidden="true" />
+                    Formats
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/admin/retreats/venues">
+                    <BedDouble className="mr-2 h-4 w-4" />
+                    Venue rooms
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button asChild>
+              <Link href="/admin/retreats/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Create event
               </Link>
-            </Button>
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create date
             </Button>
           </div>
         </div>
@@ -131,6 +158,10 @@ export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSumma
           </div>
         ) : null}
 
+        <p className="text-muted-foreground text-sm">
+          Totals across all event dates, including past events. Filters below only change the event
+          list.
+        </p>
         <div className="grid gap-4 sm:grid-cols-3">
           <Card>
             <CardContent className="pt-6">
@@ -170,17 +201,56 @@ export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSumma
         </div>
 
         {loading ? <InlineLoadingStatus label="Loading retreats…" /> : null}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="retreat-search">Search events</Label>
+            <Input
+              id="retreat-search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="retreat-lifecycle">Show events</Label>
+            <select
+              id="retreat-lifecycle"
+              className="bg-background h-11 w-full rounded-md border px-3"
+              value={lifecycle}
+              onChange={(event) => setLifecycle(event.target.value)}
+            >
+              <option value="current">Upcoming and live</option>
+              <option value="draft">Drafts</option>
+              <option value="past">Past and cancelled</option>
+              <option value="all">All events</option>
+            </select>
+          </div>
+        </div>
+        {!loading && !error && !visibleRetreats.length ? (
+          <div>
+            <p>No events match these filters.</p>
+            <Button
+              variant="outline"
+              className="mt-2"
+              onClick={() => {
+                setSearch("");
+                setLifecycle("all");
+              }}
+            >
+              Show all events
+            </Button>
+          </div>
+        ) : null}
 
         <div className="space-y-4">
-          {retreats.map((retreat) => {
+          {visibleRetreats.map((retreat) => {
             const fillPercent =
               retreat.totalSpaces > 0
                 ? Math.round((retreat.bookedSpaces / retreat.totalSpaces) * 100)
                 : 0;
-            const Icon = retreat.retreatType === "online" ? Video : Mountain;
+            const Icon = retreat.eventKind === "online_workshop" ? Video : Mountain;
 
             return (
-              <Link key={retreat.id} href={`/admin/retreats/${retreat.id}`}>
+              <Link className="block" key={retreat.id} href={`/admin/retreats/${retreat.id}`}>
                 <Card className="hover:border-brand-accent/30 transition-colors">
                   <CardContent className="py-5">
                     <div className="flex items-start gap-4">
@@ -191,9 +261,7 @@ export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSumma
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-base">{retreat.title}</p>
-                          <Badge variant="outline">
-                            {retreat.retreatType === "online" ? "online workshop" : "in-person"}
-                          </Badge>
+                          <Badge variant="outline">{EVENT_KIND_LABELS[retreat.eventKind]}</Badge>
                           <Badge variant={statusVariant(retreat.status)}>
                             {retreat.status.replaceAll("_", " ")}
                           </Badge>
@@ -232,8 +300,14 @@ export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSumma
                           <div className="text-sm">
                             <p>{formatCurrency(retreat.revenuePence)} captured</p>
                             <p className="text-muted-foreground">
-                              From {formatCurrency(retreat.earlyBirdPricePence)} /{" "}
-                              {formatCurrency(retreat.normalPricePence)}
+                              {retreat.priceVaries ? "From " : ""}
+                              {formatCurrency(
+                                retreat.currentPricePence ?? retreat.normalPricePence
+                              )}
+                              {(retreat.currentPricePence ?? retreat.normalPricePence) <
+                              retreat.normalPricePence
+                                ? " · Early bird"
+                                : ""}
                             </p>
                           </div>
                         </div>
@@ -255,11 +329,6 @@ export function AdminRetreats({ initialData }: { initialData?: AdminRetreatSumma
             </CardContent>
           </Card>
         ) : null}
-        <CreateRetreatModal
-          open={createOpen}
-          onOpenChange={setCreateOpen}
-          onCreate={handleCreate}
-        />
       </div>
     </AdminLayout>
   );

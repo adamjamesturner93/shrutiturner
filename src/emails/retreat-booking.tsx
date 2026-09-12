@@ -23,6 +23,7 @@ interface RetreatBookingEmailProps {
   transactionRef?: string;
   paidInFull?: boolean;
   extras?: string[];
+  bedArrangement?: string;
 }
 
 export default function RetreatBookingEmail({
@@ -38,8 +39,10 @@ export default function RetreatBookingEmail({
   transactionRef = "RT-2026-0342",
   paidInFull = false,
   extras = [],
+  bedArrangement,
 }: RetreatBookingEmailProps) {
   const paymentRows = [
+    ...(bedArrangement ? [{ label: "Bed arrangement", value: bedArrangement }] : []),
     { label: "Total retreat price", value: totalPrice },
     {
       label: paidInFull ? "Paid in full" : "Deposit paid",

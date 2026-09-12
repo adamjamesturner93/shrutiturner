@@ -1,20 +1,23 @@
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 
-export async function createAdminActionLog(input: {
-  actorUserId: string;
-  actionType: string;
-  targetType: string;
-  targetId?: string | null;
-  reason?: string | null;
-  requestId?: string | null;
-  requestPath?: string | null;
-  requestIp?: string | null;
-  oldValueJson?: Prisma.InputJsonValue;
-  newValueJson?: Prisma.InputJsonValue;
-  metadataJson?: Prisma.InputJsonValue;
-}) {
-  return db.adminActionLog.create({
+export async function createAdminActionLog(
+  input: {
+    actorUserId: string;
+    actionType: string;
+    targetType: string;
+    targetId?: string | null;
+    reason?: string | null;
+    requestId?: string | null;
+    requestPath?: string | null;
+    requestIp?: string | null;
+    oldValueJson?: Prisma.InputJsonValue;
+    newValueJson?: Prisma.InputJsonValue;
+    metadataJson?: Prisma.InputJsonValue;
+  },
+  tx: Prisma.TransactionClient | typeof db = db
+) {
+  return tx.adminActionLog.create({
     data: {
       actorUserId: input.actorUserId,
       actionType: input.actionType,
@@ -37,6 +40,7 @@ export async function listAdminActionLogs(params?: {
   actionType?: string;
   actorUserId?: string;
   limit?: number;
+  offset?: number;
 }) {
   return db.adminActionLog.findMany({
     where: {
@@ -45,8 +49,9 @@ export async function listAdminActionLogs(params?: {
       actionType: params?.actionType,
       actorUserId: params?.actorUserId,
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: params?.limit || 50,
+    skip: params?.offset || 0,
     include: {
       actor: {
         select: {

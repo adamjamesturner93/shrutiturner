@@ -30,33 +30,47 @@ type AuditRow = {
 export function AdminAuditPage() {
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [actionType, setActionType] = useState("");
   const [targetType, setTargetType] = useState("");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     let active = true;
     void (async () => {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (actionType.trim()) params.set("actionType", actionType.trim());
-      if (targetType.trim()) params.set("targetType", targetType.trim());
-      const response = await fetch(`/api/admin/audit?${params.toString()}`, { cache: "no-store" });
-      if (!response.ok) {
+      setError("");
+      try {
+        const params = new URLSearchParams();
+        params.set("page", String(page));
+        params.set("limit", "100");
+        if (actionType.trim()) params.set("actionType", actionType.trim());
+        if (targetType.trim()) params.set("targetType", targetType.trim());
+        const response = await fetch(`/api/admin/audit?${params.toString()}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          throw new Error("Unable to load the audit log.");
+        }
+        const payload = (await response.json()) as { success: true; data: AuditRow[] };
+        if (active) {
+          setRows(payload.data);
+          setLoading(false);
+        }
+      } catch {
+        if (active)
+          setError("Unable to load the audit log. Your audit history has not been cleared.");
+      } finally {
         if (active) setLoading(false);
-        return;
-      }
-      const payload = (await response.json()) as { success: true; data: AuditRow[] };
-      if (active) {
-        setRows(payload.data);
-        setLoading(false);
       }
     })();
     return () => {
       active = false;
     };
-  }, [actionType, targetType]);
+  }, [actionType, targetType, reloadKey, page]);
 
-  const csvHref = `/api/admin/audit?format=csv${actionType ? `&actionType=${encodeURIComponent(actionType)}` : ""}${targetType ? `&targetType=${encodeURIComponent(targetType)}` : ""}`;
+  const csvHref = `/api/admin/audit?format=csv&page=${page}&limit=100${actionType ? `&actionType=${encodeURIComponent(actionType)}` : ""}${targetType ? `&targetType=${encodeURIComponent(targetType)}` : ""}`;
 
   return (
     <AdminLayout title="Audit Log - Shruti Turner">
@@ -75,31 +89,67 @@ export function AdminAuditPage() {
             <Button asChild variant="outline">
               <a href={csvHref}>
                 <Download className="mr-2 h-4 w-4" />
-                Export CSV
+                Export this page (CSV)
               </a>
             </Button>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
             <Input
+              aria-label="Filter by action type"
               value={actionType}
-              onChange={(event) => setActionType(event.target.value)}
+              onChange={(event) => {
+                setActionType(event.target.value);
+                setPage(1);
+              }}
               placeholder="Filter by action type"
             />
             <Input
+              aria-label="Filter by target type"
               value={targetType}
-              onChange={(event) => setTargetType(event.target.value)}
+              onChange={(event) => {
+                setTargetType(event.target.value);
+                setPage(1);
+              }}
               placeholder="Filter by target type"
             />
           </CardContent>
         </Card>
+
+        <div className="flex flex-wrap items-center gap-3" aria-label="Audit pagination">
+          <Button
+            variant="outline"
+            disabled={page === 1 || loading}
+            onClick={() => setPage((value) => value - 1)}
+          >
+            Previous
+          </Button>
+          <p className="text-sm" role="status">
+            Page {page} · up to 100 matching actions, newest first
+          </p>
+          <Button
+            variant="outline"
+            disabled={rows.length < 100 || loading || Boolean(error)}
+            onClick={() => setPage((value) => value + 1)}
+          >
+            Next
+          </Button>
+        </div>
 
         <Card>
           <CardHeader>
             <CardTitle>Recent actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {error ? (
+              <div role="alert">
+                <p>{error}</p>
+                <Button variant="outline" onClick={() => setReloadKey((value) => value + 1)}>
+                  Retry audit log
+                </Button>
+              </div>
+            ) : null}
             {loading ? <InlineLoadingStatus label="Loading audit log…" /> : null}
-            {!loading && !rows.length ? (
+            {!loading && !error && !rows.length ? (
               <p className="text-muted-foreground text-sm">No audit entries found.</p>
             ) : null}
             {rows.map((row) => (

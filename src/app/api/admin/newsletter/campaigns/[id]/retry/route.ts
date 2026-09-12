@@ -17,6 +17,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     });
     return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof Error && error.message === "CAMPAIGN_BUSY") {
+      return NextResponse.json({ message: "A campaign operation is still active. Refresh before trying again." }, { status: 409 });
+    }
+    if (error instanceof Error && error.message === "CAMPAIGN_AUDIENCE_REQUIRES_REVIEW") {
+      return NextResponse.json({ message: "This older campaign has no frozen audience. Review it before recovery; the audience will not be rebuilt automatically." }, { status: 409 });
+    }
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
@@ -28,6 +34,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
     if (error instanceof Error && error.message === "CAMPAIGN_NOT_RETRYABLE") {
       return NextResponse.json({ message: "Campaign cannot be retried" }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "CAMPAIGN_RECONCILIATION_REQUIRED") {
+      return NextResponse.json(
+        {
+          message:
+            "Campaign has deliveries with an unknown provider outcome and must be reconciled before retrying.",
+        },
+        { status: 409 }
+      );
     }
     console.error("POST /api/admin/newsletter/campaigns/[id]/retry failed", error);
     return NextResponse.json({ message: "Failed to retry campaign" }, { status: 500 });

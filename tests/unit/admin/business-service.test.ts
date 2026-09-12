@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const coachingClientProfileCountMock = vi.fn();
+const coachingClientProfileFindManyMock = vi.fn();
 const coachingSubscriptionProjectionCountMock = vi.fn();
 const coachingSubscriptionProjectionFindManyMock = vi.fn();
 const coachingSubscriptionProjectionFindFirstMock = vi.fn();
@@ -11,6 +12,7 @@ vi.mock("@/lib/db", () => ({
   db: {
     coachingClientProfile: {
       count: coachingClientProfileCountMock,
+      findMany: coachingClientProfileFindManyMock,
     },
     coachingSubscriptionProjection: {
       count: coachingSubscriptionProjectionCountMock,
@@ -46,7 +48,8 @@ describe("getAdminBusinessSummary", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-04T12:00:00.000Z"));
     refreshCoachingSubscriptionProjectionsMock.mockResolvedValue({ refreshed: 0, failed: 0 });
-    coachingClientProfileCountMock.mockResolvedValueOnce(2).mockResolvedValueOnce(0);
+    coachingClientProfileCountMock.mockResolvedValueOnce(2);
+    coachingClientProfileFindManyMock.mockResolvedValue([]);
     coachingSubscriptionProjectionCountMock.mockResolvedValueOnce(2).mockResolvedValueOnce(1);
     coachingSubscriptionProjectionFindManyMock.mockResolvedValue([
       {
@@ -93,5 +96,6 @@ describe("getAdminBusinessSummary", () => {
       failedPayments30d: 3,
       dataFreshnessIso: "2026-08-04T11:55:00.000Z",
     });
+    expect(refreshCoachingSubscriptionProjectionsMock).not.toHaveBeenCalled();
   });
 });

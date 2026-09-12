@@ -98,6 +98,17 @@ export async function processHealthDataRetention(now = new Date()) {
       },
     });
     clearedRetreatBookings += updated.count;
+    await db.retreatAttendee.updateMany({
+      where: { booking: { retreatDateId: retreatDate.id } },
+      data: {
+        dietaryRequirements: null,
+        mobilityNeeds: null,
+        phone: null,
+        emergencyContactName: null,
+        emergencyContactPhone: null,
+        practicalConfirmedAt: null,
+      },
+    });
   }
 
   const coachingProfiles = await db.coachingClientProfile.findMany({

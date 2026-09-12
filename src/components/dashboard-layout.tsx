@@ -11,7 +11,6 @@ import {
   Settings,
   LogOut,
   Menu,
-  X,
   HeartPulse,
   Shield,
   ArrowRight,
@@ -21,11 +20,14 @@ import {
 import { Button } from "./ui/button";
 import { SEO } from "./seo";
 import { LoadingRegion } from "./loading-region";
+import { Sheet, SheetContent, SheetTitle, SheetDescription, SheetTrigger } from "./ui/sheet";
 
 interface DashboardLayoutProps {
   children: ReactNode;
   title?: string;
   description?: string;
+  /** Only for setup screens that render and enforce their own current legal agreements. */
+  handlesLegalAgreements?: boolean;
 }
 
 type LegalGuardModalProps = {
@@ -37,7 +39,7 @@ type LegalGuardModalProps = {
 const NAV_ITEMS = [
   { path: "/dashboard", label: "Studio Lobby", icon: LayoutDashboard, exact: true },
   { path: "/dashboard/coaching", label: "Coaching", icon: Compass },
-  { path: "/dashboard/retreats", label: "Retreats", icon: CalendarDays },
+  { path: "/dashboard/retreats", label: "Retreats & workshops", icon: CalendarDays },
   { path: "/dashboard/health", label: "Health Profile", icon: HeartPulse },
   { path: "/dashboard/account", label: "Account", icon: Settings },
 ];
@@ -130,7 +132,12 @@ function LegalGuardModal({
   );
 }
 
-export function DashboardLayout({ children, title, description }: DashboardLayoutProps) {
+export function DashboardLayout({
+  children,
+  title,
+  description,
+  handlesLegalAgreements = false,
+}: DashboardLayoutProps) {
   const {
     authStatus,
     isProfileLoading,
@@ -156,6 +163,7 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
   const shouldShowLegalGuard =
     isAuthenticated &&
     needsLegalAgreement &&
+    !handlesLegalAgreements &&
     !isAdmin &&
     !onboardingInProgress &&
     pathname !== "/dashboard" &&
@@ -246,6 +254,12 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
 
   return (
     <div className="dashboard-surface flex min-h-screen">
+      <a
+        href="#studio-main"
+        className="focus:bg-background focus:text-foreground sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[80] focus:rounded focus:p-3"
+      >
+        Skip to main content
+      </a>
       <ScrollToTop />
       <SEO title={title || "Dashboard - Shruti Turner"} description={description} noIndex />
 
@@ -279,12 +293,13 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
         )}
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4">
+        <nav aria-label="Studio" className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-1 px-3">
             {filteredNavItems.map((item) => (
               <li key={item.path}>
                 <Link
                   href={item.path}
+                  aria-current={isActive(item.path, item.exact) ? "page" : undefined}
                   className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${
                     isActive(item.path, item.exact)
                       ? "bg-brand-accent-light/20 text-brand-accent-light"
@@ -316,7 +331,7 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
         <div className="border-brand-white/10 border-t p-4">
           <button
             onClick={handleLogout}
-            className="text-brand-white/50 hover:text-brand-white flex w-full items-center gap-3 text-sm transition-colors"
+            className="text-brand-white/80 hover:text-brand-white flex w-full items-center gap-3 text-sm transition-colors"
           >
             <LogOut className="h-4 w-4" />
             <span>Sign Out</span>
@@ -325,93 +340,104 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
       </aside>
 
       {/* Mobile header */}
-      <div className="border-brand-white/10 text-brand-white fixed inset-x-0 top-0 z-40 border-b bg-[linear-gradient(180deg,rgba(46,31,51,0.98),rgba(86,52,74,0.98))] shadow-[0_18px_50px_rgba(46,31,51,0.22)] lg:hidden">
-        <div className="flex items-center justify-between px-4 py-3">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle menu">
-            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-          <Link href="/dashboard">
-            <IconHorizontal tone="white" alt="Shruti Turner" className="h-7 w-auto" />
-          </Link>
-          <div className="bg-brand-accent-light text-brand-dark flex h-8 w-8 items-center justify-center rounded-full text-xs">
-            {user?.avatarInitials || "?"}
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <div className="border-brand-white/10 text-brand-white fixed inset-x-0 top-0 z-40 border-b bg-[linear-gradient(180deg,rgba(46,31,51,0.98),rgba(86,52,74,0.98))] shadow-[0_18px_50px_rgba(46,31,51,0.22)] lg:hidden">
+          <div className="flex items-center justify-between px-4 py-3">
+            <SheetTrigger asChild>
+              <button
+                aria-label="Open studio menu"
+                className="flex h-9 w-9 items-center justify-center"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+            </SheetTrigger>
+            <Link href="/dashboard">
+              <IconHorizontal tone="white" alt="Shruti Turner" className="h-7 w-auto" />
+            </Link>
+            <div className="bg-brand-accent-light text-brand-dark flex h-8 w-8 items-center justify-center rounded-full text-xs">
+              {user?.avatarInitials || "?"}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-          <aside className="text-brand-white absolute inset-y-0 left-0 flex w-72 flex-col bg-[linear-gradient(180deg,rgba(46,31,51,0.99),rgba(86,52,74,0.99))] shadow-[0_24px_70px_rgba(46,31,51,0.3)]">
-            <div className="border-brand-white/10 flex items-center justify-between border-b p-4">
-              <Link href="/dashboard" onClick={() => setSidebarOpen(false)}>
-                <IconHorizontal tone="white" alt="Shruti Turner" className="h-7 w-auto" />
-              </Link>
-              <button onClick={() => setSidebarOpen(false)}>
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            {user && (
-              <div className="border-brand-white/10 border-b p-4">
-                <div className="flex items-center gap-3">
-                  <div className="bg-brand-accent-light text-brand-dark flex h-10 w-10 items-center justify-center rounded-full text-sm">
-                    {user.avatarInitials}
-                  </div>
-                  <div>
-                    <p className="text-sm">{user.firstName}</p>
-                  </div>
+        {/* Mobile sidebar overlay */}
+        <SheetContent
+          side="left"
+          className="text-brand-white w-72 gap-0 border-0 bg-[linear-gradient(180deg,rgba(46,31,51,0.99),rgba(86,52,74,0.99))]"
+        >
+          <SheetTitle className="sr-only">Studio navigation</SheetTitle>
+          <SheetDescription className="sr-only">
+            Your bookings, coaching and account.
+          </SheetDescription>
+          <div className="border-brand-white/10 flex items-center justify-between border-b p-4">
+            <Link href="/dashboard" onClick={() => setSidebarOpen(false)}>
+              <IconHorizontal tone="white" alt="Shruti Turner" className="h-7 w-auto" />
+            </Link>
+          </div>
+          {user && (
+            <div className="border-brand-white/10 border-b p-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-brand-accent-light text-brand-dark flex h-10 w-10 items-center justify-center rounded-full text-sm">
+                  {user.avatarInitials}
+                </div>
+                <div>
+                  <p className="text-sm">{user.firstName}</p>
                 </div>
               </div>
-            )}
-            <nav className="flex-1 overflow-y-auto py-4">
-              <ul className="space-y-1 px-3">
-                {filteredNavItems.map((item) => (
-                  <li key={item.path}>
-                    <Link
-                      href={item.path}
-                      onClick={() => setSidebarOpen(false)}
-                      className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${
-                        isActive(item.path, item.exact)
-                          ? "bg-brand-accent-light/20 text-brand-accent-light"
-                          : "text-brand-white/70 hover:bg-brand-white/5"
-                      }`}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.label}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-            {isAdmin && (
-              <div className="px-3 pb-2">
-                <Link
-                  href="/admin"
-                  onClick={() => setSidebarOpen(false)}
-                  className="bg-brand-accent-light/10 text-brand-accent-light hover:bg-brand-accent-light/20 flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors"
-                >
-                  <Shield className="h-4 w-4" />
-                  <span>Instructor Dashboard</span>
-                </Link>
-              </div>
-            )}
-            <div className="border-brand-white/10 border-t p-4">
-              <button
-                onClick={handleLogout}
-                className="text-brand-white/50 hover:text-brand-white flex w-full items-center gap-3 text-sm"
-              >
-                <LogOut className="h-4 w-4" />
-                <span>Sign Out</span>
-              </button>
             </div>
-          </aside>
-        </div>
-      )}
+          )}
+          <nav aria-label="Studio mobile" className="flex-1 overflow-y-auto py-4">
+            <ul className="space-y-1 px-3">
+              {filteredNavItems.map((item) => (
+                <li key={item.path}>
+                  <Link
+                    href={item.path}
+                    aria-current={isActive(item.path, item.exact) ? "page" : undefined}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${
+                      isActive(item.path, item.exact)
+                        ? "bg-brand-accent-light/20 text-brand-accent-light"
+                        : "text-brand-white/70 hover:bg-brand-white/5"
+                    }`}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          {isAdmin && (
+            <div className="px-3 pb-2">
+              <Link
+                href="/admin"
+                onClick={() => setSidebarOpen(false)}
+                className="bg-brand-accent-light/10 text-brand-accent-light hover:bg-brand-accent-light/20 flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors"
+              >
+                <Shield className="h-4 w-4" />
+                <span>Instructor Dashboard</span>
+              </Link>
+            </div>
+          )}
+          <div className="border-brand-white/10 border-t p-4">
+            <button
+              onClick={handleLogout}
+              className="text-brand-white/80 hover:text-brand-white flex w-full items-center gap-3 text-sm"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Main content */}
-      <main className="min-h-screen flex-1 pt-14 lg:ml-72 lg:pt-0">
-        <div className="mx-auto max-w-7xl p-6 md:p-8 lg:p-10">{children}</div>
+      <main
+        id="studio-main"
+        tabIndex={-1}
+        className="min-h-screen min-w-0 flex-1 pt-14 lg:ml-72 lg:pt-0"
+      >
+        <div className="mx-auto max-w-7xl p-4 md:p-6">{children}</div>
       </main>
 
       {/* Route-level legal agreement guard */}

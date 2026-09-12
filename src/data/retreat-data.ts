@@ -51,9 +51,7 @@ export interface RetreatVenueSeed {
   displayLocation: string;
   description: string;
   address: string;
-  accommodationOptions: string[];
   travelInformation: string;
-  accommodationType: string;
   facilities: string[];
   accessibilityNotes: string;
   addressLine1?: string;
@@ -84,6 +82,7 @@ export interface Retreat {
   imageUrl: string;
   shortDescription: string;
   fullDescription: string;
+  atmosphereDescription?: string;
   dates: RetreatDate[];
   earlyBirdPrice: number;
   earlyBirdDeadline: string;
@@ -114,9 +113,7 @@ const onlineVenue: RetreatVenueSeed = {
   displayLocation: "Online (live through this website)",
   description: "Live online delivery through the Shruti Turner website.",
   address: "Online",
-  accommodationOptions: ["Live online access"],
   travelInformation: "No travel required. Join from a quiet space with a reliable connection.",
-  accommodationType: "Online live workshop",
   facilities: ["Live stream"],
   accessibilityNotes:
     "Contact Shruti before booking if there is anything that would make the online session easier to access.",
@@ -141,7 +138,9 @@ export const retreats: Retreat[] = [
     imageUrl: "/images/shruti-hiking-selfie.jpeg",
     shortDescription:
       "A morning exploring how to work with your body as autumn arrives, combining gentle movement, practical science, reflection, meditation and playful exploration.",
-    fullDescription: `You don't need to start again every September.
+    atmosphereDescription:
+      "Spacious movement with options, reflection & rest, with no expectation that everyone takes the same thing from the day.",
+    fullDescription: `__You don't need to start again every September.__
 
 The seasons change. Your routines change. Your energy changes. Your body changes. That doesn't mean you've failed.
 

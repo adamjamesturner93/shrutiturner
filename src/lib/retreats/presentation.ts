@@ -121,6 +121,35 @@ export function formatRetreatDateTimeRange(
   return `${startTime} ${formatRetreatFullDate(startsAt, timezone)} - ${endTime} ${formatRetreatFullDate(endsAt, timezone)}`;
 }
 
+export function getRetreatCardDateLabels(
+  start: string,
+  end: string,
+  timezone = DEFAULT_RETREAT_TIMEZONE
+) {
+  const startsAt = new Date(start);
+  const endsAt = new Date(end);
+  const startParts = getRetreatDateParts(startsAt, timezone);
+  const endParts = getRetreatDateParts(endsAt, timezone);
+  const sameYear = startParts.year === endParts.year;
+  const sameMonth = sameYear && startParts.month === endParts.month;
+  const sameDay = sameMonth && startParts.day === endParts.day;
+  const timeFormatter = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: timezone,
+  });
+  const dateLabel = sameDay
+    ? formatRetreatFullDate(startsAt, timezone)
+    : `${sameMonth ? formatOrdinalDay(startParts.day) : sameYear ? formatRetreatDayMonth(startsAt, timezone) : formatRetreatFullDate(startsAt, timezone)}–${formatRetreatFullDate(endsAt, timezone)}`;
+  return {
+    dateLabel,
+    timeLabel: sameDay
+      ? `${timeFormatter.format(startsAt)}–${timeFormatter.format(endsAt)}`
+      : `Arrive ${timeFormatter.format(startsAt)} · Leave ${timeFormatter.format(endsAt)}`,
+  };
+}
+
 export function getRetreatRoomRatePlans(
   roomOption: RetreatRoomOptionContent
 ): RetreatRatePlanInput[] {
@@ -143,6 +172,17 @@ function summarizePrices(prices: number[], fallbackPricePence: number): RetreatP
     lowestPricePence: Math.min(...normalizedPrices),
     isFromPrice: new Set(normalizedPrices).size > 1,
   };
+}
+
+export function getRetreatRatePriceSummary(
+  ratePlans: RetreatRatePlanInput[],
+  fallbackPricePence: number,
+  now = new Date()
+) {
+  return summarizePrices(
+    ratePlans.map((rate) => getEffectiveRetreatRatePricePence(rate, now)),
+    fallbackPricePence
+  );
 }
 
 export function getRetreatRoomOptionPriceSummary(

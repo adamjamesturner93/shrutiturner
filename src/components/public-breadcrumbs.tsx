@@ -48,7 +48,14 @@ export function PublicBreadcrumbs({
                       {item.name}
                     </BreadcrumbPage>
                   ) : (
-                    <BreadcrumbLink asChild>
+                    <BreadcrumbLink
+                      asChild
+                      className={
+                        inverted
+                          ? "hover:text-brand-white focus-visible:text-brand-white"
+                          : undefined
+                      }
+                    >
                       <Link
                         href={item.href}
                         className={cn(

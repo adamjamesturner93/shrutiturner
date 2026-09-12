@@ -20,6 +20,7 @@ type EntriesResponse<T> = {
 
 type ContentfulFetchOptions = {
   preview?: boolean;
+  noStore?: boolean;
 };
 
 const DEFAULT_CONTENTFUL_REVALIDATE_SECONDS = 60;
@@ -104,7 +105,7 @@ async function cdaFetch<T>(
         "Content-Type": "application/json",
       },
       signal: controller.signal,
-      ...(options.preview
+      ...(options.preview || options.noStore
         ? { cache: "no-store" as const }
         : {
             next: {
@@ -127,6 +128,17 @@ async function cdaFetch<T>(
   }
 
   return (await res.json()) as T;
+}
+
+export async function getAssets<TFields>(
+  query: Record<string, string | number | boolean | undefined> = {}
+) {
+  return cdaFetch<{
+    items: Array<EntryEnvelope<TFields>>;
+    total: number;
+    skip: number;
+    limit: number;
+  }>("/assets", query, { noStore: true });
 }
 
 export async function getEntries<TFields>(

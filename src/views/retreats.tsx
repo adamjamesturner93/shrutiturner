@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, CalendarDays, Clock3, MapPin, MonitorPlay } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 import {
@@ -17,8 +17,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { getRetreatCardImageSrc } from "@/lib/retreats/images";
-import { formatRetreatDateTimeRange, getRetreatPriceSummary } from "@/lib/retreats/presentation";
+import { getRetreatCardImageSrc, getRetreatCardImagePosition } from "@/lib/retreats/images";
+import { getRetreatCardDateLabels, getRetreatPriceSummary } from "@/lib/retreats/presentation";
 import type { FaqItemContent, RetreatCombinedContent } from "@/lib/content/types";
 
 interface RetreatsPageProps {
@@ -93,20 +93,32 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
   const retreatData = retreats ?? [];
   const retreatFaqs = faqs && faqs.length > 0 ? faqs : DEFAULT_RETREAT_FAQS;
 
-  const formatMoney = (pence: number) =>
+  const formatMoney = (pence: number, currency: string) =>
     new Intl.NumberFormat("en-GB", {
       style: "currency",
-      currency: "GBP",
+      currency,
       maximumFractionDigits: 0,
     }).format(pence / 100);
 
-  const getFormatLabel = (retreat: RetreatCombinedContent) => {
-    if (retreat.deliveryMode === "online_live" || retreat.dates[0]?.retreatType === "online") {
+  const getFormatLabel = (
+    retreat: RetreatCombinedContent,
+    date: RetreatCombinedContent["dates"][number]
+  ) => {
+    if (date.eventKind === "online_workshop" || date.retreatType === "online") {
       return "Live online";
     }
     if (retreat.deliveryMode === "online_on_demand") return "Online";
     if (retreat.deliveryMode === "hybrid") return "Hybrid";
-    return retreat.location;
+    if (
+      date.eventKind === "residential_retreat" ||
+      retreat.experienceType === "residential_retreat"
+    )
+      return "Residential retreat";
+    if (date.eventKind === "day_retreat" || retreat.experienceType === "day_retreat")
+      return "Day retreat";
+    if (date.eventKind === "in_person_workshop" || retreat.experienceType === "in_person_workshop")
+      return "In-person workshop";
+    return "In person";
   };
 
   const getDurationLabel = (retreat: RetreatCombinedContent) => {
@@ -115,6 +127,13 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
     if (onlineHours) return `${onlineHours[1]} hours`;
     return label;
   };
+  const eventCards = retreatData
+    .flatMap((retreat) => retreat.dates.map((date) => ({ retreat, date })))
+    .sort(
+      (left, right) =>
+        new Date(left.date.startDate).getTime() - new Date(right.date.startDate).getTime() ||
+        left.date.id.localeCompare(right.date.id)
+    );
 
   return (
     <Layout>
@@ -152,52 +171,120 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
           description="From focused online workshops to full weekends away, each event has its own theme and purpose. Choose an experience below to see what we’ll explore, what to expect and all the practical details."
         />
 
-        <div className="mt-10 grid gap-7 md:grid-cols-3">
-          {retreatData.map((retreat) => {
-            const priceSummary = getRetreatPriceSummary(retreat);
+        <div className="mt-10 grid gap-7 sm:grid-cols-2 xl:grid-cols-3">
+          {eventCards.map(({ retreat, date }) => {
+            const priceSummary = getRetreatPriceSummary({
+              dates: [date],
+              normalPrice: retreat.normalPrice,
+            });
+            const dateLabels = getRetreatCardDateLabels(
+              date.startDate,
+              date.endDate,
+              date.timezone
+            );
+            const isOnline =
+              retreat.deliveryMode === "online_live" ||
+              retreat.deliveryMode === "online_on_demand" ||
+              date.retreatType === "online";
+            const LocationIcon = isOnline ? MonitorPlay : MapPin;
             return (
               <article
-                key={retreat.id}
-                className="border-brand-dark/10 bg-background overflow-hidden rounded-[1.9rem] border shadow-[0_22px_55px_rgba(46,31,51,0.06)]"
+                key={`${retreat.id}-${date.id}`}
+                aria-labelledby={`retreat-title-${retreat.slug}-${date.id}`}
+                className="border-brand-dark/10 bg-background flex h-full flex-col overflow-hidden rounded-[1.5rem] border shadow-[0_22px_55px_rgba(46,31,51,0.06)]"
               >
-                <div className="relative aspect-[4/3]">
+                <div className="relative aspect-[16/10] shrink-0 overflow-hidden">
                   <ImageWithFallback
                     src={getRetreatCardImageSrc(retreat)}
-                    alt={retreat.title}
+                    alt={retreat.imageAlt || retreat.title}
                     className="h-full w-full object-cover"
+                    style={{
+                      objectPosition: getRetreatCardImagePosition(
+                        getRetreatCardImageSrc(retreat),
+                        retreat.imageFocalPoint
+                      ),
+                    }}
+                    sizes="(max-width: 639px) 100vw, (max-width: 1279px) 50vw, 33vw"
                   />
+                  <span className="bg-background text-foreground absolute bottom-4 left-4 rounded-full px-3 py-1.5 text-xs font-medium shadow-sm">
+                    {getFormatLabel(retreat, date)}
+                  </span>
                 </div>
-                <div className="flex flex-1 flex-col p-7">
-                  <h3 className="text-3xl leading-tight">{retreat.title}</h3>
-                  <p className="text-muted-foreground mt-3 leading-relaxed">{retreat.subtitle}</p>
-                  <p className="text-muted-foreground mt-5 text-sm leading-relaxed">
-                    {retreat.dates[0]
-                      ? formatRetreatDateTimeRange(
-                          retreat.dates[0].startDate,
-                          retreat.dates[0].endDate,
-                          retreat.dates[0].timezone
-                        )
-                      : "Dates to be announced"}
-                    {` · ${getFormatLabel(retreat)}`}
-                    {getDurationLabel(retreat) ? ` · ${getDurationLabel(retreat)}` : ""}
+                <div className="flex flex-1 flex-col p-6">
+                  <h3
+                    id={`retreat-title-${retreat.slug}-${date.id}`}
+                    className="text-2xl leading-tight text-balance"
+                  >
+                    {retreat.title}
+                  </h3>
+                  <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                    {retreat.subtitle}
                   </p>
+                  <dl className="mt-5 space-y-3 text-sm">
+                    <div className="flex gap-3">
+                      <dt>
+                        <CalendarDays aria-hidden="true" className="text-primary mt-0.5 h-4 w-4" />
+                        <span className="sr-only">Dates and times</span>
+                      </dt>
+                      <dd>
+                        <p className="font-medium">
+                          {dateLabels?.dateLabel || "Dates to be announced"}
+                        </p>
+                        {dateLabels ? (
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            {dateLabels.timeLabel}
+                          </p>
+                        ) : null}
+                      </dd>
+                    </div>
+                    <div className="flex gap-3">
+                      <dt>
+                        <LocationIcon aria-hidden="true" className="text-primary mt-0.5 h-4 w-4" />
+                        <span className="sr-only">Location</span>
+                      </dt>
+                      <dd>
+                        {isOnline ? (
+                          "Join from home"
+                        ) : (
+                          <>
+                            {date.venueName ||
+                              date.location ||
+                              retreat.venueName ||
+                              retreat.location}
+                            {date.venueName && date.location && date.venueName !== date.location ? (
+                              <span className="text-muted-foreground"> · {date.location}</span>
+                            ) : null}
+                          </>
+                        )}
+                      </dd>
+                    </div>
+                    {getDurationLabel(retreat) ? (
+                      <div className="flex gap-3">
+                        <dt>
+                          <Clock3 aria-hidden="true" className="text-primary mt-0.5 h-4 w-4" />
+                          <span className="sr-only">Duration</span>
+                        </dt>
+                        <dd>{getDurationLabel(retreat)}</dd>
+                      </div>
+                    ) : null}
+                  </dl>
 
-                  <div className="mt-auto flex flex-col gap-5 pt-7 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                      <p className="text-3xl">
-                        {priceSummary.isFromPrice ? "From " : ""}
-                        {formatMoney(priceSummary.lowestPricePence)}
+                  <div className="mt-auto pt-6">
+                    <div className="border-brand-dark/10 border-t pt-5">
+                      <p className="flex items-baseline gap-2">
+                        {priceSummary.isFromPrice ? (
+                          <span className="text-muted-foreground text-sm">From</span>
+                        ) : null}
+                        <span className="text-2xl font-semibold">
+                          {formatMoney(priceSummary.lowestPricePence, retreat.currency)}
+                        </span>
                       </p>
                     </div>
-                    <Button
-                      asChild
-                      variant="link"
-                      className="h-auto justify-start p-0 sm:justify-end"
-                    >
-                      <Link href={`/retreats/${retreat.slug}`}>
+                    <Button asChild className="mt-4 min-h-11 w-full justify-between rounded-lg">
+                      <Link href={`/retreats/${retreat.slug}?date=${encodeURIComponent(date.id)}`}>
                         Explore the{" "}
                         {retreat.experienceType === "online_workshop" ? "workshop" : "retreat"}
-                        <ArrowRight className="h-4 w-4" />
+                        <ArrowRight aria-hidden="true" className="h-4 w-4" />
                       </Link>
                     </Button>
                   </div>
@@ -205,7 +292,7 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
               </article>
             );
           })}
-          {retreatData.length === 0 ? (
+          {eventCards.length === 0 ? (
             <div className="border-brand-dark/10 bg-background rounded-[1.75rem] border p-8 md:col-span-2">
               <h3 className="text-2xl">New experiences are being planned.</h3>
               <p className="text-muted-foreground mt-3 leading-relaxed">

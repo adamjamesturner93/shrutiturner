@@ -55,3 +55,25 @@ This job sends due `EmailCampaign` rows with `status = scheduled` and `scheduled
 ## Operational Notes
 
 Keep Contentful model changes in `contentful/migrations/001-public-content-models.ts`. Remote Contentful migrations are applied manually from a developer machine; they are not run from CI or Vercel.
+
+## Recovery and rollout (working-tree implementation)
+
+Campaign creation freezes the audience manifest and content before sending. Preparation upserts the
+recipient delivery rows and records completion only after all rows exist. Interrupted preparation
+resumes that manifest, not a new subscriber query. Legacy incomplete campaigns without a manifest
+require review.
+
+A durable campaign lease serialises send, retry and reconciliation. Each provider attempt is claimed
+before the external call; definite failures can be retryable, but uncertain timeouts remain ambiguous.
+An expired lease is not evidence that a message was never sent. Active subscriber status is checked
+again before each batch.
+
+Campaign details allow staff to select individual ambiguous recipients, record evidence and confirm
+sent/not-sent outcomes against the observed attempt count. A separate retry is required after a
+not-sent confirmation. Sent means provider acceptance, not verified inbox delivery or reading.
+
+Apply `20260911101000_campaign_recovery` before dependent code. Drain/pause old scheduled sender and
+webhook workers before switching to this protocol: older binaries do not honour the new lease.
+Rolling back to an older sender can reintroduce duplicate-send risk even though the schema is additive.
+Keep ambiguous attempts for review; never reset them to queued as part of a rollback. Remote rollout,
+real-provider recovery verification and a historical incomplete-campaign audit are still outstanding.

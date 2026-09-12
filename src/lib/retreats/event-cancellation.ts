@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 
 import {
   GiftPurchaseStatus,
@@ -29,10 +30,40 @@ const PAID_STATUSES: RetreatPaymentStatus[] = [
   RetreatPaymentStatus.paid_in_full,
 ];
 
+type CancellationSnapshot = {
+  id: string; status: string;
+  bookings: Array<{ id: string; attendeeCount: number; depositPaidPence: number; balancePaidPence: number; giftPurchase: { totalPaidPence: number; refundedAmountPence: number } | null; refunds: Array<{ amountPence: number }> }>;
+  giftPurchases: Array<{ id: string; status: string; totalPaidPence: number; refundedAmountPence: number }>;
+};
+
+function cancellationPreview(date: CancellationSnapshot) {
+  const bookings = date.bookings.map((booking) => ({
+    id: booking.id, guests: booking.attendeeCount,
+    refund: Math.max(0, (booking.giftPurchase ? booking.giftPurchase.totalPaidPence - booking.giftPurchase.refundedAmountPence : booking.depositPaidPence + booking.balancePaidPence) - booking.refunds.reduce((sum, refund) => sum + refund.amountPence, 0)),
+  })).sort((a, b) => a.id.localeCompare(b.id));
+  const gifts = date.giftPurchases.map((gift) => ({ id: gift.id, refund: gift.status === "purchased" ? Math.max(0, gift.totalPaidPence - gift.refundedAmountPence) : 0 })).sort((a, b) => a.id.localeCompare(b.id));
+  return {
+    available: !["cancelled", "completed"].includes(date.status),
+    bookingCount: bookings.length, guestCount: bookings.reduce((sum, row) => sum + row.guests, 0), giftCount: gifts.length,
+    refundPence: [...bookings, ...gifts].reduce((sum, row) => sum + row.refund, 0),
+    version: createHash("sha256").update(JSON.stringify({ id: date.id, status: date.status, bookings, gifts })).digest("hex"),
+  };
+}
+
+export async function getAdminRetreatCancellationPreview(id: string) {
+  const date = await db.retreatDate.findUnique({ where: { id }, include: {
+    bookings: { where: { bookingStatus: { in: CANCELLABLE_BOOKING_STATUSES } }, include: { giftPurchase: true, refunds: { where: { status: "succeeded" } } } },
+    giftPurchases: { where: { type: "retreat", status: { in: [GiftPurchaseStatus.pending_payment, GiftPurchaseStatus.purchased] }, retreatBooking: null } },
+  } });
+  if (!date) throw new Error("NOT_FOUND");
+  return cancellationPreview(date);
+}
+
 export async function cancelAdminRetreatEvent(input: {
   retreatDateId: string;
   actorUserId: string;
   reason: string;
+  expectedVersion?: string;
 }) {
   const reason = input.reason.trim().slice(0, 2000);
   if (!reason) throw new Error("CANCELLATION_REASON_REQUIRED");
@@ -55,6 +86,10 @@ export async function cancelAdminRetreatEvent(input: {
             bookingStatus: { in: CANCELLABLE_BOOKING_STATUSES },
           },
           include: {
+            attendees: {
+              where: { status: { not: "cancelled" } },
+              orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+            },
             refunds: { where: { status: "succeeded" } },
             cancellationRequests: { orderBy: { requestedAt: "desc" }, take: 1 },
             giftPurchase: true,
@@ -72,9 +107,7 @@ export async function cancelAdminRetreatEvent(input: {
       },
     });
     if (!retreatDate) throw new Error("NOT_FOUND");
-    if (retreatDate.retreatType !== "online") {
-      throw new Error("EVENT_CANCELLATION_NOT_AVAILABLE");
-    }
+    if (input.expectedVersion && cancellationPreview(retreatDate).version !== input.expectedVersion) throw new Error("CANCELLATION_PREVIEW_CHANGED");
     if (["cancelled", "completed"].includes(retreatDate.status)) {
       throw new Error("EVENT_CANCELLATION_NOT_AVAILABLE");
     }
@@ -257,13 +290,32 @@ export async function cancelAdminRetreatEvent(input: {
         dispatchMode: "immediate_best_effort",
       })
     );
-    if (booking.attendeeEmail.toLowerCase() !== booking.purchaserEmail.toLowerCase()) {
+    const attendeeRecipients = booking.attendees?.length
+      ? booking.attendees.map((attendee) => ({
+          email: attendee.email,
+          firstName: attendee.firstName,
+          attendeeId: attendee.id,
+        }))
+      : [
+          {
+            email: booking.attendeeEmail,
+            firstName: booking.attendeeFirstName,
+            attendeeId: null,
+          },
+        ];
+    for (const attendee of attendeeRecipients.filter(
+      (recipient, index, recipients) =>
+        recipient.email.toLowerCase() !== booking.purchaserEmail.toLowerCase() &&
+        recipients.findIndex(
+          (candidate) => candidate.email.toLowerCase() === recipient.email.toLowerCase()
+        ) === index
+    )) {
       notifications.push(
         sendPostmarkReactEmail({
-          to: booking.attendeeEmail,
+          to: attendee.email,
           subject: `${prepared.retreatDate.retreatTitleSnapshot} has been cancelled`,
           react: WorkshopCancelledEmail({
-            firstName: booking.attendeeFirstName,
+            firstName: attendee.firstName,
             workshopName: prepared.retreatDate.retreatTitleSnapshot,
             purchaser: false,
             supportUrl: buildAbsoluteUrl("/contact"),
@@ -271,7 +323,11 @@ export async function cancelAdminRetreatEvent(input: {
           textBody: `${prepared.retreatDate.retreatTitleSnapshot} has been cancelled. The purchaser will receive refund updates.`,
           tag: "retreat-event-cancelled-attendee",
           templateKey: "retreat-event-cancelled-attendee",
-          metadata: { bookingId: booking.id, retreatDateId: prepared.retreatDate.id },
+          metadata: {
+            bookingId: booking.id,
+            retreatDateId: prepared.retreatDate.id,
+            attendeeId: attendee.attendeeId,
+          },
           dispatchMode: "immediate_best_effort",
         })
       );

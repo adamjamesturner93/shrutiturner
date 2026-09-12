@@ -665,6 +665,7 @@ function combineRetreats(
       imageUrl: template.imageUrl || "",
       shortDescription: template.shortDescription,
       fullDescription: template.fullDescription,
+      atmosphereDescription: template.atmosphereDescription,
       dates: sorted.map((i) => ({
         id: i.id,
         retreatType: i.retreatType,
@@ -688,8 +689,7 @@ function combineRetreats(
       included: template.included,
       notIncluded: template.notIncluded,
       schedule: template.schedule,
-      accommodation:
-        template.accommodationDescription || venue?.accommodationType || venue?.description || "",
+      accommodation: template.accommodationDescription || "",
       suitableFor: template.suitableFor,
       experienceType: template.experienceType,
       deliveryMode: template.deliveryMode,
@@ -1079,6 +1079,7 @@ export async function getRetreatTemplates(): Promise<RetreatTemplateContent[]> {
     subtitle: requireStringField("retreatTemplate", item, "subtitle"),
     shortDescription: requireStringField("retreatTemplate", item, "shortDescription"),
     fullDescription: requireStringField("retreatTemplate", item, "fullDescription"),
+    atmosphereDescription: optionalStringField(item.fields, "atmosphereDescription"),
     experienceType:
       item.fields.experienceType === "residential_retreat" ||
       item.fields.experienceType === "day_retreat" ||
@@ -1198,12 +1199,8 @@ export async function getRetreatVenues(): Promise<RetreatVenueContent[]> {
     displayLocation: String(item.fields.displayLocation || item.fields.name || "Venue"),
     description: item.fields.description ? String(item.fields.description) : undefined,
     address: item.fields.address ? String(item.fields.address) : undefined,
-    accommodationOptions: parseStringArray(item.fields.accommodationOptions),
     travelInformation: item.fields.travelInformation
       ? String(item.fields.travelInformation)
-      : undefined,
-    accommodationType: item.fields.accommodationType
-      ? String(item.fields.accommodationType)
       : undefined,
     facilities: parseStringArray(item.fields.facilities),
     accessibilityNotes: item.fields.accessibilityNotes

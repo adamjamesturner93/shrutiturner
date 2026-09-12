@@ -64,6 +64,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
   const [summary, setSummary] = useState<DashboardSummaryDto | null>(initialData || null);
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>("welcome");
@@ -78,7 +79,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
   const onboardingFieldsInitialized = useRef(false);
 
   useEffect(() => {
-    if (initialData) return;
+    if (initialData && !reloadKey) return;
     let active = true;
     void (async () => {
       setLoading(true);
@@ -97,7 +98,7 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
     return () => {
       active = false;
     };
-  }, [initialData]);
+  }, [initialData, reloadKey]);
 
   useEffect(() => {
     if (!isOnboarding || isAdmin || !user) {
@@ -244,6 +245,15 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
       <DashboardLayout title="Studio Lobby - Shruti Turner">
         <div className="py-16 text-center">
           <p className="text-muted-foreground">{error || "No dashboard data available."}</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-3">
+            <Button onClick={() => setReloadKey((value) => value + 1)}>Try again</Button>
+            <Button variant="outline" asChild>
+              <Link href="/dashboard/retreats">Your bookings</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/dashboard/account">Your account</Link>
+            </Button>
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -497,12 +507,13 @@ export function DashboardLobby({ initialData }: { initialData?: DashboardSummary
 
       <div className="space-y-8">
         <AppPageHeader
+          compact
           title={
             <>
               {getGreeting()}, {user?.firstName || "there"}.
             </>
           }
-          description="A simple place to keep your 1:1 support, health context and account details up to date."
+          description="Your bookings, coaching and account, together in one place."
         />
 
         <section className="space-y-4">

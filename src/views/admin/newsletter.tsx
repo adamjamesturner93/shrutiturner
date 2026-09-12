@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAdminSection } from "@/components/admin/use-admin-section";
 import Link from "next/link";
 import { AlertTriangle, ChevronLeft, ChevronRight, Filter, RefreshCcw, Search } from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
@@ -14,7 +15,14 @@ import { InlineLoadingStatus } from "@/components/loading-region";
 type CampaignSummary = {
   id: string;
   subject: string;
-  status: "sent" | "scheduled" | "sending" | "failed" | "failed_partial";
+  status:
+    | "preparing"
+    | "scheduled"
+    | "sending"
+    | "sent"
+    | "failed"
+    | "failed_partial"
+    | "reconciliation_required";
   sentDate: string;
   totalRecipients: number;
   delivered: number;
@@ -84,9 +92,11 @@ const CAMPAIGN_STATUSES = [
   "all",
   "sent",
   "scheduled",
+  "preparing",
   "sending",
   "failed",
   "failed_partial",
+  "reconciliation_required",
 ] as const;
 type CampaignStatusFilter = (typeof CAMPAIGN_STATUSES)[number];
 const CAMPAIGN_RANGES = ["7d", "30d", "90d", "all"] as const;
@@ -108,17 +118,34 @@ function formatRate(rate: number | null, trackingState: CampaignSummary["trackin
 }
 
 export function AdminNewsletter() {
+  const [workspace, setWorkspace] = useAdminSection(
+    "section",
+    ["campaigns", "audience"] as const,
+    "campaigns"
+  );
   const [summary, setSummary] = useState<NewsletterSummary | null>(null);
   const [subscribers, setSubscribers] = useState<SubscribersResponse | null>(null);
-  const [filter, setFilter] = useState<FilterType>("all");
+  const [filter, setFilter] = useAdminSection("audienceStatus", FILTERS, "all");
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [subscriberPage, setSubscriberPage] = useState(1);
-  const [campaignStatus, setCampaignStatus] = useState<CampaignStatusFilter>("all");
-  const [campaignDateRange, setCampaignDateRange] = useState<CampaignDateRange>("30d");
+  const [campaignStatus, setCampaignStatus] = useAdminSection(
+    "campaignStatus",
+    CAMPAIGN_STATUSES,
+    "all"
+  );
+  const [campaignDateRange, setCampaignDateRange] = useAdminSection(
+    "range",
+    CAMPAIGN_RANGES,
+    "30d"
+  );
   const [campaignPage, setCampaignPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [summaryError, setSummaryError] = useState("");
+  const [subscriberError, setSubscriberError] = useState("");
+  const summaryRequest = useRef(0);
+  const subscriberRequest = useRef(0);
 
   const refreshSummary = useCallback(
     async (options?: {
@@ -126,43 +153,66 @@ export function AdminNewsletter() {
       range?: CampaignDateRange;
       page?: number;
     }) => {
-      const query = new URLSearchParams({
-        campaignStatus: options?.status || campaignStatus,
-        campaignDateRange: options?.range || campaignDateRange,
-        campaignPage: String(options?.page || campaignPage),
-        campaignPageSize: "10",
-        audienceDateRange: "30d",
-        audienceSource: "all",
-      });
-      const response = await fetch(`/api/admin/newsletter?${query.toString()}`, {
-        cache: "no-store",
-      });
-      if (response.ok) setSummary((await response.json()) as NewsletterSummary);
+      const requestNumber = ++summaryRequest.current;
+      setSummaryError("");
+      try {
+        const query = new URLSearchParams({
+          campaignStatus: options?.status || campaignStatus,
+          campaignDateRange: options?.range || campaignDateRange,
+          campaignPage: String(options?.page || campaignPage),
+          campaignPageSize: "10",
+          audienceDateRange: "30d",
+          audienceSource: "all",
+        });
+        const response = await fetch(`/api/admin/newsletter?${query.toString()}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error();
+        const result = (await response.json()) as NewsletterSummary;
+        if (requestNumber === summaryRequest.current) setSummary(result);
+      } catch {
+        if (requestNumber === summaryRequest.current)
+          setSummaryError(
+            "Campaign analytics could not be refreshed. Previously loaded figures may be out of date."
+          );
+      }
     },
     [campaignDateRange, campaignPage, campaignStatus]
   );
 
   const refreshSubscribers = useCallback(
     async (nextFilter: FilterType, nextSearch: string, page = 1) => {
-      const query = new URLSearchParams({
-        type: nextFilter,
-        page: String(page),
-        pageSize: "25",
-      });
-      if (nextSearch.trim()) query.set("search", nextSearch.trim());
-      const response = await fetch(`/api/admin/newsletter/subscribers?${query.toString()}`, {
-        cache: "no-store",
-      });
-      if (response.ok) setSubscribers((await response.json()) as SubscribersResponse);
+      const requestNumber = ++subscriberRequest.current;
+      setSubscriberError("");
+      try {
+        const query = new URLSearchParams({
+          type: nextFilter,
+          page: String(page),
+          pageSize: "25",
+        });
+        if (nextSearch.trim()) query.set("search", nextSearch.trim());
+        const response = await fetch(`/api/admin/newsletter/subscribers?${query.toString()}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error();
+        const result = (await response.json()) as SubscribersResponse;
+        if (requestNumber === subscriberRequest.current) setSubscribers(result);
+      } catch {
+        if (requestNumber === subscriberRequest.current)
+          setSubscriberError(
+            "The subscriber list could not be refreshed. Campaigns are still available."
+          );
+      }
     },
     []
   );
 
   useEffect(() => {
-    void Promise.all([refreshSummary(), refreshSubscribers("all", "", 1)]).finally(() =>
-      setLoading(false)
-    );
-  }, [refreshSubscribers, refreshSummary]);
+    void Promise.all([
+      refreshSummary(),
+      refreshSubscribers(filter, search, subscriberPage),
+    ]).finally(() => setLoading(false));
+  }, [refreshSubscribers, refreshSummary, filter, search, subscriberPage]);
 
   async function unsubscribeSubscriber(row: SubscriberRow) {
     setUpdatingId(row.id);
@@ -208,7 +258,7 @@ export function AdminNewsletter() {
       <div className="space-y-6">
         <AppPageHeader
           eyebrow="Newsletter audience"
-          title="Newsletter Audience"
+          title="Newsletter"
           description="Subscriber consent, pending confirmations, recent unsubscribes and newsletter campaign delivery."
           actions={
             <Button
@@ -226,9 +276,35 @@ export function AdminNewsletter() {
           }
         />
 
+        <nav aria-label="Newsletter workspaces" className="flex gap-2">
+          <Button
+            variant={workspace === "campaigns" ? "default" : "outline"}
+            aria-current={workspace === "campaigns" ? "page" : undefined}
+            onClick={() => setWorkspace("campaigns")}
+          >
+            Campaigns
+          </Button>
+          <Button
+            variant={workspace === "audience" ? "default" : "outline"}
+            aria-current={workspace === "audience" ? "page" : undefined}
+            onClick={() => setWorkspace("audience")}
+          >
+            Audience
+          </Button>
+        </nav>
         {loading ? <InlineLoadingStatus label="Loading newsletter analytics…" /> : null}
+        {summaryError && (
+          <p role="alert" className="rounded-lg border p-3">
+            {summaryError} Use Refresh to retry.
+          </p>
+        )}
+        {workspace === "audience" && subscriberError && (
+          <p role="alert" className="rounded-lg border p-3">
+            {subscriberError} Use Refresh to retry.
+          </p>
+        )}
 
-        {summary ? (
+        {workspace === "audience" && summary ? (
           <AppMetricGrid className="lg:grid-cols-3">
             <AppMetricCard
               label="Awaiting confirmation"
@@ -248,7 +324,7 @@ export function AdminNewsletter() {
           </AppMetricGrid>
         ) : null}
 
-        <Card>
+        <Card hidden={workspace !== "campaigns"}>
           <CardContent className="space-y-4 pt-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
@@ -316,7 +392,7 @@ export function AdminNewsletter() {
               ))}
             </div>
 
-            {campaigns.length === 0 ? (
+            {summaryError && campaigns.length === 0 ? null : campaigns.length === 0 ? (
               <p className="text-muted-foreground text-sm">No campaign data available yet.</p>
             ) : (
               campaigns.map((campaign) => (
@@ -390,7 +466,7 @@ export function AdminNewsletter() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card hidden={workspace !== "audience"}>
           <CardContent className="space-y-4 pt-6">
             <div>
               <h2 className="text-lg">Subscribers</h2>

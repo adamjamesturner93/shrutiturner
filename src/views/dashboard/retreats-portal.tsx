@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { RetreatBookingDetailDto } from "@/lib/api/types";
 
 function formatDateRange(start: string, end: string) {
@@ -71,6 +72,7 @@ export function DashboardRetreatDetail({
   const [openingReplay, setOpeningReplay] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
   const [requestingCancellation, setRequestingCancellation] = useState(false);
+  const [confirmCancellation, setConfirmCancellation] = useState(false);
   const [savingSecondaryGuest, setSavingSecondaryGuest] = useState(false);
   const [secondaryGuestSaved, setSecondaryGuestSaved] = useState(false);
   const [secondaryGuest, setSecondaryGuest] = useState({
@@ -173,13 +175,6 @@ export function DashboardRetreatDetail({
 
   const requestCancellation = async () => {
     if (!booking || !booking.canRequestCancellation) return;
-    if (
-      !window.confirm(
-        "Send this cancellation request to Shruti? Your booking remains active until it is reviewed."
-      )
-    ) {
-      return;
-    }
     setRequestingCancellation(true);
     setError("");
     try {
@@ -208,6 +203,7 @@ export function DashboardRetreatDetail({
         latestCancellation: payload.data,
       });
       setCancellationReason("");
+      setConfirmCancellation(false);
     } catch (submitError) {
       setError(
         submitError instanceof Error ? submitError.message : "Failed to request cancellation."
@@ -330,10 +326,12 @@ export function DashboardRetreatDetail({
                 <CardTitle className="text-lg">Booking Summary</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <p className="text-muted-foreground text-xs tracking-wide uppercase">Room</p>
-                  <p className="mt-1">{booking.roomType || "Not selected"}</p>
-                </div>
+                {booking.roomType && (
+                  <div>
+                    <p className="text-muted-foreground text-xs tracking-wide uppercase">Room</p>
+                    <p className="mt-1">{booking.roomType || "Not selected"}</p>
+                  </div>
+                )}
                 {booking.addons.length > 0 ? (
                   <div>
                     <p className="text-muted-foreground text-xs tracking-wide uppercase">
@@ -348,19 +346,23 @@ export function DashboardRetreatDetail({
                     </div>
                   </div>
                 ) : null}
-                <div>
-                  <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                    Balance due
-                  </p>
-                  <p className="mt-1">{formatDate(booking.balanceDueAt) || "Before arrival"}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                    Emergency contact
-                  </p>
-                  <p className="mt-1">{booking.emergencyContactName}</p>
-                  <p className="text-muted-foreground text-sm">{booking.emergencyContactPhone}</p>
-                </div>
+                {booking.balanceAmountPence > 0 && (
+                  <div>
+                    <p className="text-muted-foreground text-xs tracking-wide uppercase">
+                      Balance due
+                    </p>
+                    <p className="mt-1">{formatDate(booking.balanceDueAt) || "Before arrival"}</p>
+                  </div>
+                )}
+                {(booking.emergencyContactName || booking.emergencyContactPhone) && (
+                  <div>
+                    <p className="text-muted-foreground text-xs tracking-wide uppercase">
+                      Emergency contact
+                    </p>
+                    <p className="mt-1">{booking.emergencyContactName}</p>
+                    <p className="text-muted-foreground text-sm">{booking.emergencyContactPhone}</p>
+                  </div>
+                )}
                 <div>
                   <p className="text-muted-foreground text-xs tracking-wide uppercase">
                     Needs noted
@@ -376,6 +378,34 @@ export function DashboardRetreatDetail({
               </CardContent>
             </Card>
 
+            {booking.registrations?.length ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Your booking's guests</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {booking.registrations.map((guest) => (
+                    <div
+                      key={guest.id}
+                      className="flex flex-wrap items-center justify-between gap-3"
+                    >
+                      <span>
+                        {guest.name} ·{" "}
+                        {guest.complete ? "Registration complete" : "Registration needed"}
+                      </span>
+                      {guest.isOwn ? (
+                        <Link
+                          className="underline"
+                          href={`/dashboard/retreats/registration/${guest.id}`}
+                        >
+                          My registration
+                        </Link>
+                      ) : null}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ) : null}
             {booking.attendeeCount > 1 ? (
               <Card className="rounded-[1.5rem]">
                 <CardHeader>
@@ -428,21 +458,10 @@ export function DashboardRetreatDetail({
                       }
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="secondaryGuestDietaryRequirements">
-                      Dietary requirements (optional)
-                    </Label>
-                    <Textarea
-                      id="secondaryGuestDietaryRequirements"
-                      value={secondaryGuest.dietaryRequirements}
-                      onChange={(event) =>
-                        setSecondaryGuest((current) => ({
-                          ...current,
-                          dietaryRequirements: event.target.value,
-                        }))
-                      }
-                    />
-                  </div>
+                  <p className="text-muted-foreground text-sm">
+                    Each guest supplies their own dietary, access and emergency contact details
+                    during registration.
+                  </p>
                   {secondaryGuestSaved ? (
                     <p className="text-sm text-emerald-700" role="status">
                       Second guest details saved.
@@ -597,11 +616,16 @@ export function DashboardRetreatDetail({
                     Your deposit is in place. The remaining balance can be paid here or via the
                     email link that was sent after booking.
                   </div>
-                ) : (
+                ) : booking.paymentStatus === "paid_in_full" ? (
                   <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
                     <CheckCircle2 className="mr-2 inline h-4 w-4" />
-                    This retreat booking is fully paid.
+                    This booking is fully paid.
                   </div>
+                ) : (
+                  <p className="text-sm">
+                    Payment status: {booking.paymentStatus.replaceAll("_", " ")}. Contact Shruti if
+                    you need help.
+                  </p>
                 )}
 
                 <div className="flex flex-col gap-2">
@@ -614,10 +638,14 @@ export function DashboardRetreatDetail({
                       ? payingBalance
                         ? "Redirecting..."
                         : "Pay balance"
-                      : "No payment due"}
+                      : "Online payment unavailable"}
                   </Button>
                   <Button asChild variant="outline">
-                    <Link href={`/retreats/${booking.retreatSlug}`}>View public retreat page</Link>
+                    <Link
+                      href={`/retreats/${booking.retreatSlug}${booking.retreatDateId ? `?date=${encodeURIComponent(booking.retreatDateId)}` : ""}`}
+                    >
+                      View event page
+                    </Link>
                   </Button>
                 </div>
               </CardContent>
@@ -685,10 +713,33 @@ export function DashboardRetreatDetail({
                       variant="outline"
                       className="w-full"
                       disabled={requestingCancellation}
-                      onClick={() => void requestCancellation()}
+                      onClick={() => setConfirmCancellation(true)}
                     >
                       {requestingCancellation ? "Sending request..." : "Request cancellation"}
                     </Button>
+                    <Dialog
+                      open={confirmCancellation}
+                      onOpenChange={(open) => {
+                        if (!requestingCancellation) setConfirmCancellation(open);
+                      }}
+                    >
+                      <DialogContent>
+                        <DialogTitle>Request cancellation</DialogTitle>
+                        <DialogDescription>
+                          {booking.retreatTitle} —{" "}
+                          {formatDateRange(booking.startsAt, booking.endsAt)}. Your booking stays
+                          active until Shruti reviews the request. Any refund will be confirmed
+                          separately.
+                        </DialogDescription>
+                        {error && <p role="alert">{error}</p>}
+                        <Button
+                          disabled={requestingCancellation}
+                          onClick={() => void requestCancellation()}
+                        >
+                          {requestingCancellation ? "Sending request…" : "Send request"}
+                        </Button>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 ) : !booking.latestCancellation ? (
                   <p className="text-muted-foreground">

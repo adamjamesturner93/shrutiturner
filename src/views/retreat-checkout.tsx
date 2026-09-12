@@ -17,9 +17,16 @@ import {
   MonitorPlay,
   Plus,
   ShieldCheck,
+  Ticket,
   Users,
 } from "lucide-react";
 import { Layout } from "@/components/layout";
+import { RetreatBedPreference } from "@/components/retreat-bed-preference";
+import {
+  getBedPreferenceLabel,
+  requiresBedPreference,
+  type BedPreference,
+} from "@/lib/retreats/bed-preference";
 import { SEO } from "@/components/seo";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -46,7 +53,8 @@ function formatMoney(pence: number, currency = "GBP") {
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(pence / 100);
 }
 
@@ -155,13 +163,31 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
     isGiftDefault ? "gift" : "self"
   );
   const [paymentOption, setPaymentOption] = useState<"deposit" | "pay_in_full">("deposit");
-  const [selectedDateId, setSelectedDateId] = useState(queryDateId || retreat?.dates[0]?.id || "");
+  const invalidQueryDate = Boolean(
+    queryDateId && !retreat?.dates.some((date) => date.id === queryDateId)
+  );
+  const [selectedDateId, setSelectedDateId] = useState(
+    invalidQueryDate ? "" : queryDateId || retreat?.dates[0]?.id || ""
+  );
   const [selectedRoomId, setSelectedRoomId] = useState(queryRoomId || "");
+  const [lastQueryDateId, setLastQueryDateId] = useState(queryDateId);
+  if (lastQueryDateId !== queryDateId) {
+    setLastQueryDateId(queryDateId);
+    setSelectedDateId(invalidQueryDate ? "" : queryDateId || retreat?.dates[0]?.id || "");
+    setSelectedRoomId(queryRoomId || "");
+  }
+  const [bedPreference, setBedPreference] = useState<BedPreference>(
+    searchParams.get("beds") === "twin" ? "twin" : "double"
+  );
   const [selectedGuestCount, setSelectedGuestCount] = useState(
     Number.isFinite(queryGuestCount) && queryGuestCount > 0 ? Math.trunc(queryGuestCount) : 1
   );
   const [addonQuantities, setAddonQuantities] = useState<Record<string, number>>({});
-  const [error, setError] = useState("");
+  const [error, setError] = useState(
+    invalidQueryDate
+      ? "That event date is no longer available. Choose a current date before continuing."
+      : ""
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingLegalAcceptances, setPendingLegalAcceptances] = useState<
     AcceptanceRequirementState[]
@@ -196,15 +222,16 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
 
   useEffect(() => {
     if (!retreat) return;
+    if (invalidQueryDate && !selectedDateId) return;
     const nextDateId =
       retreat.dates.find((date) => date.id === selectedDateId)?.id || retreat.dates[0]?.id || "";
     if (nextDateId !== selectedDateId) {
       setSelectedDateId(nextDateId);
     }
-  }, [retreat, selectedDateId]);
+  }, [invalidQueryDate, retreat, selectedDateId]);
 
   const selectedDate = useMemo(
-    () => retreat?.dates.find((date) => date.id === selectedDateId) || retreat?.dates[0] || null,
+    () => retreat?.dates.find((date) => date.id === selectedDateId) || null,
     [retreat, selectedDateId]
   );
 
@@ -304,12 +331,17 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
     );
   }
 
-  const isOnlineExperience =
-    retreat.deliveryMode === "online_live" ||
-    retreat.deliveryMode === "online_on_demand" ||
-    retreat.dates.every((date) => date.retreatType === "online");
-  const experienceLabel = isOnlineExperience ? "workshop" : "retreat";
-  const optionLabel = isOnlineExperience ? "ticket" : "room";
+  const selectedEventKind =
+    selectedDate?.eventKind ||
+    (retreat.deliveryMode === "online_live" || retreat.deliveryMode === "online_on_demand"
+      ? "online_workshop"
+      : "residential_retreat");
+  const isOnlineExperience = selectedEventKind === "online_workshop";
+  const requiresAccommodation = selectedEventKind === "residential_retreat";
+  const requiresPracticalRegistration = !isOnlineExperience;
+  const isSimpleCheckout = !requiresAccommodation;
+  const experienceLabel = selectedEventKind.includes("workshop") ? "workshop" : "retreat";
+  const optionLabel = requiresAccommodation ? "room" : "ticket";
   const totalPricePence = selectedRatePlan?.totalPricePence ?? selectedRoom?.normalPricePence ?? 0;
   const effectiveTotalPricePence = selectedRatePlan
     ? getEffectiveRetreatRatePricePence(selectedRatePlan)
@@ -354,7 +386,8 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
   const purchaserFirstName = formData.purchaserFirstName || user?.firstName || "";
   const purchaserLastName = formData.purchaserLastName || user?.lastName || "";
   const purchaserEmail = formData.purchaserEmail || user?.email || "";
-  const bookingForAnotherAttendee = !isOnlineExperience && formData.bookingForAnotherAttendee;
+  const bookingForAnotherAttendee =
+    requiresPracticalRegistration && formData.bookingForAnotherAttendee;
   const attendeeFirstName = bookingForAnotherAttendee
     ? formData.attendeeFirstName
     : purchaserFirstName;
@@ -381,7 +414,11 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
     }
 
     if (purchaseMode === "self") {
-      if (!termsSatisfied || !waiverSatisfied || !healthDataSatisfied) {
+      if (
+        !termsSatisfied ||
+        !waiverSatisfied ||
+        (requiresPracticalRegistration && !healthDataSatisfied)
+      ) {
         setError("Please complete the required agreements before continuing.");
         setIsSubmitting(false);
         return;
@@ -440,7 +477,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
         if (!user.hasAgreedToTerms || !user.hasAgreedToHealth) {
           await acceptTermsAndHealth(!user.hasAgreedToTerms, !user.hasAgreedToHealth);
         }
-        if (!user.hasConsentedToHealthData) {
+        if (requiresPracticalRegistration && !user.hasConsentedToHealthData) {
           await acceptHealthDataConsent();
         }
       }
@@ -452,6 +489,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
           retreatDateId: selectedDate.id,
           roomOptionId: selectedRoom.id,
           guestCount: selectedGuestCount,
+          bedPreference: requiresBedPreference(selectedRoom, selectedGuestCount)
+            ? bedPreference
+            : undefined,
           addons: selectedAddons.map(({ addon, quantity }) => ({
             addonId: addon.id,
             quantity,
@@ -483,7 +523,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
               ? (user?.currentHealthWaiverVersion ?? CURRENT_HEALTH_WAIVER_VERSION)
               : null,
           acceptedHealthDataVersion:
-            purchaseMode === "self"
+            purchaseMode === "self" && requiresPracticalRegistration
               ? (user?.currentHealthDataConsentVersion ?? CURRENT_HEALTH_DATA_CONSENT_VERSION)
               : null,
           recipientFirstName: formData.recipientFirstName,
@@ -545,62 +585,68 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
         noIndex
       />
 
-      <section className="marketing-grid text-brand-white overflow-hidden px-4 py-10 md:py-14">
+      <section className="marketing-grid text-brand-white overflow-hidden px-4 py-5 md:py-6">
         <div className="container mx-auto max-w-6xl">
           <Link
-            href={`/retreats/${retreat.slug}`}
+            href={`/retreats/${retreat.slug}${selectedDate ? `?date=${encodeURIComponent(selectedDate.id)}` : ""}`}
             className="text-brand-accent-light inline-flex items-center gap-2 text-sm hover:underline"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to {experienceLabel} details
           </Link>
 
-          <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_0.9fr] lg:items-center lg:gap-10">
+          <div
+            className={`mt-3 grid gap-4 ${isSimpleCheckout ? "" : "lg:grid-cols-[1fr_0.9fr] lg:items-center"}`}
+          >
             <div>
-              <h1 className="text-4xl leading-tight md:text-5xl">
+              <h1 className="text-2xl leading-tight md:text-3xl">
                 {purchaseMode === "gift"
                   ? `Gift This ${isOnlineExperience ? "Workshop" : "Retreat"}`
                   : `Complete Your ${isOnlineExperience ? "Workshop" : "Retreat"} Booking`}
               </h1>
-              <p className="text-brand-white/80 mt-4 max-w-2xl text-lg leading-relaxed">
+              <p className="text-brand-white/80 mt-2 max-w-2xl text-base">
                 {retreat.title} · {retreat.location}
               </p>
             </div>
 
-            <div className="border-brand-white/10 bg-brand-white/8 overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
-              <div className="bg-brand-white/8 rounded-[1.45rem] p-6">
-                <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
-                  Selected pricing
-                </p>
-                <div className="text-brand-white/84 mt-4 space-y-2 text-sm">
-                  {selectedRoom ? (
-                    <>
-                      <p>
-                        {purchaseMode === "gift"
-                          ? `${formatMoney(payInFullTotalPence, retreat.currency)} due today`
-                          : `${formatMoney(dueTodayPence, retreat.currency)} due today`}
-                      </p>
-                      {isPayingInFull && payInFullDiscountPence > 0 ? (
+            {!isSimpleCheckout ? (
+              <div className="border-brand-white/10 bg-brand-white/8 overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+                <div className="bg-brand-white/8 rounded-[1.45rem] p-6">
+                  <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
+                    Selected pricing
+                  </p>
+                  <div className="text-brand-white/84 mt-4 space-y-2 text-sm">
+                    {selectedRoom ? (
+                      <>
                         <p>
-                          Includes {formatMoney(payInFullDiscountPence, retreat.currency)} pay in
-                          full discount
+                          {purchaseMode === "gift"
+                            ? `${formatMoney(payInFullTotalPence, retreat.currency)} due today`
+                            : `${formatMoney(dueTodayPence, retreat.currency)} due today`}
                         </p>
-                      ) : null}
-                      <p>{selectedRoom.label}</p>
-                    </>
-                  ) : (
-                    <p>Select a date and {optionLabel} to confirm the amount due.</p>
-                  )}
+                        {isPayingInFull && payInFullDiscountPence > 0 ? (
+                          <p>
+                            Includes {formatMoney(payInFullDiscountPence, retreat.currency)} pay in
+                            full discount
+                          </p>
+                        ) : null}
+                        <p>{selectedRoom.label}</p>
+                      </>
+                    ) : (
+                      <p>Select a date and {optionLabel} to confirm the amount due.</p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : null}
           </div>
         </div>
       </section>
 
-      <section className="section-wash px-4 py-10 md:py-14">
-        <div className="container mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="space-y-6">
+      <section className="section-wash px-4 py-5 md:py-6">
+        <div
+          className={`container mx-auto grid gap-8 ${isSimpleCheckout ? "max-w-5xl" : "max-w-6xl lg:grid-cols-[1.05fr_0.95fr]"}`}
+        >
+          <div className="space-y-4">
             {checkoutState === "success" ? (
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
                 {purchaseMode === "gift"
@@ -641,7 +687,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
               </div>
             ) : null}
 
-            {!user ? (
+            {!user && !isOnlineExperience ? (
               <div className="border-brand-accent/20 bg-brand-accent/5 rounded-[1.25rem] border p-4 text-sm">
                 <p className="font-medium">Already have a Private Studio account?</p>
                 <p className="text-muted-foreground mt-1">
@@ -664,7 +710,13 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
               </div>
             ) : null}
 
-            <div className="border-brand-dark/10 bg-background rounded-[1.5rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+            <div
+              className={
+                isSimpleCheckout
+                  ? ""
+                  : "border-brand-dark/10 bg-background rounded-[1.5rem] border p-6 shadow-[0_18px_40px_rgba(46,31,51,0.05)]"
+              }
+            >
               <div className="flex flex-wrap gap-3">
                 <Button
                   type="button"
@@ -685,209 +737,325 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="marketing-panel rounded-[1.5rem] p-6">
-                <h2 className="text-2xl">1. Choose your date</h2>
-                <div className="mt-6 grid gap-4">
-                  {retreat.dates.map((date) => {
-                    const isSelected = date.id === selectedDate?.id;
-                    return (
-                      <button
-                        key={date.id}
-                        type="button"
-                        aria-pressed={isSelected}
-                        className={`rounded-[1.25rem] border p-4 text-left transition-colors ${
-                          isSelected
-                            ? "border-brand-accent bg-brand-accent/5"
-                            : "hover:bg-secondary/20"
-                        }`}
-                        onClick={() => setSelectedDateId(date.id)}
+            <form
+              onSubmit={handleSubmit}
+              className={
+                isSimpleCheckout
+                  ? "grid items-start gap-3 lg:grid-cols-[0.85fr_1.15fr] lg:[&>*]:col-start-2 lg:[&>section]:col-start-1 lg:[&>section]:row-span-5 lg:[&>section]:row-start-1"
+                  : "space-y-4"
+              }
+            >
+              {isSimpleCheckout && selectedDate && selectedRoom ? (
+                <section
+                  className="marketing-panel space-y-3 rounded-[1.5rem] p-4 sm:p-5"
+                  aria-labelledby="workshop-booking-summary"
+                >
+                  <h2 id="workshop-booking-summary" className="text-2xl">
+                    {retreat.title}
+                  </h2>
+                  <p>
+                    {formatRetreatDateTimeRange(
+                      selectedDate.startDate,
+                      selectedDate.endDate,
+                      selectedDate.timezone
+                    )}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {isOnlineExperience
+                      ? selectedDate.isRecorded
+                        ? "Live online + replay"
+                        : "Live online"
+                      : selectedDate.location || retreat.location}{" "}
+                    · {selectedRoom.label}
+                  </p>
+                  <p className="text-2xl font-semibold">
+                    {formatMoney(dueTodayPence, retreat.currency)}
+                  </p>
+                  {isOnlineExperience && retreat.dates.length > 1 ? (
+                    <details>
+                      <summary className="cursor-pointer text-sm underline focus-visible:outline-2">
+                        Change date
+                      </summary>
+                      <Label htmlFor="checkout-date" className="mt-3 block">
+                        Workshop date
+                      </Label>
+                      <select
+                        id="checkout-date"
+                        className="bg-background mt-2 h-11 w-full rounded-md border px-2 text-sm"
+                        value={selectedDate.id}
+                        onChange={(event) => {
+                          setSelectedDateId(event.target.value);
+                          setError("");
+                          const params = new URLSearchParams(searchParams.toString());
+                          params.set("date", event.target.value);
+                          params.delete("room");
+                          router.replace(
+                            `/retreats/${retreat.slug}/checkout?${params.toString()}`,
+                            { scroll: false }
+                          );
+                        }}
                       >
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <p className="text-lg">
-                              {formatRetreatDateTimeRange(
-                                date.startDate,
-                                date.endDate,
-                                date.timezone
-                              )}
-                            </p>
-                            <p className="text-muted-foreground mt-1 text-sm">
-                              Limited to {date.totalSpaces} places
-                            </p>
-                          </div>
-                          <Calendar className="text-brand-accent h-5 w-5" />
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="marketing-panel rounded-[1.5rem] p-6">
-                <h2 className="text-2xl">2. Choose your {optionLabel}</h2>
-                {selectedDate ? (
-                  <div className="mt-6 grid gap-4">
-                    {selectedDate.roomOptions.map((roomOption) => {
-                      const isSelected = roomOption.id === selectedRoom?.id;
-                      const isUnavailable =
-                        roomOption.isWaitlistOnly || roomOption.availableSpots <= 0;
+                        {retreat.dates.map((date) => (
+                          <option key={date.id} value={date.id}>
+                            {formatRetreatDateTimeRange(
+                              date.startDate,
+                              date.endDate,
+                              date.timezone
+                            )}
+                          </option>
+                        ))}
+                      </select>
+                    </details>
+                  ) : null}
+                  {!user ? (
+                    <p className="text-sm">
+                      No account needed to pay. Already booked with us?{" "}
+                      <Link
+                        className="underline"
+                        href={`/login?redirect=${encodeURIComponent(`/retreats/${retreat.slug}/checkout?date=${selectedDate.id}`)}`}
+                      >
+                        Sign in to fill your details
+                      </Link>
+                      .
+                    </p>
+                  ) : null}
+                  {isOnlineExperience && purchaseMode === "self" ? (
+                    <p className="text-muted-foreground border-t pt-3 text-sm">
+                      After payment, sign in or create your account and complete your date of birth,
+                      health profile and current workshop agreements before joining.
+                    </p>
+                  ) : null}
+                </section>
+              ) : null}
+              {(!isOnlineExperience && retreat.dates.length > 1) || !selectedDate ? (
+                <div className="marketing-panel rounded-[1.5rem] p-4 sm:p-5">
+                  <h2 className="text-2xl">Choose your date</h2>
+                  <div className="mt-4 grid gap-4">
+                    {retreat.dates.map((date) => {
+                      const isSelected = date.id === selectedDate?.id;
                       return (
                         <button
-                          key={roomOption.id}
+                          key={date.id}
                           type="button"
-                          disabled={isUnavailable}
                           aria-pressed={isSelected}
-                          className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
+                          className={`rounded-[1.25rem] border p-4 text-left transition-colors ${
                             isSelected
                               ? "border-brand-accent bg-brand-accent/5"
                               : "hover:bg-secondary/20"
-                          } ${isUnavailable ? "opacity-60" : ""}`}
+                          }`}
                           onClick={() => {
-                            setSelectedRoomId(roomOption.id);
-                            setSelectedGuestCount(getDefaultGuestCount(roomOption));
+                            setSelectedDateId(date.id);
+                            setError("");
+                            const params = new URLSearchParams(searchParams.toString());
+                            params.set("date", date.id);
+                            params.delete("room");
+                            router.replace(
+                              `/retreats/${retreat.slug}/checkout?${params.toString()}`,
+                              {
+                                scroll: false,
+                              }
+                            );
                           }}
                         >
-                          <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-                            <div className="min-w-0 space-y-2">
-                              <div className="flex flex-wrap items-center gap-3">
-                                <p className="text-xl">{roomOption.label}</p>
-                                {/* <span className="bg-secondary/60 rounded-full px-3 py-1 text-xs tracking-[0.16em] uppercase">
-                                  {getRoomAvailabilityLabel(roomOption)}
-                                </span> */}
-                              </div>
-                              <p className="text-muted-foreground text-sm leading-relaxed">
-                                {roomOption.description}
-                              </p>
-                              <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
-                                <span className="inline-flex items-center gap-2">
-                                  <Users className="h-4 w-4" />
-                                  {getRoomGuestLabel(roomOption)}
-                                </span>
-                                <span className="inline-flex items-center gap-2">
-                                  {isOnlineExperience ? (
-                                    <>
-                                      <MonitorPlay className="h-4 w-4" />
-                                      Live and replay access
-                                    </>
-                                  ) : (
-                                    <>
-                                      <BedDouble className="h-4 w-4" />
-                                      {roomOption.type === "single"
-                                        ? "Private room"
-                                        : roomOption.type === "shared_private" ||
-                                            roomOption.type === "private"
-                                          ? "Private double room"
-                                          : "Shared accommodation"}
-                                    </>
-                                  )}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="border-brand-dark/10 border-t pt-4 text-left md:min-w-40 md:border-t-0 md:pt-0 md:text-right">
-                              <p className="text-2xl">
-                                {formatMoney(
-                                  getRoomRatePlans(roomOption)[0]
-                                    ? getEffectiveRetreatRatePricePence(
-                                        getRoomRatePlans(roomOption)[0]
-                                      )
-                                    : roomOption.normalPricePence,
-                                  retreat.currency
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="text-lg">
+                                {formatRetreatDateTimeRange(
+                                  date.startDate,
+                                  date.endDate,
+                                  date.timezone
                                 )}
                               </p>
-                              {getRoomRatePlans(roomOption)[0] &&
-                              isRetreatEarlyBirdActive({
-                                earlyBirdPricePence:
-                                  getRoomRatePlans(roomOption)[0]?.earlyBirdPricePence,
-                                earlyBirdEndsAt: getRoomRatePlans(roomOption)[0]?.earlyBirdEndsAt,
-                                totalPricePence:
-                                  getRoomRatePlans(roomOption)[0]?.totalPricePence ||
-                                  roomOption.normalPricePence,
-                              }) ? (
-                                <p className="text-muted-foreground mt-1 text-xs">
-                                  Early bird saves{" "}
-                                  {formatMoney(
-                                    getEarlyBirdSavingPence(getRoomRatePlans(roomOption)[0]),
-                                    retreat.currency
-                                  )}
-                                  . Standard{" "}
-                                  {formatMoney(
-                                    getRoomRatePlans(roomOption)[0]?.totalPricePence ||
-                                      roomOption.normalPricePence,
-                                    retreat.currency
-                                  )}
-                                </p>
-                              ) : null}
                               <p className="text-muted-foreground mt-1 text-sm">
-                                {selectedDate?.paymentPolicy === "full_payment"
-                                  ? "Due today "
-                                  : "Deposit today "}
-                                {formatMoney(
-                                  getDepositAmountForPricePence(
-                                    roomOption,
-                                    getRoomRatePlans(roomOption)[0]
-                                      ? getEffectiveRetreatRatePricePence(
-                                          getRoomRatePlans(roomOption)[0]
-                                        )
-                                      : roomOption.normalPricePence
-                                  ),
-                                  retreat.currency
-                                )}
+                                Limited to {date.totalSpaces} places
                               </p>
                             </div>
+                            <Calendar className="text-brand-accent h-5 w-5" />
                           </div>
                         </button>
                       );
                     })}
                   </div>
-                ) : null}
-                {selectedRoom && selectedRoomRatePlans.length > 1 ? (
-                  <div className="mt-6">
-                    <p className="text-muted-foreground text-sm">
-                      How many people will use this {optionLabel}?
-                    </p>
-                    <div className="mt-3 grid gap-3 md:grid-cols-2">
-                      {selectedRoomRatePlans.map((ratePlan) => (
-                        <button
-                          key={ratePlan.guestCount}
-                          type="button"
-                          aria-pressed={selectedGuestCount === ratePlan.guestCount}
-                          onClick={() => setSelectedGuestCount(ratePlan.guestCount)}
-                          className={`rounded-[1rem] border p-4 text-left transition-colors ${
-                            selectedGuestCount === ratePlan.guestCount
-                              ? "border-brand-accent bg-brand-accent/5"
-                              : "hover:bg-secondary/20"
-                          }`}
-                        >
-                          <p className="text-base">{getGuestCountLabel(ratePlan.guestCount)}</p>
-                          <p className="text-muted-foreground mt-1 text-sm">
-                            {formatMoney(
-                              getEffectiveRetreatRatePricePence(ratePlan),
-                              retreat.currency
-                            )}{" "}
-                            total
-                          </p>
-                          {isRetreatEarlyBirdActive({
-                            earlyBirdPricePence: ratePlan.earlyBirdPricePence,
-                            earlyBirdEndsAt: ratePlan.earlyBirdEndsAt,
-                            totalPricePence: ratePlan.totalPricePence,
-                          }) ? (
-                            <p className="text-muted-foreground mt-1 text-xs">
-                              Early bird saves{" "}
-                              {formatMoney(getEarlyBirdSavingPence(ratePlan), retreat.currency)}.
-                              Standard {formatMoney(ratePlan.totalPricePence, retreat.currency)}.
-                            </p>
-                          ) : null}
-                        </button>
-                      ))}
+                </div>
+              ) : null}
+              {!selectedRoom ||
+              (selectedDate?.roomOptions.length || 0) > 1 ||
+              selectedRoomRatePlans.length > 1 ? (
+                <div className="marketing-panel rounded-[1.5rem] p-4 sm:p-5">
+                  <h2 className="text-2xl">{`Choose your ${optionLabel}`}</h2>
+                  {selectedDate ? (
+                    <div className="mt-4 grid gap-4">
+                      {selectedDate.roomOptions.map((roomOption) => {
+                        const isSelected = roomOption.id === selectedRoom?.id;
+                        const isUnavailable =
+                          roomOption.isWaitlistOnly || roomOption.availableSpots <= 0;
+                        return (
+                          <button
+                            key={roomOption.id}
+                            type="button"
+                            disabled={isUnavailable}
+                            aria-pressed={isSelected}
+                            className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
+                              isSelected
+                                ? "border-brand-accent bg-brand-accent/5"
+                                : "hover:bg-secondary/20"
+                            } ${isUnavailable ? "opacity-60" : ""}`}
+                            onClick={() => {
+                              setSelectedRoomId(roomOption.id);
+                              setSelectedGuestCount(getDefaultGuestCount(roomOption));
+                            }}
+                          >
+                            <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                              <div className="min-w-0 space-y-2">
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <p className="text-xl">{roomOption.label}</p>
+                                  {/* <span className="bg-secondary/60 rounded-full px-3 py-1 text-xs tracking-[0.16em] uppercase">
+                                  {getRoomAvailabilityLabel(roomOption)}
+                                </span> */}
+                                </div>
+                                <p className="text-muted-foreground text-sm leading-relaxed">
+                                  {roomOption.description}
+                                </p>
+                                <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
+                                  <span className="inline-flex items-center gap-2">
+                                    <Users className="h-4 w-4" />
+                                    {getRoomGuestLabel(roomOption)}
+                                  </span>
+                                  <span className="inline-flex items-center gap-2">
+                                    {isOnlineExperience ? (
+                                      <>
+                                        <MonitorPlay className="h-4 w-4" />
+                                        Live and replay access
+                                      </>
+                                    ) : requiresAccommodation ? (
+                                      <>
+                                        <BedDouble className="h-4 w-4" />
+                                        {roomOption.type === "single"
+                                          ? "Private room"
+                                          : roomOption.type === "shared_private" ||
+                                              roomOption.type === "private"
+                                            ? "Private room"
+                                            : "Shared accommodation"}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Ticket className="h-4 w-4" />
+                                        One event place
+                                      </>
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="border-brand-dark/10 border-t pt-4 text-left md:min-w-40 md:border-t-0 md:pt-0 md:text-right">
+                                <p className="text-2xl">
+                                  {formatMoney(
+                                    getRoomRatePlans(roomOption)[0]
+                                      ? getEffectiveRetreatRatePricePence(
+                                          getRoomRatePlans(roomOption)[0]
+                                        )
+                                      : roomOption.normalPricePence,
+                                    retreat.currency
+                                  )}
+                                </p>
+                                {getRoomRatePlans(roomOption)[0] &&
+                                isRetreatEarlyBirdActive({
+                                  earlyBirdPricePence:
+                                    getRoomRatePlans(roomOption)[0]?.earlyBirdPricePence,
+                                  earlyBirdEndsAt: getRoomRatePlans(roomOption)[0]?.earlyBirdEndsAt,
+                                  totalPricePence:
+                                    getRoomRatePlans(roomOption)[0]?.totalPricePence ||
+                                    roomOption.normalPricePence,
+                                }) ? (
+                                  <p className="text-muted-foreground mt-1 text-xs">
+                                    Early bird saves{" "}
+                                    {formatMoney(
+                                      getEarlyBirdSavingPence(getRoomRatePlans(roomOption)[0]),
+                                      retreat.currency
+                                    )}
+                                    . Standard{" "}
+                                    {formatMoney(
+                                      getRoomRatePlans(roomOption)[0]?.totalPricePence ||
+                                        roomOption.normalPricePence,
+                                      retreat.currency
+                                    )}
+                                  </p>
+                                ) : null}
+                                <p className="text-muted-foreground mt-1 text-sm">
+                                  {selectedDate?.paymentPolicy === "full_payment"
+                                    ? "Due today "
+                                    : "Deposit today "}
+                                  {formatMoney(
+                                    getDepositAmountForPricePence(
+                                      roomOption,
+                                      getRoomRatePlans(roomOption)[0]
+                                        ? getEffectiveRetreatRatePricePence(
+                                            getRoomRatePlans(roomOption)[0]
+                                          )
+                                        : roomOption.normalPricePence
+                                    ),
+                                    retreat.currency
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
-                  </div>
-                ) : null}
-              </div>
+                  ) : null}
+                  {selectedRoom && selectedRoomRatePlans.length > 1 ? (
+                    <div className="mt-6">
+                      <p className="text-muted-foreground text-sm">
+                        How many people will use this {optionLabel}?
+                      </p>
+                      <div className="mt-3 grid gap-3 md:grid-cols-2">
+                        {selectedRoomRatePlans.map((ratePlan) => (
+                          <button
+                            key={ratePlan.guestCount}
+                            type="button"
+                            aria-pressed={selectedGuestCount === ratePlan.guestCount}
+                            onClick={() => setSelectedGuestCount(ratePlan.guestCount)}
+                            className={`rounded-[1rem] border p-4 text-left transition-colors ${
+                              selectedGuestCount === ratePlan.guestCount
+                                ? "border-brand-accent bg-brand-accent/5"
+                                : "hover:bg-secondary/20"
+                            }`}
+                          >
+                            <p className="text-base">{getGuestCountLabel(ratePlan.guestCount)}</p>
+                            <p className="text-muted-foreground mt-1 text-sm">
+                              {formatMoney(
+                                getEffectiveRetreatRatePricePence(ratePlan),
+                                retreat.currency
+                              )}{" "}
+                              total
+                            </p>
+                            {isRetreatEarlyBirdActive({
+                              earlyBirdPricePence: ratePlan.earlyBirdPricePence,
+                              earlyBirdEndsAt: ratePlan.earlyBirdEndsAt,
+                              totalPricePence: ratePlan.totalPricePence,
+                            }) ? (
+                              <p className="text-muted-foreground mt-1 text-xs">
+                                Early bird saves{" "}
+                                {formatMoney(getEarlyBirdSavingPence(ratePlan), retreat.currency)}.
+                                Standard {formatMoney(ratePlan.totalPricePence, retreat.currency)}.
+                              </p>
+                            ) : null}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              {requiresBedPreference(selectedRoom, selectedGuestCount) ? (
+                <div className="marketing-panel rounded-[1.5rem] p-4 sm:p-5">
+                  <RetreatBedPreference value={bedPreference} onChange={setBedPreference} />
+                </div>
+              ) : null}
 
               {purchaseMode === "self" && selectableAddons.length > 0 ? (
-                <div className="marketing-panel rounded-[1.5rem] p-6">
+                <div className="marketing-panel rounded-[1.5rem] p-4 sm:p-5">
                   <h2 className="text-2xl">Optional extras</h2>
                   <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
                     Extras are paid today and reserved with your booking.
@@ -967,9 +1135,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                 </div>
               ) : null}
 
-              {purchaseMode === "self" && selectedRoom ? (
-                <div className="marketing-panel rounded-[1.5rem] p-6">
-                  <h2 className="text-2xl">3. Choose how to pay</h2>
+              {purchaseMode === "self" && selectedRoom && !requiresFullPayment ? (
+                <div className="marketing-panel rounded-[1.5rem] p-4 sm:p-5">
+                  <h2 className="text-2xl">Choose how to pay</h2>
                   {requiresFullPayment ? (
                     <div className="border-brand-accent bg-brand-accent/5 mt-6 rounded-[1.25rem] border p-5">
                       <p className="text-xl">Full payment required</p>
@@ -980,7 +1148,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                       </p>
                     </div>
                   ) : (
-                    <div className="mt-6 grid gap-4 md:grid-cols-2">
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
                       <button
                         type="button"
                         aria-pressed={paymentOption === "deposit"}
@@ -1027,11 +1195,11 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                 </div>
               ) : null}
 
-              <div className="marketing-panel rounded-[1.5rem] p-6">
+              <div className="marketing-panel rounded-[1.5rem] p-4 sm:p-5">
                 <h2 className="text-2xl">
-                  {purchaseMode === "self" ? "4" : "3"}. Purchaser details
+                  {isOnlineExperience ? "Your details" : "Purchaser details"}
                 </h2>
-                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="purchaserFirstName">First name</Label>
                     <Input
@@ -1080,8 +1248,8 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
 
               {purchaseMode === "self" ? (
                 <>
-                  {!isOnlineExperience ? (
-                    <div className="marketing-panel rounded-[1.5rem] p-6">
+                  {requiresPracticalRegistration ? (
+                    <div className="marketing-panel rounded-[1.5rem] p-4 sm:p-5">
                       <div className="flex items-start gap-3 rounded-xl border p-4">
                         <Checkbox
                           id="bookingForAnotherAttendee"
@@ -1106,8 +1274,8 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
 
                       {formData.bookingForAnotherAttendee ? (
                         <div className="mt-6">
-                          <h2 className="text-2xl">5. Attendee details</h2>
-                          <div className="mt-6 grid gap-4 md:grid-cols-2">
+                          <h2 className="text-2xl">Attendee details</h2>
+                          <div className="mt-4 grid gap-4 md:grid-cols-2">
                             <div className="space-y-2">
                               <Label htmlFor="attendeeFirstName">First name</Label>
                               <Input
@@ -1157,10 +1325,10 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                     </div>
                   ) : null}
 
-                  {!isOnlineExperience ? (
-                    <div className="marketing-panel rounded-[1.5rem] p-6">
-                      <h2 className="text-2xl">6. Health, access and emergency details</h2>
-                      <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  {requiresPracticalRegistration ? (
+                    <div className="marketing-panel rounded-[1.5rem] p-4 sm:p-5">
+                      <h2 className="text-2xl">Health, access and emergency details</h2>
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
                           <Label htmlFor="phone">Phone</Label>
                           <Input
@@ -1244,26 +1412,17 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                         />
                       </div>
                     </div>
-                  ) : (
-                    <div className="marketing-panel rounded-[1.5rem] p-6">
-                      <h2 className="text-2xl">5. Workshop setup</h2>
-                      <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                        After payment, you&apos;ll sign in or create your account and complete your
-                        date of birth, health profile and current workshop agreements before
-                        joining.
-                      </p>
-                    </div>
-                  )}
+                  ) : null}
 
-                  {!isOnlineExperience && selectedRoom && selectedGuestCount > 1 ? (
+                  {requiresAccommodation && selectedRoom && selectedGuestCount > 1 ? (
                     <div className="rounded-[1.5rem] border p-6">
-                      <h2 className="text-2xl">7. Second guest details (optional for now)</h2>
+                      <h2 className="text-2xl">Second guest details (optional for now)</h2>
                       <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
                         You can add these details now or provide them later from your retreat
                         booking. If you start this section, complete the guest&apos;s name and
                         email.
                       </p>
-                      <div className="mt-6 grid gap-4 md:grid-cols-2">
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
                           <Label htmlFor="guestTwoFirstName">First name</Label>
                           <Input
@@ -1305,24 +1464,17 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                           }
                         />
                       </div>
-                      <div className="mt-4 space-y-2">
-                        <Label htmlFor="guestTwoDietaryRequirements">Dietary requirements</Label>
-                        <Textarea
-                          id="guestTwoDietaryRequirements"
-                          value={formData.guestTwoDietaryRequirements}
-                          onChange={(event) =>
-                            setFormData((current) => ({
-                              ...current,
-                              guestTwoDietaryRequirements: event.target.value,
-                            }))
-                          }
-                        />
-                      </div>
+                      <p className="text-muted-foreground mt-4 text-sm">
+                        Use your guest’s own email address. They’ll receive an invitation to
+                        complete their private registration details after payment.
+                      </p>
                     </div>
                   ) : null}
 
-                  <div className="rounded-[1.5rem] border p-6">
-                    <h2 className="text-2xl">8. Agreements</h2>
+                  <div className="rounded-[1.5rem] border p-4 [&>div]:mt-3 [&>label]:mt-3">
+                    <h2 className="text-2xl">
+                      {isOnlineExperience ? "Before you book" : "Agreements"}
+                    </h2>
 
                     {user?.hasAgreedToTerms ? (
                       <div className="mt-6 flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
@@ -1358,12 +1510,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                       </label>
                     )}
 
-                    {user?.hasAgreedToHealth ? (
-                      <div className="mt-4 flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-                        <Check className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                        <span>Health & Liability Waiver already accepted on your account.</span>
-                      </div>
-                    ) : (
+                    {isOnlineExperience && !user?.hasAgreedToHealth ? (
                       <label className="mt-4 flex items-start gap-3 text-sm">
                         <Checkbox
                           checked={formData.agreedToHealth}
@@ -1386,43 +1533,77 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                           .
                         </span>
                       </label>
-                    )}
+                    ) : null}
+                    {requiresPracticalRegistration ? (
+                      <>
+                        {user?.hasAgreedToHealth ? (
+                          <div className="mt-4 flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                            <Check className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                            <span>Health & Liability Waiver already accepted on your account.</span>
+                          </div>
+                        ) : (
+                          <label className="mt-4 flex items-start gap-3 text-sm">
+                            <Checkbox
+                              checked={formData.agreedToHealth}
+                              onCheckedChange={(checked) =>
+                                setFormData((current) => ({
+                                  ...current,
+                                  agreedToHealth: checked === true,
+                                }))
+                              }
+                            />
+                            <span>
+                              I have read and agree to the{" "}
+                              <Link
+                                href="/health-declaration"
+                                target="_blank"
+                                className="text-primary underline"
+                              >
+                                Health & Liability Waiver
+                              </Link>
+                              .
+                            </span>
+                          </label>
+                        )}
 
-                    {user?.hasConsentedToHealthData ? (
-                      <div className="mt-4 flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-                        <Check className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                        <span>Health-data consent already recorded on your account.</span>
-                      </div>
-                    ) : (
-                      <label className="mt-4 flex items-start gap-3 text-sm">
-                        <Checkbox
-                          checked={formData.agreedToHealthData}
-                          onCheckedChange={(checked) =>
-                            setFormData((current) => ({
-                              ...current,
-                              agreedToHealthData: checked === true,
-                            }))
-                          }
-                        />
-                        <span>
-                          I explicitly consent to Shruti Turner processing the health information I
-                          provide so this retreat can be delivered safely and appropriately.
-                        </span>
-                      </label>
-                    )}
+                        {user?.hasConsentedToHealthData ? (
+                          <div className="mt-4 flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                            <Check className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                            <span>Health-data consent already recorded on your account.</span>
+                          </div>
+                        ) : (
+                          <label className="mt-4 flex items-start gap-3 text-sm">
+                            <Checkbox
+                              checked={formData.agreedToHealthData}
+                              onCheckedChange={(checked) =>
+                                setFormData((current) => ({
+                                  ...current,
+                                  agreedToHealthData: checked === true,
+                                }))
+                              }
+                            />
+                            <span>
+                              I explicitly consent to Shruti Turner processing the health
+                              information I provide so this retreat can be delivered safely and
+                              appropriately.
+                            </span>
+                          </label>
+                        )}
+                      </>
+                    ) : null}
                   </div>
                 </>
               ) : (
                 <div className="rounded-[1.5rem] border p-6">
                   <h2 className="flex items-center gap-2 text-2xl">
                     <Gift className="text-brand-accent h-5 w-5" />
-                    4. Gift details
+                    Gift details
                   </h2>
                   <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                    Gift purchases reserve this retreat place now. The recipient completes their own
-                    attendee, health and access details later through the redemption link.
+                    Gift purchases reserve this {experienceLabel} place now. The recipient completes
+                    their own registration details later through the redemption link.
                   </p>
-                  <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="recipientFirstName">Recipient first name</Label>
                       <Input
@@ -1544,8 +1725,8 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                           >
                             Refund & Cancellation Policy
                           </Link>
-                          . The recipient will accept the attendee health agreements when they
-                          redeem the gift.
+                          . The recipient will complete any required registration agreements when
+                          they redeem the gift.
                         </span>
                       </label>
                     )}
@@ -1553,146 +1734,171 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                 </div>
               )}
 
-              <Button type="submit" size="lg" className="w-full md:w-auto" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full md:w-auto"
+                disabled={
+                  isSubmitting ||
+                  !selectedRoom ||
+                  selectedRoom.isWaitlistOnly ||
+                  selectedRoom.availableSpots <= 0
+                }
+              >
                 {isSubmitting
                   ? "Redirecting..."
                   : purchaseMode === "gift"
                     ? "Continue to gift checkout"
-                    : effectivePaymentOption === "pay_in_full"
-                      ? "Continue to full payment"
-                      : "Continue to deposit checkout"}
+                    : isOnlineExperience
+                      ? `Book my place · ${formatMoney(dueTodayPence, retreat.currency)}`
+                      : effectivePaymentOption === "pay_in_full"
+                        ? "Continue to full payment"
+                        : "Continue to deposit checkout"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </form>
           </div>
 
-          <aside>
-            <div className="sticky top-24 rounded-[1.75rem] border p-6 shadow-sm">
-              <p className="text-brand-accent text-sm tracking-[0.16em] uppercase">
-                Booking summary
-              </p>
-              <h2 className="mt-3 text-2xl">{retreat.title}</h2>
-
-              <div className="mt-6 space-y-4 text-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <span className="text-muted-foreground">Date</span>
-                  <span className="max-w-[14rem] text-right">
-                    {selectedDate
-                      ? formatRetreatDateTimeRange(
-                          selectedDate.startDate,
-                          selectedDate.endDate,
-                          selectedDate.timezone
-                        )
-                      : "Select a date"}
-                  </span>
-                </div>
-                <div className="flex items-start justify-between gap-3">
-                  <span className="text-muted-foreground">
-                    {isOnlineExperience ? "Ticket" : "Room"}
-                  </span>
-                  <span className="max-w-[14rem] text-right">
-                    {selectedRoom?.label || `Select a ${optionLabel}`}
-                  </span>
-                </div>
-                <div className="flex items-start justify-between gap-3">
-                  <span className="text-muted-foreground">Guests</span>
-                  <span>{selectedRoom ? getGuestCountLabel(selectedGuestCount) : "TBC"}</span>
-                </div>
-                {selectedAddons.length > 0 ? (
-                  <div className="border-t pt-4">
-                    <p className="text-muted-foreground mb-2">Optional extras</p>
-                    <div className="space-y-2">
-                      {selectedAddons.map(({ addon, quantity }) => (
-                        <div key={addon.id} className="flex items-start justify-between gap-3">
-                          <span>
-                            {addon.name} × {quantity}
-                          </span>
-                          <span>{formatMoney(addon.pricePence * quantity, addon.currency)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-
-              {selectedRoom ? (
-                <>
-                  <div className="bg-secondary/20 mt-6 rounded-[1.25rem] border p-4">
-                    {purchaseMode === "gift" ? (
-                      <>
-                        <div className="flex items-center justify-between gap-4">
-                          <span className="text-muted-foreground">Due today</span>
-                          <span className="text-xl">
-                            {formatMoney(payInFullTotalPence, retreat.currency)}
-                          </span>
-                        </div>
-                        <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                          Gift purchases reserve this exact {optionLabel} and date in full.
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between gap-4">
-                          <span className="text-muted-foreground">Due today</span>
-                          <span className="text-xl">
-                            {formatMoney(dueTodayPence, retreat.currency)}
-                          </span>
-                        </div>
-                        {isPayingInFull ? (
-                          <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                            This pays the {experienceLabel} balance in full
-                            {payInFullDiscountPence > 0
-                              ? ` and includes a ${formatMoney(
-                                  payInFullDiscountPence,
-                                  retreat.currency
-                                )} discount.`
-                              : "."}
-                          </p>
-                        ) : (
-                          <>
-                            <div className="mt-3 flex items-center justify-between gap-4">
-                              <span className="text-muted-foreground">Balance later</span>
-                              <span>{formatMoney(balanceAmountPence, retreat.currency)}</span>
-                            </div>
-                            <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                              The balance will be payable later from your dashboard or the secure
-                              link sent by email.
-                            </p>
-                          </>
-                        )}
-                      </>
-                    )}
-                  </div>
-
-                  <div className="mt-6 space-y-3 text-sm">
-                    <div className="flex items-start gap-3 rounded-xl border p-4">
-                      <ShieldCheck className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
-                      <p className="text-muted-foreground leading-relaxed">
-                        {purchaseMode === "gift"
-                          ? "The recipient completes their own attendee and health details securely when they redeem the gift."
-                          : `Health and access details are collected now so the ${experienceLabel} can be delivered safely and appropriately.`}
-                      </p>
-                    </div>
-                    <div className="flex items-start gap-3 rounded-xl border p-4">
-                      <AlertCircle className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
-                      <p className="text-muted-foreground leading-relaxed">
-                        {isOnlineExperience
-                          ? "Please contact Shruti before booking if you have accessibility or online access questions."
-                          : "Please contact Shruti before booking if you have accessibility questions about the venue or room set-up."}
-                      </p>
-                    </div>
-                  </div>
-                </>
-              ) : null}
-
-              <div className="text-muted-foreground mt-6 border-t pt-6 text-sm">
-                <p>
-                  {isOnlineExperience ? "Workshop" : "Retreat"}: {retreat.location}
-                  {selectedDate ? ` · ${fmtDate(selectedDate.startDate)}` : ""}
+          {!isSimpleCheckout ? (
+            <aside>
+              <div className="sticky top-24 rounded-[1.75rem] border p-6 shadow-sm">
+                <p className="text-brand-accent text-sm tracking-[0.16em] uppercase">
+                  Booking summary
                 </p>
+                <h2 className="mt-3 text-2xl">{retreat.title}</h2>
+
+                <div className="mt-6 space-y-4 text-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-muted-foreground">Date</span>
+                    <span className="max-w-[14rem] text-right">
+                      {selectedDate
+                        ? formatRetreatDateTimeRange(
+                            selectedDate.startDate,
+                            selectedDate.endDate,
+                            selectedDate.timezone
+                          )
+                        : "Select a date"}
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-muted-foreground">
+                      {optionLabel === "ticket" ? "Ticket" : "Room"}
+                    </span>
+                    <span className="max-w-[14rem] text-right">
+                      {selectedRoom?.label || `Select a ${optionLabel}`}
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-muted-foreground">Guests</span>
+                    <span>{selectedRoom ? getGuestCountLabel(selectedGuestCount) : "TBC"}</span>
+                  </div>
+                  {requiresBedPreference(selectedRoom, selectedGuestCount) ? (
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="text-muted-foreground">Bed arrangement</span>
+                      <span>{getBedPreferenceLabel(bedPreference)}</span>
+                    </div>
+                  ) : null}
+                  {selectedAddons.length > 0 ? (
+                    <div className="border-t pt-4">
+                      <p className="text-muted-foreground mb-2">Optional extras</p>
+                      <div className="space-y-2">
+                        {selectedAddons.map(({ addon, quantity }) => (
+                          <div key={addon.id} className="flex items-start justify-between gap-3">
+                            <span>
+                              {addon.name} × {quantity}
+                            </span>
+                            <span>{formatMoney(addon.pricePence * quantity, addon.currency)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
+                {selectedRoom ? (
+                  <>
+                    <div className="bg-secondary/20 mt-6 rounded-[1.25rem] border p-4">
+                      {purchaseMode === "gift" ? (
+                        <>
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-muted-foreground">Due today</span>
+                            <span className="text-xl">
+                              {formatMoney(payInFullTotalPence, retreat.currency)}
+                            </span>
+                          </div>
+                          <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                            Gift purchases reserve this exact {optionLabel} and date in full.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-muted-foreground">Due today</span>
+                            <span className="text-xl">
+                              {formatMoney(dueTodayPence, retreat.currency)}
+                            </span>
+                          </div>
+                          {isPayingInFull ? (
+                            <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                              This pays the {experienceLabel} balance in full
+                              {payInFullDiscountPence > 0
+                                ? ` and includes a ${formatMoney(
+                                    payInFullDiscountPence,
+                                    retreat.currency
+                                  )} discount.`
+                                : "."}
+                            </p>
+                          ) : (
+                            <>
+                              <div className="mt-3 flex items-center justify-between gap-4">
+                                <span className="text-muted-foreground">Balance later</span>
+                                <span>{formatMoney(balanceAmountPence, retreat.currency)}</span>
+                              </div>
+                              <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                                The balance will be payable later from your dashboard or the secure
+                                link sent by email.
+                              </p>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    <div className="mt-6 space-y-3 text-sm">
+                      <div className="flex items-start gap-3 rounded-xl border p-4">
+                        <ShieldCheck className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
+                        <p className="text-muted-foreground leading-relaxed">
+                          {purchaseMode === "gift"
+                            ? "The recipient completes their own registration details securely when they redeem the gift."
+                            : requiresPracticalRegistration
+                              ? `Health and access details are collected now so the ${experienceLabel} can be delivered safely and appropriately.`
+                              : "Your booking and access details stay together in your account."}
+                        </p>
+                      </div>
+                      <div className="flex items-start gap-3 rounded-xl border p-4">
+                        <AlertCircle className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
+                        <p className="text-muted-foreground leading-relaxed">
+                          {isOnlineExperience
+                            ? "Please contact Shruti before booking if you have accessibility or online access questions."
+                            : requiresAccommodation
+                              ? "Please contact Shruti before booking if you have accessibility questions about the venue or room set-up."
+                              : "Please contact Shruti before booking if you have accessibility questions about the venue or event."}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                ) : null}
+
+                <div className="text-muted-foreground mt-6 border-t pt-6 text-sm">
+                  <p>
+                    {experienceLabel === "workshop" ? "Workshop" : "Retreat"}:{" "}
+                    {selectedDate?.location || retreat.location}
+                    {selectedDate ? ` · ${fmtDate(selectedDate.startDate)}` : ""}
+                  </p>
+                </div>
               </div>
-            </div>
-          </aside>
+            </aside>
+          ) : null}
         </div>
       </section>
     </Layout>

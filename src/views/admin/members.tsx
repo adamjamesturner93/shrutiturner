@@ -3,21 +3,14 @@
 import { AdminLayout } from "../../components/admin-layout";
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
-import {
-  Search,
-  ChevronRight,
-  Users,
-  UserCheck,
-  UserX,
-  Pause,
-  Shield,
-  AlertTriangle,
-} from "lucide-react";
+import { Search, ChevronRight, Users, UserCheck, Shield, AlertTriangle } from "lucide-react";
 import type { AdminMemberListItemDto } from "@/lib/api/types";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
+import { InlineLoadingStatus } from "@/components/loading-region";
 
 type AdminMember = AdminMemberListItemDto & {
   status: "active" | "paused" | "cancelled" | "expired" | "past_due";
@@ -34,16 +27,8 @@ const STATUS_CONFIG: Record<
   past_due: { label: "Past due", variant: "destructive" },
 };
 
-/** Compute at-risk status for a member */
 function getAtRiskStatus(m: AdminMember): "high" | "medium" | "credits-expiring" | null {
-  const today = new Date();
-  const twoWeeksAgo = new Date(today.getTime() - 14 * 86400000);
-  const fourWeeksAgo = new Date(today.getTime() - 28 * 86400000);
-  const lastClass = m.lastClassDate ? new Date(m.lastClassDate) : null;
-  if (m.status !== "active") return null;
-  if (lastClass && lastClass < fourWeeksAgo && m.membershipPlan) return "high";
-  if (lastClass && lastClass < twoWeeksAgo) return "medium";
-  if (!m.membershipPlan && m.creditBalance > 0 && m.creditBalance <= 2) return "credits-expiring";
+  if (m.risk === "high" || m.risk === "medium" || m.risk === "credits-expiring") return m.risk;
   return null;
 }
 
@@ -138,7 +123,11 @@ export function AdminMembers() {
           description={`${adminMembers.length} total members · ${statusCounts.active} active`}
           meta={loading ? "Loading members..." : undefined}
         />
-        {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+        {error ? (
+          <p className="mt-2 text-sm text-red-600" role="alert">
+            {error}
+          </p>
+        ) : null}
 
         <AppMetricGrid className="lg:grid-cols-4">
           <AppMetricCard
@@ -159,65 +148,6 @@ export function AdminMembers() {
           />
         </AppMetricGrid>
 
-        {/* Stat pills */}
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => setStatusFilter(statusFilter === "active" ? "all" : "active")}
-            className={`focus-visible:ring-brand-accent/50 flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${
-              statusFilter === "active"
-                ? "border-brand-accent bg-brand-accent text-brand-white"
-                : "bg-brand-accent/10 hover:border-brand-accent/40 hover:bg-brand-accent/5 border-transparent"
-            }`}
-          >
-            <UserCheck
-              className={`h-4 w-4 ${statusFilter === "active" ? "text-brand-white" : "text-brand-accent"}`}
-            />
-            <span>{statusCounts.active} active</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter(statusFilter === "paused" ? "all" : "paused")}
-            className={`focus-visible:ring-brand-accent/50 flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${
-              statusFilter === "paused"
-                ? "border-brand-accent bg-brand-accent text-brand-white"
-                : "bg-secondary text-foreground hover:border-brand-accent/40 hover:bg-brand-accent/5 border-transparent"
-            }`}
-          >
-            <Pause
-              className={`h-4 w-4 ${statusFilter === "paused" ? "text-brand-white" : "text-muted-foreground"}`}
-            />
-            <span>{statusCounts.paused} paused</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter(statusFilter === "lapsed" ? "all" : "lapsed")}
-            className={`focus-visible:ring-brand-accent/50 flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${
-              statusFilter === "lapsed"
-                ? "border-brand-accent bg-brand-accent text-brand-white"
-                : "bg-secondary text-foreground hover:border-brand-accent/40 hover:bg-brand-accent/5 border-transparent"
-            }`}
-          >
-            <UserX
-              className={`h-4 w-4 ${statusFilter === "lapsed" ? "text-brand-white" : "text-muted-foreground"}`}
-            />
-            <span>{statusCounts.expired + statusCounts.cancelled} lapsed</span>
-          </button>
-          {atRiskCounts.total > 0 && (
-            <button
-              onClick={() => setRiskFilter(riskFilter === "any-risk" ? "all" : "any-risk")}
-              className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors ${
-                riskFilter !== "all"
-                  ? "border border-amber-300 bg-amber-100 text-amber-800"
-                  : "bg-amber-50 text-amber-700 hover:bg-amber-100"
-              }`}
-            >
-              <AlertTriangle className="h-4 w-4" />
-              <span>{atRiskCounts.total} at risk</span>
-            </button>
-          )}
-        </div>
-
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
@@ -226,12 +156,13 @@ export function AdminMembers() {
                 <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                 <Input
                   placeholder="Search name or email..."
+                  aria-label="Search members by name or email"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-10"
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <select
                   aria-label="Filter members by status"
                   value={statusFilter}
@@ -279,12 +210,36 @@ export function AdminMembers() {
                   <option value="medium">Medium risk</option>
                   <option value="credits-expiring">Credits expiring</option>
                 </select>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setSearch("");
+                    setStatusFilter("all");
+                    setPlanFilter("all");
+                    setRoleFilter("all");
+                    setRiskFilter("all");
+                  }}
+                  disabled={
+                    !search &&
+                    statusFilter === "all" &&
+                    planFilter === "all" &&
+                    roleFilter === "all" &&
+                    riskFilter === "all"
+                  }
+                >
+                  Clear
+                </Button>
               </div>
             </div>
+            <p className="text-muted-foreground mt-3 text-sm" role="status">
+              Showing {filtered.length} of {adminMembers.length} members
+            </p>
           </CardContent>
         </Card>
 
         {/* Member list */}
+        {loading ? <InlineLoadingStatus label="Loading members…" /> : null}
         <div className="space-y-2">
           {filtered.map((member) => (
             <MemberRow key={member.id} member={member} />

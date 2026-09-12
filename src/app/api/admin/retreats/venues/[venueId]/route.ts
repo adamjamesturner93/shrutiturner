@@ -22,6 +22,7 @@ export async function PUT(request: Request, context: { params: Promise<{ venueId
       }
       const group = value as Record<string, unknown>;
       return {
+        ...(typeof group.id === "string" ? { id: group.id } : {}),
         name: typeof group.name === "string" ? group.name : "",
         description: typeof group.description === "string" ? group.description : null,
         quantity: integer(group.quantity),

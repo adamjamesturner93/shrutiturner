@@ -40,10 +40,11 @@ export interface SmallGroupTemplateContent {
 export type SmallGroupProgrammeContent = SmallGroupTemplateContent;
 
 export interface RetreatRoomOptionContent {
+  bedSetup?: string;
   id: string;
   label: string;
   description: string;
-  type: "shared_twin" | "single" | "shared_private" | "private" | "virtual";
+  type: "shared_twin" | "single" | "shared_private" | "private" | "virtual" | "ticket";
   bookingUnit?: "bed_space" | "whole_room" | "ticket" | "addon" | "online_live_place";
   /** Base units removed from a shared inventory pool for one booking. */
   inventoryUnitsPerBooking?: number;
@@ -259,6 +260,7 @@ export interface RetreatTemplateContent {
   subtitle: string;
   shortDescription: string;
   fullDescription: string;
+  atmosphereDescription?: string;
   experienceType?:
     | "residential_retreat"
     | "day_retreat"
@@ -275,8 +277,11 @@ export interface RetreatTemplateContent {
   whatToBring?: string[];
   foodAndDrinkDescription?: string;
   schedule: RetreatScheduleDayContent[];
+  scheduleMarkdown?: string;
   accommodationDescription?: string;
   imageUrl?: string;
+  imageAlt?: string;
+  imageFocalPoint?: { x: number; y: number };
   seoTitle?: string;
   seoDescription?: string;
   venueId?: string;
@@ -290,9 +295,7 @@ export interface RetreatVenueContent {
   displayLocation: string;
   description?: string;
   address?: string;
-  accommodationOptions?: string[];
   travelInformation?: string;
-  accommodationType?: string;
   facilities?: string[];
   accessibilityNotes?: string;
   addressLine1?: string;
@@ -346,10 +349,18 @@ export interface RetreatCombinedContent {
   imageUrl: string;
   shortDescription: string;
   fullDescription: string;
+  atmosphereDescription?: string;
   dates: Array<{
     id: string;
+    isRecorded?: boolean;
+    eventKind?: "residential_retreat" | "day_retreat" | "in_person_workshop" | "online_workshop";
     retreatType?: "in_person" | "online";
     timezone?: string;
+    location?: string;
+    venueId?: string;
+    venueSlug?: string;
+    venueName?: string;
+    venue?: RetreatVenueContent;
     startDate: string;
     endDate: string;
     availableSpaces: number;
@@ -370,6 +381,7 @@ export interface RetreatCombinedContent {
   included: string[];
   notIncluded: string[];
   schedule: RetreatScheduleDayContent[];
+  scheduleMarkdown?: string;
   accommodation: string;
   suitableFor: string[];
   experienceType?: RetreatTemplateContent["experienceType"];
@@ -381,6 +393,8 @@ export interface RetreatCombinedContent {
   whatToBring?: string[];
   seoTitle?: string;
   seoDescription?: string;
+  imageAlt?: string;
+  imageFocalPoint?: { x: number; y: number };
   venueId?: string;
   venueSlug?: string;
   venueName?: string;

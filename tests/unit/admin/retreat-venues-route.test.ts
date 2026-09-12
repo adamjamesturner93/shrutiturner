@@ -39,6 +39,7 @@ describe("admin retreat venue rooms route", () => {
       body: JSON.stringify({
         roomGroups: [
           {
+            id: "group_1",
             name: "Convertible king/twin",
             description: "Can be prepared as a king or two singles.",
             quantity: 2,
@@ -59,6 +60,7 @@ describe("admin retreat venue rooms route", () => {
     expect(response.status).toBe(200);
     expect(updateAdminRetreatVenueRoomsMock).toHaveBeenCalledWith("venue_1", [
       expect.objectContaining({
+        id: "group_1",
         quantity: 2,
         allowShared: true,
         privateGuestCounts: [1, 2],

@@ -3,7 +3,8 @@ import { apiOk, handleApiRoute } from "@/lib/api/route";
 
 function toCsvValue(value: unknown) {
   const text = value == null ? "" : typeof value === "string" ? value : JSON.stringify(value);
-  return `"${text.replace(/"/g, '""')}"`;
+  const safeText = /^[\s]*[=+@-]/.test(text) ? `'${text}` : text;
+  return `"${safeText.replace(/"/g, '""')}"`;
 }
 
 export const GET = handleApiRoute(
@@ -14,12 +15,18 @@ export const GET = handleApiRoute(
     const actorUserId = url.searchParams.get("actorUserId") || undefined;
     const limit = Number(url.searchParams.get("limit") || "100");
     const format = url.searchParams.get("format");
+    const requestedPage = Number(url.searchParams.get("page") || "1");
+    const page = Number.isSafeInteger(requestedPage)
+      ? Math.max(1, Math.min(10000, requestedPage))
+      : 1;
+    const pageSize = Number.isSafeInteger(limit) ? Math.max(1, Math.min(500, limit)) : 100;
 
     const rows = await listAdminActionLogs({
       actionType,
       targetType,
       actorUserId,
-      limit: Number.isFinite(limit) ? limit : 100,
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
     });
 
     if (format === "csv") {

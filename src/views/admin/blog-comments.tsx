@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Filter, MessageCircle, RefreshCcw, Search, Trash2 } from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
@@ -8,6 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -42,8 +50,12 @@ export function AdminBlogComments({ initialData }: { initialData?: AdminBlogComm
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminBlogCommentDto | null>(null);
+  const [deleteError, setDeleteError] = useState("");
+  const loadSequence = useRef(0);
 
   const loadComments = async (nextSearch = search, nextStatus = statusFilter) => {
+    const sequence = ++loadSequence.current;
     setLoading(true);
     setError("");
     try {
@@ -55,11 +67,13 @@ export function AdminBlogComments({ initialData }: { initialData?: AdminBlogComm
       });
       if (!response.ok) throw new Error("Failed to load blog comments.");
       const payload = (await response.json()) as AdminBlogCommentDto[];
+      if (sequence !== loadSequence.current) return;
       setComments(payload);
     } catch (loadError) {
+      if (sequence !== loadSequence.current) return;
       setError(loadError instanceof Error ? loadError.message : "Failed to load blog comments.");
     } finally {
-      setLoading(false);
+      if (sequence === loadSequence.current) setLoading(false);
     }
   };
 
@@ -87,9 +101,13 @@ export function AdminBlogComments({ initialData }: { initialData?: AdminBlogComm
       });
       const payload = (await response.json().catch(() => null)) as { message?: string } | null;
       if (!response.ok) throw new Error(payload?.message || "Failed to update comment.");
+      if (action === "delete") setDeleteTarget(null);
       await loadComments();
     } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : "Failed to update comment.");
+      const message =
+        updateError instanceof Error ? updateError.message : "Failed to update comment.";
+      if (action === "delete") setDeleteError(message);
+      else setError(message);
     } finally {
       setUpdatingId(null);
     }
@@ -131,6 +149,7 @@ export function AdminBlogComments({ initialData }: { initialData?: AdminBlogComm
             <div className="flex-1">
               <div className="flex gap-2">
                 <Input
+                  aria-label="Search comment content, author or email"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search content, author, or email"
@@ -149,7 +168,7 @@ export function AdminBlogComments({ initialData }: { initialData?: AdminBlogComm
                   void loadComments(search, value);
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger aria-label="Comment status">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -223,7 +242,10 @@ export function AdminBlogComments({ initialData }: { initialData?: AdminBlogComm
                     variant="outline"
                     className="text-red-700"
                     disabled={updatingId === comment.id}
-                    onClick={() => void updateComment(comment.id, "delete")}
+                    onClick={() => {
+                      setDeleteError("");
+                      setDeleteTarget(comment);
+                    }}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete
@@ -234,7 +256,7 @@ export function AdminBlogComments({ initialData }: { initialData?: AdminBlogComm
           ))}
         </div>
 
-        {!loading && comments.length === 0 ? (
+        {!loading && !error && comments.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
               <p className="text-muted-foreground">No comments match the current filters.</p>
@@ -242,6 +264,46 @@ export function AdminBlogComments({ initialData }: { initialData?: AdminBlogComm
           </Card>
         ) : null}
       </div>
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !updatingId) setDeleteTarget(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete this comment and its replies?</DialogTitle>
+            <DialogDescription>
+              This permanently deletes the comment by {deleteTarget?.authorName} and its replies. It
+              cannot be restored from admin. Use Hide thread instead if you may want to restore it
+              later.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteError ? (
+            <p role="alert" className="text-destructive text-sm">
+              {deleteError}
+            </p>
+          ) : null}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={Boolean(updatingId)}
+              onClick={() => setDeleteTarget(null)}
+            >
+              Keep comment
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={Boolean(updatingId)}
+              onClick={() => {
+                if (deleteTarget) void updateComment(deleteTarget.id, "delete");
+              }}
+            >
+              {updatingId ? "Deleting…" : "Delete permanently"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }

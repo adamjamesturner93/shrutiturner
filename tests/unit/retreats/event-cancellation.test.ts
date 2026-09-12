@@ -22,7 +22,7 @@ const tx = {
 const db = {
   user: { findUnique: vi.fn() },
   $transaction: vi.fn(),
-  retreatDate: { update: vi.fn() },
+  retreatDate: { findUnique: vi.fn(), update: vi.fn() },
   retreatCancellationRequest: { findMany: vi.fn() },
   giftCancellationRequest: { findMany: vi.fn() },
 };
@@ -42,7 +42,8 @@ vi.mock("@/lib/app-url", () => ({
   buildAbsoluteUrl: (path: string) => `https://studio.example${path}`,
 }));
 
-const { cancelAdminRetreatEvent } = await import("@/lib/retreats/event-cancellation");
+const { cancelAdminRetreatEvent, getAdminRetreatCancellationPreview } =
+  await import("@/lib/retreats/event-cancellation");
 
 describe("admin retreat event cancellation", () => {
   beforeEach(() => {
@@ -60,6 +61,69 @@ describe("admin retreat event cancellation", () => {
     approveGiftMock.mockResolvedValue({ status: "completed" });
     sendEmailMock.mockResolvedValue({ id: "email" });
     createLogMock.mockResolvedValue(undefined);
+  });
+
+  it("previews both guests and remaining captured funds without making changes", async () => {
+    db.retreatDate.findUnique.mockResolvedValue({
+      id: "date_1",
+      status: "open",
+      bookings: [
+        {
+          id: "booking_1",
+          attendeeCount: 2,
+          depositPaidPence: 18200,
+          balancePaidPence: 0,
+          giftPurchase: null,
+          refunds: [{ amountPence: 2000 }],
+        },
+      ],
+      giftPurchases: [
+        { id: "gift_1", status: "purchased", totalPaidPence: 3500, refundedAmountPence: 500 },
+        { id: "gift_2", status: "pending_payment", totalPaidPence: 3500, refundedAmountPence: 0 },
+      ],
+    });
+    expect(await getAdminRetreatCancellationPreview("date_1")).toMatchObject({
+      available: true,
+      bookingCount: 1,
+      guestCount: 2,
+      giftCount: 2,
+      refundPence: 19200,
+      version: expect.any(String),
+    });
+    expect(db.$transaction).not.toHaveBeenCalled();
+    expect(sendEmailMock).not.toHaveBeenCalled();
+    expect(approveBookingMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a stale impact confirmation before any cancellation or refund", async () => {
+    const original = { id: "date_1", status: "open", bookings: [], giftPurchases: [] };
+    db.retreatDate.findUnique.mockResolvedValue(original);
+    const preview = await getAdminRetreatCancellationPreview("date_1");
+    tx.retreatDate.findUnique.mockResolvedValue({
+      ...original,
+      bookings: [
+        {
+          id: "new_booking",
+          attendeeCount: 2,
+          depositPaidPence: 18200,
+          balancePaidPence: 0,
+          giftPurchase: null,
+          refunds: [],
+        },
+      ],
+    });
+    await expect(
+      cancelAdminRetreatEvent({
+        retreatDateId: "date_1",
+        actorUserId: "admin_1",
+        reason: "Unavailable",
+        expectedVersion: preview.version,
+      })
+    ).rejects.toThrow("CANCELLATION_PREVIEW_CHANGED");
+    expect(tx.retreatDate.update).not.toHaveBeenCalled();
+    expect(tx.retreatCancellationRequest.create).not.toHaveBeenCalled();
+    expect(approveBookingMock).not.toHaveBeenCalled();
+    expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
   it("closes pending checkouts and only submits refunds for captured payments", async () => {

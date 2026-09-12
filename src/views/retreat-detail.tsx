@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
@@ -11,14 +12,18 @@ import {
   Gift,
   MapPin,
   MonitorPlay,
+  Ticket,
   X,
 } from "lucide-react";
 import { Layout } from "@/components/layout";
+import { RetreatBedPreference } from "@/components/retreat-bed-preference";
+import { requiresBedPreference, type BedPreference } from "@/lib/retreats/bed-preference";
+import { MarkdownContent } from "@/components/markdown-content";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
 import { SEO } from "@/components/seo";
 import { Button } from "@/components/ui/button";
-import { getRetreatCardImageSrc } from "@/lib/retreats/images";
+import { getRetreatCardImagePosition, getRetreatCardImageSrc } from "@/lib/retreats/images";
 import {
   getEffectiveRetreatRatePricePence,
   isRetreatEarlyBirdActive,
@@ -36,6 +41,7 @@ import { useI18n } from "@/lib/use-i18n";
 interface RetreatDetailPageProps {
   retreat?: RetreatCombinedContent | null;
   otherRetreatsAtVenue?: RetreatCombinedContent[];
+  initialDateId?: string;
 }
 
 function formatMoney(value: number, currency = "GBP") {
@@ -115,8 +121,9 @@ function getDefaultRoomOptionId(date: RetreatCombinedContent["dates"][number] | 
 }
 
 function getRoomTypeLabel(roomOption: RetreatRoomOptionContent) {
+  if (roomOption.type === "ticket") return "Event ticket";
   if (roomOption.type === "single") return "Private room";
-  if (roomOption.type === "shared_private") return "Private room for two";
+  if (roomOption.type === "shared_private") return "Private room";
   if (roomOption.type === "private") return "Private room";
   if (roomOption.type === "virtual") return "Virtual attendance";
   return "Shared room";
@@ -140,17 +147,28 @@ function getScheduleDateLabel(startDate: string | undefined, dayIndex: number) {
 export function RetreatDetailPage({
   retreat: retreatProp,
   otherRetreatsAtVenue = [],
+  initialDateId,
 }: RetreatDetailPageProps) {
   const retreat = retreatProp ?? null;
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { fmtDate } = useI18n();
-  const [selectedDateId, setSelectedDateId] = useState(retreat?.dates[0]?.id || "");
+  const invalidInitialDate = Boolean(
+    initialDateId && !retreat?.dates.some((date) => date.id === initialDateId)
+  );
+  const firstSelectedDateId = invalidInitialDate
+    ? ""
+    : initialDateId || retreat?.dates[0]?.id || "";
+  const [selectedDateId, setSelectedDateId] = useState(firstSelectedDateId);
   const [selectedRoomId, setSelectedRoomId] = useState(
-    getDefaultRoomOptionId(retreat?.dates[0] || null)
+    getDefaultRoomOptionId(retreat?.dates.find((date) => date.id === firstSelectedDateId) || null)
   );
   const [selectedGuestCount, setSelectedGuestCount] = useState(1);
+  const [bedPreference, setBedPreference] = useState<BedPreference>("double");
 
   const selectedDate = useMemo(
-    () => retreat?.dates.find((date) => date.id === selectedDateId) || retreat?.dates[0] || null,
+    () => retreat?.dates.find((date) => date.id === selectedDateId) || null,
     [retreat, selectedDateId]
   );
 
@@ -174,23 +192,26 @@ export function RetreatDetailPage({
   }, [selectedGuestCount, selectedRoom, selectedRoomRatePlans]);
 
   const priceSummary = useMemo(
-    () => (retreat ? getRetreatPriceSummary(retreat) : { lowestPricePence: 0, isFromPrice: false }),
-    [retreat]
+    () =>
+      retreat && selectedDate
+        ? getRetreatPriceSummary({ dates: [selectedDate], normalPrice: retreat.normalPrice })
+        : { lowestPricePence: 0, isFromPrice: false },
+    [retreat, selectedDate]
   );
 
   const depositFromPence = useMemo(() => {
     if (!retreat) return 0;
-    const deposits = retreat.dates.flatMap((date) =>
+    const deposits = (selectedDate ? [selectedDate] : []).flatMap((date) =>
       date.roomOptions.flatMap((roomOption) =>
         getRoomRatePlans(roomOption).map((ratePlan) => getRatePlanDeposit(roomOption, ratePlan))
       )
     );
     return deposits.length > 0 ? Math.min(...deposits) : 0;
-  }, [retreat]);
+  }, [retreat, selectedDate]);
 
   const earlyBirdSummary = useMemo(() => {
     if (!retreat) return null;
-    const activeRates = retreat.dates.flatMap((date) =>
+    const activeRates = (selectedDate ? [selectedDate] : []).flatMap((date) =>
       date.roomOptions.flatMap((roomOption) =>
         getRoomRatePlans(roomOption).filter((ratePlan) => getEarlyBirdSavingPence(ratePlan) > 0)
       )
@@ -201,8 +222,12 @@ export function RetreatDetailPage({
       maximumSavingPence: Math.max(
         ...activeRates.map((ratePlan) => getEarlyBirdSavingPence(ratePlan))
       ),
+      endsAt: activeRates
+        .map((ratePlan) => ratePlan.earlyBirdEndsAt)
+        .filter((value): value is string => Boolean(value))
+        .sort()[0],
     };
-  }, [retreat]);
+  }, [retreat, selectedDate]);
 
   if (!retreat) {
     return (
@@ -221,54 +246,65 @@ export function RetreatDetailPage({
     );
   }
 
-  const isOnlineExperience =
-    retreat.deliveryMode === "online_live" ||
-    retreat.deliveryMode === "online_on_demand" ||
-    retreat.dates.every((date) => date.retreatType === "online");
-  const isLiveOnlineExperience =
-    retreat.deliveryMode === "online_live" ||
-    (retreat.deliveryMode !== "online_on_demand" &&
-      retreat.dates.some((date) => date.retreatType === "online"));
-  const isFullPaymentOnly =
-    retreat.dates.length > 0 &&
-    retreat.dates.every((date) => date.paymentPolicy === "full_payment");
-  const experienceLabel = isOnlineExperience ? "workshop" : "retreat";
-  const optionLabel = isOnlineExperience ? "ticket" : "room";
+  const selectedEventKind =
+    selectedDate?.eventKind ||
+    (retreat.deliveryMode === "online_live" || retreat.deliveryMode === "online_on_demand"
+      ? "online_workshop"
+      : "residential_retreat");
+  const isOnlineExperience = selectedEventKind === "online_workshop";
+  const isLiveOnlineExperience = selectedEventKind === "online_workshop";
+  const requiresAccommodation = selectedEventKind === "residential_retreat";
+  const isFullPaymentOnly = selectedDate?.paymentPolicy === "full_payment";
+  const experienceLabel = selectedEventKind.includes("workshop") ? "workshop" : "retreat";
+  const optionLabel = requiresAccommodation ? "room" : "ticket";
+  const selectedRoomAvailable = Boolean(
+    selectedRoom && !selectedRoom.isWaitlistOnly && selectedRoom.availableSpots > 0
+  );
   const hasMultipleDates = retreat.dates.length > 1;
   const hasMultipleOptions = (selectedDate?.roomOptions.length || 0) > 1;
   const selectedTimezone = selectedDate?.timezone || "Europe/London";
+  const selectedVenue = selectedDate?.venue || retreat.venue;
+  const selectedLocation = selectedDate?.location || selectedDate?.venueName || retreat.location;
   const bestForCopy =
     retreat.audienceDescription?.trim() ||
     "People who want space to move, learn and explore what works for them, with support and choice built in.";
   const checkoutHref =
     selectedDate && selectedRoom
-      ? `/retreats/${retreat.slug}/checkout?date=${selectedDate.id}&room=${selectedRoom.id}&guests=${selectedGuestCount}`
+      ? `/retreats/${retreat.slug}/checkout?date=${selectedDate.id}&room=${selectedRoom.id}&guests=${selectedGuestCount}${requiresBedPreference(selectedRoom, selectedGuestCount) ? `&beds=${bedPreference}` : ""}`
       : `/retreats/${retreat.slug}/checkout`;
   const giftHref =
     selectedDate && selectedRoom
-      ? `/retreats/${retreat.slug}/checkout?date=${selectedDate.id}&room=${selectedRoom.id}&guests=${selectedGuestCount}&gift=1`
+      ? `/retreats/${retreat.slug}/checkout?date=${selectedDate.id}&room=${selectedRoom.id}&guests=${selectedGuestCount}&gift=1${requiresBedPreference(selectedRoom, selectedGuestCount) ? `&beds=${bedPreference}` : ""}`
       : `/retreats/${retreat.slug}/checkout?gift=1`;
   const renderBookingActions = (className: string) => (
     <div className={className}>
       <div className="space-y-3">
-        <Button asChild className="w-full" size="lg" disabled={!selectedDate || !selectedRoom}>
-          <Link href={checkoutHref}>
-            {hasMultipleDates ? `Book this ${experienceLabel}` : "Book your place"}
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </Button>
-        <Button asChild variant="outline" className="w-full">
-          <Link href={giftHref}>
-            Buy as a gift
-            <Gift className="ml-2 h-4 w-4" />
-          </Link>
-        </Button>
+        {selectedDate && selectedRoomAvailable ? (
+          <>
+            <Button asChild className="w-full" size="lg">
+              <Link href={checkoutHref}>
+                {hasMultipleDates ? `Book this ${experienceLabel}` : "Book your place"}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full">
+              <Link href={giftHref}>
+                Buy as a gift
+                <Gift className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </>
+        ) : (
+          <Button type="button" className="w-full" size="lg" disabled>
+            {selectedDate ? `Choose an available ${optionLabel}` : "Choose an available date"}
+          </Button>
+        )}
       </div>
     </div>
   );
   const heroImageSrc = getRetreatCardImageSrc(retreat);
-  const hasEarlyBirdPricing = retreat.dates.some((date) =>
-    date.roomOptions.some((roomOption) =>
+  const hasEarlyBirdPricing = Boolean(
+    selectedDate?.roomOptions.some((roomOption) =>
       getRoomRatePlans(roomOption).some((ratePlan) =>
         isRetreatEarlyBirdActive({
           earlyBirdPricePence: ratePlan.earlyBirdPricePence,
@@ -280,13 +316,17 @@ export function RetreatDetailPage({
   );
   const renderRoomOption = (roomOption: RetreatRoomOptionContent) => {
     const isSelected = roomOption.id === selectedRoom?.id;
+    const unavailable = roomOption.availableSpots <= 0 || roomOption.isWaitlistOnly;
     const firstRatePlan = getRoomRatePlans(roomOption)[0];
     const earlyBirdSavingPence = firstRatePlan ? getEarlyBirdSavingPence(firstRatePlan) : 0;
     const optionPriceSummary = getRetreatRoomOptionPriceSummary(roomOption);
     const content = (
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p>{roomOption.label}</p>
+          <p>
+            {roomOption.label}
+            {unavailable ? " · Sold out" : ""}
+          </p>
           <p className="text-muted-foreground mt-1 text-sm">
             {getRoomTypeLabel(roomOption)} ·{" "}
             {getRoomRatePlans(roomOption).length > 1
@@ -328,6 +368,7 @@ export function RetreatDetailPage({
       <button
         key={roomOption.id}
         type="button"
+        disabled={unavailable}
         aria-pressed={isSelected}
         onClick={() => {
           setSelectedRoomId(roomOption.id);
@@ -365,7 +406,7 @@ export function RetreatDetailPage({
               />
               <div className="text-brand-accent-light inline-flex items-center gap-2 text-sm">
                 <MapPin className="h-4 w-4" />
-                {retreat.location}
+                {selectedLocation}
               </div>
               <h1 className="mt-5 text-4xl leading-[1.08] tracking-[-0.03em] md:text-5xl">
                 {retreat.title}
@@ -413,7 +454,7 @@ export function RetreatDetailPage({
                   asChild
                   size="lg"
                   variant="outline"
-                  className="border-brand-white/25 bg-brand-white/6 text-brand-white hover:bg-brand-white/12"
+                  className="border-brand-white/25 bg-brand-white/6 text-brand-white hover:bg-brand-white/12 hover:text-brand-white focus-visible:text-brand-white focus-visible:ring-brand-accent-light"
                 >
                   <Link href="/contact">Ask a Question</Link>
                 </Button>
@@ -425,22 +466,29 @@ export function RetreatDetailPage({
                 <div className="overflow-hidden rounded-[1.45rem]">
                   <ImageWithFallback
                     src={heroImageSrc}
-                    alt={retreat.title}
+                    alt={retreat.imageAlt || retreat.title}
                     className="h-full min-h-[20rem] w-full object-cover"
                     preload
+                    style={{
+                      objectPosition: getRetreatCardImagePosition(
+                        heroImageSrc,
+                        retreat.imageFocalPoint
+                      ),
+                    }}
                     sizes="(max-width: 1024px) 100vw, 48vw"
                   />
                 </div>
                 <div className="grid gap-3">
-                  <div className="bg-brand-white/10 rounded-[1.25rem] p-4 backdrop-blur-sm">
-                    <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
-                      Atmosphere
-                    </p>
-                    <p className="text-brand-white/84 mt-2 text-sm leading-relaxed">
-                      Spacious movement with options, reflection & rest, with no expectation that
-                      everyone takes the same thing from the day.
-                    </p>
-                  </div>
+                  {retreat.atmosphereDescription ? (
+                    <div className="bg-brand-white/10 rounded-[1.25rem] p-4 backdrop-blur-sm">
+                      <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
+                        Atmosphere
+                      </p>
+                      <MarkdownContent className="text-brand-white/84 mt-2 text-sm leading-relaxed">
+                        {retreat.atmosphereDescription}
+                      </MarkdownContent>
+                    </div>
+                  ) : null}
                   <div className="bg-brand-accent-light/12 rounded-[1.25rem] p-4 backdrop-blur-sm">
                     <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
                       Best for
@@ -455,7 +503,8 @@ export function RetreatDetailPage({
                         Early bird
                       </p>
                       <p className="text-brand-white/84 mt-2 text-sm leading-relaxed">
-                        Available until {fmtDate(retreat.earlyBirdDeadline)} where applicable.
+                        Available until{" "}
+                        {fmtDate(earlyBirdSummary?.endsAt || retreat.earlyBirdDeadline)}.
                       </p>
                     </div>
                   ) : null}
@@ -470,9 +519,9 @@ export function RetreatDetailPage({
         <div className="container mx-auto grid max-w-6xl gap-12 px-4 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="space-y-10">
             <div className="marketing-panel rounded-[1.85rem] p-7 md:p-8">
-              <div className="text-muted-foreground leading-relaxed whitespace-pre-line">
+              <MarkdownContent className="text-muted-foreground leading-relaxed">
                 {retreat.fullDescription}
-              </div>
+              </MarkdownContent>
             </div>
 
             <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
@@ -522,9 +571,17 @@ export function RetreatDetailPage({
 
             <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
               <h2 className="text-3xl md:text-4xl">
-                {isOnlineExperience ? "Workshop schedule" : "Daily rhythm"}
+                {isOnlineExperience
+                  ? "Workshop schedule"
+                  : requiresAccommodation
+                    ? "Daily rhythm"
+                    : "What we’ll do"}
               </h2>
-              {retreat.schedule.length > 0 ? (
+              {retreat.scheduleMarkdown ? (
+                <MarkdownContent className="text-muted-foreground mt-6 leading-relaxed">
+                  {retreat.scheduleMarkdown}
+                </MarkdownContent>
+              ) : retreat.schedule.length > 0 ? (
                 <div className="mt-6 space-y-5">
                   {retreat.schedule.map((day, dayIndex) => (
                     <div
@@ -587,36 +644,36 @@ export function RetreatDetailPage({
               </div>
             ) : null}
 
-            {retreat.venue && retreat.deliveryMode === "in_person" ? (
+            {selectedVenue && !isOnlineExperience ? (
               <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
                 <h2 className="text-3xl md:text-4xl">Getting there</h2>
                 <p className="text-muted-foreground mt-4 leading-relaxed">
-                  {retreat.venue.arrivalInformation || retreat.venue.travelInformation}
+                  {selectedVenue.arrivalInformation || selectedVenue.travelInformation}
                 </p>
                 <div className="text-muted-foreground mt-5 grid gap-5 text-sm leading-relaxed md:grid-cols-2">
-                  {retreat.venue.travelByTrain ? (
+                  {selectedVenue.travelByTrain ? (
                     <div>
                       <h3 className="text-foreground text-base">By train</h3>
-                      <p className="mt-1">{retreat.venue.travelByTrain}</p>
+                      <p className="mt-1">{selectedVenue.travelByTrain}</p>
                     </div>
                   ) : null}
-                  {retreat.venue.travelByCar ? (
+                  {selectedVenue.travelByCar ? (
                     <div>
                       <h3 className="text-foreground text-base">By car</h3>
-                      <p className="mt-1">{retreat.venue.travelByCar}</p>
+                      <p className="mt-1">{selectedVenue.travelByCar}</p>
                     </div>
                   ) : null}
-                  {retreat.venue.localTransferInformation ? (
+                  {selectedVenue.localTransferInformation ? (
                     <div className="md:col-span-2">
                       <h3 className="text-foreground text-base">Local transfer</h3>
-                      <p className="mt-1">{retreat.venue.localTransferInformation}</p>
+                      <p className="mt-1">{selectedVenue.localTransferInformation}</p>
                     </div>
                   ) : null}
                 </div>
               </div>
             ) : null}
 
-            {!isOnlineExperience && retreat.accommodation ? (
+            {requiresAccommodation && retreat.accommodation ? (
               <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
                 <h2 className="text-3xl md:text-4xl">Accommodation</h2>
                 <p className="text-muted-foreground mt-4 leading-relaxed">
@@ -681,8 +738,23 @@ export function RetreatDetailPage({
 
                 <div className="mt-8">
                   <h3 className="text-lg">{hasMultipleDates ? "Choose your date" : "Date"}</h3>
+                  {invalidInitialDate && !selectedDate ? (
+                    <div
+                      role="alert"
+                      className="border-destructive/30 bg-destructive/5 text-foreground mt-4 flex gap-3 rounded-[1rem] border p-4 text-sm"
+                    >
+                      <AlertCircle
+                        aria-hidden="true"
+                        className="text-destructive mt-0.5 h-5 w-5 shrink-0"
+                      />
+                      <p>
+                        That date is no longer available. Choose one of the current dates below
+                        before booking.
+                      </p>
+                    </div>
+                  ) : null}
                   <div className="mt-4 grid gap-3">
-                    {hasMultipleDates ? (
+                    {hasMultipleDates || !selectedDate ? (
                       retreat.dates.map((date) => {
                         const isSelected = date.id === selectedDate?.id;
                         return (
@@ -692,6 +764,9 @@ export function RetreatDetailPage({
                             aria-pressed={isSelected}
                             onClick={() => {
                               setSelectedDateId(date.id);
+                              const params = new URLSearchParams(searchParams.toString());
+                              params.set("date", date.id);
+                              router.replace(`${pathname}?${params.toString()}`, { scroll: false });
                               const nextRoomId = getDefaultRoomOptionId(date);
                               const nextRoom =
                                 date.roomOptions.find(
@@ -776,6 +851,7 @@ export function RetreatDetailPage({
                             <button
                               key={ratePlan.guestCount}
                               type="button"
+                              aria-pressed={selectedGuestCount === ratePlan.guestCount}
                               onClick={() => setSelectedGuestCount(ratePlan.guestCount)}
                               className={`rounded-[0.9rem] border px-4 py-3 text-left text-sm transition-colors ${
                                 selectedGuestCount === ratePlan.guestCount
@@ -814,27 +890,35 @@ export function RetreatDetailPage({
                   </div>
                 ) : null}
 
+                {requiresBedPreference(selectedRoom, selectedGuestCount) ? (
+                  <RetreatBedPreference value={bedPreference} onChange={setBedPreference} />
+                ) : null}
+
                 {renderBookingActions("mt-8 lg:hidden")}
 
                 <div className="mt-8 space-y-3 text-sm">
                   <div className="flex items-start gap-3 rounded-xl border p-4">
                     <AlertCircle className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
                     <p className="text-muted-foreground">
-                      {isOnlineExperience
-                        ? "Your ticket, price and any gifted place are reserved against this workshop date."
-                        : "Room choice, deposit and any gifted place are all reserved against this selected retreat date."}
+                      {requiresAccommodation
+                        ? "Room choice, deposit and any gifted place are all reserved against this selected retreat date."
+                        : `Your ticket, price and any gifted place are reserved against this ${experienceLabel} date.`}
                     </p>
                   </div>
                   <div className="flex items-start gap-3 rounded-xl border p-4">
                     {isOnlineExperience ? (
                       <MonitorPlay className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
+                    ) : !requiresAccommodation ? (
+                      <Ticket className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
                     ) : (
                       <BedDouble className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
                     )}
                     <p className="text-muted-foreground">
                       {isOnlineExperience
                         ? "Accessibility and online access questions are welcome before you book. Use the contact form if you need to check the online set-up first."
-                        : "Accessibility and room questions are welcome before you book. Use the contact form if you need to check suitability first."}
+                        : requiresAccommodation
+                          ? "Accessibility and room questions are welcome before you book. Use the contact form if you need to check suitability first."
+                          : "Accessibility and venue questions are welcome before you book. Use the contact form if you need to check suitability first."}
                     </p>
                   </div>
                 </div>

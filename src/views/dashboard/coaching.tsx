@@ -577,6 +577,9 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
       <DashboardLayout title="Coaching - Private Studio">
         <div className="py-16 text-center">
           <p className="text-muted-foreground">{error || "No coaching data available."}</p>
+          <Button className="mt-4" onClick={() => void reloadCoaching({ showLoading: true })}>
+            Try again
+          </Button>
         </div>
       </DashboardLayout>
     );
@@ -586,6 +589,7 @@ export function DashboardCoaching({ initialData }: { initialData?: CoachingDashb
     <DashboardLayout title="Coaching - Private Studio">
       <div className="space-y-6">
         <AppPageHeader
+          compact
           eyebrow="Coaching dashboard"
           title="Coaching"
           description="Your recommendation, onboarding, billing and next coaching action in one place."

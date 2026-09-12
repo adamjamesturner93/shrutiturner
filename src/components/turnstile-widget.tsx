@@ -122,7 +122,7 @@ export function TurnstileWidget({
         <div
           role="status"
           aria-live="polite"
-          className="absolute inset-0 flex min-h-[65px] items-center justify-center gap-2 rounded border border-current/20 px-3 text-xs opacity-70"
+          className="absolute inset-0 flex min-h-[65px] items-center justify-center gap-2 rounded border border-current/20 px-3 text-xs"
         >
           <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
           Loading security check…

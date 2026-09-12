@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { HealthProfileEditor } from "@/components/health-profile-editor";
@@ -26,12 +26,18 @@ export function WorkshopSetupPage({
   refreshEndpoint,
   continueHref,
   continueLabel = "Open workshop room",
+  eventLabel = "Online workshop",
+  completionBlocked = false,
+  children,
 }: {
   initialData: SetupData;
   initialHealthProfile: HealthProfile;
   refreshEndpoint?: string;
   continueHref?: string;
   continueLabel?: string;
+  eventLabel?: string;
+  completionBlocked?: boolean;
+  children?: ReactNode;
 }) {
   const [data, setData] = useState(initialData);
   const [firstName, setFirstName] = useState(initialData.setup.profile.firstName);
@@ -50,8 +56,8 @@ export function WorkshopSetupPage({
       cache: "no-store",
     });
     if (!response.ok) throw new Error("Unable to refresh workshop setup.");
-    const payload = (await response.json()) as SetupData;
-    setData(payload);
+    const payload = (await response.json()) as SetupData | { data: SetupData };
+    setData("data" in payload ? payload.data : payload);
   };
 
   const saveProfileAndAgreements = async () => {
@@ -119,14 +125,14 @@ export function WorkshopSetupPage({
   const missing = data.setup.missing;
 
   return (
-    <DashboardLayout title="Workshop setup">
+    <DashboardLayout title="Event registration" handlesLegalAgreements>
       <main className="mx-auto max-w-4xl space-y-6 py-8">
         <header>
-          <p className="text-brand-accent text-sm tracking-[0.16em] uppercase">Online workshop</p>
+          <p className="text-brand-accent text-sm tracking-[0.16em] uppercase">{eventLabel}</p>
           <h1 className="mt-2 text-3xl">Get ready for {data.title}</h1>
           <p className="text-muted-foreground mt-3 max-w-2xl">
-            Complete the items below once. Only the information needed to deliver the workshop
-            safely is required.
+            Complete the items below. Only the information needed to deliver the event safely is
+            required.
           </p>
         </header>
 
@@ -147,12 +153,13 @@ export function WorkshopSetupPage({
           </p>
         ) : null}
 
-        {data.setup.complete ? (
+        {children}
+        {data.setup.complete && !completionBlocked ? (
           <section className="marketing-panel rounded-[1.5rem] p-6 text-center">
             <CheckCircle2 className="text-brand-accent mx-auto h-10 w-10" />
             <h2 className="mt-3 text-2xl">You&apos;re ready to join</h2>
             <p className="text-muted-foreground mt-2">
-              Your workshop profile and agreements are current.
+              Your registration and agreements are current.
             </p>
             <Button asChild className="mt-5">
               <Link href={continueHref || `/dashboard/retreats/${data.bookingId}/live`}>
@@ -160,7 +167,7 @@ export function WorkshopSetupPage({
               </Link>
             </Button>
           </section>
-        ) : (
+        ) : !data.setup.complete ? (
           <>
             <section className="marketing-panel rounded-[1.5rem] p-6">
               <h2 className="text-2xl">Account and agreements</h2>
@@ -265,7 +272,7 @@ export function WorkshopSetupPage({
               </section>
             ) : null}
           </>
-        )}
+        ) : null}
       </main>
     </DashboardLayout>
   );

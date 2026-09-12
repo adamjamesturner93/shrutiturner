@@ -1,26 +1,28 @@
 "use client";
-
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
 import {
-  AlertCircle,
+  RetreatOperationsOverview,
+  RetreatAttendeeWorkspace,
+  RetreatTicketPrices,
+  RetreatPaymentReminders,
+} from "@/components/admin/retreat-operations";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import {
   ArrowLeft,
   Calendar,
-  Download,
   MapPin,
-  PoundSterling,
   Plus,
   Save,
-  Send,
   Trash2,
   CirclePause,
   Globe2,
   Gift,
-  Users,
   Video,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
+import { RetreatCancellationDialog } from "@/components/admin/retreat-cancellation-dialog";
 import { DetailSkeleton } from "@/components/dashboard-skeleton";
 import { LoadingRegion } from "@/components/loading-region";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,28 +56,40 @@ function badgeVariant(status: string): "default" | "secondary" | "outline" | "de
   return "outline";
 }
 
-function downloadCsv(filename: string, rows: string[][]) {
-  const csv = rows
-    .map((row) => row.map((value) => `"${value.replaceAll('"', '""')}"`).join(","))
-    .join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
 export function AdminRetreatDetail({
   initialData,
 }: {
   initialData?: AdminRetreatDetailDto | null;
 }) {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedSection = searchParams.get("section") || searchParams.get("view");
+  const navigate = (view: string, filter?: string) =>
+    router.replace(`/admin/retreats/${id}?view=${view}${filter ? `&filter=${filter}` : ""}`, {
+      scroll: false,
+    });
+  const reloadOperations = async () => {
+    const response = await fetch(`/api/admin/retreats/${id}`, { cache: "no-store" });
+    if (!response.ok) throw new Error("Unable to refresh retreat.");
+    setRetreat(await response.json());
+  };
   const [retreat, setRetreat] = useState<AdminRetreatDetailDto | null>(initialData || null);
+  const supportsDelivery =
+    retreat?.eventKind === "residential_retreat" || retreat?.eventKind === "online_workshop";
+  const section =
+    ["overview", "attendees", "delivery", "payments", "setup"].includes(requestedSection || "") &&
+    (requestedSection !== "delivery" || supportsDelivery)
+      ? requestedSection!
+      : retreat?.status === "draft"
+        ? "setup"
+        : "overview";
+  const requestedStep = searchParams.get("step");
+  const setupStep = ["rooms", "payment", "review"].includes(requestedStep || "")
+    ? requestedStep!
+    : retreat?.status === "draft"
+      ? "rooms"
+      : "review";
   const [evidence, setEvidence] = useState<AdminRetreatEvidenceDto | null>(null);
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState("");
@@ -244,20 +258,6 @@ export function AdminRetreatDetail({
       active = false;
     };
   }, [id]);
-
-  const summary = useMemo(() => {
-    if (!retreat) return null;
-    const paidInFull = retreat.bookings.filter(
-      (booking) => booking.paymentStatus === "paid_in_full"
-    ).length;
-    const balanceDue = retreat.bookings.filter(
-      (booking) => booking.paymentStatus === "deposit_paid"
-    ).length;
-    const specialRequirements = retreat.bookings.filter(
-      (booking) => booking.dietaryRequirements || booking.medicalConditions || booking.mobilityNeeds
-    );
-    return { paidInFull, balanceDue, specialRequirements };
-  }, [retreat]);
 
   const runRetreatAction = async (
     action:
@@ -559,7 +559,7 @@ export function AdminRetreatDetail({
   };
 
   const updateCommunityMode = async (enabled: boolean) => {
-    if (!retreat || retreat.retreatType !== "online") return;
+    if (!retreat || retreat.eventKind !== "online_workshop") return;
     setActionLoading("community-mode");
     setActionMessage("");
     setError("");
@@ -680,6 +680,10 @@ export function AdminRetreatDetail({
     );
   }
 
+  const usesLiveRoom = retreat.eventKind === "online_workshop";
+  const requiresAccommodation = retreat.eventKind === "residential_retreat";
+  const usesTickets = !requiresAccommodation;
+
   return (
     <AdminLayout title={`${retreat.title} - Admin`}>
       <div className="space-y-6">
@@ -710,7 +714,10 @@ export function AdminRetreatDetail({
             {retreat.status === "draft" || retreat.status === "closed" ? (
               <Button
                 type="button"
-                disabled={actionLoading !== ""}
+                disabled={
+                  actionLoading !== "" ||
+                  (retreat.status === "draft" && retreat.publishReadiness?.valid === false)
+                }
                 onClick={() =>
                   void runRetreatAction("status", () =>
                     fetch(`/api/admin/retreats/${retreat.id}/status`, {
@@ -722,7 +729,7 @@ export function AdminRetreatDetail({
                 }
               >
                 <Globe2 className="mr-2 h-4 w-4" />
-                {retreat.status === "draft" ? "Publish" : "Reopen bookings"}
+                {retreat.status === "draft" ? "Open bookings" : "Reopen bookings"}
               </Button>
             ) : null}
             {retreat.status === "open" || retreat.status === "sold_out" ? (
@@ -744,77 +751,13 @@ export function AdminRetreatDetail({
                 Close bookings
               </Button>
             ) : null}
-            {retreat.retreatType === "online" &&
-            !["cancelled", "completed"].includes(retreat.status) ? (
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={actionLoading !== ""}
-                onClick={() => {
-                  const reason = window.prompt(
-                    `Why is ${retreat.title} being cancelled? This will close access and issue full refunds.`,
-                    ""
-                  );
-                  if (!reason?.trim()) return;
-                  if (
-                    !window.confirm(
-                      `Cancel ${retreat.title} for ${retreat.bookings.length} booking(s) and ${retreat.gifts.length} gift purchase(s)? Full refunds will begin immediately.`
-                    )
-                  ) {
-                    return;
-                  }
-                  void runRetreatAction("event-cancellation", () =>
-                    fetch(`/api/admin/retreats/${retreat.id}/cancel`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ reason }),
-                    })
-                  );
-                }}
-              >
-                Cancel workshop
-              </Button>
+            {!["cancelled", "completed"].includes(retreat.status) ? (
+              <RetreatCancellationDialog
+                id={retreat.id}
+                title={retreat.title}
+                onCancelled={reloadOperations}
+              />
             ) : null}
-            <Button
-              variant="outline"
-              onClick={() =>
-                downloadCsv(`${retreat.retreatSlug}-attendees.csv`, [
-                  [
-                    "Purchaser",
-                    "Purchaser Email",
-                    "Attendee",
-                    "Attendee Email",
-                    "Room Type",
-                    "Assigned Room",
-                    "Attendee Count",
-                    "Optional Extras",
-                    "Payment Status",
-                    "Booking Status",
-                    "Dietary",
-                    "Medical",
-                    "Mobility",
-                  ],
-                  ...retreat.bookings.map((booking) => [
-                    booking.purchaserName,
-                    booking.purchaserEmail,
-                    booking.attendeeName,
-                    booking.attendeeEmail,
-                    booking.roomType || "",
-                    booking.roomUnitLabel || "",
-                    String(booking.attendeeCount || 1),
-                    booking.addons.map((addon) => `${addon.name} x ${addon.quantity}`).join("; "),
-                    booking.paymentStatus,
-                    booking.bookingStatus,
-                    booking.dietaryRequirements || "",
-                    booking.medicalConditions || "",
-                    booking.mobilityNeeds || "",
-                  ]),
-                ])
-              }
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV
-            </Button>
           </div>
         </div>
 
@@ -835,682 +778,809 @@ export function AdminRetreatDetail({
           </div>
         ) : null}
 
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <Users className="text-brand-accent mx-auto h-5 w-5" />
-              <p className="mt-2 text-2xl">{retreat.bookings.length}</p>
-              <p className="text-muted-foreground text-xs">Bookings</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <PoundSterling className="text-brand-accent mx-auto h-5 w-5" />
-              <p className="mt-2 text-2xl">{formatCurrency(retreat.revenuePence)}</p>
-              <p className="text-muted-foreground text-xs">Captured revenue</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <p className="mt-2 text-2xl">{summary?.paidInFull || 0}</p>
-              <p className="text-muted-foreground text-xs">Paid in full</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <p className="mt-2 text-2xl">{summary?.balanceDue || 0}</p>
-              <p className="text-muted-foreground text-xs">Balance still due</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="text-lg">Early-bird pricing</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <p className="text-muted-foreground text-sm">
-                Published prices are locked so guests see the same offer. You can extend an existing
-                early-bird deadline, but cannot change, add or remove its price.
-              </p>
-              <div className="space-y-4">
-                {retreat.ratePlans.map((ratePlan) => {
-                  const draft = earlyBirdDrafts[ratePlan.id] || {
-                    pricePounds: "",
-                    endsAt: "",
-                  };
-                  const label = `${ratePlan.roomLabel} · ${ratePlan.guestCount} ${ratePlan.guestCount === 1 ? "guest" : "guests"}`;
-                  return (
-                    <div
-                      key={ratePlan.id}
-                      className="grid gap-4 rounded-lg border p-4 md:grid-cols-[1.2fr_0.8fr_1fr] md:items-end"
-                    >
-                      <div>
-                        <p className="font-medium">{label}</p>
-                        <p className="text-muted-foreground mt-1 text-sm">
-                          Standard price {formatCurrency(ratePlan.totalPricePence)}
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`early-price-${ratePlan.id}`}>Early-bird price (£)</Label>
-                        <Input
-                          id={`early-price-${ratePlan.id}`}
-                          type="number"
-                          min="0"
-                          max={(ratePlan.totalPricePence - 1) / 100}
-                          step="0.01"
-                          value={draft.pricePounds}
-                          disabled={retreat.pricingLocked}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`early-end-${ratePlan.id}`}>Available until</Label>
-                        <Input
-                          id={`early-end-${ratePlan.id}`}
-                          type="datetime-local"
-                          min={toDateTimeLocal(ratePlan.earlyBirdEndsAt)}
-                          max={toDateTimeLocal(retreat.startDate)}
-                          value={draft.endsAt}
-                          disabled={ratePlan.earlyBirdPricePence === null}
-                          onChange={(event) =>
-                            setEarlyBirdDrafts((current) => ({
-                              ...current,
-                              [ratePlan.id]: { ...draft, endsAt: event.target.value },
-                            }))
-                          }
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <Button
-                type="button"
-                disabled={
-                  actionLoading !== "" ||
-                  !retreat.ratePlans.some((ratePlan) => ratePlan.earlyBirdPricePence !== null)
-                }
-                onClick={() => void saveEarlyBirdRates()}
+        <div className="flex flex-wrap gap-4 text-sm">
+          <Link
+            className="underline"
+            href={`/retreats/${retreat.retreatSlug}${retreat.publicDateId ? `?date=${encodeURIComponent(retreat.publicDateId)}` : ""}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            View public page
+          </Link>
+          {retreat.contentLinks?.experience ? (
+            retreat.contentLinks.experience.startsWith("/") ? (
+              <Link className="underline" href={retreat.contentLinks.experience}>
+                Edit public event page
+              </Link>
+            ) : (
+              <a
+                className="underline"
+                href={retreat.contentLinks.experience}
+                target="_blank"
+                rel="noreferrer"
               >
-                <Save className="mr-2 h-4 w-4" />
-                {actionLoading === "early-bird" ? "Saving..." : "Save early-bird deadlines"}
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">
-                {retreat.retreatType === "online" ? "Ticket inventory" : "Room choices and prices"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {retreat.retreatType === "online" ? (
-                retreat.inventoryPools.map((pool) => (
-                  <div
-                    key={pool.id}
-                    className="grid gap-3 rounded-lg border p-4 sm:grid-cols-[1fr_10rem] sm:items-end"
-                  >
-                    <div>
-                      <p className="font-medium">{pool.name}</p>
-                      <p className="text-muted-foreground text-sm">Places available to sell.</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor={`pool-quantity-${pool.id}`}>Places</Label>
-                      <Input
-                        id={`pool-quantity-${pool.id}`}
-                        type="number"
-                        min="1"
-                        step="1"
-                        disabled={retreat.pricingLocked}
-                        value={inventoryDrafts[pool.id]?.totalQuantity || ""}
-                        onChange={(event) =>
-                          setInventoryDrafts((current) => ({
-                            ...current,
-                            [pool.id]: { totalQuantity: event.target.value },
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <>
-                  <p className="text-muted-foreground text-sm">
-                    The physical rooms come from the venue setup. Shared places and private-room
-                    bookings draw from the same room stock, so a room cannot be sold twice.
-                  </p>
-                  <div className="max-w-xs space-y-2">
-                    <Label htmlFor="retreat-guest-limit">Overall guest limit</Label>
-                    <Input
-                      id="retreat-guest-limit"
-                      type="number"
-                      min="1"
-                      max="200"
-                      step="1"
-                      disabled={retreat.pricingLocked}
-                      value={accommodationCapacity}
-                      onChange={(event) => setAccommodationCapacity(event.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-4">
-                    {retreat.inventoryPools.map((pool) => {
-                      const options = retreat.roomOptions.filter(
-                        (option) => option.inventoryPoolId === pool.id
-                      );
-                      const roomNames = retreat.roomUnits
-                        .filter((unit) => unit.inventoryPoolId === pool.id)
-                        .map((unit) => unit.label);
-                      return (
-                        <section key={pool.id} className="rounded-xl border p-4">
-                          <h3 className="font-medium">{pool.name}</h3>
+                Edit legacy event page in Contentful
+              </a>
+            )
+          ) : null}
+          {retreat.contentLinks?.venue ? (
+            <a
+              className="underline"
+              href={retreat.contentLinks.venue}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Edit venue in Contentful
+            </a>
+          ) : null}
+        </div>
+        <nav aria-label="Retreat management" className="flex flex-wrap gap-2 border-b pb-4">
+          {[
+            ["overview", "Overview"],
+            ["attendees", "Attendees & bookings"],
+            ...(usesLiveRoom
+              ? [["delivery", "Live session"]]
+              : requiresAccommodation
+                ? [["delivery", "Rooms"]]
+                : []),
+            ["payments", "Payments"],
+            ["setup", "Setup"],
+          ].map(([key, label]) => (
+            <Button
+              key={key}
+              variant={section === key ? "default" : "outline"}
+              aria-current={section === key ? "page" : undefined}
+              onClick={() => navigate(key)}
+            >
+              {label}
+            </Button>
+          ))}
+        </nav>
+        {section === "overview" ? (
+          <RetreatOperationsOverview retreat={retreat} navigate={navigate} />
+        ) : null}
+        {section === "attendees" ||
+        section === "payments" ||
+        (section === "delivery" && requiresAccommodation) ? (
+          <RetreatAttendeeWorkspace
+            key={`${section}-${searchParams.get("filter")}`}
+            retreat={retreat}
+            initialFilter={searchParams.get("filter") || "confirmed"}
+            roomsOnly={section === "delivery"}
+            paymentsOnly={section === "payments"}
+            reload={reloadOperations}
+          />
+        ) : null}
+        {section === "setup" ? (
+          <section className="rounded-xl border p-5" aria-labelledby="setup-heading">
+            <h2 id="setup-heading" className="text-2xl">
+              {retreat.status === "draft" ? "Get ready to open bookings" : "Published event setup"}
+            </h2>
+            <p className="text-muted-foreground mt-2">
+              The event page controls the public story. This dated event controls bookings, capacity
+              and payments. Publishing the page does not open bookings.
+            </p>
+            {retreat.publishReadiness ? (
+              <>
+                <p className="mt-4 font-medium">
+                  {retreat.publishReadiness.valid
+                    ? "All checks passed — ready to open bookings."
+                    : `${retreat.publishReadiness.errors.length} checks need attention`}
+                </p>
+                <ul className="mt-3 list-disc space-y-2 pl-5">
+                  {retreat.publishReadiness.errors.map((error) => (
+                    <li key={error}>
+                      <a href="#setup-controls" className="underline">
+                        {error}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <p className="mt-3">
+                Prices and inventory are locked after publication. Existing bookings retain their
+                agreed payment terms.
+              </p>
+            )}
+            {requiresAccommodation ? (
+              <Link className="mt-4 inline-block underline" href="/admin/retreats/venues">
+                Manage reusable venue rooms
+              </Link>
+            ) : null}
+          </section>
+        ) : null}
+        {section === "setup" ? (
+          <>
+            <nav aria-label="Setup steps" className="flex flex-wrap gap-2">
+              {[
+                ["rooms", requiresAccommodation ? "Rooms & prices" : "Tickets & prices"],
+                ["payment", "Payment & extras"],
+                ["review", "Review"],
+              ].map(([key, label]) => (
+                <Button
+                  key={key}
+                  variant={setupStep === key ? "default" : "outline"}
+                  aria-current={setupStep === key ? "step" : undefined}
+                  onClick={() =>
+                    router.replace("/admin/retreats/" + id + "?view=setup&step=" + key, {
+                      scroll: false,
+                    })
+                  }
+                >
+                  {label}
+                </Button>
+              ))}
+            </nav>
+            {setupStep === "rooms" && usesTickets ? (
+              <RetreatTicketPrices retreat={retreat} reload={reloadOperations} />
+            ) : null}
+            {setupStep === "review" ? (
+              <section className="rounded-xl border p-5">
+                <h3 className="text-xl">Review the guest offer</h3>
+                <p className="mt-3">
+                  {retreat.capacity} guest places ·{" "}
+                  {retreat.paymentPolicy === "full_payment"
+                    ? "Full payment"
+                    : "Deposit and balance"}
+                </p>
+                <ul className="my-4 space-y-2">
+                  {retreat.ratePlans
+                    .filter((rate) => rate.active)
+                    .map((rate) => (
+                      <li key={rate.id}>
+                        {rate.roomLabel} · {rate.guestCount} guest(s) ·{" "}
+                        {formatCurrency(rate.totalPricePence)} total
+                      </li>
+                    ))}
+                </ul>
+                <p className="text-muted-foreground">
+                  Confirm the public content, times and prices. Opening bookings is a separate
+                  action at the top of this page; all validation checks must pass first.
+                </p>
+              </section>
+            ) : null}
+          </>
+        ) : null}
+        <div id="setup-controls" className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          {section === "setup" &&
+          setupStep === "rooms" &&
+          retreat.ratePlans.some((ratePlan) => ratePlan.earlyBirdPricePence !== null) ? (
+            <details className="rounded-xl border bg-white p-5 lg:col-span-2">
+              <summary className="cursor-pointer font-semibold">
+                Early-bird deadlines · optional
+              </summary>
+              <div className="mt-5 space-y-5">
+                <p className="text-muted-foreground text-sm">
+                  Published prices are locked so guests see the same offer. You can extend an
+                  existing early-bird deadline, but cannot change, add or remove its price.
+                </p>
+                <div className="space-y-4">
+                  {retreat.ratePlans.map((ratePlan) => {
+                    const draft = earlyBirdDrafts[ratePlan.id] || {
+                      pricePounds: "",
+                      endsAt: "",
+                    };
+                    const label = `${ratePlan.roomLabel} · ${ratePlan.guestCount} ${ratePlan.guestCount === 1 ? "guest" : "guests"}`;
+                    return (
+                      <div
+                        key={ratePlan.id}
+                        className="grid gap-4 rounded-lg border p-4 md:grid-cols-[1.2fr_0.8fr_1fr] md:items-end"
+                      >
+                        <div>
+                          <p className="font-medium">{label}</p>
                           <p className="text-muted-foreground mt-1 text-sm">
-                            {roomNames.length} {roomNames.length === 1 ? "room" : "rooms"}
-                            {roomNames.length > 0 ? `: ${roomNames.join(", ")}` : ""}
+                            Standard price {formatCurrency(ratePlan.totalPricePence)}
                           </p>
-                          <div className="mt-4 space-y-4">
-                            {options.map((option) => {
-                              const optionEnabled = accommodationOptionDrafts[option.id] === true;
-                              const rates = retreat.ratePlans.filter(
-                                (rate) => rate.roomOptionId === option.id
-                              );
-                              return (
-                                <div key={option.id} className="bg-muted/40 rounded-lg p-4">
-                                  <div className="flex items-start justify-between gap-4">
-                                    <div>
-                                      <Label htmlFor={`option-enabled-${option.id}`}>
-                                        {option.bookingUnit === "whole_room"
-                                          ? "Private room"
-                                          : "Shared place"}
-                                      </Label>
-                                      <p className="text-muted-foreground mt-1 text-sm">
-                                        {option.bookingUnit === "whole_room"
-                                          ? "Reserves the entire room."
-                                          : "Reserves one place in the room."}
-                                      </p>
-                                    </div>
-                                    <Switch
-                                      id={`option-enabled-${option.id}`}
-                                      checked={optionEnabled}
-                                      disabled={retreat.pricingLocked}
-                                      onCheckedChange={(checked) =>
-                                        setAccommodationOptionDrafts((current) => ({
-                                          ...current,
-                                          [option.id]: checked,
-                                        }))
-                                      }
-                                    />
-                                  </div>
-                                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                                    {rates.map((rate) => {
-                                      const draft = standardRateDrafts[rate.id] || {
-                                        active: rate.active,
-                                        pricePounds: (rate.totalPricePence / 100).toFixed(2),
-                                      };
-                                      return (
-                                        <div key={rate.id} className="space-y-2">
-                                          <div className="flex items-center justify-between gap-2">
-                                            <Label htmlFor={`standard-rate-${rate.id}`}>
-                                              Total for {rate.guestCount}{" "}
-                                              {rate.guestCount === 1 ? "guest" : "guests"} (£)
-                                            </Label>
-                                            {rates.length > 1 ? (
-                                              <Switch
-                                                aria-label={`${rate.guestCount}-guest rate enabled`}
-                                                checked={draft.active}
-                                                disabled={retreat.pricingLocked || !optionEnabled}
-                                                onCheckedChange={(checked) =>
-                                                  setStandardRateDrafts((current) => ({
-                                                    ...current,
-                                                    [rate.id]: { ...draft, active: checked },
-                                                  }))
-                                                }
-                                              />
-                                            ) : null}
-                                          </div>
-                                          <Input
-                                            id={`standard-rate-${rate.id}`}
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            value={draft.pricePounds}
-                                            disabled={retreat.pricingLocked || !optionEnabled}
-                                            onChange={(event) =>
-                                              setStandardRateDrafts((current) => ({
-                                                ...current,
-                                                [rate.id]: {
-                                                  ...draft,
-                                                  pricePounds: event.target.value,
-                                                },
-                                              }))
-                                            }
-                                          />
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </section>
-                      );
-                    })}
-                  </div>
-                  {retreat.status === "draft" ? (
-                    <Button
-                      type="button"
-                      disabled={actionLoading !== ""}
-                      onClick={() => void saveAccommodation()}
-                    >
-                      <Save className="mr-2 h-4 w-4" />
-                      {actionLoading === "accommodation"
-                        ? "Saving..."
-                        : "Save room choices and prices"}
-                    </Button>
-                  ) : null}
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Payment structure</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              {retreat.status === "draft" ? (
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="deposit-type">Payment rule</Label>
-                    <select
-                      id="deposit-type"
-                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                      value={paymentDraft.depositType}
-                      onChange={(event) =>
-                        setPaymentDraft((current) => ({
-                          ...current,
-                          depositType: event.target.value as typeof current.depositType,
-                        }))
-                      }
-                    >
-                      <option value="percentage">Percentage deposit</option>
-                      <option value="fixed_amount">Fixed deposit</option>
-                      <option value="full_payment">Full payment</option>
-                    </select>
-                  </div>
-                  {paymentDraft.depositType !== "full_payment" ? (
-                    <>
-                      <div className="space-y-2">
-                        <Label htmlFor="deposit-value">
-                          {paymentDraft.depositType === "percentage"
-                            ? "Deposit (%)"
-                            : "Deposit (£)"}
-                        </Label>
-                        <Input
-                          id="deposit-value"
-                          type="number"
-                          min={paymentDraft.depositType === "percentage" ? "0.01" : "0"}
-                          max={paymentDraft.depositType === "percentage" ? "100" : undefined}
-                          step="0.01"
-                          value={paymentDraft.depositValue}
-                          onChange={(event) =>
-                            setPaymentDraft((current) => ({
-                              ...current,
-                              depositValue: event.target.value,
-                            }))
-                          }
-                        />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`early-price-${ratePlan.id}`}>Early-bird price (£)</Label>
+                          <Input
+                            id={`early-price-${ratePlan.id}`}
+                            type="number"
+                            min="0"
+                            max={(ratePlan.totalPricePence - 1) / 100}
+                            step="0.01"
+                            value={draft.pricePounds}
+                            disabled={retreat.pricingLocked}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`early-end-${ratePlan.id}`}>Available until</Label>
+                          <Input
+                            id={`early-end-${ratePlan.id}`}
+                            type="datetime-local"
+                            min={toDateTimeLocal(ratePlan.earlyBirdEndsAt)}
+                            max={toDateTimeLocal(retreat.startDate)}
+                            value={draft.endsAt}
+                            disabled={ratePlan.earlyBirdPricePence === null}
+                            onChange={(event) =>
+                              setEarlyBirdDrafts((current) => ({
+                                ...current,
+                                [ratePlan.id]: { ...draft, endsAt: event.target.value },
+                              }))
+                            }
+                          />
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="balance-days">Balance due (days before start)</Label>
-                        <Input
-                          id="balance-days"
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={paymentDraft.balanceDueDaysBeforeStart}
-                          onChange={(event) =>
-                            setPaymentDraft((current) => ({
-                              ...current,
-                              balanceDueDaysBeforeStart: event.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                    </>
-                  ) : null}
+                    );
+                  })}
                 </div>
-              ) : null}
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div>
-                  <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                    Retreat price
-                  </p>
-                  <p className="mt-1">{formatCurrency(retreat.pricePence)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                    Payment policy
-                  </p>
-                  <p className="mt-1">
-                    {retreat.paymentPolicy === "full_payment"
-                      ? "Full payment required"
-                      : `Deposit ${formatCurrency(retreat.depositAmountPence)}`}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                    Single room supplement
-                  </p>
-                  <p className="mt-1">{formatCurrency(retreat.singleRoomSupplementPence)}</p>
-                </div>
-                <div className="sm:col-span-3">
-                  <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                    Balance due date
-                  </p>
-                  <p className="mt-1">
-                    {retreat.paymentPolicy === "full_payment"
-                      ? "No balance; full payment is taken at checkout"
-                      : retreat.balanceDueAt
-                        ? new Intl.DateTimeFormat("en-GB", {
-                            day: "numeric",
-                            month: "long",
-                            year: "numeric",
-                          }).format(new Date(retreat.balanceDueAt))
-                        : "Before arrival"}
-                  </p>
-                </div>
-              </div>
-              {retreat.status === "draft" ? (
                 <Button
                   type="button"
-                  disabled={actionLoading !== ""}
-                  onClick={() => void saveConfiguration()}
+                  disabled={
+                    actionLoading !== "" ||
+                    !retreat.ratePlans.some((ratePlan) => ratePlan.earlyBirdPricePence !== null)
+                  }
+                  onClick={() => void saveEarlyBirdRates()}
                 >
                   <Save className="mr-2 h-4 w-4" />
-                  {actionLoading === "configuration"
-                    ? "Saving..."
-                    : retreat.retreatType === "online"
-                      ? "Save places and payment rules"
-                      : "Save payment rules"}
+                  {actionLoading === "early-bird" ? "Saving..." : "Save early-bird deadlines"}
                 </Button>
-              ) : null}
-            </CardContent>
-          </Card>
+              </div>
+            </details>
+          ) : null}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Optional extras</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <p className="text-muted-foreground text-sm">
-                Extras are priced and stocked for this retreat date. They can only be changed while
-                the date is a draft, before bookings open.
-              </p>
-
-              {retreat.addons.length > 0 ? (
-                <div className="space-y-3">
-                  {retreat.addons.map((addon) => (
+          {section === "setup" && setupStep === "rooms" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  {usesTickets ? "Ticket inventory" : "Room choices and prices"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {usesTickets ? (
+                  retreat.inventoryPools.map((pool) => (
                     <div
-                      key={addon.id}
-                      className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-start sm:justify-between"
+                      key={pool.id}
+                      className="grid gap-3 rounded-lg border p-4 sm:grid-cols-[1fr_10rem] sm:items-end"
                     >
                       <div>
-                        <p className="font-medium">{addon.name}</p>
-                        {addon.description ? (
-                          <p className="text-muted-foreground mt-1 text-sm">{addon.description}</p>
-                        ) : null}
-                        <p className="text-muted-foreground mt-2 text-xs">
-                          {formatCurrency(addon.pricePence)} ·{" "}
-                          {addon.totalQuantity === null
-                            ? "No quantity limit"
-                            : `${addon.availableQuantity ?? 0} of ${addon.totalQuantity} available`}
-                        </p>
+                        <p className="font-medium">{pool.name}</p>
+                        <p className="text-muted-foreground text-sm">Places available to sell.</p>
                       </div>
-                      {retreat.status === "draft" ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          title={`Remove ${addon.name}`}
-                          aria-label={`Remove ${addon.name}`}
-                          disabled={actionLoading !== ""}
-                          onClick={() => void removeAddon(addon.id, addon.name)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      ) : null}
+                      <div className="space-y-2">
+                        <Label htmlFor={`pool-quantity-${pool.id}`}>Places</Label>
+                        <Input
+                          id={`pool-quantity-${pool.id}`}
+                          type="number"
+                          min="1"
+                          step="1"
+                          disabled={retreat.pricingLocked}
+                          value={inventoryDrafts[pool.id]?.totalQuantity || ""}
+                          onChange={(event) =>
+                            setInventoryDrafts((current) => ({
+                              ...current,
+                              [pool.id]: { totalQuantity: event.target.value },
+                            }))
+                          }
+                        />
+                      </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-sm">No optional extras configured.</p>
-              )}
-
-              {retreat.status === "draft" ? (
-                <div className="space-y-4 rounded-lg border p-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="addon-name">Name</Label>
+                  ))
+                ) : (
+                  <>
+                    <p className="text-muted-foreground text-sm">
+                      The physical rooms come from the venue setup. Shared places and private-room
+                      bookings draw from the same room stock, so a room cannot be sold twice.
+                    </p>
+                    <div className="max-w-xs space-y-2">
+                      <Label htmlFor="retreat-guest-limit">Overall guest limit</Label>
                       <Input
-                        id="addon-name"
-                        value={addonDraft.name}
-                        onChange={(event) =>
-                          setAddonDraft((current) => ({ ...current, name: event.target.value }))
-                        }
-                        placeholder="For example, massage appointment"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="addon-description">Description</Label>
-                      <Input
-                        id="addon-description"
-                        value={addonDraft.description}
-                        onChange={(event) =>
-                          setAddonDraft((current) => ({
-                            ...current,
-                            description: event.target.value,
-                          }))
-                        }
-                        placeholder="Shown during checkout"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="addon-price">Price (£)</Label>
-                      <Input
-                        id="addon-price"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={addonDraft.pricePounds}
-                        onChange={(event) =>
-                          setAddonDraft((current) => ({
-                            ...current,
-                            pricePounds: event.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="addon-quantity">Available quantity (optional)</Label>
-                      <Input
-                        id="addon-quantity"
+                        id="retreat-guest-limit"
                         type="number"
                         min="1"
+                        max="200"
                         step="1"
-                        value={addonDraft.totalQuantity}
-                        onChange={(event) =>
-                          setAddonDraft((current) => ({
-                            ...current,
-                            totalQuantity: event.target.value,
-                          }))
-                        }
-                        placeholder="Unlimited"
+                        disabled={retreat.pricingLocked}
+                        value={accommodationCapacity}
+                        onChange={(event) => setAccommodationCapacity(event.target.value)}
                       />
                     </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={actionLoading !== ""}
-                    onClick={() => void createAddon()}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    {actionLoading === "addon" ? "Saving..." : "Add optional extra"}
-                  </Button>
-                  {retreat.replayAssets[0] ? (
-                    <div className="mt-4 rounded-lg border p-4">
-                      <p className="font-medium">Replay</p>
-                      <p className="text-muted-foreground mt-1">
-                        Recording status: {retreat.replayAssets[0].status.replaceAll("_", " ")}
-                      </p>
-                      <p className="text-muted-foreground mt-1">
-                        {retreat.replayPublished
-                          ? "Published to eligible attendees."
-                          : "Not published. Recording readiness never grants access automatically."}
-                      </p>
+                    <div className="space-y-4">
+                      {retreat.inventoryPools.map((pool) => {
+                        const options = retreat.roomOptions.filter(
+                          (option) => option.inventoryPoolId === pool.id
+                        );
+                        const roomNames = retreat.roomUnits
+                          .filter((unit) => unit.inventoryPoolId === pool.id)
+                          .map((unit) => unit.label);
+                        return (
+                          <section key={pool.id} className="rounded-xl border p-4">
+                            <h3 className="font-medium">{pool.name}</h3>
+                            <p className="text-muted-foreground mt-1 text-sm">
+                              {roomNames.length} {roomNames.length === 1 ? "room" : "rooms"}
+                              {roomNames.length > 0 ? `: ${roomNames.join(", ")}` : ""}
+                            </p>
+                            <div className="mt-4 space-y-4">
+                              {options.map((option) => {
+                                const optionEnabled = accommodationOptionDrafts[option.id] === true;
+                                const rates = retreat.ratePlans.filter(
+                                  (rate) => rate.roomOptionId === option.id
+                                );
+                                return (
+                                  <div key={option.id} className="bg-muted/40 rounded-lg p-4">
+                                    <div className="flex items-start justify-between gap-4">
+                                      <div>
+                                        <Label htmlFor={`option-enabled-${option.id}`}>
+                                          {option.bookingUnit === "whole_room"
+                                            ? "Private room"
+                                            : "Shared place"}
+                                        </Label>
+                                        <p className="text-muted-foreground mt-1 text-sm">
+                                          {option.bookingUnit === "whole_room"
+                                            ? "Reserves the entire room."
+                                            : "Reserves one place in the room."}
+                                        </p>
+                                      </div>
+                                      <Switch
+                                        id={`option-enabled-${option.id}`}
+                                        checked={optionEnabled}
+                                        disabled={retreat.pricingLocked}
+                                        onCheckedChange={(checked) =>
+                                          setAccommodationOptionDrafts((current) => ({
+                                            ...current,
+                                            [option.id]: checked,
+                                          }))
+                                        }
+                                      />
+                                    </div>
+                                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                      {rates.map((rate) => {
+                                        const draft = standardRateDrafts[rate.id] || {
+                                          active: rate.active,
+                                          pricePounds: (rate.totalPricePence / 100).toFixed(2),
+                                        };
+                                        return (
+                                          <div key={rate.id} className="space-y-2">
+                                            <div className="flex items-center justify-between gap-2">
+                                              <Label htmlFor={`standard-rate-${rate.id}`}>
+                                                Total for {rate.guestCount}{" "}
+                                                {rate.guestCount === 1 ? "guest" : "guests"} (£)
+                                              </Label>
+                                              {rates.length > 1 ? (
+                                                <Switch
+                                                  aria-label={`${rate.guestCount}-guest rate enabled`}
+                                                  checked={draft.active}
+                                                  disabled={retreat.pricingLocked || !optionEnabled}
+                                                  onCheckedChange={(checked) =>
+                                                    setStandardRateDrafts((current) => ({
+                                                      ...current,
+                                                      [rate.id]: { ...draft, active: checked },
+                                                    }))
+                                                  }
+                                                />
+                                              ) : null}
+                                            </div>
+                                            <Input
+                                              id={`standard-rate-${rate.id}`}
+                                              type="number"
+                                              min="0"
+                                              step="0.01"
+                                              value={draft.pricePounds}
+                                              disabled={retreat.pricingLocked || !optionEnabled}
+                                              onChange={(event) =>
+                                                setStandardRateDrafts((current) => ({
+                                                  ...current,
+                                                  [rate.id]: {
+                                                    ...draft,
+                                                    pricePounds: event.target.value,
+                                                  },
+                                                }))
+                                              }
+                                            />
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </section>
+                        );
+                      })}
+                    </div>
+                    {retreat.status === "draft" ? (
                       <Button
                         type="button"
-                        variant={retreat.replayPublished ? "outline" : "default"}
-                        className="mt-3 w-full"
-                        disabled={
-                          actionLoading !== "" || retreat.replayAssets[0].status !== "ready"
-                        }
-                        onClick={() =>
-                          void runRetreatAction("replay", () =>
-                            fetch(`/api/admin/retreats/${retreat.id}/replay`, {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                action: retreat.replayPublished ? "revoke" : "publish",
-                                replayAssetId: retreat.replayAssets[0].id,
-                              }),
-                            })
-                          )
-                        }
+                        disabled={actionLoading !== ""}
+                        onClick={() => void saveAccommodation()}
                       >
-                        {retreat.replayPublished ? "Revoke replay access" : "Publish replay"}
+                        <Save className="mr-2 h-4 w-4" />
+                        {actionLoading === "accommodation"
+                          ? "Saving..."
+                          : "Save room choices and prices"}
                       </Button>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
+                    ) : null}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Operational actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              {retreat.retreatType === "online" ? (
-                <div className="rounded-lg border p-4">
-                  <div className="flex items-start gap-3">
-                    <Video className="text-brand-accent mt-1 h-5 w-5" />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium">Online room</p>
-                      <p className="text-muted-foreground mt-1">
-                        Status: {retreat.roomSetupStatus.replaceAll("_", " ")}
-                      </p>
-                      {retreat.liveRoomPrepared ? (
-                        <Link
-                          href={`/dashboard/retreats/host/${retreat.id}`}
-                          className="text-brand-accent mt-2 inline-flex items-center gap-1 underline"
-                        >
-                          Open protected host room
-                        </Link>
-                      ) : null}
-                      {retreat.roomSetupError ? (
-                        <p className="mt-2 text-red-700">{retreat.roomSetupError}</p>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="bg-secondary/20 mt-4 flex items-start justify-between gap-4 rounded-lg border p-3">
-                    <div>
-                      <Label htmlFor="retreat-community-mode">Community mode</Label>
-                      <p
-                        id="retreat-community-mode-description"
-                        className="text-muted-foreground mt-1 text-xs"
+          {section === "setup" && setupStep === "payment" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Payment structure</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {retreat.status === "draft" ? (
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="deposit-type">Payment rule</Label>
+                      <select
+                        id="deposit-type"
+                        className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                        value={paymentDraft.depositType}
+                        onChange={(event) =>
+                          setPaymentDraft((current) => ({
+                            ...current,
+                            depositType: event.target.value as typeof current.depositType,
+                          }))
+                        }
                       >
-                        When off, attendees use presenter view instead of seeing the full workshop
-                        gallery. The host can still change this during the session.
-                      </p>
+                        <option value="percentage">Percentage deposit</option>
+                        <option value="fixed_amount">Fixed deposit</option>
+                        <option value="full_payment">Full payment</option>
+                      </select>
                     </div>
-                    <Switch
-                      id="retreat-community-mode"
-                      checked={retreat.liveDisplayMode === "gallery"}
-                      disabled={actionLoading !== ""}
-                      aria-describedby="retreat-community-mode-description"
-                      onCheckedChange={(checked) => void updateCommunityMode(checked)}
-                    />
+                    {paymentDraft.depositType !== "full_payment" ? (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="deposit-value">
+                            {paymentDraft.depositType === "percentage"
+                              ? "Deposit (%)"
+                              : "Deposit (£)"}
+                          </Label>
+                          <Input
+                            id="deposit-value"
+                            type="number"
+                            min={paymentDraft.depositType === "percentage" ? "0.01" : "0"}
+                            max={paymentDraft.depositType === "percentage" ? "100" : undefined}
+                            step="0.01"
+                            value={paymentDraft.depositValue}
+                            onChange={(event) =>
+                              setPaymentDraft((current) => ({
+                                ...current,
+                                depositValue: event.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="balance-days">Balance due (days before start)</Label>
+                          <Input
+                            id="balance-days"
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={paymentDraft.balanceDueDaysBeforeStart}
+                            onChange={(event) =>
+                              setPaymentDraft((current) => ({
+                                ...current,
+                                balanceDueDaysBeforeStart: event.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                      </>
+                    ) : null}
                   </div>
+                ) : null}
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <p className="text-muted-foreground text-xs tracking-wide uppercase">
+                      Retreat price
+                    </p>
+                    <p className="mt-1">{formatCurrency(retreat.pricePence)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs tracking-wide uppercase">
+                      Payment policy
+                    </p>
+                    <p className="mt-1">
+                      {retreat.paymentPolicy === "full_payment"
+                        ? "Full payment required"
+                        : `Deposit ${formatCurrency(retreat.depositAmountPence)}`}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs tracking-wide uppercase">
+                      Single room supplement
+                    </p>
+                    <p className="mt-1">{formatCurrency(retreat.singleRoomSupplementPence)}</p>
+                  </div>
+                  <div className="sm:col-span-3">
+                    <p className="text-muted-foreground text-xs tracking-wide uppercase">
+                      Balance due date
+                    </p>
+                    <p className="mt-1">
+                      {retreat.paymentPolicy === "full_payment"
+                        ? "No balance; full payment is taken at checkout"
+                        : retreat.balanceDueAt
+                          ? new Intl.DateTimeFormat("en-GB", {
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                            }).format(new Date(retreat.balanceDueAt))
+                          : "Before arrival"}
+                    </p>
+                  </div>
+                </div>
+                {retreat.status === "draft" ? (
                   <Button
                     type="button"
-                    className="mt-4 w-full"
                     disabled={actionLoading !== ""}
-                    onClick={() =>
-                      void runRetreatAction("online-room", () =>
-                        fetch(`/api/admin/retreats/${retreat.id}/online-room`, {
-                          method: "POST",
-                        })
-                      )
-                    }
+                    onClick={() => void saveConfiguration()}
                   >
-                    <Video className="mr-2 h-4 w-4" />
-                    {actionLoading === "online-room" ? "Preparing..." : "Prepare live room"}
+                    <Save className="mr-2 h-4 w-4" />
+                    {actionLoading === "configuration"
+                      ? "Saving..."
+                      : usesTickets
+                        ? "Save places and payment rules"
+                        : "Save payment rules"}
                   </Button>
-                </div>
-              ) : null}
+                ) : null}
+              </CardContent>
+            </Card>
+          ) : null}
 
-              <div className="rounded-lg border p-4">
-                <p className="font-medium">Balance emails</p>
-                <p className="text-muted-foreground mt-1">
-                  Send the balance due email when balances are ready to collect. Use chasers after
-                  the first due email has gone out.
+          {section === "setup" && setupStep === "payment" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Optional extras</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <p className="text-muted-foreground text-sm">
+                  Extras are priced and stocked for this retreat date. They can only be changed
+                  while the date is a draft, before bookings open.
                 </p>
-                <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={actionLoading !== ""}
-                    onClick={() =>
-                      void runRetreatAction("balance-due", () =>
-                        fetch(`/api/admin/retreats/${retreat.id}/balance-emails`, {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ mode: "due" }),
-                        })
-                      )
-                    }
-                  >
-                    <Send className="mr-2 h-4 w-4" />
-                    {actionLoading === "balance-due" ? "Sending..." : "Send due email"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={actionLoading !== ""}
-                    onClick={() =>
-                      void runRetreatAction("chaser", () =>
-                        fetch(`/api/admin/retreats/${retreat.id}/balance-emails`, {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ mode: "chaser" }),
-                        })
-                      )
-                    }
-                  >
-                    <Send className="mr-2 h-4 w-4" />
-                    {actionLoading === "chaser" ? "Sending..." : "Send chaser"}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          {evidence ? (
+                {retreat.addons.length > 0 ? (
+                  <div className="space-y-3">
+                    {retreat.addons.map((addon) => (
+                      <div
+                        key={addon.id}
+                        className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-start sm:justify-between"
+                      >
+                        <div>
+                          <p className="font-medium">{addon.name}</p>
+                          {addon.description ? (
+                            <p className="text-muted-foreground mt-1 text-sm">
+                              {addon.description}
+                            </p>
+                          ) : null}
+                          <p className="text-muted-foreground mt-2 text-xs">
+                            {formatCurrency(addon.pricePence)} ·{" "}
+                            {addon.totalQuantity === null
+                              ? "No quantity limit"
+                              : `${addon.availableQuantity ?? 0} of ${addon.totalQuantity} available`}
+                          </p>
+                        </div>
+                        {retreat.status === "draft" ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            title={`Remove ${addon.name}`}
+                            aria-label={`Remove ${addon.name}`}
+                            disabled={actionLoading !== ""}
+                            onClick={() => void removeAddon(addon.id, addon.name)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-sm">No optional extras configured.</p>
+                )}
+
+                {retreat.status === "draft" ? (
+                  <div className="space-y-4 rounded-lg border p-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="addon-name">Name</Label>
+                        <Input
+                          id="addon-name"
+                          value={addonDraft.name}
+                          onChange={(event) =>
+                            setAddonDraft((current) => ({ ...current, name: event.target.value }))
+                          }
+                          placeholder="For example, massage appointment"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="addon-description">Description</Label>
+                        <Input
+                          id="addon-description"
+                          value={addonDraft.description}
+                          onChange={(event) =>
+                            setAddonDraft((current) => ({
+                              ...current,
+                              description: event.target.value,
+                            }))
+                          }
+                          placeholder="Shown during checkout"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="addon-price">Price (£)</Label>
+                        <Input
+                          id="addon-price"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={addonDraft.pricePounds}
+                          onChange={(event) =>
+                            setAddonDraft((current) => ({
+                              ...current,
+                              pricePounds: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="addon-quantity">Available quantity (optional)</Label>
+                        <Input
+                          id="addon-quantity"
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={addonDraft.totalQuantity}
+                          onChange={(event) =>
+                            setAddonDraft((current) => ({
+                              ...current,
+                              totalQuantity: event.target.value,
+                            }))
+                          }
+                          placeholder="Unlimited"
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={actionLoading !== ""}
+                      onClick={() => void createAddon()}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      {actionLoading === "addon" ? "Saving..." : "Add optional extra"}
+                    </Button>
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {section === "payments" || (section === "delivery" && usesLiveRoom) ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Operational actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm">
+                {section === "delivery" ? (
+                  <div>
+                    {retreat.replayAssets[0] ? (
+                      <div className="mt-4 rounded-lg border p-4">
+                        <p className="font-medium">Replay</p>
+                        <p className="text-muted-foreground mt-1">
+                          Recording status: {retreat.replayAssets[0].status.replaceAll("_", " ")}
+                        </p>
+                        <p className="text-muted-foreground mt-1">
+                          {retreat.replayPublished
+                            ? "Published to eligible attendees."
+                            : "Not published. Recording readiness never grants access automatically."}
+                        </p>
+                        <Button
+                          type="button"
+                          variant={retreat.replayPublished ? "outline" : "default"}
+                          className="mt-3 w-full"
+                          disabled={
+                            actionLoading !== "" || retreat.replayAssets[0].status !== "ready"
+                          }
+                          onClick={() =>
+                            void runRetreatAction("replay", () =>
+                              fetch(`/api/admin/retreats/${retreat.id}/replay`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  action: retreat.replayPublished ? "revoke" : "publish",
+                                  replayAssetId: retreat.replayAssets[0].id,
+                                }),
+                              })
+                            )
+                          }
+                        >
+                          {retreat.replayPublished ? "Revoke replay access" : "Publish replay"}
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+                {section === "delivery" && usesLiveRoom ? (
+                  <div className="rounded-lg border p-4">
+                    <div className="flex items-start gap-3">
+                      <Video className="text-brand-accent mt-1 h-5 w-5" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium">Online room</p>
+                        <p className="text-muted-foreground mt-1">
+                          Status: {retreat.roomSetupStatus.replaceAll("_", " ")}
+                        </p>
+                        {retreat.liveRoomPrepared ? (
+                          <Link
+                            href={`/dashboard/retreats/host/${retreat.id}`}
+                            className="text-brand-accent mt-2 inline-flex items-center gap-1 underline"
+                          >
+                            Open protected host room
+                          </Link>
+                        ) : null}
+                        {retreat.roomSetupError ? (
+                          <p className="mt-2 text-red-700">{retreat.roomSetupError}</p>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="bg-secondary/20 mt-4 flex items-start justify-between gap-4 rounded-lg border p-3">
+                      <div>
+                        <Label htmlFor="retreat-community-mode">Community mode</Label>
+                        <p
+                          id="retreat-community-mode-description"
+                          className="text-muted-foreground mt-1 text-xs"
+                        >
+                          When off, attendees use presenter view instead of seeing the full workshop
+                          gallery. The host can still change this during the session.
+                        </p>
+                      </div>
+                      <Switch
+                        id="retreat-community-mode"
+                        checked={retreat.liveDisplayMode === "gallery"}
+                        disabled={actionLoading !== ""}
+                        aria-describedby="retreat-community-mode-description"
+                        onCheckedChange={(checked) => void updateCommunityMode(checked)}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      className="mt-4 w-full"
+                      disabled={actionLoading !== ""}
+                      onClick={() =>
+                        void runRetreatAction("online-room", () =>
+                          fetch(`/api/admin/retreats/${retreat.id}/online-room`, {
+                            method: "POST",
+                          })
+                        )
+                      }
+                    >
+                      <Video className="mr-2 h-4 w-4" />
+                      {actionLoading === "online-room" ? "Preparing..." : "Prepare live room"}
+                    </Button>
+                  </div>
+                ) : null}
+
+                <div hidden={section !== "payments"} className="rounded-lg border p-4">
+                  <RetreatPaymentReminders
+                    retreatId={retreat.id}
+                    disabled={
+                      actionLoading !== "" || ["completed", "cancelled"].includes(retreat.status)
+                    }
+                    onSend={(mode) =>
+                      runRetreatAction(mode === "due" ? "balance-due" : "chaser", () =>
+                        fetch(`/api/admin/retreats/${retreat.id}/balance-emails`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ mode }),
+                        })
+                      )
+                    }
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {evidence && section === "payments" ? (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Owner-admin legal evidence</CardTitle>
@@ -1580,44 +1650,9 @@ export function AdminRetreatDetail({
               </CardContent>
             </Card>
           ) : null}
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <AlertCircle className="text-brand-accent h-5 w-5" />
-                Special requirements
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              {summary && summary.specialRequirements.length > 0 ? (
-                summary.specialRequirements.map((booking) => (
-                  <div key={booking.id} className="rounded-lg border p-4">
-                    <p>{booking.attendeeName}</p>
-                    {booking.dietaryRequirements ? (
-                      <p className="text-muted-foreground mt-2">
-                        Dietary: {booking.dietaryRequirements}
-                      </p>
-                    ) : null}
-                    {booking.medicalConditions ? (
-                      <p className="text-muted-foreground mt-1">
-                        Medical: {booking.medicalConditions}
-                      </p>
-                    ) : null}
-                    {booking.mobilityNeeds ? (
-                      <p className="text-muted-foreground mt-1">
-                        Mobility: {booking.mobilityNeeds}
-                      </p>
-                    ) : null}
-                  </div>
-                ))
-              ) : (
-                <p className="text-muted-foreground">No special requirements have been recorded.</p>
-              )}
-            </CardContent>
-          </Card>
         </div>
 
-        {retreat.gifts.length > 0 ? (
+        {retreat.gifts.length > 0 && section === "payments" ? (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -1651,7 +1686,7 @@ export function AdminRetreatDetail({
                             ? `Invite sent to ${gift.deliveryTarget === "buyer" ? "buyer" : "recipient"}`
                             : "Invite pending"}
                         </p>
-                        {retreat.retreatType === "online" && gift.status === "purchased" ? (
+                        {usesLiveRoom && gift.status === "purchased" ? (
                           <p className="text-muted-foreground mt-1 text-xs">
                             Reminders: {gift.liveReminder24hSentAt ? "24h sent" : "24h pending"} ·{" "}
                             {gift.liveReminder1hSentAt ? "1h sent" : "1h pending"}
@@ -1808,227 +1843,70 @@ export function AdminRetreatDetail({
           </Card>
         ) : null}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Cancellation requests</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {retreat.bookings.some((booking) => booking.cancellationRequests.length > 0) ? (
-              retreat.bookings.flatMap((booking) =>
-                booking.cancellationRequests.map((request) => (
-                  <div key={request.id} className="rounded-lg border p-4 text-sm">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="font-medium">{booking.purchaserName}</p>
-                          <Badge variant={badgeVariant(request.status)}>
-                            {request.status.replaceAll("_", " ")}
-                          </Badge>
+        {section === "payments" ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Cancellation requests</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {retreat.bookings.some((booking) => booking.cancellationRequests.length > 0) ? (
+                retreat.bookings.flatMap((booking) =>
+                  booking.cancellationRequests.map((request) => (
+                    <div key={request.id} className="rounded-lg border p-4 text-sm">
+                      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium">{booking.purchaserName}</p>
+                            <Badge variant={badgeVariant(request.status)}>
+                              {request.status.replaceAll("_", " ")}
+                            </Badge>
+                          </div>
+                          <p className="text-muted-foreground mt-1">{booking.purchaserEmail}</p>
+                          <p className="mt-3">
+                            Calculated refund: {formatCurrency(request.refundableAmountPence)}
+                          </p>
+                          {request.reason ? (
+                            <p className="text-muted-foreground mt-2">
+                              Customer note: {request.reason}
+                            </p>
+                          ) : null}
+                          {request.adminDecisionReason ? (
+                            <p className="text-muted-foreground mt-2">
+                              Decision note: {request.adminDecisionReason}
+                            </p>
+                          ) : null}
                         </div>
-                        <p className="text-muted-foreground mt-1">{booking.purchaserEmail}</p>
-                        <p className="mt-3">
-                          Calculated refund: {formatCurrency(request.refundableAmountPence)}
-                        </p>
-                        {request.reason ? (
-                          <p className="text-muted-foreground mt-2">
-                            Customer note: {request.reason}
-                          </p>
-                        ) : null}
-                        {request.adminDecisionReason ? (
-                          <p className="text-muted-foreground mt-2">
-                            Decision note: {request.adminDecisionReason}
-                          </p>
-                        ) : null}
-                      </div>
-                      {["requested", "failed"].includes(request.status) ? (
-                        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-                          <Button
-                            type="button"
-                            disabled={actionLoading !== ""}
-                            onClick={() => void decideCancellation(request.id, "approve")}
-                          >
-                            {request.status === "failed" ? "Retry refund" : "Approve and refund"}
-                          </Button>
-                          {request.status === "requested" ? (
+                        {["requested", "failed"].includes(request.status) ? (
+                          <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
                             <Button
                               type="button"
-                              variant="outline"
                               disabled={actionLoading !== ""}
-                              onClick={() => void decideCancellation(request.id, "reject")}
+                              onClick={() => void decideCancellation(request.id, "approve")}
                             >
-                              Reject
+                              {request.status === "failed" ? "Retry refund" : "Approve and refund"}
                             </Button>
-                          ) : null}
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                ))
-              )
-            ) : (
-              <p className="text-muted-foreground text-sm">No cancellation requests.</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Attendee roster</CardTitle>
-          </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-muted-foreground border-b">
-                <tr>
-                  <th className="py-3 pr-4">Attendee</th>
-                  <th className="py-3 pr-4">Purchaser</th>
-                  {retreat.retreatType === "online" ? (
-                    <th className="py-3 pr-4">Readiness</th>
-                  ) : null}
-                  <th className="py-3 pr-4">Room</th>
-                  <th className="py-3 pr-4">Extras</th>
-                  <th className="py-3 pr-4">Payment</th>
-                  <th className="py-3 pr-4">Booked</th>
-                </tr>
-              </thead>
-              <tbody>
-                {retreat.bookings.map((booking) => (
-                  <tr key={booking.id} className="border-border/50 border-b">
-                    <td className="py-3 pr-4">
-                      <p>{booking.attendeeName}</p>
-                      <p className="text-muted-foreground mt-1 text-xs">{booking.attendeeEmail}</p>
-                    </td>
-                    <td className="py-3 pr-4">
-                      <p>{booking.purchaserName}</p>
-                      <p className="text-muted-foreground mt-1 text-xs">{booking.purchaserEmail}</p>
-                    </td>
-                    {retreat.retreatType === "online" ? (
-                      <td className="py-3 pr-4">
-                        <div className="flex flex-col items-start gap-1">
-                          <Badge variant={booking.setupComplete ? "default" : "secondary"}>
-                            {booking.setupComplete ? "Ready" : "Setup needed"}
-                          </Badge>
-                          <span className="text-muted-foreground text-xs">
-                            {booking.accountLinked ? "Account linked" : "Account not linked"}
-                          </span>
-                          {!booking.setupComplete && booking.setupMissing.length > 0 ? (
-                            <span className="text-muted-foreground max-w-48 text-xs">
-                              Missing: {booking.setupMissing.join(", ").replaceAll("_", " ")}
-                            </span>
-                          ) : null}
-                          <span className="text-muted-foreground text-xs">
-                            {booking.liveAccessEnabled
-                              ? "Live access active"
-                              : "Live access inactive"}
-                          </span>
-                          <span className="text-muted-foreground text-xs">
-                            Reminders: {booking.liveReminder24hSentAt ? "24h sent" : "24h pending"}{" "}
-                            · {booking.liveReminder1hSentAt ? "1h sent" : "1h pending"}
-                          </span>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            disabled={actionLoading !== ""}
-                            onClick={() =>
-                              void runRetreatAction("access-email", () =>
-                                fetch(
-                                  `/api/admin/retreats/${retreat.id}/bookings/${booking.id}/resend-access`,
-                                  { method: "POST" }
-                                )
-                              )
-                            }
-                          >
-                            Resend access email
-                          </Button>
-                        </div>
-                      </td>
-                    ) : null}
-                    <td className="py-3 pr-4">
-                      <p>{booking.roomType || "Shared"}</p>
-                      {retreat.retreatType === "online" ? (
-                        <p className="text-muted-foreground mt-1 text-xs">
-                          {booking.attendeeCount || 1}{" "}
-                          {(booking.attendeeCount || 1) === 1 ? "person" : "people"}
-                        </p>
-                      ) : (
-                        <label className="mt-1 block">
-                          <span className="sr-only">Assigned room for {booking.attendeeName}</span>
-                          <select
-                            className="border-input bg-background focus-visible:ring-ring min-h-9 rounded-md border px-2 text-xs focus-visible:ring-2 focus-visible:outline-none"
-                            value={booking.roomUnitId || ""}
-                            disabled={actionLoading !== ""}
-                            onChange={(event) =>
-                              void runRetreatAction("room", () =>
-                                fetch(`/api/admin/retreats/${retreat.id}/room-assignments`, {
-                                  method: "PATCH",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({
-                                    bookingId: booking.id,
-                                    roomUnitId: event.target.value || null,
-                                  }),
-                                })
-                              )
-                            }
-                          >
-                            <option value="">Not assigned</option>
-                            {retreat.roomUnits
-                              .filter(
-                                (unit) =>
-                                  unit.roomOptionId === booking.roomOptionId ||
-                                  (booking.inventoryPoolId &&
-                                    unit.inventoryPoolId === booking.inventoryPoolId)
-                              )
-                              .map((unit) => (
-                                <option
-                                  key={unit.id}
-                                  value={unit.id}
-                                  disabled={
-                                    unit.id !== booking.roomUnitId &&
-                                    unit.occupiedUnits >= unit.capacityUnits
-                                  }
-                                >
-                                  {unit.label} ({unit.occupiedUnits}/{unit.capacityUnits})
-                                </option>
-                              ))}
-                          </select>
-                        </label>
-                      )}
-                    </td>
-                    <td className="py-3 pr-4">
-                      {booking.addons.length > 0 ? (
-                        booking.addons.map((addon) => (
-                          <p key={addon.id}>
-                            {addon.name} × {addon.quantity}
-                          </p>
-                        ))
-                      ) : (
-                        <span className="text-muted-foreground">None</span>
-                      )}
-                    </td>
-                    <td className="py-3 pr-4">
-                      <div className="flex flex-col gap-1">
-                        <Badge variant={badgeVariant(booking.paymentStatus)}>
-                          {booking.paymentStatus.replaceAll("_", " ")}
-                        </Badge>
-                        <span className="text-muted-foreground text-xs">
-                          {formatCurrency(booking.depositPaidPence + booking.balancePaidPence)} of{" "}
-                          {formatCurrency(booking.totalPricePence)}
-                        </span>
+                            {request.status === "requested" ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                disabled={actionLoading !== ""}
+                                onClick={() => void decideCancellation(request.id, "reject")}
+                              >
+                                Reject
+                              </Button>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </div>
-                    </td>
-                    <td className="py-3 pr-4">
-                      {new Intl.DateTimeFormat("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      }).format(new Date(booking.bookedAt))}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
+                    </div>
+                  ))
+                )
+              ) : (
+                <p className="text-muted-foreground text-sm">No cancellation requests.</p>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     </AdminLayout>
   );

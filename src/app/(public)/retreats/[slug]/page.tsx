@@ -7,7 +7,10 @@ import { JsonLd } from "@/components/json-ld";
 import { createRetreatEventSchemas } from "@/lib/seo/structured-data";
 import RetreatDetailLoading from "./loading";
 
-type RetreatPageProps = { params: Promise<{ slug: string }> };
+type RetreatPageProps = {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ date?: string }>;
+};
 
 export async function generateMetadata({ params }: RetreatPageProps): Promise<Metadata> {
   const { slug } = await params;
@@ -22,7 +25,9 @@ export async function generateMetadata({ params }: RetreatPageProps): Promise<Me
       type: "website",
       title: retreat.seoTitle || retreat.title,
       description: retreat.seoDescription || retreat.shortDescription,
-      images: retreat.imageUrl ? [{ url: retreat.imageUrl, alt: retreat.title }] : undefined,
+      images: retreat.imageUrl
+        ? [{ url: retreat.imageUrl, alt: retreat.imageAlt || retreat.title }]
+        : undefined,
     },
     twitter: {
       card: "summary_large_image",
@@ -33,22 +38,27 @@ export async function generateMetadata({ params }: RetreatPageProps): Promise<Me
   };
 }
 
-export default function Page({ params }: RetreatPageProps) {
+export default function Page({ params, searchParams }: RetreatPageProps) {
   return (
     <Suspense fallback={<RetreatDetailLoading />}>
-      <RetreatContent params={params} />
+      <RetreatContent params={params} searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function RetreatContent({ params }: RetreatPageProps) {
+async function RetreatContent({ params, searchParams }: RetreatPageProps) {
   const { slug } = await params;
+  const { date } = await searchParams;
   const retreat = await getOperationalRetreatBySlug(slug);
   if (!retreat) notFound();
   return (
     <>
       <JsonLd data={createRetreatEventSchemas(retreat)} />
-      <RetreatDetailPage retreat={retreat} />
+      <RetreatDetailPage
+        key={`${slug}:${date || "default"}`}
+        retreat={retreat}
+        initialDateId={date}
+      />
     </>
   );
 }
