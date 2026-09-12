@@ -7,7 +7,12 @@ import { MarketingSection } from "@/components/marketing/sections";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
-import { CANONICAL_LEAD_MAGNET } from "@/lib/newsletter/lead-magnet";
+import {
+  CANONICAL_LEAD_MAGNET,
+  NEWSLETTER_HEADLINE,
+  NEWSLETTER_BODY,
+  NEWSLETTER_BUTTON,
+} from "@/lib/newsletter/lead-magnet";
 import { submitNewsletterSignup } from "@/lib/newsletter-signup";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 
@@ -62,11 +67,10 @@ export function SubscribePage() {
               Newsletter
             </p>
             <h1 className="text-4xl leading-[1.08] tracking-[-0.03em] md:text-5xl lg:text-6xl">
-              Practical ideas for moving, training and feeling stronger.
+              {NEWSLETTER_HEADLINE}
             </h1>
             <p className="text-muted-foreground mt-6 max-w-2xl text-lg leading-relaxed md:text-xl">
-              Join my newsletter for evidence-informed notes on movement, strength and wellbeing,
-              written to help you make confident choices for your body and real life.
+              {NEWSLETTER_BODY}
             </p>
           </div>
 
@@ -194,7 +198,7 @@ export function SubscribePage() {
                       className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90 h-12 w-full text-base font-medium"
                       disabled={submitting || !consent || !turnstileToken}
                     >
-                      {submitting ? "Joining..." : "Join the newsletter"}
+                      {submitting ? "Joining..." : NEWSLETTER_BUTTON}
                     </Button>
 
                     <p className="text-brand-white/55 text-center text-xs leading-relaxed">

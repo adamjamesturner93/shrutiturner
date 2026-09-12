@@ -7,15 +7,19 @@ const LEGACY_LEAD_MAGNET = {
   title: "5 Yoga Poses That Actually Build Strength",
 };
 
-export const FREE_GUIDE_TITLE = "Why Some Bodies Need Strength Before More Stretching";
-export const FREE_GUIDE_SUPPORTING_LINE =
-  "A free guide exploring stability, control and capacity in flexible bodies.";
+export const NEWSLETTER_HEADLINE =
+  "Been told to be careful with exercise because of pain, injury or illness?";
+export const NEWSLETTER_BODY =
+  "Learn how to train intelligently, rebuild confidence and build strength in a way that works with your body.";
+export const NEWSLETTER_BUTTON = "Get the free guide";
+export const FREE_GUIDE_TITLE =
+  "Rebuild Your Strength: How to train intelligently with chronic illness, pain or injury.";
+export const FREE_GUIDE_SUPPORTING_LINE = NEWSLETTER_BODY;
 export const FREE_GUIDE_META_DESCRIPTION =
-  "Join Shruti Turner's newsletter for practical notes on movement, strength and wellbeing, plus the free guide Why Some Bodies Need Strength Before More Stretching.";
-export const FREE_GUIDE_KEY = "why-some-bodies-need-strength-before-more-stretching";
+  "Get Rebuild Your Strength, Shruti Turner's free guide to training intelligently with chronic illness, pain or injury.";
+export const FREE_GUIDE_KEY = "rebuild-your-strength";
 export const FREE_GUIDE_POSTMARK_TAG = `lead-magnet-${FREE_GUIDE_KEY}`;
-export const FREE_GUIDE_DOWNLOAD_PATH =
-  "/guides/why-some-bodies-need-strength-before-more-stretching.pdf";
+export const FREE_GUIDE_DOWNLOAD_PATH = "/guides/rebuild-your-strength.pdf";
 
 export const CANONICAL_LEAD_MAGNET = {
   assetUrl: `https://shrutiturner.co.uk${FREE_GUIDE_DOWNLOAD_PATH}`,
@@ -24,7 +28,7 @@ export const CANONICAL_LEAD_MAGNET = {
   emailBody: `Hi {{firstName}},\n\nThanks for joining. Here is your guide: ${FREE_GUIDE_TITLE}.\n\n{{leadMagnetLink}}\n\nShruti`,
   emailPreviewText: "Confirm your email to receive the guide.",
   emailSubject: `Your free guide: ${FREE_GUIDE_TITLE}`,
-  hookText: `Join the newsletter and receive the free guide "${FREE_GUIDE_TITLE}"`,
+  hookText: NEWSLETTER_HEADLINE,
   landingDescription: FREE_GUIDE_SUPPORTING_LINE,
   slug: FREE_GUIDE_KEY,
   subscribeBenefits: [
@@ -40,6 +44,8 @@ function includesLegacyLeadMagnetCopy(value?: string) {
   if (!value) return false;
 
   return (
+    value.includes("Why Some Bodies Need Strength Before More Stretching") ||
+    value.includes("why-some-bodies-need-strength-before-more-stretching") ||
     value.includes(LEGACY_LEAD_MAGNET.title) ||
     value.includes(LEGACY_LEAD_MAGNET.slug) ||
     value.includes(LEGACY_LEAD_MAGNET.assetUrl)
@@ -75,12 +81,8 @@ export function normalizeNewsletterSignupContent(
     hookText: CANONICAL_LEAD_MAGNET.hookText,
     leadMagnetSlug: CANONICAL_LEAD_MAGNET.slug,
     leadMagnetTitle: CANONICAL_LEAD_MAGNET.title,
-    popupDescription:
-      !content.popupDescription || includesLegacyLeadMagnetCopy(content.popupDescription)
-        ? CANONICAL_LEAD_MAGNET.landingDescription
-        : content.popupDescription,
-    popupTitle: includesLegacyLeadMagnetCopy(content.popupTitle)
-      ? CANONICAL_LEAD_MAGNET.title
-      : content.popupTitle,
+    popupDescription: NEWSLETTER_BODY,
+    popupTitle: NEWSLETTER_HEADLINE,
+    buttonLabel: NEWSLETTER_BUTTON,
   };
 }

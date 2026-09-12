@@ -43,11 +43,11 @@ function NewsletterPopupController({
 
     const updateScrollThreshold = () => {
       const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-      scrollThreshold = maxScroll * 0.4;
+      scrollThreshold = maxScroll > 0 ? maxScroll * 0.5 : Infinity;
     };
 
     const handleScroll = () => {
-      if (window.scrollY > scrollThreshold) {
+      if (window.scrollY >= scrollThreshold) {
         setShowPopup(true);
         sessionStorage.setItem("newsletter_shown", "true");
         window.removeEventListener("scroll", handleScroll);
@@ -55,14 +55,6 @@ function NewsletterPopupController({
         resizeObserver?.disconnect();
       }
     };
-
-    // Also trigger after 45 seconds
-    const timer = setTimeout(() => {
-      if (!sessionStorage.getItem("newsletter_shown")) {
-        setShowPopup(true);
-        sessionStorage.setItem("newsletter_shown", "true");
-      }
-    }, 45000);
 
     updateScrollThreshold();
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -77,7 +69,6 @@ function NewsletterPopupController({
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", updateScrollThreshold);
       resizeObserver?.disconnect();
-      clearTimeout(timer);
     };
   }, [canShowPopup]);
 

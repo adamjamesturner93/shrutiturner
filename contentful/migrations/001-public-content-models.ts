@@ -330,6 +330,8 @@ export const PUBLIC_CONTENT_MODELS: ContentTypeDefinition[] = [
       { id: "coverImageUrl", name: "Cover Image URL", type: "Symbol" },
       { id: "coverAlt", name: "Cover Alt", type: "Symbol" },
       { id: "excerpt", name: "Excerpt", type: "Text", required: true },
+      { id: "emailSubject", name: "Publication email subject (optional)", type: "Symbol" },
+      { id: "emailIntroduction", name: "Publication email introduction (optional)", type: "Text" },
       { id: "content", name: "Content", type: "Text", required: true },
       {
         id: "category",

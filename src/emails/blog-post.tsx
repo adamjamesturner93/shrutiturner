@@ -1,5 +1,6 @@
 import { Section, Text, Link, Img, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
+import { DEFAULT_BLOG_EMAIL_INTRODUCTION } from "@/lib/newsletter/blog-email-copy";
 import {
   colors,
   fonts,
@@ -12,6 +13,7 @@ import {
 
 interface BlogPostEmailProps {
   firstName?: string;
+  introduction?: string;
   postTitle?: string;
   postExcerpt?: string;
   postImageUrl?: string;
@@ -24,6 +26,7 @@ interface BlogPostEmailProps {
 
 export default function BlogPostEmail({
   firstName = "there",
+  introduction = DEFAULT_BLOG_EMAIL_INTRODUCTION,
   postTitle = "Why Strength Training Matters When You Have Chronic Illness",
   postExcerpt = "Exploring the evidence for resistance training in managing autoimmune conditions, chronic pain and fatigue \u2014 and how to start without pushing past your limits.",
   postImageUrl = "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=520&h=260&fit=crop",
@@ -41,9 +44,11 @@ export default function BlogPostEmail({
     >
       <Text style={{ ...bodyTextStyle, marginBottom: "24px" }}>Hi {firstName},</Text>
 
-      <Text style={bodyTextStyle}>
-        {"I\u2019ve just published a new post on my blog I thought you\u2019d be interested in."}
-      </Text>
+      {introduction.split(/\n\s*\n/).map((paragraph, index) => (
+        <Text key={index} style={{ ...bodyTextStyle, whiteSpace: "pre-line" }}>
+          {paragraph}
+        </Text>
+      ))}
 
       {/* Article Card */}
       <Section
