@@ -6,6 +6,7 @@ import { syncReplayAssetFromDailyWebhook } from "@/lib/replay/service";
 import { recordRetreatAttendanceEvent } from "@/lib/retreats/live-service";
 
 type DailyWebhookPayload = {
+  payload?: DailyWebhookPayload;
   event?: string;
   type?: string;
   room?: string;
@@ -74,11 +75,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const payload = (await request.json().catch(() => null)) as DailyWebhookPayload | null;
-    if (!payload) {
+    const raw = (await request.json().catch(() => null)) as DailyWebhookPayload | null;
+    if (!raw) {
       return NextResponse.json({ ignored: true });
     }
 
+    const payload: DailyWebhookPayload = {
+      ...raw,
+      ...(raw.payload || {}),
+      type: raw.type,
+      event: raw.event,
+    };
     const roomName = getRoomName(payload);
     const userId = getUserId(payload);
     const type = getAttendanceType(payload);
@@ -92,8 +99,6 @@ export async function POST(request: Request) {
         startedAt: payload.started_at || payload.data?.started_at || null,
         completedAt: payload.completed_at || payload.data?.completed_at || null,
         payload: payload as Record<string, unknown>,
-      }).catch((error) => {
-        console.error("Daily replay sync failed", error);
       });
     }
 

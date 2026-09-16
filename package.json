@@ -14,7 +14,7 @@
     "build": "next build",
     "start": "next start",
     "prepare": "husky",
-    "test": "pnpm run test:unit && pnpm run test:integration && pnpm run test:e2e",
+    "test": "pnpm run test:unit && pnpm run test:integration && pnpm run test:e2e && pnpm run test:e2e:programmes",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "rm -rf .next && playwright test",
@@ -63,7 +63,9 @@
     "classes:process-three-hour-cutoff": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/classes/process-three-hour-cutoff.ts",
     "stripe:seed:products": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/stripe/seed-products.ts",
     "sync:postmark": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/sync/postmark.ts",
-    "sync:stripe:metrics": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/sync/stripe-metrics.ts"
+    "sync:stripe:metrics": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/sync/stripe-metrics.ts",
+    "test:e2e:programmes": "playwright test -c playwright.programmes.config.ts",
+    "seed:programmes": "node --env-file=.env --experimental-strip-types scripts/seed-programme-cohorts.ts"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,mjs,cjs}": [

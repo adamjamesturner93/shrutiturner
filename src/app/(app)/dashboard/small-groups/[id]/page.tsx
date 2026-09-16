@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-
-export default function Page() {
-  redirect("/dashboard/coaching");
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  redirect(`/dashboard/programmes/${id}`);
 }

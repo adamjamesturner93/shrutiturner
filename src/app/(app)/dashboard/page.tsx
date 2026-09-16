@@ -1,19 +1,20 @@
 import { Suspense } from "react";
+import { ClientHub } from "@/views/programmes/client-hub";
 import { DashboardLobby } from "@/views/dashboard/lobby";
-import { auth } from "@/lib/auth";
-import { getDashboardSummary } from "@/lib/dashboard/dashboard-service";
-import DashboardLoading from "./loading";
 
-export default function Page() {
-  return (
-    <Suspense fallback={<DashboardLoading />}>
-      <DashboardContent />
-    </Suspense>
-  );
+async function DashboardContent({
+  searchParams,
+}: {
+  searchParams: Promise<{ onboarding?: string }>;
+}) {
+  const query = await searchParams;
+  return query.onboarding === "true" ? <DashboardLobby initialData={null} /> : <ClientHub />;
 }
 
-async function DashboardContent() {
-  const session = await auth();
-  const initialData = session?.user?.id ? await getDashboardSummary(session.user.id) : null;
-  return <DashboardLobby initialData={initialData} />;
+export default function Page(props: { searchParams: Promise<{ onboarding?: string }> }) {
+  return (
+    <Suspense fallback={<p>Loading account…</p>}>
+      <DashboardContent {...props} />
+    </Suspense>
+  );
 }

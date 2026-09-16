@@ -37,6 +37,7 @@ export type RetreatLiveLanding = {
   defaultMicMuted: boolean;
   defaultCameraOff: boolean;
   registrationIncomplete: boolean;
+  exerciseClearance?: { required: boolean; status: string; canExercise: boolean } | null;
   setupMissing: string[];
   requiredAcceptances: Array<{ type: string }>;
   replayAssetId: string | null;
@@ -132,6 +133,29 @@ export function DashboardRetreatLive({ initialData }: { initialData: RetreatLive
   const [initialMuted, setInitialMuted] = useState(initialData.defaultMicMuted);
   const [initialCameraOn, setInitialCameraOn] = useState(!initialData.defaultCameraOff);
 
+  if (
+    initialData.state !== "cancelled" &&
+    initialData.exerciseClearance?.required &&
+    !initialData.exerciseClearance.canExercise
+  ) {
+    const incomplete = initialData.exerciseClearance.status === "pending_confirmation";
+    return (
+      <StateCard
+        title={
+          incomplete
+            ? "Complete your health check before training."
+            : "Your health information is waiting for review."
+        }
+        body="You can review the event information while exercise access is being confirmed."
+      >
+        <Button asChild>
+          <Link href={`/dashboard/events/${initialData.bookingId}/onboarding`}>
+            {incomplete ? "Confirm health information" : "View health confirmation"}
+          </Link>
+        </Button>
+      </StateCard>
+    );
+  }
   if (initialData.state === "registration_incomplete") {
     return (
       <StateCard

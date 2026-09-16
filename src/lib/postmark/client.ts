@@ -1,3 +1,4 @@
+import { programmeTestRuntime } from "@/lib/programmes/test-runtime";
 import "server-only";
 
 import { render } from "@react-email/render";
@@ -94,6 +95,14 @@ async function sendPreparedPostmarkEmail(input: {
   metadata?: Record<string, string>;
   attachments?: EmailAttachment[];
 }) {
+  if (programmeTestRuntime())
+    return {
+      MessageID: `captured-${crypto.randomUUID()}`,
+      ErrorCode: 0,
+      Message: "Captured by local test process",
+      SubmittedAt: new Date().toISOString(),
+      To: input.to,
+    };
   const client = getPostmarkClient();
   const category = input.category || "transactional";
 
@@ -175,6 +184,29 @@ export async function attemptEmailDelivery(deliveryId: string) {
         },
       });
       return { skipped: true as const, reason: "recipient_not_subscribed" };
+    }
+  }
+
+  if (existing.tag === "programme") {
+    const metadata = existing.metadataJson as {
+      programmeMessageId?: string;
+      scheduleRevision?: string;
+    } | null;
+    const { programmeMessageMaySend } = await import("@/lib/programmes/message-guard");
+    if (
+      !metadata?.programmeMessageId ||
+      !(await programmeMessageMaySend(metadata.programmeMessageId, metadata.scheduleRevision))
+    ) {
+      await db.emailDelivery.update({
+        where: { id: deliveryId },
+        data: {
+          retryable: false,
+          nextRetryAt: null,
+          resolvedAt: new Date(),
+          resolutionCode: "obsolete_programme_message",
+        },
+      });
+      return { skipped: true as const, reason: "obsolete_programme_message" };
     }
   }
 

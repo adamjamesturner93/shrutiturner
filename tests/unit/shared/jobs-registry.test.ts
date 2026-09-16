@@ -1,6 +1,10 @@
 import { ScheduledJobTriggerType } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/programmes/jobs", () => ({
+  maintainProgrammes: vi.fn(async () => ({ delivered: 0 })),
+}));
+
 const cleanupScheduledJobRuntimeDataMock = vi.fn();
 const processTransactionalEmailRetriesMock = vi.fn();
 const processDueContentfulCampaignsMock = vi.fn();
@@ -55,6 +59,11 @@ describe("jobs registry", () => {
         }),
         expect.objectContaining({
           jobName: "contentful_campaign_send",
+          triggerTypes: [ScheduledJobTriggerType.cron, ScheduledJobTriggerType.manual],
+          previewSafe: false,
+        }),
+        expect.objectContaining({
+          jobName: "programme_maintenance",
           triggerTypes: [ScheduledJobTriggerType.cron, ScheduledJobTriggerType.manual],
           previewSafe: false,
         }),

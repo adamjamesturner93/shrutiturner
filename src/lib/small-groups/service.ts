@@ -1015,6 +1015,7 @@ export async function listMySmallGroupProgrammes(
   userId: string
 ): Promise<MemberSmallGroupSummary[]> {
   const rows = await db.smallGroupProgramme.findMany({
+    where: { cohortState: null, enrollments: { some: { userId } } },
     orderBy: [{ startDate: "asc" }, { title: "asc" }],
     include: {
       sessions: {
@@ -1062,6 +1063,8 @@ export async function getMySmallGroupProgrammeDetail(
 ): Promise<MemberSmallGroupDetail | null> {
   const row = await db.smallGroupProgramme.findFirst({
     where: {
+      cohortState: null,
+      enrollments: { some: { userId } },
       OR: [{ id: idOrRunSlug }, { runSlug: idOrRunSlug }, { slug: idOrRunSlug }],
     },
     include: {

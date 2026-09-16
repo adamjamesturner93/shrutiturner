@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import { useAuth } from "../context/auth-context";
 import { ScrollToTop } from "./scroll-to-top";
@@ -11,7 +11,6 @@ import {
   Settings,
   LogOut,
   Menu,
-  HeartPulse,
   Shield,
   ArrowRight,
   Compass,
@@ -37,10 +36,10 @@ type LegalGuardModalProps = {
 };
 
 const NAV_ITEMS = [
-  { path: "/dashboard", label: "Studio Lobby", icon: LayoutDashboard, exact: true },
+  { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { path: "/dashboard/coaching", label: "Coaching", icon: Compass },
-  { path: "/dashboard/retreats", label: "Retreats & workshops", icon: CalendarDays },
-  { path: "/dashboard/health", label: "Health Profile", icon: HeartPulse },
+  { path: "/dashboard/programmes", label: "Programmes", icon: CalendarDays },
+  { path: "/dashboard/events", label: "Events", icon: CalendarDays },
   { path: "/dashboard/account", label: "Account", icon: Settings },
 ];
 
@@ -149,7 +148,6 @@ export function DashboardLayout({
     acceptTermsAndHealth,
   } = useAuth();
   const pathname = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const onboardingInProgress = searchParams.get("onboarding") === "true";
@@ -158,9 +156,24 @@ export function DashboardLayout({
     isSigningOut ||
     (isAuthenticated && !isAdmin && (isProfileLoading || !user));
 
-  const needsOnboarding = Boolean(user) && !user?.onboarding.isComplete;
+  const [ownedNav, setOwnedNav] = useState<string[]>(["Dashboard", "Account"]);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let active = true;
+    fetch("/api/me/hub", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { nav: { label: string }[] } | null) => {
+        if (active && data) setOwnedNav(data.nav.map((item) => item.label));
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [isAuthenticated, pathname]);
   const needsLegalAgreement = Boolean(user) && user?.onboarding.missingSteps.includes("legal");
   const shouldShowLegalGuard =
+    !pathname.startsWith("/dashboard/programmes") &&
+    !pathname.startsWith("/dashboard/events") &&
     isAuthenticated &&
     needsLegalAgreement &&
     !handlesLegalAgreements &&
@@ -168,27 +181,6 @@ export function DashboardLayout({
     !onboardingInProgress &&
     pathname !== "/dashboard" &&
     pathname !== "/dashboard/account";
-
-  useEffect(() => {
-    if (
-      !isDashboardBootstrapping &&
-      isAuthenticated &&
-      needsOnboarding &&
-      !isAdmin &&
-      !onboardingInProgress &&
-      pathname === "/dashboard"
-    ) {
-      router.replace("/dashboard?onboarding=true");
-    }
-  }, [
-    isDashboardBootstrapping,
-    isAuthenticated,
-    needsOnboarding,
-    isAdmin,
-    onboardingInProgress,
-    pathname,
-    router,
-  ]);
 
   // Auth + profile guard: hold dashboard UI until session and member profile are hydrated.
   if (isDashboardBootstrapping) {
@@ -241,7 +233,7 @@ export function DashboardLayout({
     );
   }
 
-  const filteredNavItems = NAV_ITEMS;
+  const filteredNavItems = NAV_ITEMS.filter((item) => ownedNav.includes(item.label));
 
   const isActive = (path: string, exact?: boolean) => {
     if (exact) return pathname === path;

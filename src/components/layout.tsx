@@ -14,7 +14,14 @@ interface LayoutProps {
   footerVariant?: "marketing" | "utility";
 }
 
-const NO_POPUP_PATHS = ["/blog", "/login", "/dashboard", "/unsubscribe", "/subscribe"];
+const NO_POPUP_PATHS = [
+  "/programmes",
+  "/blog",
+  "/login",
+  "/dashboard",
+  "/unsubscribe",
+  "/subscribe",
+];
 
 function NewsletterPopupController({
   footerVariant,

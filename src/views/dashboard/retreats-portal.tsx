@@ -260,7 +260,7 @@ export function DashboardRetreatDetail({
         <div className="py-16 text-center">
           <p className="text-muted-foreground">{error || "Retreat booking not found."}</p>
           <Button asChild variant="outline" className="mt-6">
-            <Link href="/dashboard/retreats">Back to retreats</Link>
+            <Link href="/dashboard/events">Back to Events</Link>
           </Button>
         </div>
       </DashboardLayout>
@@ -271,11 +271,11 @@ export function DashboardRetreatDetail({
     <DashboardLayout title="Retreat Booking - Private Studio">
       <div className="space-y-6">
         <Link
-          href="/dashboard/retreats"
+          href="/dashboard/events"
           className="text-muted-foreground hover:text-foreground inline-flex items-center gap-2 text-sm transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to retreats
+          Back to Events
         </Link>
 
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">

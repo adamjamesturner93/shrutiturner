@@ -1,3 +1,4 @@
+import { encode } from "next-auth/jwt";
 import type { UserRole } from "@prisma/client";
 import type { Page } from "@playwright/test";
 import { db } from "./db";
@@ -67,18 +68,14 @@ export async function loginWithEmail(
 ) {
   const user = await preparePasswordlessCode(email, { code: authCode });
   const expires = new Date(Date.now() + SESSION_TTL_MS);
-  const sessionToken = `e2e-session-${crypto.randomUUID()}`;
   const baseUrl = getPlaywrightBaseUrl();
-
-  await db.session.deleteMany({
-    where: { userId: user.id },
-  });
-  await db.session.create({
-    data: {
-      sessionToken,
-      userId: user.id,
-      expires,
-    },
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) throw new Error("AUTH_SECRET is required for local authenticated fixtures");
+  const sessionToken = await encode({
+    secret,
+    salt: getSessionCookieName(baseUrl),
+    maxAge: SESSION_TTL_MS / 1000,
+    token: { sub: user.id, id: user.id, email: user.email, role: user.role, name: user.name },
   });
 
   await page.context().addCookies([

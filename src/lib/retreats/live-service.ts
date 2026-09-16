@@ -1,3 +1,4 @@
+import { assertEventExerciseClearance, eventClearanceState } from "./offering-clearance";
 import "server-only";
 
 import {
@@ -157,7 +158,11 @@ export async function getRetreatLiveLandingState(bookingId: string, userId: stri
     ),
     getWorkshopSetupState(userId),
   ]);
-  const registrationIncomplete = !workshopSetup.complete;
+  const exerciseClearance = booking.retreatDate.requiresOfferingClearance
+    ? await eventClearanceState(userId, booking.retreatDateId)
+    : null;
+  const registrationIncomplete =
+    !workshopSetup.complete || Boolean(exerciseClearance && !exerciseClearance.canExercise);
   const replayAsset = await db.replayAsset.findFirst({
     where: {
       retreatDateId: booking.retreatDateId,
@@ -223,6 +228,7 @@ export async function getRetreatLiveLandingState(bookingId: string, userId: stri
     defaultMicMuted: booking.retreatDate.participantMicDefaultMuted,
     defaultCameraOff: booking.retreatDate.participantCameraDefaultOff,
     registrationIncomplete,
+    exerciseClearance,
     setupMissing: workshopSetup.missing,
     requiredAcceptances: acceptanceStates.filter((acceptance) => !acceptance.isCurrent),
     replayAssetId: replayAsset?.id || null,
@@ -234,6 +240,7 @@ export async function getRetreatParticipantTokenContext(bookingId: string, userI
   if (booking.retreatDate.status === "cancelled" || !entitlement?.liveAccessEnabled) {
     throw new Error("ROOM_CLOSED");
   }
+  await assertEventExerciseClearance(userId, booking.retreatDateId);
   const workshopSetup = await getWorkshopSetupState(userId);
   if (!workshopSetup.complete) throw new Error("REGISTRATION_INCOMPLETE");
   await assertCurrentAcceptances(

@@ -4,7 +4,7 @@ import {
   ReplayAssetStatus,
   ReplayEntitlementAccessType,
 } from "@prisma/client";
-import { canViewReplayAsset } from "@/lib/authz/access";
+import { canViewReplayAsset, canManageRetreatDate } from "@/lib/authz/access";
 import { isOwnerAdminRole } from "@/lib/authz/roles";
 import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import type { ReplayAssetSummaryDto, ReplayPlaybackAccessDto } from "@/lib/api/types";
@@ -184,12 +184,19 @@ export async function syncReplayAssetFromDailyWebhook(input: {
   completedAt?: string | null;
   payload?: Record<string, unknown> | null;
 }) {
-  const asset = await db.replayAsset.findFirst({
-    where: {
-      dailyRoomName: input.roomName,
-      resourceType: { in: [...REPLAY_RESOURCE_TYPES] },
-    },
-  });
+  const matchingRecording = input.recordingId
+    ? await db.replayAsset.findUnique({ where: { dailyRecordingId: input.recordingId } })
+    : null;
+  const asset =
+    matchingRecording ||
+    (await db.replayAsset.findFirst({
+      where: {
+        dailyRoomName: input.roomName,
+        status: { in: ["processing", "sync_failed"] },
+        resourceType: { in: [...REPLAY_RESOURCE_TYPES] },
+      },
+      orderBy: { createdAt: "desc" },
+    }));
   if (!asset) {
     return null;
   }
@@ -198,7 +205,7 @@ export async function syncReplayAssetFromDailyWebhook(input: {
   const nextStatus =
     statusToken.includes("fail") || statusToken.includes("error")
       ? ReplayAssetStatus.sync_failed
-      : input.playbackUrl
+      : input.playbackUrl || (input.recordingId && /ready|finished|complete/.test(statusToken))
         ? ReplayAssetStatus.ready
         : ReplayAssetStatus.processing;
 
@@ -419,11 +426,6 @@ export async function getReplayPlaybackAccess(
   replayAssetId: string,
   userId: string
 ): Promise<ReplayPlaybackAccessDto> {
-  const accessAllowed = await canViewReplayAsset(userId, replayAssetId);
-  if (!accessAllowed) {
-    throw new Error("FORBIDDEN");
-  }
-
   const [asset, user] = await Promise.all([
     db.replayAsset.findUniqueOrThrow({
       where: { id: replayAssetId },
@@ -444,6 +446,30 @@ export async function getReplayPlaybackAccess(
     }),
   ]);
 
+  if (asset.smallGroupProgrammeId) {
+    const cohort = await db.smallGroupProgramme.findUnique({
+      where: { id: asset.smallGroupProgrammeId },
+      select: { cohortState: true },
+    });
+    if (cohort?.cohortState) {
+      const { programmeReplayAccess } = await import("@/lib/programmes/live-service");
+      const playback = await programmeReplayAccess(
+        userId,
+        asset.smallGroupProgrammeId,
+        replayAssetId
+      );
+      return { replayAssetId, playbackUrl: playback.url, status: "ready" };
+    }
+  }
+  const accessAllowed = await canViewReplayAsset(userId, replayAssetId);
+  if (!accessAllowed) {
+    throw new Error("FORBIDDEN");
+  }
+
+  if (asset.retreatDateId && !(await canManageRetreatDate(userId, asset.retreatDateId))) {
+    const { assertEventExerciseClearance } = await import("@/lib/retreats/offering-clearance");
+    await assertEventExerciseClearance(userId, asset.retreatDateId);
+  }
   assertSupportedReplayAsset(asset.resourceType);
 
   if (!user) {

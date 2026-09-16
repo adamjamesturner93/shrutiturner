@@ -24,6 +24,8 @@ test("account page saves profile and preference updates while keeping email disa
       isOnboarded: true,
       acceptedTermsVersion: CURRENT_TERMS_VERSION,
       acceptedHealthWaiverVersion: CURRENT_HEALTH_WAIVER_VERSION,
+      healthAgreedAt: new Date(),
+      hasAgreedToHealth: true,
       hasConsentedToHealthData: true,
       acceptedHealthDataConsentVersion: CURRENT_HEALTH_DATA_CONSENT_VERSION,
     },
@@ -32,27 +34,37 @@ test("account page saves profile and preference updates while keeping email disa
   await loginWithEmail(page, email);
   await page.goto("/dashboard/account");
 
-  await expect(page.getByRole("heading", { name: "Account Settings" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your account" })).toBeVisible();
   await expect(page.getByLabel("Email")).toBeDisabled();
 
   await page.getByLabel("What should I call you?").fill("Taylor");
   await page.getByLabel("Date of Birth").fill("1989-02-14");
   await page.getByRole("button", { name: "Save Profile" }).click();
-  await expect(page.getByText("Saved")).toBeVisible();
+  await expect(page.getByText("Saved")).toBeVisible({ timeout: 15000 });
 
-  await page.getByRole("button", { name: "Preferences" }).click();
+  await page.goto("/dashboard/account?section=preferences");
   await page.locator("#timezone").click();
   await page.getByRole("option", { name: /New York/ }).click();
   await page.locator("#dateFormat").click();
   await page.getByRole("option", { name: /MM\/DD\/YYYY/ }).click();
+  const preferencesSaved = page.waitForResponse(
+    (response) => response.url().endsWith("/api/me") && response.request().method() === "PATCH"
+  );
   await page.getByRole("button", { name: "Save Preferences" }).click();
-  await expect(page.getByText("Saved")).toBeVisible();
+  const savedResponse = await preferencesSaved;
+  expect(savedResponse.ok()).toBeTruthy();
+  expect(savedResponse.request().postDataJSON()).toMatchObject({
+    timezone: "America/New_York",
+    dateFormat: "MM/DD/YYYY",
+  });
+  await expect(page.getByText("Saved")).toBeVisible({ timeout: 15000 });
 
   await page.reload();
+  await page.getByRole("link", { name: "Profile", exact: true }).click();
   await expect(page.getByLabel("What should I call you?")).toHaveValue("Taylor");
   await expect(page.getByLabel("Date of Birth")).toHaveValue("1989-02-14");
 
-  await page.getByRole("button", { name: "Preferences" }).click();
+  await page.goto("/dashboard/account?section=preferences");
   await expect(page.locator("#timezone")).toContainText("New York");
   await expect(page.locator("#dateFormat")).toContainText("MM/DD/YYYY");
 });
@@ -70,16 +82,34 @@ test("health profile can be updated from the signed-in health page and persists 
       isOnboarded: true,
       acceptedTermsVersion: CURRENT_TERMS_VERSION,
       acceptedHealthWaiverVersion: CURRENT_HEALTH_WAIVER_VERSION,
+      healthAgreedAt: new Date(),
+      hasAgreedToHealth: true,
       hasConsentedToHealthData: true,
       acceptedHealthDataConsentVersion: CURRENT_HEALTH_DATA_CONSENT_VERSION,
     },
   });
 
+  const participant = await db.user.findUniqueOrThrow({ where: { email } });
+  const healthPolicy = await db.policyDocumentVersion.findFirst({
+    where: { type: "health_data", isCurrent: true },
+  });
+  if (healthPolicy) {
+    await db.acceptanceEvent.create({
+      data: {
+        userId: participant.id,
+        type: "health_data",
+        policyVersionId: healthPolicy.id,
+        version: healthPolicy.version,
+        acceptanceSurface: "account-regression-fixture",
+        acceptedAt: new Date(),
+      },
+    });
+  }
   await loginWithEmail(page, email);
   await page.goto("/dashboard/health");
 
-  await expect(page.getByRole("heading", { name: "Health Profile" })).toBeVisible();
-  await page.getByRole("button", { name: "Complete declaration" }).click();
+  await expect(page.getByRole("heading", { name: "Health Profile", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Complete health profile" }).click();
   await page.getByRole("button", { name: "Physical Health" }).click();
   await page.getByLabel("Autoimmune condition").check();
   await page
@@ -109,6 +139,8 @@ test("account page saves notification preferences", async ({ page }) => {
       isOnboarded: true,
       acceptedTermsVersion: CURRENT_TERMS_VERSION,
       acceptedHealthWaiverVersion: CURRENT_HEALTH_WAIVER_VERSION,
+      healthAgreedAt: new Date(),
+      hasAgreedToHealth: true,
       hasConsentedToHealthData: true,
       acceptedHealthDataConsentVersion: CURRENT_HEALTH_DATA_CONSENT_VERSION,
     },
@@ -117,18 +149,14 @@ test("account page saves notification preferences", async ({ page }) => {
   await loginWithEmail(page, email);
   await page.goto("/dashboard/account");
 
-  await page.getByRole("button", { name: "Notifications" }).click();
-  await page.getByRole("checkbox", { name: "Newsletter & Updates" }).uncheck();
-  await page.getByRole("checkbox", { name: "New class schedule updates" }).uncheck();
-  await page.getByRole("button", { name: "Update Preferences" }).click();
-  await expect(page.getByText("Saved")).toBeVisible();
+  await page.getByRole("link", { name: "Newsletter" }).click();
+  await page.getByRole("checkbox", { name: /Newsletter subscription/ }).uncheck();
+  await page.getByRole("button", { name: "Update subscription" }).click();
+  await expect(page.getByText("Saved")).toBeVisible({ timeout: 15000 });
 
   await page.reload();
-  await page.getByRole("button", { name: "Notifications" }).click();
-  await expect(page.getByRole("checkbox", { name: "Newsletter & Updates" })).not.toBeChecked();
-  await expect(
-    page.getByRole("checkbox", { name: "New class schedule updates" })
-  ).not.toBeChecked();
+  await page.getByRole("link", { name: "Newsletter" }).click();
+  await expect(page.getByRole("checkbox", { name: /Newsletter subscription/ })).not.toBeChecked();
 });
 
 test("account page can complete missing legal agreements", async ({ page }) => {

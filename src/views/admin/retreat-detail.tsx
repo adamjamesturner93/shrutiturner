@@ -686,6 +686,9 @@ export function AdminRetreatDetail({
 
   return (
     <AdminLayout title={`${retreat.title} - Admin`}>
+      <a className="block p-4 underline" href={`/admin/retreats/${retreat.id}/clearance`}>
+        Review participant health clearance
+      </a>
       <div className="space-y-6">
         <Link
           href="/admin/retreats"

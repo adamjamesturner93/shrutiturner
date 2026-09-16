@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const assertEventExerciseClearanceMock = vi.fn();
+vi.mock("@/lib/retreats/offering-clearance", () => ({
+  assertEventExerciseClearance: assertEventExerciseClearanceMock,
+}));
+
 const findBookingMock = vi.fn();
 const findRetreatDateMock = vi.fn();
 const updateRetreatDateMock = vi.fn();
@@ -81,6 +86,7 @@ function booking(roomState: "unprepared" | "prepared" = "prepared") {
 describe("retreat live access boundaries", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    assertEventExerciseClearanceMock.mockResolvedValue(undefined);
     assertCurrentAcceptancesMock.mockResolvedValue([]);
     findRetreatAttendancesMock.mockResolvedValue([]);
     updateRoomPermissionsMock.mockResolvedValue({});
@@ -90,6 +96,17 @@ describe("retreat live access boundaries", () => {
       name: null,
       email: "asha@example.com",
     });
+  });
+
+  it("denies an uncleared participant before creating a token", async () => {
+    findBookingMock.mockResolvedValue(booking());
+    assertEventExerciseClearanceMock.mockRejectedValueOnce(
+      new Error("EXERCISE_CLEARANCE_REQUIRED")
+    );
+    await expect(service.getRetreatParticipantTokenContext("booking_1", "user_1")).rejects.toThrow(
+      "EXERCISE_CLEARANCE_REQUIRED"
+    );
+    expect(setUpRetreatOnlineRoomMock).not.toHaveBeenCalled();
   });
 
   it("never provisions a room from an attendee token request", async () => {

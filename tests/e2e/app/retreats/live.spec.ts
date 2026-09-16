@@ -114,6 +114,16 @@ test("an entitled attendee sees the timezone-aware scheduled landing and calenda
       status: "open",
     },
   });
+  const health = await db.healthProfile.findUniqueOrThrow({ where: { userId: user.id } });
+  await db.offeringClearance.create({
+    data: {
+      userId: user.id,
+      offeringKey: `event:${retreatDate.id}`,
+      healthRevision: health.lastUpdatedAt.toISOString(),
+      confirmedAt: new Date(),
+      status: "cleared",
+    },
+  });
   const booking = await db.retreatBooking.create({
     data: {
       retreatDateId: retreatDate.id,

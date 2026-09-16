@@ -28,6 +28,7 @@ loadEnvFile();
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  testIgnore: ["**/programmes/**"], // Runs with its isolated provider/clock configuration.
   timeout: 60_000,
   workers: 3,
   expect: {
@@ -50,6 +51,7 @@ export default defineConfig({
           command: `pnpm exec next dev --port ${PORT}`,
           url: BASE_URL,
           reuseExistingServer: false,
+          timeout: 180_000,
           stdout: "pipe",
           stderr: "pipe",
           env: {

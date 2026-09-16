@@ -13,6 +13,7 @@ const RUNTIME_PAGE_FILES = [
   "(public)/retreats/[slug]/checkout/page.tsx",
   "(public)/retreats/balance/[token]/page.tsx",
   "(app)/admin/page.tsx",
+  "(app)/admin/programmes/page.tsx",
   "(app)/admin/blog-comments/page.tsx",
   "(app)/admin/coaching/page.tsx",
   "(app)/admin/retreats/page.tsx",
@@ -29,7 +30,6 @@ const RUNTIME_PAGE_FILES = [
 
 const RETIRED_REDIRECT_FILES = [
   "(app)/admin/classes/page.tsx",
-  "(app)/admin/programmes/page.tsx",
   "(app)/dashboard/membership/page.tsx",
   "(app)/dashboard/referrals/page.tsx",
   "(app)/dashboard/replays/page.tsx",

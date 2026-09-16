@@ -1,3 +1,4 @@
+import { maintainProgrammes } from "@/lib/programmes/jobs";
 import { ScheduledJobTriggerType } from "@prisma/client";
 import { env } from "@/lib/env";
 import { cleanupScheduledJobRuntimeData } from "@/lib/jobs/runtime-maintenance";
@@ -15,6 +16,12 @@ export type RegisteredJob = {
 };
 
 const registry: RegisteredJob[] = [
+  {
+    jobName: "programme_maintenance",
+    triggerTypes: [ScheduledJobTriggerType.cron, ScheduledJobTriggerType.manual],
+    previewSafe: false,
+    run: maintainProgrammes,
+  },
   {
     jobName: "retreat_live_maintenance",
     triggerTypes: [ScheduledJobTriggerType.cron, ScheduledJobTriggerType.manual],

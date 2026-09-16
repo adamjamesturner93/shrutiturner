@@ -571,6 +571,9 @@ model User {
   createdAt                        DateTime  @default(now())
   updatedAt                        DateTime  @updatedAt
 
+  offeringClearances OfferingClearance[]
+  programmePosts     ProgrammePost[]
+
   accounts   Account[]
   sessions   Session[]
   referredBy User?     @relation("UserReferrals", fields: [referredByUserId], references: [id], onDelete: SetNull)
@@ -1496,31 +1499,31 @@ model ClassSessionEvent {
 }
 
 model EmailCampaign {
-  id                    String    @id @default(cuid())
-  providerCampaignId    String    @unique
-  sourceIssueKey        String?   @unique
-  sourceVersion         String?
-  contentSnapshotJson   Json?
-  audiencePreparedAt    DateTime?
-  audienceSnapshotJson  Json?
-  processingToken       String?
+  id                       String    @id @default(cuid())
+  providerCampaignId       String    @unique
+  sourceIssueKey           String?   @unique
+  sourceVersion            String?
+  contentSnapshotJson      Json?
+  audiencePreparedAt       DateTime?
+  audienceSnapshotJson     Json?
+  processingToken          String?
   processingLeaseExpiresAt DateTime?
-  subject               String
-  stream                String?
-  status                String
-  audienceType          String?
-  triggeredBy           String?
-  contentfulEntryId     String?
-  contentfulContentType String?
-  postmarkBatchId       String?
-  sentCount             Int       @default(0)
-  failedCount           Int       @default(0)
-  errorSummary          String?
-  scheduledAt           DateTime?
-  sentAt                DateTime?
-  metadataJson          Json?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  subject                  String
+  stream                   String?
+  status                   String
+  audienceType             String?
+  triggeredBy              String?
+  contentfulEntryId        String?
+  contentfulContentType    String?
+  postmarkBatchId          String?
+  sentCount                Int       @default(0)
+  failedCount              Int       @default(0)
+  errorSummary             String?
+  scheduledAt              DateTime?
+  sentAt                   DateTime?
+  metadataJson             Json?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
   emailDeliveries EmailDelivery[]
   emailEvents     EmailEvent[]
@@ -1530,33 +1533,33 @@ model EmailCampaign {
 }
 
 model EmailDelivery {
-  id                String              @id @default(cuid())
-  campaignRecipientKey String?           @unique
-  toEmail           String
-  userId            String?
-  campaignId        String?
-  templateKey       String
-  category          String              @default("transactional")
-  provider          String              @default("postmark")
-  subject           String
-  tag               String
-  messageStream     String?
-  status            EmailDeliveryStatus @default(queued)
-  retryable         Boolean             @default(true)
-  attemptCount      Int                 @default(0)
-  maxAttempts       Int                 @default(5)
-  nextRetryAt       DateTime?
-  lastError         String?
-  providerMessageId String?
-  sentAt            DateTime?
-  resolvedAt        DateTime?
-  resolvedByUserId  String?
-  resolutionCode    String?
-  resolutionNote    String?
-  payloadJson       Json
-  metadataJson      Json?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  id                   String              @id @default(cuid())
+  campaignRecipientKey String?             @unique
+  toEmail              String
+  userId               String?
+  campaignId           String?
+  templateKey          String
+  category             String              @default("transactional")
+  provider             String              @default("postmark")
+  subject              String
+  tag                  String
+  messageStream        String?
+  status               EmailDeliveryStatus @default(queued)
+  retryable            Boolean             @default(true)
+  attemptCount         Int                 @default(0)
+  maxAttempts          Int                 @default(5)
+  nextRetryAt          DateTime?
+  lastError            String?
+  providerMessageId    String?
+  sentAt               DateTime?
+  resolvedAt           DateTime?
+  resolvedByUserId     String?
+  resolutionCode       String?
+  resolutionNote       String?
+  payloadJson          Json
+  metadataJson         Json?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
 
   user       User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
   resolvedBy User?                  @relation("EmailDeliveryResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
@@ -1732,7 +1735,7 @@ model RetreatFormatPreset {
   createdAt               DateTime         @default(now())
   updatedAt               DateTime         @updatedAt
 
-  experiences RetreatExperience[]
+  experiences  RetreatExperience[]
   retreatDates RetreatDate[]
 
   @@index([active, eventKind, name])
@@ -1747,24 +1750,24 @@ model AdminEventCreation {
 }
 
 model RetreatExperience {
-  id                       String               @id @default(cuid())
-  slug                     String               @unique
-  title                    String
-  eventKind                RetreatEventKind
-  formatPresetId           String?
-  draftContentJson         Json
-  publishedContentJson     Json?
-  revision                 Int                  @default(1)
-  publishedRevision        Int?
-  publishedAt              DateTime?
-  sourceContentfulEntryId  String?              @unique
-  sourceContentfulHash     String?
-  sourceContentfulLocale   String?
-  sourceContentfulSpaceId  String?
-  sourceContentfulEnvironment String?
+  id                            String           @id @default(cuid())
+  slug                          String           @unique
+  title                         String
+  eventKind                     RetreatEventKind
+  formatPresetId                String?
+  draftContentJson              Json
+  publishedContentJson          Json?
+  revision                      Int              @default(1)
+  publishedRevision             Int?
+  publishedAt                   DateTime?
+  sourceContentfulEntryId       String?          @unique
+  sourceContentfulHash          String?
+  sourceContentfulLocale        String?
+  sourceContentfulSpaceId       String?
+  sourceContentfulEnvironment   String?
   sourceContentfulPublishedHash String?
-  createdAt                DateTime              @default(now())
-  updatedAt                DateTime              @updatedAt
+  createdAt                     DateTime         @default(now())
+  updatedAt                     DateTime         @updatedAt
 
   formatPreset RetreatFormatPreset? @relation(fields: [formatPresetId], references: [id], onDelete: SetNull)
   retreatDates RetreatDate[]
@@ -1810,6 +1813,7 @@ model RetreatVenueRoomTemplate {
 }
 
 model RetreatDate {
+  requiresOfferingClearance   Boolean                   @default(true)
   id                          String                    @id @default(cuid())
   externalDateId              String                    @unique
   retreatSlug                 String
@@ -1872,8 +1876,8 @@ model RetreatDate {
   replayAssets             ReplayAsset[]
   refundRule               RefundRule?                       @relation(fields: [refundRuleId], references: [id], onDelete: SetNull)
   venueProfile             RetreatVenueProfile?              @relation(fields: [venueProfileId], references: [id], onDelete: SetNull)
-  experience               RetreatExperience?                 @relation(fields: [experienceId], references: [id], onDelete: SetNull)
-  formatPreset             RetreatFormatPreset?               @relation(fields: [formatPresetId], references: [id], onDelete: SetNull)
+  experience               RetreatExperience?                @relation(fields: [experienceId], references: [id], onDelete: SetNull)
+  formatPreset             RetreatFormatPreset?              @relation(fields: [formatPresetId], references: [id], onDelete: SetNull)
   instructorAssignments    RetreatDateInstructorAssignment[]
   liveAttendance           RetreatLiveAttendance[]
   liveChatMessages         RetreatLiveChatMessage[]
@@ -2622,6 +2626,37 @@ model CoachingCheckIn {
   @@index([status, dueAt])
 }
 
+enum CohortState {
+  draft
+  on_sale
+  confirmed
+  active
+  follow_up
+  archived
+  cancelled
+}
+
+enum ExerciseClearanceStatus {
+  pending_confirmation
+  ready
+  pending_review
+  cleared
+  cleared_with_considerations
+  not_cleared
+}
+
+model ProgrammeDefinition {
+  id             String                @id @default(cuid())
+  slug           String                @unique
+  title          String
+  description    String                @default("") @db.Text
+  curriculumJson Json?
+  resourcesJson  Json?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  cohorts        SmallGroupProgramme[]
+}
+
 model SmallGroupProgramme {
   id                          String                    @id @default(cuid())
   slug                        String                    @unique
@@ -2662,6 +2697,40 @@ model SmallGroupProgramme {
   createdAt                   DateTime                  @default(now())
   updatedAt                   DateTime                  @updatedAt
 
+  definitionId              String?
+  definition                ProgrammeDefinition? @relation(fields: [definitionId], references: [id], onDelete: Restrict)
+  cohortState               CohortState?
+  timezone                  String               @default("Europe/London")
+  salePricePence            Int?
+  maximumParticipants       Int?
+  minimumParticipants       Int                  @default(4)
+  confirmedAt               DateTime?
+  confirmationDeadline      DateTime?
+  communityOpenAt           DateTime?
+  enrolmentClosesAt         DateTime?
+  enrolmentOpen             Boolean              @default(false)
+  liveCoachingEndsAt        DateTime?
+  structuredProgrammeEndsAt DateTime?
+  followUpAccessEndsAt      DateTime?
+  salesCopy                 String               @default("") @db.Text
+  equipment                 String               @default("") @db.Text
+  refundWording             String               @default("") @db.Text
+  agreementVersion          String               @default("1")
+  resourcesJson             Json?
+  closingBody               String               @default("") @db.Text
+  closingVideoUrl           String?
+  reminder24h               Boolean              @default(false)
+  reminder1h                Boolean              @default(false)
+  creditActive              Boolean              @default(false)
+  creditAmountPence         Int?
+  creditStartsAt            DateTime?
+  creditEndsAt              DateTime?
+  creditServices            String[]             @default([])
+  weeks                     ProgrammeWeek[]
+  posts                     ProgrammePost[]
+  messages                  ProgrammeMessage[]
+  clearances                OfferingClearance[]
+
   sessions              SmallGroupProgrammeSession[]
   enrollments           SmallGroupProgrammeEnrollment[]
   giftPurchases         GiftPurchase[]
@@ -2686,9 +2755,14 @@ model SmallGroupProgrammeSession {
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
 
-  programme    SmallGroupProgramme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
-  instructor   User?               @relation("SmallGroupProgrammeSessionInstructor", fields: [instructorUserId], references: [id], onDelete: SetNull)
-  replayAssets ReplayAsset[]
+  dailyRoomName String?             @unique
+  dailyRoomUrl  String?
+  taughtAt      DateTime?
+  exerciseKeys  String[]            @default([])
+  week          ProgrammeWeek?
+  programme     SmallGroupProgramme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  instructor    User?               @relation("SmallGroupProgrammeSessionInstructor", fields: [instructorUserId], references: [id], onDelete: SetNull)
+  replayAssets  ReplayAsset[]
 
   @@unique([programmeId, sequenceNumber])
   @@index([programmeId, startsAt])
@@ -2714,9 +2788,19 @@ model SmallGroupProgrammeEnrollment {
   createdAt               DateTime                   @default(now())
   updatedAt               DateTime                   @updatedAt
 
-  programme    SmallGroupProgramme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
-  user         User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
-  giftPurchase GiftPurchase?       @relation("GiftPurchaseProgrammeEnrollment", fields: [giftPurchaseId], references: [id], onDelete: SetNull)
+  purchaserEmail           String?
+  acceptedAgreementVersion String?
+  paidAt                   DateTime?
+  refundedPence            Int                 @default(0)
+  refundStatus             String?
+  refundId                 String?
+  refundError              String?
+  creditRedeemedAt         DateTime?
+  creditRedeemedBy         String?
+  creditReference          String?
+  programme                SmallGroupProgramme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  user                     User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  giftPurchase             GiftPurchase?       @relation("GiftPurchaseProgrammeEnrollment", fields: [giftPurchaseId], references: [id], onDelete: SetNull)
 
   @@index([programmeId, status])
   @@index([userId, status])
@@ -2806,4 +2890,85 @@ model ContactSubmission {
 
   @@index([status, createdAt])
   @@index([email, createdAt])
+}
+
+model ProgrammeWeek {
+  id               String                      @id @default(cuid())
+  programmeId      String
+  number           Int
+  title            String
+  theme            String                      @default("")
+  education        String                      @default("") @db.Text
+  videoUrl         String?
+  takeaways        String[]                    @default([])
+  releasesAt       DateTime
+  published        Boolean                     @default(false)
+  workoutPublished Boolean                     @default(false)
+  workoutJson      Json?
+  reflection       String                      @default("") @db.Text
+  reflectionAt     DateTime
+  sessionId        String?                     @unique
+  programme        SmallGroupProgramme         @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  session          SmallGroupProgrammeSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@unique([programmeId, number])
+}
+
+model OfferingClearance {
+  id             String                  @id @default(cuid())
+  userId         String
+  offeringKey    String
+  programmeId    String?
+  healthRevision String?
+  confirmedAt    DateTime?
+  status         ExerciseClearanceStatus @default(pending_confirmation)
+  reviewedAt     DateTime?
+  reviewerId     String?
+  considerations String                  @default("") @db.Text
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  programme      SmallGroupProgramme?    @relation(fields: [programmeId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, offeringKey])
+  @@index([programmeId, status])
+}
+
+model ProgrammePost {
+  id           String              @id @default(cuid())
+  programmeId  String
+  authorId     String?
+  parentId     String?
+  title        String              @default("")
+  body         String              @db.Text
+  pinned       Boolean             @default(false)
+  locked       Boolean             @default(false)
+  announcement Boolean             @default(false)
+  resourceIds  String[]            @default([])
+  sourceKey    String?             @unique
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  deletedAt    DateTime?
+  programme    SmallGroupProgramme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  author       User?               @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  parent       ProgrammePost?      @relation("ProgrammeReplies", fields: [parentId], references: [id], onDelete: Restrict)
+  replies      ProgrammePost[]     @relation("ProgrammeReplies")
+
+  @@index([programmeId, createdAt])
+}
+
+model ProgrammeMessage {
+  id          String              @id @default(cuid())
+  programmeId String
+  userId      String?
+  kind        String
+  sourceKey   String              @unique
+  dueAt       DateTime
+  sentAt      DateTime?
+  deliveryId  String?
+  claimedAt   DateTime?
+  error       String?
+  programme   SmallGroupProgramme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+
+  @@index([sentAt, dueAt])
 }

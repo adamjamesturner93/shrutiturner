@@ -1,4 +1,8 @@
 import {
+  fulfilProgrammeCheckout,
+  reconcileProgrammeRefund,
+} from "@/lib/programmes/checkout-service";
+import {
   BillingEventStatus,
   AcceptanceType,
   CreditEntryType,
@@ -1769,6 +1773,12 @@ async function processPromotionCodeUpdated(promotionCode: Stripe.PromotionCode) 
 }
 
 async function handleStripeEvent(event: Stripe.Event) {
+  if (
+    event.type === "checkout.session.completed" ||
+    event.type === "checkout.session.async_payment_succeeded"
+  ) {
+    if (await fulfilProgrammeCheckout(event.data.object as Stripe.Checkout.Session)) return;
+  }
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const handledRetreat = await processRetreatCheckoutCompleted(session);
@@ -1787,6 +1797,7 @@ async function handleStripeEvent(event: Stripe.Event) {
   }
 
   if (event.type === "refund.updated" || event.type === "refund.failed") {
+    if (await reconcileProgrammeRefund(event.data.object as Stripe.Refund)) return;
     await processRetreatRefundUpdated(event.data.object as Stripe.Refund);
     return;
   }

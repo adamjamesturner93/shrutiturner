@@ -54,7 +54,7 @@ export async function createSessionRoom(
   sessionId: string,
   startsAtUtc: Date,
   endsAtUtc: Date,
-  options?: { maxParticipants?: number }
+  options?: { maxParticipants?: number; recording?: boolean }
 ) {
   const { baseUrl } = getDailyConfig();
 
@@ -72,6 +72,7 @@ export async function createSessionRoom(
         exp,
         nbf,
         enable_network_ui: true,
+        ...(options?.recording ? { enable_recording: "cloud" } : {}),
         enable_knocking: true,
         ...(options?.maxParticipants
           ? { max_participants: Math.max(2, options.maxParticipants) }
@@ -295,4 +296,26 @@ export async function deleteRecording(recordingId: string) {
   }
 
   return { deleted: response.status !== 404 };
+}
+
+/** Fresh provider-signed link; callers must first enforce offering/resource access. */
+export async function getRecordingAccessLink(recordingId: string) {
+  const { baseUrl } = getDailyConfig();
+  const response = await fetch(
+    `${baseUrl}/recordings/${encodeURIComponent(recordingId)}/access-link`,
+    { headers: getDailyHeaders(), cache: "no-store" }
+  );
+  if (!response.ok) throw new Error("RECORDING_NOT_AVAILABLE");
+  const body = (await response.json()) as { download_link: string; expires: number };
+  return { url: body.download_link, expiresAt: body.expires };
+}
+
+export async function getDailyRecording(recordingId: string) {
+  const { baseUrl } = getDailyConfig();
+  const response = await fetch(`${baseUrl}/recordings/${encodeURIComponent(recordingId)}`, {
+    headers: getDailyHeaders(),
+    cache: "no-store",
+  });
+  if (!response.ok) throw new Error("RECORDING_NOT_AVAILABLE");
+  return (await response.json()) as { id: string; room_name: string; status: string };
 }
