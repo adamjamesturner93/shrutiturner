@@ -37,6 +37,18 @@ export const fixtureReflections = [
   "What did you adapt this week instead of abandoning altogether?",
   "What are you taking forward from these five weeks?",
 ];
+export const rysPublicCopy = {
+  subtitle: "How to train intelligently with chronic illness, pain or injury.",
+  shortDescription:
+    "A five-week small-group programme to help you build strength with more confidence, understand how to adapt your training, and find an approach you can actually continue.",
+  whoItsForJson: [
+    "You want to get stronger but aren't sure where to start.",
+    "Pain, fatigue, injury or changing capacity can make conventional programmes difficult to follow.",
+    "You've exercised before but want more confidence adapting things for yourself.",
+    "You want support without being pushed into an all-or-nothing challenge.",
+  ],
+  weekByWeekJson: fixtureThemes,
+};
 export async function createJanuaryDraft(db: PrismaClient) {
   const definition = await db.programmeDefinition.upsert({
     where: { slug: "rebuilding-your-strength" },
@@ -52,7 +64,7 @@ export async function createJanuaryDraft(db: PrismaClient) {
       templateSlug: definition.slug,
       definitionId: definition.id,
       title: "Rebuilding Your Strength — Jan '27",
-      shortDescription: "",
+      ...rysPublicCopy,
       durationLabel: "Five coached weeks",
       durationWeeks: 5,
       cohortSize: 0,
@@ -68,6 +80,10 @@ export async function createJanuaryDraft(db: PrismaClient) {
       minimumParticipants: 4,
     },
     update: {},
+  });
+  await db.smallGroupProgramme.updateMany({
+    where: { id: cohort.id, shortDescription: "" },
+    data: rysPublicCopy,
   });
   for (let i = 0; i < 5; i++) {
     const release = new Date(Date.UTC(2027, 0, 25 + i * 7));
@@ -166,6 +182,8 @@ export async function seedProgrammeFixtures(db: PrismaClient) {
   for (const [key, state] of states) {
     const id = `rys-${key}`;
     const common = {
+      publicVisibility: "hidden",
+      ...rysPublicCopy,
       definitionId: definition.id,
       cohortState: state,
       confirmedAt: ["draft", "on_sale", "cancelled"].includes(state)
@@ -196,7 +214,7 @@ export async function seedProgrammeFixtures(db: PrismaClient) {
         runSlug: id,
         templateSlug: definition.slug,
         title: `Rebuilding Your Strength — ${key}`,
-        shortDescription: "Five supported weeks. Synthetic test programme.",
+
         durationLabel: "Five weeks",
         durationWeeks: 5,
         cohortSize: 20,
@@ -364,6 +382,7 @@ export async function seedProgrammeFixtures(db: PrismaClient) {
         externalDateId: id,
         retreatSlug: id,
         retreatTitleSnapshot: kind === "retreat" ? "Stirling Retreat" : "The Middle Ground",
+        requiresOfferingClearance: false,
         retreatLocationSnapshot: "Synthetic venue",
         retreatType: kind === "retreat" ? "in_person" : "online",
         startsAt: new Date("2027-06-11T09:00:00Z"),
@@ -373,7 +392,7 @@ export async function seedProgrammeFixtures(db: PrismaClient) {
         pricePence: 10000,
         depositAmountPence: 0,
       },
-      update: {},
+      update: { requiresOfferingClearance: false },
     });
     for (const name of [
       ...(kind === "retreat" ? ["robin.retreat"] : ["sam.workshop", "riley.history"]),

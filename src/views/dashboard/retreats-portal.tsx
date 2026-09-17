@@ -588,7 +588,9 @@ export function DashboardRetreatDetail({
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <CreditCard className="text-brand-accent h-5 w-5" />
-                  Payment
+                  <span id="payment" className="scroll-mt-24">
+                    Payment
+                  </span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">

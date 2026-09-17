@@ -62,6 +62,10 @@ beforeAll(async () => {
   if (!["127.0.0.1", "localhost"].includes(new URL(process.env.DATABASE_URL!).hostname))
     throw new Error("Local database required");
   users = await seedProgrammeFixtures(db);
+  await db.smallGroupProgramme.update({
+    where: { id: "rys-on-sale" },
+    data: { publicVisibility: "listed" },
+  });
 }, 60000);
 beforeEach(() => {
   clock.now = new Date("2027-01-25T09:00Z");
@@ -471,5 +475,143 @@ describe("programme communications and shared event health", () => {
     await expect(
       getEventOnboarding(users["pat.purchaser"], `${id}-avery.everything`)
     ).rejects.toThrow("NOT_FOUND");
+  });
+});
+
+describe("public discovery and consolidated hub", () => {
+  it("keeps fixtures hidden and represents multiple public cohorts with one programme", async () => {
+    const { getProgrammeCatalogue, getPublicProgrammes } =
+      await import("@/lib/programmes/public-service");
+    clock.now = new Date("2027-01-17T12:00Z");
+    await db.smallGroupProgramme.updateMany({
+      where: { templateSlug: "rys-fixture" },
+      data: { publicVisibility: "hidden" },
+    });
+    expect((await getPublicProgrammes()).some((c) => c.slug === "rys-fixture")).toBe(false);
+    await db.smallGroupProgramme.update({
+      where: { id: "rys-draft" },
+      data: { publicVisibility: "coming_soon" },
+    });
+    let catalogue = await getProgrammeCatalogue();
+    expect(catalogue.programmes.filter((c) => c.slug === "rys-fixture")).toHaveLength(1);
+    expect(catalogue.programmes.find((c) => c.slug === "rys-fixture")).toMatchObject({
+      availability: "Coming soon",
+      bookable: false,
+      sessions: [],
+      pricePence: null,
+    });
+    await db.smallGroupProgramme.update({
+      where: { id: "rys-on-sale" },
+      data: {
+        publicVisibility: "listed",
+        cohortState: "on_sale",
+        enrolmentOpen: true,
+        maximumParticipants: 100,
+      },
+    });
+    catalogue = await getProgrammeCatalogue();
+    expect(catalogue.programmes.filter((c) => c.slug === "rys-fixture")).toHaveLength(1);
+    expect(catalogue.programmes.find((c) => c.slug === "rys-fixture")?.id).toBe("rys-on-sale");
+    const publicJson = JSON.stringify(await getPublicProgrammes());
+    expect(publicJson).not.toContain("workoutJson");
+    expect(publicJson).not.toContain("dailyRoomUrl");
+    expect(publicJson).not.toContain("cohortState");
+    await db.smallGroupProgramme.update({
+      where: { id: "rys-on-sale" },
+      data: { confirmedAt: new Date("2027-01-18") },
+    });
+    clock.now = new Date("2027-01-25T12:00Z");
+    expect((await getProgrammeCatalogue()).programmes.some((c) => c.slug === "rys-fixture")).toBe(
+      false
+    );
+    expect((await getPublicProgrammes()).find((c) => c.id === "rys-on-sale")?.availability).toBe(
+      "In progress"
+    );
+  });
+  it("denies checkout for hidden and teaser cohorts even when their lifecycle allows sales", async () => {
+    clock.now = new Date("2027-01-17T12:00Z");
+    const input = {
+      purchaser: { name: "Synthetic Buyer", email: "publication@example.test" },
+      participant: { name: "Synthetic Buyer", email: "publication@example.test" },
+      agreementVersion: "1",
+      acceptedTerms: true,
+      screeningAcknowledged: true,
+    };
+    for (const publicVisibility of ["hidden", "coming_soon"]) {
+      await db.smallGroupProgramme.update({
+        where: { id: "rys-on-sale" },
+        data: { publicVisibility },
+      });
+      await expect(createProgrammeCheckout("rys-on-sale", input)).rejects.toThrow(
+        "ENROLMENT_CLOSED"
+      );
+    }
+  });
+  it("requires approved teaser details and launch validation before listing", async () => {
+    const { savePublicPresentation } = await import("@/lib/programmes/admin-service");
+    const { rysPublicCopy } = await import("../../../prisma/fixtures/programmes");
+    const input = {
+      ...rysPublicCopy,
+      publicVisibility: "coming_soon",
+      publicImageUrl: null,
+      publicImageAlt: null,
+    };
+    await expect(savePublicPresentation(users["alex.account"], "rys-draft", input)).rejects.toThrow(
+      "FORBIDDEN"
+    );
+    await expect(
+      savePublicPresentation(users.coach, "rys-draft", { ...input, subtitle: "" })
+    ).rejects.toThrow("PUBLIC_TEASER_DETAILS_REQUIRED");
+    await savePublicPresentation(users.coach, "rys-draft", input);
+    await expect(
+      savePublicPresentation(users.coach, "rys-draft", { ...input, publicVisibility: "listed" })
+    ).rejects.toThrow("OPEN_SALES_BEFORE_LISTING");
+  });
+  it("groups event bookings and prioritises payment over duplicate upcoming actions", async () => {
+    const original = await db.retreatBooking.findUniqueOrThrow({
+      where: { id: "rys-event-retreat-drew.events" },
+    });
+    const { id: unusedId, createdAt: unusedCreated, updatedAt: unusedUpdated, ...copy } = original;
+    void unusedId;
+    void unusedCreated;
+    void unusedUpdated;
+    await db.retreatBooking.deleteMany({ where: { id: "rys-ux-second-booking" } });
+    await db.retreatBooking.create({
+      data: {
+        ...copy,
+        id: "rys-ux-second-booking",
+        stripeDepositSessionId: null,
+        stripeBalanceSessionId: null,
+        balancePaymentUrlToken: null,
+        complianceSnapshotJson: undefined,
+        paymentPlanSnapshotJson: undefined,
+        refundPolicySnapshotJson: undefined,
+        bookingStatus: "deposit_paid",
+        paymentStatus: "deposit_paid",
+        balanceAmountPence: 5000,
+        balancePaidPence: 0,
+        balanceDueAt: new Date("2027-06-01"),
+      },
+    });
+    clock.now = new Date("2027-06-08T12:00Z");
+    try {
+      const hub = await getClientHub(users["drew.events"]);
+      const event = hub.events.find((e) => e.id === "rys-event-retreat")!;
+      expect(event).toMatchObject({
+        bookingCount: 2,
+        status: "Balance due",
+        href: "/dashboard/events/rys-event-retreat",
+      });
+      expect(hub.actions.filter((a) => a.groupId === "event:rys-event-retreat")).toHaveLength(1);
+      expect(hub.actions.find((a) => a.groupId === "event:rys-event-retreat")?.label).toBe(
+        "Pay balance"
+      );
+      expect(JSON.stringify(event)).not.toContain("medicalConditions");
+      expect(
+        (await getClientHub(users["sam.workshop"])).events.some((e) => e.id === event.id)
+      ).toBe(false);
+    } finally {
+      await db.retreatBooking.delete({ where: { id: "rys-ux-second-booking" } });
+    }
   });
 });

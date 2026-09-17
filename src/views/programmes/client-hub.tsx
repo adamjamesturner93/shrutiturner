@@ -1,180 +1,407 @@
 "use client";
 import Link from "next/link";
+import { CalendarDays, MapPin, MessageCircle, Compass, Users } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { useProgrammeData, panelClass, When } from "./shared";
+import { useProgrammeData } from "./shared";
+import { ProgrammeVisual, StatusPill, ActionLink, cardSurface, eyebrow } from "./visuals";
+import { dateLabel, dateRange, sessionLabel, timeLabel } from "@/lib/programmes/presentation";
 import type { getClientHub } from "@/lib/programmes/hub-service";
 type Hub = Awaited<ReturnType<typeof getClientHub>>;
+type Event = Hub["events"][number];
+function EventCard({ event: e }: { event: Event }) {
+  return (
+    <article className={cardSurface} aria-label={e.title}>
+      <ProgrammeVisual image={e.image} alt={e.imageAlt} compact />
+      <div className="space-y-5 p-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className={eyebrow}>{e.type}</span>
+          <StatusPill attention={e.status === "Balance due"}>{e.status}</StatusPill>
+        </div>
+        <h3 className="text-2xl leading-tight">{e.title}</h3>
+        <div className="space-y-3 text-sm">
+          <p className="flex items-start gap-3">
+            <CalendarDays aria-hidden="true" className="text-primary h-4 w-4 shrink-0" />
+            <span>
+              {dateRange(e.startsAt, e.endsAt, e.timezone)}
+              {e.type === "Workshop" && (
+                <span className="text-muted-foreground mt-1 block">
+                  {timeLabel(e.startsAt, e.timezone)}–{timeLabel(e.endsAt, e.timezone)}
+                  {e.online ? ` · ${e.timezone === "Europe/London" ? "UK time" : e.timezone}` : ""}
+                </span>
+              )}
+            </span>
+          </p>
+          <p className="flex items-center gap-3">
+            <MapPin aria-hidden="true" className="text-primary h-4 w-4" />
+            {e.online ? "Online" : e.location}
+          </p>
+          {e.bookingCount > 1 && (
+            <p className="flex items-center gap-3">
+              <Users aria-hidden="true" className="text-primary h-4 w-4" />
+              {e.attendeeCount} attendees · {e.bookingCount} bookings
+            </p>
+          )}
+        </div>
+        {e.balanceSummary && <p className="text-muted-foreground text-sm">{e.balanceSummary}</p>}
+        <ActionLink href={e.href}>
+          {e.bookingCount > 1
+            ? "Manage bookings"
+            : e.status === "Balance due"
+              ? "Manage booking"
+              : "View details"}
+        </ActionLink>
+        {e.requiresConfirmation && e.onboardingHref && (
+          <Link className="block text-sm underline underline-offset-4" href={e.onboardingHref}>
+            Review health information
+          </Link>
+        )}
+      </div>
+    </article>
+  );
+}
+function ProgrammeCard({ programme: p }: { programme: Hub["programmes"][number] }) {
+  const next = p.sessions.find((s) => s.upcoming);
+  const active = p.state === "active";
+  const label = active
+    ? `Week ${p.currentWeekNumber || 1} of ${p.weeks.length}`
+    : p.state === "follow_up"
+      ? "Follow-up access"
+      : "Getting ready";
+  return (
+    <article className={`${cardSurface} border-t-brand-accent border-t-4`}>
+      <div className="space-y-5 p-6 md:p-7">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className={eyebrow}>Your programme</span>
+          <StatusPill>{label}</StatusPill>
+        </div>
+        <h3 className="text-2xl leading-tight">{p.title}</h3>
+        {active && p.currentTheme ? (
+          <div className="border-brand-accent border-l-2 pl-4">
+            <p className="text-lg">{p.currentTheme}</p>
+            <p className="text-muted-foreground mt-2 text-sm">
+              {p.workoutStatus === "ready"
+                ? "Your independent workout is ready."
+                : p.workoutStatus === "health_required"
+                  ? p.clearanceMessage
+                  : p.workoutStatus === "awaiting_teaching"
+                    ? "Your independent workout will be available after this week's live session."
+                    : "Your independent workout will be available soon."}
+            </p>
+          </div>
+        ) : p.state === "follow_up" ? (
+          <p className="text-muted-foreground leading-relaxed">
+            Your coached weeks are complete. Revisit your recordings, workouts and community. There
+            are no further live sessions or new weekly workouts.
+          </p>
+        ) : (
+          <p className="text-muted-foreground">
+            {p.startsAt &&
+              dateRange(
+                p.startsAt,
+                p.structuredProgrammeEndsAt
+                  ? new Date(new Date(p.structuredProgrammeEndsAt).getTime() - 1)
+                  : null,
+                p.timezone
+              )}
+          </p>
+        )}
+        {next && p.state !== "follow_up" && (
+          <p className="text-sm">
+            <span className="text-muted-foreground block">Next live session</span>
+            {sessionLabel(next.startsAt, p.timezone)}
+          </p>
+        )}
+        {!active && !p.canExercise && <p className="text-sm">{p.clearanceMessage}</p>}
+        {p.accessEndsAt && (
+          <p className="text-muted-foreground text-xs">
+            Access until {dateLabel(new Date(new Date(p.accessEndsAt).getTime() - 1), p.timezone)}
+          </p>
+        )}
+        {p.credit?.status === "Eligible" && (
+          <p className="text-sm">
+            £{((p.credit.amountPence || 0) / 100).toFixed(2)} available towards eligible 1:1
+            coaching.
+          </p>
+        )}
+        <ActionLink href={`/dashboard/programmes/${p.id}`}>
+          {active ? "Continue programme" : "Open programme"}
+        </ActionLink>
+      </div>
+    </article>
+  );
+}
 export function ClientHub({
   section = "dashboard",
+  eventId,
 }: {
   section?: "dashboard" | "programmes" | "events";
+  eventId?: string;
 }) {
   const { data, error } = useProgrammeData<Hub>("/api/me/hub");
+  const dashboard = section === "dashboard";
+  const group = eventId ? data?.events.find((e) => e.id === eventId) : null;
+  const activeProgrammes = data?.programmes.filter((p) => p.accessible) || [];
+  const upcoming = data?.events.filter((e) => !e.past) || [];
+  const pastProgrammes =
+    section !== "events" ? data?.programmes.filter((p) => !p.accessible) || [] : [];
+  const pastEvents = section !== "programmes" ? data?.events.filter((e) => e.past) || [] : [];
+  const empty = dashboard
+    ? !data?.coaching && !activeProgrammes.length && !upcoming.length
+    : section === "programmes"
+      ? !activeProgrammes.length
+      : !upcoming.length;
   return (
     <DashboardLayout
       handlesLegalAgreements
-      title={section === "dashboard" ? "Dashboard" : section === "events" ? "Events" : "Programmes"}
+      title={dashboard ? "Dashboard" : section === "events" ? "Events" : "Programmes"}
     >
-      <div className="mx-auto max-w-5xl space-y-8 p-4 md:p-8">
-        <h1 className="text-3xl">
-          {section === "dashboard"
-            ? `Welcome${data?.firstName ? `, ${data.firstName}` : " back"}`
-            : section === "events"
-              ? "Events"
-              : "Programmes"}
-        </h1>
+      <div className="mx-auto max-w-6xl space-y-10 px-4 py-8 md:px-8 md:py-12">
+        <header className="space-y-3">
+          <p className={eyebrow}>My Studio</p>
+          <h1 className="text-3xl md:text-4xl">
+            {eventId
+              ? group?.title || "Your event bookings"
+              : dashboard
+                ? `Welcome${data?.firstName ? `, ${data.firstName}` : " back"}`
+                : section === "events"
+                  ? "Events"
+                  : "Programmes"}
+          </h1>
+          <p className="text-muted-foreground">
+            {dashboard
+              ? "Your next steps, support and upcoming plans, all in one place."
+              : section === "events"
+                ? "Your workshops and retreats."
+                : "Your programmes, ready when you are."}
+          </p>
+        </header>
         {error && <p role="alert">{error}</p>}
         {!data && !error && <p role="status">Loading your account…</p>}
-        {data && (
-          <>
-            {section === "dashboard" && data.actions.length > 0 && (
-              <section aria-labelledby="next-up">
-                <h2 id="next-up" className="mb-4 text-2xl">
-                  Next up
-                </h2>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {data.actions.map((a) => (
-                    <article key={a.id} className={panelClass}>
-                      <h3>{a.title}</h3>
-                      <p>{a.detail}</p>
-                      <When value={a.at} />
-                      {a.actionable && (
-                        <Link className="block underline" href={a.href}>
-                          View next steps
-                        </Link>
-                      )}
-                    </article>
-                  ))}
-                </div>
-              </section>
-            )}
-            {section === "dashboard" && data.coaching && (
-              <article className={panelClass}>
-                <h2>1:1 Coaching</h2>
-                <p>{data.coaching.status}</p>
-                <Link className="underline" href="/dashboard/coaching">
-                  Open coaching
-                </Link>
-              </article>
-            )}
-            {section !== "events" && data.programmes.some((p) => p.accessible) && (
-              <section>
-                <h2 className="mb-4 text-2xl">Your programmes</h2>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {data.programmes
-                    .filter((p) => p.accessible)
-                    .map((p) => (
-                      <article key={p.id} className={panelClass}>
-                        <h3>{p.title}</h3>
-                        <p>{p.state.replaceAll("_", " ")}</p>
-                        <When value={p.startsAt} />
-                        <p>
-                          Access until{" "}
-                          <When
-                            value={
-                              p.accessEndsAt
-                                ? new Date(new Date(p.accessEndsAt).getTime() - 1).toISOString()
-                                : null
-                            }
-                          />
-                        </p>
-                        <p>{p.clearanceMessage}</p>
-                        {p.credit?.status === "Eligible" && (
-                          <p>
-                            You have £{((p.credit.amountPence || 0) / 100).toFixed(2)} available
-                            towards eligible 1:1 coaching.
+        {data && eventId ? (
+          group ? (
+            <section className="space-y-5">
+              <Link href="/dashboard/events" className="underline">
+                All events
+              </Link>
+              <p>
+                {dateRange(group.startsAt, group.endsAt, group.timezone)} · {group.location}
+              </p>
+              <h2 className="text-2xl">Your bookings</h2>
+              {group.bookings.map((b) => (
+                <article
+                  key={b.id}
+                  className={`${cardSurface} flex flex-wrap items-center justify-between gap-5 p-6`}
+                >
+                  <div className="space-y-3">
+                    <h3 className="text-lg">{b.reference}</h3>
+                    <p>
+                      {b.attendeeCount} {b.attendeeCount === 1 ? "attendee" : "attendees"}
+                    </p>
+                    <StatusPill attention={b.due}>{b.status}</StatusPill>
+                  </div>
+                  <ActionLink href={b.canPay ? `${b.href}#payment` : b.href}>
+                    {b.canPay ? "Manage payment" : "View booking"}
+                  </ActionLink>
+                </article>
+              ))}
+            </section>
+          ) : (
+            <p>This event is not available in your account.</p>
+          )
+        ) : (
+          data && (
+            <>
+              {dashboard && data.actions.length > 0 && (
+                <section aria-labelledby="next-up" className="space-y-5">
+                  <h2 id="next-up" className="text-2xl">
+                    Next up
+                  </h2>
+                  <div className="grid gap-5 md:grid-cols-2">
+                    {data.actions.map((a) => (
+                      <article
+                        key={a.id}
+                        className="border-brand-accent/20 bg-brand-accent/5 rounded-[1.5rem] border p-6"
+                      >
+                        <div className="space-y-4">
+                          <p className={eyebrow}>
+                            {a.actionable && a.rank < 2
+                              ? "Action needed"
+                              : a.actionable
+                                ? "Coming up"
+                                : "An update for you"}
                           </p>
-                        )}
-                        <Link className="underline" href={`/dashboard/programmes/${p.id}`}>
-                          Continue programme
-                        </Link>
+                          <h3 className="text-xl">{a.title}</h3>
+                          <p>{a.detail}</p>
+                          {a.at && (
+                            <p className="text-muted-foreground text-sm">
+                              {a.online
+                                ? sessionLabel(a.at, a.timezone)
+                                : dateLabel(a.at, a.timezone)}
+                              {a.location && !a.online ? ` · ${a.location}` : ""}
+                            </p>
+                          )}
+                          <div className="flex flex-wrap gap-2">
+                            {a.actionable && <ActionLink href={a.href}>{a.label}</ActionLink>}
+                            {a.secondaryHref && (
+                              <ActionLink href={a.secondaryHref} secondary>
+                                {a.secondaryLabel}
+                              </ActionLink>
+                            )}
+                          </div>
+                        </div>
                       </article>
                     ))}
-                </div>
-              </section>
-            )}
-            {section !== "programmes" && data.events.some((e) => !e.past) && (
-              <section>
-                <h2 className="mb-4 text-2xl">Upcoming events</h2>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {data.events
-                    .filter((e) => !e.past)
-                    .map((e) => (
-                      <article className={panelClass} key={e.id}>
-                        <h3>{e.title}</h3>
-                        <p>
-                          {e.type} · {e.status.replaceAll("_", " ")}
-                        </p>
-                        <When value={e.startsAt} />
-                        <Link className="block underline" href={`/dashboard/retreats/${e.id}`}>
-                          View booking
-                        </Link>
-                        {e.requiresConfirmation && (
-                          <Link
-                            className="block underline"
-                            href={`/dashboard/events/${e.id}/onboarding`}
-                          >
-                            Review health information
-                          </Link>
-                        )}
-                      </article>
-                    ))}
-                </div>
-              </section>
-            )}
-            {!data.coaching &&
-              !data.programmes.some((p) => p.accessible) &&
-              !data.events.some((e) => !e.past) && (
-                <div className={panelClass}>
-                  <p>You don't currently have any active programmes, coaching or event bookings.</p>
-                  <Link className="underline" href="/coaching">
-                    Explore what's available
-                  </Link>
-                </div>
+                  </div>
+                </section>
               )}
-            {(data.programmes.some((p) => !p.accessible) || data.events.some((e) => e.past)) && (
-              <details className={panelClass}>
-                <summary>Previous activity</summary>
-                {section !== "events" &&
-                  data.programmes
-                    .filter((p) => !p.accessible)
-                    .map((p) => (
-                      <p key={p.id}>
-                        <Link className="underline" href={`/dashboard/programmes/${p.id}`}>
+              {dashboard && data.coaching && (
+                <section className="space-y-5">
+                  <h2 className="text-2xl">Your coaching</h2>
+                  <article className="marketing-grid text-brand-white flex flex-col justify-between gap-7 rounded-[1.75rem] p-7 sm:flex-row sm:items-center">
+                    <div className="space-y-3">
+                      <MessageCircle
+                        aria-hidden="true"
+                        className="text-brand-accent-light h-8 w-8"
+                      />
+                      <h3 className="text-2xl">1:1 Coaching with Shruti</h3>
+                      <p className="text-brand-white/80">
+                        {data.coaching.status === "completed"
+                          ? "Past coaching and resources"
+                          : data.coaching.status === "paused"
+                            ? "Your coaching is paused"
+                            : "Personal support for your training"}
+                      </p>
+                      {data.coaching.nextCheckInAt && (
+                        <p className="text-sm">
+                          Next check-in: {dateLabel(data.coaching.nextCheckInAt)}
+                        </p>
+                      )}
+                    </div>
+                    <ActionLink secondary href="/dashboard/coaching">
+                      Open coaching
+                    </ActionLink>
+                  </article>
+                </section>
+              )}
+              {section !== "events" && activeProgrammes.length > 0 && (
+                <section className="space-y-5">
+                  <h2 className="text-2xl">
+                    {dashboard ? "Your programmes" : "Active programmes"}
+                  </h2>
+                  <div className="grid gap-6 md:grid-cols-2">
+                    {activeProgrammes.map((p) => (
+                      <ProgrammeCard key={p.id} programme={p} />
+                    ))}
+                  </div>
+                </section>
+              )}
+              {section !== "programmes" && upcoming.length > 0 && (
+                <section className="space-y-5">
+                  <h2 className="text-2xl">Upcoming events</h2>
+                  <div className="grid gap-6 md:grid-cols-2">
+                    {upcoming.map((e) => (
+                      <EventCard key={e.id} event={e} />
+                    ))}
+                  </div>
+                </section>
+              )}
+              {empty && (
+                <p className="text-muted-foreground bg-secondary/40 rounded-xl p-6">
+                  {dashboard
+                    ? "You don't currently have any active programmes, coaching or event bookings."
+                    : section === "programmes"
+                      ? "You don't have any active programmes right now."
+                      : "You don't have any upcoming events right now."}
+                </p>
+              )}
+              {(pastProgrammes.length > 0 || pastEvents.length > 0) && (
+                <details className="border-brand-dark/10 border-t pt-5 text-sm">
+                  <summary className="text-muted-foreground cursor-pointer py-3">
+                    Previous activity ({pastProgrammes.length + pastEvents.length})
+                  </summary>
+                  <ul className="mt-3 space-y-4">
+                    {pastProgrammes.map((p) => (
+                      <li key={p.id}>
+                        <Link
+                          href={`/dashboard/programmes/${p.id}`}
+                          className="underline underline-offset-4"
+                        >
                           {p.title}
-                        </Link>{" "}
-                        — {p.state}
-                      </p>
+                        </Link>
+                        <span className="text-muted-foreground">
+                          {" "}
+                          · {p.state === "cancelled" ? "Cancelled" : "Past programme"}
+                        </span>
+                      </li>
                     ))}
-                {section !== "programmes" &&
-                  data.events
-                    .filter((e) => e.past)
-                    .map((e) => (
-                      <p key={e.id}>
-                        <Link className="underline" href={`/dashboard/retreats/${e.id}`}>
+                    {pastEvents.map((e) => (
+                      <li key={e.id}>
+                        <Link href={e.href} className="underline underline-offset-4">
                           {e.title}
-                        </Link>{" "}
-                        — {e.type}
-                      </p>
+                        </Link>
+                        <span className="text-muted-foreground">
+                          {" "}
+                          · {e.type} · {dateLabel(e.startsAt, e.timezone)}
+                        </span>
+                      </li>
                     ))}
-              </details>
-            )}
-            {section === "dashboard" && (data.legacyClasses || data.legacyMembership) && (
-              <section className={panelClass}>
-                <h2>Your other account services</h2>
-                {data.legacyClasses && (
-                  <Link className="mr-4 underline" href="/dashboard/schedule">
-                    Class bookings
-                  </Link>
-                )}
-                {data.legacyMembership && (
-                  <Link className="underline" href="/dashboard/membership">
-                    Membership and credits
-                  </Link>
-                )}
-              </section>
-            )}
-          </>
+                  </ul>
+                </details>
+              )}
+              {dashboard && (data.legacyClasses || data.legacyMembership) && (
+                <details className="text-sm">
+                  <summary className="cursor-pointer py-3">Your other account services</summary>
+                  {data.legacyClasses && (
+                    <Link className="mr-4 underline" href="/dashboard/schedule">
+                      Class bookings
+                    </Link>
+                  )}
+                  {data.legacyMembership && (
+                    <Link className="underline" href="/dashboard/membership">
+                      Membership and credits
+                    </Link>
+                  )}
+                </details>
+              )}
+              {dashboard && (
+                <section
+                  aria-labelledby="explore-title"
+                  className={`bg-secondary/50 rounded-[1.75rem] ${empty ? "p-8 md:p-10" : "p-6"}`}
+                >
+                  <div className="flex gap-5">
+                    <Compass aria-hidden="true" className="text-primary mt-1 h-7 w-7 shrink-0" />
+                    <div className="space-y-4">
+                      <h2 id="explore-title" className="text-2xl">
+                        See what's coming up
+                      </h2>
+                      <p className="text-muted-foreground">
+                        Explore upcoming programmes, workshops and retreats.
+                      </p>
+                      {data.discovery.map((p) => (
+                        <p key={p.href}>
+                          <Link className="underline underline-offset-4" href={p.href}>
+                            {p.title}
+                          </Link>
+                          <span className="text-muted-foreground text-sm"> · {p.availability}</span>
+                        </p>
+                      ))}
+                      <div className="flex flex-wrap gap-x-6 gap-y-4">
+                        <Link
+                          className="font-medium underline underline-offset-4"
+                          href="/programmes"
+                        >
+                          Programmes
+                        </Link>
+                        <Link className="font-medium underline underline-offset-4" href="/retreats">
+                          Retreats &amp; Workshops
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
+            </>
+          )
         )}
       </div>
     </DashboardLayout>

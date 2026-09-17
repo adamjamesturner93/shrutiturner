@@ -108,3 +108,32 @@ Additive backward-compatible migrations only; staging/production deployment rema
 - The entire pre-existing site-wide Playwright suite was not rerun; the programme suite and relevant account/retreat journeys were exercised.
 
 The public programme catalogue, participant hub, cohort administration, private community, health confirmation, payment/refund handling, emails/calendar and tests live in the existing app/service structure. No remote deployment or branch push is part of this change.
+
+## Public discovery and client hub refinement — approved implementation plan
+
+Preserve the model and access controls. Public website = discover/decide/buy; My Studio = orient/manage; individual services = participate/do.
+
+- Add explicit Hidden / Coming soon / Listed public visibility, default Hidden. Approved teasers may precede final price/schedule; checkout still requires a Listed launch-ready cohort. Fixtures stay hidden unless a test explicitly publishes a customer-facing offer.
+- Catalogue is Programme-led: one card using the earliest future bookable cohort, otherwise earliest announced future cohort. Offer additional dates within the programme sales experience. Started cohorts disappear from discovery; directly linked published active cohorts show underway/future interest. Hidden, cancelled, archived and follow-up runs are excluded publicly.
+- Use Programme slugs for sales, retaining existing cohort links. Send public marketing projections only. Catalogue introduction/empty-state copy is editable in platform settings.
+- Sales hierarchy: visual hero, suitability, Learn/Train together/Practise/Ask and reflect cards, public five-week journey, schedule/equipment/health, booking/policy, follow-up and FAQs. Reuse checkout and make its title configurable.
+- Consolidate Next up by programme/event run. Group multiple event bookings, preserve permission boundaries, distinguish outstanding from due balances, and show one primary action with useful secondary context. Group management lists only accessible bookings. Pending review is information, not a participant task.
+- Dashboard: Welcome, Next up, Your coaching, Your programmes, Upcoming events, compact collapsed history, one secondary Explore card. Use service-specific hierarchy and images/branded visuals, badges, metadata and clear actions rather than identical bordered boxes.
+- Every client logo and a lower Visit website home-icon link go to /. Explore instead links to current public Programmes and Retreats & Workshops, without exposing portals. Preserve entitlement navigation.
+- Contextual dates use offering timezone: readable event date ranges/local time, UK time for online sessions, date-only deadlines, DST safe.
+- Verify publication/selection, multi-cohort dates, grouped bookings/actions/privacy, workout/clearance statuses, mobile bridges, accessible hierarchy and dates. Run unit/integration, programme Playwright, axe, typecheck and lint; review desktop/mobile screenshots. Commit separately; no remote migration/deployment.
+
+### Refinement implementation notes
+
+- Programme marketing reuses `EditorialHero`, marketing section spacing, existing buttons, `ImageWithFallback`, theme tokens and the established rounded image/card treatment used by Coaching, Retreats & Workshops and Blog. No separate visual theme is introduced.
+- Migration `20260916090000_programme_public_presentation` adds visibility/image fields and editable catalogue copy. Applied locally only. Existing cohorts default Hidden; publish approved marketing explicitly through cohort administration. Seeded January copy stays Draft/Hidden.
+- Existing cohort URLs remain compatible, while catalogue links use the Programme slug and date choices select the cohort. Public queries exclude protected week/media fields.
+- Settings for a Listed cohort continue to require launch-ready configuration. Hiding a cohort closes new checkout without removing an existing participant's entitlement.
+
+### Refinement verification
+
+- Unit suite: 683 passed across 166 files. Integration suite: 102 passed across 23 files, including 44 programme tests.
+- Programme Playwright: the 25 existing journey/accessibility checks passed; all three new UX checks passed on their final run. New coverage includes programme-led discovery, multiple date choices, hidden/teaser/underway states, grouped event actions, purchaser privacy, desktop/mobile public-site navigation and catalogue/sales/events accessibility.
+- Reviewed desktop catalogue, sales, dashboard and event screenshots plus mobile sales layout. Public programme visuals reuse the established marketing design system.
+- Typecheck passed. Lint completed with no errors and three pre-existing warnings in booking/auth components.
+- The full unrelated site-wide Playwright suite was not rerun for this refinement. No remote migrations, deployment or branch push were performed.

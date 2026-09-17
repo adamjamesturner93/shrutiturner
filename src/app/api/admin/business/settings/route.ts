@@ -3,6 +3,8 @@ import { getPlatformSettings, updatePlatformSettings } from "@/lib/admin/platfor
 import { apiOk, badRequest, handleApiRoute, parseJsonBody } from "@/lib/api/route";
 
 type UpdateSettingsBody = {
+  programmeCatalogueIntro?: string | null;
+  programmeCatalogueEmpty?: string | null;
   businessName?: string;
   supportEmail?: string | null;
   contactEmail?: string | null;
@@ -40,6 +42,7 @@ export const PATCH = handleApiRoute(
       revalidatePath("/", "layout");
       revalidatePath("/");
       revalidatePath("/about");
+      revalidatePath("/programmes", "layout");
       revalidatePath("/contact");
       revalidatePath("/privacy");
 

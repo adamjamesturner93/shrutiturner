@@ -2,7 +2,15 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { programmeRequest, panelClass } from "./shared";
-export function ProgrammePurchase({ id, version }: { id: string; version: string }) {
+export function ProgrammePurchase({
+  id,
+  version,
+  title,
+}: {
+  id: string;
+  version: string;
+  title: string;
+}) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [other, setOther] = useState(false);
@@ -37,7 +45,7 @@ export function ProgrammePurchase({ id, version }: { id: string; version: string
         }
       }}
     >
-      <h2 className="text-2xl">Join Rebuilding Your Strength</h2>
+      <h3 className="text-xl">Book your place in {title}</h3>
       {error && <p role="alert">{error}</p>}
       <label className="block">
         Your name

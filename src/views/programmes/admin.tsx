@@ -100,6 +100,82 @@ export function ProgrammeAdmin({ id }: { id: string }) {
                 Confirm cohort
               </Button>
             </div>
+            <details className={panelClass}>
+              <summary>Public programme presentation</summary>
+              <p>
+                Publish a teaser before launch, or list a launch-ready cohort. Hidden cohorts are
+                available only to staff and enrolled participants.
+              </p>
+              <form
+                key={`${c.id}-${c.publicVisibility}`}
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const f = new FormData(e.currentTarget);
+                  void save("presentation", {
+                    publicVisibility: text(f, "publicVisibility"),
+                    subtitle: text(f, "subtitle"),
+                    shortDescription: text(f, "shortDescription"),
+                    publicImageUrl: text(f, "publicImageUrl") || null,
+                    publicImageAlt: text(f, "publicImageAlt") || null,
+                    whoItsForJson: text(f, "whoItsForJson")
+                      .split("\n")
+                      .map((v) => v.trim())
+                      .filter(Boolean),
+                    weekByWeekJson: text(f, "weekByWeekJson")
+                      .split("\n")
+                      .map((v) => v.trim())
+                      .filter(Boolean),
+                  });
+                }}
+              >
+                <label className="block">
+                  Public visibility
+                  <select
+                    name="publicVisibility"
+                    defaultValue={c.publicVisibility}
+                    className={inputClass}
+                  >
+                    <option value="hidden">Hidden</option>
+                    <option value="coming_soon">Coming soon</option>
+                    <option value="listed">Listed</option>
+                  </select>
+                </label>
+                {[
+                  ["subtitle", "Subtitle"],
+                  ["shortDescription", "Short introduction"],
+                  ["publicImageUrl", "Image URL (HTTPS)"],
+                  ["publicImageAlt", "Image description"],
+                ].map(([key, label]) => (
+                  <label className="block" key={key}>
+                    {label}
+                    <input
+                      className={inputClass}
+                      name={key}
+                      defaultValue={String(c[key as keyof Cohort] || "")}
+                    />
+                  </label>
+                ))}
+                {[
+                  ["whoItsForJson", "Who it is for — one statement per line"],
+                  ["weekByWeekJson", "Public weekly journey — one title per line"],
+                ].map(([key, label]) => (
+                  <label className="block" key={key}>
+                    {label}
+                    <textarea
+                      className={inputClass}
+                      name={key}
+                      defaultValue={
+                        Array.isArray(c[key as keyof Cohort])
+                          ? (c[key as keyof Cohort] as string[]).join("\n")
+                          : ""
+                      }
+                    />
+                  </label>
+                ))}
+                <Button type="submit">Save public presentation</Button>
+              </form>
+            </details>
             <section className={panelClass}>
               <h2 className="text-2xl">Participants and clearance</h2>
               <Button

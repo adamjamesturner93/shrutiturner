@@ -9,6 +9,7 @@ import { IconHorizontal, IconOnly } from "./icon";
 import {
   LayoutDashboard,
   Settings,
+  Globe,
   LogOut,
   Menu,
   Shield,
@@ -307,6 +308,16 @@ export function DashboardLayout({
         </nav>
 
         {/* Admin link (instructor only) */}
+        <div className="px-3 pb-2">
+          <Link
+            href="/"
+            onClick={() => setSidebarOpen(false)}
+            className="text-brand-white/80 hover:bg-brand-white/5 flex min-h-11 items-center gap-3 rounded-md px-3 py-2.5 text-sm"
+          >
+            <Globe aria-hidden="true" className="h-4 w-4" />
+            Visit website
+          </Link>
+        </div>
         {isAdmin && (
           <div className="px-3 pb-2">
             <Link
@@ -343,7 +354,7 @@ export function DashboardLayout({
                 <Menu className="h-5 w-5" />
               </button>
             </SheetTrigger>
-            <Link href="/dashboard">
+            <Link href="/">
               <IconHorizontal tone="white" alt="Shruti Turner" className="h-7 w-auto" />
             </Link>
             <div className="bg-brand-accent-light text-brand-dark flex h-8 w-8 items-center justify-center rounded-full text-xs">
@@ -362,7 +373,7 @@ export function DashboardLayout({
             Your bookings, coaching and account.
           </SheetDescription>
           <div className="border-brand-white/10 flex items-center justify-between border-b p-4">
-            <Link href="/dashboard" onClick={() => setSidebarOpen(false)}>
+            <Link href="/" onClick={() => setSidebarOpen(false)}>
               <IconHorizontal tone="white" alt="Shruti Turner" className="h-7 w-auto" />
             </Link>
           </div>
@@ -399,6 +410,16 @@ export function DashboardLayout({
               ))}
             </ul>
           </nav>
+          <div className="px-3 pb-2">
+            <Link
+              href="/"
+              onClick={() => setSidebarOpen(false)}
+              className="text-brand-white/80 hover:bg-brand-white/5 flex min-h-11 items-center gap-3 rounded-md px-3 py-2.5 text-sm"
+            >
+              <Globe aria-hidden="true" className="h-4 w-4" />
+              Visit website
+            </Link>
+          </div>
           {isAdmin && (
             <div className="px-3 pb-2">
               <Link

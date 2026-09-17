@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { requireSessionUser } from "@/lib/api/auth-user";
 import { requireCohortStaff } from "@/lib/programmes/access";
 import { programmeError } from "@/lib/programmes/http";
@@ -5,6 +6,7 @@ import { db } from "@/lib/db";
 import {
   addProgrammeRecording,
   saveCohortSettings,
+  savePublicPresentation,
   publishCohort,
   confirmCohort,
   saveProgrammeWeek,
@@ -56,6 +58,9 @@ export async function POST(request: Request, context: Context) {
       case "recordings":
         result = await addProgrammeRecording(user.id, id, raw);
         break;
+      case "presentation":
+        result = await savePublicPresentation(user.id, id, raw);
+        break;
       case "settings":
         result = await saveCohortSettings(user.id, id, raw);
         break;
@@ -103,6 +108,7 @@ export async function POST(request: Request, context: Context) {
       default:
         throw new Error("NOT_FOUND");
     }
+    revalidatePath("/programmes", "layout");
     return Response.json(result ?? { ok: true });
   } catch (error) {
     return programmeError(error);

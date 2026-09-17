@@ -882,6 +882,8 @@ model UserLifecycleEvent {
 }
 
 model PlatformSetting {
+  programmeCatalogueIntro String?
+  programmeCatalogueEmpty String?
   id                    String   @id @default("default")
   businessName          String   @default("Shruti Turner")
   supportEmail          String?
@@ -2697,6 +2699,9 @@ model SmallGroupProgramme {
   createdAt                   DateTime                  @default(now())
   updatedAt                   DateTime                  @updatedAt
 
+  publicVisibility          String @default("hidden")
+  publicImageUrl            String?
+  publicImageAlt            String?
   definitionId              String?
   definition                ProgrammeDefinition? @relation(fields: [definitionId], references: [id], onDelete: Restrict)
   cohortState               CohortState?

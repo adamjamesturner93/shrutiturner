@@ -76,6 +76,7 @@ export async function saveCohortSettings(actorId: string, id: string, raw: unkno
   });
   if (data.maximumParticipants !== null && data.maximumParticipants < count)
     throw new Error("CAPACITY_BELOW_ENROLMENT");
+  if (cohort.publicVisibility === "listed") validateLaunch({ ...cohort, ...data });
   await db.smallGroupProgramme.update({ where: { id: cohort.id }, data });
   await createAdminActionLog({
     actorUserId: actorId,
@@ -84,9 +85,7 @@ export async function saveCohortSettings(actorId: string, id: string, raw: unkno
     targetId: cohort.id,
   });
 }
-export async function publishCohort(actorId: string, id: string) {
-  const c = await requireCohortStaff(actorId, id);
-  if (c.cohortState !== "draft") throw new Error("NOT_DRAFT");
+export function validateLaunch(c: Awaited<ReturnType<typeof requireCohortStaff>>) {
   if (
     !c.salePricePence ||
     !c.maximumParticipants ||
@@ -122,6 +121,11 @@ export async function publishCohort(actorId: string, id: string) {
     )
   )
     throw new Error("ONE_LIVE_SESSION_PER_WEEK_REQUIRED");
+}
+export async function publishCohort(actorId: string, id: string) {
+  const c = await requireCohortStaff(actorId, id);
+  if (c.cohortState !== "draft") throw new Error("NOT_DRAFT");
+  validateLaunch(c);
   await db.smallGroupProgramme.update({
     where: { id: c.id },
     data: {
@@ -473,4 +477,49 @@ export async function addProgrammeRecording(actorId: string, cohortId: string, r
     targetId: asset.id,
   });
   return { id: asset.id };
+}
+
+export async function savePublicPresentation(actorId: string, id: string, raw: unknown) {
+  const c = await requireCohortStaff(actorId, id);
+  const data = z
+    .object({
+      publicVisibility: z.enum(["hidden", "coming_soon", "listed"]),
+      subtitle: z.string().trim().max(300),
+      shortDescription: z.string().trim().max(2000),
+      publicImageUrl: z
+        .string()
+        .url()
+        .refine((v) => v.startsWith("https://"))
+        .nullable(),
+      publicImageAlt: z.string().trim().max(300).nullable(),
+      whoItsForJson: z.array(z.string().trim().min(1).max(500)).max(8),
+      weekByWeekJson: z.array(z.string().trim().min(1).max(200)).max(20),
+    })
+    .strict()
+    .parse(raw);
+  if (data.publicVisibility !== "hidden") {
+    if (
+      !c.definitionId ||
+      !data.subtitle ||
+      !data.shortDescription ||
+      !c.startDate ||
+      !c.structuredProgrammeEndsAt ||
+      !c.durationWeeks
+    )
+      throw new Error("PUBLIC_TEASER_DETAILS_REQUIRED");
+    if (["cancelled", "archived", "follow_up"].includes(cohortStateAt(c, programmeNow())))
+      throw new Error("PUBLICATION_UNAVAILABLE");
+    if (data.publicImageUrl && !data.publicImageAlt) throw new Error("IMAGE_DESCRIPTION_REQUIRED");
+    if (data.publicVisibility === "listed") {
+      if (c.cohortState === "draft") throw new Error("OPEN_SALES_BEFORE_LISTING");
+      validateLaunch(c);
+    }
+  }
+  await db.smallGroupProgramme.update({ where: { id: c.id }, data });
+  await createAdminActionLog({
+    actorUserId: actorId,
+    actionType: "programme_public_presentation",
+    targetType: "programme",
+    targetId: c.id,
+  });
 }

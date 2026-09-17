@@ -2,6 +2,8 @@ import { db } from "@/lib/db";
 import { createAdminActionLog } from "@/lib/admin/action-log-service";
 
 export type PlatformSettingsDto = {
+  programmeCatalogueIntro?: string | null;
+  programmeCatalogueEmpty?: string | null;
   businessName: string;
   supportEmail: string | null;
   contactEmail: string | null;
@@ -30,6 +32,8 @@ function sanitizeUrl(value: string | null | undefined) {
 }
 
 function mapSettingsRow(row: {
+  programmeCatalogueIntro?: string | null;
+  programmeCatalogueEmpty?: string | null;
   businessName: string;
   supportEmail: string | null;
   contactEmail: string | null;
@@ -39,6 +43,8 @@ function mapSettingsRow(row: {
   gaMeasurementId: string | null;
 }): PlatformSettingsDto {
   return {
+    programmeCatalogueIntro: row.programmeCatalogueIntro || null,
+    programmeCatalogueEmpty: row.programmeCatalogueEmpty || null,
     businessName: row.businessName,
     supportEmail: row.supportEmail,
     contactEmail: row.contactEmail,
@@ -77,6 +83,14 @@ export async function updatePlatformSettings(input: {
   });
 
   const next = {
+    programmeCatalogueIntro:
+      input.values.programmeCatalogueIntro === undefined
+        ? current.programmeCatalogueIntro
+        : sanitizeText(input.values.programmeCatalogueIntro, 2000),
+    programmeCatalogueEmpty:
+      input.values.programmeCatalogueEmpty === undefined
+        ? current.programmeCatalogueEmpty
+        : sanitizeText(input.values.programmeCatalogueEmpty, 2000),
     businessName:
       input.values.businessName === undefined
         ? current.businessName

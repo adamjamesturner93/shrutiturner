@@ -33,7 +33,12 @@ export async function createProgrammeCheckout(cohortId: string, raw: unknown, ac
   const enrolment = await db.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "SmallGroupProgramme" WHERE id = ${c.id} FOR UPDATE`;
     const cohort = await tx.smallGroupProgramme.findUniqueOrThrow({ where: { id: c.id } });
-    if (!salesOpen(cohort, now) || !cohort.salePricePence || !cohort.maximumParticipants)
+    if (
+      cohort.publicVisibility !== "listed" ||
+      !salesOpen(cohort, now) ||
+      !cohort.salePricePence ||
+      !cohort.maximumParticipants
+    )
       throw new Error("ENROLMENT_CLOSED");
     if (input.agreementVersion !== cohort.agreementVersion) throw new Error("AGREEMENT_CHANGED");
     const duplicate = await tx.smallGroupProgrammeEnrollment.findFirst({

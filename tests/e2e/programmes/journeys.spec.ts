@@ -49,6 +49,10 @@ test("E2E-01 account-only login", async ({ page }) => {
 });
 async function purchase(page: Page, email: string) {
   clock("2027-01-17T12:00:00Z");
+  await db.smallGroupProgramme.update({
+    where: { id: "rys-on-sale" },
+    data: { publicVisibility: "listed" },
+  });
   await page.goto("/programmes/rys-on-sale");
   await page.getByLabel("Your name", { exact: true }).fill("Synthetic New Participant");
   await page.getByLabel("Your email", { exact: true }).fill(email);
@@ -437,4 +441,167 @@ test("Core participant pages meet axe WCAG checks", async ({ page }) => {
       path
     ).toEqual([]);
   }
+});
+
+test("UX-01 programme-led discovery, date choices and private fixtures", async ({ page }) => {
+  clock("2027-01-17T12:00:00Z");
+  await db.smallGroupProgramme.updateMany({
+    where: { templateSlug: "rys-fixture" },
+    data: { publicVisibility: "hidden" },
+  });
+  await page.goto("/programmes");
+  await expect(page.getByText("No programmes are currently open for booking.")).toBeVisible();
+  await page.goto("/programmes/rys-active-week3");
+  await expect(page.getByRole("heading", { name: "404", exact: true })).toBeVisible();
+  await expect(page.getByLabel("Your name", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByText("Rebuilding Your Strength — active-week3", { exact: true })
+  ).toHaveCount(0);
+  await db.smallGroupProgramme.update({
+    where: { id: "rys-on-sale" },
+    data: {
+      publicVisibility: "listed",
+      cohortState: "on_sale",
+      confirmedAt: null,
+      enrolmentOpen: true,
+      maximumParticipants: 100,
+    },
+  });
+  await db.smallGroupProgramme.update({
+    where: { id: "rys-draft" },
+    data: {
+      publicVisibility: "coming_soon",
+      startDate: new Date("2027-03-01"),
+      structuredProgrammeEndsAt: new Date("2027-04-03"),
+    },
+  });
+  await page.goto("/programmes");
+  await expect(page.locator("article")).toHaveCount(1);
+  await expect(page.getByRole("link", { name: "Find out more" })).toHaveCount(1);
+  for (const text of ["on-sale", "pre-start", "active-week1", "below-minimum", "teaching"])
+    await expect(page.getByText(text, { exact: true })).toHaveCount(0);
+  await page.screenshot({ path: "/tmp/rys-ux-catalogue-desktop.png", fullPage: true });
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+        .analyze()
+    ).violations
+  ).toEqual([]);
+  await page.getByRole("link", { name: "Find out more" }).click();
+  await expect(page.getByLabel("Your name", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "How it works" })).toBeVisible();
+  await page.screenshot({ path: "/tmp/rys-ux-sales-desktop.png", fullPage: true });
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+        .analyze()
+    ).violations
+  ).toEqual([]);
+  await page
+    .getByRole("navigation", { name: "Choose programme dates" })
+    .getByRole("link", { name: /Coming soon/ })
+    .click();
+  await expect(page.getByLabel("Your name", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Join the mailing list" })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: "/tmp/rys-ux-sales-mobile.png", fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true
+  );
+  await db.smallGroupProgramme.update({
+    where: { id: "rys-on-sale" },
+    data: { confirmedAt: new Date("2027-01-18") },
+  });
+  clock("2027-01-25T09:00:00Z");
+  await page.goto("/programmes/rys-on-sale");
+  await expect(page.getByText("This cohort is underway.", { exact: false })).toBeVisible();
+  await expect(page.getByLabel("Your name", { exact: true })).toHaveCount(0);
+  await page.goto("/programmes");
+  await expect(page.locator("article")).toHaveCount(1);
+  await expect(page.locator("article").getByText("Coming soon", { exact: true })).toBeVisible();
+});
+
+test("UX-02 one event action and grouped bookings with meaningful cards", async ({ page }) => {
+  const original = await db.retreatBooking.findUniqueOrThrow({
+    where: { id: "rys-event-retreat-drew.events" },
+  });
+  const { id: unusedId, createdAt: unusedCreated, updatedAt: unusedUpdated, ...copy } = original;
+  void unusedId;
+  void unusedCreated;
+  void unusedUpdated;
+  await db.retreatBooking.deleteMany({ where: { id: "rys-ux-browser-booking" } });
+  await db.retreatBooking.create({
+    data: {
+      ...copy,
+      id: "rys-ux-browser-booking",
+      stripeDepositSessionId: null,
+      stripeBalanceSessionId: null,
+      balancePaymentUrlToken: null,
+      complianceSnapshotJson: undefined,
+      paymentPlanSnapshotJson: undefined,
+      refundPolicySnapshotJson: undefined,
+      bookingStatus: "deposit_paid",
+      paymentStatus: "deposit_paid",
+      balanceAmountPence: 5000,
+      balancePaidPence: 0,
+      balanceDueAt: new Date("2027-06-01"),
+    },
+  });
+  clock("2027-06-08T12:00:00Z");
+  try {
+    await login(page, "drew.events");
+    await page.goto("/dashboard");
+    const next = page.getByRole("region", { name: "Next up" });
+    await expect(next.getByRole("heading", { name: "Stirling Retreat" })).toHaveCount(1);
+    await expect(next.getByRole("link", { name: "Pay balance", exact: true })).toBeVisible();
+    await page.goto("/dashboard/events");
+    await expect(page.getByRole("article", { name: "Stirling Retreat" })).toHaveCount(1);
+    await expect(page.getByText("2 attendees · 2 bookings")).toBeVisible();
+    await page.screenshot({ path: "/tmp/rys-ux-events-desktop.png", fullPage: true });
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+          .analyze()
+      ).violations
+    ).toEqual([]);
+    await page.getByRole("link", { name: "Manage bookings", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Your bookings" })).toBeVisible();
+    await expect(page.getByRole("article")).toHaveCount(2);
+  } finally {
+    await db.retreatBooking.delete({ where: { id: "rys-ux-browser-booking" } });
+  }
+});
+
+test("UX-03 public bridge and distinct discovery on desktop and mobile", async ({ page }) => {
+  await login(page, "avery.everything");
+  await page.goto("/dashboard");
+  await expect(page.getByRole("link", { name: "Visit website", exact: true })).toHaveAttribute(
+    "href",
+    "/"
+  );
+  const explore = page.getByRole("region", { name: "See what's coming up" });
+  await expect(explore.getByRole("link", { name: "Programmes", exact: true })).toHaveAttribute(
+    "href",
+    "/programmes"
+  );
+  await expect(explore.getByRole("link", { name: "Retreats & Workshops" })).toHaveAttribute(
+    "href",
+    "/retreats"
+  );
+  await page.screenshot({ path: "/tmp/rys-ux-dashboard-desktop.png", fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Open studio menu" }).click();
+  const drawer = page.getByRole("dialog");
+  await expect(drawer.getByRole("link", { name: "Visit website" })).toHaveAttribute("href", "/");
+  await expect(drawer.getByRole("link", { name: "Shruti Turner" })).toHaveAttribute("href", "/");
+  await drawer.getByRole("link", { name: "Visit website" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await page.goto("/dashboard");
+  await page.screenshot({ path: "/tmp/rys-ux-dashboard-mobile.png", fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true
+  );
 });

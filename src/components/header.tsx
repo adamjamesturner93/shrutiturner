@@ -2,13 +2,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "./ui/button";
 import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+
+const subscribeToHydration = () => () => {};
 import { useAuth } from "../context/auth-context";
 import { IconHorizontal } from "./icon";
 
 export function Header() {
   const pathname = usePathname();
   const { isAuthenticated, user } = useAuth();
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false
+  );
   const [mobileMenuPath, setMobileMenuPath] = useState<string | null>(null);
   const mobileMenuOpen = mobileMenuPath === pathname;
 
@@ -52,18 +59,18 @@ export function Header() {
         </nav>
 
         <div className="hidden items-center space-x-3 lg:flex">
-          {isAuthenticated ? (
-            <Link href="/dashboard">
-              <Button>
+          {hydrated && isAuthenticated ? (
+            <Button asChild>
+              <Link href="/dashboard">
                 <span className="mr-2">{user?.avatarInitials || "?"}</span>
                 My Studio
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           ) : (
             <>
-              <Link href="/coaching/enquire">
-                <Button>Enquire</Button>
-              </Link>
+              <Button asChild>
+                <Link href="/coaching/enquire">Enquire</Link>
+              </Button>
               <Link
                 href="/login"
                 className="text-muted-foreground hover:text-foreground px-2 py-2 text-sm transition-colors"
@@ -104,15 +111,19 @@ export function Header() {
             ))}
 
             <div className="flex flex-col space-y-2 border-t pt-4">
-              {isAuthenticated ? (
-                <Link href="/dashboard" onClick={() => setMobileMenuPath(null)}>
-                  <Button className="w-full">My Studio</Button>
-                </Link>
+              {hydrated && isAuthenticated ? (
+                <Button asChild className="w-full">
+                  <Link href="/dashboard" onClick={() => setMobileMenuPath(null)}>
+                    My Studio
+                  </Link>
+                </Button>
               ) : (
                 <>
-                  <Link href="/coaching/enquire" onClick={() => setMobileMenuPath(null)}>
-                    <Button className="w-full">Enquire</Button>
-                  </Link>
+                  <Button asChild className="w-full">
+                    <Link href="/coaching/enquire" onClick={() => setMobileMenuPath(null)}>
+                      Enquire
+                    </Link>
+                  </Button>
                   <Link
                     href="/login"
                     onClick={() => setMobileMenuPath(null)}

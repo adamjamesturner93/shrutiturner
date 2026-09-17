@@ -294,6 +294,28 @@ export function AdminBusiness() {
                   </div>
                 ) : null}
 
+                <div className="mb-6 space-y-4">
+                  {(
+                    [
+                      ["programmeCatalogueIntro", "Programmes page introduction"],
+                      ["programmeCatalogueEmpty", "Programmes empty-state introduction"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <label className="block" key={key}>
+                      <span>{label}</span>
+                      <textarea
+                        className="mt-2 block w-full rounded-md border p-3"
+                        value={settings?.[key] || ""}
+                        onChange={(event) =>
+                          setSettings((current) =>
+                            current ? { ...current, [key]: event.target.value || null } : current
+                          )
+                        }
+                        placeholder="Leave blank to use the default copy"
+                      />
+                    </label>
+                  ))}
+                </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="space-y-2">
                     <span className="text-sm">Business name</span>
@@ -301,6 +323,7 @@ export function AdminBusiness() {
                       value={settings?.businessName || ""}
                       onChange={(event) =>
                         setSettings((current) => ({
+                          ...current,
                           businessName: event.target.value,
                           supportEmail: current?.supportEmail || null,
                           contactEmail: current?.contactEmail || null,
@@ -318,6 +341,7 @@ export function AdminBusiness() {
                       value={settings?.supportEmail || ""}
                       onChange={(event) =>
                         setSettings((current) => ({
+                          ...current,
                           businessName: current?.businessName || "Shruti Turner",
                           supportEmail: event.target.value || null,
                           contactEmail: current?.contactEmail || null,
@@ -335,6 +359,7 @@ export function AdminBusiness() {
                       value={settings?.contactEmail || ""}
                       onChange={(event) =>
                         setSettings((current) => ({
+                          ...current,
                           businessName: current?.businessName || "Shruti Turner",
                           supportEmail: current?.supportEmail || null,
                           contactEmail: event.target.value || null,
@@ -352,6 +377,7 @@ export function AdminBusiness() {
                       value={settings?.instagramUrl || ""}
                       onChange={(event) =>
                         setSettings((current) => ({
+                          ...current,
                           businessName: current?.businessName || "Shruti Turner",
                           supportEmail: current?.supportEmail || null,
                           contactEmail: current?.contactEmail || null,
@@ -369,6 +395,7 @@ export function AdminBusiness() {
                       value={settings?.defaultSeoTitle || ""}
                       onChange={(event) =>
                         setSettings((current) => ({
+                          ...current,
                           businessName: current?.businessName || "Shruti Turner",
                           supportEmail: current?.supportEmail || null,
                           contactEmail: current?.contactEmail || null,
@@ -386,6 +413,7 @@ export function AdminBusiness() {
                       value={settings?.gaMeasurementId || ""}
                       onChange={(event) =>
                         setSettings((current) => ({
+                          ...current,
                           businessName: current?.businessName || "Shruti Turner",
                           supportEmail: current?.supportEmail || null,
                           contactEmail: current?.contactEmail || null,
@@ -405,6 +433,7 @@ export function AdminBusiness() {
                     value={settings?.defaultSeoDescription || ""}
                     onChange={(event) =>
                       setSettings((current) => ({
+                        ...current,
                         businessName: current?.businessName || "Shruti Turner",
                         supportEmail: current?.supportEmail || null,
                         contactEmail: current?.contactEmail || null,
