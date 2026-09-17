@@ -137,3 +137,21 @@ Preserve the model and access controls. Public website = discover/decide/buy; My
 - Reviewed desktop catalogue, sales, dashboard and event screenshots plus mobile sales layout. Public programme visuals reuse the established marketing design system.
 - Typecheck passed. Lint completed with no errors and three pre-existing warnings in booking/auth components.
 - The full unrelated site-wide Playwright suite was not rerun for this refinement. No remote migrations, deployment or branch push were performed.
+
+### Participant and admin journey refinement
+
+- Resolve event images, focal points and legacy event categories from the existing published event/CMS identity; retain the established event-image fallback only when no image exists.
+- Give the single Explore panel clearer hierarchy and distinct category actions.
+- Refine programme header, local navigation, week availability, live/replay, onboarding and community states with the existing brand components. Preserve server-side release and clearance checks.
+- Give cohort administration a clear overview, section links, readable states and participant review hierarchy; keep pending coach reviews individual.
+- Generate Prisma before starting local development to prevent missing-client runtime failures.
+- Verify the participant/admin journeys, event presentation regression, mobile layouts and accessibility; commit the refinement separately.
+
+#### Journey refinement verification
+
+- 53 focused tests passed: nine presentation/unit checks and 44 programme integration checks. Event identity regressions cover CMS images, local published assets, focal points and workshop categories.
+- All 30 programme browser checks passed across the full run and final targeted rerun. Assertions were updated for the separated week titles and participant-count cards without removing access/confirmation checks.
+- Core participant axe audits passed, plus the new mobile cohort administration audit. Desktop week and mobile home/admin screenshots were reviewed.
+- Community drafts survive failed saves; browser coverage verifies this. Browser and integration fixture cleanup hide synthetic offers after tests.
+- Typecheck passed. Lint has no errors and the same three existing booking/auth warnings. Local admin HTTP requests returned successfully after Prisma generation. Development and programme test startup now generate the Prisma client.
+- No database migration, remote deployment or push is needed for this refinement.

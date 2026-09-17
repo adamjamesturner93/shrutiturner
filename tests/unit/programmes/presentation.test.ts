@@ -9,6 +9,7 @@ import {
   representative,
 } from "@/lib/programmes/presentation";
 import {
+  resolveHubEventPresentation,
   bookingSummary,
   consolidateActions,
   type HubAction,
@@ -133,5 +134,57 @@ describe("action and booking consolidation", () => {
         now
       ).due
     ).toBe(false);
+  });
+});
+
+describe("event card identity", () => {
+  const date = {
+    retreatSlug: "stirling",
+    retreatType: "in_person",
+    eventKind: "residential_retreat",
+    experience: null,
+  };
+  it("uses the existing CMS image, crop and category for legacy bookings", () => {
+    expect(
+      resolveHubEventPresentation(date, [
+        {
+          slug: "stirling",
+          imageUrl: "https://images.example.test/stirling.jpg",
+          imageAlt: "Stirling venue",
+          imageFocalPoint: { x: 30, y: 70 },
+          experienceType: "in_person_workshop",
+        },
+      ])
+    ).toEqual({
+      image: "https://images.example.test/stirling.jpg",
+      imageAlt: "Stirling venue",
+      imagePosition: "30% 70%",
+      type: "Workshop",
+    });
+  });
+  it("prefers the published event image and supports local assets", () => {
+    const result = resolveHubEventPresentation(
+      {
+        ...date,
+        experience: {
+          publishedContentJson: {
+            image: { url: "/images/venue.jpg", alt: "Venue", focalPoint: { x: 20, y: 40 } },
+          },
+        },
+      },
+      [
+        {
+          slug: "stirling",
+          imageUrl: "https://images.example.test/old.jpg",
+          experienceType: "in_person_workshop",
+        },
+      ]
+    );
+    expect(result).toEqual({
+      image: "/images/venue.jpg",
+      imageAlt: "Venue",
+      imagePosition: "20% 40%",
+      type: "Retreat",
+    });
   });
 });

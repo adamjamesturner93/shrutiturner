@@ -8,8 +8,8 @@
     "node": ">=24 <25"
   },
   "scripts": {
-    "dev": "next dev",
-    "dev:clean": "rm -rf .next && next dev",
+    "dev": "prisma generate && next dev",
+    "dev:clean": "prisma generate && rm -rf .next && next dev",
     "prebuild": "npx prisma generate",
     "build": "next build",
     "start": "next start",

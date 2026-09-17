@@ -77,6 +77,10 @@ beforeEach(() => {
   });
 });
 afterAll(async () => {
+  await db.smallGroupProgramme.updateMany({
+    where: { templateSlug: "rys-fixture" },
+    data: { publicVisibility: "hidden" },
+  });
   await db.$disconnect();
 });
 describe("real database entitlement and access boundaries", () => {

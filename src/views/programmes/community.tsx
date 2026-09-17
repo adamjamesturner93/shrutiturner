@@ -5,18 +5,27 @@ import { Button } from "@/components/ui/button";
 import { useProgrammeData, programmeRequest, panelClass } from "./shared";
 import { ProgrammeReplay } from "./portal";
 import type { listProgrammePosts } from "@/lib/programmes/community-service";
+import { MessageCircle } from "lucide-react";
+import { eyebrow } from "./visuals";
 type Community = Awaited<ReturnType<typeof listProgrammePosts>>;
 export function ProgrammeCommunity({ id, preview = false }: { id: string; preview?: boolean }) {
   const endpoint = `/api/me/programmes/${id}/community`;
   const { data, error, reload } = useProgrammeData<Community>(endpoint);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   async function submit(url: string, body: unknown) {
+    if (saving) return false;
+    setSaving(true);
     try {
       await programmeRequest(url, body);
       setMessage("Saved");
       reload();
+      return true;
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Unable to save");
+      return false;
+    } finally {
+      setSaving(false);
     }
   }
   const posts = preview
@@ -24,20 +33,37 @@ export function ProgrammeCommunity({ id, preview = false }: { id: string; previe
     : data?.posts.filter((p) => !p.parentId);
   return (
     <section className="space-y-4" aria-label="Community discussions">
+      {!preview && (
+        <header className="space-y-2">
+          <p className={eyebrow}>Your cohort</p>
+          <h2 className="text-3xl">Community</h2>
+          <p className="text-muted-foreground">
+            Ask a question, share what you are learning, or join this week's reflection.
+          </p>
+        </header>
+      )}
+      {!data && !error && <p role="status">Loading discussions…</p>}
+      {data && !posts?.length && (
+        <div className="bg-secondary rounded-2xl p-6">
+          <MessageCircle aria-hidden="true" className="text-primary mb-3 h-7 w-7" />
+          <p>No conversations yet. You are welcome to start one.</p>
+        </div>
+      )}
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {!preview && (
         <form
           className={panelClass}
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault();
-            const form = new FormData(event.currentTarget);
-            void submit(endpoint, {
+            const element = event.currentTarget;
+            const form = new FormData(element);
+            const saved = await submit(endpoint, {
               title: form.get("title"),
               body: form.get("body"),
               resourceIds: form.getAll("resourceIds"),
             });
-            event.currentTarget.reset();
+            if (saved) element.reset();
           }}
         >
           <h2>Ask a question or share a reflection</h2>
@@ -64,7 +90,9 @@ export function ProgrammeCommunity({ id, preview = false }: { id: string; previe
               ))}
             </fieldset>
           )}
-          <Button type="submit">Post to community</Button>
+          <Button type="submit" disabled={saving}>
+            {saving ? "Saving…" : "Post to community"}
+          </Button>
         </form>
       )}
       {posts?.map((p) => (
@@ -198,13 +226,14 @@ export function ProgrammeCommunity({ id, preview = false }: { id: string; previe
               )}
               {!p.deleted && (!p.locked || data?.staff) && (
                 <form
-                  onSubmit={(e) => {
+                  onSubmit={async (e) => {
                     e.preventDefault();
-                    void submit(endpoint, {
+                    const element = e.currentTarget;
+                    const saved = await submit(endpoint, {
                       parentId: p.id,
-                      body: new FormData(e.currentTarget).get("reply"),
+                      body: new FormData(element).get("reply"),
                     });
-                    e.currentTarget.reset();
+                    if (saved) element.reset();
                   }}
                 >
                   <label>
@@ -215,7 +244,7 @@ export function ProgrammeCommunity({ id, preview = false }: { id: string; previe
                       className="my-2 block w-full rounded border p-2"
                     />
                   </label>
-                  <Button type="submit" variant="outline">
+                  <Button type="submit" variant="outline" disabled={saving}>
                     Reply
                   </Button>
                 </form>

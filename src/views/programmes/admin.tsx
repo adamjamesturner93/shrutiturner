@@ -1,4 +1,5 @@
 "use client";
+import { programmeStateLabels } from "@/lib/programmes/presentation";
 import Link from "next/link";
 import { useState } from "react";
 import { AdminLayout } from "@/components/admin-layout";
@@ -6,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { useProgrammeData, programmeRequest, panelClass, When } from "./shared";
 import { eventIsoToWallTime, eventWallTimeToIso } from "@/lib/retreats/event-time";
 import type { loadCohort } from "@/lib/programmes/access";
+import { StatusPill, eyebrow } from "./visuals";
+import { clearanceLabels } from "@/lib/programmes/policy";
 type Wire<T> = T extends Date
   ? string
   : T extends Array<infer U>
@@ -47,13 +50,18 @@ type AdminData = {
 };
 const text = (f: FormData, key: string) => String(f.get(key) || "");
 const number = (f: FormData, key: string) => (f.get(key) === "" ? null : Number(f.get(key)));
-const inputClass = "mt-1 block w-full rounded border bg-background p-2";
+const inputClass =
+  "mt-2 block min-h-11 w-full rounded-lg border border-brand-dark/20 bg-background px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 export function ProgrammeAdmin({ id }: { id: string }) {
   const endpoint = `/api/admin/programmes/cohorts/${id}`;
   const { data, error, reload } = useProgrammeData<AdminData>(endpoint);
   const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   async function save(action: string, body: unknown) {
+    if (saving) return;
+    setSaving(true);
+    setMessage("");
     try {
       const result = await programmeRequest<unknown>(`${endpoint}/${action}`, body);
       setMessage(
@@ -64,24 +72,97 @@ export function ProgrammeAdmin({ id }: { id: string }) {
           : "Saved"
       );
       reload();
+      if (action === "clearance") setSelected([]);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Unable to save");
+    } finally {
+      setSaving(false);
     }
   }
   const c = data?.cohort;
   return (
     <AdminLayout title="Programme cohort">
       <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
-        <h1 className="text-3xl">{c?.title || "Programme cohort"}</h1>
+        <Link
+          className="inline-flex min-h-11 items-center text-sm underline underline-offset-4"
+          href="/admin/programmes"
+        >
+          ← All programmes
+        </Link>
+        <header className="bg-brand-dark rounded-[1.75rem] p-6 text-white md:p-8">
+          <p className="text-brand-accent-light mb-3 text-xs tracking-[0.24em] uppercase">
+            Cohort management
+          </p>
+          <h1 className="text-3xl">{c?.title || "Programme cohort"}</h1>
+          {c && (
+            <div className="mt-4 flex flex-wrap gap-3">
+              <StatusPill>{programmeStateLabels[c.cohortState || "draft"]}</StatusPill>
+              <span className="text-sm text-white/80">
+                {c.publicVisibility === "hidden"
+                  ? "Hidden from public discovery"
+                  : c.publicVisibility === "coming_soon"
+                    ? "Coming soon on the website"
+                    : "Listed on the website"}
+              </span>
+            </div>
+          )}
+        </header>
+        {!data && !error && <p role="status">Loading cohort…</p>}
+        {saving && <p role="status">Saving changes…</p>}
         {error && <p role="alert">{error}</p>}
         {message && <p role="status">{message}</p>}
         {c && data && (
           <>
-            <p>
-              {c.cohortState?.replaceAll("_", " ")} ·{" "}
-              {data.participants.filter((p) => p.paidAt && p.status === "active").length} paid
-              participants · minimum {c.minimumParticipants}
-            </p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                [
+                  "Paid participants",
+                  data.participants.filter((p) => p.paidAt && p.status === "active").length,
+                  `Minimum ${c.minimumParticipants}`,
+                ],
+                [
+                  "Ready for clearance",
+                  data.clearances.filter((r) => r.status === "ready").length,
+                  "Review and clear eligible participants",
+                ],
+                [
+                  "Individual review",
+                  data.clearances.filter((r) => r.status === "pending_review").length,
+                  "Review flagged health information individually",
+                ],
+              ].map(([label, count, hint]) => (
+                <div key={label} role="group" aria-label={String(label)} className={panelClass}>
+                  <p className={eyebrow}>{label}</p>
+                  <p className="text-3xl font-semibold">{count}</p>
+                  <p className="text-muted-foreground text-sm">{hint}</p>
+                </div>
+              ))}
+            </div>
+            <nav
+              aria-label="Cohort sections"
+              className="bg-secondary flex flex-wrap gap-2 rounded-2xl p-2"
+            >
+              {[
+                ["participants", "Participants"],
+                ["presentation", "Public page"],
+                ["settings", "Settings & dates"],
+                ["sessions", "Live sessions"],
+                ["content", "Weekly content"],
+                ["cancellation", "Cancellation & refunds"],
+              ].map(([anchor, label]) => (
+                <a
+                  key={anchor}
+                  href={`#${anchor}`}
+                  onClick={() => {
+                    const target = document.getElementById(anchor);
+                    if (target instanceof HTMLDetailsElement) target.open = true;
+                  }}
+                  className="hover:bg-background rounded-xl px-4 py-3 text-sm font-medium"
+                >
+                  {label}
+                </a>
+              ))}
+            </nav>
             {data.confirmationDue && (
               <p role="status">
                 Confirmation decision due. Confirm this cohort, including below minimum if
@@ -100,7 +181,7 @@ export function ProgrammeAdmin({ id }: { id: string }) {
                 Confirm cohort
               </Button>
             </div>
-            <details className={panelClass}>
+            <details id="presentation" className={panelClass}>
               <summary>Public programme presentation</summary>
               <p>
                 Publish a teaser before launch, or list a launch-ready cohort. Hidden cohorts are
@@ -176,10 +257,10 @@ export function ProgrammeAdmin({ id }: { id: string }) {
                 <Button type="submit">Save public presentation</Button>
               </form>
             </details>
-            <section className={panelClass}>
+            <section id="participants" className={panelClass}>
               <h2 className="text-2xl">Participants and clearance</h2>
               <Button
-                disabled={!selected.length}
+                disabled={saving || !selected.length}
                 onClick={() =>
                   save("clearance", {
                     entries: data.clearances
@@ -199,7 +280,7 @@ export function ProgrammeAdmin({ id }: { id: string }) {
                 const r = data.clearances.find((r) => r.userId === p.userId);
                 return (
                   <article key={p.id} className="space-y-3 border-t pt-4">
-                    <h3>{p.attendeeName}</h3>
+                    <h3 className="font-semibold">{p.attendeeName}</h3>
                     <p>
                       {p.attendeeEmail} · Payment: {p.paidAt ? "Paid" : "Pending"} · Account:{" "}
                       {p.user?.emailVerified ? "Activated" : "Not activated"}
@@ -214,7 +295,10 @@ export function ProgrammeAdmin({ id }: { id: string }) {
                       {p.acceptedAgreementVersion === c.agreementVersion
                         ? "Complete"
                         : "Not started"}{" "}
-                      · Clearance: {r?.status.replaceAll("_", " ") || "pending confirmation"}
+                      · Clearance:{" "}
+                      {r
+                        ? clearanceLabels[r.status as keyof typeof clearanceLabels] || r.status
+                        : "Pending participant confirmation"}
                     </p>
                     {r?.status === "ready" && (
                       <label className="flex gap-2">
@@ -329,7 +413,7 @@ export function ProgrammeAdmin({ id }: { id: string }) {
                 );
               })}
             </section>
-            <details className={panelClass}>
+            <details id="settings" className={panelClass}>
               <summary>Programme settings and dates</summary>
               <form
                 className="space-y-4"
@@ -526,7 +610,12 @@ export function ProgrammeAdmin({ id }: { id: string }) {
               </form>
             </details>
             <section className="space-y-4">
-              <h2 className="text-2xl">Live sessions</h2>
+              <h2 id="sessions" className="scroll-mt-24 text-2xl">
+                Live sessions
+              </h2>
+              <p className="text-muted-foreground">
+                Manage the weekly schedule, teaching availability and recordings.
+              </p>
               {c.sessions.map((s) => (
                 <details key={s.id} className={panelClass}>
                   <summary>{s.title}</summary>
@@ -632,7 +721,13 @@ export function ProgrammeAdmin({ id }: { id: string }) {
               </form>
             </details>
             <section className="space-y-4">
-              <h2 className="text-2xl">Weekly content</h2>
+              <h2 id="content" className="scroll-mt-24 text-2xl">
+                Weekly content
+              </h2>
+              <p className="text-muted-foreground">
+                Education releases on Monday. Workouts unlock when the required teaching is
+                available.
+              </p>
               {c.weeks.map((w) => (
                 <WeekEditor
                   key={w.id}
@@ -642,7 +737,7 @@ export function ProgrammeAdmin({ id }: { id: string }) {
                 />
               ))}
             </section>
-            <details className={panelClass}>
+            <details id="cancellation" className={panelClass}>
               <summary>Cancel cohort and track refunds</summary>
               <p>
                 This closes sales and participant access and queues cancellation communications.

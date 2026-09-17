@@ -5,21 +5,10 @@ import { eventClearanceState } from "@/lib/retreats/offering-clearance";
 import { clearanceLabels } from "./policy";
 import { getProgrammePortal, getProgrammeWeek } from "./content-service";
 import { bookingSummary, consolidateActions, type HubAction } from "./hub-presentation";
+import { getRetreatTemplates } from "@/lib/content";
+import { resolveHubEventPresentation } from "./hub-presentation";
 import { getProgrammeCatalogue } from "./public-service";
 
-function publishedImage(json: unknown) {
-  if (!json || typeof json !== "object" || !("image" in json)) return null;
-  const image = json.image;
-  if (
-    !image ||
-    typeof image !== "object" ||
-    !("url" in image) ||
-    typeof image.url !== "string" ||
-    !/^https:\/\//.test(image.url)
-  )
-    return null;
-  return { url: image.url, alt: "alt" in image && typeof image.alt === "string" ? image.alt : "" };
-}
 export async function getClientHub(userId: string) {
   const now = programmeNow();
   const [user, coaching, enrolments, bookings, classes, membership, catalogue] = await Promise.all([
@@ -72,6 +61,7 @@ export async function getClientHub(userId: string) {
         retreatDate: {
           select: {
             retreatTitleSnapshot: true,
+            retreatSlug: true,
             retreatLocationSnapshot: true,
             startsAt: true,
             endsAt: true,
@@ -179,6 +169,9 @@ export async function getClientHub(userId: string) {
   const grouped = new Map<string, typeof bookings>();
   for (const b of bookings)
     grouped.set(b.retreatDateId, [...(grouped.get(b.retreatDateId) || []), b]);
+  const legacyTemplates = bookings.some((b) => !b.retreatDate.experience)
+    ? await getRetreatTemplates()
+    : [];
   const events = await Promise.all(
     [...grouped.entries()].map(async ([id, rows]) => {
       const date = rows[0].retreatDate;
@@ -238,22 +231,19 @@ export async function getClientHub(userId: string) {
           rank: 2,
           actionable: true,
         });
-      const image = publishedImage(date.experience?.publishedContentJson);
+      const presentation = resolveHubEventPresentation(date, legacyTemplates);
       return {
         id,
         title: date.retreatTitleSnapshot,
-        type:
-          ["online_workshop", "in_person_workshop"].includes(date.eventKind) ||
-          date.retreatType === "online"
-            ? "Workshop"
-            : "Retreat",
+        type: presentation.type,
         startsAt: date.startsAt.toISOString(),
         endsAt: date.endsAt.toISOString(),
         timezone: date.timezone,
         online: date.retreatType === "online",
         location: date.retreatLocationSnapshot,
-        image: image?.url || null,
-        imageAlt: image?.alt || null,
+        image: presentation.image,
+        imageAlt: presentation.imageAlt,
+        imagePosition: presentation.imagePosition,
         past,
         href,
         bookings: summaries,

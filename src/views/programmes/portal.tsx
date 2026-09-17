@@ -1,4 +1,5 @@
 "use client";
+import { programmeStateLabels } from "@/lib/programmes/presentation";
 import Link from "next/link";
 import { useState } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
@@ -8,6 +9,9 @@ import { useProgrammeData, programmeRequest, panelClass, When } from "./shared";
 import { ProgrammeCommunity } from "./community";
 import { ProgrammeOnboarding } from "./onboarding";
 import type { getProgrammePortal, getProgrammeWeek } from "@/lib/programmes/content-service";
+import { StatusPill, ActionLink, eyebrow } from "./visuals";
+import { dateLabel } from "@/lib/programmes/presentation";
+import { CalendarDays, BookOpen, MessageCircle } from "lucide-react";
 type Portal = Awaited<ReturnType<typeof getProgrammePortal>>;
 type Week = Awaited<ReturnType<typeof getProgrammeWeek>>;
 export function ProgrammePortal({ id, path = [] }: { id: string; path?: string[] }) {
@@ -18,14 +22,36 @@ export function ProgrammePortal({ id, path = [] }: { id: string; path?: string[]
   return (
     <DashboardLayout handlesLegalAgreements title={p?.title || "Programme"}>
       <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-8">
-        <h1 className="text-3xl">{p?.title || "Your programme"}</h1>
+        <Link
+          href="/dashboard/programmes"
+          className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4"
+        >
+          ← Your programmes
+        </Link>
+        <header className="bg-brand-dark relative overflow-hidden rounded-[1.75rem] p-6 text-white md:p-9">
+          <div
+            aria-hidden="true"
+            className="absolute -top-20 -right-10 h-64 w-64 rounded-full border-[30px] border-white/5"
+          />
+          <p className="text-brand-accent-light mb-3 text-xs font-medium tracking-[0.24em] uppercase">
+            Your programme with Shruti
+          </p>
+          <h1 className="relative max-w-3xl text-3xl md:text-4xl">
+            {p?.title || "Your programme"}
+          </h1>
+          {p && (
+            <div className="relative mt-5 flex flex-wrap items-center gap-3">
+              <StatusPill>{programmeStateLabels[p.state] || p.state}</StatusPill>
+              <span className="text-sm text-white/80">
+                Starts {dateLabel(p.startsAt, p.timezone)}
+              </span>
+            </div>
+          )}
+        </header>
         {error && <p role="alert">{error}</p>}
         {!p && !error && <p role="status">Loading programme…</p>}
         {p && (
           <>
-            <p>
-              {p.state.replaceAll("_", " ")} · <When value={p.startsAt} />
-            </p>
             {!p.accessible ? (
               <div className={panelClass}>
                 <h2>Programme history</h2>
@@ -33,15 +59,23 @@ export function ProgrammePortal({ id, path = [] }: { id: string; path?: string[]
               </div>
             ) : (
               <>
-                <Link className="underline" href={`${base}/onboarding`}>
-                  Onboarding checklist
-                </Link>
-                <nav aria-label="Programme" className="flex flex-wrap gap-4 border-b py-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-muted-foreground text-sm">
+                    A place to learn, train and ask questions.
+                  </p>
+                  <Button asChild variant="outline">
+                    <Link href={`${base}/onboarding`}>Onboarding checklist</Link>
+                  </Button>
+                </div>
+                <nav
+                  aria-label="Programme"
+                  className="bg-secondary flex gap-1 overflow-x-auto rounded-2xl p-2"
+                >
                   {["Home", "Weeks", "Live", "Community", "Resources"].map((label) => (
                     <Link
                       key={label}
                       aria-current={section === label.toLowerCase() ? "page" : undefined}
-                      className="underline underline-offset-4"
+                      className={`shrink-0 rounded-xl px-4 py-3 text-sm font-medium transition ${section === label.toLowerCase() ? "bg-brand-dark text-white shadow-sm" : "text-brand-dark hover:bg-background"}`}
                       href={`${base}/${label.toLowerCase()}`}
                     >
                       {label}
@@ -96,13 +130,46 @@ export function ProgrammePortal({ id, path = [] }: { id: string; path?: string[]
                 {section === "home" && (
                   <>
                     <p>{p.introduction}</p>
-                    <ol aria-label="Programme weeks" className="flex flex-wrap gap-3">
+                    <ol aria-label="Programme weeks" className="grid grid-cols-5 gap-2">
                       {p.weeks.map((w) => (
-                        <li key={w.id}>Week {w.number}</li>
+                        <li
+                          key={w.id}
+                          className={`rounded-xl border-t-4 p-3 text-center text-sm ${w.id === p.currentWeek ? "border-brand-accent bg-secondary font-semibold" : "border-brand-dark/10 text-muted-foreground"}`}
+                        >
+                          {w.released ? (
+                            <Link
+                              className="block py-1 underline underline-offset-4"
+                              href={`${base}/weeks/${w.id}`}
+                            >
+                              Week {w.number}
+                            </Link>
+                          ) : (
+                            <span className="block py-1">Week {w.number}</span>
+                          )}
+                        </li>
                       ))}
                     </ol>
+                    {!p.currentWeek && (
+                      <article className={panelClass}>
+                        <h2>Get ready for your first week</h2>
+                        <p>
+                          Your weekly education will appear here when the programme begins. In the
+                          meantime, review your onboarding and add the live sessions to your
+                          calendar.
+                        </p>
+                        <ActionLink href={`${base}/onboarding`}>Review onboarding</ActionLink>
+                      </article>
+                    )}
                     {p.currentWeek && <ProgrammeWeekView id={id} weekId={p.currentWeek} />}
-                    <h2 className="text-2xl">Next live session</h2>
+                    <h2 className="flex items-center gap-3 text-2xl">
+                      <CalendarDays aria-hidden="true" className="text-primary h-6 w-6" />
+                      Next live session
+                    </h2>
+                    {!p.sessions.some((s) => s.upcoming) && (
+                      <p className="text-muted-foreground">
+                        No further live sessions are scheduled. Available recordings are in Live.
+                      </p>
+                    )}
                     {p.sessions
                       .filter((s) => s.upcoming)
                       .slice(0, 1)
@@ -117,7 +184,10 @@ export function ProgrammePortal({ id, path = [] }: { id: string; path?: string[]
                       ))}
                     {p.canCommunity && (
                       <>
-                        <h2 className="text-2xl">Latest from your community</h2>
+                        <h2 className="flex items-center gap-3 text-2xl">
+                          <MessageCircle aria-hidden="true" className="text-primary h-6 w-6" />
+                          Latest from your community
+                        </h2>
                         <ProgrammeCommunity id={id} preview />
                       </>
                     )}
@@ -130,17 +200,17 @@ export function ProgrammePortal({ id, path = [] }: { id: string; path?: string[]
                     <div className="grid gap-4 md:grid-cols-2">
                       {p.weeks.map((w) => (
                         <article className={panelClass} key={w.id}>
-                          <h2>
-                            Week {w.number} — {w.title}
-                          </h2>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className={eyebrow}>Week {w.number}</span>
+                            <StatusPill>{w.released ? "Available" : "Coming up"}</StatusPill>
+                          </div>
+                          <h2>{w.title}</h2>
                           {w.released ? (
                             <Link className="underline" href={`${base}/weeks/${w.id}`}>
                               Open week
                             </Link>
                           ) : (
-                            <p>
-                              Available <When value={w.releasesAt} />
-                            </p>
+                            <p>Available {dateLabel(w.releasesAt, p.timezone)}</p>
                           )}
                         </article>
                       ))}
@@ -148,7 +218,19 @@ export function ProgrammePortal({ id, path = [] }: { id: string; path?: string[]
                   ))}
                 {section === "live" && (
                   <>
-                    <p>{p.equipment}</p>
+                    <div>
+                      <h2 className="text-2xl">Live workouts &amp; recordings</h2>
+                      <p className="text-muted-foreground mt-2">
+                        Train together, or revisit a session in your own time.
+                      </p>
+                    </div>
+                    <div className="bg-secondary rounded-xl p-4">
+                      <span className="font-medium">Equipment</span>
+                      <p>{p.equipment}</p>
+                    </div>
+                    {!p.sessions.length && (
+                      <p>Session details will appear here once the schedule is ready.</p>
+                    )}
                     {joining ? (
                       <VideoRoom
                         sessionId={joining}
@@ -189,25 +271,40 @@ export function ProgrammePortal({ id, path = [] }: { id: string; path?: string[]
                         onLeave={() => setJoining(null)}
                       />
                     ) : (
-                      p.sessions.map((s) => (
-                        <article key={s.id} className={panelClass}>
-                          <h2>{s.title}</h2>
-                          <When value={s.startsAt} />
-                          {s.canJoin && (
-                            <Button onClick={() => setJoining(s.id)}>Join live session</Button>
-                          )}
-                          {s.status === "completed" &&
-                            (s.replayId ? (
-                              <ProgrammeReplay id={id} replayId={s.replayId} />
-                            ) : (
-                              <p>
-                                {p.canExercise
-                                  ? "Recording is processing or unavailable."
-                                  : "Exercise replay requires clearance."}
-                              </p>
-                            ))}
-                        </article>
-                      ))
+                      [...p.sessions]
+                        .sort(
+                          (a, b) =>
+                            Number(b.upcoming) - Number(a.upcoming) ||
+                            new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
+                        )
+                        .map((s) => (
+                          <article key={s.id} className={panelClass}>
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <h3>{s.title}</h3>
+                              <StatusPill>
+                                {s.status === "completed"
+                                  ? "Previous session"
+                                  : s.upcoming
+                                    ? "Upcoming"
+                                    : "Session ended"}
+                              </StatusPill>
+                            </div>
+                            <When value={s.startsAt} />
+                            {s.canJoin && (
+                              <Button onClick={() => setJoining(s.id)}>Join live session</Button>
+                            )}
+                            {s.status === "completed" &&
+                              (s.replayId ? (
+                                <ProgrammeReplay id={id} replayId={s.replayId} />
+                              ) : (
+                                <p>
+                                  {p.canExercise
+                                    ? "Recording is processing or unavailable."
+                                    : "Exercise replay requires clearance."}
+                                </p>
+                              ))}
+                          </article>
+                        ))
                     )}
                   </>
                 )}
@@ -215,13 +312,29 @@ export function ProgrammePortal({ id, path = [] }: { id: string; path?: string[]
                   (p.canCommunity ? (
                     <ProgrammeCommunity id={id} />
                   ) : (
-                    <p>
-                      Community opens <When value={p.communityOpenAt} />.
-                    </p>
+                    <article className={panelClass}>
+                      <MessageCircle aria-hidden="true" className="text-primary h-8 w-8" />
+                      <h2>Your community is opening soon</h2>
+                      <p>
+                        Community opens <When value={p.communityOpenAt} />.
+                      </p>
+                      <p>
+                        Until then, you can complete onboarding and explore your programme
+                        information.
+                      </p>
+                    </article>
                   ))}
                 {section === "resources" && (
                   <>
-                    <h2 className="text-2xl">Resources</h2>
+                    <div>
+                      <h2 className="flex items-center gap-3 text-2xl">
+                        <BookOpen aria-hidden="true" className="text-primary h-6 w-6" />
+                        Resources
+                      </h2>
+                      <p className="text-muted-foreground mt-2">
+                        Practical guides to support your training, all in one place.
+                      </p>
+                    </div>
                     <article className={panelClass}>
                       <h3>Equipment guide</h3>
                       <p>{p.equipment}</p>
@@ -276,10 +389,12 @@ function ProgrammeWeekView({ id, weekId }: { id: string; weekId: string }) {
       {error && <p role="alert">{error}</p>}
       {w && (
         <>
-          <h2 className="text-2xl">
-            Week {w.number} — {w.title}
-          </h2>
+          <div className="border-brand-accent border-l-4 py-2 pl-5">
+            <p className={eyebrow}>Week {w.number}</p>
+            <h2 className="mt-2 text-3xl">{w.title}</h2>
+          </div>
           <article className={panelClass}>
+            <p className={eyebrow}>Learn · This week’s theme</p>
             <h3>{w.theme}</h3>
             <p className="whitespace-pre-wrap">{w.education}</p>
             {w.videoUrl && (
@@ -305,6 +420,7 @@ function ProgrammeWeekView({ id, weekId }: { id: string; weekId: string }) {
             </article>
           )}
           <article className={panelClass}>
+            <p className={eyebrow}>Practise · In your own time</p>
             <h3>Your independent workout</h3>
             {!w.canExercise ? (
               <p>{w.clearanceMessage}</p>
@@ -317,7 +433,7 @@ function ProgrammeWeekView({ id, weekId }: { id: string; weekId: string }) {
             ) : (
               <ol className="space-y-5">
                 {w.workout.map((e, i) => (
-                  <li key={i}>
+                  <li key={i} className="bg-secondary/60 rounded-xl p-4">
                     <h4>
                       {e.name} — {e.prescription}
                     </h4>
@@ -333,6 +449,7 @@ function ProgrammeWeekView({ id, weekId }: { id: string; weekId: string }) {
           </article>
           {w.reflection && (
             <article className={panelClass}>
+              <p className={eyebrow}>Reflect · Your community</p>
               <h3>This week's reflection</h3>
               <p>{w.reflection}</p>
               <Link className="underline" href={`/dashboard/programmes/${id}/community`}>

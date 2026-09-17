@@ -23,7 +23,7 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     {
-      command: "pnpm exec next dev --port 3711",
+      command: "pnpm run dev --port 3711",
       url: "http://127.0.0.1:3711",
       reuseExistingServer: false,
       timeout: 120000,

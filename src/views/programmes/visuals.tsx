@@ -41,10 +41,12 @@ export function ProgrammeVisual({
   image,
   alt,
   compact = false,
+  position,
 }: {
   image?: string | null;
   alt?: string | null;
   compact?: boolean;
+  position?: string;
 }) {
   return (
     <div
@@ -53,6 +55,7 @@ export function ProgrammeVisual({
       {image ? (
         <ImageWithFallback
           src={image}
+          style={{ objectPosition: position }}
           alt={alt || ""}
           sizes="(max-width: 768px) 100vw, 50vw"
           className="absolute inset-0 h-full w-full object-cover"

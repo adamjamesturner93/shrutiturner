@@ -77,3 +77,13 @@ export function representative<T extends { startsAt: string | null; availability
     .sort((a, b) => a.startsAt!.localeCompare(b.startsAt!));
   return future.find((c) => c.availability === "Bookings open") || future[0];
 }
+
+export const programmeStateLabels: Record<string, string> = {
+  draft: "Draft",
+  on_sale: "Bookings open",
+  confirmed: "Confirmed",
+  active: "In progress",
+  follow_up: "Follow-up access",
+  archived: "Archived",
+  cancelled: "Cancelled",
+};

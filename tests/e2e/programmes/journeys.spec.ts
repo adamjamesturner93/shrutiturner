@@ -37,6 +37,10 @@ test.beforeAll(async () => {
 });
 test.beforeEach(() => clock("2027-01-25T09:00:00Z"));
 test.afterAll(async () => {
+  await db.smallGroupProgramme.updateMany({
+    where: { templateSlug: "rys-fixture" },
+    data: { publicVisibility: "hidden" },
+  });
   await db.$disconnect();
 });
 test("E2E-01 account-only login", async ({ page }) => {
@@ -141,7 +145,11 @@ test("E2E-07 coach clears without another purchase", async ({ page }) => {
 test("E2E-08 future-week UI and API protection", async ({ page }) => {
   await login(page, "priya.programme");
   await page.goto(`/dashboard/programmes/${c}/weeks`);
-  await expect(page.getByText("Week 3 — Build From There")).toBeVisible();
+  const futureWeek = page
+    .getByRole("article")
+    .filter({ has: page.getByRole("heading", { name: "Build From There", exact: true }) });
+  await expect(futureWeek.getByText("Coming up", { exact: true })).toBeVisible();
+  await expect(futureWeek.getByRole("link", { name: "Open week" })).toHaveCount(0);
   const response = await api(page, `/api/me/programmes/${c}/weeks/${c}-w3`);
   expect(response.status()).toBe(403);
   expect(await response.text()).not.toContain("Week 3 education");
@@ -288,7 +296,9 @@ test("E2E-19 below minimum requires an admin decision", async ({ page }) => {
   clock("2027-01-18T10:00:00Z");
   await login(page, "coach");
   await page.goto("/admin/programmes/rys-below-minimum");
-  await expect(page.getByText(/3 paid participants · minimum 4/)).toBeVisible();
+  const paid = page.getByRole("group", { name: "Paid participants", exact: true });
+  await expect(paid.getByText("3", { exact: true })).toBeVisible();
+  await expect(paid.getByText("Minimum 4", { exact: true })).toBeVisible();
   await expect(page.getByText(/Confirmation decision due/)).toBeVisible();
   await page.getByRole("button", { name: "Confirm cohort", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
@@ -604,4 +614,55 @@ test("UX-03 public bridge and distinct discovery on desktop and mobile", async (
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true
   );
+});
+
+test("UX-04 programme and admin journeys have usable mobile hierarchy", async ({ page }) => {
+  await login(page, "priya.programme");
+  await page.goto(`/dashboard/programmes/${c}/weeks`);
+  await expect(
+    page
+      .getByRole("navigation", { name: "Programme", exact: true })
+      .getByRole("link", { name: "Weeks", exact: true })
+  ).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("link", { name: "Open week", exact: true })).toHaveCount(1);
+  await page.screenshot({ path: "/tmp/rys-journey-weeks.png", fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/dashboard/programmes/${c}/home`);
+  await expect(
+    page.getByRole("heading", { name: "Start Where You Are", exact: true, level: 2 })
+  ).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true
+  );
+  await page.screenshot({ path: "/tmp/rys-journey-home-mobile.png", fullPage: true });
+  await login(page, "coach");
+  await page.goto(`/admin/programmes/${c}`);
+  await expect(page.getByRole("navigation", { name: "Cohort sections" })).toBeVisible();
+  await page.getByRole("link", { name: "Settings & dates", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Save settings", exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true
+  );
+  const audit = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+    .analyze();
+  expect(audit.violations.map((v) => ({ id: v.id, nodes: v.nodes.map((n) => n.target) }))).toEqual(
+    []
+  );
+  await page.screenshot({ path: "/tmp/rys-journey-admin-mobile.png", fullPage: true });
+});
+
+test("UX-05 community keeps a draft when saving fails", async ({ page }) => {
+  await login(page, "priya.programme");
+  await page.goto(`/dashboard/programmes/${c}/community`);
+  await page.getByLabel("Post title", { exact: true }).fill("Keep my draft");
+  await page.getByLabel("Your post", { exact: true }).fill("My unsaved question");
+  await page.route(`**/api/me/programmes/${c}/community`, async (route) => {
+    if (route.request().method() === "POST")
+      await route.fulfill({ status: 503, json: { message: "Please try again" } });
+    else await route.continue();
+  });
+  await page.getByRole("button", { name: "Post to community", exact: true }).click();
+  await expect(page.getByText("Please try again", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Your post", { exact: true })).toHaveValue("My unsaved question");
 });

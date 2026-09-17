@@ -8,6 +8,8 @@ import type { HealthProfile } from "@/data/health-profile-data";
 import { useAuth } from "@/context/auth-context";
 import { useProgrammeData, programmeRequest, panelClass } from "./shared";
 import type { programmeAccess } from "@/lib/programmes/access";
+import { StatusPill, eyebrow } from "./visuals";
+import { clearanceLabels } from "@/lib/programmes/policy";
 type Onboarding = {
   status: string;
   healthRevision: string | null;
@@ -37,14 +39,25 @@ export function ProgrammeOnboarding({ id, event = false }: { id: string; event?:
   }
   return (
     <section className="space-y-5">
-      <h2 className="text-2xl">Onboarding</h2>
+      <div className="space-y-2">
+        <p className={eyebrow}>Before you begin</p>
+        <h2 className="text-3xl">Onboarding</h2>
+        <p className="text-muted-foreground">
+          A few practical steps so you can take part with confidence.
+        </p>
+      </div>
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {data && (
         <>
-          <ul className="list-disc space-y-2 pl-5">
+          <ul className="bg-secondary [&>li]:bg-background grid gap-3 rounded-2xl p-5 sm:grid-cols-2 [&>li]:rounded-xl [&>li]:p-4">
             <li>Account activated — complete</li>
-            <li>Health confirmation and review — {data.status.replaceAll("_", " ")}</li>
+            <li>
+              Health confirmation and review —{" "}
+              <StatusPill>
+                {clearanceLabels[data.status as keyof typeof clearanceLabels] || data.status}
+              </StatusPill>
+            </li>
             <li>
               Required agreements —{" "}
               {data.agreements.every((a) => a.isCurrent) ? "Complete" : "Not started"}
@@ -77,7 +90,7 @@ export function ProgrammeOnboarding({ id, event = false }: { id: string; event?:
                 <p>
                   {data.health.declarationStatus === "incomplete"
                     ? "Please complete your health questionnaire."
-                    : "Your current health profile is available to review below."}
+                    : "Use the button below to review your current health profile."}
                 </p>
                 <Button onClick={() => setEditing(true)}>
                   Review or update health questionnaire

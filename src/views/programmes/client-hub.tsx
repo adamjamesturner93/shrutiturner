@@ -1,4 +1,5 @@
 "use client";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { CalendarDays, MapPin, MessageCircle, Compass, Users } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard-layout";
@@ -11,7 +12,7 @@ type Event = Hub["events"][number];
 function EventCard({ event: e }: { event: Event }) {
   return (
     <article className={cardSurface} aria-label={e.title}>
-      <ProgrammeVisual image={e.image} alt={e.imageAlt} compact />
+      <ProgrammeVisual image={e.image} alt={e.imageAlt} position={e.imagePosition} compact />
       <div className="space-y-5 p-6">
         <div className="flex flex-wrap items-center gap-3">
           <span className={eyebrow}>{e.type}</span>
@@ -366,36 +367,52 @@ export function ClientHub({
               {dashboard && (
                 <section
                   aria-labelledby="explore-title"
-                  className={`bg-secondary/50 rounded-[1.75rem] ${empty ? "p-8 md:p-10" : "p-6"}`}
+                  className="bg-brand-dark relative overflow-hidden rounded-[1.75rem] p-6 text-white md:p-8"
                 >
-                  <div className="flex gap-5">
-                    <Compass aria-hidden="true" className="text-primary mt-1 h-7 w-7 shrink-0" />
-                    <div className="space-y-4">
-                      <h2 id="explore-title" className="text-2xl">
+                  <div
+                    aria-hidden="true"
+                    className="absolute -top-24 -right-16 h-72 w-72 rounded-full border-[40px] border-white/5"
+                  />
+                  <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                    <div className="max-w-lg space-y-3">
+                      <div className="text-brand-accent-light flex items-center gap-3">
+                        <Compass aria-hidden="true" className="h-5 w-5" />
+                        <span className="text-xs font-medium tracking-[0.24em] uppercase">
+                          Explore
+                        </span>
+                      </div>
+                      <h2 id="explore-title" className="text-2xl md:text-3xl">
                         See what's coming up
                       </h2>
-                      <p className="text-muted-foreground">
-                        Explore upcoming programmes, workshops and retreats.
+                      <p className="text-white/80">
+                        Find your next opportunity to move, learn and connect.
                       </p>
                       {data.discovery.map((p) => (
-                        <p key={p.href}>
-                          <Link className="underline underline-offset-4" href={p.href}>
-                            {p.title}
-                          </Link>
-                          <span className="text-muted-foreground text-sm"> · {p.availability}</span>
-                        </p>
-                      ))}
-                      <div className="flex flex-wrap gap-x-6 gap-y-4">
                         <Link
-                          className="font-medium underline underline-offset-4"
-                          href="/programmes"
+                          key={p.href}
+                          href={p.href}
+                          className="block rounded-xl bg-white/10 p-4 transition hover:bg-white/15"
                         >
-                          Programmes
+                          <span className="text-brand-accent-light mb-1 block text-xs font-medium">
+                            {p.availability}
+                          </span>
+                          <span className="font-medium">
+                            {p.title} <span aria-hidden="true">→</span>
+                          </span>
                         </Link>
-                        <Link className="font-medium underline underline-offset-4" href="/retreats">
-                          Retreats &amp; Workshops
+                      ))}
+                    </div>
+                    <div className="flex shrink-0 flex-col gap-3">
+                      <Button asChild variant="secondary" className="min-h-11">
+                        <Link href="/programmes">
+                          Programmes <span aria-hidden="true">→</span>
                         </Link>
-                      </div>
+                      </Button>
+                      <Button asChild variant="secondary" className="min-h-11">
+                        <Link href="/retreats">
+                          Retreats &amp; Workshops <span aria-hidden="true">→</span>
+                        </Link>
+                      </Button>
                     </div>
                   </div>
                 </section>
