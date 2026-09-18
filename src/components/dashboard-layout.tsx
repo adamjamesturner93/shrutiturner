@@ -16,6 +16,7 @@ import {
   ArrowRight,
   Compass,
   CalendarDays,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { SEO } from "./seo";
@@ -39,7 +40,7 @@ type LegalGuardModalProps = {
 const NAV_ITEMS = [
   { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { path: "/dashboard/coaching", label: "Coaching", icon: Compass },
-  { path: "/dashboard/programmes", label: "Programmes", icon: CalendarDays },
+  { path: "/dashboard/programmes", label: "Programmes", icon: BookOpen },
   { path: "/dashboard/events", label: "Events", icon: CalendarDays },
   { path: "/dashboard/account", label: "Account", icon: Settings },
 ];
@@ -261,11 +262,7 @@ export function DashboardLayout({
         {/* Brand */}
         <div className="border-brand-white/10 border-b p-6">
           <Link href="/" className="block">
-            <IconHorizontal
-              tone="white"
-              alt="Shruti Turner"
-              className="h-10 w-auto transition-opacity hover:opacity-90"
-            />
+            <IconHorizontal tone="white" alt="Shruti Turner" className="h-auto w-full max-w-60" />
           </Link>
         </div>
 

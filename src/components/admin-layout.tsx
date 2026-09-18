@@ -29,13 +29,14 @@ import {
   TrendingUp,
   Shield,
   CalendarDays,
+  BookOpen,
   ExternalLink,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { path: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { path: "/admin/coaching", label: "Coaching", icon: Compass },
-  { path: "/admin/programmes", label: "Programmes", icon: CalendarDays },
+  { path: "/admin/programmes", label: "Programmes", icon: BookOpen },
   { path: "/admin/retreats", label: "Retreats & workshops", icon: CalendarDays },
   { path: "/admin/members", label: "Members", icon: Users },
   { path: "/admin/blog-comments", label: "Blog comments", icon: MessageCircle },
@@ -139,7 +140,11 @@ export function AdminLayout({
         <aside className="bg-brand-dark fixed inset-y-0 left-0 z-40 hidden w-72 flex-col text-white lg:flex">
           <div className="border-b border-white/20 p-6">
             <Link href="/admin">
-              <IconHorizontal tone="white" alt="Shruti Turner admin" className="h-10 w-auto" />
+              <IconHorizontal
+                tone="white"
+                alt="Shruti Turner admin"
+                className="h-auto w-full max-w-60"
+              />
             </Link>
             <p className="mt-2 text-xs text-white/80">Admin</p>
           </div>

@@ -57,6 +57,7 @@ export function PublicProgrammeCatalogue({
           </div>
         ) : (
           <div className="max-w-2xl rounded-2xl bg-white p-8 md:p-12">
+            <p className="text-primary mb-3 text-sm font-medium">New programmes coming soon</p>
             <h2 className="text-2xl">No programmes are currently open for booking.</h2>
             <p className="text-muted-foreground my-5 leading-relaxed">{data.empty}</p>
             <ActionLink href="/subscribe">Join the mailing list</ActionLink>
