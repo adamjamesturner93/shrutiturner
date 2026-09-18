@@ -66,3 +66,29 @@ CONTENTFUL_PRUNE_CONFIRM=delete-retired-types pnpm run contentful:prune:retired
 ```
 
 The command refuses to delete a retired type that still contains entries.
+
+## Importing production retreat Event Pages
+
+Use the production environment file explicitly; never copy production credentials into `.env`.
+The file must identify the intended database (`DIRECT_URL` preferred), Contentful space,
+production `CONTENTFUL_ENVIRONMENT`, management token and delivery token. Set all of these
+explicitly so missing values cannot fall back to the local sandbox configuration. Ensure
+inherited shell variables are not overriding the selected environment file.
+
+```sh
+# Read-only report: inspect environment, slugs, publish states, warnings and actions.
+node --env-file=.env.prod --experimental-strip-types scripts/import-retreat-experiences-from-contentful.ts
+
+# Only after reviewing the report and a production backup/recovery point:
+node --env-file=.env.prod --experimental-strip-types scripts/import-retreat-experiences-from-contentful.ts --apply
+```
+
+The importer needs the event format presets created by the app's migrations. It creates
+Event Pages and links matching existing database dates; it does not recreate dates, prices,
+room inventory or bookings from Contentful. Changed-source conflicts require a reviewed
+update manifest; conversion warnings stop application. Imported published content comes
+from the published Delivery API snapshot, not an unpublished draft.
+
+Venue editorial information (`retreatVenue`) and referenced Contentful asset URLs remain
+in Contentful. This is an Event Page migration, not a full Contentful shutdown. Verify public
+pages and booking flows after import before retiring any fallback or source entries.

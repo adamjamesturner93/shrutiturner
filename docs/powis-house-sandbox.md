@@ -44,3 +44,34 @@ Run the optional seeded browser check with:
 ```sh
 POWIS_HOUSE_SEEDED=1 pnpm exec playwright test tests/e2e/public/retreats/powis-house.spec.ts
 ```
+
+## Current local booking-review fixtures (September 2026)
+
+For the current database-owned demo, use:
+
+```sh
+node --env-file=.env --experimental-strip-types scripts/seed-local-booking-review.ts
+```
+
+This requires a localhost database and a Stripe test key. It writes no Contentful content.
+It corrects The Middle Ground (4 October 2026) and Pause & Restore (13 December 2026)
+to online workshops, creates missing ticket inventory, and preserves existing bookings.
+It adds one Rebuilding Your Strength January 2027 programme (£125, 12 places) via the
+programme demo seed's `--only=demo-rebuilding-your-strength` option.
+
+The new retreat is `/retreats/powis-house-weekend`, 11–13 June 2027. Dates, prices and
+inclusions are mock data. Shared places cost £450; private rooms cost £600 for one or £900
+for two, with a 20% deposit and balance due 56 days before arrival.
+
+The screenshot's room setup is represented by four venue groups and five physical rooms:
+
+- Green: fixed king, private bathroom; private bookings for one or two only.
+- Grey and Yellow: convertible king/twin, private bathroom; shared or private bookings.
+- Beige: fixed twin, shared bathroom; shared or private bookings.
+- Blue: convertible king/twin, shared bathroom; shared or private bookings.
+
+All rooms sleep two. Shared/private selling options use the same group inventory pool,
+so the retreat has ten physical places, not the sum of independently advertised options.
+Old venue groups are deactivated. Re-running does not rebuild the retreat's inventory or
+reset bookings. The older Contentful seed above remains a separate legacy fixture and
+should not be used to recreate this setup.

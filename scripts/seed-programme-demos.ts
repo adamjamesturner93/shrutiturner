@@ -57,6 +57,10 @@ const demos = [
     ],
   },
 ];
+const onlySlug = process.argv.find((arg) => arg.startsWith("--only="))?.slice(7);
+if (onlySlug && !demos.some((demo) => demo.slug === onlySlug))
+  throw new Error("Unknown demo programme slug");
+const selectedDemos = onlySlug ? demos.filter((demo) => demo.slug === onlySlug) : demos;
 try {
   if (process.argv.includes("--clean")) {
     const keep = demos.map((demo) => `${demo.slug}-2027`);
@@ -99,7 +103,7 @@ try {
       { timeout: 30000 }
     );
   }
-  for (const demo of demos) {
+  for (const demo of selectedDemos) {
     const start = new Date(demo.startsAt);
     const day = (offset: number, hour = 0, minute = 0) =>
       new Date(start.getTime() + offset * 86400000 + hour * 3600000 + minute * 60000);
