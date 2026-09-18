@@ -1,3 +1,4 @@
+import { PublicPageLoading } from "@/components/public-loading";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { getProgrammeCatalogue } from "@/lib/programmes/public-service";
@@ -8,7 +9,7 @@ async function Catalogue() {
 }
 export default function Page() {
   return (
-    <Suspense fallback={<p>Loading programmes…</p>}>
+    <Suspense fallback={<PublicPageLoading label="Loading programmes" />}>
       <Catalogue />
     </Suspense>
   );

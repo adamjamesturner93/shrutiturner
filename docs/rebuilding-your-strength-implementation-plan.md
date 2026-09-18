@@ -187,3 +187,17 @@ Keep the existing programme/cohort, entitlement, clearance, weekly release, teac
 - Focused Playwright: 3 journeys passed in development (28.7 s) and production (21.5 s), covering persistent DOM identity, 950 ms delayed responses, fast-response skeleton suppression, direct weeks, history, locked controls, mobile overflow, keyboard navigation and axe. These are deterministic browser-mocked section responses, plus a real server denial check; they are UX checks, not a replacement for the existing domain/security suite.
 - Production build succeeded. Both modes preserved the header/sidebar during delayed navigation; fast fixture responses showed no partial skeleton. No heavy media was downloaded by these fixtures. The final mobile review prompted a larger heading scroll offset for the fixed studio header.
 - Focused unit coverage: 78 tests passed, including confirmation identity/privacy and paginated community scope/clearance. Tests create/delete only a reserved account and do not reseed or clean programme/booking records.
+
+### Public programme overview and deployment check — 18 September 2026
+
+The catalogue now explains the small-group experience even when no cohort is on sale: a real brand photograph, learning/live/practice/community introduction, availability and mailing-list section, and accessible FAQs. Catalogue introductory/empty copy remains configurable in PlatformSetting. The route uses the shared public skeleton while its database read resolves.
+
+Read-only checks of **both staging and production** report these pending migrations:
+
+- `20260915090000_programme_cohorts`
+- `20260915100000_event_offering_clearance`
+- `20260916090000_programme_public_presentation`
+
+These must be applied with the existing env-specific migration scripts before deploying this branch. No remote migrations were applied during this review. Programme definitions, cohorts and catalogue settings use PostgreSQL; this release does not require new Contentful models or entries. This is not a certification of unrelated Contentful content or credentials.
+
+Before opening a live cohort, verify the external `programme_maintenance` schedule, existing email retry job, production payment webhook and live/media configuration. Scheduler infrastructure was not remotely verified here. The local database cleanup and two workshop fixtures are local-only; they are not deployment seeds and must not be copied wholesale into production. An empty production programme catalogue does not require demo seeding.
