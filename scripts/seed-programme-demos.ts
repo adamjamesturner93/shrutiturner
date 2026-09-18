@@ -1,17 +1,24 @@
+import { writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { fixtureThemes, fixtureReflections, rysPublicCopy } from "../prisma/fixtures/programmes.ts";
 
-// Local visual-review data, separate from both production drafts and automated fixtures.
+// Local bookable demos. --clean removes other programme records after a private backup.
 const url = process.env.DATABASE_URL;
 if (!url || !["localhost", "127.0.0.1"].includes(new URL(url).hostname)) {
   throw new Error("Programme demos require a local database");
+}
+if (!process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_")) {
+  throw new Error("Bookable demos require a Stripe test key");
 }
 const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
 const demos = [
   {
     slug: "demo-rebuilding-your-strength",
     title: "Rebuilding Your Strength",
+    pricePence: 12500,
     startsAt: "2027-01-25T00:00:00Z",
     image: "/images/shruti-coaching.jpeg",
     alt: "Shruti coaching a strength exercise",
@@ -24,6 +31,7 @@ const demos = [
   {
     slug: "demo-move-with-confidence",
     title: "Move With Confidence",
+    pricePence: 8000,
     startsAt: "2027-02-08T00:00:00Z",
     image: "/images/shruti.jpeg",
     alt: "Shruti Turner",
@@ -50,6 +58,47 @@ const demos = [
   },
 ];
 try {
+  if (process.argv.includes("--clean")) {
+    const keep = demos.map((demo) => `${demo.slug}-2027`);
+    await db.$transaction(
+      async (tx) => {
+        const programmes = await tx.smallGroupProgramme.findMany({
+          where: { id: { notIn: keep } },
+          include: {
+            sessions: true,
+            enrollments: true,
+            weeks: true,
+            posts: true,
+            messages: true,
+            clearances: true,
+            replayAssets: { include: { entitlements: true } },
+            instructorAssignments: true,
+            giftPurchases: true,
+          },
+        });
+        const ids = programmes.map((p) => p.id);
+        const emailIds = programmes.flatMap((p) => p.messages.map((m) => `programme-${m.id}`));
+        const emails = await tx.emailDelivery.findMany({ where: { id: { in: emailIds } } });
+        const definitions = await tx.programmeDefinition.findMany();
+        const backup = join(tmpdir(), `programme-cleanup-${Date.now()}.json`);
+        writeFileSync(backup, JSON.stringify({ programmes, definitions, emails }, null, 2), {
+          mode: 0o600,
+        });
+        await tx.emailDelivery.deleteMany({ where: { id: { in: emailIds } } });
+        await tx.offeringClearance.deleteMany({ where: { programmeId: { in: ids } } });
+        await tx.programmePost.updateMany({
+          where: { programmeId: { in: ids } },
+          data: { parentId: null },
+        });
+        await tx.smallGroupProgramme.deleteMany({ where: { id: { in: ids } } });
+        await tx.programmeDefinition.deleteMany({
+          where: { cohorts: { none: {} }, slug: { notIn: demos.map((d) => d.slug) } },
+        });
+        console.log(`Removed ${ids.length} old programme records. Private backup: ${backup}`);
+      },
+      { timeout: 30000 }
+    );
+  }
   for (const demo of demos) {
     const start = new Date(demo.startsAt);
     const day = (offset: number, hour = 0, minute = 0) =>
@@ -73,17 +122,21 @@ try {
           subtitle: demo.subtitle,
           shortDescription: demo.summary,
           salesCopy: demo.summary,
-          publicVisibility: "coming_soon",
+          publicVisibility: "listed",
           publicImageUrl: demo.image,
           publicImageAlt: demo.alt,
           whoItsForJson: demo.suitability,
           weekByWeekJson: demo.themes,
           durationLabel: `${demo.themes.length} coached weeks`,
           durationWeeks: demo.themes.length,
-          pricePence: 0,
-          cohortSize: 0,
-          cohortState: "draft",
-          enrolmentOpen: false,
+          pricePence: demo.pricePence,
+          salePricePence: demo.pricePence,
+          maximumParticipants: 12,
+          cohortSize: 12,
+          cohortState: "on_sale",
+          enrolmentOpen: true,
+          refundWording:
+            "Local test programme: payments use Stripe test mode. If this cohort is cancelled, the programme fee is refunded. Contact Shruti before the programme starts to request cancellation.",
           startDate: start,
           timezone: "Europe/London",
           minimumParticipants: 4,
@@ -104,7 +157,17 @@ try {
             },
           ],
         },
-        update: {},
+        update: {
+          publicVisibility: "listed",
+          cohortState: "on_sale",
+          enrolmentOpen: true,
+          pricePence: demo.pricePence,
+          salePricePence: demo.pricePence,
+          maximumParticipants: 12,
+          cohortSize: 12,
+          refundWording:
+            "Local test programme: payments use Stripe test mode. If this cohort is cancelled, the programme fee is refunded. Contact Shruti before the programme starts to request cancellation.",
+        },
       });
       for (let i = 0; i < demo.themes.length; i++) {
         const sessionId = `${id}-session-${i + 1}`;
