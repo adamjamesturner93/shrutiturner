@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { programmeRequest, panelClass } from "./shared";
 export function ProgrammePurchase({
@@ -11,6 +12,24 @@ export function ProgrammePurchase({
   version: string;
   title: string;
 }) {
+  const { user, isAuthenticated } = useAuth();
+  const accountKey = isAuthenticated && user ? user.id : "guest";
+  const accountName =
+    isAuthenticated && user ? [user.firstName, user.lastName].filter(Boolean).join(" ") : "";
+  const accountEmail = isAuthenticated && user ? user.email : "";
+  const [details, setDetails] = useState<{ account: string; name?: string; email?: string } | null>(
+    null
+  );
+  const [editing, setEditing] = useState(false);
+  const name = (details?.account === accountKey ? details.name : undefined) ?? accountName;
+  const email = (details?.account === accountKey ? details.email : undefined) ?? accountEmail;
+  const knownPurchaser = Boolean(accountName && accountEmail);
+  const change = (field: "name" | "email", value: string) =>
+    setDetails((current) => ({
+      ...(current?.account === accountKey ? current : {}),
+      account: accountKey,
+      [field]: value,
+    }));
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [other, setOther] = useState(false);
@@ -21,7 +40,7 @@ export function ProgrammePurchase({
         e.preventDefault();
         setBusy(true);
         const f = new FormData(e.currentTarget);
-        const purchaser = { name: String(f.get("name")), email: String(f.get("email")) };
+        const purchaser = { name, email };
         try {
           const r = await programmeRequest<{ checkoutUrl: string }>(
             `/api/programmes/cohorts/${id}/checkout`,
@@ -47,25 +66,47 @@ export function ProgrammePurchase({
     >
       <h3 className="text-xl">Book your place in {title}</h3>
       {error && <p role="alert">{error}</p>}
-      <label className="block">
-        Your name
-        <input
-          name="name"
-          required
-          autoComplete="name"
-          className="mt-1 block w-full rounded border p-2"
-        />
-      </label>
-      <label className="block">
-        Your email
-        <input
-          name="email"
-          type="email"
-          required
-          autoComplete="email"
-          className="mt-1 block w-full rounded border p-2"
-        />
-      </label>
+      {knownPurchaser && !editing ? (
+        <div className="bg-secondary rounded-xl p-4" aria-label="Your booking details">
+          <p className="text-muted-foreground text-sm">Booking with your account</p>
+          <p className="mt-2 font-medium">{name}</p>
+          <p className="text-sm break-all">{email}</p>
+          <Button
+            type="button"
+            variant="link"
+            className="mt-2 px-0"
+            onClick={() => setEditing(true)}
+          >
+            Change booking details
+          </Button>
+        </div>
+      ) : (
+        <>
+          <label className="block">
+            Your name
+            <input
+              name="name"
+              value={name}
+              onChange={(e) => change("name", e.target.value)}
+              required
+              autoComplete="name"
+              className="mt-1 block w-full rounded border p-2"
+            />
+          </label>
+          <label className="block">
+            Your email
+            <input
+              name="email"
+              value={email}
+              onChange={(e) => change("email", e.target.value)}
+              type="email"
+              required
+              autoComplete="email"
+              className="mt-1 block w-full rounded border p-2"
+            />
+          </label>
+        </>
+      )}
       <label className="flex gap-2">
         <input type="checkbox" checked={other} onChange={(e) => setOther(e.target.checked)} />
         I'm buying a place for somebody else

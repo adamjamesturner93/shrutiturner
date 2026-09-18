@@ -51,15 +51,19 @@ test("E2E-01 account-only login", async ({ page }) => {
   for (const name of ["Coaching", "Programmes", "Events"])
     await expect(nav.getByRole("link", { name, exact: true })).toHaveCount(0);
 });
-async function purchase(page: Page, email: string) {
+async function purchase(page: Page, email: string, signedIn = false) {
   clock("2027-01-17T12:00:00Z");
   await db.smallGroupProgramme.update({
     where: { id: "rys-on-sale" },
     data: { publicVisibility: "listed" },
   });
   await page.goto("/programmes/rys-on-sale");
-  await page.getByLabel("Your name", { exact: true }).fill("Synthetic New Participant");
-  await page.getByLabel("Your email", { exact: true }).fill(email);
+  if (signedIn) {
+    await expect(page.getByLabel("Your booking details")).toContainText(email);
+  } else {
+    await page.getByLabel("Your name", { exact: true }).fill("Synthetic New Participant");
+    await page.getByLabel("Your email", { exact: true }).fill(email);
+  }
   await page.getByLabel("I agree to the programme terms", { exact: false }).check();
   await page.getByLabel("I understand health screening", { exact: false }).check();
   await page.getByRole("button", { name: "Continue to secure checkout" }).click();
@@ -87,7 +91,7 @@ test("E2E-03 existing account reused", async ({ page }) => {
   await db.smallGroupProgrammeEnrollment.deleteMany({
     where: { userId: users["alex.account"], programmeId: "rys-on-sale" },
   });
-  await purchase(page, "alex.account@example.test");
+  await purchase(page, "alex.account@example.test", true);
   expect(await db.user.count({ where: { email: "alex.account@example.test" } })).toBe(1);
   expect(
     (
@@ -665,4 +669,50 @@ test("UX-05 community keeps a draft when saving fails", async ({ page }) => {
   await page.getByRole("button", { name: "Post to community", exact: true }).click();
   await expect(page.getByText("Please try again", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Your post", { exact: true })).toHaveValue("My unsaved question");
+});
+
+test("UX-06 signed-in programme checkout reuses purchaser details and keeps gifts separate", async ({
+  page,
+}) => {
+  clock("2027-01-17T12:00:00Z");
+  await db.smallGroupProgramme.update({
+    where: { id: "rys-on-sale" },
+    data: { publicVisibility: "listed" },
+  });
+  await login(page, "alex.account");
+  await page.goto("/programmes/rys-on-sale");
+  await expect(page.getByLabel("Your booking details")).toContainText("alex.account@example.test");
+  await expect(page.getByLabel("Your email", { exact: true })).toHaveCount(0);
+  const requests: {
+    purchaser: { name: string; email: string };
+    participant: { name: string; email: string };
+  }[] = [];
+  await page.route("**/api/programmes/cohorts/rys-on-sale/checkout", async (route) => {
+    requests.push(route.request().postDataJSON());
+    await route.fulfill({ status: 400, json: { message: "Checkout verification only" } });
+  });
+  await page.getByLabel("I agree to the programme terms", { exact: false }).check();
+  await page.getByLabel("I understand health screening", { exact: false }).check();
+  await page.getByRole("button", { name: "Continue to secure checkout" }).click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Checkout verification only" })
+  ).toHaveText("Checkout verification only");
+  expect(requests[0].purchaser.email).toBe("alex.account@example.test");
+  expect(requests[0].participant).toEqual(requests[0].purchaser);
+  await page.getByLabel("I'm buying a place for somebody else").check();
+  await expect(page.getByLabel("Participant email", { exact: true })).toHaveValue("");
+  await page.getByLabel("Participant name", { exact: true }).fill("Gift Participant");
+  await page.getByLabel("Participant email", { exact: true }).fill("gift.participant@example.test");
+  await page.getByRole("button", { name: "Continue to secure checkout" }).click();
+  await expect.poll(() => requests.length).toBe(2);
+  expect(requests[1].purchaser.email).toBe("alex.account@example.test");
+  expect(requests[1].participant.email).toBe("gift.participant@example.test");
+  await page.getByRole("button", { name: "Change booking details" }).click();
+  await expect(page.getByLabel("Your email", { exact: true })).toHaveValue(
+    "alex.account@example.test"
+  );
+  await page.getByLabel("Your name", { exact: true }).fill("Preferred Name");
+  await page.getByRole("button", { name: "Continue to secure checkout" }).click();
+  await expect.poll(() => requests.length).toBe(3);
+  expect(requests[2].purchaser.name).toBe("Preferred Name");
 });
