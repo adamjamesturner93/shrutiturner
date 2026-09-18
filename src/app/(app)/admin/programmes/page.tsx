@@ -1,3 +1,4 @@
+import { ProgrammePageLoading } from "@/views/programmes/loading";
 import { StatusPill, ActionLink, eyebrow, cardSurface } from "@/views/programmes/visuals";
 import { programmeStateLabels } from "@/lib/programmes/presentation";
 import { ProgrammeCreate } from "@/views/programmes/create";
@@ -37,7 +38,7 @@ async function Content() {
 }
 export default function Page() {
   return (
-    <Suspense fallback={<p>Loading programmes…</p>}>
+    <Suspense fallback={<ProgrammePageLoading admin />}>
       <Content />
     </Suspense>
   );

@@ -11,11 +11,30 @@ const postSchema = z
     resourceIds: z.array(z.string()).max(10).default([]),
   })
   .strict();
-export async function listProgrammePosts(userId: string, cohortId: string) {
+export async function listProgrammePosts(
+  userId: string,
+  cohortId: string,
+  page?: { limit: number; cursor?: string }
+) {
   const access = await programmeAccess(userId, cohortId, "community");
+  const roots = page
+    ? await db.programmePost.findMany({
+        where: {
+          programmeId: access.cohort.id,
+          parentId: null,
+          ...(access.staff ? {} : { createdAt: { lte: access.now } }),
+        },
+        orderBy: [{ pinned: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+        take: page.limit + 1,
+        ...(page.cursor ? { cursor: { id: page.cursor }, skip: 1 } : {}),
+        select: { id: true },
+      })
+    : null;
+  const rootIds = roots?.slice(0, page?.limit).map((r) => r.id);
   const posts = await db.programmePost.findMany({
     where: {
       programmeId: access.cohort.id,
+      ...(rootIds ? { OR: [{ id: { in: rootIds } }, { parentId: { in: rootIds } }] } : {}),
       ...(access.staff ? {} : { createdAt: { lte: access.now } }),
     },
     orderBy: [{ pinned: "desc" }, { createdAt: "asc" }],
@@ -29,6 +48,7 @@ export async function listProgrammePosts(userId: string, cohortId: string) {
       })
     : [];
   return {
+    nextCursor: page && roots && roots.length > page.limit ? roots[page.limit - 1].id : null,
     resources: resources.map((r) => ({
       id: r.id,
       title: r.smallGroupProgrammeSession?.title || "Coach demonstration",

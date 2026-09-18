@@ -155,3 +155,35 @@ Preserve the model and access controls. Public website = discover/decide/buy; My
 - Community drafts survive failed saves; browser coverage verifies this. Browser and integration fixture cleanup hide synthetic offers after tests.
 - Typecheck passed. Lint has no errors and the same three existing booking/auth warnings. Local admin HTTP requests returned successfully after Prisma generation. Development and programme test startup now generate the Prisma client.
 - No database migration, remote deployment or push is needed for this refinement.
+
+### Programme navigation and purchase confirmation refinement
+
+- Keep the programme shell in its cohort route layout so changing tabs or weeks preserves the title and navigation. Retain shareable URLs and browser Back/Forward.
+- Show skeletons within the changing content area, using the existing loading components. Never show stale content from a different week while its data is loading.
+- Add a persistent week selector plus previous/next released-week links. Unreleased weeks remain unavailable and server-side release/clearance checks remain authoritative.
+- Redesign purchase confirmation with readable dates, a clear next action and account-aware onboarding. Signed-in participants go directly to onboarding; gift purchasers do not receive participant access or health status.
+- Verify slow-network navigation, loading, browser history, direct week links and confirmation states without resetting the two local demo programmes or purchases.
+
+#### Persistent participant workspace — final UX acceptance criteria
+
+Keep the existing programme/cohort, entitlement, clearance, weekly release, teaching, media and expiry architecture. Implement this as a separate UX/performance refinement.
+
+- Resolve identity and programme navigation in a persistent cohort layout. Never replace a resolved title/sidebar/header during sibling navigation. Preserve shareable child URLs and browser history.
+- Separate shell metadata from week, live, resources and community content reads. Revalidate access server-side on every protected read. Do not eagerly load full programme content or media.
+- Provide immediate, accessible pending-link feedback. Delay partial skeletons by 200 ms, with destination-specific geometry and one restrained status announcement. Fast responses should render without a skeleton flash.
+- Use framework link prefetch for visible routes and safe hover/focus metadata prefetch where needed. Prefetch adjacent released week metadata only; never fetch media or unreleased bodies. Do not persist protected data across account sessions.
+- Add a desktop week selector with short titles and release information, a compact mobile selector, and bottom previous/next controls. Keep locked weeks visible without links; keep the Weeks overview optional.
+- Position/focus explicit navigation at the content heading while respecting browser Back/Forward and reduced motion. Do not reset the global shell scroll unnecessarily.
+- Verify persistent DOM/header, 800–1000 ms delayed reads, fast cached navigation, direct week switching, locked week/API denial, previous/next, browser history, mobile overflow, keyboard and axe. Measure and inspect development and production builds.
+- Retain the requested account-aware, visually consistent purchase confirmation improvement, including purchaser/participant separation.
+- Report routing, loading, prefetch, week-navigation, test additions and actual production observations. Preserve local purchases and the two bookable demos while verifying.
+
+### Participant workspace refinement — verification (18 September 2026)
+
+- Cohort layout now owns the mounted participant workspace. Child URLs update the section beneath the shared identity/navigation; shell metadata is not re-requested on each tab change.
+- Section API projections and released-week previews retain the existing access checks. Native route prefetch warms tabs, and adjacent released-week previews contain labels only. Videos use `preload="none"`. Community loads a bounded first page with an explicit load-more action.
+- Partial skeletons wait 200 ms. Programme navigation exposes the current destination and pending feedback. Desktop week cards, mobile selection and previous/next links retain release gating. Explicit navigation focuses the content heading with space for the mobile header; history navigation keeps browser behaviour.
+- Purchase confirmation recognises the signed-in participant, gives guests account entry, and withholds participant links from gift purchasers and pending payments.
+- Focused Playwright: 3 journeys passed in development (28.7 s) and production (21.5 s), covering persistent DOM identity, 950 ms delayed responses, fast-response skeleton suppression, direct weeks, history, locked controls, mobile overflow, keyboard navigation and axe. These are deterministic browser-mocked section responses, plus a real server denial check; they are UX checks, not a replacement for the existing domain/security suite.
+- Production build succeeded. Both modes preserved the header/sidebar during delayed navigation; fast fixture responses showed no partial skeleton. No heavy media was downloaded by these fixtures. The final mobile review prompted a larger heading scroll offset for the fixed studio header.
+- Focused unit coverage: 78 tests passed, including confirmation identity/privacy and paginated community scope/clearance. Tests create/delete only a reserved account and do not reseed or clean programme/booking records.

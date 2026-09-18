@@ -186,3 +186,52 @@ export async function getProgrammeWeek(userId: string, cohortId: string, weekId:
       : null,
   };
 }
+
+/** Shared identity and navigation only; section content is loaded on demand. */
+export async function getProgrammeShell(userId: string, id: string) {
+  const portal = await getProgrammePortal(userId, id);
+  return {
+    id: portal.id,
+    title: portal.title,
+    state: portal.state,
+    staff: portal.staff,
+    timezone: portal.timezone,
+    startsAt: portal.startsAt,
+    liveCoachingEndsAt: portal.liveCoachingEndsAt,
+    structuredProgrammeEndsAt: portal.structuredProgrammeEndsAt,
+    accessEndsAt: portal.accessEndsAt,
+    communityOpenAt: portal.communityOpenAt,
+    accessible: portal.accessible,
+    canExercise: portal.canExercise,
+    canCommunity: portal.canCommunity,
+    clearanceStatus: portal.clearanceStatus,
+    clearanceMessage: portal.clearanceMessage,
+    agreementsComplete: portal.agreementsComplete,
+    weeks: portal.weeks,
+    currentWeek: portal.currentWeek,
+    credit: portal.credit,
+  };
+}
+export async function getProgrammeSection(userId: string, id: string, section: string) {
+  if (!["home", "weeks", "live", "community", "resources", "onboarding"].includes(section))
+    throw new Error("NOT_FOUND");
+  await programmeAccess(userId, id);
+  const portal = await getProgrammePortal(userId, id);
+  return {
+    introduction: section === "home" ? portal.introduction : "",
+    equipment: ["home", "live", "resources"].includes(section) ? portal.equipment : "",
+    resources: section === "resources" ? portal.resources : [],
+    closingBody: ["home", "resources"].includes(section) ? portal.closingBody : "",
+    closingVideoUrl: ["home", "resources"].includes(section) ? portal.closingVideoUrl : null,
+    sessions:
+      section === "live"
+        ? portal.sessions
+        : section === "home"
+          ? portal.sessions.filter((s) => s.upcoming).slice(0, 1)
+          : [],
+  };
+}
+export async function getProgrammeWeekPreview(userId: string, id: string, weekId: string) {
+  const { week } = await requireReleasedWeek(userId, id, weekId);
+  return { id: week.id, number: week.number, title: week.title, theme: week.theme };
+}

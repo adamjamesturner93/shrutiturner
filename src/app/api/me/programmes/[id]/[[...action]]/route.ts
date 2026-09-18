@@ -1,5 +1,11 @@
 import { requireSessionUser } from "@/lib/api/auth-user";
-import { getProgrammePortal, getProgrammeWeek } from "@/lib/programmes/content-service";
+import {
+  getProgrammePortal,
+  getProgrammeWeek,
+  getProgrammeShell,
+  getProgrammeSection,
+  getProgrammeWeekPreview,
+} from "@/lib/programmes/content-service";
 import { programmeAccess, healthRevision } from "@/lib/programmes/access";
 import { confirmProgrammeHealth } from "@/lib/programmes/clearance-service";
 import {
@@ -18,10 +24,27 @@ export async function GET(_request: Request, context: Context) {
     const { id, action = [] } = await context.params;
     let result: unknown;
     if (!action.length) result = await getProgrammePortal(user.id, id);
+    else if (action[0] === "shell") result = await getProgrammeShell(user.id, id);
+    else if (action[0] === "sections" && action[1])
+      result = await getProgrammeSection(user.id, id, action[1]);
+    else if (action[0] === "weeks" && action[1] && action[2] === "preview")
+      result = await getProgrammeWeekPreview(user.id, id, action[1]);
     else if (action[0] === "weeks" && action[1])
       result = await getProgrammeWeek(user.id, id, action[1]);
-    else if (action[0] === "community") result = await listProgrammePosts(user.id, id);
-    else if (action[0] === "replays" && action[1])
+    else if (action[0] === "community") {
+      const query = new URL(_request.url).searchParams;
+      const limit = Number(query.get("limit"));
+      result = await listProgrammePosts(
+        user.id,
+        id,
+        query.has("limit")
+          ? {
+              limit: Number.isInteger(limit) && limit > 0 ? Math.min(50, limit) : 20,
+              cursor: query.get("cursor") || undefined,
+            }
+          : undefined
+      );
+    } else if (action[0] === "replays" && action[1])
       result = await programmeReplayAccess(user.id, id, action[1]);
     else if (action[0] === "onboarding") {
       const access = await programmeAccess(user.id, id);

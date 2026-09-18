@@ -1,4 +1,5 @@
 "use client";
+import { ProgrammeContentLoading } from "./loading";
 import { programmeStateLabels } from "@/lib/programmes/presentation";
 import Link from "next/link";
 import { useState } from "react";
@@ -107,7 +108,7 @@ export function ProgrammeAdmin({ id }: { id: string }) {
             </div>
           )}
         </header>
-        {!data && !error && <p role="status">Loading cohort…</p>}
+        {!data && !error && <ProgrammeContentLoading label="Loading cohort administration" />}
         {saving && <p role="status">Saving changes…</p>}
         {error && <p role="alert">{error}</p>}
         {message && <p role="status">{message}</p>}

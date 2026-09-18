@@ -1,4 +1,5 @@
 "use client";
+import { DelayedProgrammeLoading } from "./loading";
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ export function ProgrammeOnboarding({ id, event = false }: { id: string; event?:
           A few practical steps so you can take part with confidence.
         </p>
       </div>
+      {!data && !error && <DelayedProgrammeLoading label="Loading onboarding" />}
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {data && (

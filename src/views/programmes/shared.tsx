@@ -11,29 +11,46 @@ export async function programmeRequest<T>(url: string, body?: unknown): Promise<
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.message || "Unable to complete your request");
+  if (body !== undefined) window.dispatchEvent(new Event("programme:updated"));
   return data as T;
 }
-export function useProgrammeData<T>(url: string) {
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState("");
+export function useProgrammeData<T>(url: string, refreshKey?: string) {
+  const [result, setResult] = useState<{ url: string; data: T } | null>(null);
+  const [failure, setFailure] = useState<{ url: string; message: string } | null>(null);
   const [version, setVersion] = useState(0);
+  useEffect(() => {
+    const refresh = () => setVersion((value) => value + 1);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("programme:updated", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("programme:updated", refresh);
+    };
+  }, []);
   useEffect(() => {
     let active = true;
     programmeRequest<T>(url)
       .then((value) => {
         if (active) {
-          setData(value);
-          setError("");
+          setResult({ url, data: value });
+          setFailure(null);
         }
       })
       .catch((e: Error) => {
-        if (active) setError(e.message);
+        if (active) {
+          setFailure({ url, message: e.message });
+          setResult(null);
+        }
       });
     return () => {
       active = false;
     };
-  }, [url, version]);
-  return { data, error, reload: () => setVersion((value) => value + 1) };
+  }, [url, version, refreshKey]);
+  return {
+    data: result?.url === url ? result.data : null,
+    error: failure?.url === url ? failure.message : "",
+    reload: () => setVersion((value) => value + 1),
+  };
 }
 export function When({ value }: { value?: string | null }) {
   return value ? <time dateTime={value}>{sessionLabel(value, "Europe/London")}</time> : null;

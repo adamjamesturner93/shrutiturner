@@ -1,4 +1,5 @@
 "use client";
+import { ProgrammeContentLoading } from "./loading";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { CalendarDays, MapPin, MessageCircle, Compass, Users } from "lucide-react";
@@ -177,7 +178,7 @@ export function ClientHub({
           </p>
         </header>
         {error && <p role="alert">{error}</p>}
-        {!data && !error && <p role="status">Loading your account…</p>}
+        {!data && !error && <ProgrammeContentLoading label="Loading your account" />}
         {data && eventId ? (
           group ? (
             <section className="space-y-5">

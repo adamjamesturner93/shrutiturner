@@ -1,4 +1,5 @@
 "use client";
+import { DelayedProgrammeLoading } from "./loading";
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,16 @@ import { eyebrow } from "./visuals";
 type Community = Awaited<ReturnType<typeof listProgrammePosts>>;
 export function ProgrammeCommunity({ id, preview = false }: { id: string; preview?: boolean }) {
   const endpoint = `/api/me/programmes/${id}/community`;
-  const { data, error, reload } = useProgrammeData<Community>(endpoint);
+  const { data, error, reload } = useProgrammeData<Community>(
+    `${endpoint}?limit=${preview ? 3 : 20}`
+  );
+  const [additional, setAdditional] = useState<Community["posts"]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null | undefined>(undefined);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const allPosts = [
+    ...new Map([...(data?.posts || []), ...additional].map((post) => [post.id, post])).values(),
+  ];
+  const cursor = nextCursor === undefined ? data?.nextCursor : nextCursor;
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   async function submit(url: string, body: unknown) {
@@ -19,6 +29,8 @@ export function ProgrammeCommunity({ id, preview = false }: { id: string; previe
     try {
       await programmeRequest(url, body);
       setMessage("Saved");
+      setAdditional([]);
+      setNextCursor(undefined);
       reload();
       return true;
     } catch (e) {
@@ -29,8 +41,8 @@ export function ProgrammeCommunity({ id, preview = false }: { id: string; previe
     }
   }
   const posts = preview
-    ? data?.posts.filter((p) => !p.parentId).slice(-3)
-    : data?.posts.filter((p) => !p.parentId);
+    ? allPosts.filter((p) => !p.parentId).slice(-3)
+    : allPosts.filter((p) => !p.parentId);
   return (
     <section className="space-y-4" aria-label="Community discussions">
       {!preview && (
@@ -42,7 +54,7 @@ export function ProgrammeCommunity({ id, preview = false }: { id: string; previe
           </p>
         </header>
       )}
-      {!data && !error && <p role="status">Loading discussions…</p>}
+      {!data && !error && <DelayedProgrammeLoading label="Loading discussions" kind="community" />}
       {data && !posts?.length && (
         <div className="bg-secondary rounded-2xl p-6">
           <MessageCircle aria-hidden="true" className="text-primary mb-3 h-7 w-7" />
@@ -123,7 +135,7 @@ export function ProgrammeCommunity({ id, preview = false }: { id: string; previe
           ))}
           {!preview && (
             <>
-              {data?.posts
+              {allPosts
                 .filter((r) => r.parentId === p.id)
                 .map((r) => (
                   <div key={r.id} className="ml-4 border-l pl-3">
@@ -253,6 +265,28 @@ export function ProgrammeCommunity({ id, preview = false }: { id: string; previe
           )}
         </article>
       ))}
+      {!preview && cursor && (
+        <Button
+          variant="outline"
+          disabled={loadingMore}
+          onClick={async () => {
+            setLoadingMore(true);
+            try {
+              const page = await programmeRequest<Community>(
+                `${endpoint}?limit=20&cursor=${encodeURIComponent(cursor)}`
+              );
+              setAdditional((current) => [...current, ...page.posts]);
+              setNextCursor(page.nextCursor);
+            } catch (e) {
+              setMessage(e instanceof Error ? e.message : "Unable to load conversations");
+            } finally {
+              setLoadingMore(false);
+            }
+          }}
+        >
+          {loadingMore ? "Loading conversations…" : "Load more conversations"}
+        </Button>
+      )}
       {preview && (
         <Link className="underline" href={`/dashboard/programmes/${id}/community`}>
           Open community
