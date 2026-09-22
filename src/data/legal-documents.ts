@@ -20,6 +20,7 @@ export type LegalDocumentSeed = {
 
 const EFFECTIVE_DATE = "2026-08-13";
 const VERSION = "2026-08-13";
+const TERMS_AND_REFUND_VERSION = "2026-09-22";
 const HEALTH_DATA_CONSENT_VERSION = "2026-03-12";
 
 export const HEALTH_DATA_CONSENT = {
@@ -34,8 +35,8 @@ export const LEGAL_DOCUMENTS: LegalDocumentSeed[] = [
     id: "legal-terms",
     slug: "terms",
     title: "Terms & Conditions",
-    version: VERSION,
-    effectiveDate: EFFECTIVE_DATE,
+    version: TERMS_AND_REFUND_VERSION,
+    effectiveDate: TERMS_AND_REFUND_VERSION,
     seoTitle: "Terms & Conditions | Shruti Turner",
     seoDescription:
       "Terms and conditions for Shruti Turner coaching, training, yoga, workshops, retreats, events and digital resources.",
@@ -102,11 +103,17 @@ Cancellation, rescheduling and expiry terms for any booked sessions are provided
 
 9. Workshops, retreats and events
 
-Event-specific information may include deposits, staged payments, accommodation, travel, minimum numbers and cancellation deadlines. Those details form part of your agreement when you book.
+Event-specific information, including dates, location, accommodation, occupancy, prices, deposits, balance deadlines, inclusions and any event-specific cancellation terms, forms part of your agreement when you book.
 
-You are responsible for travel, insurance, visas, medication and personal expenses unless the event information expressly says otherwise.
+Where accommodation is included, the booking information will state the room type, occupancy and bathroom arrangements. Shared rooms may contain separate single beds or a king bed where two people booking together choose to share. Guests who do not know one another will not be allocated to share the same bed. A private room is reserved exclusively for that booking and may, where offered, be booked for one or two people.
 
-We may make reasonable changes to a venue, timetable, facilitator or activity where needed for safety or delivery. If we cancel an event, the event-specific terms and Refund & Cancellation Policy apply.
+Participation in retreat and event activities is optional unless expressly stated otherwise. We may make reasonable changes to a venue, timetable, facilitator or activity where needed for safety, weather, venue requirements or delivery.
+
+Where food is provided, you are responsible for supplying accurate allergy and dietary information when requested. We will make reasonable efforts to accommodate requirements communicated in advance, but food prepared in shared kitchens cannot always be guaranteed free from a particular allergen.
+
+Unless expressly included, you are responsible for arranging and paying for your own travel, travel insurance, visas, medication and personal expenses. Independently booked flights, trains, taxis, fuel, parking, additional accommodation and other travel costs do not form part of your booking with Shruti Turner and are not reimbursed if an event or retreat is cancelled, except where the law requires otherwise.
+
+The Refund & Cancellation Policy sets out the standard cancellation position for retreats and events. Travel insurance is strongly recommended.
 
 10. Prices and payment
 
@@ -116,7 +123,9 @@ You authorise the payment provider to process the agreed payment. If a payment f
 
 11. Cancellations and refunds
 
-The Refund & Cancellation Policy published at /refund-policy forms part of these terms. Your statutory consumer rights are not affected.
+The Refund & Cancellation Policy published at /refund-policy forms part of these terms. Service-specific or event-specific cancellation terms shown before booking also form part of your agreement.
+
+Your statutory consumer rights are not affected.
 
 12. Intellectual property
 
@@ -142,7 +151,7 @@ We may update services, platform features or these terms where reasonably necess
 
 16. Governing law
 
-These terms are governed by the laws of England and Wales. The courts of England and Wales will have jurisdiction, subject to any mandatory consumer rights that apply where you live.
+These terms are governed by the law of Scotland, subject to any mandatory consumer rights that apply where you live.
 
 Questions about these terms can be sent to shruti@shrutiturner.co.uk.`,
   },
@@ -311,8 +320,8 @@ By accepting this waiver during onboarding or booking, you confirm that you unde
     id: "legal-refund-policy",
     slug: "refund-policy",
     title: "Refund & Cancellation Policy",
-    version: VERSION,
-    effectiveDate: EFFECTIVE_DATE,
+    version: TERMS_AND_REFUND_VERSION,
+    effectiveDate: TERMS_AND_REFUND_VERSION,
     seoTitle: "Refund & Cancellation Policy | Shruti Turner",
     seoDescription: "Cancellation, rescheduling and refund terms for Shruti Turner services.",
     body: `1. General approach
@@ -329,15 +338,34 @@ Once personalised planning, review or coaching work has begun, charges already e
 
 3. Workshops and events
 
-Cancellation and transfer deadlines are shown with the event information. Where a place can be transferred, you remain responsible for giving accurate attendee information and meeting any health or eligibility requirements.
+Cancellation and transfer deadlines are shown with the event information. Where a place can be transferred, please contact Shruti before arranging for another person to attend. The replacement attendee must meet any relevant health, eligibility or booking requirements.
 
-If Shruti Turner cancels an event, you will be offered the remedy described in the event terms, normally a transfer, credit or refund of the amount paid for the cancelled service. Consequential costs such as travel or accommodation are not covered unless the law requires otherwise.
+If Shruti Turner cancels an event, payments made directly for the cancelled service will be refunded or otherwise dealt with in accordance with the event terms and your statutory rights.
+
+Travel and other arrangements booked independently are separate from your booking. Flights, trains, taxis, fuel, parking, additional accommodation and other travel expenses are not reimbursed if an event is cancelled, except where the law requires otherwise.
 
 4. Retreats
 
-Retreat bookings may require a non-refundable deposit and staged balance payments. The booking page will state the relevant deadlines and what is refundable at each stage.
+Unless different terms are clearly shown for a particular retreat, the following standard cancellation charges apply if you cancel:
 
-You are strongly encouraged to arrange suitable travel insurance. Unless expressly included, travel, insurance, visas and personal expenses remain your responsibility.
+- More than 95 days before the retreat starts: 25% of the total booking price
+- 95 to 57 days before the retreat starts: 50% of the total booking price
+- 56 to 29 days before the retreat starts: 75% of the total booking price
+- 28 days or fewer before the retreat starts: 100% of the total booking price
+
+Any deposit paid forms part of the relevant cancellation charge. Where a retreat deposit is described as non-refundable, this means it will normally be retained if you choose to cancel, subject to your statutory rights.
+
+The balance payment deadline will be shown on the retreat booking page and in your booking confirmation. If an outstanding balance is not paid by the due date, the booking may be cancelled and the applicable cancellation charge may be applied.
+
+Please contact Shruti before arranging for another person to take your place. Where a transfer is permitted, the replacement guest must meet the relevant booking requirements. Any charge for an agreed transfer will be limited to reasonable costs incurred in making the change.
+
+If Shruti Turner cancels a retreat and cannot provide the retreat you booked, payments made directly to Shruti Turner for that retreat will be refunded in accordance with your statutory rights.
+
+Travel and other arrangements booked independently are your responsibility and do not form part of the retreat booking. Flights, trains, taxis, fuel, parking, additional accommodation and other travel expenses are not reimbursed if a retreat is cancelled, except where the law requires otherwise.
+
+Arriving late or choosing to leave early does not normally result in a refund or reduction in the retreat price.
+
+Travel insurance is strongly recommended.
 
 5. Digital resources
 
@@ -345,7 +373,11 @@ Where you request immediate access to digital content during a statutory cancell
 
 6. Illness, health changes and fluctuating capacity
 
-Please contact Shruti as early as possible if illness, injury, a change in health or fluctuating capacity affects participation. Where practical, Shruti may offer an adaptation, reschedule, credit or pause, but this depends on the service, notice given, work already completed and unrecoverable costs.
+Please contact Shruti as early as possible if illness, injury, a change in health or fluctuating capacity affects participation.
+
+Where practical, Shruti may offer an adaptation, reschedule, credit or pause for some services, depending on the service, notice given, work already completed and unrecoverable costs.
+
+For retreats and events, the published cancellation terms continue to apply if you are unable to attend because of illness, injury or a change in personal circumstances, unless your statutory rights or the event-specific terms provide otherwise. Suitable travel insurance is recommended for this reason.
 
 7. How refunds are paid
 
