@@ -79,7 +79,6 @@ You are responsible for:
 - seeking medical advice where needed
 - providing accurate and current health information
 - stopping any activity that feels unsafe
-- telling us if your symptoms, diagnosis, medication or capacity changes
 
 We may refuse, limit, pause or end participation where we reasonably believe a service is unsafe, unsuitable, outside Shruti Turner's training or insurance scope, or requires further medical input.
 
