@@ -66,6 +66,7 @@ export interface RetreatRoomOptionContent {
   pricePerPersonPence?: number;
   roomCount?: number;
   depositPence?: number;
+  depositRule?: import("@/lib/retreats/pricing").RetreatDepositRuleInput;
   isWaitlistOnly?: boolean;
 }
 

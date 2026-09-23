@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const db = {
   $transaction: vi.fn(),
   $queryRaw: vi.fn(),
-  retreatDate: { findFirstOrThrow: vi.fn(), findMany: vi.fn() },
+  retreatDate: { findUnique: vi.fn(), findFirstOrThrow: vi.fn(), findMany: vi.fn() },
   retreatRoomOption: { findUnique: vi.fn() },
   retreatBooking: { count: vi.fn(), aggregate: vi.fn(), create: vi.fn(), update: vi.fn() },
   giftPurchase: { count: vi.fn(), aggregate: vi.fn(), create: vi.fn(), update: vi.fn() },
@@ -37,6 +37,8 @@ const input = {
 };
 const room = {
   id: "room-1",
+  active: true,
+  updatedAt: new Date("2026-01-01T00:00:00Z"),
   externalRoomOptionId: "private-room",
   label: "Convertible private room",
   roomType: "private",
@@ -55,6 +57,7 @@ const room = {
 };
 const date = {
   id: "date-db",
+  updatedAt: new Date("2026-01-01T00:00:00Z"),
   externalDateId: "date-1",
   status: "open",
   retreatType: "in_person",
@@ -76,6 +79,7 @@ beforeEach(() => {
     callback(db)
   );
   db.retreatDate.findFirstOrThrow.mockResolvedValue(date);
+  db.retreatDate.findUnique.mockResolvedValue(date);
   db.retreatRoomOption.findUnique.mockResolvedValue(room);
   db.retreatBooking.count.mockResolvedValue(0);
   db.giftPurchase.count.mockResolvedValue(0);
@@ -87,6 +91,17 @@ beforeEach(() => {
 });
 
 describe("bed preference booking persistence", () => {
+  it("rejects a quote if venue inventory changed while checkout was reserving capacity", async () => {
+    db.retreatDate.findUnique.mockResolvedValue({
+      ...date,
+      updatedAt: new Date("2026-01-02T00:00:00Z"),
+    });
+    await expect(createRetreatCheckout({ ...input, bedPreference: "twin" })).rejects.toThrow(
+      "ROOM_OPTION_UNAVAILABLE"
+    );
+    expect(db.retreatBooking.create).not.toHaveBeenCalled();
+    expect(stripeCreate).not.toHaveBeenCalled();
+  });
   it("requires different email addresses for two guests", async () => {
     await expect(
       createRetreatCheckout({

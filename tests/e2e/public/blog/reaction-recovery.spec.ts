@@ -13,6 +13,7 @@ test("reader can recover from a failed reaction without a false success", async 
       json: attempt === 1 ? {} : { hasReacted: true, reactionCount: 1 },
     });
   });
+  await page.addInitScript(() => window.sessionStorage.setItem("newsletter_shown", "true"));
   await page.goto("/blog/strength-training-chronic-illness");
   await page.getByRole("button", { name: "React with heart" }).click();
   await expect(

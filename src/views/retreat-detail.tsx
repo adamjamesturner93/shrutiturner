@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { getRetreatCardImagePosition, getRetreatCardImageSrc } from "@/lib/retreats/images";
 import {
   getEffectiveRetreatRatePricePence,
+  getRoomPriceDeposit,
   isRetreatEarlyBirdActive,
 } from "@/lib/retreats/pricing";
 import {
@@ -75,27 +76,11 @@ function getRatePlanEarlyBirdEndLabel(ratePlan: ReturnType<typeof getRoomRatePla
   }).format(new Date(ratePlan.earlyBirdEndsAt));
 }
 
-function getRoomDeposit(roomOption: RetreatRoomOptionContent) {
-  if (typeof roomOption.depositPence === "number" && roomOption.depositPence > 0) {
-    return roomOption.depositPence;
-  }
-  if (roomOption.normalPricePence <= 25000) return roomOption.normalPricePence;
-  return Math.min(roomOption.normalPricePence, 30000);
-}
-
 function getRatePlanDeposit(
   roomOption: RetreatRoomOptionContent,
   ratePlan: ReturnType<typeof getRoomRatePlans>[number]
 ) {
-  const baseDepositPence = getRoomDeposit(roomOption);
-  const effectivePricePence = getEffectiveRetreatRatePricePence(ratePlan);
-  if (roomOption.normalPricePence > 0 && baseDepositPence > 0) {
-    return Math.min(
-      effectivePricePence,
-      Math.round((effectivePricePence * baseDepositPence) / roomOption.normalPricePence)
-    );
-  }
-  return effectivePricePence;
+  return getRoomPriceDeposit(roomOption, getEffectiveRetreatRatePricePence(ratePlan));
 }
 
 function getEarlyBirdSavingPence(ratePlan: ReturnType<typeof getRoomRatePlans>[number]) {

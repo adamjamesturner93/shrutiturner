@@ -52,6 +52,9 @@ import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { createSessionRoom, isDailyConfigured } from "@/lib/daily/service";
 import {
   buildRetreatInstalmentPlan,
+  calculateDepositFromRule,
+  resolveRetreatDepositRule,
+  getRoomPriceDeposit,
   canExtendPublishedEarlyBirdRate,
   calculatePayInFullDiscount,
   calculateRetreatRefund,
@@ -570,6 +573,27 @@ async function getRoomAvailability(roomOptionId: string) {
   });
 }
 
+async function assertRetreatSelectionUnchanged(
+  tx: Prisma.TransactionClient,
+  date: { id: string; updatedAt: Date },
+  room: { id: string; updatedAt: Date }
+) {
+  const [currentDate, currentRoom] = await Promise.all([
+    tx.retreatDate.findUnique({ where: { id: date.id }, select: { updatedAt: true } }),
+    tx.retreatRoomOption.findUnique({
+      where: { id: room.id },
+      select: { updatedAt: true, active: true },
+    }),
+  ]);
+  if (
+    !currentDate ||
+    !currentRoom?.active ||
+    currentDate.updatedAt.getTime() !== date.updatedAt.getTime() ||
+    currentRoom.updatedAt.getTime() !== room.updatedAt.getTime()
+  )
+    throw new Error("ROOM_OPTION_UNAVAILABLE");
+}
+
 async function assertRoomInventoryAvailableForUpdate(
   tx: Prisma.TransactionClient,
   roomOptionId: string,
@@ -899,13 +923,20 @@ async function mapOperationalDate(
     }
   }
 
-  const roomOptions = date.roomOptions.map((roomOption) =>
-    mapOperationalRoomOption(
+  const activeDepositRule = date.depositRules.find((rule) => rule.active);
+  const roomOptions = date.roomOptions.map((roomOption) => {
+    const mapped = mapOperationalRoomOption(
       roomOption,
       reservedRoomBookings.get(roomOption.id) || 0,
       roomOption.inventoryPoolId ? reservedPoolUnits.get(roomOption.inventoryPoolId) || 0 : 0
-    )
-  );
+    );
+    const depositRule = resolveRetreatDepositRule(activeDepositRule, mapped);
+    return {
+      ...mapped,
+      depositRule,
+      depositPence: calculateDepositFromRule(mapped.normalPricePence, depositRule),
+    };
+  });
   const addons = date.addons
     .filter((addon) => addon.active)
     .map((addon) => mapOperationalAddon(addon, reservedAddonUnits.get(addon.id) || 0));
@@ -914,7 +945,6 @@ async function mapOperationalDate(
       (sum, booking) => sum + Math.max(booking.attendeeCount || booking.guestsIncluded || 1, 1),
       0
     ) + date.giftPurchases.reduce((sum, gift) => sum + Math.max(gift.retreatGuestCount || 1, 1), 0);
-  const activeDepositRule = date.depositRules.find((rule) => rule.active);
   const paymentPolicy =
     activeDepositRule?.depositType === RetreatDepositType.full_payment ? "full_payment" : "deposit";
 
@@ -1586,34 +1616,22 @@ export async function createRetreatCheckout(input: {
     ? getEffectiveRetreatRatePricePence(selectedRatePlan)
     : roomOption.pricePence;
   const configuredDepositRule = retreatDate.depositRules.find((rule) => rule.active);
-  const depositRule: RetreatDepositRuleInput =
-    configuredDepositRule?.depositType === RetreatDepositType.full_payment
-      ? { depositType: "full_payment" }
-      : configuredDepositRule?.depositType === RetreatDepositType.percentage &&
-          configuredDepositRule.depositPercentageBasisPoints
-        ? {
-            depositType: "percentage",
-            depositPercentageBasisPoints: configuredDepositRule.depositPercentageBasisPoints,
-          }
-        : configuredDepositRule?.depositType === RetreatDepositType.fixed_amount &&
-            configuredDepositRule.fixedDepositAmountPence !== null
-          ? {
-              depositType: "fixed_amount",
-              fixedDepositAmountPence: configuredDepositRule.fixedDepositAmountPence,
-            }
-          : {
-              depositType: "fixed_amount",
-              fixedDepositAmountPence:
-                roomOption.depositAmountPence && roomOption.pricePence > 0
-                  ? Math.min(
-                      selectedTotalPricePence,
-                      Math.round(
-                        (selectedTotalPricePence * roomOption.depositAmountPence) /
-                          roomOption.pricePence
-                      )
-                    )
-                  : getDepositAmountPence(selectedTotalPricePence),
-            };
+  const depositRule: RetreatDepositRuleInput = configuredDepositRule
+    ? resolveRetreatDepositRule(configuredDepositRule, {
+        normalPricePence: roomOption.pricePence,
+        depositPence: roomOption.depositAmountPence,
+      })
+    : {
+        depositType: "fixed_amount",
+        fixedDepositAmountPence: getRoomPriceDeposit(
+          {
+            normalPricePence: roomOption.pricePence,
+            depositPence: roomOption.depositAmountPence ?? undefined,
+          },
+          selectedTotalPricePence
+        ),
+      };
+
   const requiresFullPayment = depositRule.depositType === "full_payment";
   const effectivePaymentOption = requiresFullPayment
     ? "pay_in_full"
@@ -1703,6 +1721,7 @@ export async function createRetreatCheckout(input: {
         quote.totalGuestCount,
         retreatDate.capacity
       );
+      await assertRetreatSelectionUnchanged(tx, retreatDate, roomOption);
       await assertRoomInventoryAvailableForUpdate(tx, roomOption.id, 1);
       return tx.giftPurchase.create({
         data: {
@@ -1861,6 +1880,7 @@ export async function createRetreatCheckout(input: {
       quote.totalGuestCount,
       retreatDate.capacity
     );
+    await assertRetreatSelectionUnchanged(tx, retreatDate, roomOption);
     await assertRoomInventoryAvailableForUpdate(tx, roomOption.id, quote.quantity);
     for (const selection of selectedAddons) {
       await assertAddonInventoryAvailableForUpdate(

@@ -396,3 +396,59 @@ export function calculateRetreatRefund(input: {
   if (input.requestedAt >= cutoffAt) return 0;
   return Math.max(input.actualPaidPence - input.nonRefundableAmountPence, 0);
 }
+
+/** Resolve an event rule before considering legacy per-room deposit snapshots. */
+export function resolveRetreatDepositRule(
+  rule:
+    | {
+        depositType: string;
+        depositPercentageBasisPoints?: number | null;
+        fixedDepositAmountPence?: number | null;
+      }
+    | null
+    | undefined,
+  legacy: { normalPricePence: number; depositPence?: number | null }
+): RetreatDepositRuleInput {
+  if (rule?.depositType === "full_payment") return { depositType: "full_payment" };
+  if (
+    rule?.depositType === "percentage" &&
+    Number.isInteger(rule.depositPercentageBasisPoints) &&
+    rule.depositPercentageBasisPoints! > 0 &&
+    rule.depositPercentageBasisPoints! <= 10000
+  ) {
+    return {
+      depositType: "percentage",
+      depositPercentageBasisPoints: rule.depositPercentageBasisPoints!,
+    };
+  }
+  if (
+    rule?.depositType === "fixed_amount" &&
+    Number.isInteger(rule.fixedDepositAmountPence) &&
+    rule.fixedDepositAmountPence! >= 0
+  )
+    return { depositType: "fixed_amount", fixedDepositAmountPence: rule.fixedDepositAmountPence! };
+  if (rule) throw new Error("INVALID_RETREAT_PAYMENT_RULE");
+  return {
+    depositType: "fixed_amount",
+    fixedDepositAmountPence:
+      legacy.depositPence ??
+      (legacy.normalPricePence <= 25000
+        ? legacy.normalPricePence
+        : Math.min(legacy.normalPricePence, 30000)),
+  };
+}
+
+export function getRoomPriceDeposit(
+  room: { normalPricePence: number; depositPence?: number; depositRule?: RetreatDepositRuleInput },
+  totalPricePence: number
+) {
+  if (room.depositRule) return calculateDepositFromRule(totalPricePence, room.depositRule);
+  // Compatibility for old CMS-only room options, which stored a base-price deposit.
+  const base = calculateDepositFromRule(
+    room.normalPricePence,
+    resolveRetreatDepositRule(undefined, room)
+  );
+  return room.normalPricePence > 0
+    ? Math.min(totalPricePence, Math.round((totalPricePence * base) / room.normalPricePence))
+    : totalPricePence;
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { VenueRoomSyncReview } from "@/components/admin/venue-room-sync-review";
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowLeft, BedDouble, ChevronDown, Plus, Trash2 } from "lucide-react";
@@ -410,6 +411,10 @@ export function AdminRetreatVenues({ initialData }: { initialData: AdminRetreatV
                   />
                 </CardContent>
               </details>
+              <VenueRoomSyncReview
+                venueId={venue.contentfulVenueId}
+                disabled={dirty || savingVenueId !== ""}
+              />
             </Card>
           );
         })}

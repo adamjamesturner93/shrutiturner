@@ -41,6 +41,7 @@ import {
 } from "@/data/legal-documents";
 import {
   getEffectiveRetreatRatePricePence,
+  getRoomPriceDeposit,
   isRetreatEarlyBirdActive,
 } from "@/lib/retreats/pricing";
 import { formatRetreatDateTimeRange } from "@/lib/retreats/presentation";
@@ -58,27 +59,11 @@ function formatMoney(pence: number, currency = "GBP") {
   }).format(pence / 100);
 }
 
-function getDepositAmountPence(roomOption: RetreatRoomOptionContent) {
-  if (typeof roomOption.depositPence === "number" && roomOption.depositPence > 0) {
-    return roomOption.depositPence;
-  }
-  if (roomOption.normalPricePence <= 25000) return roomOption.normalPricePence;
-  return Math.min(roomOption.normalPricePence, 30000);
-}
-
 function getDepositAmountForPricePence(
   roomOption: RetreatRoomOptionContent,
   totalPricePence: number
 ) {
-  const baseDepositPence = getDepositAmountPence(roomOption);
-  if (roomOption.normalPricePence > 0 && baseDepositPence > 0) {
-    return Math.min(
-      totalPricePence,
-      Math.round((totalPricePence * baseDepositPence) / roomOption.normalPricePence)
-    );
-  }
-  if (totalPricePence <= 25000) return totalPricePence;
-  return Math.min(totalPricePence, 30000);
+  return getRoomPriceDeposit(roomOption, totalPricePence);
 }
 
 function getRoomRatePlans(roomOption: RetreatRoomOptionContent) {
