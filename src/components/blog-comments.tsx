@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { MessageCircle, Reply, Trash2, CornerDownRight, AlertTriangle } from "lucide-react";
 import { AuthContext } from "../context/auth-context";
@@ -30,6 +30,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
   const isAuthenticated = auth?.isAuthenticated ?? false;
   const isAdmin = auth?.isAdmin ?? false;
 
+  const loadSequence = useRef(0);
   const [comments, setComments] = useState<BlogCommentDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -39,22 +40,28 @@ export function BlogComments({ postId }: BlogCommentsProps) {
   const [replyText, setReplyText] = useState("");
 
   const loadComments = useCallback(async () => {
+    const sequence = ++loadSequence.current;
     try {
       setLoading(true);
       setError("");
       const response = await fetch(`/api/blog/${postId}/engagement`, { cache: "no-store" });
       if (!response.ok) throw new Error("Failed to load comments.");
       const data = (await response.json()) as BlogEngagementDto;
-      setComments(data.comments || []);
+      if (sequence === loadSequence.current) setComments(data.comments || []);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Failed to load comments.");
+      if (sequence === loadSequence.current)
+        setError(loadError instanceof Error ? loadError.message : "Failed to load comments.");
     } finally {
-      setLoading(false);
+      if (sequence === loadSequence.current) setLoading(false);
     }
   }, [postId]);
 
   useEffect(() => {
+    setComments([]);
     void loadComments();
+    return () => {
+      loadSequence.current += 1;
+    };
   }, [loadComments]);
 
   const commentCount = useMemo(
@@ -128,7 +135,7 @@ export function BlogComments({ postId }: BlogCommentsProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="text-muted-foreground hover:text-destructive h-7 px-2 opacity-0 transition-opacity group-hover:opacity-100"
+            className="text-muted-foreground hover:text-destructive h-7 px-2 opacity-100 transition-opacity"
             aria-label={hasReplies ? "Delete thread" : "Delete comment"}
           >
             <Trash2 className="h-3.5 w-3.5" />

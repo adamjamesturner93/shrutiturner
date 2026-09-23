@@ -278,3 +278,17 @@ export async function publishRetreatExperience(input: { id: string; revision: nu
   if (result.count === 0) throw new Error("REVISION_CONFLICT");
   return getRetreatExperience(input.id);
 }
+
+export async function listRetreatExperienceDates(experienceId: string) {
+  const dates = await db.retreatDate.findMany({
+    where: { experienceId },
+    orderBy: { startsAt: "desc" },
+    select: { id: true, retreatTitleSnapshot: true, startsAt: true, status: true },
+  });
+  return dates.map((date) => ({
+    id: date.id,
+    title: date.retreatTitleSnapshot,
+    startsAt: date.startsAt.toISOString(),
+    status: date.status,
+  }));
+}

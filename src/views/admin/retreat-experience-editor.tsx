@@ -82,8 +82,10 @@ async function readApi<T>(response: Response) {
 
 export function AdminRetreatExperienceEditor({
   initialData,
+  dates = [],
 }: {
   initialData: RetreatExperienceEditorData;
+  dates?: Array<{ id: string; title: string; startsAt: string; status: string }>;
 }) {
   const [experience, setExperience] = useState(initialData);
   const [content, setContent] = useState(initialData.draftContent);
@@ -189,6 +191,39 @@ export function AdminRetreatExperienceEditor({
   return (
     <AdminLayout title={`${experience.title} - Event page`}>
       <div className="space-y-6">
+        <nav aria-label="Event administration" className="flex flex-wrap gap-4 text-sm">
+          <Link className="underline" href="/admin/retreats">
+            All dated events
+          </Link>
+          <a className="underline" href="#event-dates">
+            Manage dates and bookings
+          </a>
+        </nav>
+        <details id="event-dates" className="rounded-xl border bg-white p-4">
+          <summary className="cursor-pointer font-medium">
+            Dates and bookings ({dates.length})
+          </summary>
+          {dates.length ? (
+            <ul className="mt-4 space-y-3">
+              {dates.map((date) => (
+                <li key={date.id}>
+                  <Link className="underline" href={`/admin/retreats/${date.id}`}>
+                    {date.title} ·{" "}
+                    {new Intl.DateTimeFormat("en-GB", {
+                      dateStyle: "long",
+                      timeZone: "Europe/London",
+                    }).format(new Date(date.startsAt))}
+                  </Link>
+                  <span className="text-muted-foreground ml-2 text-sm">
+                    {date.status.replaceAll("_", " ")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-sm">No dates have been created for this event yet.</p>
+          )}
+        </details>
         <AppPageHeader
           eyebrow="Event page"
           title={experience.title || "Untitled event page"}

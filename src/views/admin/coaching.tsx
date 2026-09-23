@@ -1,5 +1,7 @@
 "use client";
 
+import { getOperationalNextStep } from "@/lib/coaching/admin-presentation";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -178,44 +180,6 @@ function sortApplicationsForTab(
   });
 }
 
-function getOperationalNextStep(application: AdminCoachingApplicationDto) {
-  if (application.coachingProfile?.status === "completed") {
-    return application.coachingProfile.everfitConnectionStatus === "closed"
-      ? "This coaching account and its Everfit access are closed. Reopen the coaching status only if support resumes."
-      : "The coaching account is closed. Remove access in Everfit, then mark Everfit access closed below.";
-  }
-  if (application.status === "submitted" || application.status === "under_review") {
-    return "Review the enquiry, arrange the consultation and record its date here.";
-  }
-  if (application.status === "follow_up_needed") {
-    return "Send follow-up questions before approving or declining.";
-  }
-  if (application.status === "consultation_scheduled") {
-    return "The consultation is scheduled. After the call, mark it complete and record private notes.";
-  }
-  if (application.status === "consultation_completed") {
-    return "Choose the recommended support level, add the client-facing recommendation and send the offer.";
-  }
-  if (application.status === "waitlisted") {
-    return "Applicant is waiting for coaching capacity. Approve from the waiting list when a place opens, or reject if it is no longer a fit.";
-  }
-  if (application.status === "approved" || application.status === "offer_sent") {
-    return application.userId
-      ? "The recommendation is sent. The client can accept the agreements and complete payment."
-      : "The recommendation is sent. The client now needs to create or sign in to their account with this email before accepting agreements and paying.";
-  }
-  if (application.status === "converted" || application.isLinkedUserCoachingClient) {
-    return "Client is active. Track manual Everfit setup, onboarding and check-ins from the coaching profile.";
-  }
-  if (application.status === "declined") {
-    return "Enquiry is declined. Keep internal notes clear for future context.";
-  }
-  if (application.status === "withdrawn") {
-    return "Enquirer left the waiting list. Reopen only if Shruti wants to restore the original enquiry context.";
-  }
-  return "Review the current status and choose the next admin action.";
-}
-
 export function AdminCoaching({
   initialData,
   focusApplicationId,
@@ -336,8 +300,8 @@ export function AdminCoaching({
 
   useEffect(() => {
     if (initialData) {
+      setApplications(initialData);
       syncDrafts(initialData);
-      return;
     }
     void loadApplications();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -438,7 +402,7 @@ export function AdminCoaching({
   ) => {
     if (!application.coachingProfile) return;
     if (
-      everfitConnectionStatus === "removed" &&
+      everfitConnectionStatus === "closed" &&
       !window.confirm(
         `Remove ${application.applicantName}'s Everfit access? This records the access as removed on their coaching profile.`
       )
@@ -463,6 +427,7 @@ export function AdminCoaching({
       }
       setNotice(`${application.applicantName}'s manual Everfit setup status was updated.`);
       await loadApplications();
+      router.refresh();
     } catch (setupError) {
       setError(
         setupError instanceof Error ? setupError.message : "Failed to update manual setup status."

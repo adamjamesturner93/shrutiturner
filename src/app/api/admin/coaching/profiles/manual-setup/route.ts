@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { updateCoachingProfileManualSetupStatus } from "@/lib/coaching/service";
@@ -44,6 +45,8 @@ export async function PATCH(request: Request) {
         request.headers.get("x-real-ip"),
     });
 
+    revalidatePath("/admin/coaching", "layout");
+    revalidatePath("/dashboard/coaching");
     return NextResponse.json({
       id: updated.id,
       everfitConnectionStatus: updated.everfitConnectionStatus,

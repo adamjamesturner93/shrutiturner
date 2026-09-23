@@ -2,7 +2,10 @@ import { connection } from "next/server";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { isStaffAdminRole } from "@/lib/authz/roles";
-import { getRetreatExperience } from "@/lib/retreats/experience-service";
+import {
+  getRetreatExperience,
+  listRetreatExperienceDates,
+} from "@/lib/retreats/experience-service";
 import { AdminRetreatExperienceEditor } from "@/views/admin/retreat-experience-editor";
 
 export default async function Page({ params }: { params: Promise<{ experienceId: string }> }) {
@@ -13,5 +16,6 @@ export default async function Page({ params }: { params: Promise<{ experienceId:
   const { experienceId } = await params;
   const experience = await getRetreatExperience(experienceId);
   if (!experience) notFound();
-  return <AdminRetreatExperienceEditor initialData={experience} />;
+  const dates = await listRetreatExperienceDates(experienceId);
+  return <AdminRetreatExperienceEditor initialData={experience} dates={dates} />;
 }

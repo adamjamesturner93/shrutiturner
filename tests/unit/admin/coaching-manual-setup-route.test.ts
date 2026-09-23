@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const revalidatePathMock = vi.fn();
+vi.mock("next/cache", () => ({ revalidatePath: revalidatePathMock }));
+
 const requireStaffAdminUserMock = vi.fn();
 const updateCoachingProfileManualSetupStatusMock = vi.fn();
 
@@ -36,6 +39,8 @@ describe("PATCH /api/admin/coaching/profiles/manual-setup", () => {
     );
 
     expect(response.status).toBe(200);
+    expect(revalidatePathMock).toHaveBeenCalledWith("/admin/coaching", "layout");
+    expect(await response.json()).toMatchObject({ everfitConnectionStatus: "closed" });
     expect(updateCoachingProfileManualSetupStatusMock).toHaveBeenCalledWith(
       expect.objectContaining({
         profileId: "profile_123",

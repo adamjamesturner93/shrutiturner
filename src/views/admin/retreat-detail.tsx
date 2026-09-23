@@ -713,6 +713,11 @@ export function AdminRetreatDetail({
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            {retreat.contentLinks.experience && (
+              <Button asChild variant="outline">
+                <Link href={retreat.contentLinks.experience}>Edit event page & photos</Link>
+              </Button>
+            )}
             <Badge variant="outline">{retreat.status.replaceAll("_", " ")}</Badge>
             {retreat.status === "draft" || retreat.status === "closed" ? (
               <Button

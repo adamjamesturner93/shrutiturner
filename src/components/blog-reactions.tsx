@@ -12,19 +12,20 @@ export function BlogReactions({ postId }: BlogReactionsProps) {
   const [hasReacted, setHasReacted] = useState(false);
   const [count, setCount] = useState(0);
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
     void (async () => {
       try {
         const response = await fetch(`/api/blog/${postId}/engagement`, { cache: "no-store" });
-        if (!response.ok) return;
+        if (!response.ok) throw new Error("Unable to load reactions.");
         const data = (await response.json()) as BlogEngagementDto;
         if (!active) return;
         setHasReacted(data.hasReacted);
         setCount(data.reactionCount);
       } catch {
-        // Leave defaults in place.
+        if (active) setError("Reactions could not be loaded. Try again when you react.");
       }
     })();
 
@@ -36,21 +37,24 @@ export function BlogReactions({ postId }: BlogReactionsProps) {
   const handleToggle = async () => {
     if (pending) return;
     setPending(true);
+    setError("");
     try {
       const response = await fetch(`/api/blog/${postId}/reactions/toggle`, {
         method: "POST",
       });
-      if (!response.ok) return;
+      if (!response.ok) throw new Error("Your reaction could not be saved. Please try again.");
       const data = (await response.json()) as { hasReacted: boolean; reactionCount: number };
       setHasReacted(data.hasReacted);
       setCount(data.reactionCount);
+    } catch {
+      setError("Your reaction could not be saved. Please try again.");
     } finally {
       setPending(false);
     }
   };
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3">
       <motion.div whileTap={{ scale: 1.12 }}>
         <button
           type="button"
@@ -80,6 +84,11 @@ export function BlogReactions({ postId }: BlogReactionsProps) {
           </span>
         </button>
       </motion.div>
+      {error && (
+        <p role="alert" className="text-destructive text-sm">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
