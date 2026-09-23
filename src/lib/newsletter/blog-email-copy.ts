@@ -5,6 +5,7 @@ export function getBlogEmailCopy(input: {
   title: string;
   firstName: string;
   subject?: string;
+  heading?: string;
   introduction?: string;
 }) {
   const personalize = (value: string) =>
@@ -14,6 +15,7 @@ export function getBlogEmailCopy(input: {
       /[\r\n]+/g,
       " "
     ),
+    heading: personalize(input.heading?.trim() || input.title),
     introduction: personalize(input.introduction?.trim() || DEFAULT_BLOG_EMAIL_INTRODUCTION),
   };
 }

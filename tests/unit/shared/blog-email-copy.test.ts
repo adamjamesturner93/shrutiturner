@@ -12,6 +12,7 @@ describe("optional publication email copy", () => {
       getBlogEmailCopy({ title: "Strength", firstName: "Jo", subject: " ", introduction: "" })
     ).toEqual({
       subject: "New blog post: Strength",
+      heading: "Strength",
       introduction: DEFAULT_BLOG_EMAIL_INTRODUCTION,
     });
   });
@@ -25,8 +26,21 @@ describe("optional publication email copy", () => {
       })
     ).toEqual({
       subject: "For $& Today",
+      heading: "Strength",
       introduction: "Hello $&\n\nYour article",
     });
+  });
+  it("keeps the visible heading separate from subject and article title", async () => {
+    const copy = getBlogEmailCopy({
+      title: "Article",
+      firstName: "Jo",
+      heading: "For {name}",
+      subject: "A note",
+    });
+    expect(copy.heading).toBe("For Jo");
+    const html = await render(BlogPostEmail({ ...copy, postTitle: "Article" }));
+    expect(html).toContain("For Jo");
+    expect(copy.subject).toBe("A note");
   });
   it("renders introduction paragraphs safely before the excerpt", async () => {
     const html = await render(

@@ -14,6 +14,7 @@ import {
 interface BlogPostEmailProps {
   firstName?: string;
   introduction?: string;
+  heading?: string;
   postTitle?: string;
   postExcerpt?: string;
   postImageUrl?: string;
@@ -26,6 +27,7 @@ interface BlogPostEmailProps {
 
 export default function BlogPostEmail({
   firstName = "there",
+  heading,
   introduction = DEFAULT_BLOG_EMAIL_INTRODUCTION,
   postTitle = "Why Strength Training Matters When You Have Chronic Illness",
   postExcerpt = "Exploring the evidence for resistance training in managing autoimmune conditions, chronic pain and fatigue \u2014 and how to start without pushing past your limits.",
@@ -109,7 +111,7 @@ export default function BlogPostEmail({
               marginBottom: "12px",
             }}
           >
-            {postTitle}
+            {heading || postTitle}
           </Text>
 
           <Text

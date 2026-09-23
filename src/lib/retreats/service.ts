@@ -1015,6 +1015,7 @@ async function buildOperationalRetreatFromTemplate(input: {
       imageUrl: input.template.imageUrl,
       retreatType: mappedDates[0]?.retreatType || null,
     }),
+    gallery: input.template.gallery,
     shortDescription: input.template.shortDescription,
     fullDescription: input.template.fullDescription,
     atmosphereDescription: input.template.atmosphereDescription,

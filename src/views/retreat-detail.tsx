@@ -644,29 +644,58 @@ export function RetreatDetailPage({
               </div>
             ) : null}
 
+            {Boolean(retreat.gallery?.length) && (
+              <section aria-labelledby="retreat-gallery-heading" className="space-y-6">
+                <h2 id="retreat-gallery-heading" className="text-3xl md:text-4xl">
+                  A closer look
+                </h2>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {retreat.gallery?.map((image, index) => (
+                    <figure key={`${image.url}-${index}`} className="overflow-hidden rounded-2xl">
+                      <ImageWithFallback
+                        src={image.url}
+                        alt={image.alt}
+                        loading="lazy"
+                        className="aspect-[4/3] w-full object-cover"
+                        style={{
+                          objectPosition: `${image.focalPoint?.x ?? 50}% ${image.focalPoint?.y ?? 50}%`,
+                        }}
+                      />
+                    </figure>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {selectedVenue && !isOnlineExperience ? (
               <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
                 <h2 className="text-3xl md:text-4xl">Getting there</h2>
-                <p className="text-muted-foreground mt-4 leading-relaxed">
-                  {selectedVenue.arrivalInformation || selectedVenue.travelInformation}
-                </p>
+                <MarkdownContent className="text-muted-foreground mt-4 leading-relaxed">
+                  {selectedVenue.arrivalInformation || selectedVenue.travelInformation || ""}
+                </MarkdownContent>
                 <div className="text-muted-foreground mt-5 grid gap-5 text-sm leading-relaxed md:grid-cols-2">
                   {selectedVenue.travelByTrain ? (
                     <div>
                       <h3 className="text-foreground text-base">By train</h3>
-                      <p className="mt-1">{selectedVenue.travelByTrain}</p>
+                      <MarkdownContent className="mt-1">
+                        {selectedVenue.travelByTrain}
+                      </MarkdownContent>
                     </div>
                   ) : null}
                   {selectedVenue.travelByCar ? (
                     <div>
                       <h3 className="text-foreground text-base">By car</h3>
-                      <p className="mt-1">{selectedVenue.travelByCar}</p>
+                      <MarkdownContent className="mt-1">
+                        {selectedVenue.travelByCar}
+                      </MarkdownContent>
                     </div>
                   ) : null}
                   {selectedVenue.localTransferInformation ? (
                     <div className="md:col-span-2">
                       <h3 className="text-foreground text-base">Local transfer</h3>
-                      <p className="mt-1">{selectedVenue.localTransferInformation}</p>
+                      <MarkdownContent className="mt-1">
+                        {selectedVenue.localTransferInformation}
+                      </MarkdownContent>
                     </div>
                   ) : null}
                 </div>

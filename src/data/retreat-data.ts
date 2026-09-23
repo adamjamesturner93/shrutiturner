@@ -80,6 +80,7 @@ export interface Retreat {
   experienceLevel: string;
   location: string;
   imageUrl: string;
+  gallery?: Array<{ url: string; alt: string; focalPoint?: { x: number; y: number } }>;
   shortDescription: string;
   fullDescription: string;
   atmosphereDescription?: string;

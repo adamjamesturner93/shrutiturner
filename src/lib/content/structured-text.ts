@@ -70,7 +70,11 @@ function normalizeComparableTitle(value: string) {
     .toLowerCase();
 }
 
-export function parseBlogPostBody(value: string, pageTitle: string): StructuredTextBlock[] {
+export function parseBlogPostBody(
+  value: string,
+  pageTitle: string,
+  preserveLineBreaks = false
+): StructuredTextBlock[] {
   const blocks: StructuredTextBlock[] = [];
   const lines = normalizeLines(value);
   const paragraph: string[] = [];
@@ -79,7 +83,10 @@ export function parseBlogPostBody(value: string, pageTitle: string): StructuredT
 
   const flushParagraph = () => {
     if (paragraph.length) {
-      blocks.push({ type: "paragraph", text: paragraph.join(" ").trim() });
+      blocks.push({
+        type: "paragraph",
+        text: paragraph.join(preserveLineBreaks ? "\n" : " ").trim(),
+      });
       paragraph.length = 0;
     }
   };

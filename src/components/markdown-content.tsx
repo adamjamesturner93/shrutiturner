@@ -5,7 +5,7 @@ import { cn } from "@/components/ui/utils";
 export function MarkdownContent({ children, className }: { children: string; className?: string }) {
   return (
     <div className={cn("space-y-6", className)}>
-      {parseBlogPostBody(children, "").map((block, index) => {
+      {parseBlogPostBody(children, "", true).map((block, index) => {
         if (block.type === "heading") {
           const Heading = block.level === 3 ? "h3" : "h2";
           return (
@@ -30,7 +30,11 @@ export function MarkdownContent({ children, className }: { children: string; cla
             </List>
           );
         }
-        return <p key={index}>{renderInlineMarkdown(block.text)}</p>;
+        return (
+          <p key={index} className="whitespace-pre-line">
+            {renderInlineMarkdown(block.text)}
+          </p>
+        );
       })}
     </div>
   );

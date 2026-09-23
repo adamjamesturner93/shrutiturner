@@ -119,6 +119,7 @@ function toTemplate(experience: Awaited<ReturnType<typeof getPublishedRetreatExp
     scheduleMarkdown: content.scheduleMarkdown,
     accommodationDescription: content.accommodationDescription || undefined,
     imageUrl: content.image?.url,
+    gallery: content.gallery,
     imageAlt: content.image?.alt,
     imageFocalPoint: content.image?.focalPoint,
     seoTitle: content.seoTitle || undefined,
@@ -166,6 +167,7 @@ export async function listPublishedRetreatExperienceTemplates() {
       scheduleMarkdown: content.scheduleMarkdown,
       accommodationDescription: content.accommodationDescription || undefined,
       imageUrl: content.image?.url,
+      gallery: content.gallery,
       imageAlt: content.image?.alt,
       imageFocalPoint: content.image?.focalPoint,
       seoTitle: content.seoTitle || undefined,
@@ -175,13 +177,16 @@ export async function listPublishedRetreatExperienceTemplates() {
   return templates;
 }
 
-export async function createRetreatExperience(input: {
-  title: string;
-  slug?: string;
-  eventKind?: RetreatEventKind;
-  formatPresetId?: string | null;
-  content?: unknown;
-}, client: Prisma.TransactionClient = db) {
+export async function createRetreatExperience(
+  input: {
+    title: string;
+    slug?: string;
+    eventKind?: RetreatEventKind;
+    formatPresetId?: string | null;
+    content?: unknown;
+  },
+  client: Prisma.TransactionClient = db
+) {
   const title = input.title.trim();
   if (!title) throw new Error("EXPERIENCE_TITLE_REQUIRED");
   const format = input.formatPresetId ? await getRetreatFormat(input.formatPresetId, client) : null;
@@ -232,23 +237,23 @@ export async function updateRetreatExperience(input: {
   let result: Awaited<ReturnType<typeof db.retreatExperience.updateMany>>;
   try {
     result = await db.$transaction(async (tx) => {
-    const updated = await tx.retreatExperience.updateMany({
-      where: { id: input.id, revision: input.revision, publishedAt: existing.publishedAt },
-      data: {
-        title: content.title,
-        slug: requestedSlug,
-        draftContentJson: json(content),
-        revision: { increment: 1 },
-      },
-    });
-    if (!updated.count) throw new Error("REVISION_CONFLICT");
-    if (requestedSlug !== existing.slug) {
-      await tx.retreatDate.updateMany({
-        where: { experienceId: input.id },
-        data: { retreatSlug: requestedSlug },
+      const updated = await tx.retreatExperience.updateMany({
+        where: { id: input.id, revision: input.revision, publishedAt: existing.publishedAt },
+        data: {
+          title: content.title,
+          slug: requestedSlug,
+          draftContentJson: json(content),
+          revision: { increment: 1 },
+        },
       });
-    }
-    return updated;
+      if (!updated.count) throw new Error("REVISION_CONFLICT");
+      if (requestedSlug !== existing.slug) {
+        await tx.retreatDate.updateMany({
+          where: { experienceId: input.id },
+          data: { retreatSlug: requestedSlug },
+        });
+      }
+      return updated;
     });
   } catch (error) {
     throwExperienceWriteError(error);

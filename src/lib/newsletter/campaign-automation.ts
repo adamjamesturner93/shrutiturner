@@ -330,10 +330,11 @@ async function renderCampaignMessage(
   const fields = entry.fields;
   if (contentType === "blogPost") {
     const postTitle = readStringField(fields, "title") || "New blog post";
-    const { subject, introduction } = getBlogEmailCopy({
+    const { subject, heading, introduction } = getBlogEmailCopy({
       title: postTitle,
       firstName,
       subject: readStringField(fields, "emailSubject"),
+      heading: readStringField(fields, "emailHeading"),
       introduction: readTextField(fields, "emailIntroduction"),
     });
     const postExcerpt = truncateWords(
@@ -349,6 +350,7 @@ async function renderCampaignMessage(
     const html = await render(
       BlogPostEmail({
         firstName,
+        heading,
         introduction,
         postTitle,
         postExcerpt,
@@ -367,7 +369,7 @@ async function renderCampaignMessage(
         "",
         introduction,
         "",
-        postTitle,
+        heading,
         "",
         postExcerpt,
         "",

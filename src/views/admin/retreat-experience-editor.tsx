@@ -107,6 +107,7 @@ export function AdminRetreatExperienceEditor({
       notIncluded: lines(listText.notIncluded),
       whatToBring: lines(listText.whatToBring),
       image: content.image?.url.trim() ? content.image : undefined,
+      gallery: content.gallery.filter((image) => image.url.trim()),
     }),
     [content, listText]
   );
@@ -236,7 +237,11 @@ export function AdminRetreatExperienceEditor({
           </div>
         ) : null}
 
-        <fieldset disabled={busy !== ""} aria-label="Event page content" className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <fieldset
+          disabled={busy !== ""}
+          aria-label="Event page content"
+          className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]"
+        >
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -422,6 +427,68 @@ export function AdminRetreatExperienceEditor({
                   disabled={busy !== ""}
                   onChange={(image) => update("image", image)}
                 />
+                <h3 className="text-xl">Extra photos</h3>
+                <p className="text-muted-foreground text-sm">
+                  Add up to eight photos, in the order you want them to appear on the event page.
+                </p>
+                {content.gallery.map((image, index) => (
+                  <fieldset
+                    key={index}
+                    className="space-y-4 rounded-xl border p-4"
+                    disabled={busy !== ""}
+                  >
+                    <legend className="px-2">Photo {index + 1}</legend>
+                    <RetreatImageField
+                      id={`gallery-${index}`}
+                      value={image}
+                      onChange={(next) =>
+                        update(
+                          "gallery",
+                          content.gallery.map((item, i) => (i === index ? next : item))
+                        )
+                      }
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={index === 0}
+                        onClick={() => {
+                          const next = [...content.gallery];
+                          [next[index - 1], next[index]] = [next[index], next[index - 1]];
+                          update("gallery", next);
+                        }}
+                      >
+                        Move photo {index + 1} earlier
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          update(
+                            "gallery",
+                            content.gallery.filter((_, i) => i !== index)
+                          )
+                        }
+                      >
+                        Remove photo {index + 1}
+                      </Button>
+                    </div>
+                  </fieldset>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy !== "" || content.gallery.length >= 8}
+                  onClick={() =>
+                    update("gallery", [
+                      ...content.gallery,
+                      { url: "", alt: "", focalPoint: { x: 50, y: 50 } },
+                    ])
+                  }
+                >
+                  Add photo
+                </Button>
               </CardContent>
             </Card>
 

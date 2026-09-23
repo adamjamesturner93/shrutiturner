@@ -282,6 +282,7 @@ export interface RetreatTemplateContent {
   imageUrl?: string;
   imageAlt?: string;
   imageFocalPoint?: { x: number; y: number };
+  gallery?: Array<{ url: string; alt: string; focalPoint?: { x: number; y: number } }>;
   seoTitle?: string;
   seoDescription?: string;
   venueId?: string;
@@ -395,6 +396,7 @@ export interface RetreatCombinedContent {
   seoDescription?: string;
   imageAlt?: string;
   imageFocalPoint?: { x: number; y: number };
+  gallery?: Array<{ url: string; alt: string; focalPoint?: { x: number; y: number } }>;
   venueId?: string;
   venueSlug?: string;
   venueName?: string;
