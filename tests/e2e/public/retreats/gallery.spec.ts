@@ -18,6 +18,7 @@ test("published event gallery preserves photo order, alt text and mobile layout"
       {
         url: "/images/holding-background.jpg",
         alt: "First synthetic gallery photograph",
+        caption: "A peaceful place to practise together.",
         focalPoint: { x: 50, y: 50 },
       },
       {
@@ -78,6 +79,21 @@ test("published event gallery preserves photo order, alt text and mobile layout"
       "First synthetic gallery photograph"
     );
     await expect(gallery.getByRole("img").first()).toHaveAttribute("loading", "lazy");
+    const opener = gallery.getByRole("button", { name: /Enlarge photo 1/ });
+    await opener.click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByText("A peaceful place to practise together.")).toBeVisible();
+    await page.keyboard.press("ArrowRight");
+    await expect(
+      dialog.getByRole("img", { name: "Second synthetic gallery photograph" })
+    ).toHaveAttribute("alt", "Second synthetic gallery photograph");
+    await dialog.getByRole("button", { name: "Previous photo" }).click();
+    await expect(dialog.getByText("Photo 1 of 2", { exact: true })).toBeVisible();
+    expect(
+      (await new AxeBuilder({ page }).include('[role="dialog"]').analyze()).violations
+    ).toEqual([]);
+    await page.keyboard.press("Escape");
+    await expect(opener).toBeFocused();
     await gallery.scrollIntoViewIfNeeded();
     await page.screenshot({ path: testInfo.outputPath("gallery-desktop.png") });
     await page.setViewportSize({ width: 390, height: 844 });
@@ -85,7 +101,16 @@ test("published event gallery preserves photo order, alt text and mobile layout"
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true
     );
-    await page.screenshot({ path: testInfo.outputPath("gallery-mobile.png") });
+    await opener.click();
+    await expect(dialog).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true
+    );
+    await page.screenshot({
+      animations: "disabled",
+      path: testInfo.outputPath("gallery-mobile.png"),
+    });
+    await page.keyboard.press("Escape");
     const results = await new AxeBuilder({ page })
       .include("#main-content")
       .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])

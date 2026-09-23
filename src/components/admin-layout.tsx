@@ -39,7 +39,7 @@ const NAV_ITEMS = [
   { path: "/admin/programmes", label: "Programmes", icon: BookOpen },
   { path: "/admin/retreats", label: "Retreats & workshops", icon: CalendarDays },
   { path: "/admin/members", label: "Members", icon: Users },
-  { path: "/admin/blog-comments", label: "Blog comments", icon: MessageCircle },
+  { path: "/admin/blog-comments", label: "Blog engagement", icon: MessageCircle },
   { path: "/admin/newsletter", label: "Newsletter", icon: Mail },
   { path: "/admin/business", label: "Business", icon: TrendingUp },
   { path: "/admin/audit", label: "Audit", icon: Shield },

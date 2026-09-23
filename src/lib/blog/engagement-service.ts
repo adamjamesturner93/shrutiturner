@@ -436,3 +436,13 @@ export async function updateAdminBlogCommentStatus(input: {
 
   return { ok: true };
 }
+
+/** Aggregate likes independently of comments; never return visitor identities. */
+export async function listAdminBlogReactions() {
+  const rows = await db.blogReaction.groupBy({
+    by: ["postSlug"],
+    _count: { _all: true },
+    orderBy: { postSlug: "asc" },
+  });
+  return rows.map((row) => ({ postSlug: row.postSlug, count: row._count._all }));
+}

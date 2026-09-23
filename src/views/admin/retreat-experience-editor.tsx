@@ -41,6 +41,7 @@ type ExperienceContent = {
     focalPoint: { x: number; y: number };
   };
   gallery: Array<{
+    caption?: string;
     assetId?: string;
     url: string;
     alt: string;
@@ -479,10 +480,31 @@ export function AdminRetreatExperienceEditor({
                       onChange={(next) =>
                         update(
                           "gallery",
-                          content.gallery.map((item, i) => (i === index ? next : item))
+                          content.gallery.map((item, i) =>
+                            i === index ? { ...next, caption: item.caption } : item
+                          )
                         )
                       }
                     />
+                    <label className="block space-y-2">
+                      <span>Caption (optional)</span>
+                      <Input
+                        maxLength={500}
+                        value={image.caption || ""}
+                        onChange={(event) =>
+                          update(
+                            "gallery",
+                            content.gallery.map((item, i) =>
+                              i === index ? { ...item, caption: event.target.value } : item
+                            )
+                          )
+                        }
+                      />
+                      <span className="text-muted-foreground text-sm">
+                        Shown beneath the enlarged photo. Keep the image description above for
+                        accessibility.
+                      </span>
+                    </label>
                     <div className="flex flex-wrap gap-2">
                       <Button
                         type="button"

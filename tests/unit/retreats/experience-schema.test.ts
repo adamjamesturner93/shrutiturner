@@ -7,6 +7,15 @@ import {
 } from "@/lib/retreats/experience-schema";
 
 describe("retreat experience content", () => {
+  it("preserves optional gallery captions separately from image descriptions", () => {
+    const photo = { url: "/images/retreat.jpg", alt: "Garden seating" };
+    const result = parseRetreatExperienceContent({
+      gallery: [photo, { ...photo, caption: "  A place to unwind.  " }],
+    });
+    expect(result.gallery[0].caption).toBeUndefined();
+    expect(result.gallery[1].caption).toBe("A place to unwind.");
+    expect(result.gallery[1].alt).toBe("Garden seating");
+  });
   it("stores the schedule as one Markdown document and normalises optional fields", () => {
     const content = parseRetreatExperienceContent({
       schemaVersion: 1,

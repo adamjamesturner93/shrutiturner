@@ -16,6 +16,7 @@ export const retreatImageSchema = z.object({
   assetId: z.string().trim().max(128).optional(),
   url: retreatImageUrlSchema,
   alt: z.string().trim().min(1).max(240),
+  caption: z.string().trim().max(500).optional(),
   focalPoint: z
     .object({
       x: z.number().min(0).max(100),
@@ -49,10 +50,20 @@ export const retreatExperienceContentSchema = z.object({
 
 export const retreatFormatDefaultsSchema = z.object({
   schemaVersion: z.literal(1).default(1),
-  timezone: z.string().trim().min(1).max(80).refine((value) => {
-    try { new Intl.DateTimeFormat("en-GB", { timeZone: value }); return true; }
-    catch { return false; }
-  }, "Choose a valid IANA timezone.").default("Europe/London"),
+  timezone: z
+    .string()
+    .trim()
+    .min(1)
+    .max(80)
+    .refine((value) => {
+      try {
+        new Intl.DateTimeFormat("en-GB", { timeZone: value });
+        return true;
+      } catch {
+        return false;
+      }
+    }, "Choose a valid IANA timezone.")
+    .default("Europe/London"),
   durationMinutes: z
     .number()
     .int()

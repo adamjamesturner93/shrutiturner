@@ -39,3 +39,10 @@ Focused unit tests cover content formatting/email copy, engagement routes, coach
 No Prisma migration is required. Deploy the application and apply the narrow additive Contentful migration described above to the selected environment. Extra retreat photos are managed in the event page editor. After saving venue rooms, use **Review changes for existing retreats** and apply each reviewed instance; neither deployment nor saving a venue silently rebuilds existing inventory.
 
 Optional read-only audit: `node --env-file=.env --experimental-strip-types scripts/audit-retreat-deposits.ts`. Select the intended environment explicitly. It reports legacy deposit snapshot discrepancies without changing configuration or bookings. There is no automatic production data repair.
+
+## Follow-up: reaction reporting and expanded photography
+
+- Report stored blog likes independently of comments, including reaction-only posts. Keep the reporting endpoint staff-only and return aggregate counts without reader identities.
+- Add an optional caption to existing gallery JSON, distinct from accessibility descriptions; no database migration is needed.
+- Open retreat photos in a responsive dialog with uncropped images, captions, previous/next buttons, arrow-key navigation, Escape dismissal and restored thumbnail focus.
+- Verify reaction-only reporting/refresh, authorisation, gallery keyboard/mobile behaviour and dialog accessibility using isolated fixtures.

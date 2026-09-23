@@ -15,6 +15,7 @@ import {
   Ticket,
   X,
 } from "lucide-react";
+import { RetreatGallery } from "@/components/retreat-gallery";
 import { Layout } from "@/components/layout";
 import { RetreatBedPreference } from "@/components/retreat-bed-preference";
 import { requiresBedPreference, type BedPreference } from "@/lib/retreats/bed-preference";
@@ -629,28 +630,7 @@ export function RetreatDetailPage({
               </div>
             ) : null}
 
-            {Boolean(retreat.gallery?.length) && (
-              <section aria-labelledby="retreat-gallery-heading" className="space-y-6">
-                <h2 id="retreat-gallery-heading" className="text-3xl md:text-4xl">
-                  A closer look
-                </h2>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {retreat.gallery?.map((image, index) => (
-                    <figure key={`${image.url}-${index}`} className="overflow-hidden rounded-2xl">
-                      <ImageWithFallback
-                        src={image.url}
-                        alt={image.alt}
-                        loading="lazy"
-                        className="aspect-[4/3] w-full object-cover"
-                        style={{
-                          objectPosition: `${image.focalPoint?.x ?? 50}% ${image.focalPoint?.y ?? 50}%`,
-                        }}
-                      />
-                    </figure>
-                  ))}
-                </div>
-              </section>
-            )}
+            <RetreatGallery images={retreat.gallery || []} />
 
             {selectedVenue && !isOnlineExperience ? (
               <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">

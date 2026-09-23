@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Filter, MessageCircle, RefreshCcw, Search, Trash2 } from "lucide-react";
+import { AdminBlogReactions } from "@/components/admin/blog-reactions";
 import { AdminLayout } from "@/components/admin-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +45,7 @@ function badgeVariant(status: string): "default" | "secondary" | "outline" | "de
 }
 
 export function AdminBlogComments({ initialData }: { initialData?: AdminBlogCommentDto[] | null }) {
+  const [reactionRefresh, setReactionRefresh] = useState(0);
   const [comments, setComments] = useState<AdminBlogCommentDto[]>(initialData || []);
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState("");
@@ -114,14 +116,20 @@ export function AdminBlogComments({ initialData }: { initialData?: AdminBlogComm
   };
 
   return (
-    <AdminLayout title="Blog Comments - Admin">
+    <AdminLayout title="Blog engagement - Admin">
       <div className="space-y-6">
         <AppPageHeader
           eyebrow="Community moderation"
-          title="Blog Comments"
-          description="Review the live comment stream, hide threads when needed and remove spam or duplicate replies."
+          title="Blog comments & reactions"
+          description="See which posts readers like and manage the conversation. Review comments, hide threads or remove spam when needed."
           actions={
-            <Button variant="outline" onClick={() => void loadComments()}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                void loadComments();
+                setReactionRefresh((value) => value + 1);
+              }}
+            >
               <RefreshCcw className="mr-2 h-4 w-4" />
               Refresh
             </Button>
@@ -133,6 +141,8 @@ export function AdminBlogComments({ initialData }: { initialData?: AdminBlogComm
             {error}
           </div>
         ) : null}
+
+        <AdminBlogReactions refreshKey={reactionRefresh} />
 
         <AppMetricGrid className="lg:grid-cols-3">
           <AppMetricCard label="Visible" value={summary.visible} detail="public comments" />
