@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import RegistrationLoading from "./loading";
 import { connection } from "next/server";
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
@@ -5,7 +7,17 @@ import { getHealthProfile } from "@/lib/health/health-service";
 import { getOwnRetreatRegistration } from "@/lib/retreats/registration-service";
 import { RetreatRegistration } from "@/views/dashboard/retreat-registration";
 
-export default async function Page({ params }: { params: Promise<{ attendeeId: string }> }) {
+type RegistrationPageProps = { params: Promise<{ attendeeId: string }> };
+
+export default function Page({ params }: RegistrationPageProps) {
+  return (
+    <Suspense fallback={<RegistrationLoading />}>
+      <RegistrationContent params={params} />
+    </Suspense>
+  );
+}
+
+async function RegistrationContent({ params }: RegistrationPageProps) {
   await connection();
   const { attendeeId } = await params;
   const session = await auth();
