@@ -1,4 +1,4 @@
-import { Link, Text } from "@react-email/components";
+import { Heading, Link, Text } from "@react-email/components";
 import { EmailLayout } from "@/emails/components/email-layout";
 import { bodyTextStyle, buttonStyle, headingStyle } from "@/emails/styles";
 
@@ -17,7 +17,9 @@ export default function WorkshopCancelledEmail({
 }) {
   return (
     <EmailLayout preview={`${workshopName} has been cancelled`}>
-      <Text style={headingStyle}>This workshop has been cancelled</Text>
+      <Heading as="h1" style={headingStyle}>
+        This workshop has been cancelled
+      </Heading>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
         Unfortunately, {workshopName} will not go ahead. Live-room and replay access have been

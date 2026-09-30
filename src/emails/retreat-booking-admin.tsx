@@ -1,4 +1,4 @@
-import { Link, Section, Text } from "@react-email/components";
+import { Heading, Link, Section, Text } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, buttonStyle, headingStyle, mutedTextStyle } from "./styles";
 
@@ -29,9 +29,9 @@ export default function RetreatBookingAdminEmail({
 }: RetreatBookingAdminEmailProps) {
   return (
     <EmailLayout preview={`New ${isGift ? "gift purchase" : "booking"}: ${retreatName}`}>
-      <Text style={{ ...headingStyle, fontSize: "24px", lineHeight: "1.3" }}>
+      <Heading as="h1" style={{ ...headingStyle, fontSize: "24px", lineHeight: "1.3" }}>
         New retreat {isGift ? "gift purchase" : "booking"}
-      </Text>
+      </Heading>
       <Text style={bodyTextStyle}>
         {purchaserName} ({purchaserEmail}) has {isGift ? "bought a gift" : "booked a place"} for{" "}
         {retreatName}.

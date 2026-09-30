@@ -1,4 +1,4 @@
-import { Link, Section, Text } from "@react-email/components";
+import { Heading, Link, Section, Text } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, buttonStyle, colors, headingStyle, mutedTextStyle } from "./styles";
 
@@ -17,7 +17,9 @@ export default function CoachingClientConfirmedEmail({
 }: CoachingClientConfirmedEmailProps) {
   return (
     <EmailLayout preview="Your 1:1 support is confirmed">
-      <Text style={headingStyle}>Your 1:1 support is confirmed</Text>
+      <Heading as="h1" style={headingStyle}>
+        Your 1:1 support is confirmed
+      </Heading>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
         Your {tierLabel} support is confirmed and your client profile is ready. There is no payment

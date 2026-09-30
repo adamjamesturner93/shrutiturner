@@ -1,4 +1,4 @@
-import { Section, Text, Link, Hr } from "@react-email/components";
+import { Heading, Section, Text, Link, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import {
   colors,
@@ -28,7 +28,8 @@ export default function ClassReminderEmail({
 }: ClassReminderEmailProps) {
   return (
     <EmailLayout preview={`Reminder: ${className} starts soon`}>
-      <Text
+      <Heading
+        as="h1"
         style={{
           ...headingStyle,
           fontSize: "24px",
@@ -37,7 +38,7 @@ export default function ClassReminderEmail({
         }}
       >
         Your class is starting soon
-      </Text>
+      </Heading>
 
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>

@@ -1,4 +1,4 @@
-import { Section, Text, Link, Hr } from "@react-email/components";
+import { Heading, Section, Text, Link, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { colors, headingStyle, bodyTextStyle, buttonStyle, dividerStyle } from "./styles";
 
@@ -36,7 +36,8 @@ export default function InstructorNotificationEmail({
             : `Class empty: ${className}`
       }
     >
-      <Text
+      <Heading
+        as="h1"
         style={{
           ...headingStyle,
           fontSize: "24px",
@@ -49,7 +50,7 @@ export default function InstructorNotificationEmail({
           : isNoAttendanceCancelled
             ? "Class cancelled due to no attendees"
             : "Class empty alert"}
-      </Text>
+      </Heading>
 
       <Text style={bodyTextStyle}>
         {isFirstSignup

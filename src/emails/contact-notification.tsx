@@ -1,4 +1,4 @@
-import { Section, Text, Link } from "@react-email/components";
+import { Heading, Section, Text, Link } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, headingStyle, mutedTextStyle, buttonStyle, colors } from "./styles";
 
@@ -27,7 +27,9 @@ export default function ContactNotificationEmail({
 }: ContactNotificationEmailProps) {
   return (
     <EmailLayout preview={`New contact enquiry from ${name}`}>
-      <Text style={headingStyle}>New contact enquiry</Text>
+      <Heading as="h1" style={headingStyle}>
+        New contact enquiry
+      </Heading>
       <Text style={bodyTextStyle}>
         {name} has submitted a new enquiry through the public contact form.
       </Text>

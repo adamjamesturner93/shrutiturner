@@ -1,4 +1,4 @@
-import { Section, Text, Link, Hr } from "@react-email/components";
+import { Heading, Section, Text, Link, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { colors, fonts, bodyTextStyle, buttonStyle, dividerStyle, mutedTextStyle } from "./styles";
 
@@ -30,7 +30,8 @@ export default function BirthdayEmail({
           textAlign: "center" as const,
         }}
       >
-        <Text
+        <Heading
+          as="h1"
           style={{
             fontFamily: fonts.heading,
             color: colors.brandWhite,
@@ -41,7 +42,7 @@ export default function BirthdayEmail({
           }}
         >
           Happy birthday, {firstName}.
-        </Text>
+        </Heading>
         <Text
           style={{
             fontFamily: fonts.body,
@@ -92,7 +93,8 @@ export default function BirthdayEmail({
         >
           Your birthday credit
         </Text>
-        <Text
+        <Heading
+          as="h2"
           style={{
             fontFamily: fonts.heading,
             color: colors.brandAccent,
@@ -103,7 +105,7 @@ export default function BirthdayEmail({
           }}
         >
           {creditAmount}
-        </Text>
+        </Heading>
         <Section
           style={{
             backgroundColor: colors.secondaryBg,

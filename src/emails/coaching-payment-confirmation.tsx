@@ -1,4 +1,4 @@
-import { Link, Section, Text } from "@react-email/components";
+import { Heading, Link, Section, Text } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, buttonStyle, colors, headingStyle, mutedTextStyle } from "./styles";
 
@@ -19,7 +19,9 @@ export default function CoachingPaymentConfirmationEmail({
 }: CoachingPaymentConfirmationEmailProps) {
   return (
     <EmailLayout preview={`Your ${tierLabel} payment is confirmed`}>
-      <Text style={headingStyle}>Your coaching payment is confirmed</Text>
+      <Heading as="h1" style={headingStyle}>
+        Your coaching payment is confirmed
+      </Heading>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
         Your {amountLabel} payment for {tierLabel} has been received. Your coaching dashboard now

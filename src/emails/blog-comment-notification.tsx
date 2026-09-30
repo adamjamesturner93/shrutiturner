@@ -1,4 +1,4 @@
-import { Section, Text, Link } from "@react-email/components";
+import { Heading, Section, Text, Link } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, headingStyle, mutedTextStyle, buttonStyle, colors } from "./styles";
 
@@ -17,7 +17,9 @@ export default function BlogCommentNotificationEmail({
 }: BlogCommentNotificationEmailProps) {
   return (
     <EmailLayout preview={`New blog comment from ${authorName}`}>
-      <Text style={headingStyle}>New blog comment</Text>
+      <Heading as="h1" style={headingStyle}>
+        New blog comment
+      </Heading>
       <Text style={bodyTextStyle}>
         {authorName} commented on <strong>{postSlug}</strong>.
       </Text>

@@ -1,4 +1,4 @@
-import { Link, Section, Text } from "@react-email/components";
+import { Heading, Link, Section, Text } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, buttonStyle, colors, headingStyle, mutedTextStyle } from "./styles";
 
@@ -23,7 +23,8 @@ export default function SubscriptionNoticeEmail({
 }: SubscriptionNoticeEmailProps) {
   return (
     <EmailLayout preview={preview}>
-      <Text
+      <Heading
+        as="h1"
         style={{
           ...headingStyle,
           fontSize: "24px",
@@ -32,7 +33,7 @@ export default function SubscriptionNoticeEmail({
         }}
       >
         {title}
-      </Text>
+      </Heading>
 
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
 

@@ -19,7 +19,9 @@ export const headingStyle = {
   fontFamily: fonts.heading,
   color: colors.brandDark,
   fontWeight: "700" as const,
-  margin: "0",
+  fontSize: "26px",
+  lineHeight: "1.3",
+  margin: "0 0 24px",
 };
 
 export const bodyTextStyle = {

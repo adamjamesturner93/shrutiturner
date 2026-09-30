@@ -1,4 +1,4 @@
-import { Link, Section, Text } from "@react-email/components";
+import { Heading, Link, Section, Text } from "@react-email/components";
 import { CANONICAL_LEAD_MAGNET } from "@/lib/newsletter/lead-magnet";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, buttonStyle, colors, headingStyle } from "./styles";
@@ -25,9 +25,12 @@ export default function NewsletterVerificationEmail({
       privacyUrl={privacyUrl}
       category="marketing"
     >
-      <Text style={{ ...headingStyle, fontSize: "26px", lineHeight: "1.2", marginBottom: "24px" }}>
+      <Heading
+        as="h1"
+        style={{ ...headingStyle, fontSize: "26px", lineHeight: "1.2", marginBottom: "24px" }}
+      >
         Confirm your email
-      </Text>
+      </Heading>
 
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
 

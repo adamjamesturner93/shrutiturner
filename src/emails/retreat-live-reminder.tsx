@@ -1,6 +1,6 @@
-import { Link, Section, Text } from "@react-email/components";
+import { Heading, Link, Section, Text } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
-import { bodyTextStyle, buttonStyle, headingStyle, mutedTextStyle } from "./styles";
+import { bodyTextStyle, buttonStyle, colors, headingStyle, mutedTextStyle } from "./styles";
 
 export default function RetreatLiveReminderEmail({
   firstName,
@@ -19,9 +19,9 @@ export default function RetreatLiveReminderEmail({
 }) {
   return (
     <EmailLayout preview={`${retreatName} begins ${reminderLabel}`}>
-      <Text style={{ ...headingStyle, fontSize: "24px", lineHeight: "1.3" }}>
+      <Heading as="h1" style={{ ...headingStyle, fontSize: "24px", lineHeight: "1.3" }}>
         Your online retreat begins {reminderLabel}
-      </Text>
+      </Heading>
       <Text style={bodyTextStyle}>Hi {firstName || "there"},</Text>
       <Text style={bodyTextStyle}>
         <strong>{retreatName}</strong> begins {dateTime}. Use the secure studio link below to check
@@ -33,8 +33,10 @@ export default function RetreatLiveReminderEmail({
         </Link>
       </Section>
       <Text style={mutedTextStyle}>
-        <Link href={calendarUrl}>Add or update the calendar event</Link>. This link opens your
-        website account; the Daily room address is never sent by email.
+        <Link href={calendarUrl} style={{ color: colors.brandAccent, textDecoration: "underline" }}>
+          Add or update the calendar event
+        </Link>
+        . This link opens your website account; the Daily room address is never sent by email.
       </Text>
     </EmailLayout>
   );

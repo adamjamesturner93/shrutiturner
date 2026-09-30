@@ -1,6 +1,6 @@
-import { Link, Section, Text } from "@react-email/components";
+import { Heading, Link, Section, Text } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
-import { bodyTextStyle, buttonStyle, mutedTextStyle } from "./styles";
+import { headingStyle, bodyTextStyle, buttonStyle, mutedTextStyle } from "./styles";
 
 export default function HealthProfileUpdatedNotificationEmail({
   memberName,
@@ -13,6 +13,9 @@ export default function HealthProfileUpdatedNotificationEmail({
 }) {
   return (
     <EmailLayout preview={`${memberName} updated their health profile`}>
+      <Heading as="h1" style={headingStyle}>
+        Health profile updated
+      </Heading>
       <Text style={bodyTextStyle}>{memberName} has updated their health profile.</Text>
       <Text style={mutedTextStyle}>{memberEmail}</Text>
       <Text style={mutedTextStyle}>

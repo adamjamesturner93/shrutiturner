@@ -13,7 +13,7 @@ export default function RetreatRegistrationEmail({
 }) {
   return (
     <EmailLayout preview={`Your place at ${title} — get ready in My Studio`}>
-      <Heading style={{ ...headingStyle, fontSize: "28px", marginBottom: "24px" }}>
+      <Heading as="h1" style={{ ...headingStyle, fontSize: "28px", marginBottom: "24px" }}>
         Your place at {title}
       </Heading>
       <Text style={bodyTextStyle}>Hi {name},</Text>

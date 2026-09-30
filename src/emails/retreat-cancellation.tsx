@@ -1,4 +1,4 @@
-import { Section, Text, Link } from "@react-email/components";
+import { Heading, Section, Text, Link } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, buttonStyle, colors, headingStyle, mutedTextStyle } from "./styles";
 
@@ -32,7 +32,9 @@ export default function RetreatCancellationEmail({
 
   return (
     <EmailLayout preview={`${heading}: ${retreatName}`}>
-      <Text style={headingStyle}>{heading}</Text>
+      <Heading as="h1" style={headingStyle}>
+        {heading}
+      </Heading>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       {status === "requested" ? (
         <Text style={bodyTextStyle}>
@@ -100,7 +102,9 @@ export function RetreatCancellationAdminEmail({
 }) {
   return (
     <EmailLayout preview={`Cancellation request: ${retreatName}`}>
-      <Text style={headingStyle}>A retreat cancellation needs review</Text>
+      <Heading as="h1" style={headingStyle}>
+        A retreat cancellation needs review
+      </Heading>
       <Text style={bodyTextStyle}>
         {customerName} ({customerEmail}) has asked to cancel their booking.
       </Text>

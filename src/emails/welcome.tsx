@@ -1,4 +1,4 @@
-import { Section, Text, Link, Hr } from "@react-email/components";
+import { Heading, Section, Text, Link, Hr } from "@react-email/components";
 import { FREE_GUIDE_TITLE, FREE_GUIDE_SUPPORTING_LINE } from "@/lib/newsletter/lead-magnet";
 import { EmailLayout } from "./components/email-layout";
 import { colors, fonts, headingStyle, bodyTextStyle, buttonStyle, dividerStyle } from "./styles";
@@ -42,7 +42,8 @@ export default function WelcomeEmail({
       privacyUrl={privacyUrl}
       category="marketing"
     >
-      <Text
+      <Heading
+        as="h1"
         style={{
           ...headingStyle,
           fontSize: "26px",
@@ -51,7 +52,7 @@ export default function WelcomeEmail({
         }}
       >
         {"Welcome — I'm glad you're here."}
-      </Text>
+      </Heading>
 
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
@@ -81,7 +82,7 @@ export default function WelcomeEmail({
         <Text
           style={{
             fontFamily: fonts.body,
-            color: colors.brandAccentLight,
+            color: colors.brandWhite,
             fontSize: "12px",
             textTransform: "uppercase" as const,
             letterSpacing: "0.08em",
@@ -91,7 +92,8 @@ export default function WelcomeEmail({
         >
           Your free resource
         </Text>
-        <Text
+        <Heading
+          as="h2"
           style={{
             fontFamily: fonts.heading,
             color: colors.brandWhite,
@@ -102,7 +104,7 @@ export default function WelcomeEmail({
           }}
         >
           {leadMagnetTitle}
-        </Text>
+        </Heading>
         <Text
           style={{
             fontFamily: fonts.body,
@@ -129,7 +131,8 @@ export default function WelcomeEmail({
 
       <Hr style={dividerStyle} />
 
-      <Text
+      <Heading
+        as="h2"
         style={{
           ...headingStyle,
           fontSize: "18px",
@@ -137,7 +140,7 @@ export default function WelcomeEmail({
         }}
       >
         What to expect from me
-      </Text>
+      </Heading>
 
       <Text style={bodyTextStyle}>
         I send occasional emails about new writing, useful resources and ways to work together. No

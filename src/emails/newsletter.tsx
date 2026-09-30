@@ -1,4 +1,4 @@
-import { Section, Text, Img, Hr, Link } from "@react-email/components";
+import { Heading, Section, Text, Img, Hr, Link } from "@react-email/components";
 import type { ReactNode } from "react";
 import { EmailLayout } from "./components/email-layout";
 import { colors, fonts, bodyTextStyle, dividerStyle } from "./styles";
@@ -195,9 +195,13 @@ function renderMarkdown(markdown: string): ReactNode {
     if (block.type === "heading") {
       const fontSize = block.level === 1 ? "22px" : block.level === 2 ? "20px" : "18px";
       return (
-        <Text key={index} style={{ ...headingStyle, fontSize }}>
+        <Heading
+          as={block.level <= 2 ? "h2" : "h3"}
+          key={index}
+          style={{ ...headingStyle, fontSize }}
+        >
           {renderInline(block.text)}
-        </Text>
+        </Heading>
       );
     }
 
@@ -302,7 +306,8 @@ export default function NewsletterEmail({
   return (
     <EmailLayout preview={previewText} category="marketing" unsubscribeUrl={unsubscribeUrl}>
       {/* Subject as serif heading */}
-      <Text
+      <Heading
+        as="h1"
         style={{
           fontFamily: fonts.heading,
           color: colors.brandDark,
@@ -314,7 +319,7 @@ export default function NewsletterEmail({
         }}
       >
         {subject}
-      </Text>
+      </Heading>
 
       <Text style={bodyTextStyle}>Hello {firstName},</Text>
 
@@ -329,7 +334,8 @@ export default function NewsletterEmail({
           ))}
 
           {/* Bold callout - a key pattern from the real newsletter */}
-          <Text
+          <Heading
+            as="h2"
             style={{
               fontFamily: fonts.heading,
               color: colors.brandDark,
@@ -341,7 +347,7 @@ export default function NewsletterEmail({
             }}
           >
             Discomfort is not the same thing as danger.
-          </Text>
+          </Heading>
 
           <Text style={bodyTextStyle}>
             For many of us (especially when symptoms and recovery can vary) those signals get
@@ -357,7 +363,8 @@ export default function NewsletterEmail({
             experiences controlled challenge followed by recovery.
           </Text>
 
-          <Text
+          <Heading
+            as="h2"
             style={{
               fontFamily: fonts.heading,
               color: colors.brandDark,
@@ -369,7 +376,7 @@ export default function NewsletterEmail({
             }}
           >
             Not through force.{"\n"}Through dosage.
-          </Text>
+          </Heading>
 
           <Text style={bodyTextStyle}>
             There is a way to stretch your capacity that builds trust rather than chipping it away.

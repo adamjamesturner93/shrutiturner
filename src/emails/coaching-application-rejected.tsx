@@ -1,4 +1,4 @@
-import { Section, Text, Link } from "@react-email/components";
+import { Heading, Section, Text, Link } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, headingStyle, mutedTextStyle, buttonStyle, colors } from "./styles";
 
@@ -17,7 +17,9 @@ export default function CoachingApplicationRejectedEmail({
 }: CoachingApplicationRejectedEmailProps) {
   return (
     <EmailLayout preview="Your coaching enquiry has been reviewed">
-      <Text style={headingStyle}>Your enquiry has been reviewed</Text>
+      <Heading as="h1" style={headingStyle}>
+        Your enquiry has been reviewed
+      </Heading>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
         Thank you for your coaching enquiry. Shruti has reviewed what you discussed, and {tierLabel}

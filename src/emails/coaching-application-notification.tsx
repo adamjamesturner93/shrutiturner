@@ -1,4 +1,4 @@
-import { Section, Text, Link } from "@react-email/components";
+import { Heading, Section, Text, Link } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, headingStyle, mutedTextStyle, buttonStyle, colors } from "./styles";
 
@@ -17,7 +17,9 @@ export default function CoachingApplicationNotificationEmail({
 }: CoachingApplicationNotificationEmailProps) {
   return (
     <EmailLayout preview={`New coaching enquiry from ${name}`}>
-      <Text style={headingStyle}>New coaching enquiry</Text>
+      <Heading as="h1" style={headingStyle}>
+        New coaching enquiry
+      </Heading>
       <Text style={bodyTextStyle}>{name} has submitted a new coaching enquiry.</Text>
       <Section
         style={{

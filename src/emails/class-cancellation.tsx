@@ -1,4 +1,4 @@
-import { Section, Text, Link, Hr } from "@react-email/components";
+import { Heading, Section, Text, Link, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import {
   colors,
@@ -29,7 +29,8 @@ export default function ClassCancellationEmail({
 }: ClassCancellationEmailProps) {
   return (
     <EmailLayout preview={`Class cancelled: ${className} on ${classDate}`}>
-      <Text
+      <Heading
+        as="h1"
         style={{
           ...headingStyle,
           fontSize: "24px",
@@ -38,7 +39,7 @@ export default function ClassCancellationEmail({
         }}
       >
         Class cancelled
-      </Text>
+      </Heading>
 
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
@@ -56,7 +57,8 @@ export default function ClassCancellationEmail({
           borderLeft: `3px solid #d4183d`,
         }}
       >
-        <Text
+        <Heading
+          as="h2"
           style={{
             fontFamily: fonts.heading,
             color: colors.brandDark,
@@ -67,7 +69,7 @@ export default function ClassCancellationEmail({
           }}
         >
           {className}
-        </Text>
+        </Heading>
         <Text
           style={{
             fontFamily: fonts.body,

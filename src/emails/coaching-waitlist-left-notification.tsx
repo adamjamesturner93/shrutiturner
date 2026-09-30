@@ -1,4 +1,4 @@
-import { Section, Text, Link } from "@react-email/components";
+import { Heading, Section, Text, Link } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, buttonStyle, colors, headingStyle, mutedTextStyle } from "./styles";
 
@@ -17,7 +17,9 @@ export default function CoachingWaitlistLeftNotificationEmail({
 }: CoachingWaitlistLeftNotificationEmailProps) {
   return (
     <EmailLayout preview={`${clientName} left the coaching waiting list`}>
-      <Text style={headingStyle}>Someone left the coaching waiting list</Text>
+      <Heading as="h1" style={headingStyle}>
+        Someone left the coaching waiting list
+      </Heading>
       <Text style={bodyTextStyle}>
         {clientName} has left the coaching waiting list from their coaching dashboard.
       </Text>

@@ -1,4 +1,4 @@
-import { Section, Text, Link } from "@react-email/components";
+import { Heading, Section, Text, Link } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, headingStyle, mutedTextStyle, buttonStyle, colors } from "./styles";
 
@@ -17,7 +17,9 @@ export default function CoachingApplicationWaitlistedEmail({
 }: CoachingApplicationWaitlistedEmailProps) {
   return (
     <EmailLayout preview="You are on the coaching waiting list">
-      <Text style={headingStyle}>You are on the waiting list</Text>
+      <Heading as="h1" style={headingStyle}>
+        You are on the waiting list
+      </Heading>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
         Thank you for your coaching enquiry. Shruti recommends {tierLabel} and would like to keep

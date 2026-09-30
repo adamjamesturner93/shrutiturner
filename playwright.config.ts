@@ -28,7 +28,7 @@ loadEnvFile();
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  testIgnore: ["**/programmes/**"], // Runs with its isolated provider/clock configuration.
+  testIgnore: ["**/programmes/**", "**/emails/**"], // These suites use standalone configurations.
   timeout: 60_000,
   workers: 3,
   expect: {

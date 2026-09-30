@@ -1,4 +1,4 @@
-import { Section, Text } from "@react-email/components";
+import { Heading, Section, Text } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, colors, headingStyle, mutedTextStyle } from "./styles";
 
@@ -21,7 +21,9 @@ export default function SecurityAlertEmail({
 }: SecurityAlertEmailProps) {
   return (
     <EmailLayout preview={title}>
-      <Text style={headingStyle}>{title}</Text>
+      <Heading as="h1" style={headingStyle}>
+        {title}
+      </Heading>
       <Text style={bodyTextStyle}>{summary}</Text>
 
       <Section

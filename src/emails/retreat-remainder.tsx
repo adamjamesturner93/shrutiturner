@@ -1,4 +1,4 @@
-import { Section, Text, Link, Hr } from "@react-email/components";
+import { Heading, Section, Text, Link, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import {
   colors,
@@ -39,7 +39,8 @@ export default function RetreatRemainderEmail({
 }: RetreatRemainderEmailProps) {
   return (
     <EmailLayout preview={`Retreat balance due: ${remainderAmount} by ${dueDate}`}>
-      <Text
+      <Heading
+        as="h1"
         style={{
           ...headingStyle,
           fontSize: "24px",
@@ -48,7 +49,7 @@ export default function RetreatRemainderEmail({
         }}
       >
         Retreat balance reminder
-      </Text>
+      </Heading>
       <Text
         style={{
           ...mutedTextStyle,
@@ -76,7 +77,8 @@ export default function RetreatRemainderEmail({
           margin: "8px 0 24px",
         }}
       >
-        <Text
+        <Heading
+          as="h2"
           style={{
             fontFamily: fonts.heading,
             color: colors.brandDark,
@@ -87,7 +89,7 @@ export default function RetreatRemainderEmail({
           }}
         >
           {retreatName}
-        </Text>
+        </Heading>
         <Text
           style={{
             fontFamily: fonts.body,
@@ -112,7 +114,7 @@ export default function RetreatRemainderEmail({
           <Text
             style={{
               fontFamily: fonts.body,
-              color: colors.brandAccentLight,
+              color: colors.brandWhite,
               fontSize: "12px",
               textTransform: "uppercase" as const,
               letterSpacing: "0.08em",
@@ -122,7 +124,8 @@ export default function RetreatRemainderEmail({
           >
             Amount due
           </Text>
-          <Text
+          <Heading
+            as="h2"
             style={{
               fontFamily: fonts.heading,
               color: colors.brandWhite,
@@ -133,11 +136,11 @@ export default function RetreatRemainderEmail({
             }}
           >
             {remainderAmount}
-          </Text>
+          </Heading>
           <Text
             style={{
               fontFamily: fonts.body,
-              color: "rgba(250, 250, 248, 0.7)",
+              color: colors.brandWhite,
               fontSize: "14px",
               margin: "0",
             }}

@@ -1,4 +1,4 @@
-import { Section, Text, Link, Hr } from "@react-email/components";
+import { Heading, Section, Text, Link, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import {
   colors,
@@ -28,7 +28,8 @@ export default function PurchaseConfirmationEmail({
 }: PurchaseConfirmationEmailProps) {
   return (
     <EmailLayout preview={`Receipt for ${purchaseDescription}`}>
-      <Text
+      <Heading
+        as="h1"
         style={{
           ...headingStyle,
           fontSize: "24px",
@@ -37,7 +38,7 @@ export default function PurchaseConfirmationEmail({
         }}
       >
         Payment received
-      </Text>
+      </Heading>
 
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>

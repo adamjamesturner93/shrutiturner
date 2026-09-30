@@ -34,18 +34,24 @@ export function EmailLayout({
   category = "transactional",
 }: EmailLayoutProps) {
   return (
-    <Html>
+    <Html lang="en">
       <Head>
+        <title>{preview}</title>
         <style
           dangerouslySetInnerHTML={{
             __html: `
-              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Libre+Baskerville:wght@400;700&display=swap');
+              @media only screen and (max-width: 480px) {
+                .email-body > table > tbody > tr > td { padding: 16px 8px !important; }
+                .email-content { padding: 28px 20px 24px !important; }
+                .email-footer { padding: 0 20px 28px !important; }
+              }
             `,
           }}
         />
       </Head>
       <Preview>{preview}</Preview>
       <Body
+        className="email-body"
         style={{
           backgroundColor: "#edecea",
           fontFamily: fonts.body,
@@ -63,12 +69,14 @@ export function EmailLayout({
             }}
           >
             <Img
-              src={`${websiteUrl}/logos/logo-white-horizontal-transparent.svg`}
+              src={`${websiteUrl}/logos/logo-white-horizontal-email.png`}
               alt="Shruti Turner"
               width="240"
               height="61"
               style={{
                 display: "block",
+                maxWidth: "100%",
+                height: "auto",
                 margin: "0 auto",
               }}
             />
@@ -87,10 +95,15 @@ export function EmailLayout({
           </Section>
 
           {/* Content */}
-          <Section style={{ padding: "40px 40px 32px" }}>{children}</Section>
+          <Section
+            className="email-content"
+            style={{ padding: "40px 40px 32px", overflowWrap: "anywhere" }}
+          >
+            {children}
+          </Section>
 
           {/* Footer */}
-          <Section style={{ padding: "0 40px 40px" }}>
+          <Section className="email-footer" style={{ padding: "0 40px 40px" }}>
             <Hr style={dividerStyle} />
             <Text style={footerTextStyle}>Shruti Turner</Text>
             <Text style={footerTextStyle}>
@@ -127,7 +140,7 @@ export function EmailLayout({
                 style={{
                   ...footerTextStyle,
                   fontSize: "12px",
-                  color: "#a0a098",
+                  color: colors.muted,
                   marginTop: "16px",
                 }}
               >
@@ -135,12 +148,15 @@ export function EmailLayout({
                 <br />
                 <Link
                   href={unsubscribeUrl}
-                  style={{ color: "#a0a098", textDecoration: "underline" }}
+                  style={{ color: colors.muted, textDecoration: "underline" }}
                 >
                   Unsubscribe
                 </Link>
                 {"  \u00b7  "}
-                <Link href={privacyUrl} style={{ color: "#a0a098", textDecoration: "underline" }}>
+                <Link
+                  href={privacyUrl}
+                  style={{ color: colors.muted, textDecoration: "underline" }}
+                >
                   Privacy Policy
                 </Link>
               </Text>

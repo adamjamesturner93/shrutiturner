@@ -1,4 +1,4 @@
-import { Section, Text, Link, Hr } from "@react-email/components";
+import { Heading, Section, Text, Link, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import {
   colors,
@@ -30,7 +30,7 @@ export default function ClassBookingEmail({
   classDate = "Thursday, 6 March 2026",
   classTime = "9:30 AM",
   classDuration = "60 minutes",
-  classLocation = "Private Studio (online)",
+  classLocation = "My Studio (online)",
   instructorNote = "No special equipment needed for this session — just a mat and yourself. We'll be working on building capacity through slow, intentional movement.",
   manageBookingUrl = "https://shrutiturner.co.uk/account/bookings",
   creditRefundWindowLabel = "3 hours",
@@ -39,7 +39,8 @@ export default function ClassBookingEmail({
 }: ClassBookingEmailProps) {
   return (
     <EmailLayout preview={`Booking confirmed: ${className} on ${classDate}`}>
-      <Text
+      <Heading
+        as="h1"
         style={{
           ...headingStyle,
           fontSize: "24px",
@@ -48,7 +49,7 @@ export default function ClassBookingEmail({
         }}
       >
         {"You're booked in."}
-      </Text>
+      </Heading>
       <Text
         style={{
           ...mutedTextStyle,
@@ -75,7 +76,8 @@ export default function ClassBookingEmail({
           margin: "8px 0 28px",
         }}
       >
-        <Text
+        <Heading
+          as="h2"
           style={{
             fontFamily: fonts.heading,
             color: colors.brandDark,
@@ -85,7 +87,7 @@ export default function ClassBookingEmail({
           }}
         >
           {className}
-        </Text>
+        </Heading>
 
         {/* Detail rows */}
         {[

@@ -1,4 +1,4 @@
-import { Section, Text, Link } from "@react-email/components";
+import { Heading, Section, Text, Link } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, headingStyle, mutedTextStyle, buttonStyle, colors } from "./styles";
 
@@ -17,7 +17,9 @@ export default function CoachingPaymentNotificationEmail({
 }: CoachingPaymentNotificationEmailProps) {
   return (
     <EmailLayout preview={`Coaching payment received from ${clientName}`}>
-      <Text style={headingStyle}>Coaching payment received</Text>
+      <Heading as="h1" style={headingStyle}>
+        Coaching payment received
+      </Heading>
       <Text style={bodyTextStyle}>
         {clientName} has completed payment for {tierLabel}. They are ready for manual Everfit setup.
       </Text>

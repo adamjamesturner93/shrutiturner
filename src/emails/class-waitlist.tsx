@@ -1,4 +1,4 @@
-import { Hr, Link, Section, Text } from "@react-email/components";
+import { Heading, Hr, Link, Section, Text } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import {
   bodyTextStyle,
@@ -39,7 +39,8 @@ export default function ClassWaitlistEmail({
 
   return (
     <EmailLayout preview={preview}>
-      <Text
+      <Heading
+        as="h1"
         style={{
           ...headingStyle,
           fontSize: "24px",
@@ -48,7 +49,7 @@ export default function ClassWaitlistEmail({
         }}
       >
         {title}
-      </Text>
+      </Heading>
       <Text
         style={{
           ...mutedTextStyle,
@@ -78,7 +79,8 @@ export default function ClassWaitlistEmail({
           margin: "8px 0 28px",
         }}
       >
-        <Text
+        <Heading
+          as="h2"
           style={{
             fontFamily: fonts.heading,
             color: colors.brandDark,
@@ -88,7 +90,7 @@ export default function ClassWaitlistEmail({
           }}
         >
           {className}
-        </Text>
+        </Heading>
 
         {[
           { label: "Date", value: classDate },

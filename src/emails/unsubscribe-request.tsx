@@ -1,4 +1,4 @@
-import { Link, Text } from "@react-email/components";
+import { Heading, Link, Text } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, buttonStyle, headingStyle, mutedTextStyle, colors } from "./styles";
 
@@ -9,7 +9,8 @@ type UnsubscribeRequestEmailProps = {
 export default function UnsubscribeRequestEmail({ unsubscribeUrl }: UnsubscribeRequestEmailProps) {
   return (
     <EmailLayout preview="Confirm your unsubscribe request">
-      <Text
+      <Heading
+        as="h1"
         style={{
           ...headingStyle,
           fontSize: "24px",
@@ -18,7 +19,7 @@ export default function UnsubscribeRequestEmail({ unsubscribeUrl }: UnsubscribeR
         }}
       >
         Confirm your unsubscribe request
-      </Text>
+      </Heading>
 
       <Text style={bodyTextStyle}>Hi,</Text>
       <Text style={bodyTextStyle}>

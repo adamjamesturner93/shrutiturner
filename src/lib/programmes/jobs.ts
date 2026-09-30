@@ -1,4 +1,7 @@
 import "server-only";
+import { createElement } from "react";
+import { render } from "@react-email/render";
+import ProgrammeUpdateEmail from "@/emails/programme-update";
 import { db } from "@/lib/db";
 import { programmeNow } from "./clock";
 import { cohortStateAt } from "./policy";
@@ -12,11 +15,6 @@ import {
 } from "@/lib/postmark/client";
 
 import { programmeCalendarDay } from "./calendar-time";
-const escape = (value: string) =>
-  value.replace(
-    /[&<>"']/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!
-  );
 export async function maintainProgrammes() {
   const now = programmeNow();
   const cohorts = await db.smallGroupProgramme.findMany({
@@ -220,7 +218,43 @@ export async function dispatchProgrammeMessages(cohortId?: string) {
         "Your live workout is tomorrow. Open your programme for the current time, equipment and access.",
       live1: "Your live workout starts in one hour. Open your programme for the session.",
     };
-    const body = `${copy[message.kind] || c.title}\n\n${url}\nCalendar: ${buildAbsoluteUrl(`/api/me/programmes/${c.id}/calendar`)}\nOnboarding: ${buildAbsoluteUrl(`/dashboard/programmes/${c.id}/onboarding`)}`;
+    const messageCopy = copy[message.kind] || c.title;
+    const participantSetup = !["confirmation", "cancelled", "refunded"].includes(message.kind);
+    const email = createElement(ProgrammeUpdateEmail, {
+      programmeTitle: c.title,
+      message: messageCopy,
+      actionUrl:
+        message.kind === "onboarding"
+          ? buildAbsoluteUrl(`/dashboard/programmes/${c.id}/onboarding`)
+          : url,
+      actionLabel:
+        message.kind === "confirmation"
+          ? "Review cohort"
+          : message.kind === "onboarding"
+            ? "Continue programme setup"
+            : "View programme",
+      calendarUrl: participantSetup
+        ? buildAbsoluteUrl(`/api/me/programmes/${c.id}/calendar`)
+        : undefined,
+      onboardingUrl:
+        participantSetup && message.kind !== "onboarding"
+          ? buildAbsoluteUrl(`/dashboard/programmes/${c.id}/onboarding`)
+          : undefined,
+    });
+    const htmlBody = await render(email);
+    const textBody = await render(email, { plainText: true });
+    const subjects: Record<string, string> = {
+      welcome: "You're in",
+      onboarding: "Get ready for your programme",
+      prestart: "We begin on Monday",
+      closing: "Your next steps",
+      ending: "Your programme access is ending",
+      cancelled: "Programme cancelled",
+      refunded: "Refund processed",
+      confirmation: "Cohort decision needed",
+      live24: "Your live workout is tomorrow",
+      live1: "Your live workout starts in one hour",
+    };
     const deliveryId = `programme-${message.id}`;
     await db.emailDelivery.upsert({
       where: { id: deliveryId },
@@ -232,12 +266,12 @@ export async function dispatchProgrammeMessages(cohortId?: string) {
           getNotificationInbox("PROGRAMME_ADMIN_EMAIL"),
         userId: message.userId,
         templateKey: `programme-${message.kind}`,
-        subject: `${message.kind === "welcome" ? "You're in" : message.kind === "prestart" ? "We begin on Monday" : c.title}: ${message.kind}`,
+        subject: `${subjects[message.kind] || "Programme update"}: ${c.title}`,
         tag: "programme",
         messageStream: getPostmarkMessageStream(),
         payloadJson: {
-          htmlBody: `<p>${escape(body).replaceAll("\n", "<br>")}</p>`,
-          textBody: body,
+          htmlBody,
+          textBody,
         },
         metadataJson: {
           programmeId: c.id,

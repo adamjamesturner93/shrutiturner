@@ -1,4 +1,4 @@
-import { Section, Text } from "@react-email/components";
+import { Heading, Section, Text } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, colors, headingStyle, mutedTextStyle } from "./styles";
 
@@ -13,7 +13,9 @@ export default function ContactConfirmationEmail({
 }: ContactConfirmationEmailProps) {
   return (
     <EmailLayout preview="Your enquiry has been received">
-      <Text style={headingStyle}>Enquiry received</Text>
+      <Heading as="h1" style={headingStyle}>
+        Enquiry received
+      </Heading>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
         Thanks for getting in touch. Your enquiry about {topic} has been received and will be read

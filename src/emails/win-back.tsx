@@ -1,4 +1,4 @@
-import { Section, Text, Link, Hr } from "@react-email/components";
+import { Heading, Section, Text, Link, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import {
   colors,
@@ -30,7 +30,8 @@ export default function WinBackEmail({
       preview={`${firstName}, your practice is here when you're ready`}
       category="marketing"
     >
-      <Text
+      <Heading
+        as="h1"
         style={{
           ...headingStyle,
           fontSize: "26px",
@@ -39,7 +40,7 @@ export default function WinBackEmail({
         }}
       >
         Your practice is here when {"you're"} ready
-      </Text>
+      </Heading>
 
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
@@ -75,7 +76,8 @@ export default function WinBackEmail({
         >
           Your last session
         </Text>
-        <Text
+        <Heading
+          as="h2"
           style={{
             fontFamily: fonts.heading,
             color: colors.brandDark,
@@ -85,7 +87,7 @@ export default function WinBackEmail({
           }}
         >
           {lastClassName}
-        </Text>
+        </Heading>
         <Text
           style={{
             fontFamily: fonts.body,
@@ -99,7 +101,8 @@ export default function WinBackEmail({
       </Section>
 
       {/* Gentle options */}
-      <Text
+      <Heading
+        as="h2"
         style={{
           ...headingStyle,
           fontSize: "18px",
@@ -107,7 +110,7 @@ export default function WinBackEmail({
         }}
       >
         A few ways back in
-      </Text>
+      </Heading>
 
       <Section
         style={{
@@ -118,7 +121,8 @@ export default function WinBackEmail({
           marginBottom: "12px",
         }}
       >
-        <Text
+        <Heading
+          as="h2"
           style={{
             fontFamily: fonts.heading,
             color: colors.brandDark,
@@ -128,7 +132,7 @@ export default function WinBackEmail({
           }}
         >
           Book a gentle class
-        </Text>
+        </Heading>
         <Text
           style={{
             fontFamily: fonts.body,
@@ -164,7 +168,8 @@ export default function WinBackEmail({
           marginBottom: "28px",
         }}
       >
-        <Text
+        <Heading
+          as="h2"
           style={{
             fontFamily: fonts.heading,
             color: colors.brandDark,
@@ -174,7 +179,7 @@ export default function WinBackEmail({
           }}
         >
           Read something that helps
-        </Text>
+        </Heading>
         <Text
           style={{
             fontFamily: fonts.body,

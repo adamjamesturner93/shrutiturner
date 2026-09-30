@@ -1,4 +1,4 @@
-import { Section, Text, Link, Hr } from "@react-email/components";
+import { Heading, Section, Text, Link, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import {
   colors,
@@ -66,7 +66,8 @@ export default function RetreatBookingEmail({
           : `Retreat deposit received: ${retreatName}`
       }
     >
-      <Text
+      <Heading
+        as="h1"
         style={{
           ...headingStyle,
           fontSize: "24px",
@@ -75,7 +76,7 @@ export default function RetreatBookingEmail({
         }}
       >
         Your retreat place is secured.
-      </Text>
+      </Heading>
       <Text
         style={{
           ...mutedTextStyle,
@@ -105,7 +106,8 @@ export default function RetreatBookingEmail({
           margin: "8px 0 0",
         }}
       >
-        <Text
+        <Heading
+          as="h2"
           style={{
             fontFamily: fonts.heading,
             color: colors.brandWhite,
@@ -116,7 +118,7 @@ export default function RetreatBookingEmail({
           }}
         >
           {retreatName}
-        </Text>
+        </Heading>
 
         {[
           { label: "Dates", value: retreatDates },
@@ -127,7 +129,7 @@ export default function RetreatBookingEmail({
             <Text
               style={{
                 fontFamily: fonts.body,
-                color: colors.brandAccentLight,
+                color: colors.brandWhite,
                 fontSize: "12px",
                 textTransform: "uppercase" as const,
                 letterSpacing: "0.06em",

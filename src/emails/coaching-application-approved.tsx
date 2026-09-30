@@ -1,4 +1,4 @@
-import { Section, Text, Link } from "@react-email/components";
+import { Heading, Section, Text, Link } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, headingStyle, mutedTextStyle, buttonStyle, colors } from "./styles";
 
@@ -17,12 +17,14 @@ export default function CoachingApplicationApprovedEmail({
 }: CoachingApplicationApprovedEmailProps) {
   return (
     <EmailLayout preview="Your coaching recommendation is ready">
-      <Text style={headingStyle}>Your coaching recommendation is ready</Text>
+      <Heading as="h1" style={headingStyle}>
+        Your coaching recommendation is ready
+      </Heading>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
         Following your conversation, Shruti recommends {tierLabel}. The next step is to create or
-        sign in to your Private Studio, review the recommendation and complete the agreements and
-        payment when you are ready.
+        sign in to your My Studio, review the recommendation and complete the agreements and payment
+        when you are ready.
       </Text>
       {decisionReason ? (
         <Section

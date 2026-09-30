@@ -1,4 +1,4 @@
-import { Section, Text, Link } from "@react-email/components";
+import { Heading, Section, Text, Link } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, headingStyle, mutedTextStyle, buttonStyle, colors } from "./styles";
 
@@ -21,7 +21,9 @@ export default function RetreatBalanceDueEmail({
 }: RetreatBalanceDueEmailProps) {
   return (
     <EmailLayout preview={`Retreat balance due for ${retreatName}`}>
-      <Text style={headingStyle}>Your retreat balance is ready</Text>
+      <Heading as="h1" style={headingStyle}>
+        Your retreat balance is ready
+      </Heading>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
         Your place on {retreatName} is secured. The remaining balance can be paid any time before{" "}

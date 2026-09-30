@@ -1,6 +1,6 @@
-import { Section, Text, Link } from "@react-email/components";
+import { Heading, Section, Text, Link } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
-import { bodyTextStyle, buttonStyle, mutedTextStyle, colors } from "./styles";
+import { headingStyle, bodyTextStyle, buttonStyle, mutedTextStyle, colors } from "./styles";
 
 interface CoachingPaymentReminderEmailProps {
   firstName: string;
@@ -15,13 +15,16 @@ export default function CoachingPaymentReminderEmail({
 }: CoachingPaymentReminderEmailProps) {
   return (
     <EmailLayout preview="A reminder to complete your 1:1 payment">
+      <Heading as="h1" style={headingStyle}>
+        Complete your coaching payment
+      </Heading>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
         A friendly reminder that your application for {tierLabel} has been approved.
       </Text>
       <Text style={bodyTextStyle}>
-        When you are ready, sign in to your Private Studio, review the agreements and complete
-        payment from your dashboard.
+        When you are ready, sign in to your My Studio, review the agreements and complete payment
+        from your dashboard.
       </Text>
       <Section
         style={{

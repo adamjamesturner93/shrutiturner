@@ -1,4 +1,4 @@
-import { Section, Text, Link, Hr } from "@react-email/components";
+import { Heading, Section, Text, Link, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import {
   colors,
@@ -27,7 +27,8 @@ export default function ClassUnbookingEmail({
 }: ClassUnbookingEmailProps) {
   return (
     <EmailLayout preview={`Booking cancelled: ${className} on ${classDate}`}>
-      <Text
+      <Heading
+        as="h1"
         style={{
           ...headingStyle,
           fontSize: "24px",
@@ -36,7 +37,7 @@ export default function ClassUnbookingEmail({
         }}
       >
         Booking cancelled
-      </Text>
+      </Heading>
 
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
@@ -54,7 +55,8 @@ export default function ClassUnbookingEmail({
           borderLeft: `3px solid ${colors.muted}`,
         }}
       >
-        <Text
+        <Heading
+          as="h2"
           style={{
             fontFamily: fonts.heading,
             color: colors.brandDark,
@@ -64,7 +66,7 @@ export default function ClassUnbookingEmail({
           }}
         >
           {className}
-        </Text>
+        </Heading>
         <Text
           style={{
             fontFamily: fonts.body,

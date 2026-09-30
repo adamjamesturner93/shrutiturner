@@ -1,6 +1,6 @@
-import { Link, Section, Text } from "@react-email/components";
+import { Heading, Link, Section, Text } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
-import { bodyTextStyle, buttonStyle, mutedTextStyle } from "./styles";
+import { headingStyle, bodyTextStyle, buttonStyle, mutedTextStyle } from "./styles";
 
 export default function HealthProfileReviewRequestedEmail({
   firstName,
@@ -11,6 +11,9 @@ export default function HealthProfileReviewRequestedEmail({
 }) {
   return (
     <EmailLayout preview="Please review your health profile">
+      <Heading as="h1" style={headingStyle}>
+        Review your health information
+      </Heading>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
         Shruti has updated your health profile using information you shared. Please sign in to

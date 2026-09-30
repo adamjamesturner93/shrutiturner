@@ -1,4 +1,4 @@
-import { Section, Text, Link, Img, Hr } from "@react-email/components";
+import { Heading, Section, Text, Link, Img, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { DEFAULT_BLOG_EMAIL_INTRODUCTION } from "@/lib/newsletter/blog-email-copy";
 import {
@@ -103,7 +103,8 @@ export default function BlogPostEmail({
             </Section>
           )}
 
-          <Text
+          <Heading
+            as="h1"
             style={{
               ...headingStyle,
               fontSize: "20px",
@@ -112,7 +113,7 @@ export default function BlogPostEmail({
             }}
           >
             {heading || postTitle}
-          </Text>
+          </Heading>
 
           <Text
             style={{

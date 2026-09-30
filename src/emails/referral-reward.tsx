@@ -1,4 +1,4 @@
-import { Section, Text, Link, Hr } from "@react-email/components";
+import { Heading, Section, Text, Link, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import {
   colors,
@@ -29,7 +29,8 @@ export default function ReferralRewardEmail({
 }: ReferralRewardEmailProps) {
   return (
     <EmailLayout preview={`${referredName} signed up — you've earned ${creditAmount} credit!`}>
-      <Text
+      <Heading
+        as="h1"
         style={{
           ...headingStyle,
           fontSize: "26px",
@@ -38,7 +39,7 @@ export default function ReferralRewardEmail({
         }}
       >
         Your referral just signed up
-      </Text>
+      </Heading>
 
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
@@ -61,7 +62,7 @@ export default function ReferralRewardEmail({
         <Text
           style={{
             fontFamily: fonts.body,
-            color: colors.brandAccentLight,
+            color: colors.brandWhite,
             fontSize: "12px",
             textTransform: "uppercase" as const,
             letterSpacing: "0.08em",
@@ -71,7 +72,8 @@ export default function ReferralRewardEmail({
         >
           Credit added
         </Text>
-        <Text
+        <Heading
+          as="h2"
           style={{
             fontFamily: fonts.heading,
             color: colors.brandWhite,
@@ -82,7 +84,7 @@ export default function ReferralRewardEmail({
           }}
         >
           {creditAmount}
-        </Text>
+        </Heading>
         <Text
           style={{
             fontFamily: fonts.body,
@@ -109,7 +111,8 @@ export default function ReferralRewardEmail({
       <Hr style={dividerStyle} />
 
       {/* Share Again */}
-      <Text
+      <Heading
+        as="h2"
         style={{
           ...headingStyle,
           fontSize: "18px",
@@ -117,7 +120,7 @@ export default function ReferralRewardEmail({
         }}
       >
         Keep sharing the love
-      </Text>
+      </Heading>
 
       <Text style={{ ...bodyTextStyle, fontSize: "15px" }}>
         Every time someone signs up with your link, you both benefit. Share your unique link to earn

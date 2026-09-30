@@ -1,4 +1,4 @@
-import { Section, Text, Hr } from "@react-email/components";
+import { Heading, Section, Text, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { colors, fonts, headingStyle, bodyTextStyle, mutedTextStyle, dividerStyle } from "./styles";
 
@@ -13,7 +13,8 @@ export default function AuthCodeEmail({
 }: AuthCodeEmailProps) {
   return (
     <EmailLayout preview={`Your login code is ${code}`}>
-      <Text
+      <Heading
+        as="h1"
         style={{
           ...headingStyle,
           fontSize: "24px",
@@ -22,7 +23,7 @@ export default function AuthCodeEmail({
         }}
       >
         Your login code
-      </Text>
+      </Heading>
 
       <Text style={bodyTextStyle}>
         Enter this code to sign in to your account. The code will expire in {expiryMinutes} minutes.

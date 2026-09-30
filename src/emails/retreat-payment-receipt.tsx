@@ -1,4 +1,4 @@
-import { Link, Section, Text } from "@react-email/components";
+import { Heading, Link, Section, Text } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, buttonStyle, headingStyle, mutedTextStyle } from "./styles";
 
@@ -21,9 +21,9 @@ export default function RetreatPaymentReceiptEmail({
 }: RetreatPaymentReceiptEmailProps) {
   return (
     <EmailLayout preview={`Payment received for ${retreatName}`}>
-      <Text style={{ ...headingStyle, fontSize: "24px", lineHeight: "1.3" }}>
+      <Heading as="h1" style={{ ...headingStyle, fontSize: "24px", lineHeight: "1.3" }}>
         Your retreat balance is paid.
-      </Text>
+      </Heading>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
         Thank you. Your payment of {amountPaid} for {retreatName} has been received.

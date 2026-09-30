@@ -1,5 +1,7 @@
-import { Section, Text } from "@react-email/components";
+import { Heading, Section, Text } from "@react-email/components";
 import { EmailLayout } from "@/emails/components/email-layout";
+
+import { bodyTextStyle, headingStyle } from "./styles";
 
 type AdminMemberMessageEmailProps = {
   memberFirstName: string;
@@ -19,19 +21,17 @@ export default function AdminMemberMessageEmail({
 
   return (
     <EmailLayout preview={`A note from ${adminName}`}>
+      <Heading as="h1" style={headingStyle}>
+        A note from {adminName}
+      </Heading>
       <Section>
-        <Text style={{ fontSize: "16px", lineHeight: "26px", margin: "0 0 16px" }}>
-          Hi {memberFirstName},
-        </Text>
+        <Text style={{ ...bodyTextStyle, whiteSpace: "pre-line" }}>Hi {memberFirstName},</Text>
         {paragraphs.map((paragraph) => (
-          <Text
-            key={paragraph}
-            style={{ fontSize: "16px", lineHeight: "26px", margin: "0 0 16px" }}
-          >
+          <Text key={paragraph} style={{ ...bodyTextStyle, whiteSpace: "pre-line" }}>
             {paragraph}
           </Text>
         ))}
-        <Text style={{ fontSize: "16px", lineHeight: "26px", margin: "24px 0 0" }}>
+        <Text style={{ ...bodyTextStyle, marginTop: "24px" }}>
           Warmly,
           <br />
           {adminName}

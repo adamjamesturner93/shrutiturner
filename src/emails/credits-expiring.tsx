@@ -1,4 +1,4 @@
-import { Section, Text, Link, Hr } from "@react-email/components";
+import { Heading, Section, Text, Link, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import {
   colors,
@@ -25,7 +25,8 @@ export default function CreditsExpiringEmail({
 }: CreditsExpiringEmailProps) {
   return (
     <EmailLayout preview={`Your credits expire on ${expiryDate} — use them before they go`}>
-      <Text
+      <Heading
+        as="h1"
         style={{
           ...headingStyle,
           fontSize: "26px",
@@ -34,7 +35,7 @@ export default function CreditsExpiringEmail({
         }}
       >
         {"Don't let your credits slip away"}
-      </Text>
+      </Heading>
 
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
@@ -54,7 +55,8 @@ export default function CreditsExpiringEmail({
           textAlign: "center" as const,
         }}
       >
-        <Text
+        <Heading
+          as="h2"
           style={{
             fontFamily: fonts.heading,
             color: colors.brandAccent,
@@ -65,7 +67,7 @@ export default function CreditsExpiringEmail({
           }}
         >
           {creditCount}
-        </Text>
+        </Heading>
         <Text
           style={{
             fontFamily: fonts.body,

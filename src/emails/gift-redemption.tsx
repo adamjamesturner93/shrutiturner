@@ -1,4 +1,4 @@
-import { Link, Section, Text } from "@react-email/components";
+import { Heading, Link, Section, Text } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, buttonStyle, colors, headingStyle, mutedTextStyle } from "./styles";
 
@@ -27,9 +27,9 @@ export default function GiftRedemptionEmail({
           : `${purchaserName} has sent you a gift`
       }
     >
-      <Text style={headingStyle}>
+      <Heading as="h1" style={headingStyle}>
         {sendToBuyer ? "Your gift is ready to share." : `A gift from ${purchaserName}.`}
-      </Text>
+      </Heading>
 
       <Text style={bodyTextStyle}>
         {sendToBuyer

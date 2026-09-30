@@ -1,4 +1,4 @@
-import { Link, Section, Text } from "@react-email/components";
+import { Heading, Link, Section, Text } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, buttonStyle, colors, headingStyle, mutedTextStyle } from "./styles";
 
@@ -19,7 +19,9 @@ export default function CoachingPaidStartRequestedEmail({
 }: CoachingPaidStartRequestedEmailProps) {
   return (
     <EmailLayout preview={`Set up your paid ${offerLabel} plan`}>
-      <Text style={headingStyle}>Set up your paid 1:1 plan</Text>
+      <Heading as="h1" style={headingStyle}>
+        Set up your paid 1:1 plan
+      </Heading>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
         Shruti has invited you to move from your pro-bono arrangement onto the paid {offerLabel}

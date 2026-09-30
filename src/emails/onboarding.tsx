@@ -1,4 +1,4 @@
-import { Section, Text, Link, Hr } from "@react-email/components";
+import { Heading, Section, Text, Link, Hr } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import {
   colors,
@@ -33,7 +33,8 @@ export default function OnboardingEmail({
 
   return (
     <EmailLayout preview={preview}>
-      <Text
+      <Heading
+        as="h1"
         style={{
           ...headingStyle,
           fontSize: "26px",
@@ -42,7 +43,7 @@ export default function OnboardingEmail({
         }}
       >
         Your studio account is ready
-      </Text>
+      </Heading>
 
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
 
@@ -88,7 +89,8 @@ export default function OnboardingEmail({
           >
             Step 1
           </Text>
-          <Text
+          <Heading
+            as="h2"
             style={{
               ...headingStyle,
               fontSize: "18px",
@@ -96,7 +98,7 @@ export default function OnboardingEmail({
             }}
           >
             {hasOneToOneApplication ? "Open your 1:1 dashboard" : "Explore 1:1 offers"}
-          </Text>
+          </Heading>
           <Text
             style={{
               ...bodyTextStyle,
@@ -146,7 +148,8 @@ export default function OnboardingEmail({
           >
             Step 2
           </Text>
-          <Text
+          <Heading
+            as="h2"
             style={{
               ...headingStyle,
               fontSize: "18px",
@@ -154,7 +157,7 @@ export default function OnboardingEmail({
             }}
           >
             {hasOneToOneApplication ? "Keep your details current" : "Enquire before payment"}
-          </Text>
+          </Heading>
           <Text
             style={{
               ...bodyTextStyle,
@@ -206,7 +209,8 @@ export default function OnboardingEmail({
           >
             Step 3
           </Text>
-          <Text
+          <Heading
+            as="h2"
             style={{
               ...headingStyle,
               fontSize: "18px",
@@ -214,7 +218,7 @@ export default function OnboardingEmail({
             }}
           >
             {hasOneToOneApplication ? "Watch for Shruti's reply" : "Complete your account details"}
-          </Text>
+          </Heading>
           <Text
             style={{
               ...bodyTextStyle,

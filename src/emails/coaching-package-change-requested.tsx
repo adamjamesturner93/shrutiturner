@@ -1,4 +1,4 @@
-import { Section, Text, Link } from "@react-email/components";
+import { Heading, Section, Text, Link } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, buttonStyle, colors, headingStyle, mutedTextStyle } from "./styles";
 
@@ -26,7 +26,9 @@ export default function CoachingPackageChangeRequestedEmail({
 
   return (
     <EmailLayout preview="Review your coaching package change">
-      <Text style={headingStyle}>Review your coaching package change</Text>
+      <Heading as="h1" style={headingStyle}>
+        Review your coaching package change
+      </Heading>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
         Shruti has suggested moving your coaching package from {fromLabel} to {toLabel}.

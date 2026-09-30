@@ -1,4 +1,4 @@
-import { Section, Text, Link } from "@react-email/components";
+import { Heading, Section, Text, Link } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, headingStyle, mutedTextStyle, buttonStyle, colors } from "./styles";
 
@@ -19,7 +19,9 @@ export default function CoachingCancellationNotificationEmail({
 }: CoachingCancellationNotificationEmailProps) {
   return (
     <EmailLayout preview={`Coaching cancellation scheduled for ${clientName}`}>
-      <Text style={headingStyle}>Coaching cancellation scheduled</Text>
+      <Heading as="h1" style={headingStyle}>
+        Coaching cancellation scheduled
+      </Heading>
       <Text style={bodyTextStyle}>
         {clientName} has scheduled coaching cancellation. Their next payment is still due and will
         be their final coaching payment.

@@ -1,4 +1,4 @@
-import { Text } from "@react-email/components";
+import { Heading, Text } from "@react-email/components";
 import { EmailLayout } from "./components/email-layout";
 import { bodyTextStyle, headingStyle, mutedTextStyle } from "./styles";
 
@@ -15,9 +15,9 @@ export default function RetreatGiftRefundEmail({
 }: RetreatGiftRefundEmailProps) {
   return (
     <EmailLayout preview={`Gift purchase refund for ${retreatName}`}>
-      <Text style={{ ...headingStyle, fontSize: "24px", lineHeight: "1.3" }}>
+      <Heading as="h1" style={{ ...headingStyle, fontSize: "24px", lineHeight: "1.3" }}>
         Your gift purchase has been cancelled.
-      </Text>
+      </Heading>
       <Text style={bodyTextStyle}>Hi {firstName},</Text>
       <Text style={bodyTextStyle}>
         Your unredeemed gift purchase for {retreatName} has been cancelled. A refund of{" "}
