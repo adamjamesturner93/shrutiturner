@@ -65,3 +65,33 @@ describe("daily client managed call lifecycle", () => {
     expect(secondCallObject.destroy).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("concurrent Daily creation", () => {
+  afterEach(() => {
+    delete (globalThis as { window?: unknown }).window;
+  });
+  it("serializes overlapping creates and waits for asynchronous destroy", async () => {
+    vi.resetModules();
+    let finishDestroy!: () => void;
+    const destroyed = new Promise<void>((resolve) => {
+      finishDestroy = resolve;
+    });
+    const first = createMockCallObject();
+    first.destroy.mockReturnValue(destroyed);
+    const second = createMockCallObject();
+    const factory = vi.fn().mockReturnValueOnce(first).mockReturnValueOnce(second);
+    (globalThis as { window?: unknown }).window = { DailyIframe: { createCallObject: factory } };
+    const { createManagedCallObject, releaseManagedCallObject } =
+      await import("@/lib/daily/client");
+    const one = createManagedCallObject();
+    const two = createManagedCallObject();
+    await one;
+    await vi.waitFor(() => expect(first.destroy).toHaveBeenCalledOnce());
+    expect(factory).toHaveBeenCalledOnce();
+    finishDestroy();
+    const createdSecond = await two;
+    expect(createdSecond).toBe(second);
+    await releaseManagedCallObject(createdSecond);
+    expect(second.destroy).toHaveBeenCalledOnce();
+  });
+});

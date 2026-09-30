@@ -9,10 +9,8 @@ import {
   ArrowRight,
   Clock,
   Users,
-  EyeOff,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
 import { DeviceSelector } from "./device-selector";
 import { LocalMediaPreview } from "./local-media-preview";
 import type { RoomMode } from "./video-room";
@@ -39,12 +37,10 @@ export function PreJoinLobby({
   className: classTitle,
   classTime,
   classDuration,
-  classLevel,
   instructor,
   equipment,
   registeredCount,
   maxSpaces,
-  mode,
   defaultMicMuted = false,
   defaultCameraOff = false,
   isRecorded = false,
@@ -74,14 +70,6 @@ export function PreJoinLobby({
                 {registeredCount}/{maxSpaces}
               </span>
             </div>
-            {mode !== "live-class" && (
-              <div className="mt-2 flex items-center justify-center gap-2">
-                <Badge className="border-brand-accent/30 bg-brand-accent/20 text-brand-accent-light">
-                  <EyeOff className="mr-1 h-3 w-3" />
-                  Starts in community mode
-                </Badge>
-              </div>
-            )}
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -147,28 +135,6 @@ export function PreJoinLobby({
                     </li>
                   ))}
                 </ul>
-              </div>
-
-              {/* Class info */}
-              <div className="space-y-2 rounded-lg bg-white/5 p-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-white/50">Level</span>
-                  <span className="text-white/80">{classLevel}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-white/50">View mode</span>
-                  <span className="text-white/80">
-                    {mode === "live-class"
-                      ? "Focus (instructor only)"
-                      : "Community to start, instructor can switch to focus"}
-                  </span>
-                </div>
-                {mode !== "live-class" && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-white/50">Community mode</span>
-                    <span className="text-white/80">Instructor controlled</span>
-                  </div>
-                )}
               </div>
 
               <div className="space-y-3 rounded-lg bg-white/5 p-4 text-sm text-white/75">

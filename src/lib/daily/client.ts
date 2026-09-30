@@ -24,7 +24,7 @@ export type DailyCallObject = {
   off: (event: string, callback?: (event?: unknown) => void) => void;
   join: (properties: Record<string, unknown>) => Promise<void>;
   leave: () => Promise<void>;
-  destroy: () => void;
+  destroy: () => Promise<void> | void;
   participants: () => Record<string, DailyParticipant>;
   setLocalAudio: (enabled: boolean) => Promise<void> | void;
   setLocalVideo: (enabled: boolean) => Promise<void> | void;
@@ -161,41 +161,34 @@ async function releaseCallObjectInternally(callObject: DailyCallObject) {
   try {
     await callObject.leave().catch(() => undefined);
   } finally {
-    callObject.destroy();
+    await callObject.destroy();
     if (activeCallObject === callObject) {
       activeCallObject = null;
     }
   }
 }
 
-export async function createManagedCallObject(properties?: DailyCreateCallObjectOptions) {
-  const daily = await loadDailyIframe();
-
-  if (activeCallObject) {
-    const previousCallObject = activeCallObject;
-    activeCallObject = null;
-    callLifecyclePromise = callLifecyclePromise.then(() =>
-      releaseCallObjectInternally(previousCallObject)
-    );
-  }
-
-  await callLifecyclePromise;
-  const callObject = daily.createCallObject(properties);
-  activeCallObject = callObject;
-  return callObject;
+// Serialize creation as well as teardown: overlapping mounts must never create two calls.
+export function createManagedCallObject(properties?: DailyCreateCallObjectOptions) {
+  const operation = callLifecyclePromise.then(async () => {
+    const daily = await loadDailyIframe();
+    if (activeCallObject) await releaseCallObjectInternally(activeCallObject);
+    const callObject = daily.createCallObject(properties);
+    activeCallObject = callObject;
+    return callObject;
+  });
+  callLifecyclePromise = operation.then(
+    () => undefined,
+    () => undefined
+  );
+  return operation;
 }
 
 export function releaseManagedCallObject(callObject: DailyCallObject | null) {
-  if (!callObject) {
-    return callLifecyclePromise;
-  }
-
-  if (activeCallObject === callObject) {
-    activeCallObject = null;
-  }
-
-  callLifecyclePromise = callLifecyclePromise.then(() => releaseCallObjectInternally(callObject));
-  return callLifecyclePromise;
+  if (!callObject) return callLifecyclePromise;
+  const operation = callLifecyclePromise.then(() => releaseCallObjectInternally(callObject));
+  callLifecyclePromise = operation.catch(() => undefined);
+  return operation;
 }
 
 export function attachTrack(

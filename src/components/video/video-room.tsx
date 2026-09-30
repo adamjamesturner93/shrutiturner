@@ -321,7 +321,7 @@ export function VideoRoom({
 
   const localParticipant = participants.find((participant) => participant.isLocal);
   const instructorParticipant =
-    participants.find((participant) => participant.isInstructor) || localParticipant || null;
+    participants.find((participant) => participant.isInstructor) || null;
   const otherParticipants = participants.filter(
     (participant) => !participant.isInstructor && !participant.isLocal
   );
@@ -476,12 +476,18 @@ export function VideoRoom({
           throw new Error(payload.message || "Unable to join the live room");
         }
 
+        if (cancelled) return;
+
         const startAudioOff = payload.defaultMicMuted ?? initialMuted;
         const startVideoOff = payload.defaultCameraOff ?? !initialCameraOn;
         setIsMuted(startAudioOff);
         setIsCameraOn(!startVideoOff);
 
         nextCallObject = await createManagedCallObject();
+        if (cancelled) {
+          await releaseManagedCallObject(nextCallObject);
+          return;
+        }
 
         const syncParticipants = () => mapParticipants(nextCallObject!);
         const handleRoomMessage = (event?: unknown) => {
@@ -564,6 +570,10 @@ export function VideoRoom({
             .catch(() => undefined);
         }
 
+        if (cancelled) {
+          await releaseManagedCallObject(nextCallObject);
+          return;
+        }
         await nextCallObject.join({
           url: payload.roomUrl,
           token: payload.token,
@@ -1057,7 +1067,7 @@ export function VideoRoom({
 
       <div className="flex flex-1 overflow-hidden">
         <div className="flex flex-1 flex-col gap-3 overflow-hidden p-3">
-          {isReady ? (
+          {isReady && isInstructor ? (
             <div className="bg-video-panel flex flex-col gap-3 rounded-lg border border-white/5 px-3 py-2.5 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="font-medium text-white">Participant visibility</p>
@@ -1149,18 +1159,13 @@ export function VideoRoom({
                 void broadcastModeration("remove", participant.id, participant.userId)
               }
             />
-          ) : communityMode ? (
-            <CommunityView
-              instructor={instructorParticipant}
-              selfParticipant={localParticipant}
-              participants={otherParticipants}
-            />
           ) : (
-            <FocusView
+            <ParticipantView
               instructor={instructorParticipant}
-              selfParticipant={localParticipant}
-              participantCount={otherParticipants.length}
+              selfParticipant={localParticipant || null}
+              participants={otherParticipants}
               showSelfView={showSelfView}
+              communityMode={communityMode}
             />
           )}
 
@@ -1427,6 +1432,54 @@ function InstructorView({
         </div>
       ) : null}
     </div>
+  );
+}
+
+export function ParticipantView({
+  instructor,
+  selfParticipant: localParticipant,
+  participants,
+  showSelfView,
+  communityMode,
+}: {
+  instructor: ParticipantTileModel | null;
+  selfParticipant: ParticipantTileModel | null;
+  participants: ParticipantTileModel[];
+  showSelfView: boolean;
+  communityMode: boolean;
+}) {
+  if (!instructor)
+    return (
+      <div className="flex flex-1 flex-col gap-4">
+        <div
+          role="status"
+          className="bg-video-panel flex min-h-[320px] flex-1 flex-col items-center justify-center rounded-xl p-6 text-center"
+        >
+          <h2 className="text-xl text-white">Waiting for the instructor</h2>
+          <p className="mt-3 max-w-md text-sm text-white/80">
+            You’re in the right place. The session will appear here when your instructor joins.
+          </p>
+        </div>
+        {showSelfView && localParticipant ? (
+          <div className="w-40">
+            <ParticipantTile participant={localParticipant} size="pip" isLocal />
+          </div>
+        ) : null}
+      </div>
+    );
+  return communityMode ? (
+    <CommunityView
+      instructor={instructor}
+      selfParticipant={showSelfView ? localParticipant : null}
+      participants={participants}
+    />
+  ) : (
+    <FocusView
+      instructor={instructor}
+      selfParticipant={localParticipant}
+      participantCount={participants.length}
+      showSelfView={showSelfView}
+    />
   );
 }
 
