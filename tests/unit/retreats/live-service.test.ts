@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const assertEventExerciseClearanceMock = vi.fn();
 vi.mock("@/lib/retreats/offering-clearance", () => ({
   assertEventExerciseClearance: assertEventExerciseClearanceMock,
 }));
 
+const findReplayMock = vi.fn();
 const findBookingMock = vi.fn();
 const findRetreatDateMock = vi.fn();
 const updateRetreatDateMock = vi.fn();
@@ -17,6 +18,7 @@ const updateRoomPermissionsMock = vi.fn();
 
 vi.mock("@/lib/db", () => ({
   db: {
+    replayAsset: { findFirst: findReplayMock },
     retreatBooking: { findFirst: findBookingMock },
     retreatDate: { findUnique: findRetreatDateMock, update: updateRetreatDateMock },
     retreatLiveAttendance: { findMany: findRetreatAttendancesMock },
@@ -66,6 +68,7 @@ function booking(roomState: "unprepared" | "prepared" = "prepared") {
     retreatDate: {
       id: "retreat_1",
       retreatType: "online",
+      startsAt: new Date(Date.now() - 60_000),
       endsAt: new Date(Date.now() + 60_000),
       liveRoomState: roomState,
       dailyRoomName: roomState === "prepared" ? "room_1" : null,
@@ -249,5 +252,55 @@ describe("retreat live access boundaries", () => {
       },
     });
     expect(result.dailySyncStatus).toBe("synced");
+  });
+});
+
+describe("participant landing expiry", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-30T07:00:00Z"));
+    findReplayMock.mockResolvedValue(null);
+  });
+  afterEach(() => vi.useRealTimers());
+  it.each(["prepared", "started"])(
+    "shows ended for an expired %s room even if staff never ended it",
+    async (roomState) => {
+      const row = booking();
+      findBookingMock.mockResolvedValue({
+        ...row,
+        retreatDate: { ...row.retreatDate, liveRoomState: roomState, endsAt: new Date() },
+      });
+      expect((await service.getRetreatLiveLandingState("booking_1", "user_1")).state).toBe("ended");
+    }
+  );
+  it("shows ended when entitlement expires before the scheduled finish", async () => {
+    const row = booking();
+    row.onlineAccessEntitlements[0].liveAccessEndsAt = new Date();
+    findBookingMock.mockResolvedValue(row);
+    expect((await service.getRetreatLiveLandingState("booking_1", "user_1")).state).toBe("ended");
+  });
+  it("offers only an entitled published replay after expiry", async () => {
+    const row = booking();
+    row.retreatDate.endsAt = new Date();
+    findBookingMock.mockResolvedValue(row);
+    findReplayMock.mockResolvedValue({ id: "replay-1" });
+    expect((await service.getRetreatLiveLandingState("booking_1", "user_1")).state).toBe(
+      "replay_available"
+    );
+    expect(findReplayMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          entitlements: { some: expect.objectContaining({ userId: "user_1", revokedAt: null }) },
+        }),
+      })
+    );
+  });
+  it("keeps the lobby available immediately before expiry", async () => {
+    const row = booking();
+    row.retreatDate.endsAt = new Date(Date.now() + 1);
+    findBookingMock.mockResolvedValue(row);
+    expect((await service.getRetreatLiveLandingState("booking_1", "user_1")).state).toBe(
+      "pre_join"
+    );
   });
 });

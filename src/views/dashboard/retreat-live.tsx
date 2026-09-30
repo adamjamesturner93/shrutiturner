@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CalendarDays, Video } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ export type RetreatLiveLanding = {
   title: string;
   startsAt: string;
   endsAt: string;
+  joinClosesAt?: string;
   timezone: string;
   capacity: number;
   state:
@@ -133,8 +134,23 @@ export function DashboardRetreatLive({ initialData }: { initialData: RetreatLive
   const [initialMuted, setInitialMuted] = useState(initialData.defaultMicMuted);
   const [initialCameraOn, setInitialCameraOn] = useState(!initialData.defaultCameraOff);
 
+  const deadline = new Date(initialData.joinClosesAt || initialData.endsAt).getTime();
+  const [expired, setExpired] = useState(() => Date.now() >= deadline);
+  useEffect(() => {
+    if (entered) return;
+    const update = () => setExpired(Date.now() >= deadline);
+    update();
+    const interval = window.setInterval(update, 1000);
+    return () => window.clearInterval(interval);
+  }, [deadline, entered]);
+  const state =
+    !entered && expired && !["cancelled", "replay_available"].includes(initialData.state)
+      ? "ended"
+      : initialData.state;
+
   if (
-    initialData.state !== "cancelled" &&
+    state !== "ended" &&
+    state !== "cancelled" &&
     initialData.exerciseClearance?.required &&
     !initialData.exerciseClearance.canExercise
   ) {
@@ -156,7 +172,7 @@ export function DashboardRetreatLive({ initialData }: { initialData: RetreatLive
       </StateCard>
     );
   }
-  if (initialData.state === "registration_incomplete") {
+  if (state === "registration_incomplete") {
     return (
       <StateCard
         title="Finish your retreat registration"
@@ -170,7 +186,7 @@ export function DashboardRetreatLive({ initialData }: { initialData: RetreatLive
       </StateCard>
     );
   }
-  if (initialData.state === "cancelled") {
+  if (state === "cancelled") {
     return (
       <StateCard
         title="This workshop has been cancelled"
@@ -182,18 +198,29 @@ export function DashboardRetreatLive({ initialData }: { initialData: RetreatLive
       </StateCard>
     );
   }
-  if (initialData.state === "replay_available" && initialData.replayAssetId) {
+  if (state === "replay_available" && initialData.replayAssetId) {
     return <RetreatReplay assetId={initialData.replayAssetId} title={initialData.title} />;
   }
-  if (initialData.state === "ended") {
+  if (state === "ended") {
     return (
       <StateCard
-        title="This retreat has ended"
-        body="If a replay is recorded, it will appear here only after a staff administrator publishes it."
-      />
+        title={`${initialData.title} has ended`}
+        body={
+          initialData.isRecorded
+            ? "Live joining is now closed. If a replay is made available, you’ll be able to watch it here."
+            : "Live joining is now closed. You can still view your booking details in My Studio."
+        }
+      >
+        <Button asChild>
+          <Link href={`/dashboard/retreats/${initialData.bookingId}`}>View booking</Link>
+        </Button>
+        <Button variant="outline" asChild>
+          <Link href="/dashboard/events">Back to events</Link>
+        </Button>
+      </StateCard>
     );
   }
-  if (initialData.state === "scheduled") {
+  if (state === "scheduled") {
     return (
       <StateCard
         title={initialData.title}
@@ -208,7 +235,7 @@ export function DashboardRetreatLive({ initialData }: { initialData: RetreatLive
       </StateCard>
     );
   }
-  if (initialData.state === "waiting_room") {
+  if (state === "waiting_room") {
     return (
       <StateCard
         title="The host is preparing the room"
@@ -259,6 +286,11 @@ export function DashboardRetreatLive({ initialData }: { initialData: RetreatLive
       isRecorded={initialData.isRecorded}
       chatEnabled={initialData.chatEnabled}
       onJoin={(settings) => {
+        if (Date.now() >= deadline) {
+          setExpired(true);
+          router.refresh();
+          return;
+        }
         setInitialMuted(settings.isMuted);
         setInitialCameraOn(settings.isCameraOn);
         setEntered(true);

@@ -191,10 +191,14 @@ export async function getRetreatLiveLandingState(bookingId: string, userId: stri
     | "ended"
     | "replay_available" = "scheduled";
   if (booking.retreatDate.status === "cancelled") state = "cancelled";
-  else if (registrationIncomplete) state = "registration_incomplete";
-  else if (booking.retreatDate.liveRoomState === RetreatLiveRoomState.ended) {
+  else if (
+    booking.retreatDate.liveRoomState === RetreatLiveRoomState.ended ||
+    now >= booking.retreatDate.endsAt ||
+    (entitlement?.liveAccessEndsAt && now >= entitlement.liveAccessEndsAt)
+  ) {
     state = replayAsset ? "replay_available" : "ended";
-  } else if (entitlement?.liveAccessStartsAt && now < entitlement.liveAccessStartsAt) {
+  } else if (registrationIncomplete) state = "registration_incomplete";
+  else if (entitlement?.liveAccessStartsAt && now < entitlement.liveAccessStartsAt) {
     state = "scheduled";
   } else if (booking.retreatDate.liveRoomState === RetreatLiveRoomState.started) {
     state = "live";
@@ -210,6 +214,12 @@ export async function getRetreatLiveLandingState(bookingId: string, userId: stri
     title: booking.retreatDate.retreatTitleSnapshot,
     startsAt: booking.retreatDate.startsAt.toISOString(),
     endsAt: booking.retreatDate.endsAt.toISOString(),
+    joinClosesAt: new Date(
+      Math.min(
+        booking.retreatDate.endsAt.getTime(),
+        entitlement?.liveAccessEndsAt?.getTime() ?? Infinity
+      )
+    ).toISOString(),
     timezone: booking.retreatDate.timezone,
     capacity: booking.retreatDate.capacity,
     state,
