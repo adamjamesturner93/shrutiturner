@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { Button } from "@/components/ui/button";
 import { VideoRoom } from "@/components/video/video-room";
 
 type HostState = {
@@ -20,11 +21,15 @@ type HostState = {
   recordingState: "idle" | "recording" | "stopped" | "failed";
 };
 
-export function DashboardRetreatHostLive({ initialData }: { initialData: HostState }) {
+export function DashboardRetreatHostLive({
+  initialData,
+  returnHref = "/dashboard",
+}: {
+  initialData: HostState;
+  returnHref?: string;
+}) {
   const [roomState, setRoomState] = useState(initialData.roomState);
-  const [entered, setEntered] = useState(false);
-  const [error, setError] = useState("");
-  const [starting, setStarting] = useState(false);
+  const router = useRouter();
   const lifecycle = async (action: string) => {
     const response = await fetch(`/api/retreats/host/${initialData.retreatDateId}/lifecycle`, {
       method: "PATCH",
@@ -35,56 +40,18 @@ export function DashboardRetreatHostLive({ initialData }: { initialData: HostSta
     if (!response.ok) throw new Error(payload?.message || "Unable to update session.");
     return payload;
   };
-  if (roomState === "ended" && !entered) {
+  if (roomState === "ended") {
     return (
       <DashboardLayout title="Online retreat">
         <div className="mx-auto max-w-xl py-16 text-center">
           <h1 className="text-3xl">Session ended</h1>
           <p className="text-muted-foreground mt-3">
-            Attendance and the retained transcript remain available to authorised staff.
+            The workshop has finished. You can review attendance and session details from the event
+            page.
           </p>
-        </div>
-      </DashboardLayout>
-    );
-  }
-  if (!entered) {
-    return (
-      <DashboardLayout title="Host online retreat">
-        <div className="marketing-panel mx-auto max-w-2xl rounded-[1.75rem] p-8 text-center">
-          <h1 className="text-3xl">{initialData.title}</h1>
-          <p className="text-muted-foreground mt-3">
-            {initialData.registeredCount} registered · capacity {initialData.capacity}
-          </p>
-          <p className="text-muted-foreground mt-2">
-            Starting prepares the Daily room if needed. Assigned instructors receive access only to
-            this retreat.
-          </p>
-          {error ? (
-            <p role="alert" className="mt-4 text-sm text-red-700">
-              {error}
-            </p>
-          ) : null}
-          <Button
-            className="mt-6"
-            onClick={async () => {
-              setStarting(true);
-              setError("");
-              try {
-                await lifecycle("start");
-                setRoomState("started");
-                setEntered(true);
-              } catch (startError) {
-                setError(
-                  startError instanceof Error ? startError.message : "Unable to start session."
-                );
-              } finally {
-                setStarting(false);
-              }
-            }}
-            disabled={starting}
-          >
-            {starting ? "Starting…" : "Start session and enter"}
-          </Button>
+          <Link className="mt-4 inline-block underline" href={returnHref}>
+            Back to event
+          </Link>
         </div>
       </DashboardLayout>
     );
@@ -111,16 +78,38 @@ export function DashboardRetreatHostLive({ initialData }: { initialData: HostSta
       initialRecording={initialData.recordingState === "recording"}
       isRecorded={initialData.isRecorded}
       chatEnabled={initialData.chatEnabled}
-      onLeave={() => setEntered(false)}
-      onEndSession={async () => {
-        await lifecycle("end");
-        setRoomState("ended");
+      onLeave={(reason) => {
+        if (reason === "ended") {
+          setRoomState("ended");
+          return;
+        }
+        router.push(returnHref);
+        router.refresh();
       }}
+      onStartSession={
+        roomState !== "started"
+          ? async () => {
+              await lifecycle("start");
+              setRoomState("started");
+            }
+          : undefined
+      }
+      onEndSession={
+        roomState === "started"
+          ? async () => {
+              await lifecycle("end");
+            }
+          : undefined
+      }
       onStartRecording={
-        initialData.isRecorded ? async () => void (await lifecycle("start_recording")) : undefined
+        initialData.isRecorded && roomState === "started"
+          ? async () => void (await lifecycle("start_recording"))
+          : undefined
       }
       onStopRecording={
-        initialData.isRecorded ? async () => void (await lifecycle("stop_recording")) : undefined
+        initialData.isRecorded && roomState === "started"
+          ? async () => void (await lifecycle("stop_recording"))
+          : undefined
       }
     />
   );

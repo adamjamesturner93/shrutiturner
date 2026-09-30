@@ -55,6 +55,7 @@ type VideoRoomProps = {
   isRecorded?: boolean;
   chatEnabled?: boolean;
   onLeave: (reason: "left" | "ended" | "removed") => void;
+  onStartSession?: () => Promise<void> | void;
   onEndSession?: () => Promise<void> | void;
   onStartRecording?: () => Promise<void> | void;
   onStopRecording?: () => Promise<void> | void;
@@ -130,6 +131,7 @@ export function VideoRoom({
   chatEnabled = true,
   initialRecording = false,
   onLeave,
+  onStartSession,
   onEndSession,
   onStartRecording,
   onStopRecording,
@@ -138,6 +140,8 @@ export function VideoRoom({
   const [callObject, setCallObject] = useState<DailyCallObject | null>(null);
   const [participants, setParticipants] = useState<ParticipantTileModel[]>([]);
   const [roomError, setRoomError] = useState("");
+  const [isStartingSession, setIsStartingSession] = useState(false);
+  const [startSessionError, setStartSessionError] = useState("");
   const [isReady, setIsReady] = useState(false);
   const [isMuted, setIsMuted] = useState(initialMuted);
   const [isCameraOn, setIsCameraOn] = useState(initialCameraOn);
@@ -1010,6 +1014,47 @@ export function VideoRoom({
         </div>
       </header>
 
+      {isInstructor && onStartSession ? (
+        <section
+          aria-label="Workshop preparation"
+          className="bg-video-panel flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3 text-white"
+        >
+          <div>
+            <p className="text-sm font-medium">Check your camera and microphone</p>
+            <p className="text-xs text-white/80">
+              The workshop has not started. Start when you are ready for attendees.
+            </p>
+            {startSessionError ? (
+              <p role="alert" className="mt-2 text-sm text-red-200">
+                {startSessionError}
+              </p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            className="text-brand-dark rounded-lg bg-white px-4 py-2 text-sm font-medium disabled:opacity-50"
+            disabled={!isReady || isStartingSession}
+            onClick={async () => {
+              setIsStartingSession(true);
+              setStartSessionError("");
+              try {
+                await onStartSession();
+              } catch (error) {
+                setStartSessionError(
+                  error instanceof Error
+                    ? error.message
+                    : "Unable to start workshop. Please try again."
+                );
+              } finally {
+                setIsStartingSession(false);
+              }
+            }}
+          >
+            {isStartingSession ? "Starting…" : "Start workshop"}
+          </button>
+        </section>
+      ) : null}
+
       <div className="flex flex-1 overflow-hidden">
         <div className="flex flex-1 flex-col gap-3 overflow-hidden p-3">
           {isReady ? (
@@ -1211,7 +1256,7 @@ export function VideoRoom({
             aria-label="End workshop for everyone"
             className="rounded-lg bg-red-500/20 px-3 py-2 text-xs text-red-300 transition-colors hover:bg-red-500/30 disabled:opacity-50"
           >
-            {isEnding ? "Ending..." : "End class"}
+            {isEnding ? "Ending..." : mode === "retreat" ? "End workshop" : "End class"}
           </button>
         ) : null}
         {isInstructor && onStartRecording && onStopRecording ? (

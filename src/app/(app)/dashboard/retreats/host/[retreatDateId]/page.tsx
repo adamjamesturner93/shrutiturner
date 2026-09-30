@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
+import { isStaffAdminRole } from "@/lib/authz/roles";
 import { auth } from "@/lib/auth";
 import { getRetreatHostPageState } from "@/lib/retreats/live-service";
 import { DashboardRetreatHostLive } from "@/views/dashboard/retreat-host-live";
@@ -25,5 +26,14 @@ async function RetreatHostContent({ params }: { params: Promise<{ retreatDateId:
     throw error;
   });
   if (!data) notFound();
-  return <DashboardRetreatHostLive initialData={data} />;
+  return (
+    <DashboardRetreatHostLive
+      initialData={data}
+      returnHref={
+        isStaffAdminRole(session.user.role)
+          ? `/admin/retreats/${retreatDateId}?section=delivery`
+          : "/dashboard"
+      }
+    />
+  );
 }

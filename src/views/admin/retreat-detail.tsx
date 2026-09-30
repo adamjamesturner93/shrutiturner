@@ -1521,14 +1521,6 @@ export function AdminRetreatDetail({
                         <p className="text-muted-foreground mt-1">
                           Status: {retreat.roomSetupStatus.replaceAll("_", " ")}
                         </p>
-                        {retreat.liveRoomPrepared ? (
-                          <Link
-                            href={`/dashboard/retreats/host/${retreat.id}`}
-                            className="text-brand-accent mt-2 inline-flex items-center gap-1 underline"
-                          >
-                            Open protected host room
-                          </Link>
-                        ) : null}
                         {retreat.roomSetupError ? (
                           <p className="mt-2 text-red-700">{retreat.roomSetupError}</p>
                         ) : null}
@@ -1553,21 +1545,34 @@ export function AdminRetreatDetail({
                         onCheckedChange={(checked) => void updateCommunityMode(checked)}
                       />
                     </div>
-                    <Button
-                      type="button"
-                      className="mt-4 w-full"
-                      disabled={actionLoading !== ""}
-                      onClick={() =>
-                        void runRetreatAction("online-room", () =>
-                          fetch(`/api/admin/retreats/${retreat.id}/online-room`, {
-                            method: "POST",
-                          })
-                        )
-                      }
-                    >
-                      <Video className="mr-2 h-4 w-4" />
-                      {actionLoading === "online-room" ? "Preparing..." : "Prepare live room"}
-                    </Button>
+                    {retreat.liveRoomPrepared ? (
+                      <Button asChild className="mt-4 w-full">
+                        <Link href={`/dashboard/retreats/host/${retreat.id}`}>
+                          <Video className="mr-2 h-4 w-4" />
+                          {retreat.liveRoomState === "ended"
+                            ? "View ended session"
+                            : retreat.liveRoomState === "started"
+                              ? "Rejoin host room"
+                              : "Open host room"}
+                        </Link>
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        className="mt-4 w-full"
+                        disabled={actionLoading !== ""}
+                        onClick={() =>
+                          void runRetreatAction("online-room", () =>
+                            fetch(`/api/admin/retreats/${retreat.id}/online-room`, {
+                              method: "POST",
+                            })
+                          )
+                        }
+                      >
+                        <Video className="mr-2 h-4 w-4" />
+                        {actionLoading === "online-room" ? "Preparing..." : "Prepare live room"}
+                      </Button>
+                    )}
                   </div>
                 ) : null}
 
