@@ -73,7 +73,16 @@ export function enforceTrustedAuthOrigin(request: Request) {
     throw forbidden("Invalid Origin header.");
   }
 
-  if (!getAllowedAuthOrigins(request).has(origin)) {
+  // Tunnel URLs rotate during local testing. Never enable this wildcard in production.
+  const parsedOrigin = new URL(origin);
+  const developmentTunnel =
+    env.NODE_ENV === "development" &&
+    ["http:", "https:"].includes(parsedOrigin.protocol) &&
+    ["ngrok-free.app", "ngrok-free.dev", "ngrok.app", "ngrok.dev", "ngrok.io"].some((domain) =>
+      parsedOrigin.hostname.endsWith(`.${domain}`)
+    );
+
+  if (!developmentTunnel && !getAllowedAuthOrigins(request).has(origin)) {
     throw forbidden("Cross-origin authentication requests are not allowed.");
   }
 }
