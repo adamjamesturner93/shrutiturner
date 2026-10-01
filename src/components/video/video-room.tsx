@@ -1342,7 +1342,7 @@ function ControlButton({
   );
 }
 
-function InstructorView({
+export function InstructorView({
   instructor,
   participants,
   communityMode,
@@ -1596,7 +1596,10 @@ function ParticipantTile({
         videoElement.srcObject = null;
       }
     };
-  }, [isLocal, participant?.videoTrack]);
+    // Daily's persistent track can exist before it becomes playable. The video
+    // element mounts only when the camera is playable, so attach again then (and
+    // after a camera off/on toggle), even if the track object has not changed.
+  }, [isLocal, participant?.videoTrack, participant?.isCameraOn]);
 
   if (!participant) {
     return (
