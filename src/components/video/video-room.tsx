@@ -157,6 +157,9 @@ export function VideoRoom({
   const [isRecording, setIsRecording] = useState(initialRecording);
   const [raisedHands, setRaisedHands] = useState<Array<{ userId: string; name: string }>>([]);
   const [reaction, setReaction] = useState("");
+  const [disconnected, setDisconnected] = useState(false);
+  const [moderationNotice, setModerationNotice] = useState("");
+  const leavingCallsRef = useRef(new WeakSet<DailyCallObject>());
   const [statusText, setStatusText] = useState("Connecting to the live room...");
   const [joinAttempt, setJoinAttempt] = useState(0);
   const [isAutoRetrying, setIsAutoRetrying] = useState(false);
@@ -337,6 +340,11 @@ export function VideoRoom({
         return;
       }
 
+      if (leavingCallsRef.current.has(targetCallObject)) return;
+      leavingCallsRef.current.add(targetCallObject);
+      setIsReady(false);
+      setParticipants([]);
+
       if (hasRecordedJoinRef.current) {
         const localParticipant = Object.values(targetCallObject.participants() || {}).find(
           (participant) => Boolean(participant.local)
@@ -369,6 +377,8 @@ export function VideoRoom({
   );
 
   useEffect(() => {
+    setDisconnected(false);
+    setModerationNotice("");
     setJoinAttempt(0);
     setRoomError("");
     setCanRetryJoin(false);
@@ -430,6 +440,7 @@ export function VideoRoom({
 
   useEffect(() => {
     let cancelled = false;
+    let joined = false;
     let nextCallObject: DailyCallObject | null = null;
     let retryTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -488,8 +499,27 @@ export function VideoRoom({
           return;
         }
 
-        const syncParticipants = () => mapParticipants(nextCallObject!);
+        const syncParticipants = () => {
+          if (!cancelled) mapParticipants(nextCallObject!);
+        };
+        const handleDisconnected = () => {
+          if (cancelled || !nextCallObject || leavingCallsRef.current.has(nextCallObject)) return;
+          cancelled = true;
+          setDisconnected(true);
+          setIsReady(false);
+          setParticipants([]);
+          setChatMessages([]);
+          setRaisedHands([]);
+          setReaction("");
+          setModerationNotice("");
+          void leaveRoom(nextCallObject, true);
+        };
+        nextCallObject.on("left-meeting", handleDisconnected);
+        nextCallObject.on("error", () => {
+          if (joined) handleDisconnected();
+        });
         const handleRoomMessage = (event?: unknown) => {
+          if (cancelled) return;
           const payloadData = (event as { data?: Record<string, unknown> } | undefined)?.data;
           if (!payloadData || typeof payloadData.type !== "string") return;
 
@@ -521,10 +551,17 @@ export function VideoRoom({
           }
 
           if (payloadData.type === "moderation") {
-            if (payloadData.targetUserId !== currentUserIdRef.current) return;
+            const local = Object.values(nextCallObject?.participants() || {}).find(
+              (item) => item.local
+            );
+            if (payloadData.targetUserId !== (local?.user_id || currentUserIdRef.current)) return;
+            const senderId = (event as { fromId?: string }).fromId;
+            const sender = senderId ? nextCallObject?.participants()[senderId] : undefined;
+            if (!sender?.owner) return;
 
             if (payloadData.action === "mute") {
               setIsMuted(true);
+              setModerationNotice("Your instructor has muted your microphone.");
               void nextCallObject?.setLocalAudio(false);
             }
 
@@ -605,6 +642,8 @@ export function VideoRoom({
           }).catch(() => undefined);
         }
 
+        if (cancelled) return;
+        joined = true;
         mapParticipants(nextCallObject);
         setCommunityMode(Boolean(payload.communityModeEnabled));
         setCallObject(nextCallObject);
@@ -869,6 +908,32 @@ export function VideoRoom({
     }
   };
 
+  if (disconnected) {
+    return (
+      <div className="bg-video-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4 text-white">
+        <section
+          aria-labelledby="call-disconnected"
+          className="bg-video-panel max-w-md space-y-4 rounded-xl border border-white/10 p-6 text-center"
+        >
+          <h2 id="call-disconnected" className="text-xl">
+            You’re no longer in the workshop
+          </h2>
+          <p role="status" className="text-sm text-white/80">
+            Your connection has ended. Video, audio and live chat have stopped. This can happen if
+            the instructor removes you or the connection is lost.
+          </p>
+          <button
+            type="button"
+            onClick={() => onLeaveRef.current("left")}
+            className="rounded-md bg-white px-4 py-2 text-sm text-black"
+          >
+            Back to workshop
+          </button>
+        </section>
+      </div>
+    );
+  }
+
   if (pendingAcceptances.length > 0) {
     return (
       <div className="bg-video-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4 text-white">
@@ -1129,6 +1194,21 @@ export function VideoRoom({
                   {communityMode ? "Community" : "Focus"}
                 </Badge>
               )}
+            </div>
+          ) : null}
+          {moderationNotice ? (
+            <div
+              role="status"
+              className="flex items-center justify-between gap-3 rounded-lg bg-amber-300/15 px-3 py-2 text-sm text-amber-100"
+            >
+              <span>{moderationNotice}</span>
+              <button
+                type="button"
+                className="rounded border border-current px-2 py-1"
+                onClick={() => setModerationNotice("")}
+              >
+                Dismiss
+              </button>
             </div>
           ) : null}
           {raisedHands.length > 0 ? (

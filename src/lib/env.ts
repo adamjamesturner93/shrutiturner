@@ -107,7 +107,12 @@ export function getAdminEmailAllowlist() {
 }
 
 export function getBaseSiteUrlFromEnv() {
-  return env.NEXT_PUBLIC_APP_URL || env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  return (
+    env.NEXT_PUBLIC_APP_URL ||
+    env.NEXT_PUBLIC_SITE_URL ||
+    "http://localhost:3000" ||
+    "https://b8f7-90-242-239-107.ngrok-free.app/"
+  );
 }
 
 export function getPostmarkToken() {

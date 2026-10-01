@@ -29,7 +29,6 @@ export async function POST(
         data: {
           [body.participantId]: {
             canSend: ["video"],
-            canReceive: { base: true },
             canAdmin: false,
           },
         },

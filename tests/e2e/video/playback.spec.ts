@@ -15,15 +15,13 @@ const { build } = bundlerRequire("esbuild") as {
   build: (options: Record<string, unknown>) => Promise<{ outputFiles: { text: string }[] }>;
 };
 
-test("instructor attaches an existing participant track when it becomes playable and after camera toggles", async ({
-  page,
-}) => {
+test("workshop playback, layout, mute notification and disconnection", async ({ page }) => {
   const bundle = await build({
     stdin: {
       contents: `
         import React from 'react';
         import { createRoot } from 'react-dom/client';
-        import { InstructorView, ParticipantView } from './src/components/video/video-room';
+        import { InstructorView, ParticipantView, VideoRoom } from './src/components/video/video-room';
         const canvas = document.createElement('canvas');
         canvas.width = 320; canvas.height = 180;
         canvas.getContext('2d').fillRect(0, 0, 320, 180);
@@ -31,13 +29,25 @@ test("instructor attaches an existing participant track when it becomes playable
         const guest = { id:'guest', userId:'guest', name:'Test attendee', initials:'TA',
           isLocal:false, isInstructor:false, isMuted:true, isCameraOn:false,
           audioTrack:null, videoTrack:track };
+        const handlers = {};
+        const local = {session_id:'local', user_id:'guest', user_name:'Test attendee', local:true, tracks:{}};
+        const owner = {session_id:'host', user_id:'host', user_name:'Host', owner:true, tracks:{}};
+        window.DailyIframe = {createCallObject: () => ({
+          on: (name, handler) => { (handlers[name] ||= []).push(handler); }, off: () => {},
+          join: async () => {}, leave: async () => {}, destroy: async () => {},
+          participants: () => ({local, host:owner}), setLocalAudio: () => {}, setLocalVideo: () => {},
+        })};
+        window.fetch = async () => ({ok:true, json:async () => ({token:'test',roomUrl:'https://test.daily.co/test'})});
+        window.emitCallEvent = (name, data) => (handlers[name] || []).forEach(fn => fn(data));
         function App() {
+          const [live, setLive] = React.useState(false);
           const [on, setOn] = React.useState(false);
           const [gallery, setGallery] = React.useState(false);
           const [focus, setFocus] = React.useState(false);
           const [chat, setChat] = React.useState(true);
           const host = {...guest, id:'host', userId:'host', name:'Host', isInstructor:true, isCameraOn:true};
-          return <><button onClick={() => setGallery(true)}>Four attendees</button>
+          if (live) return <VideoRoom sessionId="test" roomTokenEndpoint="/token" attendanceEndpoint={null} chatEndpoint={null} mode="retreat" isInstructor={false} className="Test workshop" classTime="Today" classDuration="1 hour" registeredCount={2} onLeave={() => setLive(false)} />;
+          return <><button onClick={() => setLive(true)}>Test live lifecycle</button><button onClick={() => setGallery(true)}>Four attendees</button>
             <button onClick={() => setFocus(true)}>Participant focus</button>
             <button onClick={() => setChat(!chat)}>Toggle chat</button>
             <button onClick={() => setOn(!on)}>Toggle camera</button>
@@ -125,4 +135,27 @@ test("instructor attaches an existing participant track when it becomes playable
     await expect(selfVideo).toBeInViewport({ ratio: 1 });
     await page.getByRole("button", { name: "Toggle chat" }).click();
   }
+  await page.getByRole("button", { name: "Test live lifecycle" }).click();
+  await expect(page.getByRole("button", { name: "Leave" })).toBeVisible();
+  await page.evaluate(() => {
+    const emit = (window as unknown as { emitCallEvent: (name: string, data?: unknown) => void })
+      .emitCallEvent;
+    emit("app-message", {
+      fromId: "host",
+      data: { type: "moderation", action: "mute", targetUserId: "guest" },
+    });
+  });
+  await expect(page.getByRole("status")).toContainText(
+    "Your instructor has muted your microphone."
+  );
+  await page.getByRole("button", { name: "Dismiss", exact: true }).click();
+  await page.evaluate(() =>
+    (window as unknown as { emitCallEvent: (name: string) => void }).emitCallEvent("left-meeting")
+  );
+  await expect(
+    page.getByRole("heading", { name: "You’re no longer in the workshop" })
+  ).toBeVisible();
+  await expect(page.locator("video")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Clap", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("complementary", { name: "Live chat" })).toHaveCount(0);
 });
