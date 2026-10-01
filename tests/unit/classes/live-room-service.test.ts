@@ -21,7 +21,14 @@ describe("live room permissions", () => {
       hasPresence: true,
       canSend: ["audio", "video"],
       canReceive: {
-        base: ["audio"],
+        base: {
+          audio: true,
+          video: false,
+          screenVideo: false,
+          screenAudio: false,
+          customVideo: { "*": false },
+          customAudio: { "*": false },
+        },
         byUserId: {
           "instructor-1": true,
         },

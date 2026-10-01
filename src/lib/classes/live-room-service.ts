@@ -33,7 +33,14 @@ function getMemberPermissions(params: {
     hasPresence: true,
     canSend: ["audio", "video"],
     canReceive: {
-      base: ["audio"],
+      base: {
+        audio: true,
+        video: false,
+        screenVideo: false,
+        screenAudio: false,
+        customVideo: { "*": false },
+        customAudio: { "*": false },
+      },
       byUserId: Object.fromEntries(params.moderatorUserIds.map((userId) => [userId, true])),
     },
     canAdmin: false,

@@ -319,6 +319,48 @@ export function DashboardRetreatDetail({
           </div>
         ) : null}
 
+        {booking.retreatType === "online" ? (
+          <Card className="border-brand-accent/20 rounded-[1.5rem]">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Video className="text-brand-accent h-5 w-5" />
+                Your online workshop
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm leading-relaxed">
+              {booking.onlineAccess?.entitled ? (
+                <>
+                  <p className="text-muted-foreground">
+                    Your booking includes protected access to the live workshop. The room opens
+                    shortly before the scheduled start time.
+                  </p>
+                  <Button asChild disabled={!booking.onlineAccess.liveAccessEnabled}>
+                    <Link href={`/dashboard/retreats/${booking.id}/live`}>
+                      Join workshop
+                      <Video className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                  {booking.onlineAccess.replayAssetId ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void openReplay()}
+                      disabled={openingReplay}
+                    >
+                      {openingReplay ? "Opening replay..." : "Watch replay"}
+                    </Button>
+                  ) : null}
+                </>
+              ) : (
+                <p className="text-muted-foreground">
+                  The online room is not ready yet. Shruti will share joining details before the
+                  retreat starts.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
+
         <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="space-y-6">
             <Card className="rounded-[1.5rem]">
@@ -539,48 +581,6 @@ export function DashboardRetreatDetail({
                 </Button>
               </CardContent>
             </Card>
-
-            {booking.retreatType === "online" ? (
-              <Card className="border-brand-accent/20 rounded-[1.5rem]">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Video className="text-brand-accent h-5 w-5" />
-                    Online room
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm leading-relaxed">
-                  {booking.onlineAccess?.entitled ? (
-                    <>
-                      <p className="text-muted-foreground">
-                        Your booking includes protected access to the live workshop. The room opens
-                        shortly before the scheduled start time.
-                      </p>
-                      <Button asChild disabled={!booking.onlineAccess.liveAccessEnabled}>
-                        <Link href={`/dashboard/retreats/${booking.id}/live`}>
-                          Open live retreat
-                          <Video className="ml-2 h-4 w-4" />
-                        </Link>
-                      </Button>
-                      {booking.onlineAccess.replayAssetId ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => void openReplay()}
-                          disabled={openingReplay}
-                        >
-                          {openingReplay ? "Opening replay..." : "Watch replay"}
-                        </Button>
-                      ) : null}
-                    </>
-                  ) : (
-                    <p className="text-muted-foreground">
-                      The online room is not ready yet. Shruti will share joining details before the
-                      retreat starts.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            ) : null}
           </div>
 
           <div className="space-y-6">

@@ -6,10 +6,21 @@ export type DailyMediaPermission =
   | Array<"video" | "audio" | "screenVideo" | "screenAudio">;
 export type DailyAdminPermission = boolean | Array<"participants" | "streaming" | "transcription">;
 
+export type DailyReceiveMediaPermission =
+  | boolean
+  | {
+      video: boolean;
+      audio: boolean;
+      screenVideo: boolean;
+      screenAudio: boolean;
+      customVideo: Record<string, boolean>;
+      customAudio: Record<string, boolean>;
+    };
+
 export type DailyCanReceivePermissions = {
-  base?: DailyMediaPermission;
-  byUserId?: Record<string, DailyMediaPermission>;
-  byParticipantId?: Record<string, DailyMediaPermission>;
+  base?: DailyReceiveMediaPermission;
+  byUserId?: Record<string, DailyReceiveMediaPermission>;
+  byParticipantId?: Record<string, DailyReceiveMediaPermission>;
 };
 
 export type DailyParticipantPermissions = {

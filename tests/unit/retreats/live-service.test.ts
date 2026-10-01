@@ -142,7 +142,14 @@ describe("retreat live access boundaries", () => {
       hasPresence: true,
       canSend: ["video", "audio"],
       canReceive: {
-        base: ["audio"],
+        base: {
+          audio: true,
+          video: false,
+          screenVideo: false,
+          screenAudio: false,
+          customVideo: { "*": false },
+          customAudio: { "*": false },
+        },
         byUserId: { host_1: true },
       },
       canAdmin: false,
@@ -244,10 +251,30 @@ describe("retreat live access boundaries", () => {
       roomName: "room_1",
       data: {
         daily_attendee_1: expect.objectContaining({
-          canReceive: { base: ["audio"], byUserId: { host_1: true } },
+          canReceive: {
+            base: {
+              audio: true,
+              video: false,
+              screenVideo: false,
+              screenAudio: false,
+              customVideo: { "*": false },
+              customAudio: { "*": false },
+            },
+            byUserId: { host_1: true },
+          },
         }),
         daily_attendee_2: expect.objectContaining({
-          canReceive: { base: ["audio"], byUserId: { host_1: true } },
+          canReceive: {
+            base: {
+              audio: true,
+              video: false,
+              screenVideo: false,
+              screenAudio: false,
+              customVideo: { "*": false },
+              customAudio: { "*": false },
+            },
+            byUserId: { host_1: true },
+          },
         }),
       },
     });

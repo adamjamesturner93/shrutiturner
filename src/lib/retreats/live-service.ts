@@ -46,7 +46,14 @@ export function buildRetreatParticipantPermissions(input: {
       input.mode === RetreatLiveDisplayMode.gallery
         ? { base: true }
         : {
-            base: ["audio"],
+            base: {
+              audio: true,
+              video: false,
+              screenVideo: false,
+              screenAudio: false,
+              customVideo: { "*": false },
+              customAudio: { "*": false },
+            },
             byUserId: input.focusedPresenterUserId
               ? { [input.focusedPresenterUserId]: true }
               : undefined,
