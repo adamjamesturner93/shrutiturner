@@ -15,7 +15,6 @@ import {
   VolumeX,
   MonitorUp,
   Hand,
-  Smile,
 } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { ChatPanel, type ChatMessage } from "./chat-panel";
@@ -779,15 +778,21 @@ export function VideoRoom({
   };
 
   const toggleRaisedHand = async () => {
-    if (!callObject?.sendAppMessage || !user?.id) return;
-    const raised = !raisedHands.some((item) => item.userId === user.id);
+    const participantId = localParticipant?.userId || user?.id;
+    if (!callObject?.sendAppMessage || !participantId) return;
+    const raised = !raisedHands.some((item) => item.userId === participantId);
     setRaisedHands((current) =>
       raised
-        ? [...current, { userId: user.id, name: currentUserName }]
-        : current.filter((item) => item.userId !== user.id)
+        ? [...current, { userId: participantId, name: localParticipant?.name || currentUserName }]
+        : current.filter((item) => item.userId !== participantId)
     );
     await callObject.sendAppMessage(
-      { type: "raise-hand", userId: user.id, name: currentUserName, raised },
+      {
+        type: "raise-hand",
+        userId: participantId,
+        name: localParticipant?.name || currentUserName,
+        raised,
+      },
       "*"
     );
   };
@@ -993,7 +998,7 @@ export function VideoRoom({
 
   return (
     <div className="bg-video-backdrop fixed inset-0 z-[100] flex flex-col text-white">
-      <header className="bg-video-backdrop/90 flex flex-shrink-0 items-center justify-between border-b border-white/5 px-4 py-2.5">
+      <header className="bg-video-backdrop/90 flex flex-shrink-0 flex-wrap items-center justify-between border-b border-white/5 px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-3">
           <div
             className={`h-2 w-2 rounded-full ${isReady ? "animate-pulse bg-red-500" : "bg-amber-400"}`}
@@ -1065,8 +1070,8 @@ export function VideoRoom({
         </section>
       ) : null}
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className="flex flex-1 flex-col gap-3 overflow-hidden p-3">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden p-3">
           {isReady && isInstructor ? (
             <div className="bg-video-panel flex flex-col gap-3 rounded-lg border border-white/5 px-3 py-2.5 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
               <div>
@@ -1126,6 +1131,15 @@ export function VideoRoom({
               )}
             </div>
           ) : null}
+          {raisedHands.length > 0 ? (
+            <div
+              role="status"
+              className="rounded-lg bg-amber-300/15 px-3 py-2 text-sm text-amber-100"
+            >
+              <Hand className="mr-2 inline h-4 w-4" aria-hidden="true" />
+              Hand raised: {raisedHands.map((item) => item.name).join(", ")}
+            </div>
+          ) : null}
           {reaction ? (
             <div
               aria-live="polite"
@@ -1148,7 +1162,8 @@ export function VideoRoom({
             </div>
           ) : isInstructor ? (
             <InstructorView
-              instructor={localParticipant || instructorParticipant}
+              instructor={showSelfView ? localParticipant || instructorParticipant : null}
+              raisedHands={raisedHands}
               participants={otherParticipants}
               communityMode={communityMode}
               considerations={instructorConsiderations}
@@ -1192,7 +1207,7 @@ export function VideoRoom({
         ) : null}
       </div>
 
-      <footer className="bg-video-backdrop/90 flex flex-shrink-0 items-center justify-center gap-2 border-t border-white/5 px-4 py-3 sm:gap-3">
+      <footer className="bg-video-backdrop/90 flex flex-shrink-0 flex-wrap items-center justify-center gap-2 border-t border-white/5 px-4 py-3 sm:gap-3">
         <ControlButton
           active={!isMuted}
           onClick={() => void toggleLocalAudio()}
@@ -1201,16 +1216,22 @@ export function VideoRoom({
           danger={isMuted}
         />
         <ControlButton
-          active={raisedHands.some((item) => item.userId === user?.id)}
+          active={raisedHands.some(
+            (item) => item.userId === (localParticipant?.userId || user?.id)
+          )}
           onClick={() => void toggleRaisedHand()}
           icon={Hand}
-          label="Raise hand"
+          label={
+            raisedHands.some((item) => item.userId === (localParticipant?.userId || user?.id))
+              ? "Lower hand"
+              : "Raise hand"
+          }
         />
         <ControlButton
           active={Boolean(reaction)}
           onClick={() => void sendReaction()}
-          icon={Smile}
-          label="React"
+          icon={ClapIcon}
+          label="Clap"
         />
         {isInstructor && callObject?.startScreenShare ? (
           <ControlButton
@@ -1288,14 +1309,6 @@ export function VideoRoom({
             {isRecording ? "Stop recording" : "Record"}
           </button>
         ) : null}
-        {isInstructor && raisedHands.length > 0 ? (
-          <div
-            className="rounded-lg bg-amber-300/15 px-3 py-2 text-xs text-amber-100"
-            aria-live="polite"
-          >
-            Hands: {raisedHands.map((item) => item.name).join(", ")}
-          </div>
-        ) : null}
       </footer>
 
       {showDeviceSelector ? (
@@ -1308,6 +1321,14 @@ export function VideoRoom({
   );
 }
 
+function ClapIcon({ className }: { className?: string }) {
+  return (
+    <span aria-hidden="true" className={className}>
+      👏
+    </span>
+  );
+}
+
 function ControlButton({
   active,
   onClick,
@@ -1317,7 +1338,7 @@ function ControlButton({
 }: {
   active: boolean;
   onClick: () => void;
-  icon: typeof Mic;
+  icon: React.ComponentType<{ className?: string }>;
   label: string;
   danger?: boolean;
 }) {
@@ -1343,6 +1364,7 @@ function ControlButton({
 }
 
 export function InstructorView({
+  raisedHands = [],
   instructor,
   participants,
   communityMode,
@@ -1350,6 +1372,7 @@ export function InstructorView({
   onMute,
   onRemove,
 }: {
+  raisedHands?: Array<{ userId: string; name: string }>;
   instructor: ParticipantTileModel | null;
   participants: ParticipantTileModel[];
   communityMode: boolean;
@@ -1358,9 +1381,16 @@ export function InstructorView({
   onRemove: (participant: ParticipantTileModel) => void;
 }) {
   return (
-    <div className="grid flex-1 grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr]">
-      <ParticipantTile participant={instructor} size="lg" isLocal />
-      <div className="grid grid-cols-2 gap-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+      {instructor ? (
+        <div className="w-40 shrink-0 self-end sm:w-48">
+          <ParticipantTile participant={instructor} size="sm" isLocal />
+        </div>
+      ) : null}
+      <div
+        aria-label="Workshop participants"
+        className={`grid content-start gap-3 ${participants.length > 1 ? "grid-cols-1 sm:grid-cols-2" : "mx-auto w-full max-w-3xl grid-cols-1"} ${participants.length > 4 ? "xl:grid-cols-3" : ""}`}
+      >
         {participants.map((participant) => (
           <ParticipantTile
             key={participant.id}
@@ -1368,6 +1398,15 @@ export function InstructorView({
             size="sm"
             actionSlot={
               <div className="flex gap-2">
+                {raisedHands.some((hand) => hand.userId === participant.userId) ? (
+                  <span
+                    role="img"
+                    aria-label="Hand raised"
+                    className="rounded-full bg-amber-200 p-1.5 text-black"
+                  >
+                    <Hand className="h-3 w-3" />
+                  </span>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => onMute(participant)}
@@ -1554,8 +1593,8 @@ function FocusView({
   showSelfView: boolean;
 }) {
   return (
-    <div className="relative flex-1">
-      <ParticipantTile participant={instructor} size="lg" />
+    <div className="relative min-h-0 flex-1 overflow-hidden">
+      <ParticipantTile participant={instructor} size="lg" fill />
       <div className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-1.5 text-xs text-white/60">
         <Users className="h-3 w-3" />
         <span>{participantCount} others listening</span>
@@ -1574,18 +1613,20 @@ function ParticipantTile({
   size = "md",
   isLocal = false,
   actionSlot,
+  fill = false,
 }: {
   participant: ParticipantTileModel | null;
   size?: "lg" | "md" | "sm" | "pip";
   isLocal?: boolean;
   actionSlot?: ReactNode;
+  fill?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const sizeClasses = {
-    lg: "min-h-[320px]",
-    md: "min-h-[180px]",
-    sm: "min-h-[140px]",
-    pip: "min-h-[110px]",
+    lg: "aspect-video",
+    md: "aspect-video",
+    sm: "aspect-video",
+    pip: "aspect-video",
   };
 
   useEffect(() => {
@@ -1614,14 +1655,16 @@ function ParticipantTile({
   const hasVideo = Boolean(participant.videoTrack && participant.isCameraOn);
 
   return (
-    <div className={`bg-video-surface relative overflow-hidden rounded-lg ${sizeClasses[size]}`}>
+    <div
+      className={`bg-video-surface relative overflow-hidden rounded-lg ${fill ? "h-full w-full" : sizeClasses[size]}`}
+    >
       {hasVideo ? (
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted={isLocal}
-          className="h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-contain"
         />
       ) : (
         <div className="from-brand-accent/25 to-video-panel flex h-full items-center justify-center bg-gradient-to-br">

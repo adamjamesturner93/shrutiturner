@@ -1,10 +1,16 @@
 import { test, expect } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import tailwindcss from "@tailwindcss/postcss";
 import { createRequire } from "node:module";
 
 // Use the bundler already supplied by Vitest/Vite; no app server or Daily room needed.
 const require = createRequire(import.meta.url);
 const viteRequire = createRequire(require.resolve("vitest/package.json"));
 const bundlerRequire = createRequire(viteRequire.resolve("vite/package.json"));
+const postcss = bundlerRequire("postcss") as (plugins: unknown[]) => {
+  process: (css: string, options: { from: string }) => Promise<{ css: string }>;
+};
 const { build } = bundlerRequire("esbuild") as {
   build: (options: Record<string, unknown>) => Promise<{ outputFiles: { text: string }[] }>;
 };
@@ -17,7 +23,7 @@ test("instructor attaches an existing participant track when it becomes playable
       contents: `
         import React from 'react';
         import { createRoot } from 'react-dom/client';
-        import { InstructorView } from './src/components/video/video-room';
+        import { InstructorView, ParticipantView } from './src/components/video/video-room';
         const canvas = document.createElement('canvas');
         canvas.width = 320; canvas.height = 180;
         canvas.getContext('2d').fillRect(0, 0, 320, 180);
@@ -27,9 +33,19 @@ test("instructor attaches an existing participant track when it becomes playable
           audioTrack:null, videoTrack:track };
         function App() {
           const [on, setOn] = React.useState(false);
-          return <><button onClick={() => setOn(!on)}>Toggle camera</button>
-            <InstructorView instructor={null} participants={[{...guest, isCameraOn:on}]}
-              communityMode={false} considerations={[]} onMute={() => {}} onRemove={() => {}} />
+          const [gallery, setGallery] = React.useState(false);
+          const [focus, setFocus] = React.useState(false);
+          const [chat, setChat] = React.useState(true);
+          const host = {...guest, id:'host', userId:'host', name:'Host', isInstructor:true, isCameraOn:true};
+          return <><button onClick={() => setGallery(true)}>Four attendees</button>
+            <button onClick={() => setFocus(true)}>Participant focus</button>
+            <button onClick={() => setChat(!chat)}>Toggle chat</button>
+            <button onClick={() => setOn(!on)}>Toggle camera</button>
+            {focus ? <div style={{display:'flex', height:500, width:'100%'}}>
+              <ParticipantView instructor={host} selfParticipant={{...guest,isCameraOn:true}} participants={[]} showSelfView={true} communityMode={false} />
+              {chat ? <aside style={{width:320,flexShrink:0}}>Chat</aside> : null}
+            </div> : <InstructorView instructor={null} participants={gallery ? [1,2,3,4].map(id => ({...guest, id:String(id), name:'Guest '+id, isCameraOn:true})) : [{...guest, isCameraOn:on}]}
+              communityMode={false} considerations={[]} onMute={() => {}} onRemove={() => {}} />}
           </>;
         }
         createRoot(document.getElementById('root')).render(<App />);
@@ -62,6 +78,10 @@ test("instructor attaches an existing participant track when it becomes playable
     ],
   });
   await page.setContent('<div id="root"></div>');
+  const css = await postcss([tailwindcss()]).process(readFileSync("src/styles/index.css", "utf8"), {
+    from: path.resolve("src/styles/index.css"),
+  });
+  await page.addStyleTag({ content: css.css });
   await page.addScriptTag({ content: bundle.outputFiles[0].text });
   await expect(page.getByText("Test attendee")).toBeVisible();
   await expect(page.locator("video")).toHaveCount(0);
@@ -85,5 +105,24 @@ test("instructor attaches an existing participant track when it becomes playable
       .toBe(true);
     await page.getByRole("button", { name: "Toggle camera" }).click();
     await expect(page.locator("video")).toHaveCount(0);
+  }
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await page.getByRole("button", { name: "Four attendees" }).click();
+  const tiles = page.locator('[aria-label="Workshop participants"] > div');
+  await expect(tiles).toHaveCount(4);
+  const boxes = await tiles.evaluateAll((elements) =>
+    elements.map((element) => {
+      const r = element.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    })
+  );
+  expect(boxes[0].y).toBe(boxes[1].y);
+  expect(boxes[2].y).toBeGreaterThan(boxes[0].y);
+  for (const box of boxes) expect(box.width / box.height).toBeCloseTo(16 / 9, 1);
+  await page.getByRole("button", { name: "Participant focus" }).click();
+  for (let i = 0; i < 2; i++) {
+    const selfVideo = page.locator("video").last();
+    await expect(selfVideo).toBeInViewport({ ratio: 1 });
+    await page.getByRole("button", { name: "Toggle chat" }).click();
   }
 });
