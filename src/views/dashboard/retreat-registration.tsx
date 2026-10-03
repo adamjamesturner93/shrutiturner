@@ -43,6 +43,7 @@ export function RetreatRegistration({
   }
   return (
     <WorkshopSetupPage
+      healthInformationOptional={!data.residential}
       initialData={data}
       initialHealthProfile={healthProfile}
       refreshEndpoint={`/api/me/retreat-registrations/${data.attendeeId}`}

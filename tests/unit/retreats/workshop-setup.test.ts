@@ -62,10 +62,31 @@ describe("online workshop setup readiness", () => {
     expect(result.missing).toEqual([
       "name",
       "date_of_birth",
-      "health_profile",
       "terms",
       "health_waiver",
       "health_data",
     ]);
   });
 });
+
+it.each([null, { lastConfirmedAt: new Date("2020-01-01"), reviewRequestedAt: new Date() }])(
+  "does not block workshops on missing or stale health confirmation",
+  async (healthProfile) => {
+    findUserMock.mockResolvedValue({
+      firstName: "A",
+      lastName: "B",
+      email: "a@example.com",
+      emailVerified: new Date(),
+      dob: new Date("1990-01-01"),
+      healthProfile,
+    });
+    acceptanceStatesMock.mockResolvedValue(currentAcceptances());
+    await expect(getWorkshopSetupState("user")).resolves.toMatchObject({
+      complete: true,
+      missing: [],
+    });
+    await expect(
+      getWorkshopSetupState("user", { requireHealthConfirmation: true })
+    ).resolves.toMatchObject({ complete: false, missing: ["health_profile"] });
+  }
+);

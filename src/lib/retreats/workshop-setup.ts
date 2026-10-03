@@ -34,7 +34,10 @@ const acceptanceMissingItem: Partial<Record<AcceptanceType, WorkshopSetupMissing
   [AcceptanceType.health_data]: "health_data",
 };
 
-export async function getWorkshopSetupState(userId: string): Promise<WorkshopSetupState> {
+export async function getWorkshopSetupState(
+  userId: string,
+  options: { requireHealthConfirmation?: boolean } = {}
+): Promise<WorkshopSetupState> {
   const [user, acceptanceStates] = await Promise.all([
     db.user.findUnique({
       where: { id: userId },
@@ -61,9 +64,10 @@ export async function getWorkshopSetupState(userId: string): Promise<WorkshopSet
   if (!user.firstName?.trim() || !user.lastName?.trim()) missing.push("name");
   if (!user.dob) missing.push("date_of_birth");
   if (
-    !user.healthProfile ||
-    user.healthProfile.reviewRequestedAt ||
-    needsHealthDeclarationReview(user.healthProfile.lastConfirmedAt)
+    options.requireHealthConfirmation &&
+    (!user.healthProfile ||
+      user.healthProfile.reviewRequestedAt ||
+      needsHealthDeclarationReview(user.healthProfile.lastConfirmedAt))
   ) {
     missing.push("health_profile");
   }

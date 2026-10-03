@@ -28,7 +28,7 @@ loadEnvFile();
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  testIgnore: ["**/programmes/**", "**/emails/**", "**/video/**"], // These suites use standalone configurations.
+  testIgnore: ["**/programmes/**", "**/emails/**", "**/video/**", "**/retreat-ux/**"], // These suites use standalone configurations.
   timeout: 60_000,
   workers: 3,
   expect: {

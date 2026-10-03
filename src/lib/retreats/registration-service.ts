@@ -12,7 +12,9 @@ export async function getAttendeeReadiness(
 ) {
   if (!attendee.userId)
     return { complete: false, missing: [attendee.email ? "account" : "guest_details"] };
-  const setup = await getWorkshopSetupState(attendee.userId);
+  const setup = await getWorkshopSetupState(attendee.userId, {
+    requireHealthConfirmation: residential,
+  });
   const missing: string[] = [...setup.missing];
   if (residential && !attendee.practicalConfirmedAt) missing.push("practical_details");
   return { complete: missing.length === 0, missing };
@@ -43,7 +45,9 @@ async function findOwnAttendee(userId: string, attendeeId: string) {
 
 export async function getOwnRetreatRegistration(userId: string, attendeeId: string) {
   const attendee = await findOwnAttendee(userId, attendeeId);
-  const setup = await getWorkshopSetupState(userId);
+  const setup = await getWorkshopSetupState(userId, {
+    requireHealthConfirmation: attendee.booking.retreatDate.retreatType === "in_person",
+  });
   return {
     attendeeId: attendee.id,
     bookingId: attendee.bookingId,

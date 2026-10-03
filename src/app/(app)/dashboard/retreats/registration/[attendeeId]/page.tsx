@@ -1,7 +1,8 @@
+import { RetreatRegistrationAccess } from "@/views/dashboard/retreat-registration-access";
 import { Suspense } from "react";
 import RegistrationLoading from "./loading";
 import { connection } from "next/server";
-import { redirect, notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getHealthProfile } from "@/lib/health/health-service";
 import { getOwnRetreatRegistration } from "@/lib/retreats/registration-service";
@@ -29,7 +30,7 @@ async function RegistrationContent({ params }: RegistrationPageProps) {
     if (error instanceof Error && error.message === "NOT_FOUND") return null;
     throw error;
   });
-  if (!data) notFound();
+  if (!data) return <RetreatRegistrationAccess attendeeId={attendeeId} />;
   return (
     <RetreatRegistration
       initialData={data}

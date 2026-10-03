@@ -28,6 +28,7 @@ export function WorkshopSetupPage({
   continueLabel = "Open workshop room",
   eventLabel = "Online workshop",
   completionBlocked = false,
+  healthInformationOptional = true,
   children,
 }: {
   initialData: SetupData;
@@ -37,6 +38,7 @@ export function WorkshopSetupPage({
   continueLabel?: string;
   eventLabel?: string;
   completionBlocked?: boolean;
+  healthInformationOptional?: boolean;
   children?: ReactNode;
 }) {
   const [data, setData] = useState(initialData);
@@ -272,6 +274,26 @@ export function WorkshopSetupPage({
               </section>
             ) : null}
           </>
+        ) : null}
+        {healthInformationOptional ? (
+          <details className="marketing-panel rounded-[1.5rem] p-6">
+            <summary className="cursor-pointer text-xl font-medium">
+              Health information (optional)
+            </summary>
+            <p className="text-muted-foreground mt-3">
+              You can share or update anything you would like Shruti to know. Confirming this
+              information is not required to join this workshop.
+            </p>
+            <div className="mt-5">
+              <HealthProfileEditor
+                profile={initialHealthProfile}
+                onSave={saveHealthProfile}
+                compact
+                requireConsentAcknowledgement={missing.includes("health_data")}
+                initialConsentAccepted={!missing.includes("health_data")}
+              />
+            </div>
+          </details>
         ) : null}
       </main>
     </DashboardLayout>

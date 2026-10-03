@@ -49,3 +49,19 @@ it("streams an attendee-shaped fallback while request data waits, then renders a
   expect(registration).toHaveBeenCalledWith("participant", "attendee");
   expect(health).toHaveBeenCalledWith("participant");
 });
+
+it("shows account recovery without reading health data when registration access is denied", async () => {
+  vi.clearAllMocks();
+  connection.mockResolvedValue(undefined);
+  auth.mockResolvedValue({ user: { id: "purchaser" } });
+  registration.mockRejectedValue(new Error("NOT_FOUND"));
+  const stream = await renderToReadableStream(
+    createElement(Page, { params: Promise.resolve({ attendeeId: "guest-place" }) })
+  );
+  await stream.allReady;
+  const html = await new Response(stream).text();
+  expect(html).toContain("Sign in with your invitation email");
+  expect(html).toContain("Sign out and continue to registration");
+  expect(html).not.toContain("Private attendee setup");
+  expect(health).not.toHaveBeenCalled();
+});

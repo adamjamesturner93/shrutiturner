@@ -1,3 +1,4 @@
+import { recordGoogleEmailVerification } from "@/lib/auth/google-verification";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { AuthChallengePurpose, type UserRole } from "@prisma/client";
 import NextAuth from "next-auth";
@@ -186,6 +187,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
+  events: {
+    async signIn({ user, account, profile }) {
+      await recordGoogleEmailVerification({
+        userId: user.id,
+        email: user.email,
+        provider: account?.provider,
+        profile,
+      });
+    },
+  },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {

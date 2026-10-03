@@ -1,3 +1,4 @@
+import { parseMarkdownLinkDestination } from "@/lib/content/markdown-link";
 import { Heading, Section, Text, Img, Hr, Link } from "@react-email/components";
 import type { ReactNode } from "react";
 import { EmailLayout } from "./components/email-layout";
@@ -17,7 +18,7 @@ type InlineToken =
   | { type: "text"; value: string }
   | { type: "strong"; value: string }
   | { type: "em"; value: string }
-  | { type: "link"; label: string; href: string };
+  | { type: "link"; label: string; href: string; title?: string };
 
 type MarkdownBlock =
   | { type: "paragraph"; text: string }
@@ -42,7 +43,8 @@ const listStyle = {
 
 function parseInline(input: string): InlineToken[] {
   const tokens: InlineToken[] = [];
-  const pattern = /(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|\[[^\]]+\]\([^)]+\))/g;
+  const pattern =
+    /(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|\[[^\]]+\]\((?:[^()]|\([^()]*\))*\))/g;
   let cursor = 0;
   let match: RegExpExecArray | null;
 
@@ -52,9 +54,14 @@ function parseInline(input: string): InlineToken[] {
     }
 
     const raw = match[0];
-    const linkMatch = raw.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    const linkMatch = raw.match(/^\[([^\]]+)\]\(([\s\S]*)\)$/);
     if (linkMatch) {
-      tokens.push({ type: "link", label: linkMatch[1], href: linkMatch[2] });
+      const destination = parseMarkdownLinkDestination(linkMatch[2]);
+      tokens.push(
+        destination
+          ? { type: "link", label: linkMatch[1], ...destination }
+          : { type: "text", value: linkMatch[1] }
+      );
     } else if (raw.startsWith("**") || raw.startsWith("__")) {
       tokens.push({ type: "strong", value: raw.slice(2, -2) });
     } else {
@@ -93,6 +100,7 @@ function renderInline(input: string): ReactNode {
         <Link
           key={key}
           href={token.href}
+          title={token.title}
           style={{ color: colors.brandAccent, textDecoration: "underline" }}
         >
           {token.label}
