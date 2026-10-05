@@ -1,3 +1,4 @@
+import { getRetreatOverviewTestimonials } from "@/lib/content/testimonials";
 import type { Metadata } from "next";
 import { RetreatsPage } from "@/views/retreats";
 import { listOperationalRetreats } from "@/lib/retreats/service";
@@ -33,7 +34,7 @@ export default async function Page() {
           createRetreatItemListSchema(retreats),
         ]}
       />
-      <RetreatsPage retreats={retreats} />
+      <RetreatsPage retreats={retreats} testimonials={await getRetreatOverviewTestimonials()} />
     </>
   );
 }

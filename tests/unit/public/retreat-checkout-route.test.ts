@@ -45,6 +45,37 @@ describe("POST /api/retreats/[slug]/checkout", () => {
     authMock.mockResolvedValue({ user: { id: "deleted_user" } });
   });
 
+  it.each(["self", "gift"])(
+    "leaves private attendee data out of %s financial checkout",
+    async (purchaseMode) => {
+      createRetreatCheckoutMock.mockResolvedValue({
+        checkoutUrl: "https://checkout.stripe.test/session",
+      });
+      const sensitive = {
+        phone: "0123456789",
+        emergencyContactName: "Private contact",
+        emergencyContactPhone: "0987654321",
+        dietaryRequirements: "Private dietary information",
+        mobilityNeeds: "Private access information",
+        medicalConditions: "Private health information",
+        guestTwoDietaryRequirements: "Another attendee's information",
+        acceptedHealthWaiverVersion: "must-not-record",
+        acceptedHealthDataVersion: "must-not-record",
+      };
+      const response = await route.POST(
+        new Request("http://localhost/api/retreats/powis/checkout", {
+          method: "POST",
+          body: JSON.stringify({ purchaseMode, acceptedTermsVersion: "current", ...sensitive }),
+        }),
+        { params: Promise.resolve({ slug: "powis" }) }
+      );
+      expect(response.status).toBe(200);
+      const input = createRetreatCheckoutMock.mock.calls[0][0];
+      expect(input.acceptedTermsVersion).toBe("current");
+      for (const field of Object.keys(sensitive)) expect(input).not.toHaveProperty(field);
+    }
+  );
+
   it("returns a sign-in response when the session user no longer exists", async () => {
     createRetreatCheckoutMock.mockRejectedValue(new Error("USER_NOT_FOUND"));
 

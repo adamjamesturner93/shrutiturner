@@ -39,3 +39,5 @@ test-results/
 /prisma/legacy.sql
 # Isolated production-build navigation checks
 /.next-workspace/
+
+/.next-retreat-review/

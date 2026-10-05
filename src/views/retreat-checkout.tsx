@@ -34,11 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/auth-context";
-import {
-  CURRENT_HEALTH_DATA_CONSENT_VERSION,
-  CURRENT_HEALTH_WAIVER_VERSION,
-  CURRENT_TERMS_VERSION,
-} from "@/data/legal-documents";
+import { CURRENT_TERMS_VERSION } from "@/data/legal-documents";
 import {
   getEffectiveRetreatRatePricePence,
   getRoomPriceDeposit,
@@ -54,7 +50,7 @@ function formatMoney(pence: number, currency = "GBP") {
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency,
-    minimumFractionDigits: 0,
+    minimumFractionDigits: pence % 100 ? 2 : 0,
     maximumFractionDigits: 2,
   }).format(pence / 100);
 }
@@ -132,11 +128,19 @@ function getRoomGuestLabel(roomOption: RetreatRoomOptionContent) {
     : "For one guest";
 }
 
-export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedContent | null }) {
+export function RetreatCheckoutPage({
+  retreat,
+  initialTermsRequirement = null,
+  termsVersion = CURRENT_TERMS_VERSION,
+}: {
+  retreat?: RetreatCombinedContent | null;
+  initialTermsRequirement?: AcceptanceRequirementState | null;
+  termsVersion?: string;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { fmtDate } = useI18n();
-  const { user, acceptTermsAndHealth, acceptHealthDataConsent, refreshAccountProfile } = useAuth();
+  const { user, refreshAccountProfile } = useAuth();
 
   const queryDateId = searchParams.get("date");
   const queryRoomId = searchParams.get("room");
@@ -154,6 +158,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
   const [selectedDateId, setSelectedDateId] = useState(
     invalidQueryDate ? "" : queryDateId || retreat?.dates[0]?.id || ""
   );
+  const [roomChoicesExpanded, setRoomChoicesExpanded] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState(queryRoomId || "");
   const [lastQueryDateId, setLastQueryDateId] = useState(queryDateId);
   if (lastQueryDateId !== queryDateId) {
@@ -174,19 +179,11 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
       : ""
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [pendingLegalAcceptances, setPendingLegalAcceptances] = useState<
-    AcceptanceRequirementState[]
-  >([]);
+  const [termsState, setTermsState] = useState(initialTermsRequirement);
   const [formData, setFormData] = useState({
     purchaserFirstName: "",
     purchaserLastName: "",
     purchaserEmail: "",
-    phone: "",
-    emergencyContactName: "",
-    emergencyContactPhone: "",
-    dietaryRequirements: "",
-    medicalConditions: "",
-    mobilityNeeds: "",
     bookingForAnotherAttendee: false,
     attendeeFirstName: "",
     attendeeLastName: "",
@@ -194,10 +191,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
     guestTwoFirstName: "",
     guestTwoLastName: "",
     guestTwoEmail: "",
-    guestTwoDietaryRequirements: "",
     agreedToTerms: false,
-    agreedToHealth: false,
-    agreedToHealthData: false,
     recipientFirstName: "",
     recipientLastName: "",
     recipientEmail: "",
@@ -363,11 +357,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
     (isPayingInFull ? payInFullTotalPence : depositAmountPence) + addonTotalPence;
   const depositBalanceAmountPence = Math.max(effectiveTotalPricePence - depositAmountPence, 0);
   const balanceAmountPence = isPayingInFull ? 0 : depositBalanceAmountPence;
-  const termsSatisfied = Boolean(user?.hasAgreedToTerms || formData.agreedToTerms);
-  const waiverSatisfied = Boolean(user?.hasAgreedToHealth || formData.agreedToHealth);
-  const healthDataSatisfied = Boolean(
-    user?.hasConsentedToHealthData || formData.agreedToHealthData
-  );
+  const termsSatisfied = Boolean(termsState ? termsState.isCurrent : formData.agreedToTerms);
 
   const purchaserFirstName = formData.purchaserFirstName || user?.firstName || "";
   const purchaserLastName = formData.purchaserLastName || user?.lastName || "";
@@ -400,11 +390,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
     }
 
     if (purchaseMode === "self") {
-      if (
-        !termsSatisfied ||
-        (requiresPracticalRegistration && !waiverSatisfied) ||
-        (requiresPracticalRegistration && !healthDataSatisfied)
-      ) {
+      if (!termsSatisfied) {
         setError("Please complete the required agreements before continuing.");
         setIsSubmitting(false);
         return;
@@ -423,7 +409,6 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
           formData.guestTwoFirstName,
           formData.guestTwoLastName,
           formData.guestTwoEmail,
-          formData.guestTwoDietaryRequirements,
         ].some((value) => value.trim().length > 0);
 
         if (
@@ -459,18 +444,6 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
     }
 
     try {
-      if (purchaseMode === "self" && user) {
-        if (!user.hasAgreedToTerms || (requiresPracticalRegistration && !user.hasAgreedToHealth)) {
-          await acceptTermsAndHealth(
-            !user.hasAgreedToTerms,
-            requiresPracticalRegistration && !user.hasAgreedToHealth
-          );
-        }
-        if (requiresPracticalRegistration && !user.hasConsentedToHealthData) {
-          await acceptHealthDataConsent();
-        }
-      }
-
       const response = await fetch(`/api/retreats/${retreat.slug}/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -493,28 +466,10 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
           attendeeFirstName,
           attendeeLastName,
           attendeeEmail,
-          phone: formData.phone,
-          emergencyContactName: formData.emergencyContactName,
-          emergencyContactPhone: formData.emergencyContactPhone,
-          dietaryRequirements: formData.dietaryRequirements,
-          medicalConditions: formData.medicalConditions,
-          mobilityNeeds: formData.mobilityNeeds,
           guestTwoFirstName: formData.guestTwoFirstName,
           guestTwoLastName: formData.guestTwoLastName,
           guestTwoEmail: formData.guestTwoEmail,
-          guestTwoDietaryRequirements: formData.guestTwoDietaryRequirements,
-          acceptedTermsVersion:
-            purchaseMode === "self"
-              ? (user?.currentTermsVersion ?? CURRENT_TERMS_VERSION)
-              : CURRENT_TERMS_VERSION,
-          acceptedHealthWaiverVersion:
-            purchaseMode === "self" && requiresPracticalRegistration
-              ? (user?.currentHealthWaiverVersion ?? CURRENT_HEALTH_WAIVER_VERSION)
-              : null,
-          acceptedHealthDataVersion:
-            purchaseMode === "self" && requiresPracticalRegistration
-              ? (user?.currentHealthDataConsentVersion ?? CURRENT_HEALTH_DATA_CONSENT_VERSION)
-              : null,
+          acceptedTermsVersion: termsState?.currentVersion || termsVersion,
           recipientFirstName: formData.recipientFirstName,
           recipientLastName: formData.recipientLastName,
           recipientEmail: formData.recipientEmail,
@@ -535,9 +490,10 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
           payload?.code === "LEGAL_ACCEPTANCE_REQUIRED" &&
           Array.isArray(payload.requiredAcceptances)
         ) {
-          setPendingLegalAcceptances(payload.requiredAcceptances);
+          const currentTerms = payload.requiredAcceptances.find((item) => item.type === "terms");
+          if (currentTerms) setTermsState(currentTerms);
           throw new Error(
-            "Updated legal agreements are required before checkout. Review them below, then continue again."
+            "The terms changed while this page was open. Please review the updated agreement below."
           );
         }
         if (
@@ -564,6 +520,22 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
       setIsSubmitting(false);
     }
   };
+
+  const termsChecklist = termsState ? (
+    <LegalAcceptanceChecklist
+      acceptances={[termsState]}
+      surface={purchaseMode === "gift" ? "retreat_gift_checkout" : "retreat_checkout"}
+      busy={isSubmitting}
+      actionLabel="Save agreement"
+      onAccepted={async () => {
+        setTermsState((current) =>
+          current ? { ...current, isCurrent: true, staleReason: null } : current
+        );
+        setError("");
+        await refreshAccountProfile();
+      }}
+    />
+  ) : null;
 
   return (
     <Layout>
@@ -658,24 +630,6 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                 {error}
               </div>
             ) : null}
-            {pendingLegalAcceptances.length > 0 ? (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                <p className="mb-3 text-sm text-amber-900">
-                  Review and acknowledge every current agreement before checkout.
-                </p>
-                <LegalAcceptanceChecklist
-                  acceptances={pendingLegalAcceptances}
-                  surface="retreat_checkout"
-                  busy={isSubmitting}
-                  onAccepted={async () => {
-                    await refreshAccountProfile();
-                    setPendingLegalAcceptances([]);
-                    await handleSubmit();
-                  }}
-                />
-              </div>
-            ) : null}
-
             {!user && !isOnlineExperience ? (
               <div className="border-brand-accent/20 bg-brand-accent/5 rounded-[1.25rem] border p-4 text-sm">
                 <p className="font-medium">Already have a Private Studio account?</p>
@@ -871,126 +825,150 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
               (selectedDate?.roomOptions.length || 0) > 1 ||
               selectedRoomRatePlans.length > 1 ? (
                 <div className="marketing-panel rounded-[1.5rem] p-4 sm:p-5">
-                  <h2 className="text-2xl">{`Choose your ${optionLabel}`}</h2>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="text-2xl">
+                      {selectedRoom && !roomChoicesExpanded
+                        ? `Your selected ${optionLabel}`
+                        : `Choose your ${optionLabel}`}
+                    </h2>
+                    {selectedRoom && (selectedDate?.roomOptions.length || 0) > 1 ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        aria-expanded={roomChoicesExpanded}
+                        aria-controls="checkout-room-options"
+                        onClick={() => setRoomChoicesExpanded((expanded) => !expanded)}
+                      >
+                        {roomChoicesExpanded ? "Keep selected room" : "Change room selection"}
+                      </Button>
+                    ) : null}
+                  </div>
                   {selectedDate ? (
-                    <div className="mt-4 grid gap-4">
-                      {selectedDate.roomOptions.map((roomOption) => {
-                        const isSelected = roomOption.id === selectedRoom?.id;
-                        const isUnavailable =
-                          roomOption.isWaitlistOnly || roomOption.availableSpots <= 0;
-                        return (
-                          <button
-                            key={roomOption.id}
-                            type="button"
-                            disabled={isUnavailable}
-                            aria-pressed={isSelected}
-                            className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
-                              isSelected
-                                ? "border-brand-accent bg-brand-accent/5"
-                                : "hover:bg-secondary/20"
-                            } ${isUnavailable ? "opacity-60" : ""}`}
-                            onClick={() => {
-                              setSelectedRoomId(roomOption.id);
-                              setSelectedGuestCount(getDefaultGuestCount(roomOption));
-                            }}
-                          >
-                            <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-                              <div className="min-w-0 space-y-2">
-                                <div className="flex flex-wrap items-center gap-3">
-                                  <p className="text-xl">{roomOption.label}</p>
-                                  {/* <span className="bg-secondary/60 rounded-full px-3 py-1 text-xs tracking-[0.16em] uppercase">
+                    <div id="checkout-room-options" className="mt-4 grid gap-4">
+                      {selectedDate.roomOptions
+                        .filter(
+                          (room) =>
+                            roomChoicesExpanded || !selectedRoom || room.id === selectedRoom.id
+                        )
+                        .map((roomOption) => {
+                          const isSelected = roomOption.id === selectedRoom?.id;
+                          const isUnavailable =
+                            roomOption.isWaitlistOnly || roomOption.availableSpots <= 0;
+                          return (
+                            <button
+                              key={roomOption.id}
+                              type="button"
+                              disabled={isUnavailable}
+                              aria-pressed={isSelected}
+                              className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
+                                isSelected
+                                  ? "border-brand-accent bg-brand-accent/5"
+                                  : "hover:bg-secondary/20"
+                              } ${isUnavailable ? "opacity-60" : ""}`}
+                              onClick={() => {
+                                setSelectedRoomId(roomOption.id);
+                                setRoomChoicesExpanded(false);
+                                setSelectedGuestCount(getDefaultGuestCount(roomOption));
+                              }}
+                            >
+                              <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                                <div className="min-w-0 space-y-2">
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <p className="text-xl">{roomOption.label}</p>
+                                    {/* <span className="bg-secondary/60 rounded-full px-3 py-1 text-xs tracking-[0.16em] uppercase">
                                   {getRoomAvailabilityLabel(roomOption)}
                                 </span> */}
-                                </div>
-                                <p className="text-muted-foreground text-sm leading-relaxed">
-                                  {roomOption.description}
-                                </p>
-                                <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
-                                  <span className="inline-flex items-center gap-2">
-                                    <Users className="h-4 w-4" />
-                                    {getRoomGuestLabel(roomOption)}
-                                  </span>
-                                  <span className="inline-flex items-center gap-2">
-                                    {isOnlineExperience ? (
-                                      <>
-                                        <MonitorPlay className="h-4 w-4" />
-                                        Live and replay access
-                                      </>
-                                    ) : requiresAccommodation ? (
-                                      <>
-                                        <BedDouble className="h-4 w-4" />
-                                        {roomOption.type === "single"
-                                          ? "Private room"
-                                          : roomOption.type === "shared_private" ||
-                                              roomOption.type === "private"
-                                            ? "Private room"
-                                            : "Shared accommodation"}
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Ticket className="h-4 w-4" />
-                                        One event place
-                                      </>
-                                    )}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="border-brand-dark/10 border-t pt-4 text-left md:min-w-40 md:border-t-0 md:pt-0 md:text-right">
-                                <p className="text-2xl">
-                                  {formatMoney(
-                                    getRoomRatePlans(roomOption)[0]
-                                      ? getEffectiveRetreatRatePricePence(
-                                          getRoomRatePlans(roomOption)[0]
-                                        )
-                                      : roomOption.normalPricePence,
-                                    retreat.currency
-                                  )}
-                                </p>
-                                {getRoomRatePlans(roomOption)[0] &&
-                                isRetreatEarlyBirdActive({
-                                  earlyBirdPricePence:
-                                    getRoomRatePlans(roomOption)[0]?.earlyBirdPricePence,
-                                  earlyBirdEndsAt: getRoomRatePlans(roomOption)[0]?.earlyBirdEndsAt,
-                                  totalPricePence:
-                                    getRoomRatePlans(roomOption)[0]?.totalPricePence ||
-                                    roomOption.normalPricePence,
-                                }) ? (
-                                  <p className="text-muted-foreground mt-1 text-xs">
-                                    Early bird saves{" "}
-                                    {formatMoney(
-                                      getEarlyBirdSavingPence(getRoomRatePlans(roomOption)[0]),
-                                      retreat.currency
-                                    )}
-                                    . Standard{" "}
-                                    {formatMoney(
-                                      getRoomRatePlans(roomOption)[0]?.totalPricePence ||
-                                        roomOption.normalPricePence,
-                                      retreat.currency
-                                    )}
+                                  </div>
+                                  <p className="text-muted-foreground text-sm leading-relaxed">
+                                    {roomOption.description}
                                   </p>
-                                ) : null}
-                                <p className="text-muted-foreground mt-1 text-sm">
-                                  {selectedDate?.paymentPolicy === "full_payment"
-                                    ? "Due today "
-                                    : "Deposit today "}
-                                  {formatMoney(
-                                    getDepositAmountForPricePence(
-                                      roomOption,
+                                  <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
+                                    <span className="inline-flex items-center gap-2">
+                                      <Users className="h-4 w-4" />
+                                      {getRoomGuestLabel(roomOption)}
+                                    </span>
+                                    <span className="inline-flex items-center gap-2">
+                                      {isOnlineExperience ? (
+                                        <>
+                                          <MonitorPlay className="h-4 w-4" />
+                                          Live and replay access
+                                        </>
+                                      ) : requiresAccommodation ? (
+                                        <>
+                                          <BedDouble className="h-4 w-4" />
+                                          {roomOption.type === "single"
+                                            ? "Private room"
+                                            : roomOption.type === "shared_private" ||
+                                                roomOption.type === "private"
+                                              ? "Private room"
+                                              : "Shared accommodation"}
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Ticket className="h-4 w-4" />
+                                          One event place
+                                        </>
+                                      )}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="border-brand-dark/10 border-t pt-4 text-left md:min-w-40 md:border-t-0 md:pt-0 md:text-right">
+                                  <p className="text-2xl">
+                                    {formatMoney(
                                       getRoomRatePlans(roomOption)[0]
                                         ? getEffectiveRetreatRatePricePence(
                                             getRoomRatePlans(roomOption)[0]
                                           )
-                                        : roomOption.normalPricePence
-                                    ),
-                                    retreat.currency
-                                  )}
-                                </p>
+                                        : roomOption.normalPricePence,
+                                      retreat.currency
+                                    )}
+                                  </p>
+                                  {getRoomRatePlans(roomOption)[0] &&
+                                  isRetreatEarlyBirdActive({
+                                    earlyBirdPricePence:
+                                      getRoomRatePlans(roomOption)[0]?.earlyBirdPricePence,
+                                    earlyBirdEndsAt:
+                                      getRoomRatePlans(roomOption)[0]?.earlyBirdEndsAt,
+                                    totalPricePence:
+                                      getRoomRatePlans(roomOption)[0]?.totalPricePence ||
+                                      roomOption.normalPricePence,
+                                  }) ? (
+                                    <p className="text-muted-foreground mt-1 text-xs">
+                                      Early bird saves{" "}
+                                      {formatMoney(
+                                        getEarlyBirdSavingPence(getRoomRatePlans(roomOption)[0]),
+                                        retreat.currency
+                                      )}
+                                      . Standard{" "}
+                                      {formatMoney(
+                                        getRoomRatePlans(roomOption)[0]?.totalPricePence ||
+                                          roomOption.normalPricePence,
+                                        retreat.currency
+                                      )}
+                                    </p>
+                                  ) : null}
+                                  <p className="text-muted-foreground mt-1 text-sm">
+                                    {selectedDate?.paymentPolicy === "full_payment"
+                                      ? "Due today "
+                                      : "Deposit today "}
+                                    {formatMoney(
+                                      getDepositAmountForPricePence(
+                                        roomOption,
+                                        getRoomRatePlans(roomOption)[0]
+                                          ? getEffectiveRetreatRatePricePence(
+                                              getRoomRatePlans(roomOption)[0]
+                                            )
+                                          : roomOption.normalPricePence
+                                      ),
+                                      retreat.currency
+                                    )}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                          </button>
-                        );
-                      })}
+                            </button>
+                          );
+                        })}
                     </div>
                   ) : null}
                   {selectedRoom && selectedRoomRatePlans.length > 1 ? (
@@ -1314,95 +1292,6 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                     </div>
                   ) : null}
 
-                  {requiresPracticalRegistration ? (
-                    <div className="marketing-panel rounded-[1.5rem] p-4 sm:p-5">
-                      <h2 className="text-2xl">Health, access and emergency details</h2>
-                      <div className="mt-4 grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="phone">Phone</Label>
-                          <Input
-                            id="phone"
-                            required
-                            value={formData.phone}
-                            onChange={(event) =>
-                              setFormData((current) => ({ ...current, phone: event.target.value }))
-                            }
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="emergencyContactPhone">Emergency contact phone</Label>
-                          <Input
-                            id="emergencyContactPhone"
-                            required
-                            value={formData.emergencyContactPhone}
-                            onChange={(event) =>
-                              setFormData((current) => ({
-                                ...current,
-                                emergencyContactPhone: event.target.value,
-                              }))
-                            }
-                          />
-                        </div>
-                      </div>
-                      <div className="mt-4 space-y-2">
-                        <Label htmlFor="emergencyContactName">Emergency contact name</Label>
-                        <Input
-                          id="emergencyContactName"
-                          required
-                          value={formData.emergencyContactName}
-                          onChange={(event) =>
-                            setFormData((current) => ({
-                              ...current,
-                              emergencyContactName: event.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                      <div className="mt-4 grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="dietaryRequirements">Dietary requirements</Label>
-                          <Textarea
-                            id="dietaryRequirements"
-                            value={formData.dietaryRequirements}
-                            onChange={(event) =>
-                              setFormData((current) => ({
-                                ...current,
-                                dietaryRequirements: event.target.value,
-                              }))
-                            }
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="mobilityNeeds">Accessibility or mobility needs</Label>
-                          <Textarea
-                            id="mobilityNeeds"
-                            value={formData.mobilityNeeds}
-                            onChange={(event) =>
-                              setFormData((current) => ({
-                                ...current,
-                                mobilityNeeds: event.target.value,
-                              }))
-                            }
-                          />
-                        </div>
-                      </div>
-                      <div className="mt-4 space-y-2">
-                        <Label htmlFor="medicalConditions">Health notes</Label>
-                        <Textarea
-                          id="medicalConditions"
-                          required
-                          value={formData.medicalConditions}
-                          onChange={(event) =>
-                            setFormData((current) => ({
-                              ...current,
-                              medicalConditions: event.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                    </div>
-                  ) : null}
-
                   {requiresAccommodation && selectedRoom && selectedGuestCount > 1 ? (
                     <div className="rounded-[1.5rem] border p-6">
                       <h2 className="text-2xl">Second guest details (optional for now)</h2>
@@ -1465,7 +1354,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                       {isOnlineExperience ? "Before you book" : "Agreements"}
                     </h2>
 
-                    {user?.hasAgreedToTerms ? (
+                    {termsState && !termsState.isCurrent ? (
+                      termsChecklist
+                    ) : termsState?.isCurrent ? (
                       <div className="mt-6 flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
                         <Check className="mt-0.5 h-4 w-4 flex-shrink-0" />
                         <span>Terms & Conditions already accepted on your account.</span>
@@ -1499,63 +1390,10 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                       </label>
                     )}
 
-                    {requiresPracticalRegistration ? (
-                      <>
-                        {user?.hasAgreedToHealth ? (
-                          <div className="mt-4 flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-                            <Check className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                            <span>Health & Liability Waiver already accepted on your account.</span>
-                          </div>
-                        ) : (
-                          <label className="mt-4 flex items-start gap-3 text-sm">
-                            <Checkbox
-                              checked={formData.agreedToHealth}
-                              onCheckedChange={(checked) =>
-                                setFormData((current) => ({
-                                  ...current,
-                                  agreedToHealth: checked === true,
-                                }))
-                              }
-                            />
-                            <span>
-                              I have read and agree to the{" "}
-                              <Link
-                                href="/health-declaration"
-                                target="_blank"
-                                className="text-primary underline"
-                              >
-                                Health & Liability Waiver
-                              </Link>
-                              .
-                            </span>
-                          </label>
-                        )}
-
-                        {user?.hasConsentedToHealthData ? (
-                          <div className="mt-4 flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-                            <Check className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                            <span>Health-data consent already recorded on your account.</span>
-                          </div>
-                        ) : (
-                          <label className="mt-4 flex items-start gap-3 text-sm">
-                            <Checkbox
-                              checked={formData.agreedToHealthData}
-                              onCheckedChange={(checked) =>
-                                setFormData((current) => ({
-                                  ...current,
-                                  agreedToHealthData: checked === true,
-                                }))
-                              }
-                            />
-                            <span>
-                              I explicitly consent to Shruti Turner processing the health
-                              information I provide so this retreat can be delivered safely and
-                              appropriately.
-                            </span>
-                          </label>
-                        )}
-                      </>
-                    ) : null}
+                    <p className="text-muted-foreground mt-4 text-sm">
+                      After payment, each attendee completes their own health, access and emergency
+                      details and participation agreements in My Studio before the event.
+                    </p>
                   </div>
                 </>
               ) : (
@@ -1661,7 +1499,9 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                     </div>
                   </div>
                   <div className="bg-secondary/20 text-muted-foreground mt-4 rounded-xl border p-4 text-sm">
-                    {user?.hasAgreedToTerms ? (
+                    {termsState && !termsState.isCurrent ? (
+                      termsChecklist
+                    ) : termsState?.isCurrent ? (
                       <p className="mb-3 flex items-start gap-2 text-emerald-800">
                         <Check className="mt-0.5 h-4 w-4 shrink-0" />
                         Current Terms & Conditions already accepted on your account.
@@ -1705,6 +1545,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                 className="w-full md:w-auto"
                 disabled={
                   isSubmitting ||
+                  !termsSatisfied ||
                   !selectedRoom ||
                   selectedRoom.isWaitlistOnly ||
                   selectedRoom.availableSpots <= 0
@@ -1836,7 +1677,7 @@ export function RetreatCheckoutPage({ retreat }: { retreat?: RetreatCombinedCont
                           {purchaseMode === "gift"
                             ? "The recipient completes their own registration details securely when they redeem the gift."
                             : requiresPracticalRegistration
-                              ? `Health and access details are collected now so the ${experienceLabel} can be delivered safely and appropriately.`
+                              ? "Each attendee completes their own health, access and emergency details securely in My Studio after payment."
                               : "Your booking and access details stay together in your account."}
                         </p>
                       </div>

@@ -133,6 +133,7 @@ export function LegalAcceptanceChecklist({
         </p>
       ) : null}
       <Button
+        type="button"
         disabled={disabled || busy || submitting || !allChecked}
         onClick={() => void submit()}
       >

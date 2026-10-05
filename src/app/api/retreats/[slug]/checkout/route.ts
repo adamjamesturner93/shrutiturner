@@ -17,19 +17,10 @@ type RetreatCheckoutBody = {
   attendeeFirstName?: unknown;
   attendeeLastName?: unknown;
   attendeeEmail?: unknown;
-  phone?: unknown;
-  emergencyContactName?: unknown;
-  emergencyContactPhone?: unknown;
-  dietaryRequirements?: unknown;
-  medicalConditions?: unknown;
-  mobilityNeeds?: unknown;
   guestTwoFirstName?: unknown;
   guestTwoLastName?: unknown;
   guestTwoEmail?: unknown;
-  guestTwoDietaryRequirements?: unknown;
   acceptedTermsVersion?: unknown;
-  acceptedHealthWaiverVersion?: unknown;
-  acceptedHealthDataVersion?: unknown;
   recipientFirstName?: unknown;
   recipientLastName?: unknown;
   recipientEmail?: unknown;
@@ -64,30 +55,11 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
       attendeeFirstName: typeof body.attendeeFirstName === "string" ? body.attendeeFirstName : "",
       attendeeLastName: typeof body.attendeeLastName === "string" ? body.attendeeLastName : "",
       attendeeEmail: typeof body.attendeeEmail === "string" ? body.attendeeEmail : "",
-      phone: typeof body.phone === "string" ? body.phone : "",
-      emergencyContactName:
-        typeof body.emergencyContactName === "string" ? body.emergencyContactName : "",
-      emergencyContactPhone:
-        typeof body.emergencyContactPhone === "string" ? body.emergencyContactPhone : "",
-      dietaryRequirements:
-        typeof body.dietaryRequirements === "string" ? body.dietaryRequirements : "",
-      medicalConditions: typeof body.medicalConditions === "string" ? body.medicalConditions : "",
-      mobilityNeeds: typeof body.mobilityNeeds === "string" ? body.mobilityNeeds : "",
       guestTwoFirstName: typeof body.guestTwoFirstName === "string" ? body.guestTwoFirstName : "",
       guestTwoLastName: typeof body.guestTwoLastName === "string" ? body.guestTwoLastName : "",
       guestTwoEmail: typeof body.guestTwoEmail === "string" ? body.guestTwoEmail : "",
-      guestTwoDietaryRequirements:
-        typeof body.guestTwoDietaryRequirements === "string"
-          ? body.guestTwoDietaryRequirements
-          : "",
       acceptedTermsVersion:
         typeof body.acceptedTermsVersion === "string" ? body.acceptedTermsVersion : null,
-      acceptedHealthWaiverVersion:
-        typeof body.acceptedHealthWaiverVersion === "string"
-          ? body.acceptedHealthWaiverVersion
-          : null,
-      acceptedHealthDataVersion:
-        typeof body.acceptedHealthDataVersion === "string" ? body.acceptedHealthDataVersion : null,
       recipientFirstName:
         typeof body.recipientFirstName === "string" ? body.recipientFirstName : "",
       recipientLastName: typeof body.recipientLastName === "string" ? body.recipientLastName : "",

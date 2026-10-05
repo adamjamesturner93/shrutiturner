@@ -26,6 +26,11 @@ export const retreatImageSchema = z.object({
 });
 
 export const retreatExperienceContentSchema = z.object({
+  testimonialIds: z
+    .array(z.string().trim().min(1).max(128))
+    .max(3)
+    .refine((ids) => new Set(ids).size === ids.length, "Choose each testimonial once.")
+    .default([]),
   schemaVersion: z.literal(1).default(1),
   title: z.string().trim().max(180).default(""),
   subtitle: z.string().trim().max(320).default(""),

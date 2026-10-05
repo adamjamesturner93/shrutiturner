@@ -818,6 +818,12 @@ function mapOperationalRoomOption(
     type: toPublicRoomType(roomOption.roomType),
     bookingUnit: roomOption.bookingUnit,
     bedSetup: roomOption.venueRoomGroup?.bedSetup,
+    bathroomType:
+      roomOption.venueRoomGroup?.bathroomType === "private"
+        ? "private"
+        : roomOption.venueRoomGroup?.bathroomType === "shared"
+          ? "shared"
+          : null,
     inventoryUnitsPerBooking: roomOption.inventoryUnitsPerBooking,
     guestsIncluded: roomOption.guestsIncluded,
     guestCountPerUnit: roomOption.guestCountPerUnit ?? undefined,
@@ -1046,6 +1052,7 @@ async function buildOperationalRetreatFromTemplate(input: {
       retreatType: mappedDates[0]?.retreatType || null,
     }),
     gallery: input.template.gallery,
+    testimonialIds: input.template.testimonialIds,
     shortDescription: input.template.shortDescription,
     fullDescription: input.template.fullDescription,
     atmosphereDescription: input.template.atmosphereDescription,
@@ -1559,18 +1566,7 @@ export async function createRetreatCheckout(input: {
     const currentGuestVersions = new Map(
       guestAcceptanceTypes.map((type, index) => [type, guestPolicies[index]?.version || ""])
     );
-    if (
-      input.acceptedTermsVersion !== currentGuestVersions.get(AcceptanceType.terms) ||
-      (input.purchaseMode === "self" &&
-        eventCapabilities.requiresCheckoutPracticalRegistration &&
-        input.acceptedHealthWaiverVersion !==
-          currentGuestVersions.get(AcceptanceType.health_waiver)) ||
-      (input.purchaseMode === "self" &&
-        eventCapabilities.requiresCheckoutPracticalRegistration &&
-        (input.acceptedHealthWaiverVersion !==
-          currentGuestVersions.get(AcceptanceType.health_waiver) ||
-          input.acceptedHealthDataVersion !== currentGuestVersions.get(AcceptanceType.health_data)))
-    ) {
+    if (input.acceptedTermsVersion !== currentGuestVersions.get(AcceptanceType.terms)) {
       throw new Error("RETREAT_LEGAL_ACCEPTANCE_REQUIRED");
     }
   }
@@ -1923,12 +1919,8 @@ export async function createRetreatCheckout(input: {
         bedPreference,
         guestsIncluded: quote.totalGuestCount,
         acceptedTermsVersion: input.acceptedTermsVersion || null,
-        acceptedHealthWaiverVersion: eventCapabilities.requiresCheckoutPracticalRegistration
-          ? input.acceptedHealthWaiverVersion || null
-          : null,
-        acceptedHealthDataVersion: eventCapabilities.requiresCheckoutPracticalRegistration
-          ? input.acceptedHealthDataVersion || null
-          : null,
+        acceptedHealthWaiverVersion: null,
+        acceptedHealthDataVersion: null,
         complianceSnapshotJson:
           acceptanceStates || input.acceptedTermsVersion || input.acceptedHealthWaiverVersion
             ? {
@@ -1941,12 +1933,8 @@ export async function createRetreatCheckout(input: {
                     surface: state.surface,
                   })) || [],
                 acceptedTermsVersion: input.acceptedTermsVersion || null,
-                acceptedHealthWaiverVersion: eventCapabilities.requiresCheckoutPracticalRegistration
-                  ? input.acceptedHealthWaiverVersion || null
-                  : null,
-                acceptedHealthDataVersion: eventCapabilities.requiresCheckoutPracticalRegistration
-                  ? input.acceptedHealthDataVersion || null
-                  : null,
+                acceptedHealthWaiverVersion: null,
+                acceptedHealthDataVersion: null,
                 retreatDateId: retreatDate.id,
                 roomOptionId: roomOption.id,
               }
@@ -3830,6 +3818,7 @@ export type AdminRetreatVenueRoomGroupInput = {
   quantity: number;
   capacityPerRoom: number;
   bedSetup: string;
+  bathroomType?: string | null;
   allowShared: boolean;
   privateGuestCounts: number[];
   roomNames: string[];
@@ -3881,6 +3870,7 @@ export async function getAdminRetreatVenues() {
             quantity: group.quantity,
             capacityPerRoom: group.capacityPerRoom,
             bedSetup: group.bedSetup,
+            bathroomType: group.bathroomType,
             allowShared: group.allowShared,
             privateGuestCounts: readPrivateGuestCounts(group.privateGuestCountsJson),
             roomNames: group.roomTemplates.map((room) => room.label),
@@ -3919,6 +3909,7 @@ export async function updateAdminRetreatVenueRooms(
       return (
         !group.name.trim() ||
         !supportedBedSetups.has(group.bedSetup) ||
+        (group.bathroomType != null && !["private", "shared"].includes(group.bathroomType)) ||
         !Number.isInteger(group.quantity) ||
         group.quantity < 1 ||
         group.quantity > 100 ||
@@ -3970,6 +3961,7 @@ export async function updateAdminRetreatVenueRooms(
         quantity: group.quantity,
         capacityPerRoom: group.capacityPerRoom,
         bedSetup: group.bedSetup.trim(),
+        ...(group.bathroomType !== undefined ? { bathroomType: group.bathroomType } : {}),
         allowShared: group.allowShared,
         privateGuestCountsJson: [...new Set(group.privateGuestCounts)].sort((a, b) => a - b),
         displayOrder: groupIndex,

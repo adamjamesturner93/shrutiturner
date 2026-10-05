@@ -1232,20 +1232,8 @@ export async function getRetreatsCombined(): Promise<RetreatCombinedContent[]> {
 }
 
 export async function getFeaturedTestimonials(): Promise<TestimonialContent[]> {
-  const res = await getEntries<Record<string, unknown>>("testimonial", {
-    "fields.featured": true,
-    limit: 3,
-  });
-  if (!res?.items?.length) {
-    return [];
-  }
-
-  return res.items.map((item) => ({
-    id: String(item.sys.id),
-    quote: String(item.fields.quote || ""),
-    authorName: String(item.fields.authorName || "Anonymous"),
-    featured: Boolean(item.fields.featured),
-  }));
+  const { getApprovedTestimonials } = await import("./testimonials");
+  return (await getApprovedTestimonials("home")).filter((item) => item.featured).slice(0, 3);
 }
 
 export async function getRetreatBySlugCombined(

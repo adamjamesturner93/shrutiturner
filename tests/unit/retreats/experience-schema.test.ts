@@ -56,3 +56,12 @@ describe("retreat experience content", () => {
     ).toThrow();
   });
 });
+
+it("persists ordered testimonial IDs through event content and rejects duplicates or more than three", () => {
+  expect(
+    parseRetreatExperienceContent({ testimonialIds: ["quote-b", "quote-a"] }).testimonialIds
+  ).toEqual(["quote-b", "quote-a"]);
+  expect(parseRetreatExperienceContent({}).testimonialIds).toEqual([]);
+  expect(() => parseRetreatExperienceContent({ testimonialIds: ["a", "a"] })).toThrow();
+  expect(() => parseRetreatExperienceContent({ testimonialIds: ["a", "b", "c", "d"] })).toThrow();
+});

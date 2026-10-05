@@ -1,3 +1,4 @@
+import { getApprovedTestimonials } from "@/lib/content/testimonials";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -56,6 +57,7 @@ async function RetreatContent({ params, searchParams }: RetreatPageProps) {
       <JsonLd data={createRetreatEventSchemas(retreat)} />
       <RetreatDetailPage
         key={`${slug}:${date || "default"}`}
+        testimonials={await getApprovedTestimonials("event-page", retreat.testimonialIds || [])}
         retreat={retreat}
         initialDateId={date}
       />

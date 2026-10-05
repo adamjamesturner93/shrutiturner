@@ -323,7 +323,7 @@ describe("Contentful public content mapping", () => {
     await expect(getBlogPostBySlug("missing-post")).resolves.toBeNull();
   });
 
-  it("loads homepage testimonials using only Contentful's featured flag", async () => {
+  it("loads homepage testimonials only when featured and approved for home", async () => {
     mocks.getEntries.mockResolvedValueOnce({
       items: [
         {
@@ -332,6 +332,7 @@ describe("Contentful public content mapping", () => {
             quote: "Training now feels like it belongs to me.",
             authorName: "Meg K",
             featured: true,
+            approvedPlacements: ["home"],
           },
         },
       ],
@@ -340,14 +341,15 @@ describe("Contentful public content mapping", () => {
     await expect(getFeaturedTestimonials()).resolves.toEqual([
       {
         id: "testimonial_meg",
+        contextLabel: "",
         quote: "Training now feels like it belongs to me.",
         authorName: "Meg K",
         featured: true,
+        approvedPlacements: ["home"],
       },
     ]);
     expect(mocks.getEntries).toHaveBeenCalledWith("testimonial", {
-      "fields.featured": true,
-      limit: 3,
+      limit: 1000,
     });
   });
 

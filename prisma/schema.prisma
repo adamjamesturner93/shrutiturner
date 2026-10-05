@@ -1785,6 +1785,7 @@ model RetreatVenueRoomGroup {
   description            String?
   quantity               Int
   capacityPerRoom        Int
+  bathroomType           String?
   bedSetup               String
   allowShared            Boolean  @default(false)
   privateGuestCountsJson Json?

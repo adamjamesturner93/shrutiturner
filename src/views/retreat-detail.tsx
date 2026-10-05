@@ -1,5 +1,10 @@
 "use client";
 
+import { RetreatRoomChoices } from "@/components/retreat-room-choices";
+import { roomBedLabel } from "@/lib/retreats/room-choice";
+import { TestimonialQuotes } from "@/components/testimonial-quotes";
+import type { TestimonialContent } from "@/lib/content/types";
+
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -41,6 +46,7 @@ import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/con
 import { useI18n } from "@/lib/use-i18n";
 
 interface RetreatDetailPageProps {
+  testimonials?: TestimonialContent[];
   retreat?: RetreatCombinedContent | null;
   otherRetreatsAtVenue?: RetreatCombinedContent[];
   initialDateId?: string;
@@ -50,7 +56,7 @@ function formatMoney(value: number, currency = "GBP") {
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency,
-    maximumFractionDigits: 0,
+    maximumFractionDigits: value % 100 ? 2 : 0,
   }).format(value / 100);
 }
 
@@ -131,6 +137,7 @@ function getScheduleDateLabel(startDate: string | undefined, dayIndex: number) {
 }
 
 export function RetreatDetailPage({
+  testimonials = [],
   retreat: retreatProp,
   otherRetreatsAtVenue = [],
   initialDateId,
@@ -148,7 +155,13 @@ export function RetreatDetailPage({
     : initialDateId || retreat?.dates[0]?.id || "";
   const [selectedDateId, setSelectedDateId] = useState(firstSelectedDateId);
   const [selectedRoomId, setSelectedRoomId] = useState(
-    getDefaultRoomOptionId(retreat?.dates.find((date) => date.id === firstSelectedDateId) || null)
+    (retreat?.dates.find((date) => date.id === firstSelectedDateId)?.eventKind ||
+      (retreat?.deliveryMode?.startsWith("online") ? "online_workshop" : "residential_retreat")) ===
+      "residential_retreat"
+      ? ""
+      : getDefaultRoomOptionId(
+          retreat?.dates.find((date) => date.id === firstSelectedDateId) || null
+        )
   );
   const [selectedGuestCount, setSelectedGuestCount] = useState(1);
   const [bedPreference, setBedPreference] = useState<BedPreference>("double");
@@ -159,9 +172,7 @@ export function RetreatDetailPage({
   );
 
   const selectedRoom =
-    selectedDate?.roomOptions.find((roomOption) => roomOption.id === selectedRoomId) ||
-    selectedDate?.roomOptions[0] ||
-    null;
+    selectedDate?.roomOptions.find((roomOption) => roomOption.id === selectedRoomId) || null;
   const selectedRoomRatePlans = useMemo(
     () => (selectedRoom ? getRoomRatePlans(selectedRoom) : []),
     [selectedRoom]
@@ -265,6 +276,31 @@ export function RetreatDetailPage({
   const renderBookingActions = (className: string) => (
     <div className={className}>
       <div className="space-y-3">
+        {requiresAccommodation && selectedRoom
+          ? (() => {
+              const rate = getRoomRatePlans(selectedRoom).find(
+                (item) => item.guestCount === selectedGuestCount
+              );
+              if (!rate) return null;
+              const total = getEffectiveRetreatRatePricePence(rate);
+              const deposit = isFullPaymentOnly ? total : getRatePlanDeposit(selectedRoom, rate);
+              return (
+                <div aria-live="polite" className="space-y-1 text-sm">
+                  <p className="font-medium">
+                    {roomBedLabel(selectedRoom)} · {selectedGuestCount}{" "}
+                    {selectedGuestCount === 1 ? "guest" : "guests"}
+                  </p>
+                  <p>
+                    {formatMoney(total, retreat.currency)} total ·{" "}
+                    {formatMoney(deposit, retreat.currency)} due today
+                  </p>
+                  <p className="text-muted-foreground">
+                    {formatMoney(Math.max(0, total - deposit), retreat.currency)} remaining balance
+                  </p>
+                </div>
+              );
+            })()
+          : null}
         {selectedDate && selectedRoomAvailable ? (
           <>
             <Button asChild className="w-full" size="lg">
@@ -555,6 +591,8 @@ export function RetreatDetailPage({
               </div>
             </div>
 
+            <TestimonialQuotes testimonials={testimonials} />
+
             <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
               <h2 className="text-3xl md:text-4xl">
                 {isOnlineExperience
@@ -768,7 +806,12 @@ export function RetreatDetailPage({
                                 ) ||
                                 date.roomOptions[0] ||
                                 null;
-                              setSelectedRoomId(nextRoomId);
+                              setSelectedRoomId(
+                                (date.eventKind || selectedEventKind) === "residential_retreat"
+                                  ? ""
+                                  : nextRoomId
+                              );
+                              setBedPreference("double");
                               setSelectedGuestCount(getDefaultGuestCount(nextRoom));
                             }}
                             className={`rounded-[1rem] border p-4 text-left transition-colors ${
@@ -833,7 +876,21 @@ export function RetreatDetailPage({
                       {hasMultipleOptions ? `Choose your ${optionLabel}` : `Your ${optionLabel}`}
                     </h3>
                     <div className="mt-4 grid gap-3">
-                      {selectedDate.roomOptions.map(renderRoomOption)}
+                      {requiresAccommodation ? (
+                        <RetreatRoomChoices
+                          key={selectedDate.id}
+                          options={selectedDate.roomOptions}
+                          selectedId={selectedRoomId}
+                          currency={retreat.currency}
+                          onSelect={(room) => {
+                            setSelectedRoomId(room?.id || "");
+                            setSelectedGuestCount(room ? getDefaultGuestCount(room) : 1);
+                            setBedPreference("double");
+                          }}
+                        />
+                      ) : (
+                        selectedDate.roomOptions.map(renderRoomOption)
+                      )}
                     </div>
                     {selectedRoom && selectedRoomRatePlans.length > 1 ? (
                       <div className="mt-5">

@@ -1,3 +1,4 @@
+import { getApprovedTestimonials } from "@/lib/content/testimonials";
 import { connection } from "next/server";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
@@ -17,5 +18,11 @@ export default async function Page({ params }: { params: Promise<{ experienceId:
   const experience = await getRetreatExperience(experienceId);
   if (!experience) notFound();
   const dates = await listRetreatExperienceDates(experienceId);
-  return <AdminRetreatExperienceEditor initialData={experience} dates={dates} />;
+  return (
+    <AdminRetreatExperienceEditor
+      initialData={experience}
+      dates={dates}
+      testimonials={await getApprovedTestimonials("event-page")}
+    />
+  );
 }

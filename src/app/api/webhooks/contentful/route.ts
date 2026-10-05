@@ -44,7 +44,8 @@ function contentTypeToTags(contentType: string) {
   if (contentType === "leadMagnet") return ["content:newsletter-signup", "content:emails"];
   if (contentType === "faqItem") return ["content:global-blocks"];
   if (contentType === "newsletterTemplate") return ["content:emails"];
-  if (contentType === "testimonial") return ["content:testimonials"];
+  if (contentType === "testimonial" || contentType === "testimonialSelection")
+    return ["content:testimonials"];
   return ["content:all"];
 }
 

@@ -10,13 +10,13 @@ describe("checkout acceptance requirements and recorded evidence", () => {
       })
     ).toEqual(["terms"]);
   });
-  it("retains all three agreements for in-person purchases", () => {
+  it("defers in-person participation agreements to attendee onboarding", () => {
     expect(
       getRetreatCheckoutAcceptanceTypes({
         purchaseMode: "self",
         requiresPracticalRegistration: true,
       })
-    ).toEqual(["terms", "health_waiver", "health_data"]);
+    ).toEqual(["terms"]);
   });
   it.each([true, false])(
     "only records purchaser terms for gifts (practical=%s)",

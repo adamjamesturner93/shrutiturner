@@ -364,7 +364,47 @@ export const PUBLIC_CONTENT_MODELS: ContentTypeDefinition[] = [
       { id: "slug", name: "Slug", type: "Symbol", validations: [{ unique: true }] },
       { id: "quote", name: "Quote", type: "Text", required: true },
       { id: "authorName", name: "Author Name", type: "Symbol", required: true },
+      {
+        id: "contextLabel",
+        name: "Context (e.g. Previous workshop attendee)",
+        type: "Symbol",
+        validations: [{ size: { max: 120 } }],
+      },
+      {
+        id: "approvedPlacements",
+        name: "Approved display areas",
+        type: "Array",
+        items: {
+          type: "Symbol",
+          validations: [{ in: ["Home", "Coaching", "Retreats General", "Retreat"] }],
+        },
+      },
       { id: "featured", name: "Featured", type: "Boolean" },
+    ],
+  },
+  {
+    id: "testimonialSelection",
+    name: "Testimonial selection",
+    displayField: "slug",
+    fields: [
+      {
+        id: "slug",
+        name: "Page",
+        type: "Symbol",
+        required: true,
+        validations: [{ in: ["retreats-overview"] }, { unique: true }],
+      },
+      {
+        id: "testimonials",
+        name: "Ordered quotes (two recommended)",
+        type: "Array",
+        validations: [{ size: { max: 3 } }],
+        items: {
+          type: "Link",
+          linkType: "Entry",
+          validations: [{ linkContentType: ["testimonial"] }],
+        },
+      },
     ],
   },
   {
@@ -485,7 +525,8 @@ export const PUBLIC_CONTENT_MODELS: ContentTypeDefinition[] = [
           },
         ],
       },
-      { id: "body", name: "Legacy Body", type: "Text", omitted: true },
+      // Existing published newsletters still use this delivery fallback.
+      { id: "body", name: "Legacy Body", type: "Text", omitted: false },
       {
         id: "segmentation",
         name: "Segmentation",

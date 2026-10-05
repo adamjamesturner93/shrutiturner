@@ -16,6 +16,7 @@ const retainedContentTypes = [
   "retreatVenue",
   "smallGroupProgramme",
   "testimonial",
+  "testimonialSelection",
 ] as const;
 
 const retiredContentTypes = [
@@ -61,7 +62,9 @@ describe("Contentful public content models", () => {
     const seededTypes = SEED_GROUPS.map((group) => group.contentType).sort();
 
     expect(seededTypes).toEqual(
-      retainedContentTypes.filter((type) => type !== "retreatScheduleDay").sort()
+      retainedContentTypes
+        .filter((type) => type !== "retreatScheduleDay" && type !== "testimonialSelection")
+        .sort()
     );
   });
 
@@ -86,6 +89,10 @@ describe("Contentful public content models", () => {
 
     expect(fieldIds).toEqual(expect.arrayContaining(["slug", "title", "subject", "body"]));
     expect(fieldIds).not.toEqual(expect.arrayContaining(["sendDate", "status", "testMode"]));
+    expect(newsletterModel?.fields.find((field) => field.id === "body")).toMatchObject({
+      type: "Text",
+      omitted: false,
+    });
   });
 
   it("keeps blog author and publish date derived from linked profiles and Contentful metadata", () => {

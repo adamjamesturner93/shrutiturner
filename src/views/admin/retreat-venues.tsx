@@ -22,6 +22,7 @@ type RoomGroupDraft = {
   quantity: number;
   capacityPerRoom: number;
   bedSetup: string;
+  bathroomType?: string | null;
   allowShared: boolean;
   privateGuestCounts: number[];
   roomNamesText: string;
@@ -42,6 +43,7 @@ function newRoomGroup(): RoomGroupDraft {
     quantity: 1,
     capacityPerRoom: 2,
     bedSetup: "fixed_twin",
+    bathroomType: null,
     allowShared: true,
     privateGuestCounts: [1, 2],
     roomNamesText: "",
@@ -86,6 +88,7 @@ export function AdminRetreatVenues({ initialData }: { initialData: AdminRetreatV
             quantity: group.quantity,
             capacityPerRoom: group.capacityPerRoom,
             bedSetup: group.bedSetup,
+            bathroomType: group.bathroomType ?? null,
             allowShared: group.allowShared,
             privateGuestCounts: group.privateGuestCounts,
             roomNames: group.roomNamesText
@@ -213,6 +216,24 @@ export function AdminRetreatVenues({ initialData }: { initialData: AdminRetreatV
                                 }))
                               }
                             />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`${group.id}-bathroom`}>Bathroom</Label>
+                            <select
+                              id={`${group.id}-bathroom`}
+                              className="w-full rounded-md border p-2"
+                              value={group.bathroomType || ""}
+                              onChange={(event) =>
+                                updateGroup(venue.contentfulVenueId, group.id, (current) => ({
+                                  ...current,
+                                  bathroomType: event.target.value || null,
+                                }))
+                              }
+                            >
+                              <option value="">Not specified</option>
+                              <option value="private">Private bathroom</option>
+                              <option value="shared">Shared bathroom</option>
+                            </select>
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor={`${group.id}-layout`}>Bed setup</Label>

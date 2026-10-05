@@ -107,12 +107,14 @@ export const TESTIMONIAL_SEED = {
         "Finally, a yoga teacher who understands chronic illness, injury history and real recovery needs.",
       authorName: "Sarah",
       featured: true,
+      approvedPlacements: ["Home"],
     },
     {
       slug: "james",
       quote: "I've built more strength in 12 weeks than in years of trying generic programmes.",
       authorName: "James",
       featured: true,
+      approvedPlacements: ["Home"],
     },
     {
       slug: "elena",
@@ -120,6 +122,7 @@ export const TESTIMONIAL_SEED = {
         "The small group programme gave me accountability and a community that actually gets it.",
       authorName: "Elena",
       featured: true,
+      approvedPlacements: ["Home"],
     },
     {
       slug: "nadia",
@@ -127,6 +130,7 @@ export const TESTIMONIAL_SEED = {
         "The plan finally matched my energy instead of pretending every week would be the same.",
       authorName: "Nadia",
       featured: true,
+      approvedPlacements: ["Home"],
     },
     {
       slug: "morgan",
@@ -148,6 +152,7 @@ export const TESTIMONIAL_SEED = {
         "I can carry shopping, climb stairs and trust my knees more. Those are the wins that matter.",
       authorName: "Rachel",
       featured: true,
+      approvedPlacements: ["Home"],
     },
   ],
 };

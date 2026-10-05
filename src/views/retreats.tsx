@@ -1,5 +1,8 @@
 "use client";
 
+import { TestimonialQuotes } from "@/components/testimonial-quotes";
+import type { TestimonialContent } from "@/lib/content/types";
+
 import Link from "next/link";
 import { ArrowRight, CalendarDays, Clock3, MapPin, MonitorPlay } from "lucide-react";
 import { Layout } from "@/components/layout";
@@ -22,6 +25,7 @@ import { getRetreatCardDateLabels, getRetreatPriceSummary } from "@/lib/retreats
 import type { FaqItemContent, RetreatCombinedContent } from "@/lib/content/types";
 
 interface RetreatsPageProps {
+  testimonials?: TestimonialContent[];
   retreats?: RetreatCombinedContent[];
   faqs?: FaqItemContent[];
 }
@@ -89,7 +93,7 @@ const RETREAT_PRINCIPLES = [
   },
 ] as const;
 
-export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
+export function RetreatsPage({ retreats, faqs, testimonials = [] }: RetreatsPageProps) {
   const retreatData = retreats ?? [];
   const retreatFaqs = faqs && faqs.length > 0 ? faqs : DEFAULT_RETREAT_FAQS;
 
@@ -164,6 +168,11 @@ export function RetreatsPage({ retreats, faqs }: RetreatsPageProps) {
         }
       />
 
+      {testimonials.length ? (
+        <MarketingSection contentClassName="max-w-7xl">
+          <TestimonialQuotes testimonials={testimonials} />
+        </MarketingSection>
+      ) : null}
       <MarketingSection id="retreats" className="section-wash" contentClassName="max-w-7xl">
         <SectionHeading
           eyebrow="Upcoming experiences"

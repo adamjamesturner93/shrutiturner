@@ -4,8 +4,8 @@ export function getRetreatCheckoutAcceptanceTypes(input: {
   purchaseMode: "self" | "gift";
   requiresPracticalRegistration: boolean;
 }): AcceptanceType[] {
-  if (input.purchaseMode === "gift") return [AcceptanceType.terms];
-  return input.requiresPracticalRegistration
-    ? [AcceptanceType.terms, AcceptanceType.health_waiver, AcceptanceType.health_data]
-    : [AcceptanceType.terms];
+  // Participation agreements belong to the authenticated attendee after purchase.
+  // Retain the input contract for callers handling different event/purchase modes.
+  void input;
+  return [AcceptanceType.terms];
 }

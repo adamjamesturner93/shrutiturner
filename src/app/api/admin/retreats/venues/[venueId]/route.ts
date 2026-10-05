@@ -27,6 +27,12 @@ export async function PUT(request: Request, context: { params: Promise<{ venueId
         description: typeof group.description === "string" ? group.description : null,
         quantity: integer(group.quantity),
         capacityPerRoom: integer(group.capacityPerRoom),
+        bathroomType:
+          group.bathroomType === null
+            ? null
+            : typeof group.bathroomType === "string"
+              ? group.bathroomType
+              : undefined,
         bedSetup: typeof group.bedSetup === "string" ? group.bedSetup : "",
         allowShared: group.allowShared === true,
         privateGuestCounts: Array.isArray(group.privateGuestCounts)

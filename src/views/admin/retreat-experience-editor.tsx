@@ -1,5 +1,7 @@
 "use client";
 
+import { TestimonialPicker } from "@/components/admin/testimonial-picker";
+import type { TestimonialContent } from "@/lib/content/types";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ExternalLink, Save, Send } from "lucide-react";
@@ -18,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 type EventKind = "residential_retreat" | "day_retreat" | "in_person_workshop" | "online_workshop";
 
 type ExperienceContent = {
+  testimonialIds?: string[];
   schemaVersion: 1;
   title: string;
   subtitle: string;
@@ -84,7 +87,9 @@ async function readApi<T>(response: Response) {
 export function AdminRetreatExperienceEditor({
   initialData,
   dates = [],
+  testimonials = [],
 }: {
+  testimonials?: TestimonialContent[];
   initialData: RetreatExperienceEditorData;
   dates?: Array<{ id: string; title: string; startsAt: string; status: string }>;
 }) {
@@ -449,6 +454,18 @@ export function AdminRetreatExperienceEditor({
                     </p>
                   </div>
                 ) : null}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <fieldset disabled={busy !== ""}>
+                  <TestimonialPicker
+                    available={testimonials}
+                    selected={content.testimonialIds || []}
+                    onChange={(ids) => update("testimonialIds", ids)}
+                  />
+                </fieldset>
               </CardContent>
             </Card>
 

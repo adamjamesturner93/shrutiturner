@@ -53,7 +53,8 @@ function getCacheTags(contentType?: string): string[] {
   if (contentType === "leadMagnet") return [...base, "content:newsletter-signup", "content:emails"];
   if (contentType === "faqItem") return [...base, "content:global-blocks"];
   if (contentType === "newsletterTemplate") return [...base, "content:emails"];
-  if (contentType === "testimonial") return [...base, "content:testimonials"];
+  if (contentType === "testimonial" || contentType === "testimonialSelection")
+    return [...base, "content:testimonials"];
 
   return base;
 }

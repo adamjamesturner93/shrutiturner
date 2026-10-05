@@ -162,6 +162,23 @@ async function configureSlugEditor(contentTypeId: string, trackingFieldId: strin
     controls.push(slugControl);
   }
 
+  if (contentTypeId === "testimonial") {
+    const placementControl = {
+      fieldId: "approvedPlacements",
+      widgetId: "checkbox",
+      widgetNamespace: "builtin",
+      settings: {
+        helpText:
+          "Choose all suitable areas. Retreats General is the retreats overview; Retreat allows selection on an individual event page.",
+      },
+    };
+    const placementIndex = controls.findIndex(
+      (control) => control.fieldId === "approvedPlacements"
+    );
+    if (placementIndex >= 0) controls[placementIndex] = placementControl;
+    else controls.push(placementControl);
+  }
+
   const payload: Record<string, unknown> = {
     controls,
   };

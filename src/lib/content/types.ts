@@ -40,6 +40,7 @@ export interface SmallGroupTemplateContent {
 export type SmallGroupProgrammeContent = SmallGroupTemplateContent;
 
 export interface RetreatRoomOptionContent {
+  bathroomType?: "private" | "shared" | null;
   bedSetup?: string;
   id: string;
   label: string;
@@ -248,6 +249,8 @@ export interface InstructorProfileContent {
 }
 
 export interface TestimonialContent {
+  contextLabel?: string;
+  approvedPlacements?: import("./testimonial-policy").TestimonialPlacement[];
   id: string;
   quote: string;
   authorName: string;
@@ -255,6 +258,7 @@ export interface TestimonialContent {
 }
 
 export interface RetreatTemplateContent {
+  testimonialIds?: string[];
   id: string;
   slug: string;
   title: string;
@@ -348,6 +352,7 @@ export interface RetreatInstanceContent {
 }
 
 export interface RetreatCombinedContent {
+  testimonialIds?: string[];
   id: string;
   slug: string;
   title: string;

@@ -45,6 +45,7 @@ describe("admin retreat venue rooms route", () => {
             quantity: 2,
             capacityPerRoom: 2,
             bedSetup: "convertible_double_twin",
+            bathroomType: "private",
             allowShared: true,
             privateGuestCounts: [1, 2],
             roomNames: ["Willow", "Rowan"],
@@ -61,6 +62,7 @@ describe("admin retreat venue rooms route", () => {
     expect(updateAdminRetreatVenueRoomsMock).toHaveBeenCalledWith("venue_1", [
       expect.objectContaining({
         id: "group_1",
+        bathroomType: "private",
         quantity: 2,
         allowShared: true,
         privateGuestCounts: [1, 2],
