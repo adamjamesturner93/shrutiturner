@@ -42,7 +42,7 @@ import {
   getRoomPriceDeposit,
   isRetreatEarlyBirdActive,
 } from "@/lib/retreats/pricing";
-import { formatRetreatDateTimeRange } from "@/lib/retreats/presentation";
+import { formatRetreatDate, formatRetreatDateTimeRange } from "@/lib/retreats/presentation";
 import type { RetreatCombinedContent, RetreatRoomOptionContent } from "@/lib/content/types";
 import { useI18n } from "@/lib/use-i18n";
 import { LegalAcceptanceChecklist } from "@/components/legal-acceptance-checklist";
@@ -340,6 +340,9 @@ export function RetreatCheckoutPage({
   const depositAmountPence = selectedRoom
     ? getDepositAmountForPricePence(selectedRoom, effectiveTotalPricePence)
     : 0;
+  const balanceDueLabel = selectedDate?.balanceDueAt
+    ? formatRetreatDate(selectedDate.balanceDueAt, selectedDate.timezone || "Europe/London")
+    : null;
   const requiresFullPayment =
     selectedDate?.paymentPolicy === "full_payment" ||
     (effectiveTotalPricePence > 0 && depositAmountPence >= effectiveTotalPricePence);
@@ -1181,9 +1184,10 @@ export function RetreatCheckoutPage({
                         <p className="text-xl">Pay deposit</p>
                         <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
                           Pay {formatMoney(depositAmountPence + addonTotalPence, retreat.currency)}{" "}
-                          today. The remaining{" "}
-                          {formatMoney(depositBalanceAmountPence, retreat.currency)} is paid later
-                          by balance link. Optional extras are included in today's payment.
+                          today to secure your place. The remaining{" "}
+                          {formatMoney(depositBalanceAmountPence, retreat.currency)} is paid{" "}
+                          {balanceDueLabel ? `by ${balanceDueLabel}` : "later by balance link"}.
+                          Optional extras are included in today's payment.
                         </p>
                       </button>
 
@@ -1200,7 +1204,8 @@ export function RetreatCheckoutPage({
                         <p className="text-xl">Pay in full</p>
                         <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
                           Pay {formatMoney(payInFullTotalPence + addonTotalPence, retreat.currency)}{" "}
-                          today.
+                          today to secure your place, with everything paid and no remaining balance
+                          to think about.
                         </p>
                       </button>
                     </div>
@@ -1707,12 +1712,17 @@ export function RetreatCheckoutPage({
                           ) : (
                             <>
                               <div className="mt-3 flex items-center justify-between gap-4">
-                                <span className="text-muted-foreground">Balance later</span>
+                                <span className="text-muted-foreground">
+                                  {balanceDueLabel
+                                    ? `Balance due ${balanceDueLabel}`
+                                    : "Balance later"}
+                                </span>
                                 <span>{formatMoney(balanceAmountPence, retreat.currency)}</span>
                               </div>
                               <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                                The balance will be payable later from your dashboard or the secure
-                                link sent by email.
+                                Pay the balance
+                                {balanceDueLabel ? ` by ${balanceDueLabel}` : " later"} from your
+                                dashboard or the secure link sent by email.
                               </p>
                             </>
                           )}

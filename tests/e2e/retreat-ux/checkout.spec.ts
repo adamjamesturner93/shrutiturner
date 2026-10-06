@@ -30,6 +30,15 @@ test("selected room carries into checkout without collecting attendee health det
     timeout: 30000,
   });
   const options = page.locator("#checkout-room-options");
+  await expect(page.getByRole("button", { name: /^Pay deposit/ })).toContainText(
+    "is paid by 16th April 2027"
+  );
+  await expect(page.getByRole("button", { name: /^Pay in full/ })).toContainText(
+    "with everything paid and no remaining balance to think about"
+  );
+  await expect(page.locator("aside").filter({ hasText: "Booking summary" })).toContainText(
+    "Balance due 16th April 2027"
+  );
   await expect(options.getByLabel("Selected room details")).toBeVisible();
   const toggle = page.getByRole("button", { name: "Change room selection" });
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
