@@ -882,17 +882,17 @@ export function RetreatDetailPage({
                           options={selectedDate.roomOptions}
                           selectedId={selectedRoomId}
                           currency={retreat.currency}
-                          onSelect={(room) => {
-                            setSelectedRoomId(room?.id || "");
-                            setSelectedGuestCount(room ? getDefaultGuestCount(room) : 1);
-                            setBedPreference("double");
-                          }}
+                          guestCount={selectedGuestCount}
+                          onGuestCountChange={setSelectedGuestCount}
+                          bedPreference={bedPreference}
+                          onBedPreferenceChange={setBedPreference}
+                          onSelect={(room) => setSelectedRoomId(room?.id || "")}
                         />
                       ) : (
                         selectedDate.roomOptions.map(renderRoomOption)
                       )}
                     </div>
-                    {selectedRoom && selectedRoomRatePlans.length > 1 ? (
+                    {!requiresAccommodation && selectedRoom && selectedRoomRatePlans.length > 1 ? (
                       <div className="mt-5">
                         <p className="text-muted-foreground text-sm">
                           How many people will stay in this room?
@@ -941,7 +941,8 @@ export function RetreatDetailPage({
                   </div>
                 ) : null}
 
-                {requiresBedPreference(selectedRoom, selectedGuestCount) ? (
+                {!requiresAccommodation &&
+                requiresBedPreference(selectedRoom, selectedGuestCount) ? (
                   <RetreatBedPreference value={bedPreference} onChange={setBedPreference} />
                 ) : null}
 

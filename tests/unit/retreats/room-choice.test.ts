@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupRoomChoices, roomBedLabel } from "@/lib/retreats/room-choice";
+import { groupRoomChoices, roomBedLabel, selectCompatibleRoom } from "@/lib/retreats/room-choice";
 import type { RetreatRoomOptionContent } from "@/lib/content/types";
 const room = (
   id: string,
@@ -18,6 +18,18 @@ const room = (
   ...values,
 });
 describe("room category presentation", () => {
+  it("fills a partly occupied shared room before opening an empty room at the same price", () => {
+    const empty = room("empty", { bedSetup: "fixed_twin" });
+    const occupied = room("occupied", {
+      bedSetup: "convertible_double_twin",
+      sharedBedsInOccupiedRooms: 1,
+      availableSpots: 1,
+    });
+    expect(selectCompatibleRoom([empty, occupied], 1)?.id).toBe("occupied");
+    expect(selectCompatibleRoom([empty, { ...occupied, normalPricePence: 50000 }], 1)?.id).toBe(
+      "empty"
+    );
+  });
   it("groups beds without losing their individual booking identifiers", () => {
     const groups = groupRoomChoices([
       room("twin"),

@@ -21,12 +21,18 @@ export function roomBedLabel(room: RetreatRoomOptionContent) {
   };
   return labels[room.bedSetup || ""] || room.label;
 }
-export function groupRoomChoices(rooms: RetreatRoomOptionContent[]) {
+export function groupRoomChoices(rooms: RetreatRoomOptionContent[], guestCount?: number) {
   const groups = new Map<
     string,
     { id: string; label: string; privateRoom: boolean; options: RetreatRoomOptionContent[] }
   >();
   for (const room of rooms) {
+    if (
+      guestCount &&
+      ((!isPrivateRoom(room) && guestCount !== 1) ||
+        !getRetreatRoomRatePlans(room).some((rate) => rate.guestCount === guestCount))
+    )
+      continue;
     const privateRoom = isPrivateRoom(room);
     const bathroom = room.bathroomType || "unknown";
     const id = `${privateRoom ? "private" : "shared"}-${bathroom}`;
@@ -38,10 +44,12 @@ export function groupRoomChoices(rooms: RetreatRoomOptionContent[]) {
     .map((group) => {
       const available = group.options.filter(isRoomAvailable);
       const prices = (available.length ? available : group.options).flatMap((room) =>
-        getRetreatRoomRatePlans(room).map((rate) => {
-          const total = getEffectiveRetreatRatePricePence(rate);
-          return group.privateRoom ? total : Math.round(total / Math.max(1, rate.guestCount));
-        })
+        getRetreatRoomRatePlans(room)
+          .filter((rate) => !guestCount || rate.guestCount === guestCount)
+          .map((rate) => {
+            const total = getEffectiveRetreatRatePricePence(rate);
+            return group.privateRoom ? total : Math.round(total / Math.max(1, rate.guestCount));
+          })
       );
       return {
         ...group,
@@ -51,4 +59,44 @@ export function groupRoomChoices(rooms: RetreatRoomOptionContent[]) {
       };
     })
     .sort((a, b) => Number(a.privateRoom) - Number(b.privateRoom) || a.id.localeCompare(b.id));
+}
+
+export function roomSupportsBed(room: RetreatRoomOptionContent, bed: "double" | "twin") {
+  return (
+    room.bedSetup === "convertible_double_twin" ||
+    (bed === "double" ? room.bedSetup === "fixed_double" : room.bedSetup === "fixed_twin")
+  );
+}
+
+export function selectCompatibleRoom(
+  options: RetreatRoomOptionContent[],
+  guestCount: number,
+  bed?: "double" | "twin"
+) {
+  return (
+    options
+      .filter(
+        (room) =>
+          isRoomAvailable(room) &&
+          (!bed || roomSupportsBed(room, bed)) &&
+          getRetreatRoomRatePlans(room).some((rate) => rate.guestCount === guestCount)
+      )
+      .sort((a, b) => {
+        const price = (room: RetreatRoomOptionContent) =>
+          getEffectiveRetreatRatePricePence(
+            getRetreatRoomRatePlans(room).find((rate) => rate.guestCount === guestCount)!
+          );
+        const soloKing = (room: RetreatRoomOptionContent) =>
+          guestCount === 1 && isPrivateRoom(room) && roomSupportsBed(room, "double") ? 0 : 1;
+        return (
+          price(a) - price(b) ||
+          Number(!isPrivateRoom(b) && (b.sharedBedsInOccupiedRooms || 0) > 0) -
+            Number(!isPrivateRoom(a) && (a.sharedBedsInOccupiedRooms || 0) > 0) ||
+          soloKing(a) - soloKing(b) ||
+          Number(a.bedSetup === "convertible_double_twin") -
+            Number(b.bedSetup === "convertible_double_twin") ||
+          a.id.localeCompare(b.id)
+        );
+      })[0] || null
+  );
 }

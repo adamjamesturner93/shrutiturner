@@ -1,4 +1,5 @@
 "use client";
+import { RetreatRoomChoices } from "@/components/retreat-room-choices";
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -215,7 +216,7 @@ export function RetreatCheckoutPage({
   );
 
   useEffect(() => {
-    if (!selectedDate) return;
+    if (!selectedDate || selectedDate.eventKind === "residential_retreat") return;
     const validRoom = selectedDate.roomOptions.find((option) => option.id === selectedRoomId);
     if (!validRoom) {
       const nextRoomId = getDefaultRoomOptionId(selectedDate);
@@ -273,7 +274,7 @@ export function RetreatCheckoutPage({
 
   const selectedRoom =
     selectedDate?.roomOptions.find((option) => option.id === selectedRoomId) ||
-    selectedDate?.roomOptions[0] ||
+    (selectedDate?.eventKind === "residential_retreat" ? null : selectedDate?.roomOptions[0]) ||
     null;
   const selectedRoomRatePlans = useMemo(
     () => (selectedRoom ? getRoomRatePlans(selectedRoom) : []),
@@ -845,133 +846,149 @@ export function RetreatCheckoutPage({
                   </div>
                   {selectedDate ? (
                     <div id="checkout-room-options" className="mt-4 grid gap-4">
-                      {selectedDate.roomOptions
-                        .filter(
-                          (room) =>
-                            roomChoicesExpanded || !selectedRoom || room.id === selectedRoom.id
-                        )
-                        .map((roomOption) => {
-                          const isSelected = roomOption.id === selectedRoom?.id;
-                          const isUnavailable =
-                            roomOption.isWaitlistOnly || roomOption.availableSpots <= 0;
-                          return (
-                            <button
-                              key={roomOption.id}
-                              type="button"
-                              disabled={isUnavailable}
-                              aria-pressed={isSelected}
-                              className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
-                                isSelected
-                                  ? "border-brand-accent bg-brand-accent/5"
-                                  : "hover:bg-secondary/20"
-                              } ${isUnavailable ? "opacity-60" : ""}`}
-                              onClick={() => {
-                                setSelectedRoomId(roomOption.id);
-                                setRoomChoicesExpanded(false);
-                                setSelectedGuestCount(getDefaultGuestCount(roomOption));
-                              }}
-                            >
-                              <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-                                <div className="min-w-0 space-y-2">
-                                  <div className="flex flex-wrap items-center gap-3">
-                                    <p className="text-xl">{roomOption.label}</p>
-                                    {/* <span className="bg-secondary/60 rounded-full px-3 py-1 text-xs tracking-[0.16em] uppercase">
+                      {requiresAccommodation && (roomChoicesExpanded || !selectedRoom) ? (
+                        <RetreatRoomChoices
+                          options={selectedDate.roomOptions}
+                          selectedId={selectedRoomId}
+                          currency={retreat.currency}
+                          guestCount={selectedGuestCount}
+                          onGuestCountChange={setSelectedGuestCount}
+                          bedPreference={bedPreference}
+                          onBedPreferenceChange={setBedPreference}
+                          onSelect={(room) => {
+                            setSelectedRoomId(room?.id || "");
+                            if (room) setRoomChoicesExpanded(false);
+                          }}
+                        />
+                      ) : (
+                        selectedDate.roomOptions
+                          .filter(
+                            (room) =>
+                              roomChoicesExpanded || !selectedRoom || room.id === selectedRoom.id
+                          )
+                          .map((roomOption) => {
+                            const isSelected = roomOption.id === selectedRoom?.id;
+                            const isUnavailable =
+                              roomOption.isWaitlistOnly || roomOption.availableSpots <= 0;
+                            return (
+                              <button
+                                key={roomOption.id}
+                                type="button"
+                                disabled={isUnavailable}
+                                aria-pressed={isSelected}
+                                className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
+                                  isSelected
+                                    ? "border-brand-accent bg-brand-accent/5"
+                                    : "hover:bg-secondary/20"
+                                } ${isUnavailable ? "opacity-60" : ""}`}
+                                onClick={() => {
+                                  setSelectedRoomId(roomOption.id);
+                                  setRoomChoicesExpanded(false);
+                                  setSelectedGuestCount(getDefaultGuestCount(roomOption));
+                                }}
+                              >
+                                <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                                  <div className="min-w-0 space-y-2">
+                                    <div className="flex flex-wrap items-center gap-3">
+                                      <p className="text-xl">{roomOption.label}</p>
+                                      {/* <span className="bg-secondary/60 rounded-full px-3 py-1 text-xs tracking-[0.16em] uppercase">
                                   {getRoomAvailabilityLabel(roomOption)}
                                 </span> */}
-                                  </div>
-                                  <p className="text-muted-foreground text-sm leading-relaxed">
-                                    {roomOption.description}
-                                  </p>
-                                  <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
-                                    <span className="inline-flex items-center gap-2">
-                                      <Users className="h-4 w-4" />
-                                      {getRoomGuestLabel(roomOption)}
-                                    </span>
-                                    <span className="inline-flex items-center gap-2">
-                                      {isOnlineExperience ? (
-                                        <>
-                                          <MonitorPlay className="h-4 w-4" />
-                                          Live and replay access
-                                        </>
-                                      ) : requiresAccommodation ? (
-                                        <>
-                                          <BedDouble className="h-4 w-4" />
-                                          {roomOption.type === "single"
-                                            ? "Private room"
-                                            : roomOption.type === "shared_private" ||
-                                                roomOption.type === "private"
-                                              ? "Private room"
-                                              : "Shared accommodation"}
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Ticket className="h-4 w-4" />
-                                          One event place
-                                        </>
-                                      )}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                <div className="border-brand-dark/10 border-t pt-4 text-left md:min-w-40 md:border-t-0 md:pt-0 md:text-right">
-                                  <p className="text-2xl">
-                                    {formatMoney(
-                                      getRoomRatePlans(roomOption)[0]
-                                        ? getEffectiveRetreatRatePricePence(
-                                            getRoomRatePlans(roomOption)[0]
-                                          )
-                                        : roomOption.normalPricePence,
-                                      retreat.currency
-                                    )}
-                                  </p>
-                                  {getRoomRatePlans(roomOption)[0] &&
-                                  isRetreatEarlyBirdActive({
-                                    earlyBirdPricePence:
-                                      getRoomRatePlans(roomOption)[0]?.earlyBirdPricePence,
-                                    earlyBirdEndsAt:
-                                      getRoomRatePlans(roomOption)[0]?.earlyBirdEndsAt,
-                                    totalPricePence:
-                                      getRoomRatePlans(roomOption)[0]?.totalPricePence ||
-                                      roomOption.normalPricePence,
-                                  }) ? (
-                                    <p className="text-muted-foreground mt-1 text-xs">
-                                      Early bird saves{" "}
-                                      {formatMoney(
-                                        getEarlyBirdSavingPence(getRoomRatePlans(roomOption)[0]),
-                                        retreat.currency
-                                      )}
-                                      . Standard{" "}
-                                      {formatMoney(
-                                        getRoomRatePlans(roomOption)[0]?.totalPricePence ||
-                                          roomOption.normalPricePence,
-                                        retreat.currency
-                                      )}
+                                    </div>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">
+                                      {roomOption.description}
                                     </p>
-                                  ) : null}
-                                  <p className="text-muted-foreground mt-1 text-sm">
-                                    {selectedDate?.paymentPolicy === "full_payment"
-                                      ? "Due today "
-                                      : "Deposit today "}
-                                    {formatMoney(
-                                      getDepositAmountForPricePence(
-                                        roomOption,
+                                    <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
+                                      <span className="inline-flex items-center gap-2">
+                                        <Users className="h-4 w-4" />
+                                        {getRoomGuestLabel(roomOption)}
+                                      </span>
+                                      <span className="inline-flex items-center gap-2">
+                                        {isOnlineExperience ? (
+                                          <>
+                                            <MonitorPlay className="h-4 w-4" />
+                                            Live and replay access
+                                          </>
+                                        ) : requiresAccommodation ? (
+                                          <>
+                                            <BedDouble className="h-4 w-4" />
+                                            {roomOption.type === "single"
+                                              ? "Private room"
+                                              : roomOption.type === "shared_private" ||
+                                                  roomOption.type === "private"
+                                                ? "Private room"
+                                                : "Shared accommodation"}
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Ticket className="h-4 w-4" />
+                                            One event place
+                                          </>
+                                        )}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="border-brand-dark/10 border-t pt-4 text-left md:min-w-40 md:border-t-0 md:pt-0 md:text-right">
+                                    <p className="text-2xl">
+                                      {formatMoney(
                                         getRoomRatePlans(roomOption)[0]
                                           ? getEffectiveRetreatRatePricePence(
                                               getRoomRatePlans(roomOption)[0]
                                             )
-                                          : roomOption.normalPricePence
-                                      ),
-                                      retreat.currency
-                                    )}
-                                  </p>
+                                          : roomOption.normalPricePence,
+                                        retreat.currency
+                                      )}
+                                    </p>
+                                    {getRoomRatePlans(roomOption)[0] &&
+                                    isRetreatEarlyBirdActive({
+                                      earlyBirdPricePence:
+                                        getRoomRatePlans(roomOption)[0]?.earlyBirdPricePence,
+                                      earlyBirdEndsAt:
+                                        getRoomRatePlans(roomOption)[0]?.earlyBirdEndsAt,
+                                      totalPricePence:
+                                        getRoomRatePlans(roomOption)[0]?.totalPricePence ||
+                                        roomOption.normalPricePence,
+                                    }) ? (
+                                      <p className="text-muted-foreground mt-1 text-xs">
+                                        Early bird saves{" "}
+                                        {formatMoney(
+                                          getEarlyBirdSavingPence(getRoomRatePlans(roomOption)[0]),
+                                          retreat.currency
+                                        )}
+                                        . Standard{" "}
+                                        {formatMoney(
+                                          getRoomRatePlans(roomOption)[0]?.totalPricePence ||
+                                            roomOption.normalPricePence,
+                                          retreat.currency
+                                        )}
+                                      </p>
+                                    ) : null}
+                                    <p className="text-muted-foreground mt-1 text-sm">
+                                      {selectedDate?.paymentPolicy === "full_payment"
+                                        ? "Due today "
+                                        : "Deposit today "}
+                                      {formatMoney(
+                                        getDepositAmountForPricePence(
+                                          roomOption,
+                                          getRoomRatePlans(roomOption)[0]
+                                            ? getEffectiveRetreatRatePricePence(
+                                                getRoomRatePlans(roomOption)[0]
+                                              )
+                                            : roomOption.normalPricePence
+                                        ),
+                                        retreat.currency
+                                      )}
+                                    </p>
+                                  </div>
                                 </div>
-                              </div>
-                            </button>
-                          );
-                        })}
+                              </button>
+                            );
+                          })
+                      )}
                     </div>
                   ) : null}
-                  {selectedRoom && selectedRoomRatePlans.length > 1 ? (
+                  {!requiresAccommodation && selectedRoom && selectedRoomRatePlans.length > 1 ? (
                     <div className="mt-6">
                       <p className="text-muted-foreground text-sm">
                         How many people will use this {optionLabel}?
@@ -1015,7 +1032,7 @@ export function RetreatCheckoutPage({
                   ) : null}
                 </div>
               ) : null}
-              {requiresBedPreference(selectedRoom, selectedGuestCount) ? (
+              {!requiresAccommodation && requiresBedPreference(selectedRoom, selectedGuestCount) ? (
                 <div className="marketing-panel rounded-[1.5rem] p-4 sm:p-5">
                   <RetreatBedPreference value={bedPreference} onChange={setBedPreference} />
                 </div>

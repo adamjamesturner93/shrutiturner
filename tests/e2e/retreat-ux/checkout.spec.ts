@@ -13,7 +13,6 @@ test("selected room carries into checkout without collecting attendee health det
   const base = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
   await page.goto(`${base}/retreats/local-powis-room-review`);
   await page.getByRole("button", { name: "Private room · Private bathroom", exact: false }).click();
-  await page.getByRole("button", { name: "Double or king bed", exact: false }).click();
   await page
     .locator("#booking")
     .getByRole("link", { name: "Book your place", exact: true })
@@ -35,15 +34,20 @@ test("selected room carries into checkout without collecting attendee health det
     ).violations
   ).toEqual([]);
   await toggle.click();
-  await expect(options.getByRole("button")).toHaveCount(7);
-  await options
-    .getByRole("button", { name: /^Twin Room \(Shared Bathroom\) — Shared place/ })
-    .click();
+  await expect(options.getByRole("button", { name: "2 people", exact: true })).toBeVisible();
+  await options.getByRole("button", { name: /Shared room · Shared bathroom/ }).click();
   await expect(options.getByRole("button")).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Change room selection" })).toHaveAttribute(
     "aria-expanded",
     "false"
   );
+  await page.getByRole("button", { name: "Change room selection" }).click();
+  await options.getByRole("button", { name: "2 people", exact: true }).click();
+  await expect(options.getByRole("button", { name: /^Shared room/ })).toHaveCount(0);
+  await options.getByRole("button", { name: /Private room · Private bathroom/ }).click();
+  await options.getByRole("button", { name: "Twin beds", exact: true }).click();
+  await expect(options.getByRole("button")).toHaveCount(1);
+  await expect(page.getByText("Two single beds", { exact: true })).toBeVisible();
   for (const mode of ["Booking for me", "Buy as a gift"]) {
     await page.getByRole("button", { name: mode, exact: true }).click();
     for (const field of [

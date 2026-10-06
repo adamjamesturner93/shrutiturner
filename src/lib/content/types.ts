@@ -54,6 +54,8 @@ export interface RetreatRoomOptionContent {
   allowedGuestCounts?: number[];
   capacity: number;
   availableSpots: number;
+  /** Free shared beds in rooms that already have a reservation. */
+  sharedBedsInOccupiedRooms?: number;
   earlyBirdPricePence?: number;
   normalPricePence: number;
   ratePlans?: Array<{

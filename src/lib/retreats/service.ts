@@ -1,3 +1,4 @@
+import { getPhysicalPoolInventory } from "./physical-inventory-service";
 import {
   AcceptanceType,
   ClassRoomSetupStatus,
@@ -265,7 +266,7 @@ export async function assignRoomUnitAfterPayment(bookingId: string) {
         retreatDateId: true,
         roomOptionId: true,
         roomOption: {
-          select: { inventoryPoolId: true, inventoryUnitsPerBooking: true },
+          select: { inventoryPoolId: true, inventoryUnitsPerBooking: true, venueRoomGroupId: true },
         },
         items: {
           where: {
@@ -298,6 +299,24 @@ export async function assignRoomUnitAfterPayment(bookingId: string) {
         ? `retreat-inventory-pool:${inventoryPoolId}`
         : `retreat-room-option:${booking.roomOptionId}`
     );
+    if (inventoryPoolId && booking.roomOption?.venueRoomGroupId) {
+      const physical = await getPhysicalPoolInventory(
+        tx,
+        inventoryPoolId,
+        getActiveRoomInventoryBookingWhere(new Date()),
+        activeGiftInventoryWhere(new Date())
+      );
+      const roomUnitId = physical.layout.assignments.get(booking.id);
+      if (!physical.layout.valid || !roomUnitId) throw new Error("ROOM_UNIT_UNAVAILABLE");
+      await tx.retreatBooking.update({ where: { id: booking.id }, data: { roomUnitId } });
+      await tx.retreatRoomUnit.update({
+        where: { id: roomUnitId },
+        data: {
+          status: physical.layout.remaining.get(roomUnitId) === 0 ? "assigned" : "available",
+        },
+      });
+      return roomUnitId;
+    }
     const roomUnits = await tx.retreatRoomUnit.findMany({
       where: {
         retreatDateId: booking.retreatDateId,
@@ -564,13 +583,24 @@ async function getRoomAvailability(roomOptionId: string) {
       0
     ) +
     gifts.reduce((sum, gift) => sum + (gift.retreatRoomOption?.inventoryUnitsPerBooking || 1), 0);
-  return getRetreatOptionAvailability({
+  const pooled = getRetreatOptionAvailability({
     optionCapacity: option.capacity,
     reservedOptionBookings: optionBookingCount + optionGiftCount,
     poolTotalUnits: option.inventoryPool.totalQuantity,
     reservedPoolUnits,
     inventoryUnitsPerBooking: option.inventoryUnitsPerBooking,
   });
+  if (!option.venueRoomGroupId) return pooled;
+  const physical = await getPhysicalPoolInventory(
+    db,
+    option.inventoryPoolId,
+    activeBookingWhere,
+    giftWhere
+  );
+  return Math.min(
+    pooled,
+    physical.available(option.bookingUnit === "whole_room", option.inventoryUnitsPerBooking)
+  );
 }
 
 async function assertRetreatSelectionUnchanged(
@@ -677,6 +707,19 @@ async function assertRoomInventoryAvailableForUpdate(
     Math.max(Math.trunc(requestedBookings), 1) * Math.max(option.inventoryUnitsPerBooking, 1);
   if (reservedPoolUnits + requestedPoolUnits > option.inventoryPool.totalQuantity) {
     throw new Error("ROOM_OPTION_UNAVAILABLE");
+  }
+  if (option.venueRoomGroupId) {
+    const physical = await getPhysicalPoolInventory(
+      tx,
+      option.inventoryPoolId,
+      activeBookingWhere,
+      giftWhere
+    );
+    if (
+      physical.available(option.bookingUnit === "whole_room", option.inventoryUnitsPerBooking) <
+      requestedBookings
+    )
+      throw new Error("ROOM_OPTION_UNAVAILABLE");
   }
 }
 
@@ -930,19 +973,42 @@ async function mapOperationalDate(
   }
 
   const activeDepositRule = date.depositRules.find((rule) => rule.active);
-  const roomOptions = date.roomOptions.map((roomOption) => {
-    const mapped = mapOperationalRoomOption(
-      roomOption,
-      reservedRoomBookings.get(roomOption.id) || 0,
-      roomOption.inventoryPoolId ? reservedPoolUnits.get(roomOption.inventoryPoolId) || 0 : 0
-    );
-    const depositRule = resolveRetreatDepositRule(activeDepositRule, mapped);
-    return {
-      ...mapped,
-      depositRule,
-      depositPence: calculateDepositFromRule(mapped.normalPricePence, depositRule),
-    };
-  });
+  const roomOptions = await Promise.all(
+    date.roomOptions.map(async (roomOption) => {
+      const mapped = mapOperationalRoomOption(
+        roomOption,
+        reservedRoomBookings.get(roomOption.id) || 0,
+        roomOption.inventoryPoolId ? reservedPoolUnits.get(roomOption.inventoryPoolId) || 0 : 0
+      );
+      if (roomOption.venueRoomGroupId && roomOption.inventoryPoolId) {
+        const physical = await getPhysicalPoolInventory(
+          db,
+          roomOption.inventoryPoolId,
+          getActiveRoomInventoryBookingWhere(new Date()),
+          activeGiftInventoryWhere(new Date())
+        );
+        mapped.availableSpots = Math.min(
+          mapped.availableSpots,
+          physical.available(
+            roomOption.bookingUnit === "whole_room",
+            roomOption.inventoryUnitsPerBooking
+          )
+        );
+        if (roomOption.bookingUnit === "bed_space" && physical.layout.valid) {
+          mapped.sharedBedsInOccupiedRooms = physical.rooms.reduce((total, room) => {
+            const remaining = physical.layout.remaining.get(room.id) || 0;
+            return total + (remaining > 0 && remaining < room.capacityUnits ? remaining : 0);
+          }, 0);
+        }
+      }
+      const depositRule = resolveRetreatDepositRule(activeDepositRule, mapped);
+      return {
+        ...mapped,
+        depositRule,
+        depositPence: calculateDepositFromRule(mapped.normalPricePence, depositRule),
+      };
+    })
+  );
   const addons = date.addons
     .filter((addon) => addon.active)
     .map((addon) => mapOperationalAddon(addon, reservedAddonUnits.get(addon.id) || 0));
