@@ -1,4 +1,5 @@
 "use client";
+import { selectedRoomSummary } from "@/lib/retreats/room-choice";
 import { RetreatRoomChoices } from "@/components/retreat-room-choices";
 
 import Link from "next/link";
@@ -101,11 +102,6 @@ function getEarlyBirdSavingPence(ratePlan: ReturnType<typeof getRoomRatePlans>[n
   return Math.max(ratePlan.totalPricePence - getEffectiveRetreatRatePricePence(ratePlan), 0);
 }
 
-function getPayInFullDiscountPence(totalPricePence: number, enabled: boolean) {
-  if (!enabled || totalPricePence <= 0) return 0;
-  return Math.min(Math.round(totalPricePence * 0.05), 5000);
-}
-
 function getDefaultRoomOptionId(date: RetreatCombinedContent["dates"][number] | null | undefined) {
   if (!date) return "";
   return (
@@ -161,18 +157,32 @@ export function RetreatCheckoutPage({
   );
   const [roomChoicesExpanded, setRoomChoicesExpanded] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState(queryRoomId || "");
-  const [lastQueryDateId, setLastQueryDateId] = useState(queryDateId);
-  if (lastQueryDateId !== queryDateId) {
-    setLastQueryDateId(queryDateId);
-    setSelectedDateId(invalidQueryDate ? "" : queryDateId || retreat?.dates[0]?.id || "");
-    setSelectedRoomId(queryRoomId || "");
-  }
   const [bedPreference, setBedPreference] = useState<BedPreference>(
     searchParams.get("beds") === "twin" ? "twin" : "double"
   );
   const [selectedGuestCount, setSelectedGuestCount] = useState(
     Number.isFinite(queryGuestCount) && queryGuestCount > 0 ? Math.trunc(queryGuestCount) : 1
   );
+  const querySelectionKey = JSON.stringify([
+    queryDateId,
+    queryRoomId,
+    queryGuestCount,
+    searchParams.get("beds"),
+    isGiftDefault,
+  ]);
+  const [lastQuerySelectionKey, setLastQuerySelectionKey] = useState(querySelectionKey);
+  if (lastQuerySelectionKey !== querySelectionKey) {
+    setLastQuerySelectionKey(querySelectionKey);
+    setSelectedDateId(invalidQueryDate ? "" : queryDateId || retreat?.dates[0]?.id || "");
+    setSelectedRoomId(queryRoomId || "");
+    setSelectedGuestCount(
+      Number.isFinite(queryGuestCount) && queryGuestCount > 0 ? Math.trunc(queryGuestCount) : 1
+    );
+    setBedPreference(searchParams.get("beds") === "twin" ? "twin" : "double");
+    setPurchaseMode(isGiftDefault ? "gift" : "self");
+    setPaymentOption("deposit");
+    setRoomChoicesExpanded(false);
+  }
   const [addonQuantities, setAddonQuantities] = useState<Record<string, number>>({});
   const [error, setError] = useState(
     invalidQueryDate
@@ -335,13 +345,7 @@ export function RetreatCheckoutPage({
     (effectiveTotalPricePence > 0 && depositAmountPence >= effectiveTotalPricePence);
   const effectivePaymentOption =
     purchaseMode === "gift" || requiresFullPayment ? "pay_in_full" : paymentOption;
-  const payInFullDiscountEnabled =
-    !requiresFullPayment && selectedDate?.payInFullDiscountEnabled !== false;
-  const payInFullDiscountPence = getPayInFullDiscountPence(
-    effectiveTotalPricePence,
-    payInFullDiscountEnabled
-  );
-  const payInFullTotalPence = Math.max(effectiveTotalPricePence - payInFullDiscountPence, 0);
+  const payInFullTotalPence = effectiveTotalPricePence;
   const isPayingInFull = effectivePaymentOption === "pay_in_full";
   const selectableAddons = (selectedDate?.addons || []).filter(
     (addon) =>
@@ -585,13 +589,12 @@ export function RetreatCheckoutPage({
                             ? `${formatMoney(payInFullTotalPence, retreat.currency)} due today`
                             : `${formatMoney(dueTodayPence, retreat.currency)} due today`}
                         </p>
-                        {isPayingInFull && payInFullDiscountPence > 0 ? (
-                          <p>
-                            Includes {formatMoney(payInFullDiscountPence, retreat.currency)} pay in
-                            full discount
-                          </p>
-                        ) : null}
-                        <p>{selectedRoom.label}</p>
+                        <p>
+                          {requiresAccommodation
+                            ? selectedRoomSummary(selectedRoom, selectedGuestCount, bedPreference)
+                                .label
+                            : selectedRoom.label}
+                        </p>
                       </>
                     ) : (
                       <p>Select a date and {optionLabel} to confirm the amount due.</p>
@@ -710,7 +713,10 @@ export function RetreatCheckoutPage({
                         ? "Live online + replay"
                         : "Live online"
                       : selectedDate.location || retreat.location}{" "}
-                    · {selectedRoom.label}
+                    ·{" "}
+                    {requiresAccommodation
+                      ? selectedRoomSummary(selectedRoom, selectedGuestCount, bedPreference).label
+                      : selectedRoom.label}
                   </p>
                   <p className="text-2xl font-semibold">
                     {formatMoney(dueTodayPence, retreat.currency)}
@@ -860,6 +866,35 @@ export function RetreatCheckoutPage({
                             if (room) setRoomChoicesExpanded(false);
                           }}
                         />
+                      ) : requiresAccommodation && selectedRoom ? (
+                        <div
+                          className="border-brand-accent bg-brand-accent/5 space-y-3 rounded-[1.25rem] border p-5"
+                          aria-label="Selected room details"
+                        >
+                          <h3 className="text-xl">
+                            {
+                              selectedRoomSummary(selectedRoom, selectedGuestCount, bedPreference)
+                                .label
+                            }
+                          </h3>
+                          <p>
+                            {getGuestCountLabel(selectedGuestCount)} ·{" "}
+                            {
+                              selectedRoomSummary(selectedRoom, selectedGuestCount, bedPreference)
+                                .bedLabel
+                            }
+                          </p>
+                          <p className="text-2xl">
+                            {formatMoney(effectiveTotalPricePence, retreat.currency)} total
+                          </p>
+                          <p>
+                            {isPayingInFull ? "Room payment today " : "Room deposit today "}
+                            {formatMoney(
+                              isPayingInFull ? payInFullTotalPence : depositAmountPence,
+                              retreat.currency
+                            )}
+                          </p>
+                        </div>
                       ) : (
                         selectedDate.roomOptions
                           .filter(
@@ -1165,13 +1200,7 @@ export function RetreatCheckoutPage({
                         <p className="text-xl">Pay in full</p>
                         <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
                           Pay {formatMoney(payInFullTotalPence + addonTotalPence, retreat.currency)}{" "}
-                          today
-                          {payInFullDiscountPence > 0
-                            ? ` including a ${formatMoney(
-                                payInFullDiscountPence,
-                                retreat.currency
-                              )} discount.`
-                            : "."}
+                          today.
                         </p>
                       </button>
                     </div>
@@ -1608,17 +1637,27 @@ export function RetreatCheckoutPage({
                       {optionLabel === "ticket" ? "Ticket" : "Room"}
                     </span>
                     <span className="max-w-[14rem] text-right">
-                      {selectedRoom?.label || `Select a ${optionLabel}`}
+                      {selectedRoom
+                        ? requiresAccommodation
+                          ? selectedRoomSummary(selectedRoom, selectedGuestCount, bedPreference)
+                              .label
+                          : selectedRoom.label
+                        : `Select a ${optionLabel}`}
                     </span>
                   </div>
                   <div className="flex items-start justify-between gap-3">
                     <span className="text-muted-foreground">Guests</span>
                     <span>{selectedRoom ? getGuestCountLabel(selectedGuestCount) : "TBC"}</span>
                   </div>
-                  {requiresBedPreference(selectedRoom, selectedGuestCount) ? (
+                  {requiresAccommodation && selectedRoom ? (
                     <div className="flex items-start justify-between gap-3">
                       <span className="text-muted-foreground">Bed arrangement</span>
-                      <span>{getBedPreferenceLabel(bedPreference)}</span>
+                      <span>
+                        {selectedRoom
+                          ? selectedRoomSummary(selectedRoom, selectedGuestCount, bedPreference)
+                              .bedLabel
+                          : getBedPreferenceLabel(bedPreference)}
+                      </span>
                     </div>
                   ) : null}
                   {selectedAddons.length > 0 ? (
@@ -1663,13 +1702,7 @@ export function RetreatCheckoutPage({
                           </div>
                           {isPayingInFull ? (
                             <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                              This pays the {experienceLabel} balance in full
-                              {payInFullDiscountPence > 0
-                                ? ` and includes a ${formatMoney(
-                                    payInFullDiscountPence,
-                                    retreat.currency
-                                  )} discount.`
-                                : "."}
+                              This pays the {experienceLabel} balance in full.
                             </p>
                           ) : (
                             <>

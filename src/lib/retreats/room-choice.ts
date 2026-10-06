@@ -21,6 +21,33 @@ export function roomBedLabel(room: RetreatRoomOptionContent) {
   };
   return labels[room.bedSetup || ""] || room.label;
 }
+
+export function selectedRoomSummary(
+  room: RetreatRoomOptionContent,
+  guestCount: number,
+  bed: "double" | "twin"
+) {
+  const rate = getRetreatRoomRatePlans(room).find((rate) => rate.guestCount === guestCount);
+  const privateRoom = isPrivateRoom(room);
+  const bathroom =
+    room.bathroomType === "private"
+      ? "Private bathroom"
+      : room.bathroomType === "shared"
+        ? "Shared bathroom"
+        : "Bathroom details to be confirmed";
+  return {
+    label: `${privateRoom ? "Private room" : "Shared room"} · ${bathroom}`,
+    bedLabel: !privateRoom
+      ? "One twin bed"
+      : room.bedSetup === "fixed_twin" ||
+          (room.bedSetup === "convertible_double_twin" && guestCount === 2 && bed === "twin")
+        ? "Twin beds"
+        : room.bedSetup === "fixed_double" || room.bedSetup === "convertible_double_twin"
+          ? "King bed"
+          : roomBedLabel(room),
+    pricePence: rate ? getEffectiveRetreatRatePricePence(rate) : null,
+  };
+}
 export function groupRoomChoices(rooms: RetreatRoomOptionContent[], guestCount?: number) {
   const groups = new Map<
     string,

@@ -68,7 +68,10 @@ const date = {
   capacity: 10,
   pricePence: 52500,
   roomOptions: [room],
-  depositRules: [{ active: true, depositType: "full_payment" }],
+  payInFullDiscountEnabled: true,
+  payInFullDiscountPercent: 5,
+  payInFullDiscountCapPence: 5000,
+  depositRules: [{ active: true, depositType: "percentage", depositPercentageBasisPoints: 2500 }],
   addons: [],
   bookings: [],
 };

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { groupRoomChoices, roomBedLabel, selectCompatibleRoom } from "@/lib/retreats/room-choice";
+import {
+  groupRoomChoices,
+  roomBedLabel,
+  selectedRoomSummary,
+  selectCompatibleRoom,
+} from "@/lib/retreats/room-choice";
 import type { RetreatRoomOptionContent } from "@/lib/content/types";
 const room = (
   id: string,
@@ -77,4 +82,26 @@ describe("room category presentation", () => {
       "King or twin beds"
     );
   });
+});
+
+it("summarises the selected occupancy and bed arrangement instead of the first room rate", () => {
+  const option = room("convertible", {
+    bookingUnit: "whole_room",
+    bedSetup: "convertible_double_twin",
+    ratePlans: [
+      { guestCount: 1, totalPricePence: 55000 },
+      { guestCount: 2, totalPricePence: 90000 },
+    ],
+  });
+  expect(selectedRoomSummary(option, 2, "twin")).toEqual({
+    label: "Private room · Private bathroom",
+    bedLabel: "Twin beds",
+    pricePence: 90000,
+  });
+  expect(selectedRoomSummary(option, 2, "double").bedLabel).toBe("King bed");
+  expect(selectedRoomSummary(option, 1, "twin")).toMatchObject({
+    bedLabel: "King bed",
+    pricePence: 55000,
+  });
+  expect(selectedRoomSummary(room("shared"), 1, "double").bedLabel).toBe("One twin bed");
 });

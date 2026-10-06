@@ -1,7 +1,7 @@
 "use client";
 
 import { RetreatRoomChoices } from "@/components/retreat-room-choices";
-import { roomBedLabel } from "@/lib/retreats/room-choice";
+import { selectedRoomSummary } from "@/lib/retreats/room-choice";
 import { TestimonialQuotes } from "@/components/testimonial-quotes";
 import type { TestimonialContent } from "@/lib/content/types";
 
@@ -287,8 +287,12 @@ export function RetreatDetailPage({
               return (
                 <div aria-live="polite" className="space-y-1 text-sm">
                   <p className="font-medium">
-                    {roomBedLabel(selectedRoom)} · {selectedGuestCount}{" "}
-                    {selectedGuestCount === 1 ? "guest" : "guests"}
+                    {selectedRoomSummary(selectedRoom, selectedGuestCount, bedPreference).label}
+                    <br />
+                    {
+                      selectedRoomSummary(selectedRoom, selectedGuestCount, bedPreference).bedLabel
+                    }{" "}
+                    · {selectedGuestCount} {selectedGuestCount === 1 ? "guest" : "guests"}
                   </p>
                   <p>
                     {formatMoney(total, retreat.currency)} total ·{" "}
@@ -753,7 +757,10 @@ export function RetreatDetailPage({
                 </div>
                 {depositFromPence > 0 && !isFullPaymentOnly ? (
                   <p className="text-muted-foreground mt-2 text-sm">
-                    Deposit from {formatMoney(depositFromPence, retreat.currency)}, balance later
+                    Deposit from {formatMoney(depositFromPence, retreat.currency)}, balance{" "}
+                    {selectedDate?.balanceDueAt
+                      ? `due ${formatRetreatDate(selectedDate.balanceDueAt, selectedTimezone)}`
+                      : "later"}
                   </p>
                 ) : isFullPaymentOnly ? (
                   <p className="text-muted-foreground mt-2 text-sm">Full payment at checkout</p>

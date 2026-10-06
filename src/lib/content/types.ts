@@ -383,6 +383,7 @@ export interface RetreatCombinedContent {
     addons: RetreatAddonContent[];
     paymentPlan?: RetreatPaymentPlanContent;
     paymentPolicy?: "deposit" | "full_payment";
+    balanceDueAt?: string | null;
     payInFullDiscountEnabled?: boolean;
     refundNotes?: string;
     onlineJoiningNotes?: string;

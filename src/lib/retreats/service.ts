@@ -57,7 +57,6 @@ import {
   resolveRetreatDepositRule,
   getRoomPriceDeposit,
   canExtendPublishedEarlyBirdRate,
-  calculatePayInFullDiscount,
   calculateRetreatRefund,
   calculateRetreatNonRefundableAmount,
   getEffectiveRetreatRatePricePence,
@@ -1038,6 +1037,7 @@ async function mapOperationalDate(
     addons,
     paymentPlan: undefined,
     paymentPolicy,
+    balanceDueAt: date.balanceDueAt?.toISOString() || null,
     payInFullDiscountEnabled: date.payInFullDiscountEnabled,
     refundNotes: undefined,
     onlineJoiningNotes: undefined,
@@ -1763,12 +1763,7 @@ export async function createRetreatCheckout(input: {
       throw new Error("RECIPIENT_REQUIRED");
     }
 
-    const giftPayInFullDiscountPence = calculatePayInFullDiscount(
-      quote.totalPricePence,
-      !requiresFullPayment && retreatDate.payInFullDiscountEnabled,
-      retreatDate.payInFullDiscountPercent,
-      retreatDate.payInFullDiscountCapPence
-    );
+    const giftPayInFullDiscountPence = 0;
     const giftTotalPence = Math.max(quote.totalPricePence - giftPayInFullDiscountPence, 0);
     const giftNonRefundableAmountPence = calculateRetreatNonRefundableAmount({
       retreatType: parseRetreatType(retreatDate.retreatType),
@@ -1891,14 +1886,7 @@ export async function createRetreatCheckout(input: {
     throw new Error("SECOND_GUEST_EMAIL_MUST_DIFFER");
   }
 
-  const payInFullDiscountPence = calculatePayInFullDiscount(
-    quote.totalPricePence,
-    effectivePaymentOption === "pay_in_full" &&
-      !requiresFullPayment &&
-      retreatDate.payInFullDiscountEnabled,
-    retreatDate.payInFullDiscountPercent,
-    retreatDate.payInFullDiscountCapPence
-  );
+  const payInFullDiscountPence = 0;
   const payableAccommodationPence = Math.max(0, quote.totalPricePence - payInFullDiscountPence);
   const payableTotalPence = payableAccommodationPence + addonTotalPence;
   const accommodationDepositPence = Math.min(quote.depositPence, payableAccommodationPence);
@@ -4292,8 +4280,7 @@ export async function createAdminRetreatDate(
         chatEnabled: sourceDate?.chatEnabled ?? format?.operationalDefaults.chatEnabled ?? true,
         participantMicDefaultMuted: sourceDate?.participantMicDefaultMuted ?? isOnline,
         participantCameraDefaultOff: sourceDate?.participantCameraDefaultOff ?? isOnline,
-        payInFullDiscountEnabled:
-          !requiresFullPayment && (sourceDate?.payInFullDiscountEnabled ?? true),
+        payInFullDiscountEnabled: false,
         payInFullDiscountPercent: sourceDate?.payInFullDiscountPercent ?? 5,
         payInFullDiscountCapPence: sourceDate?.payInFullDiscountCapPence ?? 5000,
         refundRuleId: sourceDate?.refundRuleId || null,

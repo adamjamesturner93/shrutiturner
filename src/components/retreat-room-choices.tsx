@@ -6,6 +6,7 @@ import {
   isRoomAvailable,
   roomSupportsBed,
   selectCompatibleRoom,
+  selectedRoomSummary,
 } from "@/lib/retreats/room-choice";
 import type { BedPreference } from "@/lib/retreats/bed-preference";
 
@@ -30,6 +31,10 @@ export function RetreatRoomChoices({
 }) {
   const groups = groupRoomChoices(options, guestCount);
   const [chosenGroup, setChosenGroup] = useState("");
+  const selectedRoom = options.find((room) => room.id === selectedId);
+  const selectedSummary = selectedRoom
+    ? selectedRoomSummary(selectedRoom, guestCount, bedPreference)
+    : null;
   const selectedGroup =
     groups.find((group) => group.options.some((room) => room.id === selectedId)) ||
     groups.find((group) => group.id === chosenGroup);
@@ -56,7 +61,7 @@ export function RetreatRoomChoices({
     <div className="space-y-5">
       {onGuestCountChange ? (
         <fieldset>
-          <legend className="mb-3 font-medium">How many people?</legend>
+          <legend className="mb-3 font-medium">How many people are you booking for?</legend>
           <div className="flex gap-3">
             {[1, 2].map((count) => (
               <button
@@ -90,8 +95,16 @@ export function RetreatRoomChoices({
             >
               <span className="block font-medium">{group.label}</span>
               <span className="mt-1 block text-sm">
-                {group.fromPrice ? "From " : ""}
-                {money(group.pricePence)}{" "}
+                {group.id === selectedGroup?.id && selectedSummary?.pricePence != null
+                  ? ""
+                  : group.fromPrice
+                    ? "From "
+                    : ""}
+                {money(
+                  group.id === selectedGroup?.id && selectedSummary?.pricePence != null
+                    ? selectedSummary.pricePence
+                    : group.pricePence
+                )}{" "}
                 {group.privateRoom ? "total" : "for one person · one twin bed"}
               </span>
               {!group.available ? <span className="mt-2 block font-semibold">Sold out</span> : null}
