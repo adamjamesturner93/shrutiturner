@@ -275,7 +275,7 @@ export async function getRetreatParticipantTokenContext(bookingId: string, userI
     throw new Error("ROOM_CLOSED");
   }
   if (
-    booking.retreatDate.liveRoomState === RetreatLiveRoomState.unprepared ||
+    booking.retreatDate.liveRoomState !== RetreatLiveRoomState.started ||
     !booking.retreatDate.dailyRoomName ||
     !booking.retreatDate.dailyRoomUrl
   ) {
@@ -384,24 +384,32 @@ export async function updateRetreatLiveLifecycle(input: {
   const now = new Date();
   if (input.action === "start") {
     if (retreatDate.liveRoomState === RetreatLiveRoomState.ended) throw new Error("ROOM_CLOSED");
-    return db.retreatDate.update({
-      where: { id: retreatDate.id },
+    await db.retreatDate.updateMany({
+      where: {
+        id: retreatDate.id,
+        liveRoomState: { in: [RetreatLiveRoomState.unprepared, RetreatLiveRoomState.prepared] },
+      },
       data: {
         liveRoomState: RetreatLiveRoomState.started,
         liveStartedAt: retreatDate.liveStartedAt || now,
       },
     });
+    const current = await db.retreatDate.findUniqueOrThrow({ where: { id: retreatDate.id } });
+    if (current.liveRoomState === RetreatLiveRoomState.ended) throw new Error("ROOM_CLOSED");
+    return current;
   }
   if (input.action === "end") {
-    return db.retreatDate.update({
-      where: { id: retreatDate.id },
+    await db.retreatDate.updateMany({
+      where: { id: retreatDate.id, liveRoomState: { not: RetreatLiveRoomState.ended } },
       data: {
         liveRoomState: RetreatLiveRoomState.ended,
-        liveEndedAt: retreatDate.liveEndedAt || now,
-        liveChatDisabledAt: retreatDate.liveChatDisabledAt || now,
+        liveEndedAt: now,
+        liveChatDisabledAt: now,
       },
     });
+    return db.retreatDate.findUniqueOrThrow({ where: { id: retreatDate.id } });
   }
+
   return db.retreatDate.update({
     where: { id: retreatDate.id },
     data: { liveChatDisabledAt: input.action === "disable_chat" ? now : null },

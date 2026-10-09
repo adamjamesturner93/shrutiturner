@@ -108,3 +108,15 @@ command is implemented yet. Contentful data is preserved and the importer never 
 - Run `pnpm run typecheck`, `pnpm run lint`, focused unit tests and the retreat Playwright journey.
 - The two-guest regression at `tests/e2e/app/retreats/registration-operations.spec.ts` must show both
   people, their shared booking group and each registration state without exposing health answers.
+
+## Workshop discount codes and live-room controls
+
+In Business → Discounts, choose the workshop scope and select the workshop dates the code applies to. Enter a percentage (up to 100%) or fixed amount, with optional expiry and maximum uses. The application creates the required Stripe product automatically when creating a code or starting workshop checkout, including for existing workshops. Codes apply to workshop tickets, including gifts, and exclude optional extras and residential retreat bookings. Customers enter codes on Stripe Checkout, where the final discount is confirmed. The website does not collect or pre-apply codes. A 100% code still completes through Stripe Checkout before access is granted. Final ticket and extras amounts are recorded before confirmations, access, or gift redemption. Existing unrestricted Stripe codes follow Stripe’s normal eligibility rules; use workshop-scoped codes to restrict discounts to tickets.
+
+Attendees check their camera and microphone, then see a waiting page until the host explicitly starts the workshop. The page opens the call automatically after the start is detected. Host status refreshes periodically and when the browser regains focus, so an already-started session no longer offers a stale start button.
+
+Muting an attendee switches their microphone off once and displays a notice; they can unmute themselves. The gallery resizes to the space available and offers pagination when needed. Fullscreen hides the event header while keeping call controls and chat available. Participant visibility controls are in the chat sidebar.
+
+### Deployment
+
+Apply `20261006080000_workshop_discounts` using the environment-specific database deploy script before deploying this code. It adds nullable Stripe product/promotion references and discount snapshots, plus a discount amount defaulting to zero; it does not rewrite existing bookings. No Contentful migration is required. Verify a paid and a 100%-discount ticket in Stripe test mode and a two-browser Daily call before production release.

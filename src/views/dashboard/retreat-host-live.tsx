@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLiveStatus } from "@/hooks/use-live-status";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { DashboardLayout } from "@/components/dashboard-layout";
@@ -22,13 +22,20 @@ type HostState = {
 };
 
 export function DashboardRetreatHostLive({
-  initialData,
+  initialData: snapshot,
   returnHref = "/dashboard",
 }: {
   initialData: HostState;
   returnHref?: string;
 }) {
-  const [roomState, setRoomState] = useState(initialData.roomState);
+  const {
+    data: initialData,
+    error: statusError,
+    setData,
+  } = useLiveStatus(`/api/retreats/host/${snapshot.retreatDateId}/status`, snapshot);
+  const roomState = initialData.roomState;
+  const setRoomState = (roomState: HostState["roomState"]) =>
+    setData((current) => ({ ...current, roomState }));
   const router = useRouter();
   const lifecycle = async (action: string) => {
     const response = await fetch(`/api/retreats/host/${initialData.retreatDateId}/lifecycle`, {
@@ -57,60 +64,67 @@ export function DashboardRetreatHostLive({
     );
   }
   return (
-    <VideoRoom
-      sessionId={initialData.retreatDateId}
-      roomTokenEndpoint={`/api/retreats/host/${initialData.retreatDateId}/room-token`}
-      attendanceEndpoint={null}
-      chatEndpoint={`/api/retreats/live/${initialData.retreatDateId}/chat`}
-      displayModeEndpoint={`/api/retreats/host/${initialData.retreatDateId}/display-mode`}
-      moderationEndpoint={`/api/retreats/host/${initialData.retreatDateId}/moderation`}
-      mode="retreat"
-      isInstructor
-      className={initialData.title}
-      classTime={new Date(initialData.startsAt).toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: initialData.timezone,
-      })}
-      classDuration={`${Math.max(1, Math.round((new Date(initialData.endsAt).getTime() - new Date(initialData.startsAt).getTime()) / 60000))} min`}
-      registeredCount={initialData.registeredCount}
-      initialCommunityMode={initialData.displayMode === "gallery"}
-      initialRecording={initialData.recordingState === "recording"}
-      isRecorded={initialData.isRecorded}
-      chatEnabled={initialData.chatEnabled}
-      onLeave={(reason) => {
-        if (reason === "ended") {
-          setRoomState("ended");
-          return;
+    <>
+      {statusError && (
+        <p role="status" className="fixed top-0 z-[110] bg-amber-100 p-2 text-amber-950">
+          Reconnecting to workshop status…
+        </p>
+      )}
+      <VideoRoom
+        sessionId={initialData.retreatDateId}
+        roomTokenEndpoint={`/api/retreats/host/${initialData.retreatDateId}/room-token`}
+        attendanceEndpoint={null}
+        chatEndpoint={`/api/retreats/live/${initialData.retreatDateId}/chat`}
+        displayModeEndpoint={`/api/retreats/host/${initialData.retreatDateId}/display-mode`}
+        moderationEndpoint={`/api/retreats/host/${initialData.retreatDateId}/moderation`}
+        mode="retreat"
+        isInstructor
+        className={initialData.title}
+        classTime={new Date(initialData.startsAt).toLocaleTimeString("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: initialData.timezone,
+        })}
+        classDuration={`${Math.max(1, Math.round((new Date(initialData.endsAt).getTime() - new Date(initialData.startsAt).getTime()) / 60000))} min`}
+        registeredCount={initialData.registeredCount}
+        initialCommunityMode={initialData.displayMode === "gallery"}
+        initialRecording={initialData.recordingState === "recording"}
+        isRecorded={initialData.isRecorded}
+        chatEnabled={initialData.chatEnabled}
+        onLeave={(reason) => {
+          if (reason === "ended") {
+            setRoomState("ended");
+            return;
+          }
+          router.push(returnHref);
+          router.refresh();
+        }}
+        onStartSession={
+          roomState !== "started"
+            ? async () => {
+                await lifecycle("start");
+                setRoomState("started");
+              }
+            : undefined
         }
-        router.push(returnHref);
-        router.refresh();
-      }}
-      onStartSession={
-        roomState !== "started"
-          ? async () => {
-              await lifecycle("start");
-              setRoomState("started");
-            }
-          : undefined
-      }
-      onEndSession={
-        roomState === "started"
-          ? async () => {
-              await lifecycle("end");
-            }
-          : undefined
-      }
-      onStartRecording={
-        initialData.isRecorded && roomState === "started"
-          ? async () => void (await lifecycle("start_recording"))
-          : undefined
-      }
-      onStopRecording={
-        initialData.isRecorded && roomState === "started"
-          ? async () => void (await lifecycle("stop_recording"))
-          : undefined
-      }
-    />
+        onEndSession={
+          roomState === "started"
+            ? async () => {
+                await lifecycle("end");
+              }
+            : undefined
+        }
+        onStartRecording={
+          initialData.isRecorded && roomState === "started"
+            ? async () => void (await lifecycle("start_recording"))
+            : undefined
+        }
+        onStopRecording={
+          initialData.isRecorded && roomState === "started"
+            ? async () => void (await lifecycle("stop_recording"))
+            : undefined
+        }
+      />
+    </>
   );
 }

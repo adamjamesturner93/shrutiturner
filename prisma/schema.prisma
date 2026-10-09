@@ -1816,6 +1816,7 @@ model RetreatVenueRoomTemplate {
 }
 
 model RetreatDate {
+  stripeWorkshopProductId String? @unique
   requiresOfferingClearance   Boolean                   @default(true)
   id                          String                    @id @default(cuid())
   externalDateId              String                    @unique
@@ -2034,6 +2035,10 @@ model RetreatDateInstructorAssignment {
 }
 
 model RetreatBooking {
+  promotionCodeSnapshot String?
+  stripePromotionCodeId String?
+  originalTotalPence Int?
+  promotionDiscountPence Int @default(0)
   id                           String               @id @default(cuid())
   retreatDateId                String
   roomOptionId                 String?
@@ -2371,6 +2376,10 @@ model RetreatLiveChatMessage {
 }
 
 model GiftPurchase {
+  promotionCodeSnapshot String?
+  stripePromotionCodeId String?
+  originalTotalPence Int?
+  promotionDiscountPence Int @default(0)
   id                       String             @id @default(cuid())
   code                     String             @unique
   type                     GiftType

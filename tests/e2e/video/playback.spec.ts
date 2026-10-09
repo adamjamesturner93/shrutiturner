@@ -30,12 +30,14 @@ test("workshop playback, layout, mute notification and disconnection", async ({ 
           isLocal:false, isInstructor:false, isMuted:true, isCameraOn:false,
           audioTrack:null, videoTrack:track };
         const handlers = {};
+        let audio = true;
         const local = {session_id:'local', user_id:'guest', user_name:'Test attendee', local:true, tracks:{}};
         const owner = {session_id:'host', user_id:'host', user_name:'Host', owner:true, tracks:{}};
         window.DailyIframe = {createCallObject: () => ({
           on: (name, handler) => { (handlers[name] ||= []).push(handler); }, off: () => {},
           join: async () => {}, leave: async () => {}, destroy: async () => {},
-          participants: () => ({local, host:owner}), setLocalAudio: () => {}, setLocalVideo: () => {},
+          participants: () => ({local, host:owner}), localAudio: () => audio,
+          setLocalAudio: (value) => { audio = value; }, setLocalVideo: () => {},
         })};
         window.fetch = async () => ({ok:true, json:async () => ({token:'test',roomUrl:'https://test.daily.co/test'})});
         window.emitCallEvent = (name, data) => (handlers[name] || []).forEach(fn => fn(data));
@@ -54,8 +56,8 @@ test("workshop playback, layout, mute notification and disconnection", async ({ 
             {focus ? <div style={{display:'flex', height:500, width:'100%'}}>
               <ParticipantView instructor={host} selfParticipant={{...guest,isCameraOn:true}} participants={[]} showSelfView={true} communityMode={false} />
               {chat ? <aside style={{width:320,flexShrink:0}}>Chat</aside> : null}
-            </div> : <InstructorView instructor={null} participants={gallery ? [1,2,3,4].map(id => ({...guest, id:String(id), name:'Guest '+id, isCameraOn:true})) : [{...guest, isCameraOn:on}]}
-              communityMode={false} considerations={[]} onMute={() => {}} onRemove={() => {}} />}
+            </div> : <div style={{display:"flex",height:600}}><InstructorView instructor={null} participants={gallery ? [1,2,3,4].map(id => ({...guest, id:String(id), name:'Guest '+id, isCameraOn:true})) : [{...guest, isCameraOn:on}]}
+              communityMode={false} considerations={[]} onMute={() => {}} onRemove={() => {}} /></div>}
           </>;
         }
         createRoot(document.getElementById('root')).render(<App />);
@@ -118,7 +120,7 @@ test("workshop playback, layout, mute notification and disconnection", async ({ 
   }
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.getByRole("button", { name: "Four attendees" }).click();
-  const tiles = page.locator('[aria-label="Workshop participants"] > div');
+  const tiles = page.locator('[aria-label="Workshop participants"] > div > div');
   await expect(tiles).toHaveCount(4);
   const boxes = await tiles.evaluateAll((elements) =>
     elements.map((element) => {
@@ -137,6 +139,11 @@ test("workshop playback, layout, mute notification and disconnection", async ({ 
   }
   await page.getByRole("button", { name: "Test live lifecycle" }).click();
   await expect(page.getByRole("button", { name: "Leave" })).toBeVisible();
+  await page.getByRole("button", { name: "Fullscreen", exact: true }).click();
+  await expect(page.locator("header")).toBeHidden();
+  await expect(page.getByRole("button", { name: "Leave", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Exit fullscreen", exact: true }).click();
+  await expect(page.locator("header")).toBeVisible();
   await page.evaluate(() => {
     const emit = (window as unknown as { emitCallEvent: (name: string, data?: unknown) => void })
       .emitCallEvent;
@@ -146,8 +153,10 @@ test("workshop playback, layout, mute notification and disconnection", async ({ 
     });
   });
   await expect(page.getByRole("status")).toContainText(
-    "Your instructor has muted your microphone."
+    "Your instructor muted your microphone. You can unmute when you’re ready."
   );
+  await page.getByRole("button", { name: "Unmute", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Mute", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Dismiss", exact: true }).click();
   await page.evaluate(() =>
     (window as unknown as { emitCallEvent: (name: string) => void }).emitCallEvent("left-meeting")

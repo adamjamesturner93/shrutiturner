@@ -1,3 +1,4 @@
+import { workshopStripeProduct } from "@/lib/retreats/workshop-discounts";
 import type Stripe from "stripe";
 import { createAdminActionLog } from "@/lib/admin/action-log-service";
 import { db } from "@/lib/db";
@@ -259,6 +260,7 @@ export async function listPromotionCodes() {
 }
 
 export async function createPromotionCode(input: {
+  workshopDateIds?: string[];
   code: string;
   type: "percent" | "amount";
   percentOff?: number;
@@ -273,13 +275,27 @@ export async function createPromotionCode(input: {
 }) {
   const stripe = getStripeClient();
 
+  const workshopIds = input.workshopDateIds || [];
+  if (
+    workshopIds.length > 50 ||
+    (input.type === "percent"
+      ? !Number.isFinite(input.percentOff) || input.percentOff! <= 0 || input.percentOff! > 100
+      : !Number.isInteger(input.amountOffPence) || input.amountOffPence! <= 0)
+  )
+    throw new Error("INVALID_DISCOUNT");
+  const products = await Promise.all([...new Set(workshopIds)].map(workshopStripeProduct));
+  const scope = products.length
+    ? { applies_to: { products }, metadata: { scope: "workshop" } }
+    : {};
   const coupon = await stripe.coupons.create(
     input.type === "percent"
       ? {
+          ...scope,
           percent_off: input.percentOff,
           duration: "once",
         }
       : {
+          ...scope,
           amount_off: input.amountOffPence,
           currency: (input.currency || "gbp").toLowerCase(),
           duration: "once",
@@ -291,6 +307,7 @@ export async function createPromotionCode(input: {
       type: "coupon",
       coupon: coupon.id,
     },
+    metadata: products.length ? { scope: "workshop" } : {},
     code: input.code,
     max_redemptions: input.maxRedemptions,
     expires_at: input.expiresAt
@@ -405,7 +422,7 @@ export async function resolvePromotionCodeDiscount(code: string, amountPence: nu
     expand: ["data.promotion.coupon"],
   });
   const promo = list.data[0];
-  if (!promo) return null;
+  if (!promo || promo.metadata.scope === "workshop") return null;
 
   const promotionCoupon = promo.promotion.coupon;
   const coupon =

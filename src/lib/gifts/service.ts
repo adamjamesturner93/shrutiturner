@@ -1,3 +1,5 @@
+import { getWorkshopPayment } from "@/lib/retreats/workshop-payment";
+import { calculateRetreatNonRefundableAmount } from "@/lib/retreats/pricing";
 import {
   AcceptanceType,
   GiftPurchaseStatus,
@@ -296,22 +298,67 @@ export async function processGiftPurchaseCheckoutCompleted(session: Stripe.Check
 
   const gift = await db.giftPurchase.findUnique({
     where: { id: giftPurchaseId },
-    select: { id: true, status: true, deliveryEmailSentAt: true },
+    select: {
+      id: true,
+      status: true,
+      deliveryEmailSentAt: true,
+      stripePromotionCodeId: true,
+      stripeCheckoutSessionId: true,
+      totalPaidPence: true,
+      originalTotalPence: true,
+      currency: true,
+      retreatDate: true,
+    },
   });
   if (!gift) return false;
+  const workshopPayment =
+    session.metadata?.workshopDiscountVersion === "2" && gift.retreatDate
+      ? await getWorkshopPayment({
+          sessionId: session.id,
+          expectedSessionId: gift.stripeCheckoutSessionId,
+          reference: { giftPurchaseId },
+          currency: gift.currency,
+          productId: gift.retreatDate.stripeWorkshopProductId,
+          originalTotalPence: gift.originalTotalPence ?? gift.totalPaidPence,
+          items: [{ id: gift.id, originalPence: gift.originalTotalPence ?? gift.totalPaidPence }],
+        })
+      : null;
 
-  const purchaseCompletedNow = gift.status !== GiftPurchaseStatus.purchased;
-  if (purchaseCompletedNow) {
-    await db.giftPurchase.update({
-      where: { id: giftPurchaseId },
-      data: {
-        status: GiftPurchaseStatus.purchased,
-        purchasedAt: new Date(),
-        stripePaymentIntentId: paymentIntentId || undefined,
-        expiresAt: null,
-      },
-    });
-  }
+  if (
+    !workshopPayment &&
+    gift.stripePromotionCodeId &&
+    (session.id !== gift.stripeCheckoutSessionId ||
+      session.amount_total !== gift.totalPaidPence ||
+      !["paid", "no_payment_required"].includes(session.payment_status))
+  )
+    throw new Error("WORKSHOP_PAYMENT_MISMATCH");
+  const claimed = await db.giftPurchase.updateMany({
+    where: {
+      id: giftPurchaseId,
+      status: { in: [GiftPurchaseStatus.pending_payment, GiftPurchaseStatus.expired] },
+    },
+    data: {
+      status: GiftPurchaseStatus.purchased,
+      purchasedAt: new Date(),
+      stripePaymentIntentId: workshopPayment?.paymentIntentId || paymentIntentId || undefined,
+      expiresAt: null,
+      ...(workshopPayment
+        ? {
+            totalPaidPence: workshopPayment.totalPence,
+            originalTotalPence: workshopPayment.originalTotalPence,
+            promotionDiscountPence: workshopPayment.promotionDiscountPence,
+            promotionCodeSnapshot: workshopPayment.promotionCodeSnapshot,
+            stripePromotionCodeId: workshopPayment.stripePromotionCodeId,
+            nonRefundableAmountPence: calculateRetreatNonRefundableAmount({
+              retreatType: gift.retreatDate?.retreatType === "online" ? "online" : "in_person",
+              totalPence: workshopPayment.totalPence,
+              depositPence: 0,
+            }),
+          }
+        : {}),
+    },
+  });
+  const purchaseCompletedNow = claimed.count > 0;
 
   if (
     kind === "retreat_gift" &&
@@ -319,6 +366,8 @@ export async function processGiftPurchaseCheckoutCompleted(session: Stripe.Check
   ) {
     return true;
   }
+
+  if (!purchaseCompletedNow && gift.status !== GiftPurchaseStatus.purchased) return true;
 
   if (!gift.deliveryEmailSentAt) {
     await sendGiftDeliveryEmail(giftPurchaseId).catch((error) => {
@@ -975,6 +1024,10 @@ export async function redeemGiftPurchase(input: {
           attendeeCount: retreatGuestCount,
           guestsIncluded: retreatGuestCount,
           giftPurchaseId: gift.id,
+          promotionCodeSnapshot: gift.promotionCodeSnapshot,
+          stripePromotionCodeId: gift.stripePromotionCodeId,
+          originalTotalPence: gift.originalTotalPence,
+          promotionDiscountPence: gift.promotionDiscountPence,
           totalPricePence: gift.totalPaidPence,
           depositAmountPence: gift.totalPaidPence,
           balanceAmountPence: 0,

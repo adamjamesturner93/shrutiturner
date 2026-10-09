@@ -50,7 +50,7 @@ vi.mock("@/lib/daily/service", () => ({
 
 const service = await import("@/lib/retreats/live-service");
 
-function booking(roomState: "unprepared" | "prepared" = "prepared") {
+function booking(roomState: "unprepared" | "prepared" | "started" = "started") {
   return {
     id: "booking_1",
     retreatDateId: "retreat_1",
@@ -71,8 +71,8 @@ function booking(roomState: "unprepared" | "prepared" = "prepared") {
       startsAt: new Date(Date.now() - 60_000),
       endsAt: new Date(Date.now() + 60_000),
       liveRoomState: roomState,
-      dailyRoomName: roomState === "prepared" ? "room_1" : null,
-      dailyRoomUrl: roomState === "prepared" ? "https://daily.example/room_1" : null,
+      dailyRoomName: roomState !== "unprepared" ? "room_1" : null,
+      dailyRoomUrl: roomState !== "unprepared" ? "https://daily.example/room_1" : null,
       liveDisplayMode: "gallery",
       liveDisplayVersion: 1,
       focusedPresenterUserId: null,
@@ -120,7 +120,14 @@ describe("retreat live access boundaries", () => {
     expect(setUpRetreatOnlineRoomMock).not.toHaveBeenCalled();
   });
 
-  it("returns restricted attendee capabilities for a prepared room", async () => {
+  it("keeps prepared-room attendees waiting until the host starts", async () => {
+    findBookingMock.mockResolvedValue(booking("prepared"));
+    await expect(service.getRetreatParticipantTokenContext("booking_1", "user_1")).rejects.toThrow(
+      "ROOM_NOT_READY"
+    );
+  });
+
+  it("returns restricted attendee capabilities for a started room", async () => {
     findBookingMock.mockResolvedValue(booking());
     const result = await service.getRetreatParticipantTokenContext("booking_1", "user_1");
     expect(result).toMatchObject({
@@ -128,7 +135,7 @@ describe("retreat live access boundaries", () => {
       canRecord: false,
       canModerate: false,
       canPublishReplay: false,
-      roomState: "prepared",
+      roomState: "started",
     });
   });
 
@@ -324,6 +331,7 @@ describe("participant landing expiry", () => {
   });
   it("keeps the lobby available immediately before expiry", async () => {
     const row = booking();
+    row.retreatDate.liveRoomState = "prepared";
     row.retreatDate.endsAt = new Date(Date.now() + 1);
     findBookingMock.mockResolvedValue(row);
     expect((await service.getRetreatLiveLandingState("booking_1", "user_1")).state).toBe(

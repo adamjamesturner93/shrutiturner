@@ -79,6 +79,11 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
     revalidateTag("retreats-public", "max");
     return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof Error && error.message === "WORKSHOP_DISCOUNT_INVALID")
+      return NextResponse.json(
+        { message: "This code is unavailable or does not apply to this workshop." },
+        { status: 400 }
+      );
     if (
       error instanceof Error &&
       ["RETREAT_BED_PREFERENCE_REQUIRED", "RETREAT_BED_PREFERENCE_INVALID"].includes(error.message)

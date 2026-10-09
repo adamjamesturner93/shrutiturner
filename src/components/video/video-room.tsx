@@ -16,6 +16,7 @@ import {
   MonitorUp,
   Hand,
 } from "lucide-react";
+import { ResponsiveGallery } from "./responsive-gallery";
 import { Badge } from "../ui/badge";
 import { ChatPanel, type ChatMessage } from "./chat-panel";
 import { DeviceSelector } from "./device-selector";
@@ -240,6 +241,13 @@ export function VideoRoom({
       toParticipantModel(participant)
     );
     setParticipants(nextParticipants);
+    const local = Object.values(nextCallObject.participants() || {}).find((p) => p.local);
+    if (local)
+      setIsMuted(
+        nextCallObject.localAudio
+          ? !nextCallObject.localAudio()
+          : local.tracks?.audio?.state !== "playable"
+      );
   }, []);
 
   const applyDeviceSettings = useCallback(
@@ -488,8 +496,14 @@ export function VideoRoom({
 
         if (cancelled) return;
 
-        const startAudioOff = payload.defaultMicMuted ?? initialMuted;
-        const startVideoOff = payload.defaultCameraOff ?? !initialCameraOn;
+        const startAudioOff =
+          mode === "retreat" && !isInstructor
+            ? initialMuted
+            : (payload.defaultMicMuted ?? initialMuted);
+        const startVideoOff =
+          mode === "retreat" && !isInstructor
+            ? !initialCameraOn
+            : (payload.defaultCameraOff ?? !initialCameraOn);
         setIsMuted(startAudioOff);
         setIsCameraOn(!startVideoOff);
 
@@ -554,14 +568,21 @@ export function VideoRoom({
             const local = Object.values(nextCallObject?.participants() || {}).find(
               (item) => item.local
             );
-            if (payloadData.targetUserId !== (local?.user_id || currentUserIdRef.current)) return;
+            if (
+              payloadData.targetSessionId
+                ? payloadData.targetSessionId !== local?.session_id
+                : payloadData.targetUserId !== (local?.user_id || currentUserIdRef.current)
+            )
+              return;
             const senderId = (event as { fromId?: string }).fromId;
             const sender = senderId ? nextCallObject?.participants()[senderId] : undefined;
             if (!sender?.owner) return;
 
             if (payloadData.action === "mute") {
               setIsMuted(true);
-              setModerationNotice("Your instructor has muted your microphone.");
+              setModerationNotice(
+                "Your instructor muted your microphone. You can unmute when you’re ready."
+              );
               void nextCallObject?.setLocalAudio(false);
             }
 
@@ -694,6 +715,8 @@ export function VideoRoom({
     };
   }, [
     appendChatMessage,
+    isInstructor,
+    mode,
     initialCameraOn,
     initialMuted,
     joinAttempt,
@@ -707,8 +730,15 @@ export function VideoRoom({
   const toggleLocalAudio = async () => {
     if (!callObject) return;
     const nextValue = !isMuted;
-    setIsMuted(nextValue);
-    await callObject.setLocalAudio(!nextValue);
+    try {
+      await callObject.setLocalAudio(!nextValue);
+      mapParticipants(callObject);
+    } catch {
+      setModerationNotice(
+        "Unable to change your microphone. Check your browser’s microphone permission and try again."
+      );
+      mapParticipants(callObject);
+    }
   };
 
   const toggleLocalVideo = async () => {
@@ -718,13 +748,18 @@ export function VideoRoom({
     await callObject.setLocalVideo(nextValue);
   };
 
+  useEffect(() => {
+    const sync = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => undefined);
-      setIsFullscreen(true);
+      void document.documentElement
+        .requestFullscreen()
+        .catch(() => setStatusText("Fullscreen is unavailable in this browser."));
     } else {
-      document.exitFullscreen().catch(() => undefined);
-      setIsFullscreen(false);
+      void document.exitFullscreen().catch(() => undefined);
     }
   }, []);
 
@@ -746,7 +781,15 @@ export function VideoRoom({
         return;
       }
     }
-    await callObject.sendAppMessage({ type: "moderation", action, targetUserId }, "*");
+    try {
+      if (action === "mute") callObject.updateParticipant?.(participantId, { setAudio: false });
+      await callObject.sendAppMessage(
+        { type: "moderation", action, targetUserId, targetSessionId: participantId },
+        participantId
+      );
+    } catch {
+      setStatusText("Unable to moderate this participant. Please try again.");
+    }
   };
 
   const updateCommunityMode = async (nextValue: boolean) => {
@@ -1063,7 +1106,9 @@ export function VideoRoom({
 
   return (
     <div className="bg-video-backdrop fixed inset-0 z-[100] flex flex-col text-white">
-      <header className="bg-video-backdrop/90 flex flex-shrink-0 flex-wrap items-center justify-between border-b border-white/5 px-4 py-2.5">
+      <header
+        className={`${isFullscreen ? "hidden" : "flex"} bg-video-backdrop/90 flex-shrink-0 flex-wrap items-center justify-between border-b border-white/5 px-4 py-2.5`}
+      >
         <div className="flex min-w-0 items-center gap-3">
           <div
             className={`h-2 w-2 rounded-full ${isReady ? "animate-pulse bg-red-500" : "bg-amber-400"}`}
@@ -1137,65 +1182,6 @@ export function VideoRoom({
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden p-3">
-          {isReady && isInstructor ? (
-            <div className="bg-video-panel flex flex-col gap-3 rounded-lg border border-white/5 px-3 py-2.5 text-xs text-white/70 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="font-medium text-white">Participant visibility</p>
-                <p className="mt-0.5">
-                  {communityMode
-                    ? "Community mode: attendees can see the instructor, themselves and each other."
-                    : "Focus mode: attendees can see only the instructor and themselves; the instructor can still see everyone."}
-                </p>
-                {communityModeNotice ? (
-                  <p className="mt-1 text-white" role="status" aria-live="polite">
-                    {communityModeNotice}
-                  </p>
-                ) : null}
-              </div>
-              {isInstructor ? (
-                <div
-                  className="flex shrink-0 rounded-lg border border-white/10 bg-black/20 p-1"
-                  role="group"
-                  aria-label="Participant visibility mode"
-                >
-                  <button
-                    type="button"
-                    aria-pressed={!communityMode}
-                    disabled={isCommunityModeUpdating}
-                    onClick={() => void updateCommunityMode(false)}
-                    className={`flex items-center gap-1.5 rounded-md px-3 py-2 transition-colors disabled:cursor-wait disabled:opacity-60 ${
-                      !communityMode ? "bg-white text-black" : "text-white/70 hover:bg-white/10"
-                    }`}
-                  >
-                    <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
-                    Focus
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={communityMode}
-                    disabled={isCommunityModeUpdating}
-                    onClick={() => void updateCommunityMode(true)}
-                    className={`flex items-center gap-1.5 rounded-md px-3 py-2 transition-colors disabled:cursor-wait disabled:opacity-60 ${
-                      communityMode
-                        ? "bg-brand-accent text-white"
-                        : "text-white/70 hover:bg-white/10"
-                    }`}
-                  >
-                    <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-                    Community
-                  </button>
-                </div>
-              ) : (
-                <Badge
-                  className={
-                    communityMode ? "bg-brand-accent text-white" : "bg-white/10 text-white/70"
-                  }
-                >
-                  {communityMode ? "Community" : "Focus"}
-                </Badge>
-              )}
-            </div>
-          ) : null}
           {moderationNotice ? (
             <div
               role="status"
@@ -1273,21 +1259,95 @@ export function VideoRoom({
           ) : null}
         </div>
 
-        {showChat && chatEnabled ? (
-          <ChatPanel
-            messages={chatMessages}
-            onClose={() => setShowChat(false)}
-            onSendMessage={(text) => sendChatMessage(text)}
-            onSendAnnouncement={
-              isInstructor && chatEndpoint
-                ? (text) => sendChatMessage(text, "announcement")
-                : undefined
-            }
-          />
+        {showChat && (chatEnabled || isInstructor) ? (
+          <div className="bg-video-panel absolute inset-y-0 right-0 z-30 flex w-72 max-w-full shrink-0 flex-col overflow-hidden sm:relative sm:inset-auto lg:w-80">
+            {isReady && isInstructor ? (
+              <div className="bg-video-panel flex flex-col gap-3 rounded-lg border border-white/5 px-3 py-2.5 text-xs text-white/70">
+                <div>
+                  <p className="font-medium text-white">Participant visibility</p>
+                  <p className="mt-0.5">
+                    {communityMode
+                      ? "Community mode: attendees can see the instructor, themselves and each other."
+                      : "Focus mode: attendees can see only the instructor and themselves; the instructor can still see everyone."}
+                  </p>
+                  {communityModeNotice ? (
+                    <p className="mt-1 text-white" role="status" aria-live="polite">
+                      {communityModeNotice}
+                    </p>
+                  ) : null}
+                </div>
+                {isInstructor ? (
+                  <div
+                    className="flex shrink-0 rounded-lg border border-white/10 bg-black/20 p-1"
+                    role="group"
+                    aria-label="Participant visibility mode"
+                  >
+                    <button
+                      type="button"
+                      aria-pressed={!communityMode}
+                      disabled={isCommunityModeUpdating}
+                      onClick={() => void updateCommunityMode(false)}
+                      className={`flex items-center gap-1.5 rounded-md px-3 py-2 transition-colors disabled:cursor-wait disabled:opacity-60 ${
+                        !communityMode ? "bg-white text-black" : "text-white/70 hover:bg-white/10"
+                      }`}
+                    >
+                      <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
+                      Focus
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={communityMode}
+                      disabled={isCommunityModeUpdating}
+                      onClick={() => void updateCommunityMode(true)}
+                      className={`flex items-center gap-1.5 rounded-md px-3 py-2 transition-colors disabled:cursor-wait disabled:opacity-60 ${
+                        communityMode
+                          ? "bg-brand-accent text-white"
+                          : "text-white/70 hover:bg-white/10"
+                      }`}
+                    >
+                      <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                      Community
+                    </button>
+                  </div>
+                ) : (
+                  <Badge
+                    className={
+                      communityMode ? "bg-brand-accent text-white" : "bg-white/10 text-white/70"
+                    }
+                  >
+                    {communityMode ? "Community" : "Focus"}
+                  </Badge>
+                )}
+              </div>
+            ) : null}
+            {chatEnabled ? (
+              <ChatPanel
+                messages={chatMessages}
+                onClose={() => setShowChat(false)}
+                onSendMessage={(text) => sendChatMessage(text)}
+                onSendAnnouncement={
+                  isInstructor && chatEndpoint
+                    ? (text) => sendChatMessage(text, "announcement")
+                    : undefined
+                }
+              />
+            ) : (
+              <button onClick={() => setShowChat(false)}>Close settings</button>
+            )}
+          </div>
         ) : null}
       </div>
 
       <footer className="bg-video-backdrop/90 flex flex-shrink-0 flex-wrap items-center justify-center gap-2 border-t border-white/5 px-4 py-3 sm:gap-3">
+        {isFullscreen && (
+          <ControlButton
+            active={false}
+            onClick={() => void leaveRoom(callObject, false, "left")}
+            icon={Phone}
+            label="Leave"
+            danger
+          />
+        )}
         <ControlButton
           active={!isMuted}
           onClick={() => void toggleLocalAudio()}
@@ -1447,7 +1507,6 @@ export function InstructorView({
   raisedHands = [],
   instructor,
   participants,
-  communityMode,
   considerations,
   onMute,
   onRemove,
@@ -1467,10 +1526,7 @@ export function InstructorView({
           <ParticipantTile participant={instructor} size="sm" isLocal />
         </div>
       ) : null}
-      <div
-        aria-label="Workshop participants"
-        className={`grid content-start gap-3 ${participants.length > 1 ? "grid-cols-1 sm:grid-cols-2" : "mx-auto w-full max-w-3xl grid-cols-1"} ${participants.length > 4 ? "xl:grid-cols-3" : ""}`}
-      >
+      <ResponsiveGallery>
         {participants.map((participant) => (
           <ParticipantTile
             key={participant.id}
@@ -1509,19 +1565,8 @@ export function InstructorView({
             }
           />
         ))}
-        {participants.length === 0 ? (
-          <div className="bg-video-panel/60 col-span-2 flex items-center justify-center rounded-lg border border-white/5 text-sm text-white/40">
-            Waiting for participants...
-          </div>
-        ) : null}
-      </div>
-      <div className="col-span-full flex items-center gap-2 text-xs text-white/50">
-        <Badge
-          className={communityMode ? "bg-brand-accent text-white" : "bg-white/10 text-white/70"}
-        >
-          {communityMode ? "Community mode enabled" : "Focus mode enabled"}
-        </Badge>
-      </div>
+      </ResponsiveGallery>
+      {participants.length === 0 && <p role="status">Waiting for participants…</p>}
       {considerations.length > 0 ? (
         <div className="bg-video-panel/80 col-span-full rounded-lg border border-amber-300/20 p-3 text-xs text-white/80">
           <p className="mb-2 text-white">Today's considerations</p>
@@ -1611,53 +1656,20 @@ function CommunityView({
   selfParticipant: ParticipantTileModel | null;
   participants: ParticipantTileModel[];
 }) {
-  const [page, setPage] = useState(0);
-  const galleryParticipants = [selfParticipant, ...participants].filter(
+  const galleryParticipants = [instructor, selfParticipant, ...participants].filter(
     (participant): participant is ParticipantTileModel => Boolean(participant)
   );
-  const pageSize = 12;
-  const pageCount = Math.max(1, Math.ceil(galleryParticipants.length / pageSize));
-  const visibleParticipants = galleryParticipants.slice(page * pageSize, (page + 1) * pageSize);
   return (
-    <div className="flex flex-1 flex-col gap-3 overflow-hidden">
-      <ParticipantTile participant={instructor} size="lg" />
-      <div className="grid flex-1 grid-cols-2 gap-3 md:grid-cols-3">
-        {visibleParticipants.map((participant) => (
-          <ParticipantTile
-            key={participant.id}
-            participant={participant}
-            size="sm"
-            isLocal={participant.isLocal}
-          />
-        ))}
-      </div>
-      {pageCount > 1 ? (
-        <nav
-          aria-label="Participant gallery pages"
-          className="flex items-center justify-center gap-3 text-xs text-white/70"
-        >
-          <button
-            type="button"
-            disabled={page === 0}
-            onClick={() => setPage((value) => Math.max(0, value - 1))}
-            className="rounded border border-white/15 px-3 py-1 disabled:opacity-40"
-          >
-            Previous
-          </button>
-          <span>
-            Page {page + 1} of {pageCount}
-          </span>
-          <button
-            type="button"
-            disabled={page >= pageCount - 1}
-            onClick={() => setPage((value) => Math.min(pageCount - 1, value + 1))}
-            className="rounded border border-white/15 px-3 py-1 disabled:opacity-40"
-          >
-            Next
-          </button>
-        </nav>
-      ) : null}
-    </div>
+    <ResponsiveGallery>
+      {galleryParticipants.map((participant) => (
+        <ParticipantTile
+          key={participant.id}
+          participant={participant}
+          size="sm"
+          isLocal={participant.isLocal}
+        />
+      ))}
+    </ResponsiveGallery>
   );
 }
 

@@ -1,15 +1,39 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type Stripe from "stripe";
 
 const db = {
   $transaction: vi.fn(),
   $queryRaw: vi.fn(),
   retreatDate: { findUnique: vi.fn(), findFirstOrThrow: vi.fn(), findMany: vi.fn() },
   retreatRoomOption: { findUnique: vi.fn() },
-  retreatBooking: { count: vi.fn(), aggregate: vi.fn(), create: vi.fn(), update: vi.fn() },
-  giftPurchase: { count: vi.fn(), aggregate: vi.fn(), create: vi.fn(), update: vi.fn() },
+  retreatBookingItem: { update: vi.fn() },
+  retreatBookingInstalment: { updateMany: vi.fn(), findMany: vi.fn() },
+  retreatBooking: {
+    findUnique: vi.fn(),
+    count: vi.fn(),
+    aggregate: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+  },
+  giftPurchase: {
+    findUnique: vi.fn(),
+    updateMany: vi.fn(),
+    count: vi.fn(),
+    aggregate: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+  },
   guestAcceptanceEvent: { createMany: vi.fn() },
 };
+const paymentResolve = vi.fn();
+vi.mock("@/lib/retreats/workshop-payment", () => ({
+  getWorkshopPayment: (...args: unknown[]) => paymentResolve(...args),
+}));
 const stripeCreate = vi.fn();
+const promotionResolve = vi.fn();
+vi.mock("@/lib/retreats/workshop-discounts", () => ({
+  workshopStripeProduct: (...args: unknown[]) => promotionResolve(...args),
+}));
 vi.mock("@/lib/db", () => ({ db }));
 vi.mock("@/lib/billing/stripe-client", () => ({
   getStripeClient: () => ({ checkout: { sessions: { create: stripeCreate } } }),
@@ -19,7 +43,8 @@ vi.mock("@/lib/legal/policy-service", () => ({
     types.map((type) => ({ id: type, version: "1" })),
 }));
 vi.mock("@/lib/postmark/client", () => ({ sendPostmarkReactEmail: vi.fn() }));
-const { createRetreatCheckout, getAdminRetreatSummaries } = await import("@/lib/retreats/service");
+const { createRetreatCheckout, getAdminRetreatSummaries, processRetreatCheckoutCompleted } =
+  await import("@/lib/retreats/service");
 
 const input = {
   retreatSlug: "test-retreat",
@@ -187,5 +212,182 @@ describe("admin price summary", () => {
         }),
       })
     );
+  });
+});
+
+describe("workshop promotion checkout", () => {
+  it.each(["self", "gift"] as const)(
+    "enables Stripe code entry for a %s workshop without pre-applying a discount",
+    async (purchaseMode) => {
+      const workshopDate = {
+        ...date,
+        eventKind: "in_person_workshop",
+        depositRules: [{ active: true, depositType: "full_payment" }],
+      };
+      db.retreatDate.findFirstOrThrow.mockResolvedValue(workshopDate);
+      db.retreatDate.findUnique.mockResolvedValue(workshopDate);
+      promotionResolve.mockResolvedValue("prod_workshop");
+      await createRetreatCheckout({
+        ...input,
+        purchaseMode,
+        guestCount: 1,
+        recipientFirstName: "Gift",
+        recipientLastName: "Guest",
+        recipientEmail: "gift@example.com",
+      });
+      expect(stripeCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          allow_promotion_codes: true,
+          metadata: expect.objectContaining({ workshopDiscountVersion: "2" }),
+          line_items: [
+            expect.objectContaining({
+              price_data: expect.objectContaining({ product: "prod_workshop", unit_amount: 52500 }),
+            }),
+          ],
+        })
+      );
+      const create = purchaseMode === "gift" ? db.giftPurchase.create : db.retreatBooking.create;
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            originalTotalPence: 52500,
+            ...(purchaseMode === "gift"
+              ? { totalPaidPence: 52500 }
+              : { totalPricePence: 52500, balanceAmountPence: 0 }),
+          }),
+        })
+      );
+    }
+  );
+});
+
+describe("Stripe workshop settlement", () => {
+  const event = {
+    id: "cs",
+    metadata: { kind: "retreat_instalment", bookingId: "booking-1", workshopDiscountVersion: "2" },
+    payment_status: "paid",
+  } as unknown as Stripe.Checkout.Session;
+  it.each([2800, 0])("settles the actual %i pence amount before fulfilment", async (total) => {
+    db.retreatBooking.findUnique.mockReset();
+    db.retreatBooking.findUnique
+      .mockResolvedValueOnce({
+        id: "booking-1",
+        currency: "GBP",
+        stripeDepositSessionId: "cs",
+        totalPricePence: 3500,
+        originalTotalPence: 3500,
+        items: [{ id: "item", unitPricePence: 3500, quantity: 1 }],
+        retreatDate: { ...date, retreatType: "online", stripeWorkshopProductId: "prod" },
+      })
+      .mockResolvedValue(null);
+    paymentResolve.mockResolvedValue({
+      totalPence: total,
+      originalTotalPence: 3500,
+      promotionDiscountPence: 3500 - total,
+      promotionCodeSnapshot: "SAVE",
+      stripePromotionCodeId: "promo",
+      items: [{ id: "item", totalPence: total }],
+    });
+    db.retreatBookingInstalment.updateMany.mockResolvedValue({ count: 1 });
+    db.retreatBookingInstalment.findMany.mockResolvedValue([
+      { status: "paid", kind: "full_payment", amountPence: total },
+    ]);
+    expect(await processRetreatCheckoutCompleted(event)).toBe(true);
+    expect(db.retreatBookingInstalment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ amountPence: total, status: "paid" }),
+      })
+    );
+    expect(db.retreatBooking.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          totalPricePence: total,
+          balanceAmountPence: 0,
+          paymentStatus: "paid_in_full",
+          promotionDiscountPence: 3500 - total,
+          nonRefundableAmountPence: total ? 1000 : 0,
+        }),
+      })
+    );
+    expect(db.retreatBookingItem.update).toHaveBeenCalledWith({
+      where: { id: "item" },
+      data: { totalPricePence: total },
+    });
+  });
+  it("does not apply a repeated webhook twice", async () => {
+    db.retreatBooking.findUnique.mockResolvedValue({
+      id: "booking-1",
+      currency: "GBP",
+      items: [],
+      retreatDate: date,
+    });
+    paymentResolve.mockResolvedValue({ totalPence: 0, items: [] });
+    db.retreatBookingInstalment.updateMany.mockResolvedValue({ count: 0 });
+    expect(await processRetreatCheckoutCompleted(event)).toBe(true);
+    expect(db.retreatBooking.update).not.toHaveBeenCalled();
+    expect(db.retreatBookingItem.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("discounted workshop gift settlement", () => {
+  it.each([2800, 0])("records the %i pence gift payment before redemption", async (total) => {
+    const { processGiftPurchaseCheckoutCompleted } = await import("@/lib/gifts/service");
+    db.giftPurchase.findUnique.mockReset();
+    db.giftPurchase.findUnique
+      .mockResolvedValueOnce({
+        id: "gift-1",
+        status: "pending_payment",
+        deliveryEmailSentAt: new Date(),
+        currency: "GBP",
+        totalPaidPence: 3500,
+        originalTotalPence: 3500,
+        stripeCheckoutSessionId: "cs",
+        retreatDate: { ...date, retreatType: "online", stripeWorkshopProductId: "prod" },
+      })
+      .mockResolvedValue(null);
+    paymentResolve.mockResolvedValue({
+      totalPence: total,
+      originalTotalPence: 3500,
+      promotionDiscountPence: 3500 - total,
+      promotionCodeSnapshot: "SAVE",
+      stripePromotionCodeId: "promo",
+    });
+    db.giftPurchase.updateMany.mockResolvedValue({ count: 1 });
+    const event = {
+      id: "cs",
+      metadata: { kind: "retreat_gift", giftPurchaseId: "gift-1", workshopDiscountVersion: "2" },
+    } as unknown as Stripe.Checkout.Session;
+    expect(await processGiftPurchaseCheckoutCompleted(event)).toBe(true);
+    expect(db.giftPurchase.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "gift-1", status: { in: ["pending_payment", "expired"] } },
+        data: expect.objectContaining({
+          status: "purchased",
+          totalPaidPence: total,
+          promotionDiscountPence: 3500 - total,
+          nonRefundableAmountPence: total ? 1000 : 0,
+        }),
+      })
+    );
+  });
+  it("does not revert a redeemed gift on a repeated webhook", async () => {
+    const { processGiftPurchaseCheckoutCompleted } = await import("@/lib/gifts/service");
+    db.giftPurchase.findUnique.mockResolvedValue({
+      id: "gift-1",
+      status: "redeemed",
+      deliveryEmailSentAt: new Date(),
+    });
+    db.giftPurchase.updateMany.mockResolvedValue({ count: 0 });
+    const event = {
+      id: "cs",
+      metadata: { kind: "retreat_gift", giftPurchaseId: "gift-1" },
+    } as unknown as Stripe.Checkout.Session;
+    expect(await processGiftPurchaseCheckoutCompleted(event)).toBe(true);
+    expect(db.giftPurchase.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "gift-1", status: { in: ["pending_payment", "expired"] } },
+      })
+    );
+    expect(db.giftPurchase.update).not.toHaveBeenCalled();
   });
 });

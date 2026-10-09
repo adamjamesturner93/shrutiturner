@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/api/auth-user";
-import { ejectRoomParticipant, updateRoomPermissions } from "@/lib/daily/service";
+import { ejectRoomParticipant } from "@/lib/daily/service";
 import { getRetreatHostTokenContext } from "@/lib/retreats/live-service";
 
 export async function POST(
@@ -15,7 +15,7 @@ export async function POST(
       action?: "mute" | "remove";
       participantId?: string;
     };
-    if (!body.action || !body.participantId) {
+    if (!["mute", "remove"].includes(body.action || "") || !body.participantId) {
       return NextResponse.json(
         { message: "Participant and action are required." },
         { status: 400 }
@@ -23,17 +23,8 @@ export async function POST(
     }
     if (body.action === "remove") {
       await ejectRoomParticipant(access.roomName, body.participantId);
-    } else {
-      await updateRoomPermissions({
-        roomName: access.roomName,
-        data: {
-          [body.participantId]: {
-            canSend: ["video"],
-            canAdmin: false,
-          },
-        },
-      });
     }
+
     return NextResponse.json({ ok: true, action: body.action });
   } catch (error) {
     const code = error instanceof Error ? error.message : "";

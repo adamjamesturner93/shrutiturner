@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CalendarDays, Video } from "lucide-react";
+import { CalendarDays, Video, LoaderCircle } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { PreJoinLobby } from "@/components/video/pre-join-lobby";
+import { useLiveStatus } from "@/hooks/use-live-status";
+import { LocalMediaPreview } from "@/components/video/local-media-preview";
 import { VideoRoom } from "@/components/video/video-room";
 
 export type RetreatLiveLanding = {
@@ -128,7 +130,16 @@ function RetreatReplay({ assetId, title }: { assetId: string; title: string }) {
   );
 }
 
-export function DashboardRetreatLive({ initialData }: { initialData: RetreatLiveLanding }) {
+export function DashboardRetreatLive({
+  initialData: snapshot,
+}: {
+  initialData: RetreatLiveLanding;
+}) {
+  const {
+    data: initialData,
+    error: statusError,
+    refresh,
+  } = useLiveStatus(`/api/retreats/bookings/${snapshot.bookingId}/live-state`, snapshot);
   const router = useRouter();
   const [entered, setEntered] = useState(false);
   const [initialMuted, setInitialMuted] = useState(initialData.defaultMicMuted);
@@ -137,14 +148,13 @@ export function DashboardRetreatLive({ initialData }: { initialData: RetreatLive
   const deadline = new Date(initialData.joinClosesAt || initialData.endsAt).getTime();
   const [expired, setExpired] = useState(() => Date.now() >= deadline);
   useEffect(() => {
-    if (entered) return;
     const update = () => setExpired(Date.now() >= deadline);
     update();
     const interval = window.setInterval(update, 1000);
     return () => window.clearInterval(interval);
   }, [deadline, entered]);
   const state =
-    !entered && expired && !["cancelled", "replay_available"].includes(initialData.state)
+    expired && !["cancelled", "replay_available"].includes(initialData.state)
       ? "ended"
       : initialData.state;
 
@@ -235,16 +245,40 @@ export function DashboardRetreatLive({ initialData }: { initialData: RetreatLive
       </StateCard>
     );
   }
-  if (state === "waiting_room") {
+  if (entered && initialData.roomState !== "started") {
     return (
       <StateCard
-        title="The host is preparing the room"
-        body="You are in the right place. Refresh shortly; the secure device check will appear as soon as the room is prepared."
+        title="Waiting for the workshop to start"
+        body="You’re in the right place. Your host will welcome you shortly. This page will update automatically when the workshop begins."
       >
-        <Button onClick={() => window.location.reload()}>Check again</Button>
-        <Button variant="outline" asChild>
-          <Link href="/contact">Get support</Link>
-        </Button>
+        <div className="w-full space-y-4">
+          <p className="font-medium">{initialData.title}</p>
+          <p className="text-muted-foreground text-sm">
+            {formatDateTime(initialData.startsAt, initialData.timezone)}
+          </p>
+          <div role="status" aria-live="polite" className="flex items-center justify-center gap-2">
+            <LoaderCircle aria-hidden="true" className="h-5 w-5 motion-safe:animate-spin" />
+            {statusError ? "Reconnecting to your workshop…" : "Waiting for your host"}
+          </div>
+          <div className="mx-auto max-w-sm overflow-hidden rounded-xl">
+            <LocalMediaPreview cameraEnabled={initialCameraOn} micEnabled={!initialMuted} />
+          </div>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Button variant="outline" onClick={() => setInitialMuted((value) => !value)}>
+              {initialMuted ? "Unmute" : "Mute"}
+            </Button>
+            <Button variant="outline" onClick={() => setInitialCameraOn((value) => !value)}>
+              {initialCameraOn ? "Stop video" : "Start video"}
+            </Button>
+            {statusError && <Button onClick={() => void refresh()}>Retry</Button>}
+            <Button
+              variant="outline"
+              onClick={() => router.push(`/dashboard/retreats/${initialData.bookingId}`)}
+            >
+              Leave
+            </Button>
+          </div>
+        </div>
       </StateCard>
     );
   }

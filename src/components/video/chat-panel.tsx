@@ -56,7 +56,7 @@ export function ChatPanel({
   return (
     <aside
       aria-label="Live chat"
-      className="bg-video-panel flex w-72 flex-shrink-0 flex-col border-l border-white/5 lg:w-80"
+      className="bg-video-panel flex min-h-0 w-full flex-1 flex-col border-l border-white/5"
     >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">

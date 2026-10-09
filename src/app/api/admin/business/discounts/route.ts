@@ -1,12 +1,15 @@
+import { listDiscountWorkshops } from "@/lib/retreats/workshop-discounts";
 import { connection, NextResponse } from "next/server";
 import { requireStaffAdminUser } from "@/lib/api/auth-user";
 import { createPromotionCode, listPromotionCodes } from "@/lib/billing/catalog-service";
 
-export async function GET() {
+export async function GET(request: Request) {
   await connection();
 
   try {
     await requireStaffAdminUser();
+    if (new URL(request.url).searchParams.has("workshops"))
+      return NextResponse.json(await listDiscountWorkshops());
     const rows = await listPromotionCodes();
     return NextResponse.json(rows);
   } catch (error) {
@@ -25,6 +28,7 @@ export async function POST(request: Request) {
   try {
     const adminUser = await requireStaffAdminUser();
     const body = (await request.json().catch(() => ({}))) as {
+      workshopDateIds?: string[];
       code?: string;
       type?: "percent" | "amount";
       percentOff?: number;
@@ -39,6 +43,9 @@ export async function POST(request: Request) {
     }
 
     const result = await createPromotionCode({
+      workshopDateIds: Array.isArray(body.workshopDateIds)
+        ? body.workshopDateIds.filter((id): id is string => typeof id === "string")
+        : undefined,
       code: body.code,
       type: body.type,
       percentOff: body.percentOff,

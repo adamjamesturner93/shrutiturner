@@ -31,6 +31,23 @@ export function AdminBusiness() {
   >([]);
   const [newPriceKey, setNewPriceKey] = useState("membership_movewell_monthly");
   const [newPriceAmount, setNewPriceAmount] = useState("3500");
+  const [workshops, setWorkshops] = useState<
+    Array<{ id: string; retreatTitleSnapshot: string; startsAt: string }>
+  >([]);
+  const [discountWorkshopIds, setDiscountWorkshopIds] = useState<string[]>([]);
+  const [discountScope, setDiscountScope] = useState("workshops");
+  const [discountExpiry, setDiscountExpiry] = useState("");
+  const [discountLimit, setDiscountLimit] = useState("");
+  const [discountError, setDiscountError] = useState("");
+  useEffect(() => {
+    if (activeTab === "discounts")
+      void fetch("/api/admin/business/discounts?workshops=1")
+        .then(async (response) => {
+          if (!response.ok) throw new Error();
+          setWorkshops(await response.json());
+        })
+        .catch(() => setDiscountError("Unable to load workshop choices. Please reload."));
+  }, [activeTab]);
   const [newCode, setNewCode] = useState("");
   const [newCodeType, setNewCodeType] = useState<"percent" | "amount">("percent");
   const [newCodeValue, setNewCodeValue] = useState("10");
@@ -674,13 +691,72 @@ export function AdminBusiness() {
             <Card>
               <CardContent className="space-y-4 pt-6">
                 <h2 className="text-brand-dark text-lg">Discount Codes</h2>
+                <label className="block">
+                  Applies to
+                  <select
+                    className="ml-2 rounded border p-2"
+                    value={discountScope}
+                    onChange={(e) => setDiscountScope(e.target.value)}
+                  >
+                    <option value="workshops">Selected workshops</option>
+                    <option value="general">General purchases</option>
+                  </select>
+                </label>
+                {discountScope === "workshops" && (
+                  <fieldset className="space-y-2 rounded border p-3">
+                    <legend>Eligible workshops</legend>
+                    {workshops.map((workshop) => (
+                      <label key={workshop.id} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={discountWorkshopIds.includes(workshop.id)}
+                          onChange={(e) =>
+                            setDiscountWorkshopIds((ids) =>
+                              e.target.checked
+                                ? [...ids, workshop.id]
+                                : ids.filter((id) => id !== workshop.id)
+                            )
+                          }
+                        />
+                        {workshop.retreatTitleSnapshot} ·{" "}
+                        {new Date(workshop.startsAt).toLocaleDateString("en-GB")}
+                      </label>
+                    ))}
+                  </fieldset>
+                )}
+                <div className="flex flex-wrap gap-3">
+                  <label>
+                    Expires (optional)
+                    <Input
+                      type="datetime-local"
+                      value={discountExpiry}
+                      onChange={(e) => setDiscountExpiry(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Maximum uses (optional)
+                    <Input
+                      type="number"
+                      min="1"
+                      value={discountLimit}
+                      onChange={(e) => setDiscountLimit(e.target.value)}
+                    />
+                  </label>
+                </div>
+                {discountError && (
+                  <p role="alert" className="text-red-700">
+                    {discountError}
+                  </p>
+                )}
                 <div className="grid gap-2 sm:grid-cols-[1fr_120px_120px_auto]">
                   <Input
+                    aria-label="Discount code"
                     value={newCode}
                     onChange={(e) => setNewCode(e.target.value)}
                     placeholder="Code"
                   />
                   <select
+                    aria-label="Discount type"
                     value={newCodeType}
                     onChange={(e) => setNewCodeType(e.target.value as "percent" | "amount")}
                     className="border-border bg-background rounded-md border px-3 py-2 text-sm"
@@ -689,6 +765,9 @@ export function AdminBusiness() {
                     <option value="amount">Amount</option>
                   </select>
                   <Input
+                    aria-label={
+                      newCodeType === "percent" ? "Percentage off" : "Amount off in pence"
+                    }
                     value={newCodeValue}
                     onChange={(e) => setNewCodeValue(e.target.value)}
                     placeholder={newCodeType === "percent" ? "10" : "1000"}
@@ -707,12 +786,30 @@ export function AdminBusiness() {
                               type: "amount",
                               amountOffPence: Number(newCodeValue || 0),
                             };
+                      if (discountScope === "workshops" && !discountWorkshopIds.length) {
+                        setDiscountError("Select at least one workshop.");
+                        return;
+                      }
+                      setDiscountError("");
                       const res = await fetch("/api/admin/business/discounts", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(payload),
+                        body: JSON.stringify({
+                          ...payload,
+                          workshopDateIds:
+                            discountScope === "workshops" ? discountWorkshopIds : undefined,
+                          expiresAt: discountExpiry
+                            ? new Date(discountExpiry).toISOString()
+                            : undefined,
+                          maxRedemptions: discountLimit ? Number(discountLimit) : undefined,
+                        }),
                       });
-                      if (!res.ok) return;
+                      if (!res.ok) {
+                        setDiscountError(
+                          "Unable to create this code. Check its value, expiry and name, then try again."
+                        );
+                        return;
+                      }
                       const refreshed = await fetch("/api/admin/business/discounts", {
                         cache: "no-store",
                       });

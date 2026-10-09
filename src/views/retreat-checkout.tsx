@@ -1400,6 +1400,15 @@ export function RetreatCheckoutPage({
                     </div>
                   ) : null}
 
+                  {requiresFullPayment &&
+                    ["online_workshop", "in_person_workshop"].includes(
+                      selectedDate.eventKind || ""
+                    ) && (
+                      <p className="text-muted-foreground text-sm">
+                        Have a discount code? Enter it securely on the next payment page.
+                      </p>
+                    )}
+
                   <div className="rounded-[1.5rem] border p-4 [&>div]:mt-3 [&>label]:mt-3">
                     <h2 className="text-2xl">
                       {isOnlineExperience ? "Before you book" : "Agreements"}

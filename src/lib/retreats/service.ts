@@ -1,3 +1,5 @@
+import { getWorkshopPayment } from "./workshop-payment";
+import { workshopStripeProduct } from "./workshop-discounts";
 import { getPhysicalPoolInventory } from "./physical-inventory-service";
 import {
   AcceptanceType,
@@ -1709,6 +1711,10 @@ export async function createRetreatCheckout(input: {
     depositRule,
     currency: retreatDate.currency,
   });
+  const workshopProductId =
+    requiresFullPayment && ["online_workshop", "in_person_workshop"].includes(retreatDate.eventKind)
+      ? await workshopStripeProduct(retreatDate.id)
+      : null;
   const addonSelections = (input.addons || []).map((selection) => ({
     addonId: normalizeText(selection.addonId, 120),
     quantity: Math.trunc(selection.quantity),
@@ -1764,7 +1770,7 @@ export async function createRetreatCheckout(input: {
     }
 
     const giftPayInFullDiscountPence = 0;
-    const giftTotalPence = Math.max(quote.totalPricePence - giftPayInFullDiscountPence, 0);
+    const giftTotalPence = Math.max(quote.totalPricePence, 0);
     const giftNonRefundableAmountPence = calculateRetreatNonRefundableAmount({
       retreatType: parseRetreatType(retreatDate.retreatType),
       totalPence: giftTotalPence,
@@ -1797,6 +1803,7 @@ export async function createRetreatCheckout(input: {
           productSlug: input.retreatSlug,
           productTitleSnapshot: `${retreatDate.retreatTitleSnapshot} - ${roomOption.label}`,
           currency: retreatDate.currency,
+          originalTotalPence: workshopProductId ? giftTotalPence : undefined,
           totalPaidPence: giftTotalPence,
           nonRefundableAmountPence: giftNonRefundableAmountPence,
           retreatDateId: retreatDate.id,
@@ -1822,24 +1829,37 @@ export async function createRetreatCheckout(input: {
       success_url: successUrl,
       cancel_url: cancelUrl,
       billing_address_collection: "auto",
-      line_items: [
-        {
-          price_data: {
-            currency: retreatDate.currency.toLowerCase(),
-            product_data: {
-              name: `${retreatDate.retreatTitleSnapshot} gift`,
-              description: `${roomOption.label} · ${formatDateRange(
-                retreatDate.startsAt,
-                retreatDate.endsAt
-              )}`,
+      allow_promotion_codes: workshopProductId ? true : undefined,
+      line_items: workshopProductId
+        ? [
+            {
+              price_data: {
+                currency: retreatDate.currency.toLowerCase(),
+                product: workshopProductId,
+                unit_amount: quote.totalPricePence,
+              },
+              quantity: 1,
             },
-            unit_amount: giftTotalPence,
-          },
-          quantity: 1,
-        },
-      ],
+          ]
+        : [
+            {
+              price_data: {
+                currency: retreatDate.currency.toLowerCase(),
+                product_data: {
+                  name: `${retreatDate.retreatTitleSnapshot} gift`,
+                  description: `${roomOption.label} · ${formatDateRange(
+                    retreatDate.startsAt,
+                    retreatDate.endsAt
+                  )}`,
+                },
+                unit_amount: giftTotalPence,
+              },
+              quantity: 1,
+            },
+          ],
       metadata: {
         kind: "retreat_gift",
+        ...(workshopProductId ? { workshopDiscountVersion: "2" } : {}),
         giftPurchaseId: gift.id,
         retreatSlug: input.retreatSlug,
         retreatDateId: retreatDate.externalDateId,
@@ -1887,7 +1907,7 @@ export async function createRetreatCheckout(input: {
   }
 
   const payInFullDiscountPence = 0;
-  const payableAccommodationPence = Math.max(0, quote.totalPricePence - payInFullDiscountPence);
+  const payableAccommodationPence = Math.max(0, quote.totalPricePence);
   const payableTotalPence = payableAccommodationPence + addonTotalPence;
   const accommodationDepositPence = Math.min(quote.depositPence, payableAccommodationPence);
   const retreatType = parseRetreatType(retreatDate.retreatType);
@@ -1993,6 +2013,7 @@ export async function createRetreatCheckout(input: {
                 roomOptionId: roomOption.id,
               }
             : undefined,
+        originalTotalPence: workshopProductId ? payableTotalPence : undefined,
         totalPricePence: payableTotalPence,
         payInFullDiscountPence,
         nonRefundableAmountPence,
@@ -2111,21 +2132,45 @@ export async function createRetreatCheckout(input: {
     success_url: successUrl,
     cancel_url: cancelUrl,
     billing_address_collection: "auto",
-    line_items: [
-      {
-        price_data: {
-          currency: retreatDate.currency.toLowerCase(),
-          product_data: {
-            name: `${retreatDate.retreatTitleSnapshot} ${initialInstalment.label.toLowerCase()}`,
-            description: `${roomOption.label}${selectedAddons.length ? ` + ${selectedAddons.length} extra${selectedAddons.length === 1 ? "" : "s"}` : ""} · ${formatDateRange(retreatDate.startsAt, retreatDate.endsAt)}`,
+    allow_promotion_codes: workshopProductId ? true : undefined,
+    line_items: workshopProductId
+      ? [
+          {
+            price_data: {
+              currency: retreatDate.currency.toLowerCase(),
+              product: workshopProductId,
+              unit_amount: quote.totalPricePence,
+            },
+            quantity: 1,
           },
-          unit_amount: initialInstalment.amountPence,
-        },
-        quantity: 1,
-      },
-    ],
+          ...selectedAddons.map((selection) => ({
+            price_data: {
+              currency: retreatDate.currency.toLowerCase(),
+              product_data: {
+                name: selection.addon.name,
+                metadata: { addonId: selection.addon.id },
+              },
+              unit_amount: selection.totalPricePence,
+            },
+            quantity: 1,
+          })),
+        ]
+      : [
+          {
+            price_data: {
+              currency: retreatDate.currency.toLowerCase(),
+              product_data: {
+                name: `${retreatDate.retreatTitleSnapshot} ${initialInstalment.label.toLowerCase()}`,
+                description: `${roomOption.label}${selectedAddons.length ? ` + ${selectedAddons.length} extra${selectedAddons.length === 1 ? "" : "s"}` : ""} · ${formatDateRange(retreatDate.startsAt, retreatDate.endsAt)}`,
+              },
+              unit_amount: initialInstalment.amountPence,
+            },
+            quantity: 1,
+          },
+        ],
     metadata: {
       kind: "retreat_instalment",
+      ...(workshopProductId ? { workshopDiscountVersion: "2" } : {}),
       bookingId: booking.id,
       instalmentSequence: String(initialInstalment.sequence),
       retreatSlug: input.retreatSlug,
@@ -2377,14 +2422,48 @@ export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.S
 
   const booking = await db.retreatBooking.findUnique({
     where: { id: bookingId },
-    include: { retreatDate: true },
+    include: { retreatDate: true, items: true },
   });
   if (!booking) return false;
+  const workshopPayment =
+    session.metadata?.workshopDiscountVersion === "2"
+      ? await getWorkshopPayment({
+          sessionId: session.id,
+          expectedSessionId: booking.stripeDepositSessionId,
+          reference: { bookingId },
+          currency: booking.currency,
+          productId: booking.retreatDate.stripeWorkshopProductId,
+          originalTotalPence: booking.originalTotalPence ?? booking.totalPricePence,
+          items: booking.items.map((item) => ({
+            id: item.id,
+            addonId: item.addonId,
+            originalPence: item.unitPricePence * item.quantity,
+          })),
+        })
+      : null;
+  const workshopRefundPolicy = workshopPayment
+    ? getRetreatRefundPolicySnapshot({
+        retreatType: parseRetreatType(booking.retreatDate.retreatType),
+        totalPence: workshopPayment.totalPence,
+        depositPence: 0,
+        startsAt: booking.retreatDate.startsAt,
+      })
+    : null;
+
+  if (
+    !workshopPayment &&
+    booking.stripePromotionCodeId &&
+    (session.id !== booking.stripeDepositSessionId ||
+      session.amount_total !== booking.totalPricePence ||
+      !["paid", "no_payment_required"].includes(session.payment_status))
+  )
+    throw new Error("WORKSHOP_PAYMENT_MISMATCH");
 
   const paymentIntentId =
-    typeof session.payment_intent === "string"
+    workshopPayment?.paymentIntentId ||
+    (typeof session.payment_intent === "string"
       ? session.payment_intent
-      : session.payment_intent?.id;
+      : session.payment_intent?.id);
 
   if (kind === "retreat_instalment") {
     const instalmentSequence = Number(session.metadata?.instalmentSequence || "1");
@@ -2399,11 +2478,20 @@ export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.S
         },
         data: {
           status: RetreatInstalmentStatus.paid,
+          ...(workshopPayment ? { amountPence: workshopPayment.totalPence } : {}),
           paidAt,
           stripePaymentIntentId: paymentIntentId || undefined,
         },
       });
       if (claimed.count === 0) return false;
+      if (workshopPayment) {
+        for (const item of workshopPayment.items) {
+          await tx.retreatBookingItem.update({
+            where: { id: item.id },
+            data: { totalPricePence: item.totalPence },
+          });
+        }
+      }
 
       const instalments = await tx.retreatBookingInstalment.findMany({
         where: { bookingId: booking.id },
@@ -2427,7 +2515,9 @@ export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.S
         .reduce((sum, instalment) => sum + instalment.amountPence, 0);
       const accountedDepositPaidPence = fullPaymentPaidPence
         ? Math.min(
-            booking.nonRefundableAmountPence || booking.depositAmountPence,
+            workshopRefundPolicy
+              ? workshopRefundPolicy.nonRefundableAmountPence
+              : booking.nonRefundableAmountPence || booking.depositAmountPence,
             fullPaymentPaidPence
           )
         : depositPaidPence;
@@ -2443,6 +2533,19 @@ export async function processRetreatCheckoutCompleted(session: Stripe.Checkout.S
       await tx.retreatBooking.update({
         where: { id: booking.id },
         data: {
+          ...(workshopPayment && workshopRefundPolicy
+            ? {
+                totalPricePence: workshopPayment.totalPence,
+                depositAmountPence: workshopPayment.totalPence,
+                balanceAmountPence: 0,
+                originalTotalPence: workshopPayment.originalTotalPence,
+                promotionDiscountPence: workshopPayment.promotionDiscountPence,
+                promotionCodeSnapshot: workshopPayment.promotionCodeSnapshot,
+                stripePromotionCodeId: workshopPayment.stripePromotionCodeId,
+                nonRefundableAmountPence: workshopRefundPolicy.nonRefundableAmountPence,
+                refundPolicySnapshotJson: toPrismaJson(workshopRefundPolicy),
+              }
+            : {}),
           paymentStatus: allPaid
             ? RetreatPaymentStatus.paid_in_full
             : nonInitialPaymentMade
