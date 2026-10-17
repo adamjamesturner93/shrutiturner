@@ -19,11 +19,10 @@ describe("retreat Markdown", () => {
 
   it("renders each schedule activity as an icon-led list item", () => {
     const html = renderToStaticMarkup(
-      createElement(
-        MarkdownContent,
-        { activityList: true },
-        "- Arrive and settle in\n- **Gentle movement**\n- Dinner together"
-      )
+      MarkdownContent({
+        activityList: true,
+        children: "- Arrive and settle in\n- **Gentle movement**\n- Dinner together",
+      })
     );
     expect(html.match(/<li /g)).toHaveLength(3);
     expect(html.match(/aria-hidden="true"/g)).toHaveLength(3);

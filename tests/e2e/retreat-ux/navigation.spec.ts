@@ -40,6 +40,10 @@ test("illustrated menu, section links and review controls work across screen siz
   );
   await page.goto(`${base}/retreats/local-powis-room-review`);
   await expect(page.locator("#booking")).toBeAttached();
+  await expect(
+    page.locator("#stay").locator("..").getByTitle("Map showing Powis House")
+  ).toHaveCount(1);
+  await page.screenshot({ path: testInfo.outputPath("retreat-hero.png"), animations: "disabled" });
   const mobile = testInfo.project.name === "mobile";
   if (mobile) await page.getByRole("button", { name: "Open menu", exact: true }).click();
   const trigger = page.locator("header summary").filter({ visible: true });
@@ -114,6 +118,16 @@ test("catalogue separates retreats and workshops with shared guest reviews", asy
   ).toBeVisible();
   await expect(page.locator("#retreats")).toContainText("Powis House");
   await expect(page.locator("#workshops")).not.toContainText("Powis House");
+  if (
+    testInfo.project.name === "desktop" &&
+    (await page.locator("#retreats article").count()) > 1
+  ) {
+    const cards = page.locator("#retreats article");
+    const first = await cards.nth(0).boundingBox();
+    const second = await cards.nth(1).boundingBox();
+    expect(Math.abs(first!.y - second!.y)).toBeLessThan(2);
+    expect(second!.x).toBeGreaterThan(first!.x);
+  }
   if (
     testInfo.project.name === "desktop" &&
     (await page.locator("#workshops article").count()) === 1

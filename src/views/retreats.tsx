@@ -224,9 +224,7 @@ export function RetreatsPage({ retreats, faqs, testimonials = [] }: RetreatsPage
 
           <div
             className={
-              group.id === "retreats" || group.cards.length === 1
-                ? "mt-10 grid gap-7"
-                : "mt-10 grid gap-7 sm:grid-cols-2 xl:grid-cols-3"
+              group.cards.length === 1 ? "mt-10 grid gap-7" : "mt-10 grid gap-7 md:grid-cols-2"
             }
           >
             {group.cards.map(({ retreat, date }) => {
@@ -248,10 +246,10 @@ export function RetreatsPage({ retreats, faqs, testimonials = [] }: RetreatsPage
                 <article
                   key={`${retreat.id}-${date.id}`}
                   aria-labelledby={`retreat-title-${retreat.slug}-${date.id}`}
-                  className={`border-brand-dark/10 bg-background flex h-full flex-col overflow-hidden rounded-[1.5rem] border shadow-[0_22px_55px_rgba(46,31,51,0.06)] ${group.id === "retreats" || group.cards.length === 1 ? "md:grid md:grid-cols-2" : ""}`}
+                  className={`border-brand-dark/10 bg-background flex h-full flex-col overflow-hidden rounded-[1.5rem] border shadow-[0_22px_55px_rgba(46,31,51,0.06)] ${group.cards.length === 1 ? "md:grid md:grid-cols-2" : ""}`}
                 >
                   <div
-                    className={`relative aspect-[16/10] shrink-0 overflow-hidden ${group.id === "retreats" || group.cards.length === 1 ? "md:aspect-auto md:h-[26rem]" : ""}`}
+                    className={`relative aspect-[16/9] shrink-0 overflow-hidden ${group.cards.length === 1 ? "md:aspect-auto md:h-[26rem]" : ""}`}
                   >
                     <ImageWithFallback
                       src={getRetreatCardImageSrc(retreat)}

@@ -253,9 +253,6 @@ export function RetreatDetailPage({
   const selectedTimezone = selectedDate?.timezone || "Europe/London";
   const selectedVenue = selectedDate?.venue || retreat.venue;
   const selectedLocation = selectedDate?.location || selectedDate?.venueName || retreat.location;
-  const bestForCopy =
-    retreat.audienceDescription?.trim() ||
-    "People who want space to move, learn and explore what works for them, with support and choice built in.";
   const checkoutHref =
     selectedDate && selectedRoom
       ? `/retreats/${retreat.slug}/checkout?date=${selectedDate.id}&room=${selectedRoom.id}&guests=${selectedGuestCount}${requiresBedPreference(selectedRoom, selectedGuestCount) ? `&beds=${bedPreference}` : ""}`
@@ -412,6 +409,39 @@ export function RetreatDetailPage({
     );
   };
 
+  const venueTravel =
+    selectedVenue && !isOnlineExperience ? (
+      <div className="mt-8 border-t pt-8">
+        <h3 className="text-2xl">Getting there</h3>
+        <RetreatVenueMap venue={selectedVenue} />
+        <MarkdownContent className="text-muted-foreground mt-4 leading-relaxed">
+          {selectedVenue.arrivalInformation || selectedVenue.travelInformation || ""}
+        </MarkdownContent>
+        <div className="text-muted-foreground mt-5 grid gap-5 text-sm leading-relaxed md:grid-cols-2">
+          {selectedVenue.travelByTrain ? (
+            <div>
+              <h3 className="text-foreground text-base">By train</h3>
+              <MarkdownContent className="mt-1">{selectedVenue.travelByTrain}</MarkdownContent>
+            </div>
+          ) : null}
+          {selectedVenue.travelByCar ? (
+            <div>
+              <h3 className="text-foreground text-base">By car</h3>
+              <MarkdownContent className="mt-1">{selectedVenue.travelByCar}</MarkdownContent>
+            </div>
+          ) : null}
+          {selectedVenue.localTransferInformation ? (
+            <div className="md:col-span-2">
+              <h3 className="text-foreground text-base">Local transfer</h3>
+              <MarkdownContent className="mt-1">
+                {selectedVenue.localTransferInformation}
+              </MarkdownContent>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    ) : null;
+
   return (
     <Layout>
       <SEO
@@ -420,125 +450,79 @@ export function RetreatDetailPage({
         canonicalUrl={`https://shrutiturner.co.uk/retreats/${retreat.slug}`}
       />
 
-      <section className="marketing-grid overflow-hidden px-4 py-12 text-white md:py-16">
+      <section className="bg-brand-dark relative isolate overflow-hidden px-4 py-10 text-white md:py-14">
+        <ImageWithFallback
+          src={heroImageSrc}
+          alt=""
+          preload
+          sizes="100vw"
+          className="absolute inset-0 -z-20 h-full w-full object-cover"
+          style={{
+            objectPosition: getRetreatCardImagePosition(heroImageSrc, retreat.imageFocalPoint),
+          }}
+        />
+        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-black/60" />
         <div className="container mx-auto max-w-7xl">
-          <div className="grid items-center gap-8 lg:grid-cols-[0.92fr_1.08fr] lg:gap-10">
-            <div>
-              <PublicBreadcrumbs
-                inverted
-                className="mb-7"
-                items={[
-                  { name: "Home", href: "/" },
-                  { name: "Retreats", href: "/retreats" },
-                  { name: retreat.title, href: `/retreats/${retreat.slug}` },
-                ]}
-              />
-              <div className="text-brand-accent-light inline-flex items-center gap-2 text-sm">
-                <MapPin className="h-4 w-4" />
-                {selectedLocation}
-              </div>
-              <h1 className="mt-5 text-4xl leading-[1.08] tracking-[-0.03em] md:text-5xl">
-                {retreat.title}
-              </h1>
-              <p className="text-brand-accent-light mt-4 max-w-3xl text-xl leading-relaxed">
-                {retreat.subtitle}
-              </p>
-              <p className="text-brand-white/78 mt-5 max-w-4xl text-base leading-relaxed md:text-lg">
-                {retreat.shortDescription}
-              </p>
-              <div className="mt-7 flex flex-wrap gap-3">
-                <span className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 rounded-full border px-4 py-2 text-sm">
-                  {priceSummary.isFromPrice ? "From " : ""}
-                  {formatMoney(priceSummary.lowestPricePence, retreat.currency)}
-                </span>
-                {depositFromPence > 0 && !isFullPaymentOnly ? (
-                  <span className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 rounded-full border px-4 py-2 text-sm">
-                    Deposit from {formatMoney(depositFromPence, retreat.currency)}
-                  </span>
-                ) : null}
-                {selectedDate ? (
-                  <span className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 rounded-full border px-4 py-2 text-sm">
-                    {formatRetreatDateTimeRange(
-                      selectedDate.startDate,
-                      selectedDate.endDate,
-                      selectedDate.timezone
-                    )}
-                  </span>
-                ) : null}
-                {selectedDate && isLiveOnlineExperience ? (
-                  <span className="border-brand-white/12 bg-brand-white/8 text-brand-white/84 rounded-full border px-4 py-2 text-sm">
-                    Times shown in {selectedTimezone}
-                  </span>
-                ) : null}
-              </div>
-              <div className="mt-7 flex flex-col gap-4 sm:flex-row">
-                <Button
-                  asChild
-                  size="lg"
-                  className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
-                >
-                  <a href="#booking">{hasMultipleDates ? "Choose Your Date" : "Book your place"}</a>
-                </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="border-brand-white/25 bg-brand-white/6 text-brand-white hover:bg-brand-white/12 hover:text-brand-white focus-visible:text-brand-white focus-visible:ring-brand-accent-light"
-                >
-                  <Link href="/contact">Ask a Question</Link>
-                </Button>
-              </div>
+          <PublicBreadcrumbs
+            inverted
+            items={[
+              { name: "Home", href: "/" },
+              { name: "Retreats", href: "/retreats" },
+              { name: retreat.title, href: `/retreats/${retreat.slug}` },
+            ]}
+          />
+          <div className="mx-auto flex min-h-[30rem] max-w-5xl flex-col justify-center py-12 text-center md:min-h-[34rem]">
+            <div className="text-brand-accent-light inline-flex items-center justify-center gap-2 text-sm">
+              <MapPin className="h-4 w-4" />
+              {selectedLocation}
             </div>
-
-            <div className="border-brand-white/10 bg-brand-white/8 overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
-              <div className="grid gap-3 md:grid-cols-[1.08fr_0.92fr]">
-                <div className="overflow-hidden rounded-[1.45rem]">
-                  <ImageWithFallback
-                    src={heroImageSrc}
-                    alt={retreat.imageAlt || retreat.title}
-                    className="h-full min-h-[20rem] w-full object-cover"
-                    preload
-                    style={{
-                      objectPosition: getRetreatCardImagePosition(
-                        heroImageSrc,
-                        retreat.imageFocalPoint
-                      ),
-                    }}
-                    sizes="(max-width: 1024px) 100vw, 48vw"
-                  />
-                </div>
-                <div className="grid gap-3">
-                  {retreat.atmosphereDescription ? (
-                    <div className="bg-brand-white/10 rounded-[1.25rem] p-4 backdrop-blur-sm">
-                      <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
-                        Atmosphere
-                      </p>
-                      <MarkdownContent className="text-brand-white/84 mt-2 text-sm leading-relaxed">
-                        {retreat.atmosphereDescription}
-                      </MarkdownContent>
-                    </div>
-                  ) : null}
-                  <div className="bg-brand-accent-light/12 rounded-[1.25rem] p-4 backdrop-blur-sm">
-                    <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
-                      Best for
-                    </p>
-                    <p className="text-brand-white/84 mt-2 text-sm leading-relaxed">
-                      {bestForCopy}
-                    </p>
-                  </div>
-                  {hasEarlyBirdPricing ? (
-                    <div className="bg-brand-white/10 rounded-[1.25rem] p-4 backdrop-blur-sm">
-                      <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
-                        Early bird
-                      </p>
-                      <p className="text-brand-white/84 mt-2 text-sm leading-relaxed">
-                        Available until{" "}
-                        {fmtDate(earlyBirdSummary?.endsAt || retreat.earlyBirdDeadline)}.
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
+            <h1 className="mx-auto mt-5 max-w-4xl text-4xl leading-[1.08] tracking-[-0.03em] sm:text-5xl lg:text-6xl">
+              {retreat.title}
+            </h1>
+            <p className="text-brand-accent-light mx-auto mt-4 max-w-3xl text-xl leading-relaxed">
+              {retreat.subtitle}
+            </p>
+            <div className="mt-7 flex flex-wrap justify-center gap-3">
+              <span className="border-brand-white/12 text-brand-white/84 rounded-full border bg-black/35 px-4 py-2 text-sm">
+                {priceSummary.isFromPrice ? "From " : ""}
+                {formatMoney(priceSummary.lowestPricePence, retreat.currency)}
+              </span>
+              {depositFromPence > 0 && !isFullPaymentOnly ? (
+                <span className="border-brand-white/12 text-brand-white/84 rounded-full border bg-black/35 px-4 py-2 text-sm">
+                  Deposit from {formatMoney(depositFromPence, retreat.currency)}
+                </span>
+              ) : null}
+              {selectedDate ? (
+                <span className="border-brand-white/12 text-brand-white/84 rounded-full border bg-black/35 px-4 py-2 text-sm">
+                  {formatRetreatDateTimeRange(
+                    selectedDate.startDate,
+                    selectedDate.endDate,
+                    selectedDate.timezone
+                  )}
+                </span>
+              ) : null}
+              {selectedDate && isLiveOnlineExperience ? (
+                <span className="border-brand-white/12 text-brand-white/84 rounded-full border bg-black/35 px-4 py-2 text-sm">
+                  Times shown in {selectedTimezone}
+                </span>
+              ) : null}
+            </div>
+            <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
+              <Button
+                asChild
+                size="lg"
+                className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90"
+              >
+                <a href="#booking">{hasMultipleDates ? "Choose Your Date" : "Book your place"}</a>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="border-brand-white/25 text-brand-white hover:bg-brand-white/12 hover:text-brand-white focus-visible:text-brand-white focus-visible:ring-brand-accent-light bg-black/35"
+              >
+                <Link href="/contact">Ask a Question</Link>
+              </Button>
             </div>
           </div>
         </div>
@@ -557,7 +541,7 @@ export function RetreatDetailPage({
           </a>
           {requiresAccommodation && retreat.accommodation ? (
             <a className="py-2 underline-offset-4 hover:underline" href="#stay">
-              Stay &amp; food
+              Stay &amp; travel
             </a>
           ) : null}
           <a className="py-2 underline-offset-4 hover:underline" href="#rhythm">
@@ -580,11 +564,21 @@ export function RetreatDetailPage({
               <MarkdownContent className="text-muted-foreground leading-relaxed">
                 {retreat.fullDescription}
               </MarkdownContent>
+              {retreat.atmosphereDescription && (
+                <p className="text-muted-foreground mt-5 border-t pt-5 leading-relaxed">
+                  {retreat.atmosphereDescription}
+                </p>
+              )}
             </div>
 
-            {retreat.suitableFor.length > 0 ? (
+            {retreat.suitableFor.length > 0 || retreat.audienceDescription ? (
               <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
                 <h2 className="text-3xl md:text-4xl">Who it&apos;s for</h2>
+                {retreat.audienceDescription && (
+                  <p className="text-muted-foreground mt-4 leading-relaxed">
+                    {retreat.audienceDescription}
+                  </p>
+                )}
                 <ul className="mt-6 space-y-4">
                   {retreat.suitableFor.map((item) => (
                     <li key={item} className="flex items-start gap-3">
@@ -666,6 +660,7 @@ export function RetreatDetailPage({
                 <div className="mt-6">
                   <RetreatGallery images={retreat.gallery || []} />
                 </div>
+                {venueTravel}
               </div>
             ) : null}
             {retreat.foodAndDrinkDescription && !isOnlineExperience ? (
@@ -752,45 +747,12 @@ export function RetreatDetailPage({
               </div>
             ) : null}
 
-            {selectedVenue && !isOnlineExperience ? (
-              <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
-                <h2 className="text-3xl md:text-4xl">Getting there</h2>
-                <RetreatVenueMap venue={selectedVenue} />
-                <MarkdownContent className="text-muted-foreground mt-4 leading-relaxed">
-                  {selectedVenue.arrivalInformation || selectedVenue.travelInformation || ""}
-                </MarkdownContent>
-                <div className="text-muted-foreground mt-5 grid gap-5 text-sm leading-relaxed md:grid-cols-2">
-                  {selectedVenue.travelByTrain ? (
-                    <div>
-                      <h3 className="text-foreground text-base">By train</h3>
-                      <MarkdownContent className="mt-1">
-                        {selectedVenue.travelByTrain}
-                      </MarkdownContent>
-                    </div>
-                  ) : null}
-                  {selectedVenue.travelByCar ? (
-                    <div>
-                      <h3 className="text-foreground text-base">By car</h3>
-                      <MarkdownContent className="mt-1">
-                        {selectedVenue.travelByCar}
-                      </MarkdownContent>
-                    </div>
-                  ) : null}
-                  {selectedVenue.localTransferInformation ? (
-                    <div className="md:col-span-2">
-                      <h3 className="text-foreground text-base">Local transfer</h3>
-                      <MarkdownContent className="mt-1">
-                        {selectedVenue.localTransferInformation}
-                      </MarkdownContent>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
-
-            {!requiresAccommodation || !retreat.accommodation ? (
-              <RetreatGallery images={retreat.gallery || []} />
-            ) : null}
+            {(!requiresAccommodation || !retreat.accommodation) && (
+              <>
+                {venueTravel}
+                <RetreatGallery images={retreat.gallery || []} />
+              </>
+            )}
 
             {otherRetreatsAtVenue.length > 0 ? (
               <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">

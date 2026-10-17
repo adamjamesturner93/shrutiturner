@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Pause, Play, Quote } from "lucide-react";
+import { ArrowLeft, ArrowRight, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { TestimonialContent } from "@/lib/content/types";
 
@@ -15,7 +15,10 @@ export function TestimonialQuotes({
   const id = useId();
   const track = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
-  const [interacting, setInteracting] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [touching, setTouching] = useState(false);
+  const interacting = hovered || focused || touching;
   const [reducedMotion, setReducedMotion] = useState(true);
   const quotes = testimonials.filter(
     (quote, index, all) =>
@@ -75,11 +78,11 @@ export function TestimonialQuotes({
     <section
       aria-labelledby={id}
       className="space-y-6"
-      onMouseEnter={() => setInteracting(true)}
-      onMouseLeave={() => setInteracting(false)}
-      onFocusCapture={() => setInteracting(true)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocusCapture={() => setFocused(true)}
       onBlurCapture={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setInteracting(false);
+        if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
       }}
     >
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -97,30 +100,17 @@ export function TestimonialQuotes({
               size="icon"
               aria-label="Previous review"
               onClick={() => {
-                setPaused(true);
                 move(-1);
               }}
             >
               <ArrowLeft />
             </Button>
-            {!reducedMotion ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                aria-label={paused ? "Play reviews" : "Pause reviews"}
-                onClick={() => setPaused(!paused)}
-              >
-                {paused ? <Play /> : <Pause />}
-              </Button>
-            ) : null}
             <Button
               type="button"
               variant="outline"
               size="icon"
               aria-label="Next review"
               onClick={() => {
-                setPaused(true);
                 move(1);
               }}
             >
@@ -129,13 +119,25 @@ export function TestimonialQuotes({
           </div>
         ) : null}
       </div>
+      <p id={`${id}-help`} className="sr-only">
+        Reviews pause on hover or focus. Press Space while focused here to stop or restart automatic
+        movement.
+      </p>
       <div
         ref={track}
         tabIndex={quotes.length > 1 ? 0 : undefined}
         role="region"
         aria-label="Guest reviews"
-        onTouchStart={() => setPaused(true)}
-        onWheel={() => setPaused(true)}
+        aria-describedby={`${id}-help`}
+        onTouchStart={() => setTouching(true)}
+        onTouchEnd={() => setTouching(false)}
+        onTouchCancel={() => setTouching(false)}
+        onKeyDown={(event) => {
+          if (event.key === " " && event.target === event.currentTarget) {
+            event.preventDefault();
+            setPaused((value) => !value);
+          }
+        }}
         className="focus-visible:outline-brand-accent relative flex gap-5 overflow-x-auto rounded-2xl px-6 pb-4 focus-visible:outline-2 md:px-10"
         style={
           quotes.length > 1

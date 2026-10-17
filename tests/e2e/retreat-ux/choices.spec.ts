@@ -123,8 +123,21 @@ test("grouped room choices and curated quotes remain accessible", async ({ page 
     /Powis%20House.*FK9%205PS/
   );
   await expect(page.getByTitle("Map showing Powis House")).toHaveAttribute("src", /FK9%205PS/);
-  await page.getByRole("button", { name: "Pause reviews" }).click();
-  await expect(page.getByRole("button", { name: "Play reviews" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Pause reviews|Play reviews/ })).toHaveCount(0);
+  await track.focus();
+  await page.keyboard.press("Space");
+  await friday.focus();
+  await page.mouse.move(1, 1);
+  const stopped = await track.evaluate((node) => node.scrollLeft);
+  await page.waitForTimeout(300);
+  expect(Math.abs((await track.evaluate((node) => node.scrollLeft)) - stopped)).toBeLessThan(2);
+  await track.focus();
+  await page.keyboard.press("Space");
+  await friday.focus();
+  await page.mouse.move(1, 1);
+  await track.scrollIntoViewIfNeeded();
+  const resumed = await track.evaluate((node) => node.scrollLeft);
+  await expect.poll(() => track.evaluate((node) => node.scrollLeft)).toBeGreaterThan(resumed + 2);
   await page.getByRole("button", { name: "Next review" }).click();
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(page.getByRole("button", { name: "Play reviews" })).toHaveCount(0);
