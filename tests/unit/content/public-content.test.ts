@@ -350,6 +350,7 @@ describe("Contentful public content mapping", () => {
     ]);
     expect(mocks.getEntries).toHaveBeenCalledWith("testimonial", {
       limit: 1000,
+      order: "sys.createdAt",
     });
   });
 

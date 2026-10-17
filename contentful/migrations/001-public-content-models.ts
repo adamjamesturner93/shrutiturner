@@ -371,12 +371,24 @@ export const PUBLIC_CONTENT_MODELS: ContentTypeDefinition[] = [
         validations: [{ size: { max: 120 } }],
       },
       {
-        id: "approvedPlacements",
+        id: "reviewAreas",
         name: "Approved display areas",
         type: "Array",
         items: {
           type: "Symbol",
-          validations: [{ in: ["Home", "Coaching", "Retreats General", "Retreat"] }],
+          validations: [{ in: ["Home", "Coaching", "Retreats & Workshops"] }],
+        },
+      },
+      {
+        id: "approvedPlacements",
+        name: "Legacy display areas (retained for compatibility)",
+        disabled: true,
+        type: "Array",
+        items: {
+          type: "Symbol",
+          validations: [
+            { in: ["Home", "Coaching", "Retreats & Workshops", "Retreats General", "Retreat"] },
+          ],
         },
       },
       { id: "featured", name: "Featured", type: "Boolean" },

@@ -87,28 +87,46 @@ describe("curated testimonial placements", () => {
       )
     ).toHaveLength(3);
   });
-  it("preserves overview reference order and applies approvals", async () => {
-    getEntries.mockResolvedValueOnce({
+  it("shares legacy retreat and event approvals without requiring curated selections", async () => {
+    getEntries.mockResolvedValue({
+      items: [
+        quote("one", ["retreats-overview"]),
+        quote("two", ["event-page"]),
+        quote("coach", ["coaching"]),
+      ].map((item) => ({ sys: { id: item.id }, fields: item })),
+    });
+    expect((await getRetreatOverviewTestimonials()).map((item) => item.id)).toEqual(["one", "two"]);
+    expect(getEntries).toHaveBeenCalledTimes(1);
+  });
+  it("uses explicit new approvals, including empty approvals, before legacy ones", async () => {
+    getEntries.mockResolvedValue({
       items: [
         {
+          sys: { id: "new" },
+          fields: { quote: "Review", authorName: "Guest", reviewAreas: ["Retreats & Workshops"] },
+        },
+        {
+          sys: { id: "removed" },
           fields: {
-            testimonials: [
-              { sys: { id: "two" } },
-              { sys: { id: "one" } },
-              { sys: { id: "event" } },
-            ],
+            quote: "Review",
+            authorName: "Guest",
+            reviewAreas: [],
+            approvedPlacements: ["Retreat"],
+          },
+        },
+        {
+          sys: { id: "coach" },
+          fields: {
+            quote: "Review",
+            authorName: "Client",
+            reviewAreas: ["Coaching"],
+            approvedPlacements: ["Retreat"],
           },
         },
       ],
     });
-    getEntries.mockResolvedValueOnce({
-      items: [
-        quote("one", ["retreats-overview"]),
-        quote("two", ["retreats-overview"]),
-        quote("event", ["event-page"]),
-      ].map((item) => ({ sys: { id: item.id }, fields: item })),
-    });
-    expect((await getRetreatOverviewTestimonials()).map((x) => x.id)).toEqual(["two", "one"]);
+    expect((await getRetreatOverviewTestimonials()).map((item) => item.id)).toEqual(["new"]);
+    expect((await getApprovedTestimonials("coaching")).map((item) => item.id)).toEqual(["coach"]);
   });
   it("returns no overview quotes when there is no curated selection", async () => {
     getEntries.mockResolvedValue({ items: [] });

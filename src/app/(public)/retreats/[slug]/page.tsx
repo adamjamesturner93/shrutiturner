@@ -57,7 +57,7 @@ async function RetreatContent({ params, searchParams }: RetreatPageProps) {
       <JsonLd data={createRetreatEventSchemas(retreat)} />
       <RetreatDetailPage
         key={`${slug}:${date || "default"}`}
-        testimonials={await getApprovedTestimonials("event-page", retreat.testimonialIds || [])}
+        testimonials={await getApprovedTestimonials("retreats-workshops")}
         retreat={retreat}
         initialDateId={date}
       />

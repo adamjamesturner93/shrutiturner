@@ -16,14 +16,21 @@ const { build } = bundlerRequire("esbuild") as {
 };
 
 test("grouped room choices and curated quotes remain accessible", async ({ page }) => {
+  await page.route("https://maps.google.com/**", (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: '<html lang="en"><title>Map fixture</title><body>Map</body></html>',
+    })
+  );
   const bundle = await build({
     stdin: {
       contents: `
         import React from 'react';
         import { createRoot } from 'react-dom/client';
         import { RetreatRoomChoices } from './src/components/retreat-room-choices';
-        import { TestimonialPicker } from './src/components/admin/testimonial-picker';
         import { TestimonialQuotes } from './src/components/testimonial-quotes';
+        import { RetreatSchedule } from './src/components/retreat-schedule';
+        import { RetreatVenueMap } from './src/components/retreat-venue-map';
         const base = {description:'Test room', type:'shared_twin', bookingUnit:'bed_space', guestsIncluded:1, capacity:2, availableSpots:2, normalPricePence:45000, bathroomType:'private'};
         const rooms = [
           {...base,id:'twin',label:'Twin',bedSetup:'fixed_twin'},
@@ -35,15 +42,17 @@ test("grouped room choices and curated quotes remain accessible", async ({ page 
         const quotes = [1,2,3,4].map(n => ({id:String(n),quote:'Fixture quote '+n,authorName:'Test author '+n,contextLabel:'Previous workshop attendee'}));
         function App() {
           const [room,setRoom] = React.useState(null);
-          const [ids,setIds] = React.useState([]);
+          const [showReviews,setShowReviews] = React.useState(false);
           const [guests,setGuests] = React.useState(1);
           const [bed,setBed] = React.useState("double");
           return <main className="mx-auto max-w-3xl space-y-8 p-6 text-brand-dark">
             <h1>Choose your room</h1>
             <RetreatRoomChoices options={rooms} selectedId={room?.id || ''} currency="GBP" guestCount={guests} onGuestCountChange={setGuests} bedPreference={bed} onBedPreferenceChange={setBed} onSelect={setRoom}/>
             <output aria-label="Selected booking option">{room?.id || 'Choose a room'}</output>
-            <TestimonialPicker available={quotes} selected={ids} onChange={setIds}/>
-            <TestimonialQuotes testimonials={ids.map(id => quotes.find(q => q.id === id))}/>
+            <button onClick={() => setShowReviews(!showReviews)}>Toggle reviews</button>
+            <TestimonialQuotes testimonials={showReviews ? quotes : []}/>
+            <RetreatSchedule markdown={['## Friday — Unwind','- Arrive and settle in','## Saturday — Explore','- Morning movement'].join(String.fromCharCode(10))}/>
+            <RetreatVenueMap venue={{name:"Powis House",slug:"powis",displayLocation:"Stirling",address:"Stirling, Scotland, FK9 5PS"}}/>
           </main>;
         }
         createRoot(document.getElementById('root')).render(<App/>);
@@ -71,6 +80,7 @@ test("grouped room choices and curated quotes remain accessible", async ({ page 
   await shared.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByLabel("Selected booking option")).toHaveText("twin");
+  await page.getByRole("button", { name: "Change room", exact: true }).click();
   await expect(page.getByRole("button", { name: /Shared room · Shared bathroom/ })).toContainText(
     "Sold out"
   );
@@ -81,20 +91,44 @@ test("grouped room choices and curated quotes remain accessible", async ({ page 
   await expect(page.getByRole("button", { name: /Twin beds/ })).toBeDisabled();
   await page.getByRole("button", { name: "King bed", exact: true }).click();
   await expect(page.getByLabel("Selected booking option")).toHaveText("private");
-  for (const n of [1, 2, 3])
-    await page.getByRole("button", { name: "Add testimonial by Test author " + n }).click();
-  await expect(
-    page.getByRole("button", { name: "Add testimonial by Test author 4" })
-  ).toBeDisabled();
-  await page.getByRole("button", { name: "Move testimonial 3 up" }).click();
+  await page.getByRole("button", { name: "Toggle reviews" }).click();
   const rendered = page.getByRole("region", { name: "What it’s like to join me" });
-  await expect(rendered.locator("figcaption")).toHaveText([
-    /Test author 1/,
-    /Test author 3/,
-    /Test author 2/,
-  ]);
-  await page.getByRole("button", { name: "Remove testimonial 2" }).click();
-  await expect(rendered.locator("figure")).toHaveCount(2);
+  await expect(rendered.locator("figure:not([aria-hidden])")).toHaveCount(4);
+  await expect(rendered.locator("figcaption").first()).toContainText("Previous workshop attendee");
+  const track = page.getByRole("region", { name: "Guest reviews" });
+  await track.scrollIntoViewIfNeeded();
+  await page.mouse.move(1, 1);
+  const beforeMovement = await track.evaluate((node) => node.scrollLeft);
+  await expect
+    .poll(() => track.evaluate((node) => node.scrollLeft))
+    .toBeGreaterThan(beforeMovement + 2);
+  await track.hover();
+  const hoverPosition = await track.evaluate((node) => node.scrollLeft);
+  await page.waitForTimeout(300);
+  expect(Math.abs((await track.evaluate((node) => node.scrollLeft)) - hoverPosition)).toBeLessThan(
+    2
+  );
+  const widthRatio = await track.evaluate(
+    (node) => node.clientWidth / (node.firstElementChild as HTMLElement).offsetWidth
+  );
+  expect(widthRatio).toBeGreaterThan(1.1);
+  expect(widthRatio).toBeLessThan(3);
+  const friday = page.locator("summary").filter({ hasText: "Friday — Unwind" });
+  await friday.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Arrive and settle in")).toBeVisible();
+  await expect(page.getByText("Morning movement")).not.toBeVisible();
+  await expect(page.getByRole("link", { name: /Get directions/ })).toHaveAttribute(
+    "href",
+    /Powis%20House.*FK9%205PS/
+  );
+  await expect(page.getByTitle("Map showing Powis House")).toHaveAttribute("src", /FK9%205PS/);
+  await page.getByRole("button", { name: "Pause reviews" }).click();
+  await expect(page.getByRole("button", { name: "Play reviews" })).toBeVisible();
+  await page.getByRole("button", { name: "Next review" }).click();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(page.getByRole("button", { name: "Play reviews" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Next review" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const audit = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])

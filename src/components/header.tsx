@@ -1,3 +1,4 @@
+import { RetreatNavigation } from "./retreat-navigation";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "./ui/button";
@@ -44,17 +45,21 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden items-center space-x-6 lg:flex" aria-label="Main navigation">
-          {navLinks.map((link) => (
-            <Link
-              key={link.path}
-              href={link.path}
-              className={`hover:text-primary transition-colors ${
-                isActive(link.path) ? "text-primary" : "text-foreground"
-              }`}
-            >
-              {link.label}
-            </Link>
-          ))}
+          {navLinks.map((link) =>
+            link.path === "/retreats" ? (
+              <RetreatNavigation key={link.path} />
+            ) : (
+              <Link
+                key={link.path}
+                href={link.path}
+                className={`hover:text-primary transition-colors ${
+                  isActive(link.path) ? "text-primary" : "text-foreground"
+                }`}
+              >
+                {link.label}
+              </Link>
+            )
+          )}
         </nav>
 
         <div className="hidden items-center space-x-3 lg:flex">
@@ -96,18 +101,22 @@ export function Header() {
       {mobileMenuOpen && (
         <div id="mobile-main-menu" className="bg-background border-t lg:hidden">
           <nav className="container mx-auto flex flex-col space-y-1 px-4 py-4">
-            {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                href={link.path}
-                onClick={() => setMobileMenuPath(null)}
-                className={`hover:bg-secondary block rounded-md px-3 py-2 transition-colors ${
-                  isActive(link.path) ? "text-primary bg-secondary" : "text-foreground"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) =>
+              link.path === "/retreats" ? (
+                <RetreatNavigation key={link.path} mobile />
+              ) : (
+                <Link
+                  key={link.path}
+                  href={link.path}
+                  onClick={() => setMobileMenuPath(null)}
+                  className={`hover:bg-secondary block rounded-md px-3 py-2 transition-colors ${
+                    isActive(link.path) ? "text-primary bg-secondary" : "text-foreground"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              )
+            )}
 
             <div className="flex flex-col space-y-2 border-t pt-4">
               {hydrated && isAuthenticated ? (

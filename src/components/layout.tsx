@@ -16,6 +16,7 @@ interface LayoutProps {
 
 const NO_POPUP_PATHS = [
   "/programmes",
+  "/retreats",
   "/blog",
   "/login",
   "/dashboard",

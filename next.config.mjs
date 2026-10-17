@@ -3,6 +3,8 @@ const nextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
   allowedDevOrigins: ["127.0.0.1", "localhost", "*.ngrok-free.app", "*.trycloudflare.com"],
   cacheComponents: true,
+  // Preserve existing Link prefetch behaviour during the Next 16.4 upgrade.
+  partialPrefetching: false,
   redirects() {
     // Programme discovery is paused. Keep payment confirmations and member access available.
     return [

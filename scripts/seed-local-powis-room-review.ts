@@ -1,6 +1,6 @@
 import { PrismaClient, Prisma } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { powisHouseRetreat } from "../contentful/seed/powis-house.ts";
+import content from "./fixtures/powis-review-content.json" with { type: "json" };
 
 // Local fixtures only. Keep existing bookings and never write to Contentful.
 const url = process.env.DATABASE_URL;
@@ -93,29 +93,6 @@ try {
             update: {},
           });
       }
-      const content = {
-        schemaVersion: 1,
-        title: "Powis House — room selection test",
-        subtitle: "A weekend of movement and rest in Stirling",
-        shortDescription: powisHouseRetreat.shortDescription,
-        fullDescription: `${powisHouseRetreat.fullDescription}\n\nLocal preview: dates, prices and inclusions are mock details for booking tests.`,
-        atmosphereDescription: powisHouseRetreat.atmosphereDescription,
-        scheduleMarkdown:
-          "Friday: arrive from 4pm, settle in, gentle movement and dinner.\nSaturday: morning yoga, breakfast, free time, afternoon practice and dinner.\nSunday: morning practice, brunch and departure at 2pm.",
-        durationLabel: "3 days / 2 nights",
-        included: [
-          "Two nights at Powis House",
-          "Guided yoga and movement sessions",
-          "Shared meals from Friday dinner to Sunday brunch",
-        ],
-        notIncluded: ["Travel to and from the venue"],
-        whatToBring: ["Comfortable movement clothes", "A yoga mat", "Outdoor layers"],
-        image: {
-          url: "/images/shruti-coaching.jpeg",
-          alt: "Shruti walking by the sea",
-          focalPoint: { x: 45, y: 45 },
-        },
-      };
       const experience = await tx.retreatExperience.upsert({
         where: { slug: retreatSlug },
         create: {
@@ -148,8 +125,8 @@ try {
             retreatType: "in_person",
             experienceId: experience.id,
             venueProfileId: venue.id,
-            startsAt: new Date("2027-06-11T15:00:00Z"),
-            endsAt: new Date("2027-06-13T13:00:00Z"),
+            startsAt: new Date("2027-06-11T14:00:00Z"),
+            endsAt: new Date("2027-06-13T10:00:00Z"),
             capacity: 10,
             pricePence: 45000,
             depositAmountPence: 11250,

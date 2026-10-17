@@ -3,7 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 
 test("selected room carries into checkout without collecting attendee health details", async ({
   page,
-}) => {
+}, testInfo) => {
   test.skip(
     process.env.POWIS_ROOM_REVIEW !== "1",
     "Requires the local Powis room-review seed and dev server."
@@ -13,6 +13,12 @@ test("selected room carries into checkout without collecting attendee health det
   const base = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
   await page.goto(`${base}/retreats/local-powis-room-review`);
   await expect(page.locator("#booking")).toContainText(/balance due 16(?:th)? April 2027/);
+  await page.locator("#booking").scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath("retreat-booking.png") });
+  await page
+    .locator("#booking > div details > summary")
+    .filter({ hasText: "Choose your room" })
+    .click();
   await page.getByRole("button", { name: "2 people", exact: true }).click();
   await page.getByRole("button", { name: /Private room · Shared bathroom/ }).click();
   await page.getByRole("button", { name: "King bed", exact: true }).click();

@@ -37,7 +37,7 @@ test.describe("retreat catalogue", () => {
       page.getByRole("img", { name: "Shruti Turner moving outdoors beside the sea" })
     ).toHaveAttribute("src", /shruti-coaching\.jpeg/);
     const upcoming = page.locator("#retreats");
-    await expect(upcoming.getByRole("heading", { name: "What’s coming up" })).toBeVisible();
+    await expect(upcoming.getByRole("heading", { name: "Retreats", exact: true })).toBeVisible();
 
     const workshopHeading = page.getByRole("heading", {
       name: "The Middle Ground",
@@ -54,7 +54,7 @@ test.describe("retreat catalogue", () => {
     await expect(workshopCard).not.toContainText("From £35");
     await expect(workshopCard).toHaveCount(1);
     await expect(
-      page.getByRole("heading", { name: "More than just a workout. More than just time to relax." })
+      page.getByRole("heading", { name: "Your body. Your pace. Space to be yourself." })
     ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Useful details before you book" })

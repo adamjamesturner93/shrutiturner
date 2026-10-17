@@ -1,8 +1,17 @@
+import { CircleCheck } from "lucide-react";
 import { renderInlineMarkdown } from "@/lib/blog/inline-markdown";
 import { parseBlogPostBody } from "@/lib/content/structured-text";
 import { cn } from "@/components/ui/utils";
 
-export function MarkdownContent({ children, className }: { children: string; className?: string }) {
+export function MarkdownContent({
+  children,
+  className,
+  activityList = false,
+}: {
+  children: string;
+  className?: string;
+  activityList?: boolean;
+}) {
   return (
     <div className={cn("space-y-6", className)}>
       {parseBlogPostBody(children, "", true).map((block, index) => {
@@ -20,12 +29,24 @@ export function MarkdownContent({ children, className }: { children: string; cla
             <List
               key={index}
               className={cn(
-                "space-y-2 pl-6",
-                block.type === "ordered-list" ? "list-decimal" : "list-disc"
+                activityList ? "list-none space-y-4" : "space-y-2 pl-6",
+                !activityList && (block.type === "ordered-list" ? "list-decimal" : "list-disc")
               )}
             >
               {block.items.map((item, itemIndex) => (
-                <li key={itemIndex}>{renderInlineMarkdown(item)}</li>
+                <li key={itemIndex} className={activityList ? "flex items-start gap-3" : undefined}>
+                  {activityList && (
+                    <CircleCheck
+                      aria-hidden="true"
+                      className="text-brand-accent mt-1 h-5 w-5 shrink-0"
+                    />
+                  )}
+                  {activityList ? (
+                    <span>{renderInlineMarkdown(item)}</span>
+                  ) : (
+                    renderInlineMarkdown(item)
+                  )}
+                </li>
               ))}
             </List>
           );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Expand } from "lucide-react";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ type GalleryImage = {
 };
 
 export function RetreatGallery({ images }: { images: GalleryImage[] }) {
+  const headingId = useId();
   const [selected, setSelected] = useState<number | null>(null);
   const opener = useRef<HTMLButtonElement | null>(null);
   const image = selected === null ? null : images[selected];
@@ -23,19 +24,19 @@ export function RetreatGallery({ images }: { images: GalleryImage[] }) {
     );
   if (!images.length) return null;
   return (
-    <section aria-labelledby="retreat-gallery-heading" className="space-y-6">
-      <h2 id="retreat-gallery-heading" className="text-3xl md:text-4xl">
+    <section aria-labelledby={headingId} className="space-y-6">
+      <h2 id={headingId} className="text-3xl md:text-4xl">
         A closer look
       </h2>
       <p className="text-muted-foreground">Select a photo to take a closer look.</p>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto p-1 pb-4">
         {images.map((item, index) => (
           <button
             key={`${item.url}-${index}`}
             type="button"
             aria-label={`Enlarge photo ${index + 1}: ${item.alt}`}
             aria-haspopup="dialog"
-            className="group focus-visible:outline-brand-accent relative overflow-hidden rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4"
+            className="group focus-visible:outline-brand-accent relative w-[85%] shrink-0 snap-start overflow-hidden rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 sm:w-[45%]"
             onClick={(event) => {
               opener.current = event.currentTarget;
               setSelected(index);

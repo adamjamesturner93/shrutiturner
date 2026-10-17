@@ -1,6 +1,7 @@
 import type { TestimonialContent } from "./types";
 
 export type TestimonialPlacement =
+  | "retreats-workshops"
   | "home"
   | "coaching"
   | "classes"
@@ -15,6 +16,9 @@ export function normalizeTestimonialPlacement(value: unknown): TestimonialPlacem
     case "Coaching":
     case "coaching":
       return "coaching";
+    case "Retreats & Workshops":
+    case "retreats-workshops":
+      return "retreats-workshops";
     case "Retreats General":
     case "retreats-overview":
       return "retreats-overview";
@@ -35,7 +39,13 @@ export function selectApprovedTestimonials(
 ) {
   const approved = testimonials.filter(
     (item) =>
-      item.quote.trim() && item.authorName.trim() && item.approvedPlacements?.includes(placement)
+      item.quote.trim() &&
+      item.authorName.trim() &&
+      (placement === "retreats-workshops"
+        ? item.approvedPlacements?.some((area) =>
+            ["retreats-workshops", "retreats-overview", "event-page"].includes(area)
+          )
+        : item.approvedPlacements?.includes(placement))
   );
   if (!ids) return approved;
   const byId = new Map(approved.map((item) => [item.id, item]));

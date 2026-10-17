@@ -1076,9 +1076,60 @@ export function RetreatCheckoutPage({
                 </div>
               ) : null}
 
+              <div className="marketing-panel rounded-[1.5rem] p-4 sm:p-5">
+                <h2 className="text-2xl">
+                  {isOnlineExperience ? "Your details" : "Purchaser details"}
+                </h2>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="purchaserFirstName">First name</Label>
+                    <Input
+                      id="purchaserFirstName"
+                      required
+                      value={purchaserFirstName}
+                      onChange={(event) =>
+                        setFormData((current) => ({
+                          ...current,
+                          purchaserFirstName: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="purchaserLastName">Last name</Label>
+                    <Input
+                      id="purchaserLastName"
+                      required
+                      value={purchaserLastName}
+                      onChange={(event) =>
+                        setFormData((current) => ({
+                          ...current,
+                          purchaserLastName: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 space-y-2">
+                  <Label htmlFor="purchaserEmail">Email</Label>
+                  <Input
+                    id="purchaserEmail"
+                    required
+                    type="email"
+                    value={purchaserEmail}
+                    onChange={(event) =>
+                      setFormData((current) => ({
+                        ...current,
+                        purchaserEmail: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+
               {purchaseMode === "self" && selectableAddons.length > 0 ? (
-                <div className="marketing-panel rounded-[1.5rem] p-4 sm:p-5">
-                  <h2 className="text-2xl">Optional extras</h2>
+                <details className="marketing-panel rounded-[1.5rem] p-4 sm:p-5">
+                  <summary className="cursor-pointer text-2xl">Optional extras</summary>
                   <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
                     Extras are paid today and reserved with your booking.
                   </p>
@@ -1154,7 +1205,7 @@ export function RetreatCheckoutPage({
                       );
                     })}
                   </div>
-                </div>
+                </details>
               ) : null}
 
               {purchaseMode === "self" && selectedRoom && !requiresFullPayment ? (
@@ -1212,57 +1263,6 @@ export function RetreatCheckoutPage({
                   )}
                 </div>
               ) : null}
-
-              <div className="marketing-panel rounded-[1.5rem] p-4 sm:p-5">
-                <h2 className="text-2xl">
-                  {isOnlineExperience ? "Your details" : "Purchaser details"}
-                </h2>
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="purchaserFirstName">First name</Label>
-                    <Input
-                      id="purchaserFirstName"
-                      required
-                      value={purchaserFirstName}
-                      onChange={(event) =>
-                        setFormData((current) => ({
-                          ...current,
-                          purchaserFirstName: event.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="purchaserLastName">Last name</Label>
-                    <Input
-                      id="purchaserLastName"
-                      required
-                      value={purchaserLastName}
-                      onChange={(event) =>
-                        setFormData((current) => ({
-                          ...current,
-                          purchaserLastName: event.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="mt-4 space-y-2">
-                  <Label htmlFor="purchaserEmail">Email</Label>
-                  <Input
-                    id="purchaserEmail"
-                    required
-                    type="email"
-                    value={purchaserEmail}
-                    onChange={(event) =>
-                      setFormData((current) => ({
-                        ...current,
-                        purchaserEmail: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
 
               {purchaseMode === "self" ? (
                 <>

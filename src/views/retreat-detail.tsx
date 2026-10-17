@@ -8,18 +8,10 @@ import type { TestimonialContent } from "@/lib/content/types";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import {
-  AlertCircle,
-  ArrowRight,
-  BedDouble,
-  Calendar,
-  Check,
-  Gift,
-  MapPin,
-  MonitorPlay,
-  Ticket,
-  X,
-} from "lucide-react";
+import { AlertCircle, ArrowRight, Calendar, Check, Gift, MapPin, X } from "lucide-react";
+import { getScheduleDateLabel } from "@/lib/retreats/schedule-sections";
+import { RetreatSchedule } from "@/components/retreat-schedule";
+import { RetreatVenueMap } from "@/components/retreat-venue-map";
 import { RetreatGallery } from "@/components/retreat-gallery";
 import { Layout } from "@/components/layout";
 import { RetreatBedPreference } from "@/components/retreat-bed-preference";
@@ -127,15 +119,6 @@ function getGuestCountLabel(guestCount: number) {
   return `${guestCount} people`;
 }
 
-function getScheduleDateLabel(startDate: string | undefined, dayIndex: number) {
-  if (!startDate) return "";
-  const isoDay = startDate.slice(0, 10);
-  const date = new Date(`${isoDay}T12:00:00.000Z`);
-  if (Number.isNaN(date.getTime())) return "";
-  date.setUTCDate(date.getUTCDate() + dayIndex);
-  return formatRetreatDate(date, "UTC", true);
-}
-
 export function RetreatDetailPage({
   testimonials = [],
   retreat: retreatProp,
@@ -165,6 +148,14 @@ export function RetreatDetailPage({
   );
   const [selectedGuestCount, setSelectedGuestCount] = useState(1);
   const [bedPreference, setBedPreference] = useState<BedPreference>("double");
+  const [bookingVisible, setBookingVisible] = useState(false);
+  useEffect(() => {
+    const booking = document.getElementById("booking");
+    if (!booking) return;
+    const observer = new IntersectionObserver(([entry]) => setBookingVisible(entry.isIntersecting));
+    observer.observe(booking);
+    return () => observer.disconnect();
+  }, []);
 
   const selectedDate = useMemo(
     () => retreat?.dates.find((date) => date.id === selectedDateId) || null,
@@ -273,6 +264,15 @@ export function RetreatDetailPage({
     selectedDate && selectedRoom
       ? `/retreats/${retreat.slug}/checkout?date=${selectedDate.id}&room=${selectedRoom.id}&guests=${selectedGuestCount}&gift=1${requiresBedPreference(selectedRoom, selectedGuestCount) ? `&beds=${bedPreference}` : ""}`
       : `/retreats/${retreat.slug}/checkout?gift=1`;
+  const selectedRate = selectedRoom
+    ? getRoomRatePlans(selectedRoom).find((rate) => rate.guestCount === selectedGuestCount)
+    : null;
+  const selectedDueToday =
+    selectedRoom && selectedRate
+      ? isFullPaymentOnly
+        ? getEffectiveRetreatRatePricePence(selectedRate)
+        : getRatePlanDeposit(selectedRoom, selectedRate)
+      : null;
   const renderBookingActions = (className: string) => (
     <div className={className}>
       <div className="space-y-3">
@@ -300,6 +300,9 @@ export function RetreatDetailPage({
                   </p>
                   <p className="text-muted-foreground">
                     {formatMoney(Math.max(0, total - deposit), retreat.currency)} remaining balance
+                    {selectedDate?.balanceDueAt
+                      ? ` · due ${formatRetreatDate(selectedDate.balanceDueAt, selectedTimezone)}`
+                      : ""}
                   </p>
                 </div>
               );
@@ -418,7 +421,7 @@ export function RetreatDetailPage({
       />
 
       <section className="marketing-grid overflow-hidden px-4 py-12 text-white md:py-16">
-        <div className="container mx-auto max-w-6xl">
+        <div className="container mx-auto max-w-7xl">
           <div className="grid items-center gap-8 lg:grid-cols-[0.92fr_1.08fr] lg:gap-10">
             <div>
               <PublicBreadcrumbs
@@ -541,8 +544,37 @@ export function RetreatDetailPage({
         </div>
       </section>
 
-      <section className="section-wash py-14 md:py-18">
-        <div className="container mx-auto grid max-w-6xl gap-12 px-4 lg:grid-cols-[1.05fr_0.95fr]">
+      <nav
+        aria-label="Retreat sections"
+        className="bg-background/95 sticky top-[4.5rem] z-30 border-b backdrop-blur"
+      >
+        <div className="mx-auto flex max-w-7xl gap-6 overflow-x-auto px-4 py-3 text-sm whitespace-nowrap">
+          <a className="py-2 underline-offset-4 hover:underline" href="#overview">
+            Overview
+          </a>
+          <a className="py-2 underline-offset-4 hover:underline" href="#included">
+            What’s included
+          </a>
+          {requiresAccommodation && retreat.accommodation ? (
+            <a className="py-2 underline-offset-4 hover:underline" href="#stay">
+              Stay &amp; food
+            </a>
+          ) : null}
+          <a className="py-2 underline-offset-4 hover:underline" href="#rhythm">
+            {requiresAccommodation ? "Daily rhythm" : "Schedule"}
+          </a>
+          {testimonials.length ? (
+            <a className="py-2 underline-offset-4 hover:underline" href="#reviews">
+              Reviews
+            </a>
+          ) : null}
+          <a className="py-2 font-semibold underline-offset-4 hover:underline" href="#booking">
+            Book
+          </a>
+        </div>
+      </nav>
+      <section id="overview" className="section-wash scroll-mt-40 py-10 md:py-14">
+        <div className="container mx-auto grid max-w-7xl gap-12 px-4 lg:grid-cols-[minmax(0,1fr)_25rem]">
           <div className="space-y-10">
             <div className="marketing-panel rounded-[1.85rem] p-7 md:p-8">
               <MarkdownContent className="text-muted-foreground leading-relaxed">
@@ -550,55 +582,103 @@ export function RetreatDetailPage({
               </MarkdownContent>
             </div>
 
-            <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
-              <h2 className="text-3xl md:text-4xl">Who it&apos;s for</h2>
-              <ul className="mt-6 space-y-4">
-                {retreat.suitableFor.map((item) => (
-                  <li key={item} className="flex items-start gap-3">
-                    <Check className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
-                    <span className="text-muted-foreground leading-relaxed">{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {retreat.suitableFor.length > 0 ? (
+              <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+                <h2 className="text-3xl md:text-4xl">Who it&apos;s for</h2>
+                <ul className="mt-6 space-y-4">
+                  {retreat.suitableFor.map((item) => (
+                    <li key={item} className="flex items-start gap-3">
+                      <Check className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
+                      <span className="text-muted-foreground leading-relaxed">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
 
-            <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
-              <h2 className="text-3xl md:text-4xl">What&apos;s included</h2>
-              <div
-                className={`mt-6 grid gap-8 ${
-                  retreat.notIncluded.length > 0 && !isOnlineExperience ? "md:grid-cols-2" : ""
-                }`}
-              >
-                <div>
-                  <ul className="space-y-3">
-                    {retreat.included.map((item) => (
+            <section
+              id="included"
+              className="bg-brand-dark scroll-mt-40 overflow-hidden rounded-[1.85rem] text-white shadow-sm"
+            >
+              <div className="p-7 md:p-9">
+                <p className="mb-3 text-sm tracking-[0.16em] uppercase">Your time away</p>
+                <h2 className="text-3xl md:text-4xl">What&apos;s included</h2>
+                <ul className="mt-7 grid gap-x-7 gap-y-5 md:grid-cols-2">
+                  {retreat.included.map((item) => (
+                    <li key={item} className="flex items-start gap-3">
+                      <span className="mt-0.5 rounded-full bg-white/15 p-1">
+                        <Check aria-hidden="true" className="h-4 w-4" />
+                      </span>
+                      <span className="leading-relaxed">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              {retreat.notIncluded.length > 0 && !isOnlineExperience ? (
+                <div className="border-t border-white/20 bg-white/5 p-7 md:px-9">
+                  <h3 className="mb-4 text-xl">Not included</h3>
+                  <ul className="grid gap-3 md:grid-cols-2">
+                    {retreat.notIncluded.map((item) => (
                       <li key={item} className="flex items-start gap-3">
-                        <Check className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
-                        <span className="text-muted-foreground">{item}</span>
+                        <X aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0" />
+                        <span>{item}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
-                {retreat.notIncluded.length > 0 && !isOnlineExperience ? (
-                  <div>
-                    <h3 className="mb-4 text-xl">Not included</h3>
-                    <ul className="space-y-3">
-                      {retreat.notIncluded.map((item) => (
-                        <li key={item} className="flex items-start gap-3">
-                          <X className="text-muted-foreground mt-0.5 h-5 w-5 flex-shrink-0" />
-                          <span className="text-muted-foreground">{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-              </div>
-            </div>
+              ) : null}
+            </section>
 
-            <TestimonialQuotes testimonials={testimonials} />
+            <section
+              className="bg-background rounded-2xl border p-6"
+              aria-labelledby="host-heading"
+            >
+              <div className="flex flex-wrap items-center gap-5">
+                <ImageWithFallback
+                  src="/images/shruti-coaching.jpeg"
+                  alt="Shruti Turner"
+                  loading="lazy"
+                  className="h-24 w-24 rounded-full object-cover"
+                />
+                <div>
+                  <p className="text-brand-accent text-sm">Your host</p>
+                  <h2 id="host-heading" className="mt-1 text-2xl">
+                    Shruti Turner
+                  </h2>
+                  <Link
+                    href="/about"
+                    className="text-brand-accent mt-2 inline-block py-2 underline"
+                  >
+                    Meet Shruti and explore her approach
+                  </Link>
+                </div>
+              </div>
+            </section>
+
+            {requiresAccommodation && retreat.accommodation ? (
+              <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+                <h2 id="stay" className="scroll-mt-40 text-3xl md:text-4xl">
+                  Where you’ll stay
+                </h2>
+                <p className="text-muted-foreground mt-4 leading-relaxed">
+                  {retreat.accommodation}
+                </p>
+                <div className="mt-6">
+                  <RetreatGallery images={retreat.gallery || []} />
+                </div>
+              </div>
+            ) : null}
+            {retreat.foodAndDrinkDescription && !isOnlineExperience ? (
+              <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
+                <h2 className="text-3xl md:text-4xl">Food and drink</h2>
+                <p className="text-muted-foreground mt-4 leading-relaxed">
+                  {retreat.foodAndDrinkDescription}
+                </p>
+              </div>
+            ) : null}
 
             <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
-              <h2 className="text-3xl md:text-4xl">
+              <h2 id="rhythm" className="scroll-mt-40 text-3xl md:text-4xl">
                 {isOnlineExperience
                   ? "Workshop schedule"
                   : requiresAccommodation
@@ -606,22 +686,31 @@ export function RetreatDetailPage({
                     : "What we’ll do"}
               </h2>
               {retreat.scheduleMarkdown ? (
-                <MarkdownContent className="text-muted-foreground mt-6 leading-relaxed">
-                  {retreat.scheduleMarkdown}
-                </MarkdownContent>
+                <RetreatSchedule
+                  markdown={retreat.scheduleMarkdown}
+                  startDate={selectedDate?.startDate}
+                  timezone={selectedTimezone}
+                />
               ) : retreat.schedule.length > 0 ? (
                 <div className="mt-6 space-y-5">
                   {retreat.schedule.map((day, dayIndex) => (
-                    <div
+                    <details
+                      open={dayIndex === 0}
                       key={day.day}
                       className="border-brand-dark/10 bg-brand-warm/45 rounded-[1.25rem] border p-5"
                     >
-                      <p className="text-brand-accent text-xs tracking-[0.16em] uppercase">
-                        {getScheduleDateLabel(selectedDate?.startDate, dayIndex) ||
-                          day.day ||
-                          `Day ${dayIndex + 1}`}
-                      </p>
-                      <h3 className="mt-1 text-xl">{day.title}</h3>
+                      <summary className="cursor-pointer">
+                        <span className="text-brand-accent block text-xs tracking-[0.16em] uppercase">
+                          {getScheduleDateLabel(
+                            selectedDate?.startDate,
+                            dayIndex,
+                            selectedTimezone
+                          ) ||
+                            day.day ||
+                            `Day ${dayIndex + 1}`}
+                        </span>
+                        <span className="mt-1 block text-xl">{day.title}</span>
+                      </summary>
                       {day.subtitle ? (
                         <p className="text-muted-foreground mt-1 text-sm italic">{day.subtitle}</p>
                       ) : null}
@@ -639,7 +728,7 @@ export function RetreatDetailPage({
                           </li>
                         ))}
                       </ul>
-                    </div>
+                    </details>
                   ))}
                 </div>
               ) : (
@@ -648,15 +737,6 @@ export function RetreatDetailPage({
                 </p>
               )}
             </div>
-
-            {retreat.foodAndDrinkDescription && !isOnlineExperience ? (
-              <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
-                <h2 className="text-3xl md:text-4xl">Food and drink</h2>
-                <p className="text-muted-foreground mt-4 leading-relaxed">
-                  {retreat.foodAndDrinkDescription}
-                </p>
-              </div>
-            ) : null}
 
             {retreat.whatToBring && retreat.whatToBring.length > 0 ? (
               <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
@@ -672,11 +752,10 @@ export function RetreatDetailPage({
               </div>
             ) : null}
 
-            <RetreatGallery images={retreat.gallery || []} />
-
             {selectedVenue && !isOnlineExperience ? (
               <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
                 <h2 className="text-3xl md:text-4xl">Getting there</h2>
+                <RetreatVenueMap venue={selectedVenue} />
                 <MarkdownContent className="text-muted-foreground mt-4 leading-relaxed">
                   {selectedVenue.arrivalInformation || selectedVenue.travelInformation || ""}
                 </MarkdownContent>
@@ -709,13 +788,8 @@ export function RetreatDetailPage({
               </div>
             ) : null}
 
-            {requiresAccommodation && retreat.accommodation ? (
-              <div className="border-brand-dark/10 bg-background rounded-[1.85rem] border p-7 shadow-[0_18px_40px_rgba(46,31,51,0.05)]">
-                <h2 className="text-3xl md:text-4xl">Accommodation</h2>
-                <p className="text-muted-foreground mt-4 leading-relaxed">
-                  {retreat.accommodation}
-                </p>
-              </div>
+            {!requiresAccommodation || !retreat.accommodation ? (
+              <RetreatGallery images={retreat.gallery || []} />
             ) : null}
 
             {otherRetreatsAtVenue.length > 0 ? (
@@ -739,21 +813,18 @@ export function RetreatDetailPage({
             ) : null}
           </div>
 
-          <aside>
+          <aside className="min-w-0 lg:col-start-2 lg:row-start-1" aria-label="Booking summary">
             <div
               id="booking"
               tabIndex={-1}
-              className="marketing-panel scroll-mt-24 rounded-[1.9rem] p-6 shadow-sm lg:sticky lg:top-24 lg:flex lg:max-h-[calc(100dvh-7rem)] lg:flex-col lg:overflow-hidden"
+              className="bg-background scroll-mt-40 rounded-[1.9rem] border p-6 shadow-lg lg:sticky lg:top-40 lg:has-[details[open]]:static"
             >
-              <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-2">
-                <p className="text-brand-accent text-sm tracking-[0.16em] uppercase">
-                  Book this {experienceLabel}
-                </p>
-                <div className="mt-4 flex items-baseline gap-3">
-                  <span className="text-4xl">
-                    {priceSummary.isFromPrice ? "From " : ""}
-                    {formatMoney(priceSummary.lowestPricePence, retreat.currency)}
-                  </span>
+              <div className="min-w-0">
+                <div className="bg-brand-dark -mx-6 -mt-6 mb-5 rounded-t-[1.9rem] p-6 text-white">
+                  <p className="text-sm tracking-[0.16em] uppercase">Book your place</p>
+                  <p className="mt-2 text-3xl">
+                    From {formatMoney(priceSummary.lowestPricePence, retreat.currency)}
+                  </p>
                 </div>
                 {depositFromPence > 0 && !isFullPaymentOnly ? (
                   <p className="text-muted-foreground mt-2 text-sm">
@@ -878,10 +949,16 @@ export function RetreatDetailPage({
                 </div>
 
                 {selectedDate ? (
-                  <div className="mt-8">
-                    <h3 className="text-lg">
+                  <details className="mt-5 rounded-2xl border p-4">
+                    <summary className="cursor-pointer font-medium">
                       {hasMultipleOptions ? `Choose your ${optionLabel}` : `Your ${optionLabel}`}
-                    </h3>
+                      <span className="text-muted-foreground mt-1 block text-sm font-normal">
+                        {selectedRoom
+                          ? selectedRoomSummary(selectedRoom, selectedGuestCount, bedPreference)
+                              .label
+                          : "Select your place"}
+                      </span>
+                    </summary>
                     <div className="mt-4 grid gap-3">
                       {requiresAccommodation ? (
                         <RetreatRoomChoices
@@ -945,7 +1022,7 @@ export function RetreatDetailPage({
                         </div>
                       </div>
                     ) : null}
-                  </div>
+                  </details>
                 ) : null}
 
                 {!requiresAccommodation &&
@@ -953,33 +1030,14 @@ export function RetreatDetailPage({
                   <RetreatBedPreference value={bedPreference} onChange={setBedPreference} />
                 ) : null}
 
-                {renderBookingActions("mt-8 lg:hidden")}
-
-                <div className="mt-8 space-y-3 text-sm">
-                  <div className="flex items-start gap-3 rounded-xl border p-4">
-                    <AlertCircle className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
-                    <p className="text-muted-foreground">
-                      {requiresAccommodation
-                        ? "Room choice, deposit and any gifted place are all reserved against this selected retreat date."
-                        : `Your ticket, price and any gifted place are reserved against this ${experienceLabel} date.`}
+                <div className="bg-brand-warm/30 mt-5 rounded-2xl border p-4">
+                  <h3 className="text-xl">Your booking</h3>
+                  {!selectedRoom ? (
+                    <p className="text-muted-foreground mt-3 text-sm">
+                      Choose your place above to see your total and deposit.
                     </p>
-                  </div>
-                  <div className="flex items-start gap-3 rounded-xl border p-4">
-                    {isOnlineExperience ? (
-                      <MonitorPlay className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
-                    ) : !requiresAccommodation ? (
-                      <Ticket className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
-                    ) : (
-                      <BedDouble className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
-                    )}
-                    <p className="text-muted-foreground">
-                      {isOnlineExperience
-                        ? "Accessibility and online access questions are welcome before you book. Use the contact form if you need to check the online set-up first."
-                        : requiresAccommodation
-                          ? "Accessibility and room questions are welcome before you book. Use the contact form if you need to check suitability first."
-                          : "Accessibility and venue questions are welcome before you book. Use the contact form if you need to check suitability first."}
-                    </p>
-                  </div>
+                  ) : null}
+                  {renderBookingActions("mt-4")}
                 </div>
 
                 <div className="mt-8 border-t pt-6">
@@ -988,13 +1046,42 @@ export function RetreatDetailPage({
                   </Button>
                 </div>
               </div>
-              {renderBookingActions(
-                "border-brand-dark/10 bg-background/95 -mx-6 -mb-6 mt-4 hidden shrink-0 border-t p-4 shadow-[0_-12px_28px_rgba(46,31,51,0.08)] backdrop-blur-sm lg:block"
-              )}
             </div>
           </aside>
         </div>
       </section>
+      {testimonials.length ? (
+        <section id="reviews" className="bg-brand-warm/30 scroll-mt-40 px-4 py-12">
+          <div className="mx-auto max-w-7xl">
+            <TestimonialQuotes
+              testimonials={testimonials}
+              title="What Shruti's retreat and workshop guests say"
+            />
+          </div>
+        </section>
+      ) : null}
+      <div className="h-24 lg:hidden" aria-hidden="true" />
+      <div
+        hidden={bookingVisible}
+        className={`${bookingVisible ? "hidden" : "flex"} bg-background/95 fixed inset-x-0 bottom-0 z-40 items-center justify-between gap-3 border-t px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden`}
+      >
+        <div className="min-w-0 text-sm">
+          <p className="font-semibold">
+            {selectedRoom &&
+            selectedRoomSummary(selectedRoom, selectedGuestCount, bedPreference).pricePence != null
+              ? `${formatMoney(selectedRoomSummary(selectedRoom, selectedGuestCount, bedPreference).pricePence!, retreat.currency)} total`
+              : `From ${formatMoney(priceSummary.lowestPricePence, retreat.currency)}`}
+          </p>
+          <p className="text-muted-foreground">
+            {selectedDueToday != null
+              ? `${formatMoney(selectedDueToday, retreat.currency)} due today`
+              : "Find your place"}
+          </p>
+        </div>
+        <Button asChild>
+          <a href="#booking">{selectedRoomAvailable ? "Review booking" : "Choose your place"}</a>
+        </Button>
+      </div>
     </Layout>
   );
 }
