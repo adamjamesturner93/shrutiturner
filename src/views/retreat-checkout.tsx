@@ -3,6 +3,8 @@ import { selectedRoomSummary } from "@/lib/retreats/room-choice";
 import { RetreatRoomChoices } from "@/components/retreat-room-choices";
 
 import Link from "next/link";
+import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
+import { getRetreatCardImageSrc, getRetreatCardImagePosition } from "@/lib/retreats/images";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useEffect, useMemo, useState } from "react";
@@ -564,9 +566,7 @@ export function RetreatCheckoutPage({
             Back to {experienceLabel} details
           </Link>
 
-          <div
-            className={`mt-3 grid gap-4 ${isSimpleCheckout ? "" : "lg:grid-cols-[1fr_0.9fr] lg:items-center"}`}
-          >
+          <div className="mt-3">
             <div>
               <h1 className="text-2xl leading-tight md:text-3xl">
                 {purchaseMode === "gift"
@@ -577,35 +577,6 @@ export function RetreatCheckoutPage({
                 {retreat.title} · {retreat.location}
               </p>
             </div>
-
-            {!isSimpleCheckout ? (
-              <div className="border-brand-white/10 bg-brand-white/8 overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
-                <div className="bg-brand-white/8 rounded-[1.45rem] p-6">
-                  <p className="text-brand-accent-light text-xs tracking-[0.18em] uppercase">
-                    Selected pricing
-                  </p>
-                  <div className="text-brand-white/84 mt-4 space-y-2 text-sm">
-                    {selectedRoom ? (
-                      <>
-                        <p>
-                          {purchaseMode === "gift"
-                            ? `${formatMoney(payInFullTotalPence, retreat.currency)} due today`
-                            : `${formatMoney(dueTodayPence, retreat.currency)} due today`}
-                        </p>
-                        <p>
-                          {requiresAccommodation
-                            ? selectedRoomSummary(selectedRoom, selectedGuestCount, bedPreference)
-                                .label
-                            : selectedRoom.label}
-                        </p>
-                      </>
-                    ) : (
-                      <p>Select a date and {optionLabel} to confirm the amount due.</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : null}
           </div>
         </div>
       </section>
@@ -614,7 +585,179 @@ export function RetreatCheckoutPage({
         <div
           className={`container mx-auto grid gap-8 ${isSimpleCheckout ? "max-w-5xl" : "max-w-6xl lg:grid-cols-[1.05fr_0.95fr]"}`}
         >
-          <div className="space-y-4">
+          {!isSimpleCheckout ? (
+            <aside aria-label="Booking summary" className="lg:col-start-2 lg:row-start-1">
+              <div className="sticky top-24 rounded-[1.75rem] border p-6 shadow-sm">
+                <p className="text-brand-accent text-sm tracking-[0.16em] uppercase">
+                  Booking summary
+                </p>
+                <ImageWithFallback
+                  src={getRetreatCardImageSrc(retreat)}
+                  alt={retreat.imageAlt || retreat.title}
+                  className="mt-4 aspect-[16/7] w-full rounded-xl object-cover"
+                  sizes="(max-width: 1024px) 100vw, 440px"
+                  style={{
+                    objectPosition: getRetreatCardImagePosition(
+                      getRetreatCardImageSrc(retreat),
+                      retreat.imageFocalPoint
+                    ),
+                  }}
+                />
+                <h2 className="mt-3 text-2xl">{retreat.title}</h2>
+
+                <div className="mt-6 space-y-4 text-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-muted-foreground">Date</span>
+                    <span className="max-w-[14rem] text-right">
+                      {selectedDate
+                        ? formatRetreatDateTimeRange(
+                            selectedDate.startDate,
+                            selectedDate.endDate,
+                            selectedDate.timezone
+                          )
+                        : "Select a date"}
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-muted-foreground">
+                      {optionLabel === "ticket" ? "Ticket" : "Room"}
+                    </span>
+                    <span className="max-w-[14rem] text-right">
+                      {selectedRoom
+                        ? requiresAccommodation
+                          ? selectedRoomSummary(selectedRoom, selectedGuestCount, bedPreference)
+                              .label
+                          : selectedRoom.label
+                        : `Select a ${optionLabel}`}
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-muted-foreground">Guests</span>
+                    <span>{selectedRoom ? getGuestCountLabel(selectedGuestCount) : "TBC"}</span>
+                  </div>
+                  {requiresAccommodation && selectedRoom ? (
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="text-muted-foreground">Bed arrangement</span>
+                      <span>
+                        {selectedRoom
+                          ? selectedRoomSummary(selectedRoom, selectedGuestCount, bedPreference)
+                              .bedLabel
+                          : getBedPreferenceLabel(bedPreference)}
+                      </span>
+                    </div>
+                  ) : null}
+                  {selectedAddons.length > 0 ? (
+                    <div className="border-t pt-4">
+                      <p className="text-muted-foreground mb-2">Optional extras</p>
+                      <div className="space-y-2">
+                        {selectedAddons.map(({ addon, quantity }) => (
+                          <div key={addon.id} className="flex items-start justify-between gap-3">
+                            <span>
+                              {addon.name} × {quantity}
+                            </span>
+                            <span>{formatMoney(addon.pricePence * quantity, addon.currency)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
+                {selectedRoom ? (
+                  <>
+                    <div className="bg-secondary/20 mt-6 rounded-[1.25rem] border p-4">
+                      <div className="mb-4 flex items-center justify-between gap-4 border-b pb-4">
+                        <span>Total</span>
+                        <span className="text-xl font-semibold">
+                          {formatMoney(
+                            purchaseMode === "gift"
+                              ? payInFullTotalPence
+                              : dueTodayPence + balanceAmountPence,
+                            retreat.currency
+                          )}
+                        </span>
+                      </div>
+                      {purchaseMode === "gift" ? (
+                        <>
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-muted-foreground">Due today</span>
+                            <span className="text-xl">
+                              {formatMoney(payInFullTotalPence, retreat.currency)}
+                            </span>
+                          </div>
+                          <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                            Gift purchases reserve this exact {optionLabel} and date in full.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-muted-foreground">Due today</span>
+                            <span className="text-xl">
+                              {formatMoney(dueTodayPence, retreat.currency)}
+                            </span>
+                          </div>
+                          {isPayingInFull ? (
+                            <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                              This pays the {experienceLabel} balance in full.
+                            </p>
+                          ) : (
+                            <>
+                              <div className="mt-3 flex items-center justify-between gap-4">
+                                <span className="text-muted-foreground">
+                                  {balanceDueLabel
+                                    ? `Balance due ${balanceDueLabel}`
+                                    : "Balance later"}
+                                </span>
+                                <span>{formatMoney(balanceAmountPence, retreat.currency)}</span>
+                              </div>
+                              <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                                Pay the balance
+                                {balanceDueLabel ? ` by ${balanceDueLabel}` : " later"} from your
+                                dashboard or the secure link sent by email.
+                              </p>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    <div className="mt-6 space-y-3 text-sm">
+                      <div className="flex items-start gap-3 rounded-xl border p-4">
+                        <ShieldCheck className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
+                        <p className="text-muted-foreground leading-relaxed">
+                          {purchaseMode === "gift"
+                            ? "The recipient completes their own registration details securely when they redeem the gift."
+                            : requiresPracticalRegistration
+                              ? "Each attendee completes their own health, access and emergency details securely in My Studio after payment."
+                              : "Your booking and access details stay together in your account."}
+                        </p>
+                      </div>
+                      <div className="flex items-start gap-3 rounded-xl border p-4">
+                        <AlertCircle className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
+                        <p className="text-muted-foreground leading-relaxed">
+                          {isOnlineExperience
+                            ? "Please contact Shruti before booking if you have accessibility or online access questions."
+                            : requiresAccommodation
+                              ? "Please contact Shruti before booking if you have accessibility questions about the venue or room set-up."
+                              : "Please contact Shruti before booking if you have accessibility questions about the venue or event."}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                ) : null}
+
+                <div className="text-muted-foreground mt-6 border-t pt-6 text-sm">
+                  <p>
+                    {experienceLabel === "workshop" ? "Workshop" : "Retreat"}:{" "}
+                    {selectedDate?.location || retreat.location}
+                    {selectedDate ? ` · ${fmtDate(selectedDate.startDate)}` : ""}
+                  </p>
+                </div>
+              </div>
+            </aside>
+          ) : null}
+          <div className="space-y-4 lg:col-start-1 lg:row-start-1">
             {checkoutState === "success" ? (
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
                 {purchaseMode === "gift"
@@ -887,16 +1030,6 @@ export function RetreatCheckoutPage({
                                 .bedLabel
                             }
                           </p>
-                          <p className="text-2xl">
-                            {formatMoney(effectiveTotalPricePence, retreat.currency)} total
-                          </p>
-                          <p>
-                            {isPayingInFull ? "Room payment today " : "Room deposit today "}
-                            {formatMoney(
-                              isPayingInFull ? payInFullTotalPence : depositAmountPence,
-                              retreat.currency
-                            )}
-                          </p>
                         </div>
                       ) : (
                         selectedDate.roomOptions
@@ -1127,143 +1260,6 @@ export function RetreatCheckoutPage({
                 </div>
               </div>
 
-              {purchaseMode === "self" && selectableAddons.length > 0 ? (
-                <details className="marketing-panel rounded-[1.5rem] p-4 sm:p-5">
-                  <summary className="cursor-pointer text-2xl">Optional extras</summary>
-                  <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                    Extras are paid today and reserved with your booking.
-                  </p>
-                  <div className="mt-6 space-y-3">
-                    {selectableAddons.map((addon) => {
-                      const quantity = addonQuantities[addon.id] || 0;
-                      const maximumQuantity = Math.min(addon.availableQuantity ?? 10, 10);
-                      return (
-                        <div
-                          key={addon.id}
-                          className="grid gap-4 rounded-[1.25rem] border p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
-                        >
-                          <div>
-                            <div className="flex flex-wrap items-center gap-3">
-                              <p className="text-lg">{addon.name}</p>
-                              <span className="text-muted-foreground text-sm">
-                                {formatMoney(addon.pricePence, addon.currency)} each
-                              </span>
-                            </div>
-                            {addon.description ? (
-                              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                                {addon.description}
-                              </p>
-                            ) : null}
-                            {addon.availableQuantity !== null ? (
-                              <p className="text-muted-foreground mt-2 text-xs">
-                                {addon.availableQuantity} available
-                              </p>
-                            ) : null}
-                          </div>
-                          <div
-                            className="flex items-center gap-2"
-                            aria-label={`${addon.name} quantity`}
-                          >
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              disabled={quantity === 0}
-                              onClick={() =>
-                                setAddonQuantities((current) => ({
-                                  ...current,
-                                  [addon.id]: Math.max((current[addon.id] || 0) - 1, 0),
-                                }))
-                              }
-                              aria-label={`Remove one ${addon.name}`}
-                            >
-                              <Minus className="h-4 w-4" />
-                            </Button>
-                            <output className="w-8 text-center tabular-nums" aria-live="polite">
-                              {quantity}
-                            </output>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              disabled={quantity >= maximumQuantity}
-                              onClick={() =>
-                                setAddonQuantities((current) => ({
-                                  ...current,
-                                  [addon.id]: Math.min(
-                                    (current[addon.id] || 0) + 1,
-                                    maximumQuantity
-                                  ),
-                                }))
-                              }
-                              aria-label={`Add one ${addon.name}`}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </details>
-              ) : null}
-
-              {purchaseMode === "self" && selectedRoom && !requiresFullPayment ? (
-                <div className="marketing-panel rounded-[1.5rem] p-4 sm:p-5">
-                  <h2 className="text-2xl">Choose how to pay</h2>
-                  {requiresFullPayment ? (
-                    <div className="border-brand-accent bg-brand-accent/5 mt-6 rounded-[1.25rem] border p-5">
-                      <p className="text-xl">Full payment required</p>
-                      <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                        Pay{" "}
-                        {formatMoney(effectiveTotalPricePence + addonTotalPence, retreat.currency)}{" "}
-                        today. No balance is due later and no separate pay-in-full discount applies.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <button
-                        type="button"
-                        aria-pressed={paymentOption === "deposit"}
-                        className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
-                          paymentOption === "deposit"
-                            ? "border-brand-accent bg-brand-accent/5"
-                            : "hover:bg-secondary/20"
-                        }`}
-                        onClick={() => setPaymentOption("deposit")}
-                      >
-                        <p className="text-xl">Pay deposit</p>
-                        <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                          Pay {formatMoney(depositAmountPence + addonTotalPence, retreat.currency)}{" "}
-                          today to secure your place. The remaining{" "}
-                          {formatMoney(depositBalanceAmountPence, retreat.currency)} is paid{" "}
-                          {balanceDueLabel ? `by ${balanceDueLabel}` : "later by balance link"}.
-                          Optional extras are included in today's payment.
-                        </p>
-                      </button>
-
-                      <button
-                        type="button"
-                        aria-pressed={paymentOption === "pay_in_full"}
-                        className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
-                          paymentOption === "pay_in_full"
-                            ? "border-brand-accent bg-brand-accent/5"
-                            : "hover:bg-secondary/20"
-                        }`}
-                        onClick={() => setPaymentOption("pay_in_full")}
-                      >
-                        <p className="text-xl">Pay in full</p>
-                        <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                          Pay {formatMoney(payInFullTotalPence + addonTotalPence, retreat.currency)}{" "}
-                          today to secure your place, with everything paid and no remaining balance
-                          to think about.
-                        </p>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : null}
-
               {purchaseMode === "self" ? (
                 <>
                   {requiresPracticalRegistration ? (
@@ -1399,7 +1395,152 @@ export function RetreatCheckoutPage({
                       </p>
                     </div>
                   ) : null}
+                </>
+              ) : null}
 
+              {purchaseMode === "self" && selectableAddons.length > 0 ? (
+                <details className="marketing-panel rounded-[1.5rem] p-4 sm:p-5">
+                  <summary className="cursor-pointer text-2xl">Optional extras</summary>
+                  <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                    Extras are paid today and reserved with your booking.
+                  </p>
+                  <div className="mt-6 space-y-3">
+                    {selectableAddons.map((addon) => {
+                      const quantity = addonQuantities[addon.id] || 0;
+                      const maximumQuantity = Math.min(addon.availableQuantity ?? 10, 10);
+                      return (
+                        <div
+                          key={addon.id}
+                          className="grid gap-4 rounded-[1.25rem] border p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                        >
+                          <div>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <p className="text-lg">{addon.name}</p>
+                              <span className="text-muted-foreground text-sm">
+                                {formatMoney(addon.pricePence, addon.currency)} each
+                              </span>
+                            </div>
+                            {addon.description ? (
+                              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                                {addon.description}
+                              </p>
+                            ) : null}
+                            {addon.availableQuantity !== null ? (
+                              <p className="text-muted-foreground mt-2 text-xs">
+                                {addon.availableQuantity} available
+                              </p>
+                            ) : null}
+                          </div>
+                          <div
+                            className="flex items-center gap-2"
+                            aria-label={`${addon.name} quantity`}
+                          >
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              disabled={quantity === 0}
+                              onClick={() =>
+                                setAddonQuantities((current) => ({
+                                  ...current,
+                                  [addon.id]: Math.max((current[addon.id] || 0) - 1, 0),
+                                }))
+                              }
+                              aria-label={`Remove one ${addon.name}`}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                            <output className="w-8 text-center tabular-nums" aria-live="polite">
+                              {quantity}
+                            </output>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              disabled={quantity >= maximumQuantity}
+                              onClick={() =>
+                                setAddonQuantities((current) => ({
+                                  ...current,
+                                  [addon.id]: Math.min(
+                                    (current[addon.id] || 0) + 1,
+                                    maximumQuantity
+                                  ),
+                                }))
+                              }
+                              aria-label={`Add one ${addon.name}`}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </details>
+              ) : null}
+
+              {purchaseMode === "self" && selectedRoom && !requiresFullPayment ? (
+                <div className="marketing-panel rounded-[1.5rem] p-4 sm:p-5">
+                  <h2 className="text-2xl">Choose how to pay</h2>
+                  {requiresFullPayment ? (
+                    <div className="border-brand-accent bg-brand-accent/5 mt-6 rounded-[1.25rem] border p-5">
+                      <p className="text-xl">Full payment required</p>
+                      <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                        Pay{" "}
+                        {formatMoney(effectiveTotalPricePence + addonTotalPence, retreat.currency)}{" "}
+                        today. No balance is due later and no separate pay-in-full discount applies.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <button
+                        type="button"
+                        aria-pressed={paymentOption === "deposit"}
+                        className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
+                          paymentOption === "deposit"
+                            ? "border-brand-accent bg-brand-accent/5"
+                            : "hover:bg-secondary/20"
+                        }`}
+                        onClick={() => setPaymentOption("deposit")}
+                      >
+                        <p className="text-lg">Pay deposit</p>
+                        <p className="mt-2 text-2xl font-semibold">
+                          {formatMoney(depositAmountPence + addonTotalPence, retreat.currency)}
+                        </p>
+                        <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                          Secure your place today. The remaining{" "}
+                          {formatMoney(depositBalanceAmountPence, retreat.currency)} is paid{" "}
+                          {balanceDueLabel ? `by ${balanceDueLabel}` : "later by balance link"}.
+                          Optional extras are included in today's payment.
+                        </p>
+                      </button>
+
+                      <button
+                        type="button"
+                        aria-pressed={paymentOption === "pay_in_full"}
+                        className={`rounded-[1.25rem] border p-5 text-left transition-colors ${
+                          paymentOption === "pay_in_full"
+                            ? "border-brand-accent bg-brand-accent/5"
+                            : "hover:bg-secondary/20"
+                        }`}
+                        onClick={() => setPaymentOption("pay_in_full")}
+                      >
+                        <p className="text-lg">Pay in full</p>
+                        <p className="mt-2 text-2xl font-semibold">
+                          {formatMoney(payInFullTotalPence + addonTotalPence, retreat.currency)}
+                        </p>
+                        <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                          Secure your place with everything paid and no remaining balance to think
+                          about.
+                        </p>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {purchaseMode === "self" ? (
+                <>
                   {requiresFullPayment &&
                     ["online_workshop", "in_person_workshop"].includes(
                       selectedDate.eventKind || ""
@@ -1602,7 +1743,7 @@ export function RetreatCheckoutPage({
               <Button
                 type="submit"
                 size="lg"
-                className="w-full md:w-auto"
+                className="w-full"
                 disabled={
                   isSubmitting ||
                   !termsSatisfied ||
@@ -1613,167 +1754,12 @@ export function RetreatCheckoutPage({
               >
                 {isSubmitting
                   ? "Redirecting..."
-                  : purchaseMode === "gift"
-                    ? "Continue to gift checkout"
-                    : isOnlineExperience
-                      ? `Book my place · ${formatMoney(dueTodayPence, retreat.currency)}`
-                      : effectivePaymentOption === "pay_in_full"
-                        ? "Continue to full payment"
-                        : "Continue to deposit checkout"}
+                  : `${purchaseMode === "gift" ? "Continue to gift payment" : "Continue to payment"} · ${formatMoney(purchaseMode === "gift" ? payInFullTotalPence : dueTodayPence, retreat.currency)}`}
+
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </form>
           </div>
-
-          {!isSimpleCheckout ? (
-            <aside>
-              <div className="sticky top-24 rounded-[1.75rem] border p-6 shadow-sm">
-                <p className="text-brand-accent text-sm tracking-[0.16em] uppercase">
-                  Booking summary
-                </p>
-                <h2 className="mt-3 text-2xl">{retreat.title}</h2>
-
-                <div className="mt-6 space-y-4 text-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="text-muted-foreground">Date</span>
-                    <span className="max-w-[14rem] text-right">
-                      {selectedDate
-                        ? formatRetreatDateTimeRange(
-                            selectedDate.startDate,
-                            selectedDate.endDate,
-                            selectedDate.timezone
-                          )
-                        : "Select a date"}
-                    </span>
-                  </div>
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="text-muted-foreground">
-                      {optionLabel === "ticket" ? "Ticket" : "Room"}
-                    </span>
-                    <span className="max-w-[14rem] text-right">
-                      {selectedRoom
-                        ? requiresAccommodation
-                          ? selectedRoomSummary(selectedRoom, selectedGuestCount, bedPreference)
-                              .label
-                          : selectedRoom.label
-                        : `Select a ${optionLabel}`}
-                    </span>
-                  </div>
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="text-muted-foreground">Guests</span>
-                    <span>{selectedRoom ? getGuestCountLabel(selectedGuestCount) : "TBC"}</span>
-                  </div>
-                  {requiresAccommodation && selectedRoom ? (
-                    <div className="flex items-start justify-between gap-3">
-                      <span className="text-muted-foreground">Bed arrangement</span>
-                      <span>
-                        {selectedRoom
-                          ? selectedRoomSummary(selectedRoom, selectedGuestCount, bedPreference)
-                              .bedLabel
-                          : getBedPreferenceLabel(bedPreference)}
-                      </span>
-                    </div>
-                  ) : null}
-                  {selectedAddons.length > 0 ? (
-                    <div className="border-t pt-4">
-                      <p className="text-muted-foreground mb-2">Optional extras</p>
-                      <div className="space-y-2">
-                        {selectedAddons.map(({ addon, quantity }) => (
-                          <div key={addon.id} className="flex items-start justify-between gap-3">
-                            <span>
-                              {addon.name} × {quantity}
-                            </span>
-                            <span>{formatMoney(addon.pricePence * quantity, addon.currency)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-
-                {selectedRoom ? (
-                  <>
-                    <div className="bg-secondary/20 mt-6 rounded-[1.25rem] border p-4">
-                      {purchaseMode === "gift" ? (
-                        <>
-                          <div className="flex items-center justify-between gap-4">
-                            <span className="text-muted-foreground">Due today</span>
-                            <span className="text-xl">
-                              {formatMoney(payInFullTotalPence, retreat.currency)}
-                            </span>
-                          </div>
-                          <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                            Gift purchases reserve this exact {optionLabel} and date in full.
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <div className="flex items-center justify-between gap-4">
-                            <span className="text-muted-foreground">Due today</span>
-                            <span className="text-xl">
-                              {formatMoney(dueTodayPence, retreat.currency)}
-                            </span>
-                          </div>
-                          {isPayingInFull ? (
-                            <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                              This pays the {experienceLabel} balance in full.
-                            </p>
-                          ) : (
-                            <>
-                              <div className="mt-3 flex items-center justify-between gap-4">
-                                <span className="text-muted-foreground">
-                                  {balanceDueLabel
-                                    ? `Balance due ${balanceDueLabel}`
-                                    : "Balance later"}
-                                </span>
-                                <span>{formatMoney(balanceAmountPence, retreat.currency)}</span>
-                              </div>
-                              <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                                Pay the balance
-                                {balanceDueLabel ? ` by ${balanceDueLabel}` : " later"} from your
-                                dashboard or the secure link sent by email.
-                              </p>
-                            </>
-                          )}
-                        </>
-                      )}
-                    </div>
-
-                    <div className="mt-6 space-y-3 text-sm">
-                      <div className="flex items-start gap-3 rounded-xl border p-4">
-                        <ShieldCheck className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
-                        <p className="text-muted-foreground leading-relaxed">
-                          {purchaseMode === "gift"
-                            ? "The recipient completes their own registration details securely when they redeem the gift."
-                            : requiresPracticalRegistration
-                              ? "Each attendee completes their own health, access and emergency details securely in My Studio after payment."
-                              : "Your booking and access details stay together in your account."}
-                        </p>
-                      </div>
-                      <div className="flex items-start gap-3 rounded-xl border p-4">
-                        <AlertCircle className="text-brand-accent mt-0.5 h-5 w-5 flex-shrink-0" />
-                        <p className="text-muted-foreground leading-relaxed">
-                          {isOnlineExperience
-                            ? "Please contact Shruti before booking if you have accessibility or online access questions."
-                            : requiresAccommodation
-                              ? "Please contact Shruti before booking if you have accessibility questions about the venue or room set-up."
-                              : "Please contact Shruti before booking if you have accessibility questions about the venue or event."}
-                        </p>
-                      </div>
-                    </div>
-                  </>
-                ) : null}
-
-                <div className="text-muted-foreground mt-6 border-t pt-6 text-sm">
-                  <p>
-                    {experienceLabel === "workshop" ? "Workshop" : "Retreat"}:{" "}
-                    {selectedDate?.location || retreat.location}
-                    {selectedDate ? ` · ${fmtDate(selectedDate.startDate)}` : ""}
-                  </p>
-                </div>
-              </div>
-            </aside>
-          ) : null}
         </div>
       </section>
     </Layout>

@@ -51,11 +51,12 @@ test("selected room carries into checkout without collecting attendee health det
   expect(
     (
       await new AxeBuilder({ page })
-        .include("#checkout-room-options")
+        .include("#main-content")
         .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
         .analyze()
     ).violations
   ).toEqual([]);
+  await page.locator("#purchaserFirstName").fill("Booking test");
   await toggle.click();
   await expect(options.getByRole("button", { name: "2 people", exact: true })).toBeVisible();
   await options.getByRole("button", { name: /Shared room · Shared bathroom/ }).click();
@@ -71,21 +72,20 @@ test("selected room carries into checkout without collecting attendee health det
   await options.getByRole("button", { name: "Twin beds", exact: true }).click();
   await expect(options.getByLabel("Selected room details")).toBeVisible();
   await expect(options.getByLabel("Selected room details")).toContainText("Two people · Twin beds");
-  await expect(options.getByLabel("Selected room details")).toContainText("£900 total");
-  await expect(options.getByLabel("Selected room details")).toContainText(
-    "Room deposit today £225"
-  );
   await expect(page.locator("aside").filter({ hasText: "Booking summary" })).toContainText(
     "Twin beds"
   );
   await expect(page.locator("aside").filter({ hasText: "Booking summary" })).toContainText("£225");
+  await expect(page.locator("#purchaserFirstName")).toHaveValue("Booking test");
+  await expect(
+    page.getByRole("button", { name: "Continue to payment · £225", exact: true })
+  ).toBeVisible();
   await options.getByLabel("Selected room details").click();
   await expect(options.getByLabel("Selected room details")).toContainText("Two people");
   await page.getByRole("button", { name: /Pay in full/ }).click();
-  await expect(options.getByLabel("Selected room details")).toContainText(
-    "Room payment today £900"
-  );
-  await expect(options.getByLabel("Selected room details")).not.toContainText("deposit today");
+  await expect(
+    page.getByRole("button", { name: "Continue to payment · £900", exact: true })
+  ).toBeVisible();
   // App Router can update search params without remounting the checkout component.
   await page.evaluate(() =>
     window.history.pushState(
@@ -98,10 +98,6 @@ test("selected room carries into checkout without collecting attendee health det
     "Private room · Shared bathroom"
   );
   await expect(options.getByLabel("Selected room details")).toContainText("Two people · Twin beds");
-  await expect(options.getByLabel("Selected room details")).toContainText("£850 total");
-  await expect(options.getByLabel("Selected room details")).toContainText(
-    "Room deposit today £212.50"
-  );
   await expect(page.locator("aside").filter({ hasText: "Booking summary" })).toContainText(
     "£212.50"
   );
