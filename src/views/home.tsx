@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { AlertCircle, ArrowRight, CalendarDays, CheckCircle2, Youtube } from "lucide-react";
+import { AlertCircle, ArrowRight, CheckCircle2, Youtube } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 import {
@@ -73,7 +73,7 @@ export function HomePage({ testimonials }: HomePageProps) {
         aside={
           <div className="relative mx-auto max-w-xl">
             <div className="border-brand-white/10 bg-brand-white/5 relative overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
-              <div className="aspect-[4/4.75] overflow-hidden rounded-[1.45rem]">
+              <div className="aspect-[4/3] overflow-hidden rounded-[1.45rem] lg:aspect-[4/4.75]">
                 <ImageWithFallback
                   src="/images/shruti-deadlift.jpeg"
                   alt="Shruti Turner deadlifting a barbell in a gym"
@@ -121,7 +121,7 @@ export function HomePage({ testimonials }: HomePageProps) {
             </article>
           ))}
         </div>
-        <div className="mt-12 h-96 overflow-hidden rounded-2xl">
+        <div className="mx-auto mt-12 aspect-video max-w-4xl overflow-hidden rounded-2xl">
           {isIntroVideoPlaying ? (
             <iframe
               src="https://www.youtube-nocookie.com/embed/dmNpmeR8XwU?autoplay=1"
@@ -154,23 +154,55 @@ export function HomePage({ testimonials }: HomePageProps) {
             </button>
           )}
         </div>
-        <div className="border-brand-dark/10 bg-brand-dark text-brand-white mt-8 grid gap-6 rounded-[1.6rem] border p-6 shadow-[0_20px_60px_rgba(46,31,51,0.14)] md:grid-cols-[auto_1fr_auto] md:items-center">
-          <div className="bg-brand-accent-light/15 flex h-12 w-12 items-center justify-center rounded-2xl">
-            <CalendarDays className="text-brand-accent-light h-6 w-6" />
-          </div>
-          <div>
-            <h3 className="text-xl">Retreats and workshops for movement, rest and recovery.</h3>
-            <p className="text-brand-white/72 mt-2 text-sm leading-relaxed">
-              Small retreat experiences for people who want flexible movement options, thoughtful
-              pacing and space to recover without pressure to perform.
-            </p>
-          </div>
-          <Button asChild variant="secondary" className="justify-between">
-            <Link href="/retreats">
-              Explore retreats and workshops
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
+      </MarketingSection>
+
+      <MarketingSection className="section-wash section-divider">
+        <SectionHeading title="Ways to Work With Me" />
+        <div className="mt-8 grid gap-6 md:grid-cols-2">
+          {[
+            {
+              title: "Personal Coaching",
+              description:
+                "Individual support to build strength, confidence and capability through adaptable training.",
+              label: "Explore Coaching",
+              href: "/coaching",
+              image: "/images/shruti-gym-training.jpeg",
+              alt: "Shruti training in the gym",
+            },
+            {
+              title: "Retreats & Workshops",
+              description:
+                "Shared experiences that create space for movement, learning, wellbeing and rest.",
+              label: "Explore Experiences",
+              href: "/retreats",
+              image: "/images/shruti-yoga-warrior.jpeg",
+              alt: "Shruti practising yoga outdoors",
+            },
+          ].map((pathway) => (
+            <article
+              key={pathway.href}
+              className="bg-background flex flex-col overflow-hidden rounded-[1.75rem] border"
+            >
+              <ImageWithFallback
+                src={pathway.image}
+                alt={pathway.alt}
+                className="aspect-[2/1] w-full object-cover"
+                sizes="(max-width: 767px) 100vw, 50vw"
+              />
+              <div className="flex flex-1 flex-col p-6 md:p-8">
+                <h3 className="text-2xl">{pathway.title}</h3>
+                <p className="text-muted-foreground mt-3 mb-6 leading-relaxed">
+                  {pathway.description}
+                </p>
+                <Button asChild className="mt-auto w-full justify-between sm:w-auto">
+                  <Link href={pathway.href}>
+                    {pathway.label}
+                    <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            </article>
+          ))}
         </div>
       </MarketingSection>
 
@@ -189,7 +221,7 @@ export function HomePage({ testimonials }: HomePageProps) {
       <MarketingSection className="bg-brand-dark text-brand-white">
         <div className="grid items-center gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:gap-14">
           <div className="border-brand-white/10 bg-brand-white/5 mx-auto w-full max-w-sm overflow-hidden rounded-[1.75rem] border p-3 shadow-[0_24px_60px_rgba(0,0,0,0.2)]">
-            <div className="aspect-[4/5] overflow-hidden rounded-[1.25rem]">
+            <div className="aspect-[4/3] overflow-hidden rounded-[1.25rem] lg:aspect-[4/5]">
               <ImageWithFallback
                 src="/images/shruti.jpeg"
                 alt="Shruti Turner hiking in Patagonia"

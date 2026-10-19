@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { X, Check } from "lucide-react";
+import { Check } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -66,23 +67,22 @@ export function NewsletterPopup({ isOpen, onClose }: NewsletterPopupProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="bg-background animate-in fade-in zoom-in relative w-full max-w-md rounded-lg border p-8 shadow-lg duration-200">
-        <button
-          onClick={closePopup}
-          className="text-muted-foreground hover:text-foreground absolute top-4 right-4 transition-colors"
-          aria-label="Close"
-        >
-          <X className="h-5 w-5" />
-        </button>
-
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) closePopup();
+      }}
+    >
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto p-8 sm:max-w-md [&>button]:flex [&>button]:h-11 [&>button]:w-11 [&>button]:items-center [&>button]:justify-center">
         {!submitted ? (
           <>
             <div className="mb-6">
-              <h3 className="mb-2 text-2xl">
+              <DialogTitle className="mb-2 pr-8 text-2xl">
                 {signupCopy.popupTitle || "Get Evidence-Based Insights"}
-              </h3>
-              <p className="text-muted-foreground">{signupCopy.popupDescription}</p>
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                {signupCopy.popupDescription}
+              </DialogDescription>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -141,14 +141,16 @@ export function NewsletterPopup({ isOpen, onClose }: NewsletterPopupProps) {
             <div className="bg-primary/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
               <Check className="text-primary h-8 w-8" />
             </div>
-            <h3 className="mb-2 text-xl">
+            <DialogTitle className="mb-2 text-xl">
               {signupState === "subscribed" ? "You’re already subscribed." : "Check your inbox."}
-            </h3>
-            <p className="text-muted-foreground">{successMessage}</p>
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              {successMessage}
+            </DialogDescription>
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

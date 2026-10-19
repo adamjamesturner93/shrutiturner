@@ -77,7 +77,7 @@ export async function sendLeadMagnetDeliveryEmail(input: {
   const unsubscribeUrl = buildUnsubscribeUrl(input.subscriberId);
   const downloadUrl = signupContent.assetUrl || CANONICAL_LEAD_MAGNET.assetUrl;
 
-  await sendPostmarkReactEmail({
+  return await sendPostmarkReactEmail({
     to: input.email,
     subject: signupContent.leadMagnetTitle
       ? `${signupContent.leadMagnetTitle} is ready`

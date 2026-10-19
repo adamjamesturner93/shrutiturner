@@ -1,4 +1,8 @@
+import { Suspense } from "react";
+import { isHoldingStage } from "@/lib/site-stage";
+import { validPolicyDate } from "@/lib/analytics/policy";
 import type { Metadata } from "next";
+import { AnalyticsProvider } from "@/components/analytics/provider";
 import Script from "next/script";
 import { Inter, Libre_Baskerville } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
@@ -33,7 +37,6 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const platformSettings = await getRuntimePlatformSettings();
-  const gaMeasurementId = platformSettings.gaMeasurementId || env.GA4_MEASUREMENT_ID || null;
 
   return (
     <html
@@ -43,21 +46,19 @@ export default async function RootLayout({
     >
       <body>
         <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="lazyOnload" />
-        {gaMeasurementId ? (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(gaMeasurementId)}`}
-              strategy="lazyOnload"
+        <Providers platformSettings={platformSettings}>
+          {children}
+          <Suspense fallback={null}>
+            <AnalyticsProvider
+              productionDeployment={
+                !isHoldingStage() &&
+                env.NODE_ENV === "production" &&
+                env.VERCEL_ENV === "production" &&
+                validPolicyDate(process.env.ANALYTICS_POLICY_EFFECTIVE_DATE)
+              }
             />
-            <Script id="google-analytics" strategy="lazyOnload">
-              {`window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', '${gaMeasurementId}', { anonymize_ip: true });`}
-            </Script>
-          </>
-        ) : null}
-        <Providers platformSettings={platformSettings}>{children}</Providers>
+          </Suspense>
+        </Providers>
         <Analytics />
         <SpeedInsights />
       </body>

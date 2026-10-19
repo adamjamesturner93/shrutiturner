@@ -7,14 +7,14 @@ const LEGACY_LEAD_MAGNET = {
   title: "5 Yoga Poses That Actually Build Strength",
 };
 
-export const NEWSLETTER_HEADLINE =
-  "Been told to be careful with exercise because of pain, injury or illness?";
+export const NEWSLETTER_HEADLINE = "Movement, strength and wellbeing for real life.";
 export const NEWSLETTER_BODY =
-  "Learn how to train intelligently, rebuild confidence and build strength in a way that works with your body.";
-export const NEWSLETTER_BUTTON = "Get the free guide";
+  "Practical ideas on movement, strength and wellbeing, alongside new articles, workshops and retreat updates. Join my newsletter and you'll also receive my free guide, Rebuild Your Strength, which explores training with pain, injury or chronic illness.";
+export const NEWSLETTER_BUTTON = "Join the Newsletter";
 export const FREE_GUIDE_TITLE =
   "Rebuild Your Strength: How to train intelligently with chronic illness, pain or injury.";
-export const FREE_GUIDE_SUPPORTING_LINE = NEWSLETTER_BODY;
+export const FREE_GUIDE_SUPPORTING_LINE =
+  "Learn how to train intelligently, rebuild confidence and build strength in a way that works with your body.";
 export const FREE_GUIDE_META_DESCRIPTION =
   "Get Rebuild Your Strength, Shruti Turner's free guide to training intelligently with chronic illness, pain or injury.";
 export const FREE_GUIDE_KEY = "rebuild-your-strength";
@@ -28,7 +28,7 @@ export const CANONICAL_LEAD_MAGNET = {
   emailBody: `Hi {{firstName}},\n\nThanks for joining. Here is your guide: ${FREE_GUIDE_TITLE}.\n\n{{leadMagnetLink}}\n\nShruti`,
   emailPreviewText: "Confirm your email to receive the guide.",
   emailSubject: `Your free guide: ${FREE_GUIDE_TITLE}`,
-  hookText: NEWSLETTER_HEADLINE,
+  hookText: "Been told to be careful with exercise because of pain, injury or illness?",
   landingDescription: FREE_GUIDE_SUPPORTING_LINE,
   slug: FREE_GUIDE_KEY,
   subscribeBenefits: [

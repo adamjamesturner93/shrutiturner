@@ -1,6 +1,7 @@
 import { PrismaClient, Prisma } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { spawnSync } from "node:child_process";
+import workshopContent from "./fixtures/pause-and-restore-review-content.json";
 import { powisHouseRetreat } from "../contentful/seed/powis-house.ts";
 
 // Local fixtures only. Keep existing bookings and never write to Contentful.
@@ -68,16 +69,20 @@ try {
           endsAt: "2026-12-13T12:00:00Z",
         },
       ]) {
-        const content = {
-          schemaVersion: 1,
-          title: workshop.title,
-          shortDescription: "An online workshop with Shruti, hosted live through this website.",
-          fullDescription:
-            "Take time for guided movement, practical learning and reflection with Shruti. This local preview uses sample workshop copy.",
-          scheduleMarkdown:
-            "9:30am — Welcome and guided practice\n11:00am — Reflection and questions\n12:00pm — Close",
-          durationLabel: "2½ hours",
-        };
+        const content =
+          workshop.slug === "pause-and-restore"
+            ? workshopContent
+            : {
+                schemaVersion: 1,
+                title: workshop.title,
+                shortDescription:
+                  "An online workshop with Shruti, hosted live through this website.",
+                fullDescription:
+                  "Take time for guided movement, practical learning and reflection with Shruti. This local preview uses sample workshop copy.",
+                scheduleMarkdown:
+                  "9:30am — Welcome and guided practice\n11:00am — Reflection and questions\n12:00pm — Close",
+                durationLabel: "2½ hours",
+              };
         const experience = await tx.retreatExperience.upsert({
           where: { slug: workshop.slug },
           create: {

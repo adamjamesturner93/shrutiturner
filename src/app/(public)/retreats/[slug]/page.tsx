@@ -19,11 +19,12 @@ export async function generateMetadata({ params }: RetreatPageProps): Promise<Me
   if (!retreat) return {};
 
   return {
-    title: retreat.seoTitle || `${retreat.title} | Shruti Turner`,
+    title: { absolute: retreat.seoTitle || `${retreat.title} | Shruti Turner` },
     description: retreat.seoDescription || retreat.shortDescription,
-    alternates: { canonical: `/retreats/${retreat.slug}` },
+    alternates: { canonical: `https://shrutiturner.co.uk/retreats/${retreat.slug}` },
     openGraph: {
       type: "website",
+      url: `https://shrutiturner.co.uk/retreats/${retreat.slug}`,
       title: retreat.seoTitle || retreat.title,
       description: retreat.seoDescription || retreat.shortDescription,
       images: retreat.imageUrl

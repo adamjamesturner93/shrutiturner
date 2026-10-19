@@ -1,9 +1,12 @@
 import "server-only";
+import { initialPurchase } from "@/lib/analytics/purchase";
+import type { Purchase } from "@/lib/analytics/contracts";
 
 import { getStripeClient } from "@/lib/billing/stripe-client";
 import { db } from "@/lib/db";
 
 export type RetreatCheckoutSuccessState = {
+  analyticsPurchase?: Purchase | null;
   kind: "booking" | "gift";
   title: string;
   firstName: string;
@@ -42,6 +45,18 @@ export async function getRetreatCheckoutSuccessState(
       throw new Error("INVALID_SESSION");
     }
     return {
+      analyticsPurchase: initialPurchase({
+        sessionId: session.id,
+        expectedSessionId: gift.stripeCheckoutSessionId,
+        status: session.status,
+        paymentStatus: session.payment_status,
+        amount: session.amount_total,
+        currency: session.currency,
+        kind,
+        slug: gift.retreatDate.retreatSlug,
+        eventKind: gift.retreatDate.eventKind,
+        outstandingPence: 0,
+      }),
       kind: "gift",
       title: gift.retreatDate.retreatTitleSnapshot,
       firstName: gift.purchaserFirstName,
@@ -71,6 +86,20 @@ export async function getRetreatCheckoutSuccessState(
       throw new Error("INVALID_SESSION");
     }
     return {
+      analyticsPurchase: initialPurchase({
+        sessionId: session.id,
+        expectedSessionId: booking.stripeDepositSessionId,
+        status: session.status,
+        paymentStatus: session.payment_status,
+        amount: session.amount_total,
+        currency: session.currency,
+        kind,
+        sequence: session.metadata?.instalmentSequence,
+        slug: booking.retreatDate.retreatSlug,
+        eventKind: booking.retreatDate.eventKind,
+        outstandingPence: Math.max(0, booking.totalPricePence - (session.amount_total ?? 0)),
+        cancelled: booking.bookingStatus === "cancelled",
+      }),
       kind: "booking",
       title: booking.retreatDate.retreatTitleSnapshot,
       firstName: booking.purchaserFirstName,

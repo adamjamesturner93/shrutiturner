@@ -76,7 +76,7 @@ export function SubscribePage() {
 
           <div className="relative mx-auto w-full max-w-lg">
             <div className="border-brand-dark/10 bg-brand-dark/5 overflow-hidden rounded-[2rem] border p-3 shadow-[0_24px_60px_rgba(46,31,51,0.1)]">
-              <div className="aspect-[4/4.25] overflow-hidden rounded-[1.45rem]">
+              <div className="aspect-[16/9] overflow-hidden rounded-[1.45rem] lg:aspect-[4/4.25]">
                 <ImageWithFallback
                   src="/images/shruti.jpeg"
                   alt="Shruti Turner smiling while hiking in Patagonia"

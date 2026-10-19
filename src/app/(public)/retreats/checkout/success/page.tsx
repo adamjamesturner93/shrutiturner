@@ -1,3 +1,4 @@
+import { AnalyticsPage } from "@/components/analytics/page";
 import { formatRetreatDate, formatRetreatDateTimeRange } from "@/lib/retreats/presentation";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -40,6 +41,7 @@ export default async function Page({
 
   return (
     <Layout footerVariant="utility">
+      <AnalyticsPage path="/retreats/checkout/success" purchase={state.analyticsPurchase} />
       <main className="section-wash flex-1 px-4 py-14 md:py-20">
         <div className="marketing-panel mx-auto max-w-2xl rounded-[2rem] p-7 text-center md:p-10">
           {state.kind === "gift" ? (

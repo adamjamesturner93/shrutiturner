@@ -55,7 +55,7 @@ export function RetreatNavigation({ mobile = false }: { mobile?: boolean }) {
       <div
         className={
           mobile
-            ? "space-y-3 p-3"
+            ? "space-y-2 px-1 pb-3"
             : "bg-background absolute top-full right-0 z-50 grid w-[min(48rem,90vw)] grid-cols-[0.85fr_1.15fr] gap-5 rounded-3xl border p-5 shadow-xl"
         }
       >
@@ -98,11 +98,11 @@ export function RetreatNavigation({ mobile = false }: { mobile?: boolean }) {
                 <ImageWithFallback
                   src={entry.imageUrl}
                   alt=""
-                  className="h-16 w-16 shrink-0 rounded-lg object-cover"
+                  className="h-12 w-12 shrink-0 rounded-lg object-cover"
                 />
               ) : null}
-              <div>
-                <p className="font-medium">{entry.title}</p>
+              <div className="min-w-0 break-words">
+                <p className="leading-snug font-medium">{entry.title}</p>
                 <p className="text-muted-foreground mt-1 text-sm">
                   {entry.format} · {entry.date}
                 </p>

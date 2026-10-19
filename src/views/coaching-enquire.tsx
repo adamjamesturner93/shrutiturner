@@ -1,8 +1,10 @@
 "use client";
+import { trackConfirmedEnquiry } from "@/lib/analytics/conversions";
 
+import { EnquiryPhoto } from "@/components/marketing/enquiry-photo";
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowDown, CalendarDays, CheckCircle2, Mail, MessageCircle } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle2, Mail, MessageCircle } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 import { MarketingSection, SectionHeading } from "@/components/marketing/sections";
@@ -74,6 +76,11 @@ export function CoachingEnquirePage() {
         const payload = (await response.json().catch(() => null)) as { message?: string } | null;
         throw new Error(payload?.message || "Failed to send your enquiry.");
       }
+      const confirmation = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        id?: string;
+      } | null;
+      trackConfirmedEnquiry(confirmation, website);
       setSubmitted(true);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Failed to send your enquiry.");
@@ -84,44 +91,235 @@ export function CoachingEnquirePage() {
 
   return (
     <Layout footerVariant="utility">
-      <section className="marketing-grid text-brand-white overflow-hidden px-4 py-12 md:py-16">
+      <section className="marketing-grid text-brand-white overflow-hidden px-4 py-8 md:py-10">
         <div className="container mx-auto max-w-5xl text-center">
           <p className="text-brand-accent-light text-xs tracking-[0.3em] uppercase">
             Coaching enquiry
           </p>
-          <h1 className="mx-auto mt-5 max-w-4xl text-4xl leading-tight md:text-6xl">
+          <h1 className="mx-auto mt-5 max-w-4xl text-3xl leading-tight md:text-4xl">
             Let’s find the right support for you.
           </h1>
-          <p className="text-brand-white/80 mx-auto mt-6 max-w-2xl text-lg leading-relaxed md:text-xl">
+          <p className="text-brand-white/80 mx-auto mt-4 max-w-2xl text-base leading-relaxed">
             You don’t need to know which level of coaching is right for you before getting in touch.
             Tell me a little about what you’re looking for, and we can work that out together.
           </p>
-          <Button
-            asChild
-            size="lg"
-            className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90 mt-8"
+          <Link
+            href="/coaching"
+            className="mt-5 inline-flex items-center gap-2 py-2 text-sm text-white underline underline-offset-4"
           >
-            <Link href="#enquiry-form">
-              See the enquiry form
-              <ArrowDown className="h-4 w-4" />
-            </Link>
-          </Button>
+            <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+            Back to coaching
+          </Link>
         </div>
       </section>
 
+      <MarketingSection id="enquiry-form" className="section-divider" contentClassName="max-w-6xl">
+        <div className="grid items-start gap-12 lg:grid-cols-[0.8fr_1.2fr]">
+          <EnquiryPhoto />
+          <div className="marketing-panel rounded-[2rem] p-6 shadow-[0_24px_60px_rgba(46,31,51,0.08)] md:p-9">
+            <SectionHeading title="Tell me what you’d like support with." />
+
+            {submitted ? (
+              <div className="mt-8 rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-7 text-center">
+                <CheckCircle2 className="mx-auto h-11 w-11 text-emerald-700" />
+                <h2 className="mt-4 text-2xl">Thanks — your enquiry has been sent.</h2>
+                <p className="text-muted-foreground mt-3 leading-relaxed">
+                  I’ll read it personally and get back to you within two working days. Please check
+                  your spam folder if you have not heard back.
+                </p>
+              </div>
+            ) : (
+              <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                <p className="text-muted-foreground text-sm">Fields marked with * are required.</p>
+
+                <fieldset className="grid gap-5 sm:grid-cols-2">
+                  <legend className="mb-4 text-xl">Your details</legend>
+                  <div className="space-y-2">
+                    <Label htmlFor="enquiry-name">Name *</Label>
+                    <Input
+                      id="enquiry-name"
+                      name="name"
+                      required
+                      autoComplete="name"
+                      value={formData.name}
+                      onChange={(event) => setFormData({ ...formData, name: event.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="enquiry-email">Email *</Label>
+                    <Input
+                      id="enquiry-email"
+                      name="email"
+                      type="email"
+                      required
+                      autoComplete="email"
+                      value={formData.email}
+                      onChange={(event) => setFormData({ ...formData, email: event.target.value })}
+                    />
+                  </div>
+                </fieldset>
+
+                <fieldset className="space-y-5">
+                  <legend className="mb-4 text-xl">Your goals and circumstances</legend>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="enquiry-support">What would you like support with? *</Label>
+                    <Textarea
+                      id="enquiry-support"
+                      name="support"
+                      rows={3}
+                      required
+                      value={formData.support}
+                      onChange={(event) =>
+                        setFormData({ ...formData, support: event.target.value })
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="enquiry-movement">
+                      What does movement/training currently look like for you?
+                    </Label>
+                    <Textarea
+                      id="enquiry-movement"
+                      name="movement"
+                      rows={3}
+                      value={formData.movement}
+                      onChange={(event) =>
+                        setFormData({ ...formData, movement: event.target.value })
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="enquiry-context">
+                      Is there anything about your health, body or circumstances you’d like me to
+                      know?
+                    </Label>
+                    <Textarea
+                      id="enquiry-context"
+                      name="context"
+                      rows={3}
+                      value={formData.context}
+                      onChange={(event) =>
+                        setFormData({ ...formData, context: event.target.value })
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="enquiry-outcome">
+                      What would you most like to get from coaching? *
+                    </Label>
+                    <Textarea
+                      id="enquiry-outcome"
+                      name="outcome"
+                      rows={3}
+                      required
+                      value={formData.outcome}
+                      onChange={(event) =>
+                        setFormData({ ...formData, outcome: event.target.value })
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="enquiry-extra">Anything else you’d like to tell me?</Label>
+                    <Textarea
+                      id="enquiry-extra"
+                      name="extra"
+                      rows={3}
+                      value={formData.extra}
+                      onChange={(event) => setFormData({ ...formData, extra: event.target.value })}
+                    />
+                  </div>
+                </fieldset>
+
+                <div className="space-y-2">
+                  <Label htmlFor="enquiry-referral">How did you hear about me? *</Label>
+                  <Input
+                    id="enquiry-referral"
+                    name="referral"
+                    required
+                    value={formData.referral}
+                    onChange={(event) => setFormData({ ...formData, referral: event.target.value })}
+                  />
+                </div>
+
+                <div className="pointer-events-none absolute -left-[10000px]" aria-hidden="true">
+                  <Label htmlFor="enquiry-website">Website</Label>
+                  <Input
+                    id="enquiry-website"
+                    name="website"
+                    value={website}
+                    onChange={(event) => setWebsite(event.target.value)}
+                    autoComplete="off"
+                    tabIndex={-1}
+                  />
+                </div>
+
+                <TurnstileWidget onTokenChange={setTurnstileToken} />
+
+                <label className="text-muted-foreground flex items-start gap-3 text-sm leading-relaxed">
+                  <input
+                    type="checkbox"
+                    checked={consent}
+                    onChange={(event) => setConsent(event.target.checked)}
+                    required
+                    className="accent-brand-accent mt-1 h-4 w-4 shrink-0"
+                  />
+                  <span>{ENQUIRY_CONSENT_TEXT}</span>
+                </label>
+
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full"
+                  disabled={!consent || !turnstileToken || submitting}
+                >
+                  {submitting ? "Sending..." : "Send enquiry"}
+                </Button>
+                {error ? (
+                  <p
+                    role="alert"
+                    className="rounded-[1.2rem] border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+                  >
+                    {error}
+                  </p>
+                ) : null}
+              </form>
+            )}
+
+            <div className="border-brand-dark/10 bg-brand-warm mt-8 rounded-[1.25rem] border p-5">
+              <h3 className="text-xl">What happens after I enquire?</h3>
+              <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                I’ll read your enquiry personally and get back to you within two working days to
+                arrange a consultation or ask any questions I need to before we speak.
+              </p>
+            </div>
+
+            <p className="text-muted-foreground mt-7 text-center text-sm">
+              Looking for something other than coaching?{" "}
+              <Link href="/contact" className="text-primary underline">
+                Use the general contact page.
+              </Link>
+            </p>
+          </div>
+        </div>
+      </MarketingSection>
       <MarketingSection className="section-wash" compact>
         <SectionHeading
           title="What happens next"
           description="No need to choose a level of support before we’ve spoken."
           align="center"
         />
-        <ol className="mx-auto mt-10 grid max-w-5xl gap-5 md:grid-cols-3">
+        <ol className="mx-auto mt-6 grid max-w-5xl gap-5 md:grid-cols-3">
           {nextSteps.map((step, index) => {
             const Icon = step.icon;
             return (
               <li
                 key={step.title}
-                className="border-brand-dark/10 bg-background relative rounded-[1.65rem] border p-6 text-center"
+                className="border-brand-dark/10 bg-background relative rounded-[1.25rem] border p-5 text-left"
               >
                 <span className="bg-brand-accent text-brand-white mx-auto flex h-12 w-12 items-center justify-center rounded-full">
                   <Icon className="h-5 w-5" />
@@ -137,181 +335,6 @@ export function CoachingEnquirePage() {
             );
           })}
         </ol>
-      </MarketingSection>
-
-      <MarketingSection id="enquiry-form" className="section-divider" contentClassName="max-w-3xl">
-        <div className="marketing-panel rounded-[2rem] p-6 shadow-[0_24px_60px_rgba(46,31,51,0.08)] md:p-9">
-          <SectionHeading title="Tell me what you’d like support with." />
-
-          {submitted ? (
-            <div className="mt-8 rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-7 text-center">
-              <CheckCircle2 className="mx-auto h-11 w-11 text-emerald-700" />
-              <h2 className="mt-4 text-2xl">Thanks — your enquiry has been sent.</h2>
-              <p className="text-muted-foreground mt-3 leading-relaxed">
-                I’ll read it personally and get back to you within two working days. Please check
-                your spam folder if you have not heard back.
-              </p>
-            </div>
-          ) : (
-            <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-              <p className="text-muted-foreground text-sm">Fields marked with * are required.</p>
-
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="enquiry-name">Name *</Label>
-                  <Input
-                    id="enquiry-name"
-                    name="name"
-                    required
-                    autoComplete="name"
-                    value={formData.name}
-                    onChange={(event) => setFormData({ ...formData, name: event.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="enquiry-email">Email *</Label>
-                  <Input
-                    id="enquiry-email"
-                    name="email"
-                    type="email"
-                    required
-                    autoComplete="email"
-                    value={formData.email}
-                    onChange={(event) => setFormData({ ...formData, email: event.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="enquiry-support">What would you like support with? *</Label>
-                <Textarea
-                  id="enquiry-support"
-                  name="support"
-                  rows={4}
-                  required
-                  value={formData.support}
-                  onChange={(event) => setFormData({ ...formData, support: event.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="enquiry-movement">
-                  What does movement/training currently look like for you?
-                </Label>
-                <Textarea
-                  id="enquiry-movement"
-                  name="movement"
-                  rows={4}
-                  value={formData.movement}
-                  onChange={(event) => setFormData({ ...formData, movement: event.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="enquiry-context">
-                  Is there anything about your health, body or circumstances you’d like me to know?
-                </Label>
-                <Textarea
-                  id="enquiry-context"
-                  name="context"
-                  rows={4}
-                  value={formData.context}
-                  onChange={(event) => setFormData({ ...formData, context: event.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="enquiry-outcome">
-                  What would you most like to get from coaching? *
-                </Label>
-                <Textarea
-                  id="enquiry-outcome"
-                  name="outcome"
-                  rows={4}
-                  required
-                  value={formData.outcome}
-                  onChange={(event) => setFormData({ ...formData, outcome: event.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="enquiry-extra">Anything else you’d like to tell me?</Label>
-                <Textarea
-                  id="enquiry-extra"
-                  name="extra"
-                  rows={3}
-                  value={formData.extra}
-                  onChange={(event) => setFormData({ ...formData, extra: event.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="enquiry-referral">How did you hear about me? *</Label>
-                <Input
-                  id="enquiry-referral"
-                  name="referral"
-                  required
-                  value={formData.referral}
-                  onChange={(event) => setFormData({ ...formData, referral: event.target.value })}
-                />
-              </div>
-
-              <div className="pointer-events-none absolute -left-[10000px]" aria-hidden="true">
-                <Label htmlFor="enquiry-website">Website</Label>
-                <Input
-                  id="enquiry-website"
-                  name="website"
-                  value={website}
-                  onChange={(event) => setWebsite(event.target.value)}
-                  autoComplete="off"
-                  tabIndex={-1}
-                />
-              </div>
-
-              <TurnstileWidget onTokenChange={setTurnstileToken} />
-
-              <label className="text-muted-foreground flex items-start gap-3 text-sm leading-relaxed">
-                <input
-                  type="checkbox"
-                  checked={consent}
-                  onChange={(event) => setConsent(event.target.checked)}
-                  required
-                  className="accent-brand-accent mt-1 h-4 w-4 shrink-0"
-                />
-                <span>{ENQUIRY_CONSENT_TEXT}</span>
-              </label>
-
-              <Button
-                type="submit"
-                size="lg"
-                className="w-full"
-                disabled={!consent || !turnstileToken || submitting}
-              >
-                {submitting ? "Sending..." : "Send enquiry"}
-              </Button>
-              {error ? (
-                <p className="rounded-[1.2rem] border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                  {error}
-                </p>
-              ) : null}
-            </form>
-          )}
-
-          <div className="border-brand-dark/10 bg-brand-warm mt-8 rounded-[1.25rem] border p-5">
-            <h3 className="text-xl">What happens after I enquire?</h3>
-            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-              I’ll read your enquiry personally and get back to you within two working days to
-              arrange a consultation or ask any questions I need to before we speak.
-            </p>
-          </div>
-
-          <p className="text-muted-foreground mt-7 text-center text-sm">
-            Looking for something other than coaching?{" "}
-            <Link href="/contact" className="text-primary underline">
-              Use the general contact page.
-            </Link>
-          </p>
-        </div>
       </MarketingSection>
     </Layout>
   );

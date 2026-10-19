@@ -1,5 +1,13 @@
 "use client";
 
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { Layout } from "@/components/layout";
 import { MarketingSection } from "@/components/marketing/sections";
 import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
@@ -51,6 +59,49 @@ export function LegalDocumentPage({ document }: LegalDocumentPageProps) {
         <article className="marketing-panel rounded-[2rem] p-6 md:p-8">
           <div className="prose prose-lg text-muted-foreground max-w-none leading-relaxed">
             {blocks.map((block, index) => {
+              if (block.type === "table") {
+                const inline = (text: string) =>
+                  text.split(/(`[^`]+`)/g).map((part, i) =>
+                    part.startsWith("`") && part.endsWith("`") ? (
+                      <code key={i} className="[overflow-wrap:anywhere]">
+                        {part.slice(1, -1)}
+                      </code>
+                    ) : (
+                      part
+                    )
+                  );
+                return (
+                  <Table key={`table-${index}`} className="table-fixed text-sm whitespace-normal">
+                    <TableHeader>
+                      <TableRow>
+                        {block.headers.map((header) => (
+                          <TableHead
+                            key={header}
+                            scope="col"
+                            className="h-auto p-3 align-top whitespace-normal"
+                          >
+                            {header}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {block.rows.map((row, rowIndex) => (
+                        <TableRow key={rowIndex}>
+                          {row.map((cell, cellIndex) => (
+                            <TableCell
+                              key={cellIndex}
+                              className="p-3 align-top [overflow-wrap:anywhere] whitespace-normal"
+                            >
+                              {inline(cell)}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                );
+              }
               if (block.type === "heading") {
                 const id = `section-${index + 1}`;
                 return block.level === 3 ? (

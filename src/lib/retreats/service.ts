@@ -1,3 +1,4 @@
+import { checkoutReference } from "@/lib/analytics/purchase";
 import { getWorkshopPayment } from "./workshop-payment";
 import { workshopStripeProduct } from "./workshop-discounts";
 import { getPhysicalPoolInventory } from "./physical-inventory-service";
@@ -1023,6 +1024,7 @@ async function mapOperationalDate(
 
   return {
     id: date.externalDateId,
+    bookingOpen: date.status === "open",
     eventKind: date.eventKind,
     isRecorded: date.isRecorded,
     retreatType: parseRetreatType(date.retreatType),
@@ -1889,7 +1891,12 @@ export async function createRetreatCheckout(input: {
       });
     }
 
-    return { giftPurchaseId: gift.id, checkoutUrl: session.url };
+    return {
+      giftPurchaseId: gift.id,
+      checkoutUrl: session.url,
+      analyticsAmountPence: session.amount_total,
+      analyticsCheckoutKey: checkoutReference(session.id),
+    };
   }
 
   const attendeeFirstName = normalizeText(input.attendeeFirstName || input.purchaserFirstName, 80);
@@ -2218,6 +2225,8 @@ export async function createRetreatCheckout(input: {
   return {
     bookingId: booking.id,
     checkoutUrl: session.url,
+    analyticsAmountPence: session.amount_total,
+    analyticsCheckoutKey: checkoutReference(session.id),
   };
 }
 

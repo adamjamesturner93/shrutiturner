@@ -53,7 +53,7 @@ export function ImageWithFallback({
         <div className="flex h-full w-full items-center justify-center">
           <Image
             src={ERROR_IMG_SRC}
-            alt="Unable to load"
+            alt={alt}
             width={88}
             height={88}
             unoptimized
@@ -75,7 +75,8 @@ export function ImageWithFallback({
         height={height}
         className={className}
         style={style}
-        loading={rest.loading === "eager" ? "eager" : "lazy"}
+        loading={rest.preload || rest.priority || rest.loading === "eager" ? "eager" : "lazy"}
+        fetchPriority={rest.fetchPriority || (rest.preload || rest.priority ? "high" : undefined)}
         onError={handleError}
       />
     );

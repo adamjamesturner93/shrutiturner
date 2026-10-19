@@ -12,6 +12,27 @@ const nextConfig = {
       { source: "/programmes/:slug", destination: "/coaching", permanent: false },
     ];
   },
+  async headers() {
+    const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
+    // A response header also covers pages whose child metadata enables indexing.
+    if (process.env.VERCEL_ENV !== "production") return [{ source: "/:path*", headers: noindex }];
+    return [
+      "admin",
+      "dashboard",
+      "account",
+      "auth",
+      "login",
+      "signup",
+      "email",
+      "unsubscribe",
+      "instructor",
+      "r",
+      "gift/redeem",
+      "retreats/balance",
+      "retreats/checkout",
+      "retreats/:slug/checkout",
+    ].map((path) => ({ source: `/${path}/:path*`, headers: noindex }));
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.ctfassets.net" },

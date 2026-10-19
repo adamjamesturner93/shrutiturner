@@ -97,6 +97,13 @@ export function WellbeingVenn() {
 
   return (
     <div>
+      <div className="mx-auto mb-8 max-w-3xl space-y-4 text-center text-lg leading-relaxed">
+        {vennAreas
+          .find((area) => area.id === "intersection")
+          ?.paragraphs.map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
+      </div>
       <p id="venn-instructions" className="text-muted-foreground text-center text-sm">
         Select a circle to learn more. Each circle opens in an accessible dialog and can be reached
         by keyboard.

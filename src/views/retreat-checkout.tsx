@@ -1,4 +1,8 @@
 "use client";
+import { track } from "@/lib/analytics/client";
+import { trackStartedCheckout } from "@/lib/analytics/conversions";
+import { isPrivateRoom } from "@/lib/retreats/room-choice";
+import { AnalyticsPage } from "@/components/analytics/page";
 import { selectedRoomSummary } from "@/lib/retreats/room-choice";
 import { RetreatRoomChoices } from "@/components/retreat-room-choices";
 
@@ -490,6 +494,8 @@ export function RetreatCheckoutPage({
 
       const payload = (await response.json().catch(() => null)) as {
         checkoutUrl?: string;
+        analyticsAmountPence?: number | null;
+        analyticsCheckoutKey?: string;
         message?: string;
         code?: string;
         requiredAcceptances?: AcceptanceRequirementState[];
@@ -524,6 +530,12 @@ export function RetreatCheckoutPage({
         throw new Error(payload?.message || "Failed to start checkout.");
       }
 
+      trackStartedCheckout({
+        slug: retreat.slug,
+        kind: retreat.experienceType,
+        amountPence: payload.analyticsAmountPence,
+        checkoutKey: payload.analyticsCheckoutKey,
+      });
       window.location.assign(payload.checkoutUrl);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Failed to start checkout.");
@@ -549,6 +561,7 @@ export function RetreatCheckoutPage({
 
   return (
     <Layout>
+      <AnalyticsPage path={`/retreats/${retreat.slug}/checkout`} />
       <SEO
         title={`Book ${retreat.title} - Shruti Turner`}
         description={`Select your ${experienceLabel} date and ${optionLabel} for ${retreat.title}.`}
@@ -1008,6 +1021,13 @@ export function RetreatCheckoutPage({
                           bedPreference={bedPreference}
                           onBedPreferenceChange={setBedPreference}
                           onSelect={(room) => {
+                            if (room && room.availableSpots > 0 && !room.isWaitlistOnly)
+                              track("room_selected", {
+                                event_id: retreat.slug,
+                                event_type: "retreat",
+                                room_category: isPrivateRoom(room) ? "private" : "shared",
+                                occupancy: selectedGuestCount === 2 ? 2 : 1,
+                              });
                             setSelectedRoomId(room?.id || "");
                             if (room) setRoomChoicesExpanded(false);
                           }}

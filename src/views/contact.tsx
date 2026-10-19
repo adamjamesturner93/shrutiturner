@@ -1,5 +1,6 @@
 "use client";
 
+import { EnquiryPhoto } from "@/components/marketing/enquiry-photo";
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, CheckCircle2, Mail } from "lucide-react";
@@ -112,136 +113,143 @@ export function ContactPage() {
       </section>
 
       <section className="section-wash px-4 py-12 md:py-16">
-        <div className="container mx-auto max-w-3xl">
-          {submitted ? (
-            <div
-              className="marketing-panel rounded-[2rem] p-8 text-center shadow-[0_24px_60px_rgba(46,31,51,0.08)] md:p-12"
-              aria-live="polite"
-            >
-              <CheckCircle2 className="text-brand-accent mx-auto h-12 w-12" />
-              <h2 className="mt-6 text-3xl md:text-4xl">Thanks — your message has been sent.</h2>
-              <p className="text-muted-foreground mx-auto mt-4 max-w-xl leading-relaxed">
-                I usually reply within two working days. Please check your spam folder if you have
-                not heard back.
-              </p>
-              <Button asChild variant="outline" className="mt-7">
-                <Link href="/">Return home</Link>
-              </Button>
-            </div>
-          ) : (
-            <div className="marketing-panel rounded-[2rem] p-6 shadow-[0_24px_60px_rgba(46,31,51,0.08)] md:p-9">
-              <div>
-                <p className="text-brand-accent text-xs tracking-[0.24em] uppercase">Message</p>
-                <h2 className="mt-4 text-3xl md:text-4xl">What are you getting in touch about?</h2>
-                <p className="text-muted-foreground mt-4 leading-relaxed">
-                  I usually reply within two working days.
+        <div className="container mx-auto grid max-w-6xl items-start gap-12 lg:grid-cols-[0.8fr_1.2fr]">
+          <EnquiryPhoto />
+          <div className="min-w-0">
+            {submitted ? (
+              <div
+                className="marketing-panel rounded-[2rem] p-8 text-center shadow-[0_24px_60px_rgba(46,31,51,0.08)] md:p-12"
+                aria-live="polite"
+              >
+                <CheckCircle2 className="text-brand-accent mx-auto h-12 w-12" />
+                <h2 className="mt-6 text-3xl md:text-4xl">Thanks — your message has been sent.</h2>
+                <p className="text-muted-foreground mx-auto mt-4 max-w-xl leading-relaxed">
+                  I usually reply within two working days. Please check your spam folder if you have
+                  not heard back.
+                </p>
+                <Button asChild variant="outline" className="mt-7">
+                  <Link href="/">Return home</Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="marketing-panel rounded-[2rem] p-6 shadow-[0_24px_60px_rgba(46,31,51,0.08)] md:p-9">
+                <div>
+                  <p className="text-brand-accent text-xs tracking-[0.24em] uppercase">Message</p>
+                  <h2 className="mt-4 text-3xl md:text-4xl">
+                    What are you getting in touch about?
+                  </h2>
+                  <p className="text-muted-foreground mt-4 leading-relaxed">
+                    I usually reply within two working days.
+                  </p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="contact-name">Name *</Label>
+                    <Input
+                      id="contact-name"
+                      value={formData.name}
+                      onChange={(event) => setFormData({ ...formData, name: event.target.value })}
+                      required
+                      autoComplete="name"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="contact-email">Email *</Label>
+                    <Input
+                      id="contact-email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(event) => setFormData({ ...formData, email: event.target.value })}
+                      required
+                      autoComplete="email"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="contact-topic">What are you getting in touch about? *</Label>
+                    <Select
+                      value={formData.topic}
+                      onValueChange={(topic) => setFormData({ ...formData, topic })}
+                    >
+                      <SelectTrigger id="contact-topic" className="w-full">
+                        <SelectValue placeholder="Choose a topic" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TOPIC_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="contact-message">Message *</Label>
+                    <Textarea
+                      id="contact-message"
+                      rows={7}
+                      value={formData.message}
+                      onChange={(event) =>
+                        setFormData({ ...formData, message: event.target.value })
+                      }
+                      required
+                    />
+                  </div>
+
+                  <TurnstileWidget onTokenChange={setTurnstileToken} />
+
+                  <label className="text-muted-foreground flex items-start gap-3 text-sm leading-relaxed">
+                    <input
+                      type="checkbox"
+                      checked={formData.contactConsent}
+                      onChange={(event) =>
+                        setFormData({ ...formData, contactConsent: event.target.checked })
+                      }
+                      required
+                      className="accent-brand-accent mt-1 h-4 w-4 shrink-0"
+                    />
+                    <span>{CONTACT_CONSENT_TEXT}</span>
+                  </label>
+
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="w-full"
+                    disabled={
+                      !formData.topic || !formData.contactConsent || !turnstileToken || submitting
+                    }
+                  >
+                    {submitting ? "Sending..." : "Send message"}
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+
+                  {error ? (
+                    <p className="rounded-[1.2rem] border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                      {error}
+                    </p>
+                  ) : null}
+                </form>
+              </div>
+            )}
+
+            {contactEmail ? (
+              <div className="mt-8 flex flex-col items-center justify-center gap-3 text-center sm:flex-row">
+                <Mail className="text-brand-accent h-5 w-5" />
+                <p className="text-muted-foreground text-sm">
+                  Prefer email?{" "}
+                  <a
+                    href={`mailto:${contactEmail}`}
+                    className="text-primary font-medium underline underline-offset-4"
+                  >
+                    {contactEmail}
+                  </a>
                 </p>
               </div>
-
-              <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="contact-name">Name *</Label>
-                  <Input
-                    id="contact-name"
-                    value={formData.name}
-                    onChange={(event) => setFormData({ ...formData, name: event.target.value })}
-                    required
-                    autoComplete="name"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="contact-email">Email *</Label>
-                  <Input
-                    id="contact-email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(event) => setFormData({ ...formData, email: event.target.value })}
-                    required
-                    autoComplete="email"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="contact-topic">What are you getting in touch about? *</Label>
-                  <Select
-                    value={formData.topic}
-                    onValueChange={(topic) => setFormData({ ...formData, topic })}
-                  >
-                    <SelectTrigger id="contact-topic" className="w-full">
-                      <SelectValue placeholder="Choose a topic" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TOPIC_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="contact-message">Message *</Label>
-                  <Textarea
-                    id="contact-message"
-                    rows={7}
-                    value={formData.message}
-                    onChange={(event) => setFormData({ ...formData, message: event.target.value })}
-                    required
-                  />
-                </div>
-
-                <TurnstileWidget onTokenChange={setTurnstileToken} />
-
-                <label className="text-muted-foreground flex items-start gap-3 text-sm leading-relaxed">
-                  <input
-                    type="checkbox"
-                    checked={formData.contactConsent}
-                    onChange={(event) =>
-                      setFormData({ ...formData, contactConsent: event.target.checked })
-                    }
-                    required
-                    className="accent-brand-accent mt-1 h-4 w-4 shrink-0"
-                  />
-                  <span>{CONTACT_CONSENT_TEXT}</span>
-                </label>
-
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="w-full"
-                  disabled={
-                    !formData.topic || !formData.contactConsent || !turnstileToken || submitting
-                  }
-                >
-                  {submitting ? "Sending..." : "Send message"}
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-
-                {error ? (
-                  <p className="rounded-[1.2rem] border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                    {error}
-                  </p>
-                ) : null}
-              </form>
-            </div>
-          )}
-
-          {contactEmail ? (
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 text-center sm:flex-row">
-              <Mail className="text-brand-accent h-5 w-5" />
-              <p className="text-muted-foreground text-sm">
-                Prefer email?{" "}
-                <a
-                  href={`mailto:${contactEmail}`}
-                  className="text-primary font-medium underline underline-offset-4"
-                >
-                  {contactEmail}
-                </a>
-              </p>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
       </section>
     </Layout>

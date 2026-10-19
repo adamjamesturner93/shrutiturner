@@ -5,10 +5,7 @@ import type {
   RetreatCombinedContent,
 } from "@/lib/content/types";
 import type { JsonLdData } from "@/components/json-ld";
-import {
-  getEffectiveRetreatRatePricePence,
-  isRetreatEarlyBirdActive,
-} from "@/lib/retreats/pricing";
+import { getRetreatPriceSummary } from "@/lib/retreats/presentation";
 
 const ORGANIZATION_NAME = "Shruti Turner";
 
@@ -154,24 +151,50 @@ function createRetreatDateEventSchema(
   retreatDate: RetreatCombinedContent["dates"][number]
 ): JsonLdData {
   const isOnline =
-    retreat.deliveryMode === "online_live" || retreat.deliveryMode === "online_on_demand";
-  const lowestPrice = retreatDate.roomOptions
-    .flatMap((option) => option.ratePlans || [])
-    .reduce<number | null>((lowest, rate) => {
-      const pricePence = isRetreatEarlyBirdActive(rate)
-        ? getEffectiveRetreatRatePricePence(rate)
-        : rate.totalPricePence;
-      const price = pricePence / 100;
-      return lowest === null || price < lowest ? price : lowest;
-    }, null);
+    retreatDate.retreatType === "online" ||
+    retreatDate.eventKind === "online_workshop" ||
+    retreat.deliveryMode === "online_live" ||
+    retreat.deliveryMode === "online_on_demand";
+  const availableRooms = retreatDate.roomOptions.filter(
+    (room) => room.availableSpots > 0 && !room.isWaitlistOnly
+  );
+  const canBook =
+    retreatDate.bookingOpen !== false &&
+    retreatDate.availableSpaces > 0 &&
+    availableRooms.length > 0;
+  const pricedRooms = canBook ? availableRooms : retreatDate.roomOptions;
+  const lowestPrice = pricedRooms.length
+    ? getRetreatPriceSummary({
+        dates: [{ ...retreatDate, roomOptions: pricedRooms }],
+        normalPrice: retreat.normalPrice,
+      }).lowestPricePence / 100
+    : null;
+  const venue = retreatDate.venue || retreat.venue;
+  const url = buildAbsoluteUrl(
+    `/retreats/${retreat.slug}?date=${encodeURIComponent(retreatDate.id)}`
+  );
+  const address =
+    venue?.addressLine1 || venue?.postcode
+      ? {
+          "@type": "PostalAddress",
+          streetAddress:
+            [venue.addressLine1, venue.addressLine2].filter(Boolean).join(", ") || undefined,
+          addressLocality: venue.townOrCity,
+          addressRegion: venue.region,
+          postalCode: venue.postcode,
+          addressCountry: venue.country,
+        }
+      : venue?.address || retreatDate.location || retreat.location;
 
   return {
     "@context": "https://schema.org",
     "@type": "Event",
     name: retreat.title,
     description: retreat.shortDescription,
-    url: buildAbsoluteUrl(`/retreats/${retreat.slug}`),
-    image: retreat.imageUrl || undefined,
+    url,
+    image: retreat.imageUrl?.startsWith("/")
+      ? buildAbsoluteUrl(retreat.imageUrl)
+      : retreat.imageUrl || undefined,
     eventAttendanceMode: isOnline
       ? "https://schema.org/OnlineEventAttendanceMode"
       : "https://schema.org/OfflineEventAttendanceMode",
@@ -181,24 +204,26 @@ function createRetreatDateEventSchema(
     location: isOnline
       ? {
           "@type": "VirtualLocation",
-          url: buildAbsoluteUrl(`/retreats/${retreat.slug}`),
+          url,
         }
       : {
           "@type": "Place",
-          name: retreat.venueName || retreat.location,
-          address: retreat.location,
+          name:
+            retreatDate.venueName ||
+            venue?.name ||
+            retreat.venueName ||
+            retreatDate.location ||
+            retreat.location,
+          address,
         },
     offers:
       lowestPrice !== null
         ? {
             "@type": "Offer",
-            url: buildAbsoluteUrl(`/retreats/${retreat.slug}`),
+            url,
             price: lowestPrice.toFixed(2),
             priceCurrency: retreat.currency,
-            availability:
-              retreatDate.availableSpaces > 0
-                ? "https://schema.org/InStock"
-                : "https://schema.org/SoldOut",
+            availability: canBook ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
           }
         : undefined,
     organizer: {

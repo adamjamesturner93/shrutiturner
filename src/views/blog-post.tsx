@@ -1,4 +1,5 @@
 "use client";
+import { AnalyticsPage } from "@/components/analytics/page";
 
 import { Fragment } from "react";
 import { Layout } from "../components/layout";
@@ -50,6 +51,7 @@ export function BlogPostPage({ post, posts }: BlogPostPageProps) {
 
   return (
     <Layout>
+      <AnalyticsPage path={`/blog/${post.id}`} />
       <section className="marketing-grid text-brand-white overflow-hidden px-4 py-12 md:py-16">
         <div className="container mx-auto max-w-6xl">
           <div className="grid items-start gap-8 lg:grid-cols-[0.95fr_1.05fr]">

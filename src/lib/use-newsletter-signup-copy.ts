@@ -11,7 +11,7 @@ import {
 
 const DEFAULT_SIGNUP_COPY: NewsletterSignupContent = {
   slug: "default",
-  hookText: CANONICAL_LEAD_MAGNET.hookText,
+  hookText: NEWSLETTER_HEADLINE,
   formPlaceholder: "your.email@example.com",
   buttonLabel: NEWSLETTER_BUTTON,
   successMessage: "Please check your inbox to confirm your email address.",
@@ -36,6 +36,11 @@ export function useNewsletterSignupCopy() {
           setCopy({
             ...DEFAULT_SIGNUP_COPY,
             ...data,
+            // Approved general invitation; preserve provider consent and guide-specific content.
+            hookText: NEWSLETTER_HEADLINE,
+            popupTitle: NEWSLETTER_HEADLINE,
+            popupDescription: NEWSLETTER_BODY,
+            buttonLabel: NEWSLETTER_BUTTON,
           });
         }
       } catch {

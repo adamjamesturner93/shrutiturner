@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { JsonLd } from "@/components/json-ld";
 import { buildSeoMetadata } from "@/lib/content/metadata";
 import { createServiceSchema, createWebPageSchema } from "@/lib/seo/structured-data";
+import { getApprovedTestimonials } from "@/lib/content/testimonials";
 import { CoachingPage } from "@/views/coaching";
 
 const COACHING_SOCIAL_IMAGE = "https://shrutiturner.co.uk/social/active";
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildSeoMetadata({
-    title: "Online Personal Training & Coaching | Shruti Turner",
+    title: "Online Personal Training & Movement Coaching | Shruti Turner",
     absoluteTitle: true,
     description:
       "Personalised online training and movement coaching bringing together rehabilitation, fitness and wellbeing, with support built around your body, goals and real life.",
@@ -28,7 +29,8 @@ export async function generateMetadata(): Promise<Metadata> {
   });
 }
 
-export default function Page() {
+export default async function Page() {
+  const testimonials = await getApprovedTestimonials("coaching");
   return (
     <>
       <JsonLd
@@ -48,7 +50,7 @@ export default function Page() {
           }),
         ]}
       />
-      <CoachingPage />
+      <CoachingPage testimonials={testimonials} />
     </>
   );
 }

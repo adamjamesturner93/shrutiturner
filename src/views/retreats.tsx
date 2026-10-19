@@ -26,6 +26,7 @@ import { getRetreatCardDateLabels, getRetreatPriceSummary } from "@/lib/retreats
 import type { FaqItemContent, RetreatCombinedContent } from "@/lib/content/types";
 
 interface RetreatsPageProps {
+  nextEventDateId?: string;
   testimonials?: TestimonialContent[];
   retreats?: RetreatCombinedContent[];
   faqs?: FaqItemContent[];
@@ -103,7 +104,12 @@ const RETREAT_PRINCIPLES = [
   },
 ] as const;
 
-export function RetreatsPage({ retreats, faqs, testimonials = [] }: RetreatsPageProps) {
+export function RetreatsPage({
+  retreats,
+  faqs,
+  testimonials = [],
+  nextEventDateId,
+}: RetreatsPageProps) {
   const [activePrinciple, setActivePrinciple] = useState(0);
   const retreatData = retreats ?? [];
   const retreatFaqs = faqs && faqs.length > 0 ? faqs : DEFAULT_RETREAT_FAQS;
@@ -112,7 +118,8 @@ export function RetreatsPage({ retreats, faqs, testimonials = [] }: RetreatsPage
     new Intl.NumberFormat("en-GB", {
       style: "currency",
       currency,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: pence % 100 === 0 ? 0 : 2,
+      maximumFractionDigits: 2,
     }).format(pence / 100);
 
   const getFormatLabel = (
@@ -149,6 +156,22 @@ export function RetreatsPage({ retreats, faqs, testimonials = [] }: RetreatsPage
         new Date(left.date.startDate).getTime() - new Date(right.date.startDate).getTime() ||
         left.date.id.localeCompare(right.date.id)
     );
+
+  const nextEvent = eventCards.find(({ date }) => date.id === nextEventDateId);
+
+  const nextPrice = nextEvent
+    ? getRetreatPriceSummary({
+        dates: [
+          {
+            ...nextEvent.date,
+            roomOptions: nextEvent.date.roomOptions.filter(
+              (room) => room.availableSpots > 0 && !room.isWaitlistOnly
+            ),
+          },
+        ],
+        normalPrice: nextEvent.retreat.normalPrice,
+      })
+    : null;
 
   const isWorkshop = (card: (typeof eventCards)[number]) => {
     const kind = card.date.eventKind || card.retreat.experienceType;
@@ -207,6 +230,68 @@ export function RetreatsPage({ retreats, faqs, testimonials = [] }: RetreatsPage
         }
       />
 
+      {nextEvent ? (
+        <MarketingSection compact className="section-wash" contentClassName="max-w-7xl">
+          <article
+            aria-labelledby="next-event-title"
+            className="bg-background grid overflow-hidden rounded-[1.75rem] border sm:grid-cols-[minmax(0,0.65fr)_minmax(0,1.35fr)]"
+          >
+            <ImageWithFallback
+              src={getRetreatCardImageSrc(nextEvent.retreat)}
+              alt={nextEvent.retreat.imageAlt || nextEvent.retreat.title}
+              className="aspect-[2/1] h-full w-full object-cover sm:aspect-auto sm:max-h-72"
+              style={{
+                objectPosition: getRetreatCardImagePosition(
+                  getRetreatCardImageSrc(nextEvent.retreat),
+                  nextEvent.retreat.imageFocalPoint
+                ),
+              }}
+              sizes="(max-width: 639px) 100vw, 420px"
+            />
+            <div className="p-6 md:p-8">
+              <p className="text-brand-accent text-xs font-medium tracking-widest uppercase">
+                Next Up
+              </p>
+              <h2 id="next-event-title" className="mt-3 text-2xl md:text-3xl">
+                {nextEvent.retreat.title}
+              </h2>
+              <p className="text-muted-foreground mt-3">
+                {
+                  getRetreatCardDateLabels(
+                    nextEvent.date.startDate,
+                    nextEvent.date.endDate,
+                    nextEvent.date.timezone
+                  )?.dateLabel
+                }
+              </p>
+              <p className="text-muted-foreground mt-2">
+                {getFormatLabel(nextEvent.retreat, nextEvent.date)} ·{" "}
+                {nextEvent.date.location || nextEvent.retreat.location}
+              </p>
+              <p className="text-brand-accent mt-2 text-sm">
+                Places available: {nextEvent.date.availableSpaces}
+              </p>
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+                <p className="text-xl font-semibold">
+                  {nextPrice?.isFromPrice ? (
+                    <span className="text-muted-foreground mr-2 text-sm font-normal">From</span>
+                  ) : null}
+                  {formatMoney(nextPrice!.lowestPricePence, nextEvent.retreat.currency)}
+                </p>
+                <Button asChild>
+                  <Link
+                    href={`/retreats/${nextEvent.retreat.slug}?date=${encodeURIComponent(nextEvent.date.id)}`}
+                  >
+                    View Event
+                    <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </article>
+        </MarketingSection>
+      ) : null}
+
       {eventGroups.map((group) => (
         <MarketingSection
           key={group.id}
@@ -261,7 +346,7 @@ export function RetreatsPage({ retreats, faqs, testimonials = [] }: RetreatsPage
                           retreat.imageFocalPoint
                         ),
                       }}
-                      sizes="(max-width: 639px) 100vw, (max-width: 1279px) 50vw, 33vw"
+                      sizes="(max-width: 767px) 100vw, (max-width: 1280px) 50vw, 640px"
                     />
                     <span className="bg-background text-foreground absolute bottom-4 left-4 rounded-full px-3 py-1.5 text-xs font-medium shadow-sm">
                       {getFormatLabel(retreat, date)}

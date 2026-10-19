@@ -9,7 +9,7 @@ test("retired personal programme page redirects to the support levels", async ({
 
 test("coaching page presents three provisional support levels after the human process", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.addInitScript(() => {
     window.sessionStorage.setItem("newsletter_shown", "true");
   });
@@ -22,12 +22,14 @@ test("coaching page presents three provisional support levels after the human pr
     main.getByRole("heading", { name: /Coaching built around your body and your real life/i })
   ).toBeVisible();
   await expect(hero).not.toContainText("Everfit");
-  await expect(
-    main.getByRole("img", { name: "Shruti Turner paddleboarding on a lake" })
-  ).toHaveAttribute("src", /shruti-paddleboarding\.jpeg/);
-  await expect(
-    main.getByRole("img", { name: "Shruti Turner paddleboarding on a lake" }).locator("..")
-  ).toHaveClass(/aspect-\[4\/3\]/);
+  await expect(hero.getByRole("link", { name: "Enquire about coaching" })).toHaveAttribute(
+    "href",
+    "/coaching/enquire"
+  );
+  await expect(hero.getByRole("link", { name: "Explore support levels" })).toHaveAttribute(
+    "href",
+    "#support-levels"
+  );
   await expect(
     main.getByRole("heading", {
       name: "Coaching can help when you want a plan that gives you direction.",
@@ -78,10 +80,7 @@ test("coaching page presents three provisional support levels after the human pr
     .getByRole("heading", { name: "Weekly Support" })
     .locator("xpath=ancestor::article");
   expect(await weeklyCard.locator("ul li span").allTextContents()).toEqual([
-    "Personalised training programme across your week.",
     "Weekly programme review and updates.",
-    "30-minute coaching call with Shruti each month.",
-    "Check-in and feedback through Everfit.",
     "Exercise comments for questions or feedback between reviews.",
     "Nutrition guidance.",
   ]);
@@ -89,18 +88,15 @@ test("coaching page presents three provisional support levels after the human pr
     .getByRole("heading", { name: "1:1 Coaching" })
     .locator("xpath=ancestor::article");
   expect(await oneToOneCard.locator("ul li span").allTextContents()).toEqual([
-    "Personalised training programme across your week.",
     "Reactive programme adjustments as your needs change.",
-    "30-minute coaching call with Shruti each month.",
-    "Check-in and feedback through Everfit.",
     "Ongoing direct messaging through Everfit, typically answered within 24 hours.",
     "Nutrition guidance.",
     "More collaborative planning and adaptation.",
   ]);
-  await expect(main.getByText("What Stays the Same", { exact: true })).toBeVisible();
+  await expect(main.getByText("Personal support at every level", { exact: true })).toBeVisible();
   await expect(
     main.getByRole("heading", {
-      name: "Every level includes the same quality, personalisation and attention to your individual needs.",
+      name: "Included in every plan",
     })
   ).toBeVisible();
   for (const foundation of [
@@ -124,6 +120,8 @@ test("coaching page presents three provisional support levels after the human pr
     .analyze();
   expect(accessibilityResults.violations).toEqual([]);
 
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath("coaching.png"), fullPage: true });
   await coachingVideoButton.click();
   await expect(main.getByTitle("How coaching works with Shruti Turner")).toHaveAttribute(
     "src",
@@ -133,13 +131,23 @@ test("coaching page presents three provisional support levels after the human pr
 
 test("legacy coaching application redirects to the live enquiry form", async ({ page }) => {
   let enquiryRequests = 0;
+  await page.route("https://challenges.cloudflare.com/**", (route) =>
+    route.fulfill({
+      contentType: "application/javascript",
+      body: "window.turnstile = { render: (container, options) => { options.callback('test-token'); return 'test-widget'; }, remove: () => {}, reset: () => {} };",
+    })
+  );
 
   await page.addInitScript(() => {
     window.sessionStorage.setItem("newsletter_shown", "true");
   });
   await page.route("**/api/coaching/enquiries", async (route) => {
     enquiryRequests += 1;
-    await route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' });
+    await route.fulfill({
+      status: enquiryRequests === 1 ? 500 : 200,
+      contentType: "application/json",
+      body: enquiryRequests === 1 ? '{"message":"Please try again."}' : '{"ok":true}',
+    });
   });
 
   const redirectResponse = await page.request.get("/coaching/apply?offer=one_to_one_coaching", {
@@ -196,6 +204,9 @@ test("legacy coaching application redirects to the live enquiry form", async ({ 
   await page.getByLabel("How did you hear about me? *").fill("Google");
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Send enquiry" }).click();
+  await expect(page.locator("#enquiry-form").getByRole("alert")).toContainText("Please try again.");
+  await expect(page.getByLabel("Name *")).toHaveValue("Taylor Example");
+  await page.getByRole("button", { name: "Send enquiry" }).click();
   await expect(
     page.getByRole("heading", { name: "Thanks — your enquiry has been sent." })
   ).toBeVisible();
@@ -207,7 +218,7 @@ test("legacy coaching application redirects to the live enquiry form", async ({ 
     )
   ).toBeVisible();
   await expect(page.getByText(/1:1 Agreement/i)).toHaveCount(0);
-  expect(enquiryRequests).toBe(1);
+  expect(enquiryRequests).toBe(2);
 
   const accessibilityResults = await new AxeBuilder({ page })
     .include("#main-content")

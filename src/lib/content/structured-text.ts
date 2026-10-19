@@ -8,8 +8,11 @@ function normalizeLines(value: string) {
   return value.replace(/\r\n?/g, "\n").split("\n");
 }
 
-export function parseLegalDocumentBody(value: string): StructuredTextBlock[] {
-  const blocks: StructuredTextBlock[] = [];
+export type LegalTextBlock =
+  | StructuredTextBlock
+  | { type: "table"; headers: string[]; rows: string[][] };
+export function parseLegalDocumentBody(value: string): LegalTextBlock[] {
+  const blocks: LegalTextBlock[] = [];
   const paragraph: string[] = [];
   let listItems: string[] = [];
 
@@ -26,8 +29,46 @@ export function parseLegalDocumentBody(value: string): StructuredTextBlock[] {
     }
   };
 
-  for (const rawLine of normalizeLines(value)) {
-    const line = rawLine.trim();
+  const lines = normalizeLines(value);
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index].trim();
+    const cells = (row: string) =>
+      row
+        .trim()
+        .replace(/^\||\|$/g, "")
+        .split("|")
+        .map((cell) => cell.trim());
+    if (line.startsWith("|") && /^\|?\s*:?-{3,}/.test(lines[index + 1]?.trim() || "")) {
+      const headers = cells(line);
+      const separator = cells(lines[index + 1]);
+      if (
+        separator.length === headers.length &&
+        separator.every((cell) => /^:?-{3,}:?$/.test(cell))
+      ) {
+        flushParagraph();
+        flushList();
+        index += 2;
+        const rows: string[][] = [];
+        while (index < lines.length && lines[index].trim().startsWith("|")) {
+          rows.push(cells(lines[index]));
+          index++;
+        }
+        index--;
+        blocks.push({ type: "table", headers, rows });
+        continue;
+      }
+    }
+    const markdownHeading = line.match(/^(#{1,3})\s+(.+)$/);
+    if (markdownHeading) {
+      flushParagraph();
+      flushList();
+      blocks.push({
+        type: "heading",
+        level: markdownHeading[1].length === 3 ? 3 : 2,
+        text: markdownHeading[2],
+      });
+      continue;
+    }
     if (!line) {
       flushParagraph();
       flushList();

@@ -1,3 +1,4 @@
+import { withAnalyticsPolicy } from "@/lib/analytics/policy";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getLegalDocumentBySlug } from "@/lib/content";
@@ -17,5 +18,9 @@ export default async function Page() {
   const doc = await getLegalDocumentBySlug("cookies");
   if (!doc) notFound();
 
-  return <LegalDocumentPage document={doc} />;
+  return (
+    <LegalDocumentPage
+      document={withAnalyticsPolicy(doc, process.env.ANALYTICS_POLICY_EFFECTIVE_DATE)}
+    />
+  );
 }

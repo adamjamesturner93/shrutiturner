@@ -87,7 +87,7 @@ export function Header() {
 
         {/* Mobile Menu Button */}
         <button
-          className="lg:hidden"
+          className="flex h-11 w-11 items-center justify-center rounded-md lg:hidden"
           onClick={() => setMobileMenuPath(mobileMenuOpen ? null : pathname)}
           aria-expanded={mobileMenuOpen}
           aria-controls="mobile-main-menu"
@@ -99,7 +99,10 @@ export function Header() {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div id="mobile-main-menu" className="bg-background border-t lg:hidden">
+        <div
+          id="mobile-main-menu"
+          className="bg-background max-h-[calc(100dvh-4.5rem)] overflow-y-auto overscroll-contain border-t lg:hidden"
+        >
           <nav className="container mx-auto flex flex-col space-y-1 px-4 py-4">
             {navLinks.map((link) =>
               link.path === "/retreats" ? (

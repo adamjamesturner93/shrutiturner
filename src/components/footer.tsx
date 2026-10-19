@@ -1,3 +1,4 @@
+import { AnalyticsPreferencesButton } from "@/components/analytics/provider";
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "./ui/button";
@@ -74,6 +75,9 @@ function UtilityFooter() {
               </li>
               <li>
                 <Link href="/cookies">Cookies</Link>
+              </li>
+              <li>
+                <AnalyticsPreferencesButton />
               </li>
               <li>
                 <Link href="/health-declaration">Health declaration</Link>
@@ -154,7 +158,10 @@ function MarketingFooter({ showNewsletter = true }: { showNewsletter?: boolean }
                 <h4 className="text-brand-accent-light text-sm tracking-wide uppercase">
                   Newsletter
                 </h4>
-                <p className="text-brand-white/75 mt-2 mb-3 text-sm">{signupCopy.hookText}</p>
+                <p className="text-brand-white/90 mt-2 text-sm">{signupCopy.hookText}</p>
+                <p className="text-brand-white/75 mt-2 mb-3 text-sm leading-relaxed">
+                  {signupCopy.popupDescription}
+                </p>
                 {!subscribed ? (
                   <form onSubmit={handleNewsletterSubmit} className="max-w-sm space-y-2">
                     <Label htmlFor="footer-newsletter-first-name" className="sr-only">
@@ -321,6 +328,9 @@ function MarketingFooter({ showNewsletter = true }: { showNewsletter?: boolean }
                 <Link href="/cookies" className="hover:text-brand-accent-light transition-colors">
                   Cookies
                 </Link>
+              </li>
+              <li>
+                <AnalyticsPreferencesButton />
               </li>
               <li>
                 <Link

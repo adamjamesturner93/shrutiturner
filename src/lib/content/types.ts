@@ -365,6 +365,8 @@ export interface RetreatCombinedContent {
   fullDescription: string;
   atmosphereDescription?: string;
   dates: Array<{
+    /** Public projection of the operational booking status; windows are filtered server-side. */
+    bookingOpen?: boolean;
     id: string;
     isRecorded?: boolean;
     eventKind?: "residential_retreat" | "day_retreat" | "in_person_workshop" | "online_workshop";

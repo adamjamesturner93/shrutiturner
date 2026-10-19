@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useEffect, useState } from "react";
 import { ArrowRight, BookOpen, Dumbbell, Heart, MessageCircle, Youtube } from "lucide-react";
@@ -109,7 +110,7 @@ export function AboutPage() {
         aside={
           <div className="relative mx-auto max-w-xl">
             <div className="border-brand-white/10 bg-brand-white/8 overflow-hidden rounded-[2rem] border p-3 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
-              <div className="aspect-[4/5] overflow-hidden rounded-[1.45rem]">
+              <div className="aspect-[4/3] overflow-hidden rounded-[1.45rem] lg:aspect-[4/5]">
                 <ImageWithFallback
                   src="/images/shruti.jpeg"
                   alt="Shruti Turner smiling while hiking in Patagonia"
@@ -196,6 +197,26 @@ export function AboutPage() {
             );
           })}
         </div>
+        <div className="mx-auto mt-8 max-w-3xl border-t pt-6 text-center">
+          <p className="text-muted-foreground leading-relaxed">
+            These perspectives shape how I coach and teach: understanding your starting point,
+            building what you can do and making movement work in everyday life.
+          </p>
+          <div className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2">
+            <Link
+              href="/coaching"
+              className="text-primary inline-flex min-h-11 items-center underline underline-offset-4"
+            >
+              Explore Coaching
+            </Link>
+            <Link
+              href="/retreats"
+              className="text-primary inline-flex min-h-11 items-center underline underline-offset-4"
+            >
+              Retreats &amp; Workshops
+            </Link>
+          </div>
+        </div>
       </MarketingSection>
 
       <MarketingSection className="bg-brand-warm">
@@ -205,7 +226,7 @@ export function AboutPage() {
               eyebrow="My Story"
               title="This work became personal while I was finishing my PhD."
             />
-            <div className="text-muted-foreground mt-7 space-y-5 leading-relaxed">
+            <div className="text-muted-foreground mt-7 max-w-prose space-y-5 leading-relaxed">
               {storyParagraphs.map((paragraph) => (
                 <p key={paragraph}>{paragraph}</p>
               ))}
