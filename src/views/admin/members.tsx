@@ -12,6 +12,8 @@ import type { AdminMemberListItemDto } from "@/lib/api/types";
 import { AppMetricCard, AppMetricGrid, AppPageHeader } from "@/components/app-surface";
 import { InlineLoadingStatus } from "@/components/loading-region";
 
+import { hasLegacyServices } from "@/lib/admin/legacy-services";
+
 type AdminMember = AdminMemberListItemDto & {
   status: "active" | "paused" | "cancelled" | "expired" | "past_due";
 };
@@ -90,7 +92,7 @@ export function AdminMembers() {
           : m.status === statusFilter);
       const matchesPlan =
         planFilter === "all" ||
-        (planFilter === "none" && !m.membershipPlan) ||
+        (planFilter === "none" && !m.membershipPlan && hasLegacyServices(m)) ||
         m.membershipPlan === planFilter;
       const matchesRole =
         roleFilter === "all" ||
@@ -177,17 +179,23 @@ export function AdminMembers() {
                   <option value="expired">Expired</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
-                <select
-                  aria-label="Filter members by plan"
-                  value={planFilter}
-                  onChange={(e) => setPlanFilter(e.target.value)}
-                  className="border-border bg-background rounded-md border px-3 py-2 text-sm"
-                >
-                  <option value="all">All plans</option>
-                  <option value="instructor">Instructor</option>
-                  <option value="movewell">Move Well</option>
-                  <option value="none">Pay as you Go</option>
-                </select>
+                {adminMembers.some(hasLegacyServices) && (
+                  <select
+                    aria-label="Filter members by plan"
+                    value={planFilter}
+                    onChange={(e) => setPlanFilter(e.target.value)}
+                    className="border-border bg-background rounded-md border px-3 py-2 text-sm"
+                  >
+                    <option value="all">All plans</option>
+                    <option value="instructor">Instructor</option>
+                    {adminMembers.some((m) => m.membershipPlan === "movewell") && (
+                      <option value="movewell">Move Well</option>
+                    )}
+                    {adminMembers.some((m) => !m.membershipPlan && hasLegacyServices(m)) && (
+                      <option value="none">Pay as you Go</option>
+                    )}
+                  </select>
+                )}
                 <select
                   aria-label="Filter members by role"
                   value={roleFilter}
@@ -208,7 +216,9 @@ export function AdminMembers() {
                   <option value="any-risk">Any risk</option>
                   <option value="high">High risk</option>
                   <option value="medium">Medium risk</option>
-                  <option value="credits-expiring">Credits expiring</option>
+                  {atRiskCounts.creditsExpiring > 0 && (
+                    <option value="credits-expiring">Credits expiring</option>
+                  )}
                 </select>
                 <Button
                   type="button"
@@ -303,7 +313,8 @@ function MemberRow({ member }: { member: AdminMember }) {
                 )}
               </div>
               <p className="text-muted-foreground truncate text-xs">
-                {member.email} · {member.membershipLabel}
+                {member.email}
+                {hasLegacyServices(member) ? ` · ${member.membershipLabel}` : ""}
               </p>
             </div>
 
@@ -329,10 +340,12 @@ function MemberRow({ member }: { member: AdminMember }) {
                 <p className="text-brand-dark">{member.totalBookings}</p>
                 <p className="text-xs">bookings</p>
               </div>
-              <div className="text-center">
-                <p className="text-brand-dark">{member.creditBalance}</p>
-                <p className="text-xs">credits</p>
-              </div>
+              {hasLegacyServices(member) && (
+                <div className="text-center">
+                  <p className="text-brand-dark">{member.creditBalance}</p>
+                  <p className="text-xs">credits</p>
+                </div>
+              )}
               <div className="text-center">
                 <p className="text-brand-dark">{member.referralsCount}</p>
                 <p className="text-xs">referrals</p>

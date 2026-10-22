@@ -1,3 +1,6 @@
+export type EventImageCrop = { x: number; y: number; zoom: number };
+export type EventImageCrops = { listing?: EventImageCrop; hero?: EventImageCrop };
+
 export interface SeoContent {
   title: string;
   description?: string;
@@ -289,6 +292,7 @@ export interface RetreatTemplateContent {
   imageUrl?: string;
   imageAlt?: string;
   imageFocalPoint?: { x: number; y: number };
+  imageCrops?: EventImageCrops;
   gallery?: Array<{
     url: string;
     alt: string;
@@ -412,6 +416,7 @@ export interface RetreatCombinedContent {
   seoDescription?: string;
   imageAlt?: string;
   imageFocalPoint?: { x: number; y: number };
+  imageCrops?: EventImageCrops;
   gallery?: Array<{
     url: string;
     alt: string;

@@ -39,6 +39,22 @@ for (const route of ["/", "/about", "/coaching", "/retreats", "/subscribe"]) {
       await page.keyboard.press("Escape");
       await expect(page.getByRole("button", { name: "Explore Fitness" })).toBeFocused();
     }
+    if (route === "/coaching" || route === "/retreats") {
+      await expect(page.getByText("01", { exact: true })).toHaveCount(
+        route === "/coaching" ? 1 : 0
+      );
+    }
+    if (route === "/retreats") {
+      await expect(page.getByText("Next Up", { exact: true })).toHaveCount(0);
+    }
+    if (route === "/about") {
+      await expect(page.getByRole("link", { name: "Explore Coaching", exact: true })).toHaveClass(
+        /bg-primary/
+      );
+      await expect(
+        page.getByText("I've also worked in very different environments", { exact: false })
+      ).toBeVisible();
+    }
     if (route === "/coaching") {
       const headings = await page.locator("main h2, main h3").allTextContents();
       expect(headings.indexOf("Included in every plan")).toBeLessThan(
@@ -73,6 +89,8 @@ test("accommodation follows daily rhythm and room selection remains available", 
 }) => {
   await page.goto("/retreats/local-powis-room-review");
   await expect(page.locator("#rhythm")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Unwind", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Friday — Unwind", exact: true })).toHaveCount(0);
   const headings = await page.locator("main h2").allTextContents();
   expect(headings.indexOf("Daily rhythm")).toBeLessThan(headings.indexOf("Where you’ll stay"));
   const navLinks = await page
@@ -83,7 +101,20 @@ test("accommodation follows daily rhythm and room selection remains available", 
     navLinks.findIndex((label) => label.includes("Stay & travel"))
   );
   await expect(page.locator("#booking")).toBeVisible();
+  const booking = page.locator("#booking");
+  const desktop = await page.evaluate(() => window.innerWidth >= 1024);
+  if (desktop) {
+    await page.locator("#rhythm").scrollIntoViewIfNeeded();
+    await expect(booking).toHaveCSS("position", "sticky");
+  }
+  const before = await booking.boundingBox();
   await page.locator("#booking summary").filter({ hasText: "Choose your room" }).click();
+  if (desktop) {
+    await expect(booking).toHaveCSS("position", "sticky");
+    const after = await booking.boundingBox();
+    expect(Math.abs(after!.y - before!.y)).toBeLessThan(2);
+    await expect(booking).toHaveCSS("overflow-y", "auto");
+  }
   await page.locator("#booking").getByRole("button", { name: "2 people", exact: true }).click();
   await expect(
     page.locator("#booking").getByRole("button", { name: "2 people", exact: true })

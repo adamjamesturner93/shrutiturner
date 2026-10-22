@@ -1152,6 +1152,7 @@ async function buildOperationalRetreatFromTemplate(input: {
     seoDescription: input.template.seoDescription,
     imageAlt: input.template.imageAlt,
     imageFocalPoint: input.template.imageFocalPoint,
+    imageCrops: input.template.imageCrops,
     venueId: resolvedVenue?.id,
     venueSlug: resolvedVenue?.slug,
     venueName: resolvedVenue?.name,

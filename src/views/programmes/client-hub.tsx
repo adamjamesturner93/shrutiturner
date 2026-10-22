@@ -142,10 +142,13 @@ export function ClientHub({
   const { data, error } = useProgrammeData<Hub>("/api/me/hub");
   const dashboard = section === "dashboard";
   const group = eventId ? data?.events.find((e) => e.id === eventId) : null;
-  const activeProgrammes = data?.programmes.filter((p) => p.accessible) || [];
+  const activeProgrammes =
+    section === "programmes" ? data?.programmes.filter((p) => p.accessible) || [] : [];
+  const actions =
+    data?.actions.filter((action) => !action.href.startsWith("/dashboard/programmes")) || [];
   const upcoming = data?.events.filter((e) => !e.past) || [];
   const pastProgrammes =
-    section !== "events" ? data?.programmes.filter((p) => !p.accessible) || [] : [];
+    section === "programmes" ? data?.programmes.filter((p) => !p.accessible) || [] : [];
   const pastEvents = section !== "programmes" ? data?.events.filter((e) => e.past) || [] : [];
   const empty = dashboard
     ? !data?.coaching && !activeProgrammes.length && !upcoming.length
@@ -213,13 +216,13 @@ export function ClientHub({
         ) : (
           data && (
             <>
-              {dashboard && data.actions.length > 0 && (
+              {dashboard && actions.length > 0 && (
                 <section aria-labelledby="next-up" className="space-y-5">
                   <h2 id="next-up" className="text-2xl">
                     Next up
                   </h2>
                   <div className="grid gap-5 md:grid-cols-2">
-                    {data.actions.map((a) => (
+                    {actions.map((a) => (
                       <article
                         key={a.id}
                         className="border-brand-accent/20 bg-brand-accent/5 rounded-[1.5rem] border p-6"
@@ -310,7 +313,7 @@ export function ClientHub({
               {empty && (
                 <p className="text-muted-foreground bg-secondary/40 rounded-xl p-6">
                   {dashboard
-                    ? "You don't currently have any active programmes, coaching or event bookings."
+                    ? "You don't currently have any coaching or event bookings."
                     : section === "programmes"
                       ? "You don't have any active programmes right now."
                       : "You don't have any upcoming events right now."}
@@ -388,27 +391,8 @@ export function ClientHub({
                       <p className="text-white/80">
                         Find your next opportunity to move, learn and connect.
                       </p>
-                      {data.discovery.map((p) => (
-                        <Link
-                          key={p.href}
-                          href={p.href}
-                          className="block rounded-xl bg-white/10 p-4 transition hover:bg-white/15"
-                        >
-                          <span className="text-brand-accent-light mb-1 block text-xs font-medium">
-                            {p.availability}
-                          </span>
-                          <span className="font-medium">
-                            {p.title} <span aria-hidden="true">→</span>
-                          </span>
-                        </Link>
-                      ))}
                     </div>
                     <div className="flex shrink-0 flex-col gap-3">
-                      <Button asChild variant="secondary" className="min-h-11">
-                        <Link href="/programmes">
-                          Programmes <span aria-hidden="true">→</span>
-                        </Link>
-                      </Button>
                       <Button asChild variant="secondary" className="min-h-11">
                         <Link href="/retreats">
                           Retreats &amp; Workshops <span aria-hidden="true">→</span>

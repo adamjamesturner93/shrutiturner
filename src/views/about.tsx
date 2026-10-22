@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 import { useEffect, useState } from "react";
 import { ArrowRight, BookOpen, Dumbbell, Heart, MessageCircle, Youtube } from "lucide-react";
@@ -68,10 +69,11 @@ const qualificationGroups = [
 ] as const;
 
 const meetShrutiParagraphs = [
-  "My background spans rehabilitation research, personal training and yoga, but my approach has also been shaped by living with a body that can fluctuate and by working in very different environments, from academia and corporate roles to shift work and self-employment.",
-  "I know there isn’t one version of a “normal” body, schedule or lifestyle.",
-  "My job is to help you understand yours, build strength and confidence, and find an approach to movement that works with you rather than asking you to fit yourself into it.",
-  "In the video, I share a little more about how I got here and why I do this work.",
+  "My background spans rehabilitation research, personal training and yoga, but my approach has also been shaped by my own experiences of living with inflammatory arthritis, hypermobility and asthma. I know what it's like to have a body that doesn't always respond as expected, and to navigate changing energy levels, symptoms and physical capabilities.",
+  "I've also worked in very different environments, from academia and corporate roles to shift work and self-employment, so I understand that fitting movement into everyday life isn't always straightforward.",
+  'I know there isn\'t one version of a "normal" body, schedule or lifestyle.',
+  "My job is to help you understand yours, build strength and confidence, and find an approach to movement that works with you rather than asking you to fit yourself into a generic movement routine.",
+  "In the video, I share a little more about how I got here and why I do this work",
 ] as const;
 
 const storyParagraphs = [
@@ -202,40 +204,46 @@ export function AboutPage() {
             These perspectives shape how I coach and teach: understanding your starting point,
             building what you can do and making movement work in everyday life.
           </p>
-          <div className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2">
-            <Link
-              href="/coaching"
-              className="text-primary inline-flex min-h-11 items-center underline underline-offset-4"
-            >
-              Explore Coaching
-            </Link>
-            <Link
-              href="/retreats"
-              className="text-primary inline-flex min-h-11 items-center underline underline-offset-4"
-            >
-              Retreats &amp; Workshops
-            </Link>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Button asChild>
+              <Link href="/coaching">
+                Explore Coaching
+                <ArrowRight aria-hidden="true" className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/retreats">
+                Retreats &amp; Workshops
+                <ArrowRight aria-hidden="true" className="h-4 w-4" />
+              </Link>
+            </Button>
           </div>
         </div>
       </MarketingSection>
 
       <MarketingSection className="bg-brand-warm">
-        <div className="grid gap-10 lg:grid-cols-[1.12fr_0.88fr] lg:items-start lg:gap-14">
-          <div>
-            <SectionHeading
-              eyebrow="My Story"
-              title="This work became personal while I was finishing my PhD."
+        <div className="mx-auto flow-root max-w-5xl">
+          <div className="hidden lg:float-right lg:mb-8 lg:ml-10 lg:block lg:w-[42%]">
+            <PullQuote
+              quote="Evidence does not replace lived experience. It changes the questions you know to ask."
+              attribution="Shruti Turner"
             />
-            <div className="text-muted-foreground mt-7 max-w-prose space-y-5 leading-relaxed">
-              {storyParagraphs.map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
-              ))}
-            </div>
           </div>
-          <PullQuote
-            quote="Evidence does not replace lived experience. It changes the questions you know to ask."
-            attribution="Shruti Turner"
+          <SectionHeading
+            eyebrow="My Story"
+            title="This work became personal while I was finishing my PhD."
           />
+          <div className="text-muted-foreground mt-7 space-y-5 leading-relaxed">
+            {storyParagraphs.map((paragraph) => (
+              <p key={paragraph}>{paragraph}</p>
+            ))}
+          </div>
+          <div className="mt-8 lg:hidden">
+            <PullQuote
+              quote="Evidence does not replace lived experience. It changes the questions you know to ask."
+              attribution="Shruti Turner"
+            />
+          </div>
         </div>
       </MarketingSection>
 

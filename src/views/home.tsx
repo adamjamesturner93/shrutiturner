@@ -87,7 +87,7 @@ export function HomePage({ testimonials }: HomePageProps) {
         }
       />
 
-      <MarketingSection className="section-wash">
+      <MarketingSection className="bg-brand-warm">
         <SectionHeading
           eyebrow="Is This You?"
           title="A different approach for bodies and lives that need more nuance."
@@ -156,7 +156,7 @@ export function HomePage({ testimonials }: HomePageProps) {
         </div>
       </MarketingSection>
 
-      <MarketingSection className="section-wash section-divider">
+      <MarketingSection compact className="bg-brand-dark text-brand-white">
         <SectionHeading title="Ways to Work With Me" />
         <div className="mt-8 grid gap-6 md:grid-cols-2">
           {[
@@ -181,20 +181,23 @@ export function HomePage({ testimonials }: HomePageProps) {
           ].map((pathway) => (
             <article
               key={pathway.href}
-              className="bg-background flex flex-col overflow-hidden rounded-[1.75rem] border"
+              className="border-brand-white/15 bg-brand-white/5 flex flex-col overflow-hidden rounded-[1.75rem] border"
             >
               <ImageWithFallback
                 src={pathway.image}
                 alt={pathway.alt}
-                className="aspect-[2/1] w-full object-cover"
+                className="aspect-[3/2] w-full object-cover object-[center_20%]"
                 sizes="(max-width: 767px) 100vw, 50vw"
               />
               <div className="flex flex-1 flex-col p-6 md:p-8">
                 <h3 className="text-2xl">{pathway.title}</h3>
-                <p className="text-muted-foreground mt-3 mb-6 leading-relaxed">
+                <p className="text-brand-white/85 mt-3 mb-6 leading-relaxed">
                   {pathway.description}
                 </p>
-                <Button asChild className="mt-auto w-full justify-between sm:w-auto">
+                <Button
+                  asChild
+                  className="bg-brand-accent-light text-brand-dark hover:bg-brand-accent-light/90 mt-auto w-full justify-between sm:w-auto"
+                >
                   <Link href={pathway.href}>
                     {pathway.label}
                     <ArrowRight aria-hidden="true" className="h-4 w-4" />

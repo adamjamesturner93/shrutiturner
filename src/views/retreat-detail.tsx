@@ -12,7 +12,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, ArrowRight, Calendar, Check, Gift, MapPin, X } from "lucide-react";
-import { getScheduleDateLabel } from "@/lib/retreats/schedule-sections";
+import { getScheduleDateLabel, getScheduleDisplayTitle } from "@/lib/retreats/schedule-sections";
 import { RetreatSchedule } from "@/components/retreat-schedule";
 import { RetreatVenueMap } from "@/components/retreat-venue-map";
 import { RetreatGallery } from "@/components/retreat-gallery";
@@ -24,7 +24,7 @@ import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 import { PublicBreadcrumbs } from "@/components/public-breadcrumbs";
 import { SEO } from "@/components/seo";
 import { Button } from "@/components/ui/button";
-import { getRetreatCardImagePosition, getRetreatCardImageSrc } from "@/lib/retreats/images";
+import { getRetreatImageStyle, getRetreatCardImageSrc } from "@/lib/retreats/images";
 import {
   getEffectiveRetreatRatePricePence,
   getRoomPriceDeposit,
@@ -461,9 +461,12 @@ export function RetreatDetailPage({
           preload
           sizes="100vw"
           className="absolute inset-0 -z-20 h-full w-full object-cover"
-          style={{
-            objectPosition: getRetreatCardImagePosition(heroImageSrc, retreat.imageFocalPoint),
-          }}
+          style={getRetreatImageStyle(
+            heroImageSrc,
+            retreat.imageFocalPoint,
+            retreat.imageCrops,
+            "hero"
+          )}
         />
         <div aria-hidden="true" className="absolute inset-0 -z-10 bg-black/60" />
         <div className="container mx-auto max-w-7xl">
@@ -690,7 +693,16 @@ export function RetreatDetailPage({
                             day.day ||
                             `Day ${dayIndex + 1}`}
                         </span>
-                        <span className="mt-1 block text-xl">{day.title}</span>
+                        <span className="mt-1 block text-xl">
+                          {getScheduleDisplayTitle(
+                            day.title,
+                            getScheduleDateLabel(
+                              selectedDate?.startDate,
+                              dayIndex,
+                              selectedTimezone
+                            )
+                          )}
+                        </span>
                       </summary>
                       {day.subtitle ? (
                         <p className="text-muted-foreground mt-1 text-sm italic">{day.subtitle}</p>
@@ -788,7 +800,7 @@ export function RetreatDetailPage({
             <div
               id="booking"
               tabIndex={-1}
-              className="bg-background scroll-mt-40 rounded-[1.9rem] border p-6 shadow-lg lg:sticky lg:top-40 lg:has-[details[open]]:static"
+              className="bg-background scroll-mt-40 rounded-[1.9rem] border p-6 shadow-lg lg:sticky lg:top-40 lg:max-h-[calc(100dvh-11rem)] lg:overflow-y-auto lg:overscroll-contain"
             >
               <div className="min-w-0">
                 <div className="bg-brand-dark -mx-6 -mt-6 mb-5 rounded-t-[1.9rem] p-6 text-white">

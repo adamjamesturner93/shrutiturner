@@ -150,6 +150,45 @@ test("event image edits validate descriptions and discard without changing the s
       (await db.retreatExperience.findUniqueOrThrow({ where: { id: experience.id } }))
         .draftContentJson
     ).toMatchObject({ image: { assetId: "fixture-photo", url: "/images/shruti.jpeg" } });
+    const listing = page.locator("#experience-image-listing-zoom");
+    const hero = page.locator("#experience-image-hero-zoom");
+    await listing.focus();
+    await listing.press("Home");
+    await listing.press("ArrowRight");
+    await expect(listing).toHaveValue("101");
+    await expect(page.getByText("Zoom: 101%", { exact: true })).toBeVisible();
+    await page.locator("#experience-image-listing-y").focus();
+    await page.locator("#experience-image-listing-y").press("Home");
+    await expect(hero).toHaveValue("100");
+    await hero.focus();
+    await hero.press("End");
+    await expect(hero).toHaveValue("200");
+    const cropSaved = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/api/admin/retreats/experiences/${experience.id}`) &&
+        response.request().method() === "PATCH",
+      { timeout: 30_000 }
+    );
+    await page.getByRole("button", { name: "Save draft", exact: true }).last().click();
+    await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
+    const cropResponse = await cropSaved;
+    expect((await cropResponse.json()).data.draftContent.image.crops).toMatchObject({
+      listing: { zoom: 1.01, y: 0 },
+      hero: { zoom: 2 },
+    });
+    await page.reload();
+    await expect(listing).toHaveValue("101");
+    await expect(hero).toHaveValue("200");
+    await expect(page.locator("#experience-image-listing-y")).toHaveValue("0");
+    await page.getByRole("button", { name: "Reset listing card crop" }).click();
+    await expect(listing).toHaveValue("100");
+    await expect(hero).toHaveValue("200");
+    // The development toolbar overlaps this sticky control at mobile widths.
+    const discard = page.getByRole("button", { name: "Discard changes", exact: true });
+    await discard.focus();
+    await discard.press("Enter");
+    await expect(page.getByText("All changes saved", { exact: true })).toBeVisible();
+
     expect(
       (
         await new AxeBuilder({ page })

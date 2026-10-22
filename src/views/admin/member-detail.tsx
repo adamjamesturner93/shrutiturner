@@ -1,5 +1,7 @@
 "use client";
 
+import { hasLegacyServices } from "@/lib/admin/legacy-services";
+
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AdminLayout } from "../../components/admin-layout";
@@ -11,7 +13,13 @@ import { Button } from "../../components/ui/button";
 import { Textarea } from "../../components/ui/textarea";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Switch } from "../../components/ui/switch";
 import {
   Select,
@@ -412,6 +420,8 @@ export function AdminMemberDetail() {
     }
   };
 
+  const showLegacyServices = hasLegacyServices(member);
+
   return (
     <AdminLayout title={`${member.firstName} ${member.lastName} - Admin`}>
       <div className="space-y-6">
@@ -481,14 +491,22 @@ export function AdminMemberDetail() {
         </div>
 
         {/* Direct message form */}
-        <Dialog open={showMessageForm} onOpenChange={(open) => { if (!messageSending) setShowMessageForm(open); }}>
+        <Dialog
+          open={showMessageForm}
+          onOpenChange={(open) => {
+            if (!messageSending) setShowMessageForm(open);
+          }}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-lg">
                 <Send className="text-brand-accent h-5 w-5" />
                 Send Email to {member.firstName}
               </DialogTitle>
-            <DialogDescription>Send a direct message about this member’s account or coaching.</DialogDescription></DialogHeader>
+              <DialogDescription>
+                Send a direct message about this member’s account or coaching.
+              </DialogDescription>
+            </DialogHeader>
             <div className="space-y-4">
               <p className="text-muted-foreground text-xs">
                 This will send an email to {member.email} via Postmark.
@@ -552,13 +570,15 @@ export function AdminMemberDetail() {
 
         {/* Stats grid */}
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <CreditCard className="text-brand-accent mx-auto h-5 w-5" />
-              <p className="text-brand-dark mt-2 text-2xl">{member.membershipLabel}</p>
-              <p className="text-muted-foreground text-xs">Membership</p>
-            </CardContent>
-          </Card>
+          {showLegacyServices && (
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <CreditCard className="text-brand-accent mx-auto h-5 w-5" />
+                <p className="text-brand-dark mt-2 text-2xl">{member.membershipLabel}</p>
+                <p className="text-muted-foreground text-xs">Membership</p>
+              </CardContent>
+            </Card>
+          )}
           <Card>
             <CardContent className="pt-6 text-center">
               <Bookmark className="text-brand-accent mx-auto h-5 w-5" />
@@ -566,13 +586,15 @@ export function AdminMemberDetail() {
               <p className="text-muted-foreground text-xs">Total bookings</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <CreditCard className="text-brand-accent mx-auto h-5 w-5" />
-              <p className="text-brand-dark mt-2 text-2xl">{creditBalance}</p>
-              <p className="text-muted-foreground text-xs">Credits remaining</p>
-            </CardContent>
-          </Card>
+          {showLegacyServices && (
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <CreditCard className="text-brand-accent mx-auto h-5 w-5" />
+                <p className="text-brand-dark mt-2 text-2xl">{creditBalance}</p>
+                <p className="text-muted-foreground text-xs">Credits remaining</p>
+              </CardContent>
+            </Card>
+          )}
           <Card>
             <CardContent className="pt-6 text-center">
               <Gift className="text-brand-accent mx-auto h-5 w-5" />
@@ -588,7 +610,7 @@ export function AdminMemberDetail() {
           <span className="text-muted-foreground mr-1 text-sm">Jump to</span>
           {[
             ["health", "Health"],
-            ["membership", "Membership & credits"],
+            ...(showLegacyServices ? [["membership", "Membership & credits"]] : []),
             ["activity", "Activity"],
             ["notes", "Notes"],
             ["communications", "Newsletter"],
@@ -682,137 +704,139 @@ export function AdminMemberDetail() {
             </CardContent>
           </Card>
 
-          <Card id="membership" className="scroll-mt-24">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <CreditCard className="text-brand-accent h-5 w-5" />
-                Manage Credits
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              {/* Current balance callout */}
-              <div className="border-brand-accent/20 bg-brand-accent/5 flex items-center justify-between rounded-lg border p-3">
-                <span className="text-muted-foreground text-sm">Current balance</span>
-                <span className="text-brand-dark text-xl">
-                  {creditBalance} credit{creditBalance !== 1 ? "s" : ""}
-                </span>
-              </div>
+          {showLegacyServices && (
+            <Card id="membership" className="scroll-mt-24">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <CreditCard className="text-brand-accent h-5 w-5" />
+                  Manage Credits
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {/* Current balance callout */}
+                <div className="border-brand-accent/20 bg-brand-accent/5 flex items-center justify-between rounded-lg border p-3">
+                  <span className="text-muted-foreground text-sm">Current balance</span>
+                  <span className="text-brand-dark text-xl">
+                    {creditBalance} credit{creditBalance !== 1 ? "s" : ""}
+                  </span>
+                </div>
 
-              {/* Add/Remove form */}
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <div className="w-32">
-                    <Label htmlFor="credit-action" className="sr-only">
-                      Action
-                    </Label>
-                    <Select
-                      value={creditAction}
-                      onValueChange={(v) => setCreditAction(v as "add" | "remove")}
-                    >
-                      <SelectTrigger id="credit-action">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="add">
-                          <span className="flex items-center gap-1.5">
-                            <Plus className="text-brand-accent h-3.5 w-3.5" /> Add
-                          </span>
-                        </SelectItem>
-                        <SelectItem value="remove">
-                          <span className="flex items-center gap-1.5">
-                            <Minus className="h-3.5 w-3.5 text-red-500" /> Remove
-                          </span>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                {/* Add/Remove form */}
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <div className="w-32">
+                      <Label htmlFor="credit-action" className="sr-only">
+                        Action
+                      </Label>
+                      <Select
+                        value={creditAction}
+                        onValueChange={(v) => setCreditAction(v as "add" | "remove")}
+                      >
+                        <SelectTrigger id="credit-action">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="add">
+                            <span className="flex items-center gap-1.5">
+                              <Plus className="text-brand-accent h-3.5 w-3.5" /> Add
+                            </span>
+                          </SelectItem>
+                          <SelectItem value="remove">
+                            <span className="flex items-center gap-1.5">
+                              <Minus className="h-3.5 w-3.5 text-red-500" /> Remove
+                            </span>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="w-24">
+                      <Label htmlFor="credit-amount" className="sr-only">
+                        Amount
+                      </Label>
+                      <Input
+                        id="credit-amount"
+                        type="number"
+                        min="1"
+                        placeholder="Qty"
+                        value={creditAmount}
+                        onChange={(e) => setCreditAmount(e.target.value)}
+                      />
+                    </div>
                   </div>
-                  <div className="w-24">
-                    <Label htmlFor="credit-amount" className="sr-only">
-                      Amount
+                  <div>
+                    <Label htmlFor="credit-reason" className="sr-only">
+                      Reason
                     </Label>
                     <Input
-                      id="credit-amount"
-                      type="number"
-                      min="1"
-                      placeholder="Qty"
-                      value={creditAmount}
-                      onChange={(e) => setCreditAmount(e.target.value)}
+                      id="credit-reason"
+                      placeholder="Reason (e.g. Goodwill credit, Bundle purchase)"
+                      value={creditReason}
+                      onChange={(e) => setCreditReason(e.target.value)}
                     />
                   </div>
+                  <Button
+                    onClick={handleCreditSubmit}
+                    size="sm"
+                    className={
+                      creditAction === "add"
+                        ? "bg-brand-accent hover:bg-brand-accent/90 text-white"
+                        : "bg-red-600 text-white hover:bg-red-700"
+                    }
+                  >
+                    {creditAction === "add" ? (
+                      <>
+                        <Plus className="h-4 w-4" /> Add Credits
+                      </>
+                    ) : (
+                      <>
+                        <Minus className="h-4 w-4" /> Remove Credits
+                      </>
+                    )}
+                  </Button>
                 </div>
-                <div>
-                  <Label htmlFor="credit-reason" className="sr-only">
-                    Reason
-                  </Label>
-                  <Input
-                    id="credit-reason"
-                    placeholder="Reason (e.g. Goodwill credit, Bundle purchase)"
-                    value={creditReason}
-                    onChange={(e) => setCreditReason(e.target.value)}
-                  />
-                </div>
-                <Button
-                  onClick={handleCreditSubmit}
-                  size="sm"
-                  className={
-                    creditAction === "add"
-                      ? "bg-brand-accent hover:bg-brand-accent/90 text-white"
-                      : "bg-red-600 text-white hover:bg-red-700"
-                  }
-                >
-                  {creditAction === "add" ? (
-                    <>
-                      <Plus className="h-4 w-4" /> Add Credits
-                    </>
-                  ) : (
-                    <>
-                      <Minus className="h-4 w-4" /> Remove Credits
-                    </>
-                  )}
-                </Button>
-              </div>
 
-              {/* Recent history */}
-              {creditHistory.length > 0 && (
-                <div className="border-border/50 border-t pt-4">
-                  <p className="text-muted-foreground mb-3 flex items-center gap-1.5 text-xs">
-                    <Clock className="h-3.5 w-3.5" /> Recent credit history
-                  </p>
-                  <div className="space-y-2">
-                    {creditHistory.slice(0, 5).map((entry, i) => (
-                      <div
-                        key={i}
-                        className="border-border/30 flex items-start justify-between border-b py-1.5 text-sm last:border-0"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs ${
-                                entry.action === "add"
-                                  ? "bg-brand-accent/10 text-brand-accent"
-                                  : "bg-red-50 text-red-600"
-                              }`}
-                            >
-                              {entry.action === "add" ? "+" : "−"}
-                              {entry.amount}
-                            </span>
-                            <span className="text-muted-foreground truncate">{entry.reason}</span>
+                {/* Recent history */}
+                {creditHistory.length > 0 && (
+                  <div className="border-border/50 border-t pt-4">
+                    <p className="text-muted-foreground mb-3 flex items-center gap-1.5 text-xs">
+                      <Clock className="h-3.5 w-3.5" /> Recent credit history
+                    </p>
+                    <div className="space-y-2">
+                      {creditHistory.slice(0, 5).map((entry, i) => (
+                        <div
+                          key={i}
+                          className="border-border/30 flex items-start justify-between border-b py-1.5 text-sm last:border-0"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs ${
+                                  entry.action === "add"
+                                    ? "bg-brand-accent/10 text-brand-accent"
+                                    : "bg-red-50 text-red-600"
+                                }`}
+                              >
+                                {entry.action === "add" ? "+" : "−"}
+                                {entry.amount}
+                              </span>
+                              <span className="text-muted-foreground truncate">{entry.reason}</span>
+                            </div>
+                          </div>
+                          <div className="text-muted-foreground ml-3 text-xs whitespace-nowrap">
+                            {new Date(entry.date).toLocaleDateString("en-GB", {
+                              day: "numeric",
+                              month: "short",
+                            })}
+                            <span className="ml-1.5 opacity-60">· {entry.by}</span>
                           </div>
                         </div>
-                        <div className="text-muted-foreground ml-3 text-xs whitespace-nowrap">
-                          {new Date(entry.date).toLocaleDateString("en-GB", {
-                            day: "numeric",
-                            month: "short",
-                          })}
-                          <span className="ml-1.5 opacity-60">· {entry.by}</span>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Notes */}
           <Card id="notes" className="scroll-mt-24">
@@ -968,18 +992,20 @@ export function AdminMemberDetail() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="border-border/50 flex items-center justify-between border-b py-2">
-                <span className="text-muted-foreground text-sm">Last class attended</span>
-                <span className="text-sm">
-                  {member.lastClassDate
-                    ? new Date(member.lastClassDate).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })
-                    : "No completed classes yet"}
-                </span>
-              </div>
+              {member.lastClassDate && (
+                <div className="border-border/50 flex items-center justify-between border-b py-2">
+                  <span className="text-muted-foreground text-sm">Last class attended</span>
+                  <span className="text-sm">
+                    {member.lastClassDate
+                      ? new Date(member.lastClassDate).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "No completed classes yet"}
+                  </span>
+                </div>
+              )}
               <div className="border-border/50 flex items-center justify-between border-b py-2">
                 <span className="text-muted-foreground text-sm">Member since</span>
                 <span className="text-sm">
@@ -1003,185 +1029,187 @@ export function AdminMemberDetail() {
         </Card>
         <details id="access-privacy" className="scroll-mt-24 rounded-xl border bg-white p-4">
           <summary className="cursor-pointer font-medium">Access & privacy</summary>
-          <p className="text-muted-foreground my-3 text-sm">Permission changes and data requests. These actions are separate from normal member follow-up.</p>
+          <p className="text-muted-foreground my-3 text-sm">
+            Permission changes and data requests. These actions are separate from normal member
+            follow-up.
+          </p>
           <div className="grid gap-6 lg:grid-cols-2">
-          {/* Roles */}
-          <Card id="access" className="scroll-mt-24">
-            <CardHeader>
-              <div className="flex items-center justify-between">
+            {/* Roles */}
+            <Card id="access" className="scroll-mt-24">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Shield className="text-brand-dark h-5 w-5" />
+                    Roles
+                  </CardTitle>
+                  <span className="text-muted-foreground text-xs">Changes save automatically</span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="border-border/60 bg-secondary/30 flex items-start gap-4 rounded-lg border p-4">
+                  <Switch
+                    id="role-instructor"
+                    checked={isInstructor}
+                    onCheckedChange={(checked) => void handleRoleToggle("instructor", checked)}
+                    className="data-[state=checked]:bg-brand-accent mt-0.5"
+                  />
+                  <label htmlFor="role-instructor" className="flex-1 cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">Instructor</span>
+                      {isInstructor && (
+                        <Badge className="border-brand-dark/30 bg-brand-dark/10 text-brand-dark text-micro px-1.5 py-0">
+                          Active
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      Grants admin access, unlimited class membership and ability to lead classes.
+                    </p>
+                  </label>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="instructor-profile">Instructor Profile</Label>
+                  <Select
+                    value={instructorProfileEntryId}
+                    onValueChange={(value) => {
+                      setInstructorProfileEntryId(value);
+                      if (isInstructor) {
+                        void (async () => {
+                          const response = await fetch(`/api/admin/members/${member.id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              isInstructor: true,
+                              instructorProfileEntryId: value,
+                            }),
+                          });
+                          if (!response.ok) {
+                            toast.error("Failed to update instructor profile.");
+                            return;
+                          }
+                          applyMemberState((await response.json()) as AdminMemberDetailDto);
+                        })();
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="instructor-profile">
+                      <SelectValue placeholder="Select instructor profile" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {instructorProfiles.map((profile) => (
+                        <SelectItem key={profile.id} value={profile.id}>
+                          {profile.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-muted-foreground text-xs">
+                    Required when assigning instructor role. Used for class bio display.
+                  </p>
+                </div>
+                <div className="border-border/60 bg-secondary/30 flex items-start gap-4 rounded-lg border p-4">
+                  <Switch
+                    id="role-coaching"
+                    checked={isCoachingClient}
+                    onCheckedChange={(checked) => void handleRoleToggle("coaching", checked)}
+                    className="data-[state=checked]:bg-brand-accent mt-0.5"
+                  />
+                  <label htmlFor="role-coaching" className="flex-1 cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">Coaching Client</span>
+                      {isCoachingClient && (
+                        <Badge className="text-micro border-amber-200 bg-amber-50 px-1.5 py-0 text-amber-700">
+                          Active
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      Marks this member as a 1:1 coaching client. Access and platform details to be
+                      configured separately.
+                    </p>
+                  </label>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Health Profile */}
+            <Card id="privacy" className="scroll-mt-24">
+              <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Shield className="text-brand-dark h-5 w-5" />
-                  Roles
+                  Privacy Tools
                 </CardTitle>
-                <span className="text-muted-foreground text-xs">Changes save automatically</span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="border-border/60 bg-secondary/30 flex items-start gap-4 rounded-lg border p-4">
-                <Switch
-                  id="role-instructor"
-                  checked={isInstructor}
-                  onCheckedChange={(checked) => void handleRoleToggle("instructor", checked)}
-                  className="data-[state=checked]:bg-brand-accent mt-0.5"
-                />
-                <label htmlFor="role-instructor" className="flex-1 cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">Instructor</span>
-                    {isInstructor && (
-                      <Badge className="border-brand-dark/30 bg-brand-dark/10 text-brand-dark text-micro px-1.5 py-0">
-                        Active
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    Grants admin access, unlimited class membership and ability to lead classes.
-                  </p>
-                </label>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="instructor-profile">Instructor Profile</Label>
-                <Select
-                  value={instructorProfileEntryId}
-                  onValueChange={(value) => {
-                    setInstructorProfileEntryId(value);
-                    if (isInstructor) {
-                      void (async () => {
-                        const response = await fetch(`/api/admin/members/${member.id}`, {
-                          method: "PATCH",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            isInstructor: true,
-                            instructorProfileEntryId: value,
-                          }),
-                        });
-                        if (!response.ok) {
-                          toast.error("Failed to update instructor profile.");
-                          return;
-                        }
-                        applyMemberState((await response.json()) as AdminMemberDetailDto);
-                      })();
-                    }
-                  }}
-                >
-                  <SelectTrigger id="instructor-profile">
-                    <SelectValue placeholder="Select instructor profile" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {instructorProfiles.map((profile) => (
-                      <SelectItem key={profile.id} value={profile.id}>
-                        {profile.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-muted-foreground text-xs">
-                  Required when assigning instructor role. Used for class bio display.
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-muted-foreground text-sm">
+                  Export the member record or anonymise personal data while preserving finance,
+                  dispute, auditand evidence links through an anonymised user shell.
                 </p>
-              </div>
-              <div className="border-border/60 bg-secondary/30 flex items-start gap-4 rounded-lg border p-4">
-                <Switch
-                  id="role-coaching"
-                  checked={isCoachingClient}
-                  onCheckedChange={(checked) => void handleRoleToggle("coaching", checked)}
-                  className="data-[state=checked]:bg-brand-accent mt-0.5"
-                />
-                <label htmlFor="role-coaching" className="flex-1 cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">Coaching Client</span>
-                    {isCoachingClient && (
-                      <Badge className="text-micro border-amber-200 bg-amber-50 px-1.5 py-0 text-amber-700">
-                        Active
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    Marks this member as a 1:1 coaching client. Access and platform details to be
-                    configured separately.
-                  </p>
-                </label>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Health Profile */}
-          <Card id="privacy" className="scroll-mt-24">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Shield className="text-brand-dark h-5 w-5" />
-                Privacy Tools
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground text-sm">
-                Export the member record or anonymise personal data while preserving finance,
-                dispute, auditand evidence links through an anonymised user shell.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => void handlePrivacyExport()}
-                  disabled={privacyBusy !== null}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  {privacyBusy === "export" ? "Generating export..." : "Export user data"}
-                </Button>
-                <Button variant="outline" onClick={() => void handleDeletePreview()}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Check deletion
-                </Button>
-              </div>
-              {deletePreview ? (
-                <div className="rounded-lg border p-3 text-sm">
-                  <p>
-                    {deletePreview.blocked
-                      ? `Deletion is blocked: ${deletePreview.blockReason || "active hold"}`
-                      : "Deletion can proceed. Personal data will be anonymised and active sessions revoked."}
-                  </p>
-                  {!deletePreview.blocked && deletePreview.deletes?.length ? (
-                    <div className="mt-3 space-y-3">
-                      <div>
-                        <p className="font-medium">Deleted now</p>
-                        <ul className="text-muted-foreground mt-1 list-disc pl-5">
-                          {deletePreview.deletes.map((item) => (
-                            <li key={item}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <p className="font-medium">Anonymised but preserved</p>
-                        <ul className="text-muted-foreground mt-1 list-disc pl-5">
-                          {deletePreview.anonymises?.map((item) => (
-                            <li key={item}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <p className="font-medium">Retained for finance, audit, or disputes</p>
-                        <ul className="text-muted-foreground mt-1 list-disc pl-5">
-                          {deletePreview.preserves?.map((item) => (
-                            <li key={item}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  ) : null}
-                  {!deletePreview.blocked ? (
-                    <Button
-                      className="mt-3"
-                      variant="destructive"
-                      onClick={() => void handlePrivacyDelete()}
-                      disabled={privacyBusy !== null}
-                    >
-                      {privacyBusy === "delete" ? "Anonymising..." : "Anonymise member"}
-                    </Button>
-                  ) : null}
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => void handlePrivacyExport()}
+                    disabled={privacyBusy !== null}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    {privacyBusy === "export" ? "Generating export..." : "Export user data"}
+                  </Button>
+                  <Button variant="outline" onClick={() => void handleDeletePreview()}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Check deletion
+                  </Button>
                 </div>
-              ) : null}
-            </CardContent>
-          </Card>
+                {deletePreview ? (
+                  <div className="rounded-lg border p-3 text-sm">
+                    <p>
+                      {deletePreview.blocked
+                        ? `Deletion is blocked: ${deletePreview.blockReason || "active hold"}`
+                        : "Deletion can proceed. Personal data will be anonymised and active sessions revoked."}
+                    </p>
+                    {!deletePreview.blocked && deletePreview.deletes?.length ? (
+                      <div className="mt-3 space-y-3">
+                        <div>
+                          <p className="font-medium">Deleted now</p>
+                          <ul className="text-muted-foreground mt-1 list-disc pl-5">
+                            {deletePreview.deletes.map((item) => (
+                              <li key={item}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="font-medium">Anonymised but preserved</p>
+                          <ul className="text-muted-foreground mt-1 list-disc pl-5">
+                            {deletePreview.anonymises?.map((item) => (
+                              <li key={item}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="font-medium">Retained for finance, audit, or disputes</p>
+                          <ul className="text-muted-foreground mt-1 list-disc pl-5">
+                            {deletePreview.preserves?.map((item) => (
+                              <li key={item}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    ) : null}
+                    {!deletePreview.blocked ? (
+                      <Button
+                        className="mt-3"
+                        variant="destructive"
+                        onClick={() => void handlePrivacyDelete()}
+                        disabled={privacyBusy !== null}
+                      >
+                        {privacyBusy === "delete" ? "Anonymising..." : "Anonymise member"}
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
 
-          {/* Manage Credits */}
-
+            {/* Manage Credits */}
           </div>
         </details>
       </div>

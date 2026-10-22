@@ -29,7 +29,7 @@ export function AdminBusiness() {
   const [discounts, setDiscounts] = useState<
     Array<{ stripePromotionCodeId: string; code: string; active: boolean; type: string }>
   >([]);
-  const [newPriceKey, setNewPriceKey] = useState("membership_movewell_monthly");
+  const [newPriceKey, setNewPriceKey] = useState("coaching_independent_training_plan_monthly");
   const [newPriceAmount, setNewPriceAmount] = useState("3500");
   const [workshops, setWorkshops] = useState<
     Array<{ id: string; retreatTitleSnapshot: string; startsAt: string }>
@@ -191,13 +191,7 @@ export function AdminBusiness() {
             >
               Discounts
             </Button>
-            <Button
-              variant={activeTab === "class-rules" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setActiveTab("class-rules")}
-            >
-              Class rules
-            </Button>
+
             <Button
               variant={activeTab === "billing" ? "default" : "outline"}
               size="sm"
@@ -625,15 +619,6 @@ export function AdminBusiness() {
                     onChange={(e) => setNewPriceKey(e.target.value)}
                     className="border-border bg-background rounded-md border px-3 py-2 text-sm"
                   >
-                    <option value="membership_movewell_monthly">
-                      Membership Move Well (Monthly)
-                    </option>
-                    <option value="membership_movewell_annual">
-                      Membership Move Well (Annual)
-                    </option>
-                    <option value="credits_1">Credits 1</option>
-                    <option value="credits_3">Credits 3</option>
-                    <option value="credits_10">Credits 10</option>
                     <option value="coaching_independent_training_plan_monthly">
                       Coaching Monthly Support
                     </option>
@@ -670,19 +655,51 @@ export function AdminBusiness() {
                   </Button>
                 </div>
                 <div className="space-y-2">
-                  {catalog.map((row) => (
-                    <div
-                      key={row.key}
-                      className="flex items-center justify-between rounded border p-2 text-sm"
-                    >
-                      <span>{row.key}</span>
-                      <span>
-                        {(row.currency || "GBP").toUpperCase()}{" "}
-                        {(row.unitAmountPence / 100).toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
+                  {catalog
+                    .filter(
+                      (row) => !row.key.startsWith("membership_") && !row.key.startsWith("credits_")
+                    )
+                    .map((row) => (
+                      <div
+                        key={row.key}
+                        className="flex items-center justify-between rounded border p-2 text-sm"
+                      >
+                        <span>{row.key}</span>
+                        <span>
+                          {(row.currency || "GBP").toUpperCase()}{" "}
+                          {(row.unitAmountPence / 100).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
                 </div>
+                {catalog.some(
+                  (row) => row.key.startsWith("membership_") || row.key.startsWith("credits_")
+                ) && (
+                  <details className="rounded-lg border p-4">
+                    <summary className="cursor-pointer font-medium">
+                      Historical membership and credit prices
+                    </summary>
+                    <div className="mt-3 space-y-2">
+                      {catalog
+                        .filter(
+                          (row) =>
+                            row.key.startsWith("membership_") || row.key.startsWith("credits_")
+                        )
+                        .map((row) => (
+                          <div
+                            key={row.key}
+                            className="flex flex-wrap justify-between gap-2 text-sm"
+                          >
+                            <span>{row.key}</span>
+                            <span>
+                              {(row.currency || "GBP").toUpperCase()}{" "}
+                              {(row.unitAmountPence / 100).toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  </details>
+                )}
               </CardContent>
             </Card>
           ) : null}

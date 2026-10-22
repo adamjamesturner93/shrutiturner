@@ -1,4 +1,5 @@
 "use client";
+import type { EventImageCrops } from "@/lib/content/types";
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -40,6 +41,7 @@ type ExperienceContent = {
     url: string;
     alt: string;
     focalPoint: { x: number; y: number };
+    crops?: EventImageCrops;
   };
   gallery: Array<{
     caption?: string;
@@ -47,6 +49,7 @@ type ExperienceContent = {
     url: string;
     alt: string;
     focalPoint: { x: number; y: number };
+    crops?: EventImageCrops;
   }>;
   seoTitle: string;
   seoDescription: string;
@@ -471,6 +474,7 @@ export function AdminRetreatExperienceEditor({
               <CardContent className="grid gap-5">
                 <RetreatImageField
                   id="experience-image"
+                  placementControls
                   value={content.image}
                   disabled={busy !== ""}
                   onChange={(image) => update("image", image)}

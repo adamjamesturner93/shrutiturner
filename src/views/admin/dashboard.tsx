@@ -10,7 +10,6 @@ import {
   ListTodo,
   MailWarning,
   MessageCircle,
-  Shield,
   TrendingUp,
 } from "lucide-react";
 import { AdminLayout } from "../../components/admin-layout";
@@ -31,18 +30,23 @@ export function AdminDashboard({ initialData }: { initialData?: AdminDashboardSu
     setEmailHealthLoading(true);
     setEmailHealthError("");
     try {
-    const res = await fetch("/api/admin/email-deliveries", { cache: "no-store" });
-    if (!res.ok) throw new Error("Email delivery status is unavailable.");
-    const payload = (await res.json()) as {
-      success?: boolean;
-      data?: AdminEmailDeliveryHealthDto;
-    };
-    if (!payload.success || !payload.data) throw new Error("Email delivery status is unavailable.");
-    setEmailHealth(payload.data);
+      const res = await fetch("/api/admin/email-deliveries", { cache: "no-store" });
+      if (!res.ok) throw new Error("Email delivery status is unavailable.");
+      const payload = (await res.json()) as {
+        success?: boolean;
+        data?: AdminEmailDeliveryHealthDto;
+      };
+      if (!payload.success || !payload.data)
+        throw new Error("Email delivery status is unavailable.");
+      setEmailHealth(payload.data);
     } catch {
       setEmailHealth(null);
-      setEmailHealthError("Email delivery status is unavailable. This does not mean there are no failures.");
-    } finally { setEmailHealthLoading(false); }
+      setEmailHealthError(
+        "Email delivery status is unavailable. This does not mean there are no failures."
+      );
+    } finally {
+      setEmailHealthLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -94,15 +98,42 @@ export function AdminDashboard({ initialData }: { initialData?: AdminDashboardSu
           <AppMetricCard
             label="Coaching TODOs"
             value={initialData ? initialData.coachingTodos.length || "Clear" : "Unavailable"}
-            detail={initialData ? initialData.coachingTodos.length ? "actions need attention" : "nothing due" : "Coaching workload could not be verified"}
+            detail={
+              initialData
+                ? initialData.coachingTodos.length
+                  ? "actions need attention"
+                  : "nothing due"
+                : "Coaching workload could not be verified"
+            }
           />
           <AppMetricCard
             label="Email delivery"
-            value={emailHealthLoading ? "Loading…" : !emailHealth ? "Unavailable" : failedEmailCount > 0 ? failedEmailCount : "Clear"}
-            detail={emailHealth ? failedEmailCount > 0 ? "needs attention" : "no failures reported" : "Delivery status has not been verified"}
+            value={
+              emailHealthLoading
+                ? "Loading…"
+                : !emailHealth
+                  ? "Unavailable"
+                  : failedEmailCount > 0
+                    ? failedEmailCount
+                    : "Clear"
+            }
+            detail={
+              emailHealth
+                ? failedEmailCount > 0
+                  ? "needs attention"
+                  : "no failures reported"
+                : "Delivery status has not been verified"
+            }
           />
         </AppMetricGrid>
-        {emailHealthError ? <div role="alert" className="rounded-lg border p-4"><p>{emailHealthError}</p><Button variant="outline" className="mt-2" onClick={() => void refreshEmailHealth()}>Retry delivery status</Button></div> : null}
+        {emailHealthError ? (
+          <div role="alert" className="rounded-lg border p-4">
+            <p>{emailHealthError}</p>
+            <Button variant="outline" className="mt-2" onClick={() => void refreshEmailHealth()}>
+              Retry delivery status
+            </Button>
+          </div>
+        ) : null}
 
         {initialData?.coachingTodos.length ? (
           <Card className="border-amber-200 bg-amber-50/60">
@@ -284,21 +315,6 @@ export function AdminDashboard({ initialData }: { initialData?: AdminDashboardSu
             );
           })}
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Shield className="text-primary h-5 w-5" />
-              Hidden for now
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              Live online classes, small groups, class credits and Move Well membership remain
-              hidden. Retreats are enabled for public discovery, client bookings and admin testing.
-            </p>
-          </CardContent>
-        </Card>
       </div>
     </AdminLayout>
   );

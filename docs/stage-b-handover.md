@@ -121,3 +121,45 @@ The signed newsletter receipt is issued only when analytics consent permits and 
 - [ ] Check mobile booking controls, photo gallery, navigation, Vercel Analytics and Speed Insights. Compare mobile field performance after activation.
 
 **Local implementation is ready for owner review; deployment is not authorised.** No event is claimed to be visible in the real GA property. B-07 is the only changed SEO title; other metadata wording is preserved. Production reporting, Search Console rich-result eligibility and field performance remain post-release checks.
+
+## Follow-up visual refinements — 22 October 2026
+
+Owner-approved implementation after the combined optimisation commit; left uncommitted and unpublished.
+
+- Removed decorative numbers from coaching and retreat benefit panels; retained interaction and meaningful process/day numbers.
+- Applied existing compact section spacing to coaching and retreats index pages.
+- Restored stronger homepage plum/warm colour blocks while preserving both approved service pathways.
+- Applied the exact new About introduction; made transition CTAs buttons; flowed desktop story text beneath the purple quotation, with stacked mobile presentation.
+- Shortened itinerary headings only where their weekday is already present in the date label. Source content is unchanged.
+- Added independent listing/hero position and 100–200% zoom controls to the event image editor. Optional JSON fields preserve legacy focal-point rendering until edited, use existing draft/publish boundaries and require no database migration. Shared styles power previews, public cards/Next Up and hero images. Gallery settings are unchanged. Different responsive aspect ratios still affect cropping.
+
+Validation:
+
+- `pnpm run typecheck`: passed.
+- `pnpm run lint`: passed with three existing warnings in booking-modal/auth-context.
+- Focused Vitest image/schema/import/schedule tests: 20 passed; admin retreat creation integration tests: 6 passed, including draft/published crop isolation.
+- Stage B Playwright readable/accommodation checks: 30 passed across 360, 390, 768, 1024 and 1440px.
+- Focused admin image browser test: passed, including image library and editor axe checks, keyboard sliders, save/reload persistence and independent reset. Earlier attempts timed out when the Next.js development toolbar intercepted the mobile discard button; the final test verifies keyboard access to that control.
+- `pnpm run build --webpack`: passed (215 pages).
+- `git diff --check`: passed.
+
+Material files: public views (`home`, `about`, `coaching`, `retreats`, `retreat-detail`), retreat schedule component/helper, admin image field/create/editor, content image types and retreat JSON schema/projections/image styles, and focused unit/integration/browser tests. Existing analytics and payment implementation is unchanged.
+
+No production content or booking rules changed, and no commit/push/deployment was performed for this follow-up. The owner can adjust each event’s listing and hero crops under Photography and review the responsive result before publishing the draft. Existing images retain their focal points until edited; no migration is needed.
+
+### Additional screenshot fixes — 22 October 2026
+
+- Removed the Next Up shortcut and its route-level data selection at the owner's request; standard retreat/workshop listings remain.
+- Kept the desktop booking panel sticky when room options open. A viewport-height limit and internal scrolling keep longer options reachable without switching positioning or jumping back up the page. Mobile remains in normal document flow.
+- Changed homepage pathway photos to 3:2 frames with a higher focal position, keeping faces and raised hands visible. Reviewed the desktop screenshot.
+- Validation: typecheck passed; lint passed with the same three existing warnings; 15 focused Playwright checks passed across 360–1440px, including axe audits, room selection and a regression assertion that opening options does not move the sticky panel. `git diff --check` passed. No additional build was needed for these focused presentation changes.
+- Changes remain uncommitted and unpublished.
+
+### Admin legacy-service tidy and production stock check — 22 October 2026
+
+- Hid Programmes navigation and removed the outdated admin overview notice. Programme management routes and enrolments remain intact.
+- Member lists/details now show legacy membership/credit UI only for accounts with subscription, ledger or class-booking history (including exhausted balances). Empty class-attendance rows are hidden.
+- Removed class-rule navigation and retired product choices from new-price creation. Existing membership/credit prices remain in a collapsed historical section; billing/refund tools and direct class-rule access remain available.
+- Typecheck, lint (three existing warnings), two focused legacy-visibility regression tests and diff checks passed. No production writes, commits or deployments.
+- Read-only production aggregate check: 21 distinct member accounts have legacy records. Memberships: 1 active, 11 cancelled, 8 expired (20 accounts). Credit ledger: 1 other account; positive raw ledger balance but no positive unexpired balance. No class bookings or programme enrolments.
+- The active membership has a Stripe subscription reference, but no future renewal/current-period date or recorded paid invoice in the database. Its actual provider status is unverified; retain support/refund functionality pending Stripe review. The application currently sums all credit ledger entries for its balance, so the credit account still requires support even though its positive entry is expired. No financial rules changed.

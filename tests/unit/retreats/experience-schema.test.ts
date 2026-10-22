@@ -65,3 +65,20 @@ it("persists ordered testimonial IDs through event content and rejects duplicate
   expect(() => parseRetreatExperienceContent({ testimonialIds: ["a", "a"] })).toThrow();
   expect(() => parseRetreatExperienceContent({ testimonialIds: ["a", "b", "c", "d"] })).toThrow();
 });
+
+it("retains independent crop settings through JSON round-trips without changing old records", () => {
+  const image = { url: "/photo.jpg", alt: "Photo", focalPoint: { x: 45, y: 60 } };
+  expect(parseRetreatExperienceContent({ image }).image?.crops).toBeUndefined();
+  const crops = { listing: { x: 10, y: 20, zoom: 1.25 }, hero: { x: 80, y: 50, zoom: 2 } };
+  const saved = parseRetreatExperienceContent({ image: { ...image, crops } });
+  expect(parseRetreatExperienceContent(JSON.parse(JSON.stringify(saved))).image?.crops).toEqual(
+    crops
+  );
+  for (const invalid of [{ x: -1 }, { y: 101 }, { zoom: 0.5 }, { zoom: 2.01 }]) {
+    expect(() =>
+      parseRetreatExperienceContent({
+        image: { ...image, crops: { listing: { ...crops.listing, ...invalid } } },
+      })
+    ).toThrow();
+  }
+});

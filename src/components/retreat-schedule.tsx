@@ -1,6 +1,10 @@
 import { ChevronDown } from "lucide-react";
 import { MarkdownContent } from "@/components/markdown-content";
-import { splitScheduleSections, getScheduleDateLabel } from "@/lib/retreats/schedule-sections";
+import {
+  splitScheduleSections,
+  getScheduleDateLabel,
+  getScheduleDisplayTitle,
+} from "@/lib/retreats/schedule-sections";
 
 export function RetreatSchedule({
   markdown,
@@ -37,7 +41,12 @@ export function RetreatSchedule({
                   {getScheduleDateLabel(startDate, index, timezone)}
                 </p>
               ) : null}
-              <h3 className="text-xl">{section.title}</h3>
+              <h3 className="text-xl">
+                {getScheduleDisplayTitle(
+                  section.title,
+                  getScheduleDateLabel(startDate, index, timezone)
+                )}
+              </h3>
             </div>
             <ChevronDown
               aria-hidden="true"

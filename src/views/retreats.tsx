@@ -21,12 +21,11 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { getRetreatCardImageSrc, getRetreatCardImagePosition } from "@/lib/retreats/images";
+import { getRetreatCardImageSrc, getRetreatImageStyle } from "@/lib/retreats/images";
 import { getRetreatCardDateLabels, getRetreatPriceSummary } from "@/lib/retreats/presentation";
 import type { FaqItemContent, RetreatCombinedContent } from "@/lib/content/types";
 
 interface RetreatsPageProps {
-  nextEventDateId?: string;
   testimonials?: TestimonialContent[];
   retreats?: RetreatCombinedContent[];
   faqs?: FaqItemContent[];
@@ -104,12 +103,7 @@ const RETREAT_PRINCIPLES = [
   },
 ] as const;
 
-export function RetreatsPage({
-  retreats,
-  faqs,
-  testimonials = [],
-  nextEventDateId,
-}: RetreatsPageProps) {
+export function RetreatsPage({ retreats, faqs, testimonials = [] }: RetreatsPageProps) {
   const [activePrinciple, setActivePrinciple] = useState(0);
   const retreatData = retreats ?? [];
   const retreatFaqs = faqs && faqs.length > 0 ? faqs : DEFAULT_RETREAT_FAQS;
@@ -156,22 +150,6 @@ export function RetreatsPage({
         new Date(left.date.startDate).getTime() - new Date(right.date.startDate).getTime() ||
         left.date.id.localeCompare(right.date.id)
     );
-
-  const nextEvent = eventCards.find(({ date }) => date.id === nextEventDateId);
-
-  const nextPrice = nextEvent
-    ? getRetreatPriceSummary({
-        dates: [
-          {
-            ...nextEvent.date,
-            roomOptions: nextEvent.date.roomOptions.filter(
-              (room) => room.availableSpots > 0 && !room.isWaitlistOnly
-            ),
-          },
-        ],
-        normalPrice: nextEvent.retreat.normalPrice,
-      })
-    : null;
 
   const isWorkshop = (card: (typeof eventCards)[number]) => {
     const kind = card.date.eventKind || card.retreat.experienceType;
@@ -230,70 +208,9 @@ export function RetreatsPage({
         }
       />
 
-      {nextEvent ? (
-        <MarketingSection compact className="section-wash" contentClassName="max-w-7xl">
-          <article
-            aria-labelledby="next-event-title"
-            className="bg-background grid overflow-hidden rounded-[1.75rem] border sm:grid-cols-[minmax(0,0.65fr)_minmax(0,1.35fr)]"
-          >
-            <ImageWithFallback
-              src={getRetreatCardImageSrc(nextEvent.retreat)}
-              alt={nextEvent.retreat.imageAlt || nextEvent.retreat.title}
-              className="aspect-[2/1] h-full w-full object-cover sm:aspect-auto sm:max-h-72"
-              style={{
-                objectPosition: getRetreatCardImagePosition(
-                  getRetreatCardImageSrc(nextEvent.retreat),
-                  nextEvent.retreat.imageFocalPoint
-                ),
-              }}
-              sizes="(max-width: 639px) 100vw, 420px"
-            />
-            <div className="p-6 md:p-8">
-              <p className="text-brand-accent text-xs font-medium tracking-widest uppercase">
-                Next Up
-              </p>
-              <h2 id="next-event-title" className="mt-3 text-2xl md:text-3xl">
-                {nextEvent.retreat.title}
-              </h2>
-              <p className="text-muted-foreground mt-3">
-                {
-                  getRetreatCardDateLabels(
-                    nextEvent.date.startDate,
-                    nextEvent.date.endDate,
-                    nextEvent.date.timezone
-                  )?.dateLabel
-                }
-              </p>
-              <p className="text-muted-foreground mt-2">
-                {getFormatLabel(nextEvent.retreat, nextEvent.date)} ·{" "}
-                {nextEvent.date.location || nextEvent.retreat.location}
-              </p>
-              <p className="text-brand-accent mt-2 text-sm">
-                Places available: {nextEvent.date.availableSpaces}
-              </p>
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
-                <p className="text-xl font-semibold">
-                  {nextPrice?.isFromPrice ? (
-                    <span className="text-muted-foreground mr-2 text-sm font-normal">From</span>
-                  ) : null}
-                  {formatMoney(nextPrice!.lowestPricePence, nextEvent.retreat.currency)}
-                </p>
-                <Button asChild>
-                  <Link
-                    href={`/retreats/${nextEvent.retreat.slug}?date=${encodeURIComponent(nextEvent.date.id)}`}
-                  >
-                    View Event
-                    <ArrowRight aria-hidden="true" className="h-4 w-4" />
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </article>
-        </MarketingSection>
-      ) : null}
-
       {eventGroups.map((group) => (
         <MarketingSection
+          compact
           key={group.id}
           id={group.id}
           className={
@@ -340,12 +257,12 @@ export function RetreatsPage({
                       src={getRetreatCardImageSrc(retreat)}
                       alt={retreat.imageAlt || retreat.title}
                       className="h-full w-full object-cover"
-                      style={{
-                        objectPosition: getRetreatCardImagePosition(
-                          getRetreatCardImageSrc(retreat),
-                          retreat.imageFocalPoint
-                        ),
-                      }}
+                      style={getRetreatImageStyle(
+                        getRetreatCardImageSrc(retreat),
+                        retreat.imageFocalPoint,
+                        retreat.imageCrops,
+                        "listing"
+                      )}
                       sizes="(max-width: 767px) 100vw, (max-width: 1280px) 50vw, 640px"
                     />
                     <span className="bg-background text-foreground absolute bottom-4 left-4 rounded-full px-3 py-1.5 text-xs font-medium shadow-sm">
@@ -461,7 +378,11 @@ export function RetreatsPage({
         </MarketingSection>
       ))}
 
-      <MarketingSection className="section-wash section-divider" contentClassName="max-w-7xl">
+      <MarketingSection
+        compact
+        className="section-wash section-divider"
+        contentClassName="max-w-7xl"
+      >
         <SectionHeading
           eyebrow="Why join me"
           title="Your body. Your pace. Space to be yourself."
@@ -479,7 +400,7 @@ export function RetreatsPage({
               onMouseEnter={() => setActivePrinciple(index)}
               onFocus={() => setActivePrinciple(index)}
               onClick={() => setActivePrinciple(index)}
-              className={`focus-visible:outline-brand-accent relative isolate flex min-h-80 min-w-0 flex-col justify-between overflow-hidden rounded-[1.75rem] p-6 text-left text-white focus-visible:outline-2 focus-visible:outline-offset-4 motion-reduce:transition-none lg:h-[28rem] lg:basis-0 lg:transition-[flex-grow] lg:duration-500 ${activePrinciple === index ? "lg:grow-[3]" : "lg:grow"}`}
+              className={`focus-visible:outline-brand-accent relative isolate flex min-h-80 min-w-0 flex-col justify-end overflow-hidden rounded-[1.75rem] p-6 text-left text-white focus-visible:outline-2 focus-visible:outline-offset-4 motion-reduce:transition-none lg:h-[28rem] lg:basis-0 lg:transition-[flex-grow] lg:duration-500 ${activePrinciple === index ? "lg:grow-[3]" : "lg:grow"}`}
             >
               <ImageWithFallback
                 src={principle.image}
@@ -492,12 +413,6 @@ export function RetreatsPage({
                 aria-hidden="true"
                 className="absolute inset-0 -z-10 bg-gradient-to-t from-black/90 via-black/35 to-black/20"
               />
-              <span
-                aria-hidden="true"
-                className={`flex h-12 w-12 items-center justify-center rounded-xl text-xl font-semibold ${activePrinciple === index ? "bg-brand-accent" : "bg-black/50"}`}
-              >
-                0{index + 1}
-              </span>
               <span>
                 <span
                   className={`mb-4 block leading-relaxed ${activePrinciple === index ? "" : "lg:hidden"}`}
@@ -514,11 +429,11 @@ export function RetreatsPage({
       </MarketingSection>
 
       {testimonials.length ? (
-        <MarketingSection contentClassName="max-w-7xl">
+        <MarketingSection compact contentClassName="max-w-7xl">
           <TestimonialQuotes testimonials={testimonials} />
         </MarketingSection>
       ) : null}
-      <MarketingSection className="bg-brand-warm" contentClassName="max-w-4xl">
+      <MarketingSection compact className="bg-brand-warm" contentClassName="max-w-4xl">
         <SectionHeading eyebrow="Questions" title="Useful details before you book" align="center" />
         <Accordion type="single" collapsible className="mt-10 rounded-[1.75rem] border px-6">
           {retreatFaqs.map((faq, index) => (

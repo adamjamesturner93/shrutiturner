@@ -29,14 +29,12 @@ import {
   TrendingUp,
   Shield,
   CalendarDays,
-  BookOpen,
   ExternalLink,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { path: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { path: "/admin/coaching", label: "Coaching", icon: Compass },
-  { path: "/admin/programmes", label: "Programmes", icon: BookOpen },
   { path: "/admin/retreats", label: "Retreats & workshops", icon: CalendarDays },
   { path: "/admin/members", label: "Members", icon: Users },
   { path: "/admin/blog-comments", label: "Blog engagement", icon: MessageCircle },

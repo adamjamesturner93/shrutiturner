@@ -16,7 +16,6 @@ import {
   ArrowRight,
   Compass,
   CalendarDays,
-  BookOpen,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { SEO } from "./seo";
@@ -40,7 +39,6 @@ type LegalGuardModalProps = {
 const NAV_ITEMS = [
   { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { path: "/dashboard/coaching", label: "Coaching", icon: Compass },
-  { path: "/dashboard/programmes", label: "Programmes", icon: BookOpen },
   { path: "/dashboard/events", label: "Events", icon: CalendarDays },
   { path: "/dashboard/account", label: "Account", icon: Settings },
 ];

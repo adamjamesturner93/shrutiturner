@@ -123,6 +123,7 @@ function toTemplate(experience: Awaited<ReturnType<typeof getPublishedRetreatExp
     testimonialIds: content.testimonialIds,
     imageAlt: content.image?.alt,
     imageFocalPoint: content.image?.focalPoint,
+    imageCrops: content.image?.crops,
     seoTitle: content.seoTitle || undefined,
     seoDescription: content.seoDescription || undefined,
   } satisfies RetreatTemplateContent;
@@ -172,6 +173,7 @@ export async function listPublishedRetreatExperienceTemplates() {
       testimonialIds: content.testimonialIds,
       imageAlt: content.image?.alt,
       imageFocalPoint: content.image?.focalPoint,
+      imageCrops: content.image?.crops,
       seoTitle: content.seoTitle || undefined,
       seoDescription: content.seoDescription || undefined,
     });

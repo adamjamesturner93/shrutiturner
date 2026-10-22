@@ -5,6 +5,7 @@ import { createEventDraft } from "@/lib/retreats/creation-service";
 import {
   updateRetreatExperience,
   publishRetreatExperience,
+  getPublishedRetreatExperienceTemplateBySlug,
 } from "@/lib/retreats/experience-service";
 
 vi.mock("@/lib/content/public-content", () => ({
@@ -157,5 +158,31 @@ describe("atomic event draft creation", () => {
     const draft = await db.retreatExperience.findUniqueOrThrow({ where: { id: experience.id } });
     expect(draft.draftContentJson).toMatchObject({ testimonialIds: [] });
     expect(draft.publishedContentJson).toMatchObject({ testimonialIds: ["quote-b", "quote-a"] });
+  });
+  it("keeps crop drafts separate from published image settings", async () => {
+    const created = await createEventDraft(actor, payload());
+    const date = await db.retreatDate.findUniqueOrThrow({
+      where: { id: created.id },
+      include: { experience: true },
+    });
+    const exp = date.experience!;
+    const image = { url: "/images/shruti.jpeg", alt: "Shruti", focalPoint: { x: 50, y: 50 } };
+    const content = { ...(exp.draftContentJson as Record<string, unknown>), image };
+    const saved = await updateRetreatExperience({ id: exp.id, revision: exp.revision, content });
+    await publishRetreatExperience({ id: exp.id, revision: saved!.revision });
+    const crops = { listing: { x: 20, y: 30, zoom: 1.4 }, hero: { x: 70, y: 10, zoom: 1.1 } };
+    const edited = await updateRetreatExperience({
+      id: exp.id,
+      revision: saved!.revision,
+      content: { ...content, image: { ...image, crops } },
+    });
+    expect(edited!.draftContent.image?.crops).toEqual(crops);
+    expect(
+      (await getPublishedRetreatExperienceTemplateBySlug(exp.slug))?.imageCrops
+    ).toBeUndefined();
+    await publishRetreatExperience({ id: exp.id, revision: edited!.revision });
+    expect((await getPublishedRetreatExperienceTemplateBySlug(exp.slug))?.imageCrops).toEqual(
+      crops
+    );
   });
 });

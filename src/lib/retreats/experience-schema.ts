@@ -12,7 +12,16 @@ const retreatImageUrlSchema = z
     "Enter an absolute http(s) URL or a site-relative path beginning with /."
   );
 
+export const eventImageCropSchema = z.object({
+  x: z.number().min(0).max(100),
+  y: z.number().min(0).max(100),
+  zoom: z.number().min(1).max(2),
+});
+
 export const retreatImageSchema = z.object({
+  crops: z
+    .object({ listing: eventImageCropSchema.optional(), hero: eventImageCropSchema.optional() })
+    .optional(),
   assetId: z.string().trim().max(128).optional(),
   url: retreatImageUrlSchema,
   alt: z.string().trim().min(1).max(240),

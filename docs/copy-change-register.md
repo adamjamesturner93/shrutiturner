@@ -186,3 +186,30 @@ The owner explicitly approved B-01–B-07 in the resume-and-complete instruction
 - Improve mobile image/video proportions, story reading width, event image sizing and navigation wrapping without truncating content.
 - Match route loading skeletons to the current coaching, listing, detail and checkout layouts.
 - Keep already successful two-column event cards, approved feedback, FAQ content, newsletter functionality and staged enquiry/contact designs.
+
+## Visual refinement follow-up — approved 19 October 2026
+
+Approval: **APPROVED — IMPLEMENTED**, following the owner's screenshots, exact About wording and approval of the implementation plan. Verification completed in the follow-up implementation on 22 October 2026.
+
+- `/about`, Meet Shruti beside the video: replace the previous four introductory paragraphs (beginning “My background spans rehabilitation research, personal training and yoga, but my approach has also been shaped by living with a body that can fluctuate…” and ending “In the video, I share a little more about how I got here and why I do this work.”) with the exact owner-supplied paragraphs below. The separate My Story narrative is unchanged.
+
+> My background spans rehabilitation research, personal training and yoga, but my approach has also been shaped by my own experiences of living with inflammatory arthritis, hypermobility and asthma. I know what it's like to have a body that doesn't always respond as expected, and to navigate changing energy levels, symptoms and physical capabilities.
+>
+> I've also worked in very different environments, from academia and corporate roles to shift work and self-employment, so I understand that fitting movement into everyday life isn't always straightforward.
+>
+> I know there isn't one version of a "normal" body, schedule or lifestyle.
+>
+> My job is to help you understand yours, build strength and confidence, and find an approach to movement that works with you rather than asking you to fit yourself into a generic movement routine.
+>
+> In the video, I share a little more about how I got here and why I do this work
+
+- Event itineraries: display “Unwind”, “Explore” and “Return” instead of “Friday — Unwind”, “Saturday — Explore” and “Sunday — Return” when a full date is already displayed. Recognise hyphen, en dash and em dash; retain source Markdown and other headings.
+- Coaching/retreat benefit panels: remove decorative numbers only. Process-step and itinerary numbers remain.
+- Homepage service pathways and About transition CTAs: wording and destinations unchanged; colour/layout/button presentation only.
+- Admin image controls: separate Listing card/Hero position and zoom controls, reset controls and explanatory help, authorised as part of the image-control plan. No new public marketing text.
+
+No additional copy proposal requires approval.
+
+### Next Up removal — 22 October 2026
+
+**APPROVED — IMPLEMENTED.** Owner explicitly requested removal of the Next Up section on `/retreats`, including its repeated event information and View Event CTA. Existing event listings and their approved copy remain unchanged. Booking-panel positioning and homepage image crops change presentation only.

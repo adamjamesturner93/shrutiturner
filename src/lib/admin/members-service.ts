@@ -305,6 +305,9 @@ export async function listAdminMembers(filters: {
         avatarInitials:
           `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.trim().toUpperCase() || "?",
         joinedDate: user.createdAt.toISOString().slice(0, 10),
+        hasLegacyServices: Boolean(
+          membership || user.creditLedgerEntries.length || metrics.totalBookings
+        ),
         membershipPlan: membership?.plan || null,
         membershipLabel: mapMembershipLabel(membership?.plan || null, membership?.status || null),
         status:
@@ -482,6 +485,9 @@ export async function getAdminMemberDetail(userId: string) {
     avatarInitials:
       `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.trim().toUpperCase() || "?",
     joinedDate: user.createdAt.toISOString().slice(0, 10),
+    hasLegacyServices: Boolean(
+      membership || user.creditLedgerEntries.length || metrics.totalBookings
+    ),
     membershipPlan: membership?.plan || null,
     membershipLabel: mapMembershipLabel(membership?.plan || null, membership?.status || null),
     status:

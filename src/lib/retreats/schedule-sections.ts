@@ -52,3 +52,12 @@ export function getScheduleDateLabel(
   const day = new Date(Date.UTC(part("year"), part("month") - 1, part("day") + dayIndex, 12));
   return formatRetreatDate(day, "UTC", true);
 }
+
+/** Avoid repeating a weekday already shown in the full date label. */
+export function getScheduleDisplayTitle(title: string, dateLabel?: string) {
+  if (!dateLabel) return title;
+  return title.replace(
+    /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s*[-–—]\s*(?=\S)/i,
+    ""
+  );
+}

@@ -1,4 +1,5 @@
 "use client";
+import type { EventImageCrops } from "@/lib/content/types";
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -38,12 +39,14 @@ type ExperienceContent = {
     url: string;
     alt: string;
     focalPoint: { x: number; y: number };
+    crops?: EventImageCrops;
   }>;
   image?: {
     assetId?: string;
     url: string;
     alt: string;
     focalPoint: { x: number; y: number };
+    crops?: EventImageCrops;
   };
   seoTitle: string;
   seoDescription: string;
@@ -568,6 +571,7 @@ export function AdminRetreatCreate({
                     </div>
                   </div>
                   <RetreatImageField
+                    placementControls
                     id="theme-image"
                     value={content.image}
                     onChange={(image) => setContent((value) => ({ ...value, image }))}

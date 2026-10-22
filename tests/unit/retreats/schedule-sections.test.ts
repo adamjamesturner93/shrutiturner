@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { splitScheduleSections, getScheduleDateLabel } from "@/lib/retreats/schedule-sections";
+import {
+  splitScheduleSections,
+  getScheduleDateLabel,
+  getScheduleDisplayTitle,
+} from "@/lib/retreats/schedule-sections";
 
 describe("schedule Markdown sections", () => {
   it("renders legacy weekday lines as separate days without changing their content", () => {
@@ -54,4 +58,14 @@ describe("schedule dates", () => {
     expect(getScheduleDateLabel(undefined, 0)).toBe("");
     expect(getScheduleDateLabel("invalid", 0)).toBe("");
   });
+});
+
+it("removes only redundant weekday prefixes when a date is displayed", () => {
+  for (const dash of ["-", "–", "—"])
+    expect(getScheduleDisplayTitle(`Friday ${dash} Unwind`, "Friday, 11th June 2027")).toBe(
+      "Unwind"
+    );
+  for (const title of ["Friday", "Friday —", "Arrival — Welcome", "Unwind"])
+    expect(getScheduleDisplayTitle(title, "A date")).toBe(title);
+  expect(getScheduleDisplayTitle("Friday — Unwind", "")).toBe("Friday — Unwind");
 });

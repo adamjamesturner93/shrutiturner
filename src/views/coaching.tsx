@@ -179,7 +179,7 @@ export function CoachingPage({ testimonials = [] }: { testimonials?: Testimonial
         </div>
       </section>
 
-      <MarketingSection id="is-coaching-right" className="section-wash">
+      <MarketingSection compact id="is-coaching-right" className="section-wash">
         <SectionHeading
           eyebrow="Is coaching right for me?"
           title="Coaching can help when you want a plan that gives you direction."
@@ -210,14 +210,8 @@ export function CoachingPage({ testimonials = [] }: { testimonials?: Testimonial
                   onMouseEnter={() => setActiveBenefit(index)}
                   onFocus={() => setActiveBenefit(index)}
                   onClick={() => setActiveBenefit(index)}
-                  className="flex min-h-64 w-full flex-col justify-between p-6 text-left text-2xl focus-visible:outline-2 focus-visible:outline-offset-[-6px] focus-visible:outline-white md:h-full md:justify-start"
+                  className="flex min-h-64 w-full flex-col justify-end p-6 text-left text-2xl focus-visible:outline-2 focus-visible:outline-offset-[-6px] focus-visible:outline-white md:h-full md:justify-start"
                 >
-                  <span
-                    aria-hidden="true"
-                    className="bg-brand-accent self-start rounded-lg p-3 text-lg"
-                  >
-                    0{index + 1}
-                  </span>
                   <span className="mt-8 md:absolute md:inset-x-6 md:bottom-36">{item.title}</span>
                 </button>
               </h3>
@@ -231,7 +225,7 @@ export function CoachingPage({ testimonials = [] }: { testimonials?: Testimonial
         </div>
       </MarketingSection>
 
-      <MarketingSection className="section-wash">
+      <MarketingSection compact className="section-wash">
         <div className="bg-background grid items-center gap-6 rounded-[2rem] border p-5 sm:grid-cols-[minmax(0,0.6fr)_minmax(0,1.4fr)] md:gap-10 md:p-8">
           <ImageWithFallback
             src="/images/shruti-coaching.jpeg"
@@ -243,9 +237,11 @@ export function CoachingPage({ testimonials = [] }: { testimonials?: Testimonial
             <h2 className="text-3xl md:text-4xl">Why Work With Shruti?</h2>
             <p className="text-muted-foreground mt-4 leading-relaxed">
               My PhD in Rehabilitation sits alongside my experience in personal training, strength
-              and conditioning, and yoga. I bring these perspectives together to understand what
-              matters to you and build movement and training that fits your body, goals and everyday
-              life.
+              and conditioning, and yoga. Living with inflammatory arthritis, asthma and
+              hypermobility has also shaped how I understand movement and the importance of
+              adaptability. I bring this professional knowledge and lived experience together to
+              understand what matters to you and build movement and training that fits your body,
+              goals and everyday life.
             </p>
             <Button asChild variant="outline" className="mt-6">
               <Link href="/about">
@@ -257,7 +253,7 @@ export function CoachingPage({ testimonials = [] }: { testimonials?: Testimonial
         </div>
       </MarketingSection>
 
-      <MarketingSection className="section-divider">
+      <MarketingSection compact className="section-divider">
         <div className="mx-auto max-w-6xl">
           <div>
             <SectionHeading
@@ -287,6 +283,7 @@ export function CoachingPage({ testimonials = [] }: { testimonials?: Testimonial
       </MarketingSection>
 
       <MarketingSection
+        compact
         className="section-divider"
         contentClassName="max-w-7xl rounded-[2rem] bg-brand-dark p-7 text-white md:p-12"
       >
@@ -312,7 +309,12 @@ export function CoachingPage({ testimonials = [] }: { testimonials?: Testimonial
         </ul>
       </MarketingSection>
 
-      <MarketingSection id="support-levels" className="section-wash" contentClassName="max-w-7xl">
+      <MarketingSection
+        compact
+        id="support-levels"
+        className="section-wash"
+        contentClassName="max-w-7xl"
+      >
         <SectionHeading
           eyebrow="Levels of support"
           title="The coaching stays personal."
@@ -361,7 +363,7 @@ export function CoachingPage({ testimonials = [] }: { testimonials?: Testimonial
         </div>
       </MarketingSection>
 
-      <MarketingSection className="section-wash" contentClassName="max-w-4xl">
+      <MarketingSection compact className="section-wash" contentClassName="max-w-4xl">
         <div className="marketing-panel overflow-hidden rounded-[2rem] p-3">
           <div className="aspect-video overflow-hidden rounded-[1.45rem]">
             {isIntroVideoPlaying ? (
@@ -410,12 +412,12 @@ export function CoachingPage({ testimonials = [] }: { testimonials?: Testimonial
       </MarketingSection>
 
       {testimonials.length > 0 && (
-        <MarketingSection contentClassName="max-w-7xl">
+        <MarketingSection compact contentClassName="max-w-7xl">
           <TestimonialQuotes testimonials={testimonials} title="What coaching clients say" />
         </MarketingSection>
       )}
 
-      <MarketingSection className="section-divider" contentClassName="max-w-4xl">
+      <MarketingSection compact className="section-divider" contentClassName="max-w-4xl">
         <SectionHeading
           eyebrow="Common questions"
           title="The useful details, when you need them."

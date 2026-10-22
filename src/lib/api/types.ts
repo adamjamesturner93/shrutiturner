@@ -1154,6 +1154,7 @@ export type ClassOperationalSettingsDto = {
 };
 
 export type AdminMemberListItemDto = {
+  hasLegacyServices?: boolean;
   id: string;
   firstName: string;
   lastName: string;
