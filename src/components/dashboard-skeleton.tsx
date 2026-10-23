@@ -51,7 +51,13 @@ export function DashboardSkeleton() {
   );
 }
 
-export function DashboardShellSkeleton({ children }: { children: ReactNode }) {
+export function DashboardShellSkeleton({
+  children,
+  contentClassName = "mx-auto max-w-7xl p-6 md:p-8 lg:p-10",
+}: {
+  children: ReactNode;
+  contentClassName?: string;
+}) {
   return (
     <div className="dashboard-surface flex min-h-screen">
       <aside className="border-brand-white/10 fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r bg-[linear-gradient(180deg,rgba(46,31,51,0.98),rgba(86,52,74,0.98))] p-6 lg:flex">
@@ -93,7 +99,7 @@ export function DashboardShellSkeleton({ children }: { children: ReactNode }) {
       </div>
 
       <main className="min-h-screen flex-1 pt-14 lg:ml-72 lg:pt-0">
-        <div className="mx-auto max-w-7xl p-6 md:p-8 lg:p-10">{children}</div>
+        <div className={contentClassName}>{children}</div>
       </main>
     </div>
   );

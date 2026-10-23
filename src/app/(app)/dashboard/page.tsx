@@ -1,3 +1,4 @@
+import { StudioLoading } from "@/components/studio-loading";
 import { Suspense } from "react";
 import { ClientHub } from "@/views/programmes/client-hub";
 import { DashboardLobby } from "@/views/dashboard/lobby";
@@ -13,7 +14,7 @@ async function DashboardContent({
 
 export default function Page(props: { searchParams: Promise<{ onboarding?: string }> }) {
   return (
-    <Suspense fallback={<p>Loading account…</p>}>
+    <Suspense fallback={<StudioLoading />}>
       <DashboardContent {...props} />
     </Suspense>
   );

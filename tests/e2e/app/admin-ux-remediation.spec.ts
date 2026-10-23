@@ -248,3 +248,51 @@ test("admin creates a reusable format and it appears in event creation", async (
     await db.user.delete({ where: { id: admin.id } });
   }
 });
+
+test("studio navigation shows a shell immediately and retains it while dashboard data loads", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const email = `e2e-studio-loading-${randomUUID()}@example.com`;
+  const admin = await db.user.create({ data: { email, role: "admin", emailVerified: new Date() } });
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  try {
+    await signInAdminFixture(page, email, "/");
+    await page.route("**/api/me/hub", async (route) => {
+      await pending;
+      await route.fulfill({
+        json: {
+          firstName: "Fixture",
+          nav: [{ label: "Dashboard" }, { label: "Account" }],
+          programmes: [],
+          events: [],
+          actions: [],
+          coaching: null,
+          discovery: [],
+          legacyClasses: false,
+          legacyMembership: false,
+        },
+      });
+    });
+    await page.getByRole("link", { name: /My Studio/ }).click();
+    await expect(
+      page.getByRole("status", { name: "Loading your studio dashboard" }).first()
+    ).toBeVisible();
+    await expect(page.locator(".dashboard-surface").first()).toBeVisible();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole("heading", { name: "Welcome back" })).toHaveCount(0);
+    release();
+    await expect(page.getByRole("heading", { name: "Welcome, Fixture" })).toBeVisible();
+    await expect(page.getByRole("status", { name: "Loading your studio dashboard" })).toHaveCount(
+      0
+    );
+  } finally {
+    release();
+    await page.unrouteAll({ behavior: "wait" });
+    await db.authChallenge.deleteMany({ where: { email } });
+    await db.user.delete({ where: { id: admin.id } });
+  }
+});

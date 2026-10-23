@@ -1,4 +1,5 @@
 "use client";
+import { StudioLoadingContent } from "@/components/studio-loading";
 import { ProgrammeContentLoading } from "./loading";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -155,6 +156,13 @@ export function ClientHub({
     : section === "programmes"
       ? !activeProgrammes.length
       : !upcoming.length;
+  if (dashboard && !data && !error) {
+    return (
+      <DashboardLayout handlesLegalAgreements title="Dashboard">
+        <StudioLoadingContent />
+      </DashboardLayout>
+    );
+  }
   return (
     <DashboardLayout
       handlesLegalAgreements

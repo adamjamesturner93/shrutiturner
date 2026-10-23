@@ -1,5 +1,7 @@
+import { StudioLoading } from "./studio-loading";
 import { RetreatNavigation } from "./retreat-navigation";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
+import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { Button } from "./ui/button";
 import { Menu, X } from "lucide-react";
@@ -68,6 +70,7 @@ export function Header() {
               <Link href="/dashboard">
                 <span className="mr-2">{user?.avatarInitials || "?"}</span>
                 My Studio
+                <StudioNavigationPending />
               </Link>
             </Button>
           ) : (
@@ -124,8 +127,9 @@ export function Header() {
             <div className="flex flex-col space-y-2 border-t pt-4">
               {hydrated && isAuthenticated ? (
                 <Button asChild className="w-full">
-                  <Link href="/dashboard" onClick={() => setMobileMenuPath(null)}>
+                  <Link href="/dashboard">
                     My Studio
+                    <StudioNavigationPending />
                   </Link>
                 </Button>
               ) : (
@@ -150,4 +154,16 @@ export function Header() {
       )}
     </header>
   );
+}
+
+function StudioNavigationPending() {
+  const { pending } = useLinkStatus();
+  return pending
+    ? createPortal(
+        <div className="bg-background fixed inset-0 z-[100] overflow-y-auto">
+          <StudioLoading />
+        </div>,
+        document.body
+      )
+    : null;
 }

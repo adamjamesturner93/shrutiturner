@@ -276,3 +276,41 @@ test("public metadata, sitemap and preview indexing protection", async ({
   expect((await request.get("/coaching/enquire")).ok()).toBe(true);
   expect((await request.get("/contact")).ok()).toBe(true);
 });
+
+test("experience navigation has a usable loading skeleton and failure fallback", async ({
+  page,
+}, info) => {
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/retreats/navigation", async (route) => {
+    await pending;
+    await route.fulfill({ status: 503, json: {} });
+  });
+  await page.goto("/");
+  const mobile = info.project.use.viewport!.width < 1024;
+  if (mobile) await page.getByRole("button", { name: "Open menu" }).click();
+  const nav = mobile
+    ? page.locator("#mobile-main-menu")
+    : page.getByRole("navigation", { name: "Main navigation" });
+  const panel = nav.locator("details");
+  await panel.locator("summary").click();
+  await expect(panel.getByRole("status")).toHaveText("Loading upcoming experiences…");
+  await expect(panel.locator('[data-slot="skeleton"]').first()).toBeVisible();
+  await expect(panel.getByRole("link", { name: "View all retreats & workshops" })).toBeVisible();
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include(mobile ? "#mobile-main-menu" : 'nav[aria-label="Main navigation"]')
+        .withTags(["wcag2a", "wcag2aa", "wcag22aa"])
+        .analyze()
+    ).violations
+  ).toEqual([]);
+  release();
+  await expect(panel.locator('[data-slot="skeleton"]')).toHaveCount(0);
+  await expect(panel.getByRole("link", { name: "View all retreats & workshops" })).toBeVisible();
+  await panel.locator("summary").focus();
+  await page.keyboard.press("Escape");
+  await expect(panel).not.toHaveAttribute("open", "");
+});
